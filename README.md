@@ -53,9 +53,6 @@ cd du-an-mau-k23-team
     # Windows: env\Scripts\activate
     pip install -r requirements.txt
 
-    # Tạo file .env nếu chưa có
-    cp .env.example .env
-
     # Migrate database (tự tạo file SQLite)
     
     python manage.py migrate
@@ -68,17 +65,14 @@ cd du-an-mau-k23-team
     cd ../frontend
     npm install
 
-    # Nếu có file .env.example thì:
-    cp .env.example .env
-
     # Chạy frontend
     npm start
 
 
-## Bước 3: Lấy branch để làm(tô có thể mỗi branch riêng cho từng người)
+<!-- ## Bước 3: Lấy branch để làm(tô có thể mỗi branch riêng cho từng người)
 
     git checkout -b feature/<ten-chuc-nang>(của người đảm nhiệm chức năng đó)
     # sau khi code
     git add .
     git commit -m "feat: mô tả chức năng"
-    git push origin feature/<ten-chuc-nang>
+    git push origin feature/<ten-chuc-nang> -->
