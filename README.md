@@ -16,7 +16,7 @@ Dự án xây dựng một sàn thương mại điện tử chuyên về nông s
     - Click Clone
     - Chọn nhánh của mình
     - Mở viusual rồi code thôi ae
-
+    - Chuyển qua bước 2 luôn
 
 ## 📁 Cấu trúc thư mục
 ```bash
@@ -75,4 +75,4 @@ cd du-an-mau-k23-team
     # sau khi code
     git add .
     git commit -m "feat: mô tả chức năng"
-    git push origin feature/<ten-chuc-nang> -->
+    git push origin feature/<ten-chuc-nang>
