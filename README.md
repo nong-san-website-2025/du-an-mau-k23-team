@@ -63,6 +63,7 @@ cd du-an-mau-k23-team
     #Tao superuser
 
     python manage.py createsuperuser
+    
     Vd: - username: admin
         - email: admin@gmai.com
         - password: 123
