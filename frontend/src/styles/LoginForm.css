@@ -1,0 +1,314 @@
+  .login-container {
+    background: url('../assets/farm3.jpg') no-repeat center center;
+    background-size: cover;
+  }
+  .login-logo {
+  width: 400px;
+  height: auto;
+  margin: 0 auto 50px;
+  display: block;
+}
+  
+  
+  .login-page {
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    animation: fadeIn 1s ease;  
+  
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  .login-form {
+    background: white;
+    padding: 40px 30px;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    width: 100%;
+    max-width: 400px;
+    display: flex;
+    flex-direction: column;
+    animation: slideUp 0.8s ease;
+  }
+
+  @keyframes slideUp {
+    from {
+      transform: translateY(20px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  .login-form h2 {
+    text-align: center;
+    margin-top: -50px;
+    color: #333;
+  }
+
+  .login-form input {
+    padding: 12px;
+    margin-bottom: 18px;
+    border: 1px solid #000;
+    border-radius: 6px;
+    outline: none;
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+
+  .login-form input:focus {
+    border-color: #4e73df;
+    box-shadow: 0 0 8px rgba(78, 115, 223, 0.6);
+  }
+
+  .login-form button {
+    padding: 12px;
+    background-color: #00dbc1;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background 0.3s, transform 0.1s;
+    box-shadow: 0 4px 12px rgba(78, 115, 223, 0.5);
+  }
+
+  .login-form button:hover {
+    background-color: #00d4bb;
+  }
+
+  .login-form button:active {
+    transform: scale(0.97);
+  }
+
+  .error {
+    color: red;
+    margin-bottom: 12px;
+    text-align: center;
+    animation: shake 0.3s;
+  }
+
+  @keyframes shake {
+    0% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    50% { transform: translateX(5px); }
+    75% { transform: translateX(-5px); }
+    100% { transform: translateX(0); }
+  }
+  .login-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px; /* Khoảng cách giữa icon và chữ */
+    padding: 12px;
+    background-color: #4e73df;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background 0.3s, transform 0.1s;
+    box-shadow: 0 4px 12px rgba(78, 115, 223, 0.5);
+  }
+
+  .login-btn:hover {
+    background-color: #00dbc1;
+  }
+
+  .login-btn:active {
+    transform: scale(0.97);
+  }
+
+  .login-icon {
+    width: 50px;
+    height: 50px;
+    margin-bottom: -15px;
+  }
+
+  .home-icon {
+    width: 20px;
+    height: 20px;
+    margin-bottom: 3px;
+  }
+  .extra-options {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 15px;
+  }
+
+  .register-btn {
+    background: transparent;
+    border: 2px solid #00dbc1;
+    color: #4e73df;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+
+  .register-btn:hover {
+    background-color: #036749;
+    color: white;
+  }
+
+  .forgot-link {
+    color: #00dbc1;
+    cursor: pointer;
+    text-decoration: underline;
+    transition: color 0.3s;
+  }
+
+  .forgot-link:hover {
+    color: #03675b;
+  }
+  .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    animation: fadeIn 0.3s ease;
+  }
+
+  .modal-content {
+    background: white;
+    padding: 30px 20px;
+    border-radius: 8px;
+    width: 100%;
+    max-width: 350px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.3);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    animation: slideUp 0.4s ease;
+  }
+
+  .modal-content h3 {
+    text-align: center;
+    margin-bottom: 15px;
+  }
+
+  .modal-content input {
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+  }
+
+  .modal-content button {
+    padding: 10px;
+    background-color: #00dbc1;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.3s;
+  }
+
+  .modal-content button:hover {
+    background-color: #027149;
+  }
+
+  .close-btn {
+    background-color: gray;
+    margin-top: 8px;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes slideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  .modal-content {
+    background: white;
+    padding: 50px 40px;
+    border-radius: 12px;
+    width: 100%;
+    max-width: 550px;
+    box-shadow: 0 0 30px rgba(0,0,0,0.35);
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    animation: slideUp 0.4s ease;
+  }
+
+  .modal-content h3 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 26px;
+  }
+
+  .modal-content input {
+    padding: 15px;
+    font-size: 17px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+  }
+
+  .modal-content button {
+    padding: 14px;
+    background-color: #00dbc1;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.3s;
+    font-size: 17px;
+  }
+
+  .modal-content button:hover {
+    background-color: #10d590;
+  }
+
+  .close-btn {
+    background-color: gray;
+    margin-top: 10px;
+  }
+.login-form {
+  background: white;
+  padding: 40px 30px;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  animation: slideUp 0.8s ease;
+}
+
+.modal-content {
+  background: white;
+  padding: 50px 40px;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 550px;
+  box-shadow: 0 0 30px rgba(0,0,0,0.35);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  animation: slideUp 0.4s ease;
+}
+
+
+
+

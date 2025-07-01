@@ -1,3 +1,8 @@
+### CORS settings
+CORS_ALLOW_ALL_ORIGINS = False
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+]
 """
 Django settings for config project.
 
