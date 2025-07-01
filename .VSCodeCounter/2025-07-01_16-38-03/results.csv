@@ -1,0 +1,13 @@
+"filename", "language", "Python", "comment", "blank", "total"
+"e:\A_Code\testGit\du-an-mau-k23-team\backend\orders\__init__.py", "Python", 0, 0, 1, 1
+"e:\A_Code\testGit\du-an-mau-k23-team\backend\orders\admin.py", "Python", 1, 1, 2, 4
+"e:\A_Code\testGit\du-an-mau-k23-team\backend\orders\apps.py", "Python", 4, 0, 3, 7
+"e:\A_Code\testGit\du-an-mau-k23-team\backend\orders\migrations\0001_initial.py", "Python", 24, 1, 7, 32
+"e:\A_Code\testGit\du-an-mau-k23-team\backend\orders\migrations\0002_initial.py", "Python", 27, 1, 7, 35
+"e:\A_Code\testGit\du-an-mau-k23-team\backend\orders\migrations\__init__.py", "Python", 0, 0, 1, 1
+"e:\A_Code\testGit\du-an-mau-k23-team\backend\orders\models.py", "Python", 13, 0, 2, 15
+"e:\A_Code\testGit\du-an-mau-k23-team\backend\orders\serializers.py", "Python", 12, 0, 4, 16
+"e:\A_Code\testGit\du-an-mau-k23-team\backend\orders\tests.py", "Python", 1, 1, 2, 4
+"e:\A_Code\testGit\du-an-mau-k23-team\backend\orders\urls.py", "Python", 5, 0, 2, 7
+"e:\A_Code\testGit\du-an-mau-k23-team\backend\orders\views.py", "Python", 10, 0, 4, 14
+"Total", "-", 97, 4, 35, 136

@@ -3,4 +3,4 @@ djangorestframework
 djangorestframework-simplejwt
 psycopg2
 Pillow
-corsheaders
+django-cors-headers>=3.13.0
