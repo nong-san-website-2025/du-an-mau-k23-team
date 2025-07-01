@@ -55,6 +55,8 @@ cd du-an-mau-k23-team
     pip install -r requirements.txt
 
     # Migrate database (tự tạo file SQLite)
+
+    python manage.py makemigrations
     
     python manage.py migrate
 
