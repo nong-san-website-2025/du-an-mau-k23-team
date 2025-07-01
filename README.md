@@ -50,7 +50,8 @@ cd du-an-mau-k23-team
 ### Cài đặt backend:
     cd backend
     python -m venv env
-    # Windows: env\Scripts\activate
+    # Windows: 
+    env\Scripts\activate
     pip install -r requirements.txt
 
     # Migrate database (tự tạo file SQLite)
