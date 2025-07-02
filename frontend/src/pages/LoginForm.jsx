@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { login } from '../services/auth';
 import { useNavigate } from 'react-router-dom';
 import "./../styles/LoginForm.css";
@@ -35,7 +35,46 @@ const [showResetPasswordForm, setShowResetPasswordForm] = useState(false);
 
 const [countdown, setCountdown] = useState(60); // 60 giây
 const [intervalId, setIntervalId] = useState(null);
+const [passwordError, setPasswordError] = useState('');
 
+
+  useEffect(() => {
+    /* global google */
+    if (window.google) {
+      window.google.accounts.id.initialize({
+        client_id: "638143772671-jr1jc4rnk9jaigdle8hubt575cgdmshn.apps.googleusercontent.com",
+        callback: handleGoogleResponse
+      });
+
+      window.google.accounts.id.renderButton(
+        document.getElementById("googleSignInDiv"),
+        { theme: "outline", size: "large" }
+      );
+    }
+  }, []);
+  const handleGoogleResponse = (response) => {
+  console.log(response.credential);
+  sendTokenToBackend(response.credential);
+};
+
+const sendTokenToBackend = async (token) => {
+  try {
+    const res = await fetch('/api/users/google-login/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      alert('Đăng nhập Google thành công!');
+      navigate('/');
+    } else {
+      alert(data.error || 'Đăng nhập thất bại!');
+    }
+  } catch (err) {
+    alert('Lỗi kết nối!');
+  }
+};
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -55,6 +94,17 @@ const [intervalId, setIntervalId] = useState(null);
       alert('Vui lòng điền đầy đủ thông tin!');
       return;
     }
+
+    const passwordRegex = /^(?=.*[A-Z]).{8,}$/;
+  if (!passwordRegex.test(regPassword)) {
+    alert('Mật khẩu phải có ít nhất 8 ký tự và chứa ít nhất 1 chữ viết hoa!');
+    return;
+  }
+
+  if (regPassword !== regPassword2) {
+    alert('Mật khẩu nhập lại không khớp!');
+    return;
+  }
 
     try {
       const response = await fetch('/api/users/register/', {
@@ -128,6 +178,15 @@ const startCountdown = () => {
   }, 1000);
   setIntervalId(newInterval);
 };
+
+const validatePasswordRealtime = (password) => {
+  const passwordRegex = /^(?=.*[A-Z]).{8,}$/;
+  if (!passwordRegex.test(password)) {
+    setPasswordError('Mật khẩu phải có ít nhất 8 ký tự và chứa ít nhất 1 chữ viết hoa!');
+  } else {
+    setPasswordError('');
+  }
+};
 const handleVerifyCode = async () => {
   // Đảm bảo gửi code là chuỗi, không phải mảng
   const codeString = Array.isArray(verificationCode) ? verificationCode.join('') : verificationCode;
@@ -158,10 +217,17 @@ const handleResetPassword = async () => {
     alert('Vui lòng nhập đầy đủ thông tin!');
     return;
   }
+  const passwordRegex = /^(?=.*[A-Z]).{8,}$/;
+  if (!passwordRegex.test(newPassword)) {
+    alert('Mật khẩu phải có ít nhất 8 ký tự và chứa ít nhất 1 chữ viết hoa!');
+    return;
+  }
+
   if (newPassword !== confirmNewPassword) {
     alert('Mật khẩu nhập lại không khớp!');
     return;
   }
+  
   try {
     const response = await fetch('/api/users/reset-password/', {
       method: 'POST',
@@ -256,52 +322,55 @@ const handleOtpKeyDown = (e, index) => {
       </form>
       {/* Modal Đăng ký */}
       {showRegisterModal && (
-  <div className="modal-overlay">
-    <div className="modal-content">
-      <h3>Đăng ký tài khoản</h3>
-      <input
-        type="text"
-        placeholder="Tên đăng nhập"
-        value={regUsername}
-        onChange={(e) => setRegUsername(e.target.value)}
-      />
-      <input
-        type="email"
-        placeholder="Email"
-        value={regEmail}
-        onChange={(e) => setRegEmail(e.target.value)}
-      />
-      <input
-        type="password"
-        placeholder="Mật khẩu"
-        value={regPassword}
-        onChange={(e) => setRegPassword(e.target.value)}
-      />
-      <input
-        type="password"
-        placeholder="Nhập lại mật khẩu"
-        value={regPassword2}
-        onChange={(e) => setRegPassword2(e.target.value)}
-      />
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h3>Đăng ký tài khoản</h3>
+            <input
+              type="text"
+              placeholder="Tên đăng nhập"
+              value={regUsername}
+              onChange={(e) => setRegUsername(e.target.value)}
+            />
+            <input
+              type="email"
+              placeholder="Email"
+              value={regEmail}
+              onChange={(e) => setRegEmail(e.target.value)}
+            />
+            <input
+              type="password"
+              placeholder="Mật khẩu"
+              value={regPassword}
+              onChange={(e) => {
+                setRegPassword(e.target.value);
+                validatePasswordRealtime(e.target.value);
+              }}
+            />
+            <input
+              type="password"
+              placeholder="Nhập lại mật khẩu"
+              value={regPassword2}
+              onChange={(e) => setRegPassword2(e.target.value)}
+            />
 
-      <div style={{ margin: '10px 0' }}>
-        <label>
-          <input
-            type="checkbox"
-            checked={isSeller}
-            onChange={(e) => setIsSeller(e.target.checked)}
-          />
-          Tôi là người bán
-        </label>
-      </div>
+            <div style={{ margin: '10px 0' }}>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={isSeller}
+                  onChange={(e) => setIsSeller(e.target.checked)}
+                />
+                Tôi là người bán
+              </label>
+            </div>
 
-      <button onClick={handleRegister}>Đăng ký</button>
-      <button className="close-btn" onClick={() => setShowRegisterModal(false)}>
-        Đóng
-      </button>
-    </div>
-  </div>
-)}
+            <button onClick={handleRegister}>Đăng ký</button>
+            <button className="close-btn" onClick={() => setShowRegisterModal(false)}>
+              Đóng
+            </button>
+          </div>
+        </div>
+      )}
       {/* Modal Quên mật khẩu */}
       {showForgotModal && (
         <div className="modal-overlay">
@@ -361,8 +430,12 @@ const handleOtpKeyDown = (e, index) => {
               type="password"
               placeholder="Mật khẩu mới"
               value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
+              onChange={(e) => {
+                setNewPassword(e.target.value);
+                validatePasswordRealtime(e.target.value);
+              }}
             />
+            {passwordError && <p className="password-error">{passwordError}</p>}
             <input
               type="password"
               placeholder="Nhập lại mật khẩu"
@@ -384,6 +457,9 @@ const handleOtpKeyDown = (e, index) => {
         </div>
       )}
     </div>
+      <div className="google-login-container">
+        <div id="googleSignInDiv"></div>
+      </div>
     </div>
     
     

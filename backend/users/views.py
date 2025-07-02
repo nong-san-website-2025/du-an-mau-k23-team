@@ -1,3 +1,33 @@
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
+from rest_framework.views import APIView
+from rest_framework import permissions
+# --- GOOGLE LOGIN API ---
+class GoogleLoginAPIView(APIView):
+    permission_classes = [permissions.AllowAny]
+    def post(self, request):
+        token = request.data.get('token')
+        if not token:
+            return Response({'error': 'Thiếu token'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            # Thay CLIENT_ID bằng client_id thực tế của bạn
+            CLIENT_ID = "1234567890-xxxxxxxxxxxxxxxx.apps.googleusercontent.com"
+            idinfo = id_token.verify_oauth2_token(token, google_requests.Request(), CLIENT_ID)
+            email = idinfo.get('email')
+            name = idinfo.get('name', '')
+            if not email:
+                return Response({'error': 'Không lấy được email từ Google'}, status=status.HTTP_400_BAD_REQUEST)
+            user, created = CustomUser.objects.get_or_create(email=email, defaults={
+                'username': email.split('@')[0],
+                'first_name': name,
+                'is_active': True
+            })
+            token_obj, _ = Token.objects.get_or_create(user=user)
+            return Response({'token': token_obj.key, 'email': email, 'username': user.username})
+        except ValueError:
+            return Response({'error': 'Token Google không hợp lệ'}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 from django.contrib.auth.hashers import make_password
 
 from rest_framework import generics, permissions, status

@@ -417,6 +417,25 @@
   box-shadow: 0 0 5px rgba(52, 152, 219, 0.5);
 }
 
+.password-error {
+  color: red;
+  font-size: 13px;
+  margin: 5px 0 10px 0;
+  text-align: left;
+}
+
+.google-login-container {
+  margin-top: 15px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 10px;
+}
+
+#googleSignInDiv {
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  border-radius: 4px;
+}
 
 
 
