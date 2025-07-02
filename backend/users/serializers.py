@@ -29,3 +29,7 @@ class RegisterSerializer(serializers.ModelSerializer):
             is_seller=validated_data.get("is_seller", False)
         )
         return user
+
+# ForgotPasswordSerializer nên được định nghĩa ngoài class RegisterSerializer
+class ForgotPasswordSerializer(serializers.Serializer):
+    email = serializers.EmailField()

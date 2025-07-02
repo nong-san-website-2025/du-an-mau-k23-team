@@ -7,3 +7,5 @@ class CustomUser(AbstractUser):
 
     def __str__(self):
         return self.username
+    
+    reset_code = models.CharField(max_length=6, blank=True, null=True)

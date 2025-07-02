@@ -49,6 +49,13 @@ INSTALLED_APPS = [
     "reviews", "cart", "orders", "payments",   
 ]
 
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'  # Ví dụ dùng Gmail
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'nmk1010111@gmail.com'
+EMAIL_HOST_PASSWORD = 'rzen rgwe ltwj oveo'
+
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',

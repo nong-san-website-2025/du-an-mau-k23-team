@@ -24,6 +24,19 @@ function LoginForm() {
   // State cho Quên mật khẩu
   const [forgotEmail, setForgotEmail] = useState('');
 
+  // State cho nhập mã xác thực
+const [verificationCode, setVerificationCode] = useState(Array(6).fill(""));
+const [showVerifyCodeForm, setShowVerifyCodeForm] = useState(false);
+
+// State cho cấp lại mật khẩu
+const [newPassword, setNewPassword] = useState('');
+const [confirmNewPassword, setConfirmNewPassword] = useState('');
+const [showResetPasswordForm, setShowResetPasswordForm] = useState(false);
+
+const [countdown, setCountdown] = useState(60); // 60 giây
+const [intervalId, setIntervalId] = useState(null);
+
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     const result = await login(username, password);
@@ -75,16 +88,126 @@ function LoginForm() {
     }
   };
 
-  const handleForgotPassword = () => {
-    if (!forgotEmail) {
-      alert('Vui lòng nhập email!');
-      return; 
+  const handleForgotPassword = async () => {
+  // Kiểm tra định dạng email hợp lệ
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!forgotEmail || !emailPattern.test(forgotEmail)) {
+    alert('Vui lòng nhập đúng định dạng email!');
+    return;
+  }
+  try {
+    const response = await fetch('/api/users/forgot-password/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: forgotEmail })
+    });
+    const data = await response.json();
+    if (response.ok) {
+      alert('Mã khôi phục đã được gửi về email!');
+      setShowVerifyCodeForm(true);
+      startCountdown();
+      // KHÔNG reset forgotEmail ở đây để giữ lại email cho bước xác thực mã và đặt lại mật khẩu
+    } else {
+      alert(data.error || 'Gửi email thất bại!');
     }
-    // Bạn có thể thay đoạn dưới bằng gọi API thực tế
-    alert(`Đã gửi email khôi phục tới: ${forgotEmail}`);
-    setShowForgotModal(false);
-    setForgotEmail('');
-  };
+  } catch (err) {
+    alert('Lỗi kết nối máy chủ!');
+  }
+};
+const startCountdown = () => {
+  setCountdown(60); // Bắt đầu từ 60 giây
+  if (intervalId) clearInterval(intervalId); // Clear nếu có đếm trước đó
+  const newInterval = setInterval(() => {
+    setCountdown((prev) => {
+      if (prev <= 1) {
+        clearInterval(newInterval);
+        return 0;
+      }
+      return prev - 1;
+    });
+  }, 1000);
+  setIntervalId(newInterval);
+};
+const handleVerifyCode = async () => {
+  // Đảm bảo gửi code là chuỗi, không phải mảng
+  const codeString = Array.isArray(verificationCode) ? verificationCode.join('') : verificationCode;
+  if (!codeString || codeString.length < 6) {
+    alert('Vui lòng nhập đầy đủ mã xác thực!');
+    return;
+  }
+  try {
+    const response = await fetch('/api/users/verify-code/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: forgotEmail, code: codeString })
+    });
+    const data = await response.json();
+    if (response.ok) {
+      alert('Xác thực thành công! Vui lòng nhập mật khẩu mới.');
+      setShowResetPasswordForm(true); // Hiện form cấp lại mật khẩu
+      setShowVerifyCodeForm(false);
+    } else {
+      alert(data.error || 'Mã xác thực không đúng!');
+    }
+  } catch (err) {
+    alert('Lỗi kết nối máy chủ!');
+  }
+};
+const handleResetPassword = async () => {
+  if (!newPassword || !confirmNewPassword) {
+    alert('Vui lòng nhập đầy đủ thông tin!');
+    return;
+  }
+  if (newPassword !== confirmNewPassword) {
+    alert('Mật khẩu nhập lại không khớp!');
+    return;
+  }
+  try {
+    const response = await fetch('/api/users/reset-password/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: forgotEmail,
+        password: newPassword
+      })
+    });
+    const data = await response.json();
+    if (response.ok) {
+      alert('Đặt lại mật khẩu thành công! Bạn có thể đăng nhập lại.');
+      setShowForgotModal(false);
+      setShowResetPasswordForm(false);
+      setForgotEmail('');
+      setVerificationCode('');
+      setNewPassword('');
+      setConfirmNewPassword('');
+    } else {
+      alert(data.error || 'Đặt lại mật khẩu thất bại!');
+    }
+  } catch (err) {
+    alert('Lỗi kết nối máy chủ!');
+  }
+};
+const handleOtpChange = (e, index) => {
+  const value = e.target.value.replace(/[^0-9a-zA-Z]/g, ""); // Chỉ cho phép chữ và số
+  if (value.length > 1) return;
+
+  const newCode = [...verificationCode];
+  newCode[index] = value;
+  setVerificationCode(newCode);
+
+  // Tự động focus ô tiếp theo nếu có giá trị
+  if (value && index < 5) {
+    const nextInput = document.querySelectorAll(".otp-input")[index + 1];
+    nextInput && nextInput.focus();
+  }
+};
+
+const handleOtpKeyDown = (e, index) => {
+  if (e.key === "Backspace" && !verificationCode[index] && index > 0) {
+    const prevInput = document.querySelectorAll(".otp-input")[index - 1];
+    prevInput && prevInput.focus();
+  }
+};
 
   return (
     <div className="login-container">
@@ -192,6 +315,69 @@ function LoginForm() {
             />
             <button onClick={handleForgotPassword}>Gửi yêu cầu</button>
             <button className="close-btn" onClick={() => setShowForgotModal(false)}>
+              Đóng
+            </button>
+          </div>
+        </div>
+        
+      )}
+       {showVerifyCodeForm && (
+          <div className="modal-overlay">
+            <div className="modal-content">
+              <h3>Nhập mã xác thực</h3>
+              <p className="countdown-text">
+                {countdown > 0 ? `Vui lòng nhập mã trong ${countdown} giây` : "Bạn có thể yêu cầu gửi lại mã"}
+              </p>
+              <div className="otp-input-container">
+                {Array(6)
+                  .fill(0)
+                  .map((_, index) => (
+                    <input
+                      key={index}
+                      type="text"
+                      maxLength="1"
+                      className="otp-input"
+                      value={verificationCode[index] || ""}
+                      onChange={(e) => handleOtpChange(e, index)}
+                      onKeyDown={(e) => handleOtpKeyDown(e, index)}
+                    />
+                  ))}
+              </div>
+              <button onClick={handleVerifyCode}>Xác thực</button>
+              <button className="close-btn" onClick={() => setShowVerifyCodeForm(false)}>
+                Đóng
+              </button>
+            </div>
+          </div>
+        )}
+      {showResetPasswordForm && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h3>Đặt lại mật khẩu</h3>
+            <div style={{ marginBottom: '10px', color: 'gray', fontSize: '14px' }}>
+              <b>Email:</b> {forgotEmail || <span style={{color:'red'}}>Không có email!</span>}
+            </div>
+            <input
+              type="password"
+              placeholder="Mật khẩu mới"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+            />
+            <input
+              type="password"
+              placeholder="Nhập lại mật khẩu"
+              value={confirmNewPassword}
+              onChange={(e) => setConfirmNewPassword(e.target.value)}
+            />
+            <button onClick={() => {
+              if (!forgotEmail) {
+                alert('Không tìm thấy email để đặt lại mật khẩu. Vui lòng thực hiện lại quy trình quên mật khẩu!');
+                setShowResetPasswordForm(false);
+                return;
+              }
+              handleResetPassword();
+            }}>Đặt lại mật khẩu</button>
+            <button className="close-btn" onClick={() => setShowResetPasswordForm(false)}>
               Đóng
             </button>
           </div>
