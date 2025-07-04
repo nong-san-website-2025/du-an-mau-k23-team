@@ -6,7 +6,7 @@ const CartItem = ({ item }) => {
 
   return (
     <div className="cart-item">
-      <img src={item.product.image} alt={item.product.name} width={80} />
+      <img src={item.image} alt={item.product.name} width={80} />
       <div className="cart-item-info">
         <h4>{item.product.name}</h4>
         <p>Giá: {item.product.price.toLocaleString()}₫</p>
