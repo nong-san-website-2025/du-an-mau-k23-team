@@ -1,13 +1,22 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import HomePage from "./pages/HomePage";
-import MainLayout from "./layouts/MainLayout";
+import Layout from "./layouts/layout"; // Sử dụng layout có Header/Footer
+
+import UserProductPage from './pages/UserProductPage';
+import SellerProductDashboard from './pages/SellerProductDashboard';
+import 'bootstrap/dist/css/bootstrap.min.css';
+
 
 function App() {
   return (
     <BrowserRouter>
-        <Routes element={<MainLayout />}>
-          <Route path="/" element={<HomePage />} />
-        </Routes>
+      <Routes>
+        <Route path="/" element={<Layout />}>
+          <Route index element={<HomePage />} />
+          <Route path="productuser" element={<UserProductPage />} />
+          <Route path="sellerDashboard" element={<SellerProductDashboard />} />
+        </Route>
+      </Routes>
     </BrowserRouter>
   );
 }
