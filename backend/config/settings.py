@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 
 from pathlib import Path
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -147,7 +148,12 @@ CORS_ALLOWED_ORIGINS = [
 
 CORS_ALLOW_CREDENTIALS = True
 
-CORS_ALLOW_ALL_ORIGINS = False  # Chỉ cho phép origins được chỉ định
+CORS_ALLOW_ALL_ORIGINS = False  
+
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media') #cho phep luu tru media files la luu cho khac
+# Chỉ cho phép origins được chỉ định
 
 # Nếu bạn muốn cho phép tất cả origins trong development (không khuyến khích)
 # CORS_ALLOW_ALL_ORIGINS = True

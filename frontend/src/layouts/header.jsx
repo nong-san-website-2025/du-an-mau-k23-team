@@ -113,23 +113,49 @@ export default function Header() {
     categories[0];
 
   return (
-    <header className="shadow-sm">
+    <header
+      className="shadow-sm"
+      style={{ position: "sticky", top: 0, zIndex: 999 }}
+    >
       {/* Top bar */}
       <div style={greenStyle} className="text-white small py-2">
-        <div className="container d-flex justify-content-between align-items-center px-2" style={{ minHeight: '40px' }}>
-          <div className="d-flex align-items-center" style={{ gap: '1rem', flexWrap: 'nowrap' }}>
-            <div className="d-flex align-items-center" style={{ whiteSpace: 'nowrap' }}>
+        <div
+          className="container d-flex justify-content-between align-items-center px-2"
+          style={{ minHeight: "40px" }}
+        >
+          <div
+            className="d-flex align-items-center"
+            style={{ gap: "1rem", flexWrap: "nowrap" }}
+          >
+            <div
+              className="d-flex align-items-center"
+              style={{ whiteSpace: "nowrap" }}
+            >
               <Phone size={16} className="me-1" />
               <span>Hotline: 1900-1234</span>
             </div>
-            <div className="d-flex align-items-center d-none d-md-flex" style={{ whiteSpace: 'nowrap' }}>
+            <div
+              className="d-flex align-items-center d-none d-md-flex"
+              style={{ whiteSpace: "nowrap" }}
+            >
               <Mail size={16} className="me-1" />
               <span>support@nongsan.vn</span>
             </div>
           </div>
-          <div className="d-flex align-items-center" style={{ gap: '1rem', flexWrap: 'nowrap' }}>
-            <span className="d-none d-lg-inline" style={{ whiteSpace: 'nowrap' }}>Miễn phí vận chuyển đơn từ 200K</span>
-            <div className="d-flex align-items-center" style={{ whiteSpace: 'nowrap' }}>
+          <div
+            className="d-flex align-items-center"
+            style={{ gap: "1rem", flexWrap: "nowrap" }}
+          >
+            <span
+              className="d-none d-lg-inline"
+              style={{ whiteSpace: "nowrap" }}
+            >
+              Miễn phí vận chuyển đơn từ 200K
+            </span>
+            <div
+              className="d-flex align-items-center"
+              style={{ whiteSpace: "nowrap" }}
+            >
               <Globe size={16} className="me-1" />
               <span>Tiếng Việt</span>
               <ChevronDown size={14} className="ms-1" />
@@ -145,8 +171,11 @@ export default function Header() {
       </div>
 
       {/* Main header */}
-      <div className="bg-white border-bottom" style={{ position: 'relative' }}>
-        <div className="container d-flex align-items-center justify-content-between py-3 px-2" style={{ minHeight: '80px', flexWrap: 'nowrap' }}>
+      <div className="bg-white border-bottom" style={{ position: "relative" }}>
+        <div
+          className="container d-flex align-items-center justify-content-between py-3 px-2"
+          style={{ minHeight: "80px", flexWrap: "nowrap" }}
+        >
           {/* Logo */}
           <Link
             to="/"
@@ -167,7 +196,10 @@ export default function Header() {
           </Link>
 
           {/* Navigation */}
-          <nav className="d-flex align-items-center flex-grow-1 ms-4" style={{ flexWrap: 'nowrap' }}>
+          <nav
+            className="d-flex align-items-center flex-grow-1 ms-4"
+            style={{ flexWrap: "nowrap" }}
+          >
             <div
               className="position-relative"
               onMouseEnter={handleMouseEnter}
@@ -180,7 +212,7 @@ export default function Header() {
                   background: "none",
                   cursor: "pointer",
                   whiteSpace: "nowrap",
-                  flexShrink: 0
+                  flexShrink: 0,
                 }}
               >
                 Danh mục sản phẩm <ChevronDown size={16} className="ms-1" />
@@ -190,14 +222,14 @@ export default function Header() {
                   className="position-absolute start-0 mt-2 shadow border"
                   style={{
                     width: 900,
-                    maxWidth: 'calc(100vw - 40px)',
+                    maxWidth: "calc(100vw - 40px)",
                     zIndex: 9999,
                     boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
                     borderRadius: 16,
-                    background: "#f6fef9",
+                    background: "#fff",
                     padding: "32px 24px",
                     top: "100%",
-                    left: 0
+                    left: 0,
                   }}
                   onMouseEnter={handleMouseEnter}
                   onMouseLeave={handleMouseLeave}
@@ -341,35 +373,38 @@ export default function Header() {
             <Link
               to="/featured"
               className="btn btn-link fw-medium px-3 py-2 text-decoration-none text-dark d-none d-lg-inline-block"
-              style={{ whiteSpace: 'nowrap' }}
+              style={{ whiteSpace: "nowrap" }}
             >
               Sản phẩm nổi bật
             </Link>
             <Link
               to="/promotions"
               className="btn btn-link fw-medium px-3 py-2 text-danger text-decoration-none"
-              style={{ whiteSpace: 'nowrap' }}
+              style={{ whiteSpace: "nowrap" }}
             >
               Khuyến mãi
             </Link>
             <Link
               to="/about"
               className="btn btn-link fw-medium px-3 py-2 text-decoration-none text-dark d-none d-xl-inline-block"
-              style={{ whiteSpace: 'nowrap' }}
+              style={{ whiteSpace: "nowrap" }}
             >
               Về chúng tôi
             </Link>
             <Link
               to="/contact"
               className="btn btn-link fw-medium px-3 py-2 text-decoration-none text-dark d-none d-xl-inline-block"
-              style={{ whiteSpace: 'nowrap' }}
+              style={{ whiteSpace: "nowrap" }}
             >
               Liên hệ
             </Link>
           </nav>
 
           {/* Search & Actions */}
-          <div className="d-flex align-items-center ms-3" style={{ flexShrink: 0, flexWrap: 'nowrap' }}>
+          <div
+            className="d-flex align-items-center ms-3"
+            style={{ flexShrink: 0, flexWrap: "nowrap" }}
+          >
             <div className="position-relative me-3 d-none d-md-block">
               <input
                 type="text"
@@ -395,15 +430,15 @@ export default function Header() {
             >
               <Heart size={22} style={greenText} />
             </Link>
-            <Link 
-              to="/cart" 
+            <Link
+              to="/cart"
               className="btn btn-light rounded-circle me-2 p-2"
               style={{ flexShrink: 0 }}
             >
               <ShoppingCart size={22} style={greenText} />
             </Link>
-            <Link 
-              to="/dashboard" 
+            <Link
+              to="/dashboard"
               className="btn btn-light rounded-circle p-2"
               style={{ flexShrink: 0 }}
             >

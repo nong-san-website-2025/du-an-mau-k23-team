@@ -32,13 +32,14 @@ class ApiService {
 
   // Categories
   async getCategories() {
-    return this.request('/categories/');
-  }
+  return this.request('/products/categories/');
+}
+  
 
   async getCategoryProducts(categoryId, params = {}) {
-    const queryString = new URLSearchParams(params).toString();
-    return this.request(`/categories/${categoryId}/products/?${queryString}`);
-  }
+  const queryString = new URLSearchParams(params).toString();
+  return this.request(`/products/categories/${categoryId}/products/?${queryString}`);
+}
 
   // Products
   async getProducts(params = {}) {
