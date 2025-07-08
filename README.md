@@ -65,7 +65,7 @@ cd du-an-mau-k23-team
     python manage.py createsuperuser
     
     Vd: - username: admin
-        - email: admin@gmai.com
+        - email: admin@gmail.com
         - password: 123
         - xac thuc pass: 123
         - Nhan Y roi Enter
