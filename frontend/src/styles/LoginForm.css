@@ -3,10 +3,13 @@
     background-size: cover;
   }
   .login-logo {
-  width: 400px;
+  /* border: 1px solid #ccc; */
+  border-radius: 50%;
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.2);
+  width: 150px;
   height: auto;
-  margin: 0 auto 50px;
-  display: block;
+  margin: 0 auto 150px;
+  display: block; 
 }
   
   
@@ -55,27 +58,36 @@
 
   .login-form h2 {
     text-align: center;
-    margin-top: -50px;
-    color: #333;
+    margin-top: -100px;
+    color: #0f641a;
   }
 
   .login-form input {
-    padding: 12px;
+    position: relative;
+    padding: 12px 12px 12px 35px;
     margin-bottom: 18px;
-    border: 1px solid #000;
-    border-radius: 6px;
+    border: none;
+    border-bottom: 1px solid #ccc;
     outline: none;
     transition: border-color 0.3s, box-shadow 0.3s;
+    color: #727171;
+    font-size: 15px;
   }
 
-  .login-form input:focus {
+  .login-form input::placeholder {
+    /* padding-left: 10px; */
+    color: #ccc;
+    padding-top: 10px;
+  }
+
+  /* .login-form input:focus {
     border-color: #4e73df;
     box-shadow: 0 0 8px rgba(78, 115, 223, 0.6);
-  }
+  } */
 
   .login-form button {
     padding: 12px;
-    background-color: #00dbc1;
+    background-color: #0f701c;
     color: white;
     border: none;
     border-radius: 6px;
@@ -86,7 +98,7 @@
   }
 
   .login-form button:hover {
-    background-color: #00d4bb;
+    background-color: #15a150;
   }
 
   .login-form button:active {
@@ -124,7 +136,7 @@
   }
 
   .login-btn:hover {
-    background-color: #00dbc1;
+    background-color: #0f701c;
   }
 
   .login-btn:active {
@@ -149,30 +161,30 @@
     margin-top: 15px;
   }
 
-  .register-btn {
+  /* .register-btn {
     background: transparent;
-    border: 2px solid #00dbc1;
+    border: 2px solid #0ee768;
     color: #4e73df;
     padding: 8px 16px;
     border-radius: 6px;
     cursor: pointer;
     transition: all 0.3s;
-  }
+  } */
 
-  .register-btn:hover {
+  /* .register-btn:hover {
     background-color: #036749;
     color: white;
-  }
+  } */
 
   .forgot-link {
-    color: #00dbc1;
+    color: #0f701c;
     cursor: pointer;
     text-decoration: underline;
     transition: color 0.3s;
   }
 
   .forgot-link:hover {
-    color: #03675b;
+    color:  #129649;
   }
   .modal-overlay {
     position: fixed;
@@ -211,15 +223,15 @@
     border-radius: 6px;
   }
 
-  .modal-content button {
+  /* .modal-content button {
     padding: 10px;
-    background-color: #00dbc1;
+    background-color: #0ee768;
     color: white;
     border: none;
     border-radius: 6px;
     cursor: pointer;
     transition: background 0.3s;
-  }
+  } */
 
   .modal-content button:hover {
     background-color: #027149;
@@ -239,7 +251,7 @@
     from { transform: translateY(20px); opacity: 0; }
     to { transform: translateY(0); opacity: 1; }
   }
-  .modal-content {
+  /* .modal-content {
     background: white;
     padding: 50px 40px;
     border-radius: 12px;
@@ -250,7 +262,7 @@
     flex-direction: column;
     gap: 18px;
     animation: slideUp 0.4s ease;
-  }
+  } */
 
   .modal-content h3 {
     text-align: center;
@@ -265,7 +277,7 @@
     border-radius: 8px;
   }
 
-  .modal-content button {
+  /* .modal-content button {
     padding: 14px;
     background-color: #00dbc1;
     color: white;
@@ -274,27 +286,27 @@
     cursor: pointer;
     transition: background 0.3s;
     font-size: 17px;
-  }
+  } */
 
   .modal-content button:hover {
-    background-color: #10d590;
+    background-color: #149253;
   }
 
   .close-btn {
     background-color: gray;
     margin-top: 10px;
   }
-.login-form {
-  background: white;
-  padding: 40px 30px;
-  border-radius: 12px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
-  width: 100%;
-  max-width: 400px;
-  display: flex;
-  flex-direction: column;
-  animation: slideUp 0.8s ease;
-}
+  .login-form {
+    background: white;
+    padding: 40px 30px;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    width: 100%;
+    max-width: 400px;
+    display: flex;
+    flex-direction: column;
+    animation: slideUp 0.8s ease;
+  }
 
 .modal-content {
   background: white;
@@ -360,7 +372,7 @@
   width: 100%;
   padding: 10px;
   margin-top: 5px;
-  background-color:  #00dbc1;
+  background-color:  #0f701c;
   color: #fff;
   border: none;
   border-radius: 6px;
@@ -370,7 +382,7 @@
 }
 
 .modal-content button:hover {
-  background-color:  #057c6e;
+  background-color:  #14974b;
 }
 
 .close-btn {
@@ -402,16 +414,23 @@
 }
 
 .otp-input {
-  width: 40px;
-  height: 45px;
+  width: 50px;
+  height: 50px;
   font-size: 18px;
   text-align: center;
   border: 1px solid #ccc;
   border-radius: 6px;
   outline: none;
-  transition: 0.3s;
+  transition: all 0.3s ease;
+  background: white;
+  box-shadow: 0 0 0 rgba(0,0,0,0); /* Mặc định không có bóng */
 }
 
+.otp-input:hover {
+  transform: translateY(-3px) scale(1.1);
+  box-shadow: 0 10px 15px rgba(52, 152, 219, 0.4);
+  border-color: #3498db;
+}
 .otp-input:focus {
   border-color: #3498db;
   box-shadow: 0 0 5px rgba(52, 152, 219, 0.5);
@@ -433,8 +452,48 @@
 }
 
 #googleSignInDiv {
-  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
   border-radius: 4px;
+  padding: 5px;
+  background-color: #F1F8E9; /* Nền xanh nhạt tự nhiên */
+  transition: all 0.3s ease;
+}
+
+#googleSignInDiv:hover {
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.3);
+  background-color: #A5D6A7; /* Xanh lá nhạt hover */
+}
+.logout-btn {
+  margin-top: 20px;
+  padding: 10px 20px;
+  background-color: #d9534f;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.logout-btn:hover {
+  background-color: #c9302c;
+}
+.login-form .input-icon-user {
+  position: absolute;
+  top: 50.8%;
+  left: 40%;
+  z-index: 5;
+  font-size: 13px;
+  color: #ccc;
+}
+
+.login-form .input-icon-lock {
+  position: absolute;
+  top: 59.3%;
+  left: 40%;
+  gap: 10px;
+  z-index: 5;
+  font-size: 13px;
+  color: #ccc;
 }
 
 

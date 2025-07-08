@@ -1,0 +1,115 @@
+.seller-dashboard {
+  padding: 20px;
+  max-width: 600px;
+  margin: auto;
+  text-align: center;
+}
+
+.dashboard-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-top: 20px;
+}
+
+.dashboard-actions button {
+  padding: 12px;
+  background-color: #4CAF50;
+  border: none;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: 0.3s;
+}
+
+.dashboard-actions button:hover {
+  background-color: #388e3c;
+}
+
+/* CSS cho trang Quản lý cửa hàng (ManageStore.jsx) */
+.manage-store-container {
+  padding: 20px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.manage-store-header {
+  font-size: 22px;
+  font-weight: bold;
+  margin-bottom: 15px;
+}
+
+.store-info {
+  margin-top: 15px;
+  line-height: 1.8;
+}
+
+.store-info label {
+  font-weight: 600;
+  color: #555;
+}
+
+/* CSS cho trang Xem đơn hàng (Orders.jsx) */
+.orders-container {
+  padding: 20px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.orders-header {
+  font-size: 22px;
+  font-weight: bold;
+  margin-bottom: 15px;
+}
+
+.order-list {
+  margin-top: 10px;
+}
+
+.order-item {
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  margin-bottom: 10px;
+  transition: 0.3s;
+  background: #fafafa;
+}
+
+.order-item:hover {
+  background: #eef9f1;
+  border-color: #4caf50;
+}
+
+.order-item .order-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.order-item .order-info strong {
+  color: #4caf50;
+}
+
+/* Màu sắc chủ đạo phù hợp web nông sản */
+.manage-store-header,
+.orders-header {
+  color: #388e3c;
+}
+
+button.primary-btn {
+  background: #4caf50;
+  color: white;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+button.primary-btn:hover {
+  background: #388e3c;
+}
+

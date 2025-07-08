@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import "./../styles/LoginForm.css";
 import loginIcon from '../assets/login.png';
 import homeIcon from '../assets/homefarm.png';
-import logo from '../assets/log.png';
+import logo from '../assets/imagelogo.png';
 
 
 function LoginForm() {
@@ -23,6 +23,7 @@ function LoginForm() {
   const [isSeller, setIsSeller] = useState(false);
   // State cho Quên mật khẩu
   const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotEmailError, setForgotEmailError] = useState('');
 
   // State cho nhập mã xác thực
 const [verificationCode, setVerificationCode] = useState(Array(6).fill(""));
@@ -42,7 +43,7 @@ const [passwordError, setPasswordError] = useState('');
     /* global google */
     if (window.google) {
       window.google.accounts.id.initialize({
-        client_id: "638143772671-jr1jc4rnk9jaigdle8hubt575cgdmshn.apps.googleusercontent.com",
+        client_id: "638143772671-lm3qtlfdet2c7iad6am8nf7hfrvd8nmk.apps.googleusercontent.com",
         callback: handleGoogleResponse
       });
 
@@ -65,12 +66,23 @@ const sendTokenToBackend = async (token) => {
       body: JSON.stringify({ token })
     });
     const data = await res.json();
-    if (res.ok) {
-      alert('Đăng nhập Google thành công!');
-      navigate('/');
-    } else {
-      alert(data.error || 'Đăng nhập thất bại!');
-    }
+if (res.ok) {
+  localStorage.setItem("token", data.token);
+  localStorage.setItem("role", data.role);
+  if (data.username) {
+    localStorage.setItem("username", data.username);
+  }
+  // alert('Đăng nhập Google thành công!');
+  if (data.role === 'seller') {
+    navigate('/seller-dashboard');
+  } else if (data.role === 'admin') {
+    navigate('/admin-dashboard');
+  } else {
+    navigate('/');
+  }
+} else {
+  alert(data.error || 'Đăng nhập thất bại!');
+}
   } catch (err) {
     alert('Lỗi kết nối!');
   }
@@ -81,13 +93,17 @@ const sendTokenToBackend = async (token) => {
     const result = await login(username, password);
 
     if (result.success) {
-      alert('Đăng nhập thành công!');
+      localStorage.setItem("token", result.token);
+      localStorage.setItem("role", result.role);
+      localStorage.setItem("username", username);
+      // alert('Đăng nhập thành công!');
+      // Đăng nhập thường luôn vào trang user (trang chủ)
       navigate('/');
-      // Chuyển hướng hoặc set state phù hợp
     } else {
       setError(result.error);
     }
   };
+
 
   const handleRegister = async () => {
     if (!regUsername || !regEmail || !regPassword || !regPassword2) {
@@ -124,6 +140,22 @@ const sendTokenToBackend = async (token) => {
       if (response.ok) {
         alert('Đăng ký thành công!');
         setShowRegisterModal(false);
+        // Tự động đăng nhập sau khi đăng ký
+        const loginResult = await login(regUsername, regPassword);
+        if (loginResult.success) {
+          localStorage.setItem("token", loginResult.token);
+          localStorage.setItem("role", loginResult.role);
+          localStorage.setItem("username", regUsername);
+          if (loginResult.role === 'seller') {
+            navigate('/seller-dashboard');
+          } else if (loginResult.role === 'admin') {
+            navigate('/admin-dashboard');
+          } else {
+            navigate('/');
+          }
+        } else {
+          alert('Đăng ký thành công nhưng đăng nhập tự động thất bại!');
+        }
         setRegUsername('');
         setRegEmail('');
         setRegPassword('');
@@ -139,31 +171,32 @@ const sendTokenToBackend = async (token) => {
   };
 
   const handleForgotPassword = async () => {
-  // Kiểm tra định dạng email hợp lệ
-  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!forgotEmail || !emailPattern.test(forgotEmail)) {
-    alert('Vui lòng nhập đúng định dạng email!');
-    return;
-  }
-  try {
-    const response = await fetch('/api/users/forgot-password/', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: forgotEmail })
-    });
-    const data = await response.json();
-    if (response.ok) {
-      alert('Mã khôi phục đã được gửi về email!');
-      setShowVerifyCodeForm(true);
-      startCountdown();
-      // KHÔNG reset forgotEmail ở đây để giữ lại email cho bước xác thực mã và đặt lại mật khẩu
-    } else {
-      alert(data.error || 'Gửi email thất bại!');
+    // Kiểm tra định dạng email hợp lệ
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!forgotEmail || !emailPattern.test(forgotEmail)) {
+      setForgotEmailError('Vui lòng nhập đúng định dạng email!');
+      return;
     }
-  } catch (err) {
-    alert('Lỗi kết nối máy chủ!');
-  }
-};
+    setForgotEmailError('');
+    try {
+      const response = await fetch('/api/users/forgot-password/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: forgotEmail })
+      });
+      const data = await response.json();
+      if (response.ok) {
+        alert('Mã khôi phục đã được gửi về email!');
+        setShowVerifyCodeForm(true);
+        startCountdown();
+        // KHÔNG reset forgotEmail ở đây để giữ lại email cho bước xác thực mã và đặt lại mật khẩu
+      } else {
+        alert(data.error || 'Gửi email thất bại!');
+      }
+    } catch (err) {
+      alert('Lỗi kết nối máy chủ!');
+    }
+  };
 const startCountdown = () => {
   setCountdown(60); // Bắt đầu từ 60 giây
   if (intervalId) clearInterval(intervalId); // Clear nếu có đếm trước đó
@@ -202,7 +235,6 @@ const handleVerifyCode = async () => {
     });
     const data = await response.json();
     if (response.ok) {
-      alert('Xác thực thành công! Vui lòng nhập mật khẩu mới.');
       setShowResetPasswordForm(true); // Hiện form cấp lại mật khẩu
       setShowVerifyCodeForm(false);
     } else {
@@ -213,6 +245,12 @@ const handleVerifyCode = async () => {
   }
 };
 const handleResetPassword = async () => {
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!forgotEmail || !emailPattern.test(forgotEmail)) {
+    alert('Email không hợp lệ, vui lòng thực hiện lại quy trình quên mật khẩu!');
+    setShowResetPasswordForm(false);
+    return;
+  }
   if (!newPassword || !confirmNewPassword) {
     alert('Vui lòng nhập đầy đủ thông tin!');
     return;
@@ -222,12 +260,10 @@ const handleResetPassword = async () => {
     alert('Mật khẩu phải có ít nhất 8 ký tự và chứa ít nhất 1 chữ viết hoa!');
     return;
   }
-
   if (newPassword !== confirmNewPassword) {
     alert('Mật khẩu nhập lại không khớp!');
     return;
   }
-  
   try {
     const response = await fetch('/api/users/reset-password/', {
       method: 'POST',
@@ -239,16 +275,13 @@ const handleResetPassword = async () => {
     });
     const data = await response.json();
     if (response.ok) {
-      alert('Đặt lại mật khẩu thành công! Bạn có thể đăng nhập lại.');
       setShowForgotModal(false);
       setShowResetPasswordForm(false);
       setForgotEmail('');
       setVerificationCode('');
       setNewPassword('');
       setConfirmNewPassword('');
-    } else {
-      alert(data.error || 'Đặt lại mật khẩu thất bại!');
-    }
+    } 
   } catch (err) {
     alert('Lỗi kết nối máy chủ!');
   }
@@ -282,17 +315,19 @@ const handleOtpKeyDown = (e, index) => {
       <form onSubmit={handleSubmit} className="login-form">
         <img src={logo} alt="Logo" className="login-logo" />
         <h2>
-          <img src={loginIcon} alt="icon" className="login-icon" />
+          {/* <img src={loginIcon} alt="icon" className="login-icon" /> */}
           Đăng nhập
           </h2>
         {error && <p style={{ color: 'red' }}>{error}</p>}
+        <i className="fas fa-user input-icon-user"></i>
         <input
           type="text"
-          placeholder="Username"
+          placeholder="Tên đăng nhập"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           required
         /><br />
+        <i className="fas fa-lock input-icon-lock"></i>
         <input
           type="password"
           placeholder="Mật khẩu"
@@ -301,7 +336,7 @@ const handleOtpKeyDown = (e, index) => {
           required
         /><br />
         <button type="submit" className="login-btn">
-          <img src={homeIcon} alt="icon" className="login-icon home-icon"/>
+          {/* <img src={homeIcon} alt="icon" className="login-icon home-icon"/> */}
           Đăng nhập
           </button>
         <div className="extra-options">
@@ -353,16 +388,16 @@ const handleOtpKeyDown = (e, index) => {
               onChange={(e) => setRegPassword2(e.target.value)}
             />
 
-            <div style={{ margin: '10px 0' }}>
+            {/* <div style={{ margin: '10px 0' }}>
               <label>
                 <input
                   type="checkbox"
                   checked={isSeller}
                   onChange={(e) => setIsSeller(e.target.checked)}
                 />
-                Tôi là người bán
+                Seller
               </label>
-            </div>
+            </div> */}
 
             <button onClick={handleRegister}>Đăng ký</button>
             <button className="close-btn" onClick={() => setShowRegisterModal(false)}>
@@ -380,15 +415,30 @@ const handleOtpKeyDown = (e, index) => {
               type="email"
               placeholder="Nhập email của bạn"
               value={forgotEmail}
-              onChange={(e) => setForgotEmail(e.target.value)}
+              autoComplete="off"
+              onChange={(e) => {
+                // Chỉ nhận email hợp lệ, không nhận username
+                const value = e.target.value;
+                const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!value || !emailPattern.test(value)) {
+                  setForgotEmailError('Vui lòng nhập đúng định dạng email!');
+                  setForgotEmail(value); // vẫn cho nhập để hiện lỗi
+                } else {
+                  setForgotEmailError('');
+                  setForgotEmail(value);
+                }
+              }}
+              className={forgotEmailError ? 'input-error' : ''}
+              inputMode="email"
+              pattern="^[^\s@]+@[^\s@]+\.[^\s@]+$"
             />
-            <button onClick={handleForgotPassword}>Gửi yêu cầu</button>
+            {forgotEmailError && <div className="email-error">{forgotEmailError}</div>}
+            <button onClick={handleForgotPassword} disabled={!!forgotEmailError || !forgotEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(forgotEmail)}>Gửi yêu cầu</button>
             <button className="close-btn" onClick={() => setShowForgotModal(false)}>
               Đóng
             </button>
           </div>
         </div>
-        
       )}
        {showVerifyCodeForm && (
           <div className="modal-overlay">
@@ -424,7 +474,7 @@ const handleOtpKeyDown = (e, index) => {
           <div className="modal-content">
             <h3>Đặt lại mật khẩu</h3>
             <div style={{ marginBottom: '10px', color: 'gray', fontSize: '14px' }}>
-              <b>Email:</b> {forgotEmail || <span style={{color:'red'}}>Không có email!</span>}
+              <b>Email:</b> { /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(forgotEmail) ? forgotEmail : <span style={{color:'red'}}>Không có email hợp lệ!</span> }
             </div>
             <input
               type="password"
@@ -443,8 +493,8 @@ const handleOtpKeyDown = (e, index) => {
               onChange={(e) => setConfirmNewPassword(e.target.value)}
             />
             <button onClick={() => {
-              if (!forgotEmail) {
-                alert('Không tìm thấy email để đặt lại mật khẩu. Vui lòng thực hiện lại quy trình quên mật khẩu!');
+              if (!forgotEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(forgotEmail)) {
+                alert('Không tìm thấy email hợp lệ để đặt lại mật khẩu. Vui lòng thực hiện lại quy trình quên mật khẩu!');
                 setShowResetPasswordForm(false);
                 return;
               }
