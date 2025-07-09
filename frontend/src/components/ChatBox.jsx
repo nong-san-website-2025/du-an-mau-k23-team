@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { FaFacebookMessenger } from "react-icons/fa";
 import "../styles/ChatBox.css";
+import { motion, AnimatePresence } from "framer-motion";
 
 function ChatBox({ username, roomName }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -9,6 +10,11 @@ function ChatBox({ username, roomName }) {
   const socketRef = useRef(null);
   const user = username || localStorage.getItem("username") || "Người dùng";
   const room = roomName || "public";
+  const bottomRef = useRef(null);
+
+  useEffect(() => {
+  bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+}, [messages]);
 
   useEffect(() => {
     if (isOpen && !socketRef.current) {
@@ -58,11 +64,22 @@ function ChatBox({ username, roomName }) {
           </div>
 
           <div className="chatbox-body">
-            {messages.map((msg, idx) => (
-              <div key={idx} className={`chatbox-message ${msg.sender === user ? "user" : "bot"}`}>
-                <b>{msg.sender === username ? "Tôi" : msg.sender}:</b> {msg.text}
-              </div>
-            ))}
+            <AnimatePresence initial={false}>
+              {messages.map((msg, idx) => (
+                <motion.div
+                  key={idx}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className={`chatbox-message ${msg.sender === username ? "user" : "bot"}`}
+                >
+                  <b>{msg.sender === username ? "Tôi" : msg.sender}:</b> {msg.text}
+                </motion.div>
+              ))}
+            
+            </AnimatePresence>
+            <div ref={bottomRef} />
           </div>
 
           <div className="chatbox-input">

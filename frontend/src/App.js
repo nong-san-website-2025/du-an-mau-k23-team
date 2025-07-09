@@ -25,7 +25,9 @@ function App() {
           <Route path="/orders" element={<Orders />} />
           <Route path="/seller-chat" element={<SellerChatPage />} />
         </Route>
+        <Route path="/seller-chat" element={<SellerChatPage />} />
         <Route path="/login" element={<LoginForm />} />
+        
         
       </Routes>
     </BrowserRouter>
