@@ -1,5 +1,6 @@
 import React from 'react';
-import { useCart } from '../CartContext';
+import { useCart } from '../services/CartContext';
+import '../styles/AppCart.css'; // Assuming you have a CSS file for styling
 
 const CartItem = ({ item, showPrice = true }) => {
   const { updateQuantity, removeFromCart } = useCart();

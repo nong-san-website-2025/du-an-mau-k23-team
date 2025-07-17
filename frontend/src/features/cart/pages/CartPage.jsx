@@ -1,18 +1,15 @@
 import React from 'react';
-import { useCart } from '../CartContext';
+import { useCart } from '../services/CartContext';
 import CartItem from '../components/CartItem';
-// import CartSummary from '../components/CartSummary';
 import { Container, Row, Col, Card, Button, Spinner, Image, Badge } from 'react-bootstrap';
 
 const green = "#22C55E";
-const darkGreen = "#16A34A";
-const mintLight = "#f6fff8"; // Xanh lá nhạt, đồng bộ với tổng thể trang
+const darkGreen = "#16A34A";// Xanh lá nhạt, đồng bộ với tổng thể trang
 
 const CartPage = () => {
   const { cartItems, loading } = useCart();
   // State for selected items
   const [selectedItems, setSelectedItems] = React.useState([]);
-
 
   // Handler for select one item
   const handleSelectItem = (id) => {
@@ -32,77 +29,20 @@ const CartPage = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <Container className="py-5 text-center">
-        <Spinner animation="border" style={{ color: green }} />
-        <div className="mt-3" style={{ color: green, fontWeight: 600 }}>Đang tải giỏ hàng...</div>
-      </Container>
-    );
-  }
-
-  if (cartItems.length === 0) {
-    return (
-      <Container className="py-5 d-flex flex-column align-items-center justify-content-center">
-        <Image src="/empty-cart.png" alt="empty" width={180} className="mb-4" />
-        <h2 className="mb-2 fw-bold" style={{ color: green }}>Giỏ hàng của bạn đang trống</h2>
-        <p className="mb-3 text-secondary">Hãy chọn sản phẩm yêu thích và thêm vào giỏ hàng để mua sắm dễ dàng hơn!</p>
-        <Button href="/" size="lg" style={{
-          borderRadius: 12,
-          fontWeight: 700,
-          padding: '12px 36px',
-          background: green,
-          border: 'none',
-          fontSize: '1.1rem',
-          boxShadow: '0 2px 8px rgba(34,197,94,0.10)'
-        }}>
-          Tiếp tục mua sắm
-        </Button>
-      </Container>
-    );
-  }
-
-  // Tính tổng tiền các sản phẩm đã chọn (fix lỗi NaN)
-  const selectedTotal = cartItems
-    .filter(item => selectedItems.includes(item.id))
-    .reduce((sum, item) => {
-      const price = Number(item.product?.price) || 0;
-      const quantity = Number(item.quantity) || 0;
-      return sum + price * quantity;
-    }, 0);
+  // Calculate total for selected items
+  const selectedTotal = React.useMemo(() => {
+    return cartItems
+      .filter(item => selectedItems.includes(item.id))
+      .reduce((sum, item) => {
+        return sum + (Number(item.product?.price || 0) * Number(item.quantity || 0));
+      }, 0);
+  }, [cartItems, selectedItems]);
 
   return (
-    <Container className="py-5">
-      <Card className="shadow border-0 rounded-5 p-4 mb-4" style={{ background: "#fff" }}>
-        <div style={{
-          background: `linear-gradient(90deg, ${green} 60%, ${darkGreen} 100%)`,
-          borderRadius: 18,
-          padding: '32px 24px 24px 24px',
-          marginBottom: 32,
-          color: '#fff',
-          boxShadow: '0 2px 16px rgba(34,197,94,0.10)',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'flex-start',
-          position: 'relative',
-          overflow: 'hidden',
-        }}>
-          <div style={{ fontSize: 18, fontWeight: 600, opacity: 0.95, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <i className="bi bi-bag-check-fill" style={{ fontSize: 24, marginRight: 8 }}></i>
-            Giỏ hàng nổi bật
-          </div>
-          <h1 style={{ fontWeight: 800, fontSize: '2.3rem', margin: 0, letterSpacing: 1 }}>🛒 Giỏ hàng của bạn</h1>
-          <div style={{ fontSize: 16, marginTop: 10, opacity: 0.93 }}>
-            Khám phá các sản phẩm bạn đã chọn, kiểm tra lại số lượng và tiến hành thanh toán nhanh chóng, an toàn.
-          </div>
-          <div style={{ marginTop: 18, display: 'flex', gap: 18, flexWrap: 'wrap' }}>
-            <Badge bg="light" text="success" style={{ fontWeight: 500, fontSize: 15, padding: '8px 16px', borderRadius: 8, background: '#fff', color: green, border: `1.5px solid ${green}` }}>Giao hàng nhanh</Badge>
-            <Badge bg="light" text="success" style={{ fontWeight: 500, fontSize: 15, padding: '8px 16px', borderRadius: 8, background: '#fff', color: green, border: `1.5px solid ${green}` }}>Đảm bảo chất lượng</Badge>
-            <Badge bg="light" text="success" style={{ fontWeight: 500, fontSize: 15, padding: '8px 16px', borderRadius: 8, background: '#fff', color: green, border: `1.5px solid ${green}` }}>Hỗ trợ 24/7</Badge>
-          </div>
-        </div>
-        <Row>
-          <Col md={8} className="mb-4 mb-md-0">
+    <Container className="py-0 d-flex flex-column" style={{ margin: 0, minWidth: '100vw', minHeight: '100vh', position: 'relative' }}>
+      <Card className="shadow border-0 rounded-5 p-4 mb-4 flex-grow-1" style={{ background: "#fff", display: 'flex', flexDirection: 'row', minHeight: '60vh' }}>
+        <Row style={{ width: '100%' }}>
+          <Col md={8} className="mb-4 mb-md-0" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
             {/* Header row Shopee-style */}
             <div style={{
               display: 'flex',
@@ -129,7 +69,7 @@ const CartPage = () => {
               <span style={{ minWidth: 120, textAlign: 'center', flex: 1, color: '#22C55E', fontWeight: 700 }}>Số Tiền</span>
             </div>
             {/* Table-like layout for cart items */}
-            <div style={{ width: '100%' }}>
+            <div style={{ width: '100%', flexGrow: 1, overflowY: 'auto' }}>
               {cartItems.map(item => (
                 <div
                   key={item.id}
@@ -226,9 +166,9 @@ const CartPage = () => {
               </div>
             </div>
           </Col>
-          <Col md={4}>
+          <Col md={4} style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', height: '100%' }}>
             {/* Hiện tổng tiền chỉ của các sản phẩm đã chọn */}
-            <Card className="shadow-sm border-0 rounded-4 p-4" style={{ background: '#fff', marginBottom: 18, boxShadow: '0 2px 16px #22C55E22' }}>
+            <Card className="shadow-sm border-0 rounded-4 p-4 flex-grow-0" style={{ background: '#fff', marginBottom: 18, boxShadow: '0 2px 16px #22C55E22' }}>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <div style={{ fontWeight: 800, fontSize: 22, color: darkGreen }}>
@@ -239,48 +179,59 @@ const CartPage = () => {
                     {selectedTotal.toLocaleString('vi-VN')}₫
                   </div>
                 </div>
-                <Button
-                  size="lg"
-                  disabled={selectedItems.length === 0}
-                  style={{
-                    minWidth: 180,
-                    maxWidth: 260,
-                    alignSelf: 'flex-end',
-                    marginRight: 32,
-                    borderRadius: 12,
-                    fontWeight: 900,
-                    fontSize: 22,
-                    padding: '16px 0 8px 0',
-                    background: selectedItems.length === 0
-                      ? '#f3f4f6'
-                      : 'linear-gradient(90deg, #22C55E 0%, #16A34A 100%)',
-                    color: selectedItems.length === 0 ? '#bdbdbd' : '#fff',
-                    border: 'none',
-                    boxShadow: selectedItems.length === 0 ? 'none' : '0 4px 18px #22C55E22',
-                    transition: 'all 0.2s',
-                    letterSpacing: 1,
-                    cursor: selectedItems.length === 0 ? 'not-allowed' : 'pointer',
-                    marginBottom: 2,
-                    marginTop: 8
-                  }}
-                  className={selectedItems.length === 0 ? '' : 'cjx-pay-btn'}
-                >
-                  Thanh toán
-                </Button>
               </div>
-              {/* Green-style pay button hover effect */}
-              <style>{`
-                .cjx-pay-btn:not(:disabled):hover {
-                  background: linear-gradient(90deg, #16A34A 0%, #22C55E 100%) !important;
-                  color: #fff !important;
-                  box-shadow: 0 6px 24px #22C55E44 !important;
-                  transform: translateY(-2px) scale(1.01);
-                }
-              `}</style>
             </Card>
           </Col>
         </Row>
       </Card>
+      {/* Thanh toán button fixed bottom */}
+      <div style={{
+        position: 'fixed',
+        left: 0,
+        bottom: 0,
+        width: '100vw',
+        background: '#fff',
+        boxShadow: '0 -2px 16px #22C55E22',
+        zIndex: 100,
+        padding: '16px 0',
+        display: 'flex',
+        justifyContent: 'center',
+      }}>
+        <Button
+          size="lg"
+          disabled={selectedItems.length === 0}
+          style={{
+            minWidth: 220,
+            maxWidth: 320,
+            borderRadius: 12,
+            fontWeight: 900,
+            fontSize: 22,
+            padding: '16px 0 8px 0',
+            background: selectedItems.length === 0
+              ? '#f3f4f6'
+              : 'linear-gradient(90deg, #22C55E 0%, #16A34A 100%)',
+            color: selectedItems.length === 0 ? '#bdbdbd' : '#fff',
+            border: 'none',
+            boxShadow: selectedItems.length === 0 ? 'none' : '0 4px 18px #22C55E22',
+            transition: 'all 0.2s',
+            letterSpacing: 1,
+            cursor: selectedItems.length === 0 ? 'not-allowed' : 'pointer',
+            marginBottom: 2,
+            marginTop: 8
+          }}
+          className={selectedItems.length === 0 ? '' : 'cjx-pay-btn'}
+        >
+          Thanh toán
+        </Button>
+        <style>{`
+          .cjx-pay-btn:not(:disabled):hover {
+            background: linear-gradient(90deg, #16A34A 0%, #22C55E 100%) !important;
+            color: #fff !important;
+            box-shadow: 0 6px 24px #22C55E44 !important;
+            transform: translateY(-2px) scale(1.01);
+          }
+        `}</style>
+      </div>
     </Container>
   );
 };
