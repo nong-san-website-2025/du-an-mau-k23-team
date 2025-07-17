@@ -9,9 +9,13 @@ if defined _OLD_CODEPAGE (
 )
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 set "VIRTUAL_ENV=C:\du-an-mau-k23-team\backend\env"
 =======
 set VIRTUAL_ENV=C:\Users\Admin\Desktop\testBranch\du-an-mau-k23-team\backend\env
+>>>>>>> feature/backend_cart_NhatNguyen
+=======
+set "VIRTUAL_ENV=C:\Users\PAVILION\OneDrive\Tài liệu\OneDrive\Desktop\du-an-mau-k23-team\backend\env"
 >>>>>>> feature/backend_cart_NhatNguyen
 
 if not defined PROMPT set PROMPT=$P$G
