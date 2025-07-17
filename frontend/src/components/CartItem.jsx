@@ -1,15 +1,17 @@
 import React from 'react';
 import { useCart } from '../CartContext';
 
-const CartItem = ({ item }) => {
+const CartItem = ({ item, showPrice = true }) => {
   const { updateQuantity, removeFromCart } = useCart();
 
   return (
     <div className="cart-item">
-      <img src={item.image} alt={item.product.name} width={80} />
+      <img src={item.image} alt={item.product?.name || ''} width={80} />
       <div className="cart-item-info">
-        <h4>{item.product.name}</h4>
-        <p>Giá: {item.product.price.toLocaleString()}₫</p>
+        <h4>{item.product?.name || ''}</h4>
+        {showPrice && item.product && (
+          <p>Giá: {Number(item.product.price || 0).toLocaleString()}₫</p>
+        )}
         <div className="cart-item-actions">
           <button onClick={() => updateQuantity(item.id, item.quantity - 1)}>-</button>
           <input
@@ -22,7 +24,9 @@ const CartItem = ({ item }) => {
           <button onClick={() => updateQuantity(item.id, item.quantity + 1)}>+</button>
           <button onClick={() => removeFromCart(item.id)} style={{ marginLeft: 10 }}>Xóa</button>
         </div>
-        <p>Tổng: {(item.product.price * item.quantity).toLocaleString()}₫</p>
+        {showPrice && item.product && (
+          <p>Tổng: {Number(item.product.price * item.quantity || 0).toLocaleString()}₫</p>
+        )}
       </div>
     </div>
   );
