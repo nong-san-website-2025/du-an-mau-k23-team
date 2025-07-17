@@ -36,6 +36,7 @@ deactivate () {
 # unset irrelevant variables
 deactivate nondestructive
 
+<<<<<<< HEAD
 # on Windows, a path can contain colons and backslashes and has to be converted:
 case "$(uname)" in
     CYGWIN*|MSYS*|MINGW*)
@@ -49,6 +50,10 @@ case "$(uname)" in
         export VIRTUAL_ENV='C:\du-an-mau-k23-team\backend\env'
         ;;
 esac
+=======
+VIRTUAL_ENV="C:\Users\Admin\Desktop\testBranch\du-an-mau-k23-team\backend\env"
+export VIRTUAL_ENV
+>>>>>>> feature/backend_cart_NhatNguyen
 
 _OLD_VIRTUAL_PATH="$PATH"
 PATH="$VIRTUAL_ENV/"Scripts":$PATH"

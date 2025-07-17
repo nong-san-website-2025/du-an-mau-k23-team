@@ -8,7 +8,11 @@ if defined _OLD_CODEPAGE (
     "%SystemRoot%\System32\chcp.com" 65001 > nul
 )
 
+<<<<<<< HEAD
 set "VIRTUAL_ENV=C:\du-an-mau-k23-team\backend\env"
+=======
+set VIRTUAL_ENV=C:\Users\Admin\Desktop\testBranch\du-an-mau-k23-team\backend\env
+>>>>>>> feature/backend_cart_NhatNguyen
 
 if not defined PROMPT set PROMPT=$P$G
 

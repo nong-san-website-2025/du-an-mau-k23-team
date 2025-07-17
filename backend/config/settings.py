@@ -140,6 +140,7 @@ REST_FRAMEWORK = {
     ),
 }
 
+<<<<<<< HEAD
 # CORS settings
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
@@ -157,3 +158,9 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media') #cho phep luu tru media files la lu
 
 # Nếu bạn muốn cho phép tất cả origins trong development (không khuyến khích)
 # CORS_ALLOW_ALL_ORIGINS = True
+=======
+CORS_ALLOW_ALL_ORIGINS = True
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+>>>>>>> feature/backend_cart_NhatNguyen
