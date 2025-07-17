@@ -1,8 +1,10 @@
+
 from rest_framework import generics, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from .models import CustomUser
 from .serializers import UserSerializer, RegisterSerializer
+from django.shortcuts import render
 
 class RegisterView(generics.CreateAPIView):
     queryset = CustomUser.objects.all()
