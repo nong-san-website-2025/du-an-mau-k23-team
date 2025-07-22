@@ -1,12 +1,12 @@
-#Chatbox
+# Chatbox
 sudo apt update
-sudo apt install redis-server
-redis-cli ping
-tải redis 
+sudo apt install redis-server redis-cli
+ping tải redis
 cd ..
-cd E/C:\\Redis
+cd E:/Redis
 .\redis-server.exe
-#backend
+
+# Backend
 pip install channels channels_redis daphne
 python manage.py runserver
 daphne chatproject.asgi:application
