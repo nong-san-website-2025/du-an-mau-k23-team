@@ -1,5 +1,5 @@
 # Chatbox
-sudo apt update
+sudo apt update <br>
 sudo apt install redis-server redis-cli
 ping tải redis
 cd ..
