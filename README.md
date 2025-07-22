@@ -9,4 +9,5 @@ cd E:/Redis <br>
 # Backend
 pip install channels channels_redis daphne <br>
 python manage.py runserver <br>
+ctrl C <br>
 daphne chatproject.asgi:application
