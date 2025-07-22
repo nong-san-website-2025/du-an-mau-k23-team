@@ -3,17 +3,40 @@ from google.auth.transport import requests as google_requests
 from rest_framework.views import APIView
 from rest_framework import permissions
 from rest_framework_simplejwt.tokens import RefreshToken
+from django.contrib.auth.hashers import make_password
+from rest_framework import generics, permissions, status
+from django.core.cache import cache
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework.authtoken.models import Token
+from django.contrib.auth import authenticate
+from .models import CustomUser
+from .serializers import UserSerializer, RegisterSerializer, ForgotPasswordSerializer
+import random
+from django.core.mail import send_mail
+from .permissions import IsAdmin, IsSeller, IsNormalUser
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny
+from rest_framework.decorators import api_view, permission_classes
+from chat.models import Message  # Cập nhật đúng path
+from django.db.models import Count
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 # --- GOOGLE LOGIN API ---
+
+@method_decorator(csrf_exempt, name='dispatch')
 class GoogleLoginAPIView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
         token = request.data.get('token')
         if not token:
+            print(">> request.data:", request.data)
             return Response({'error': 'Thiếu token'}, status=status.HTTP_400_BAD_REQUEST)
+            
 
         try:
-            CLIENT_ID = "638143772671-lm3qtlfdet2c7iad6am8nf7hfrvd8nmk.apps.googleusercontent.com"
+            CLIENT_ID = "638143772671-m6e09jr0o9smb5l1n24bhv7tpeskmvu3.apps.googleusercontent.com"
             idinfo = id_token.verify_oauth2_token(token, google_requests.Request(), CLIENT_ID)
 
             email = idinfo.get('email')
@@ -51,24 +74,7 @@ class GoogleLoginAPIView(APIView):
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-from django.contrib.auth.hashers import make_password
 
-from rest_framework import generics, permissions, status
-from django.core.cache import cache
-from rest_framework.response import Response
-from rest_framework.views import APIView
-from rest_framework.authtoken.models import Token
-from django.contrib.auth import authenticate
-from .models import CustomUser
-from .serializers import UserSerializer, RegisterSerializer, ForgotPasswordSerializer
-import random
-from django.core.mail import send_mail
-from .permissions import IsAdmin, IsSeller, IsNormalUser
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.permissions import AllowAny
-from rest_framework.decorators import api_view, permission_classes
-from chat.models import Message  # Cập nhật đúng path
-from django.db.models import Count
 
 
 

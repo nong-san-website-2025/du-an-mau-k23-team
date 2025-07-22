@@ -143,3 +143,57 @@
   overflow-y: auto;
   max-height: 70vh;
 }
+
+.chatbox-message-time {
+  font-size: 0.7rem;
+  color: #ffffff;
+  margin-top: 4px;
+  text-align: right;
+}
+
+.chatbox-message.bot .chatbox-message-time {
+  text-align: left;
+}
+
+.call-btn {
+  background-color: transparent;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  color: #fff;
+  padding: 4px;
+  transition: color 0.3s;
+}
+
+.call-btn:hover {
+  color: #00ffcc;
+}
+
+
+.video-call {
+  position: fixed;
+  bottom: 10px;
+  right: 10px;
+  background: black;
+  padding: 10px;
+  border-radius: 10px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.local-video, .remote-video {
+  width: 300px;
+  height: 200px;
+  background: #222;
+  border-radius: 10px;
+}
+.end-call {
+  background: red;
+  color: white;
+  padding: 5px 10px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+

@@ -265,3 +265,18 @@ html, body, #root {
   background: #114b8f;
 }
 
+
+.message-time {
+  font-size: 0.7rem;
+  color: #ffffff;
+  margin-top: 4px;
+  text-align: right;
+  padding-right: 10px;
+}
+.message.user .message-time {
+  text-align: right;
+}
+.message.other .message-time {
+  text-align: left;
+}
+

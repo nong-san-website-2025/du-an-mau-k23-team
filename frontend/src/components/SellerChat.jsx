@@ -1,3 +1,4 @@
+// SellerChat.jsx
 import { useState, useEffect } from "react";
 import "../styles/SellerChat.css";
 import ChatWindow from "./ChatWindow";
@@ -5,16 +6,14 @@ import ChatWindow from "./ChatWindow";
 function SellerChat() {
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(() => {
-    // Lấy người dùng đã chọn từ localStorage nếu có
-    const savedUser = localStorage.getItem("selectedUser");
     return localStorage.getItem("selectedUser") || null;
   });
 
   const [showConfirmModal, setShowConfirmModal] = useState(false);
-  
+  const [isCalling, setIsCalling] = useState(false); // ✅ đúng cách
 
   useEffect(() => {
-    setUsers(["tungduong", "user2", "user3"]);
+    setUsers(["tungduong", "khanhne123", "user3"]);
   }, []);
 
   const handleSelectUser = (user) => {
@@ -26,6 +25,7 @@ function SellerChat() {
     setSelectedUser(null);
     localStorage.removeItem("selectedUser");
   };
+
   const handleClearHistory = () => {
     const saved = localStorage.getItem("chat_history");
     if (saved) {
@@ -52,22 +52,27 @@ function SellerChat() {
           ))}
         </div>
       </div>
+
       <div className="chat-area">
+        {selectedUser && isCalling && (
+          <div className="incoming-call-alert">
+            📞 Cuộc gọi đến từ {selectedUser}...
+          </div>
+        )}
+
         {selectedUser ? (
           <>
             <div className="chat-window-header">
-              <button className="back-btn" onClick={handleBackToList}>
-                ←
-              </button>
-              <button className="clear-btn" onClick={() => setShowConfirmModal(true)}>
-                🗑
-              </button>
+              <button className="back-btn" onClick={handleBackToList}>←</button>
+              <button className="clear-btn" onClick={() => setShowConfirmModal(true)}>🗑</button>
             </div>
-            
+
             <ChatWindow
               key={selectedUser + (showConfirmModal ? "-reset" : "")}
               username="Seller"
               roomName={selectedUser}
+              isCalling={isCalling}
+              setIsCalling={setIsCalling} // ✅ truyền xuống
             />
 
             {showConfirmModal && (
