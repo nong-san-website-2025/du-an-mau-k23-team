@@ -22,7 +22,7 @@ import {
   Spinner,
   Alert,
 } from "react-bootstrap";
-import { useLocation, useSearchParams } from "react-router-dom";
+import { useLocation, useSearchParams, useNavigate } from "react-router-dom";
 import { productApi } from "../services/productApi";
 
 // Icon mapping cho API data
@@ -38,6 +38,7 @@ const iconMap = {
 
 const UserProductPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const categoryParam = searchParams.get("category");
 
   // States
@@ -249,7 +250,8 @@ const UserProductPage = () => {
           {displayedProducts.map((product) => (
             <Col key={product.id}>
               <Card className="h-100 shadow-sm border-0">
-                <div className="position-relative" style={{ height: 210 }}>
+                <div className="position-relative" style={{ height: 210, cursor: 'pointer' }}
+                  onClick={() => navigate(`/products/${product.id}`)}>
                   <Card.Img
                     variant="top"
                     src={
