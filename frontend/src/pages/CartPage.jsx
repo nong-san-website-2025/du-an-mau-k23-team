@@ -62,225 +62,292 @@ const CartPage = () => {
     );
   }
 
-  // Tính tổng tiền các sản phẩm đã chọn (fix lỗi NaN)
-  const selectedTotal = cartItems
-    .filter(item => selectedItems.includes(item.id))
-    .reduce((sum, item) => {
-      const price = Number(item.product?.price) || 0;
-      const quantity = Number(item.quantity) || 0;
-      return sum + price * quantity;
-    }, 0);
+  // Tính tổng tiền và tổng số lượng các sản phẩm đã chọn
+  const selectedItemsData = cartItems.filter(item => selectedItems.includes(item.id));
+  const selectedTotal = selectedItemsData.reduce((sum, item) => {
+    const price = Number(item.product?.price) || 0;
+    const quantity = Number(item.quantity) || 0;
+    return sum + price * quantity;
+  }, 0);
+  const selectedQuantity = selectedItemsData.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
 
   return (
     <Container className="py-5">
-      <Card className="shadow border-0 rounded-5 p-4 mb-4" style={{ background: "#fff" }}>
-        <div style={{
-          background: `linear-gradient(90deg, ${green} 60%, ${darkGreen} 100%)`,
-          borderRadius: 18,
-          padding: '32px 24px 24px 24px',
-          marginBottom: 32,
-          color: '#fff',
-          boxShadow: '0 2px 16px rgba(34,197,94,0.10)',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'flex-start',
-          position: 'relative',
-          overflow: 'hidden',
-        }}>
-          <div style={{ fontSize: 18, fontWeight: 600, opacity: 0.95, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <i className="bi bi-bag-check-fill" style={{ fontSize: 24, marginRight: 8 }}></i>
-            Giỏ hàng nổi bật
-          </div>
-          <h1 style={{ fontWeight: 800, fontSize: '2.3rem', margin: 0, letterSpacing: 1 }}>🛒 Giỏ hàng của bạn</h1>
-          <div style={{ fontSize: 16, marginTop: 10, opacity: 0.93 }}>
-            Khám phá các sản phẩm bạn đã chọn, kiểm tra lại số lượng và tiến hành thanh toán nhanh chóng, an toàn.
-          </div>
-          <div style={{ marginTop: 18, display: 'flex', gap: 18, flexWrap: 'wrap' }}>
-            <Badge bg="light" text="success" style={{ fontWeight: 500, fontSize: 15, padding: '8px 16px', borderRadius: 8, background: '#fff', color: green, border: `1.5px solid ${green}` }}>Giao hàng nhanh</Badge>
-            <Badge bg="light" text="success" style={{ fontWeight: 500, fontSize: 15, padding: '8px 16px', borderRadius: 8, background: '#fff', color: green, border: `1.5px solid ${green}` }}>Đảm bảo chất lượng</Badge>
-            <Badge bg="light" text="success" style={{ fontWeight: 500, fontSize: 15, padding: '8px 16px', borderRadius: 8, background: '#fff', color: green, border: `1.5px solid ${green}` }}>Hỗ trợ 24/7</Badge>
+      <h1 style={{ fontWeight: 900, fontSize: 32, marginBottom: 32, color: darkGreen, letterSpacing: 0.5 }}>Giỏ hàng của bạn</h1>
+      <div style={{ display: 'flex', gap: 32, alignItems: 'stretch' }}>
+        {/* LEFT: Danh sách sản phẩm */}
+        <div style={{ flex: 2, display: 'flex', flexDirection: 'column', paddingLeft: 24 }}>
+          <Card className="shadow border-0 rounded-4 p-4 h-100" style={{ background: "#fff", minHeight: 420, height: '100%' }}>
+            {/* Header row với checkbox tổng */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              background: '#f8f9fa',
+              borderRadius: 10,
+              minHeight: 44,
+              marginBottom: 16,
+              fontWeight: 700,
+              color: green,
+              fontSize: 16,
+              padding: '0 0 0 18px',
+              boxShadow: '0 1px 4px #00000005',
+              letterSpacing: 0.2,
+            }}>
+              <span style={{ flex: 2 }}>Sản phẩm</span>
+              <span style={{ flex: 1, textAlign: 'center' }}>Đơn giá</span>
+              <span style={{ flex: 1, textAlign: 'center' }}>Số lượng</span>
+              <span style={{ flex: 1, textAlign: 'center' }}>Số tiền</span>
+            </div>
+            {cartItems.map(item => (
+              <div
+                key={item.id}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  background: '#fff',
+                  border: `1.2px solid #ebe5e8ff`,
+                  borderRadius: 8,
+                  minHeight: 72,
+                  marginBottom: 10,
+                  boxShadow: '0 1px 4px #00000008',
+                  padding: '0 0 0 4px',
+                  position: 'relative',
+                  transition: 'box-shadow 0.2s, border 0.2s',
+                }}
+                onMouseOver={e => {
+                  e.currentTarget.style.boxShadow = '0 2px 8px #22C55E22';
+                  e.currentTarget.style.border = `1.2px solid ${green}`;
+                }}
+                onMouseOut={e => {
+                  e.currentTarget.style.boxShadow = '0 1px 4px #00000008';
+                  e.currentTarget.style.border = '1.2px solid #e5e7eb';
+                }}
+              >
+                {/* Checkbox chọn sản phẩm - gọn, đẹp, hiện đại */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', minWidth: 38 }}>
+                  <input
+                    type="checkbox"
+                    checked={selectedItems.includes(item.id)}
+                    onChange={() => handleSelectItem(item.id)}
+                    style={{
+                      width: 18,
+                      height: 18,
+                      borderRadius: 6,
+                      border: `2px solid ${green}`,
+                      accentColor: green,
+                      boxShadow: '0 1px 4px #22C55E22',
+                      cursor: 'pointer',
+                      transition: 'box-shadow 0.2s',
+                      outline: 'none',
+                    }}
+                    onMouseOver={e => e.target.style.boxShadow = '0 2px 8px #22C55E44'}
+                    onMouseOut={e => e.target.style.boxShadow = '0 1px 4px #22C55E22'}
+                  />
+                </div>
+                {/* Sản phẩm */}
+                <div style={{ flex: 2, display: 'flex', alignItems: 'center', gap: 14 }}>
+                  <CartItem
+                    item={item}
+                    buttonStyleOverrides={{
+                      minus: {
+                        background: 'transparent',
+                        color: '#222',
+                        border: 'none',
+                        borderRadius: 0,
+                        fontWeight: 700,
+                        fontSize: 18,
+                        width: 28,
+                        height: 28,
+                        margin: 0,
+                        padding: 0,
+                        lineHeight: 1,
+                        transition: 'background 0.2s',
+                        boxShadow: 'none',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      },
+                      plus: {
+                        background: 'transparent',
+                        color: '#222',
+                        border: 'none',
+                        borderRadius: 0,
+                        fontWeight: 700,
+                        fontSize: 18,
+                        width: 28,
+                        height: 28,
+                        margin: 0,
+                        padding: 0,
+                        lineHeight: 1,
+                        transition: 'background 0.2s',
+                        boxShadow: 'none',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      },
+                      inputWrap: {
+                        background: '#fff',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: 7,
+                        display: 'flex',
+                        alignItems: 'center',
+                        minWidth: 78,
+                        height: 28,
+                        padding: 0,
+                        boxShadow: 'none',
+                        overflow: 'hidden',
+                      },
+                      input: {
+                        border: 'none',
+                        background: 'transparent',
+                        width: 28,
+                        textAlign: 'center',
+                        fontWeight: 600,
+                        fontSize: 15,
+                        color: '#222',
+                        outline: 'none',
+                        boxShadow: 'none',
+                        padding: 0,
+                      },
+                      divider: {
+                        width: 1,
+                        height: 18,
+                        background: '#e5e7eb',
+                        margin: 0,
+                      },
+                      delete: {
+                        background: '#fee2e2',
+                        color: '#dc2626',
+                        border: 'none',
+                        borderRadius: 5,
+                        fontWeight: 600,
+                        fontSize: 14,
+                        marginLeft: 6,
+                        padding: '4px 10px',
+                        transition: 'background 0.2s',
+                      }
+                    }}
+                  />
+                </div>
+                {/* Đơn giá */}
+                <div style={{ flex: 1, minWidth: 120, textAlign: 'center', fontWeight: 700, color: '#111', fontSize: 18, padding: '8px 0' }}>
+                  {item.product?.price ? Number(item.product.price).toLocaleString('vi-VN') + '₫' : '--'}
+                </div>
+                {/* Số lượng */}
+                <div style={{ flex: 1, minWidth: 100, textAlign: 'center', fontWeight: 700, color: '#111', fontSize: 18, padding: '8px 0' }}>
+                  {item.quantity}
+                </div>
+                {/* Số tiền */}
+                <div style={{ flex: 1, minWidth: 120, textAlign: 'center', fontWeight: 700, color: '#16A34A', fontSize: 18, padding: '8px 0' }}>
+                  {item.product?.price ? (Number(item.product.price) * Number(item.quantity)).toLocaleString('vi-VN') + '₫' : '--'}
+                </div>
+              </div>
+            ))}
+            {/* Nút chọn tất cả dưới cùng */}
+            <div style={{ display: 'flex', alignItems: 'center', marginTop: 8 }}>
+              <Button
+                size="sm"
+                style={{
+                  fontWeight: 600,
+                  borderRadius: 6,
+                  minWidth: 110,
+                  padding: '4px 14px',
+                  fontSize: 15,
+                  background: selectedItems.length === cartItems.length && cartItems.length > 0 ? green : '#fff',
+                  color: selectedItems.length === cartItems.length && cartItems.length > 0 ? '#fff' : green,
+                  border: `2px solid ${green}`,
+                  boxShadow: selectedItems.length === cartItems.length && cartItems.length > 0 ? '0 2px 8px #22C55E33' : 'none',
+                  transition: 'all 0.2s',
+                }}
+                onClick={handleSelectAll}
+              >
+                {selectedItems.length === cartItems.length && cartItems.length > 0 ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
+              </Button>
+              <span style={{ marginLeft: 14, color: '#888', fontSize: 15 }}>
+                ({selectedItems.length}/{cartItems.length} sản phẩm được chọn)
+              </span>
+            </div>
+          </Card>
+        </div>
+        {/* RIGHT: Tóm tắt đơn hàng */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', marginLeft: 12 }}>
+          <div style={{
+            background: '#fff',
+            border: '1.5px solid #e5e7eb',
+            borderRadius: 12,
+            width: 340,
+            minWidth: 320,
+            maxWidth: 370,
+            minHeight: 320,
+            boxShadow: '0 1.5px 8px #00000008',
+            padding: 22,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'flex-start',
+            marginBottom: 16,
+          }}>
+            <div style={{ fontWeight: 700, fontSize: 21, color: '#111', marginBottom: 16, letterSpacing: 0.2 }}>Tóm tắt đơn hàng</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 400, fontSize: 15.5, marginBottom: 8 }}>
+              <span>Tổng sản phẩm:</span>
+              <span>{selectedQuantity} sản phẩm</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 400, fontSize: 15.5, marginBottom: 8 }}>
+              <span>Tạm tính:</span>
+              <span>{selectedTotal.toLocaleString('vi-VN')}₫</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 400, fontSize: 15.5, marginBottom: 8 }}>
+              <span>Phí vận chuyển:</span>
+              <span>Miễn phí</span>
+            </div>
+            <hr style={{ margin: '16px 0 12px 0', borderTop: '1.5px solid #eee' }} />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 700, fontSize: 19, marginBottom: 16 }}>
+              <span style={{ color: '#111' }}>Tổng cộng:</span>
+              <span style={{ color: '#111' }}>{selectedTotal.toLocaleString('vi-VN')}₫</span>
+            </div>
+            <Button
+              size="lg"
+              disabled={selectedItems.length === 0}
+              style={{
+                width: '100%',
+                borderRadius: 6,
+                fontWeight: 600,
+                fontSize: 16.5,
+                padding: '11px 0 7px 0',
+                background: selectedItems.length === 0 ? '#fff' : green,
+                color: selectedItems.length === 0 ? green : '#fff',
+                border: selectedItems.length === 0 ? `1.5px solid ${green}` : 'none',
+                marginBottom: 7,
+                marginTop: 2,
+                boxShadow: 'none',
+                letterSpacing: 0.2,
+                cursor: selectedItems.length === 0 ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s',
+                opacity: selectedItems.length === 0 ? 0.7 : 1,
+              }}
+            >
+              Tiến hành thanh toán
+            </Button>
+            <Button
+              href="/"
+              style={{
+                width: '100%',
+                borderRadius: 6,
+                fontWeight: 500,
+                fontSize: 15.5,
+                padding: '9px 0',
+                marginTop: 0,
+                background: '#fff',
+                color: '#111',
+                border: '1.5px solid #111',
+                boxShadow: 'none',
+                transition: 'all 0.2s',
+              }}
+            >
+              Tiếp tục mua sắm
+            </Button>
           </div>
         </div>
-        <Row>
-          <Col md={8} className="mb-4 mb-md-0">
-            {/* Header row Shopee-style */}
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              background: 'linear-gradient(90deg, #f8fafc 60%, #e0f7ef 100%)',
-              borderRadius: 16,
-              border: '1.5px solid #e0e7ef',
-              padding: '18px 32px 18px 28px',
-              marginBottom: 18,
-              fontWeight: 800,
-              fontSize: 18,
-              color: '#1a2b3c',
-              boxShadow: '0 2px 16px #22C55E11',
-              letterSpacing: 0.3,
-              position: 'relative',
-              zIndex: 2,
-            }}>
-              <span style={{ minWidth: 220, flex: 2, display: 'flex', alignItems: 'center', gap: 10 }}>
-                <i className="bi bi-box-seam" style={{ color: '#22C55E', fontSize: 22, marginRight: 6 }}></i>
-                Sản Phẩm
-              </span>
-              <span style={{ minWidth: 120, textAlign: 'center', flex: 1, color: '#16A34A', fontWeight: 700 }}>Đơn Giá</span>
-              <span style={{ minWidth: 110, textAlign: 'center', flex: 1, color: '#0d9488', fontWeight: 700 }}>Số Lượng</span>
-              <span style={{ minWidth: 120, textAlign: 'center', flex: 1, color: '#22C55E', fontWeight: 700 }}>Số Tiền</span>
-            </div>
-            {/* Table-like layout for cart items */}
-            <div style={{ width: '100%' }}>
-              {cartItems.map(item => (
-                <div
-                  key={item.id}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    background: '#fafffc',
-                    border: '1.5px solid #e0e7ef',
-                    borderRadius: 16,
-                    minHeight: 90,
-                    marginBottom: 18,
-                    boxShadow: '0 2px 12px #22C55E11',
-                    transition: 'box-shadow 0.2s',
-                    padding: '0 0 0 18px',
-                    position: 'relative',
-                  }}
-                >
-                  {/* Sản phẩm */}
-                  <div style={{ flex: 2, display: 'flex', alignItems: 'center', gap: 18 }}>
-                    {/* Checkbox bên trái sản phẩm */}
-                    <input
-                      type="checkbox"
-                      checked={selectedItems.includes(item.id)}
-                      onChange={() => handleSelectItem(item.id)}
-                      style={{ accentColor: '#FFD600', width: 22, height: 22, marginRight: 10, marginLeft: 2, boxShadow: '0 1px 4px #FFD60033', borderRadius: 6, border: '2px solid #FFD600' }}
-                      title="Chọn sản phẩm"
-                    />
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                      <CartItem item={item} />
-                    </div>
-                  </div>
-                  {/* Đơn giá */}
-                  <div style={{ flex: 1, minWidth: 120, textAlign: 'center', fontWeight: 700, color: '#16A34A', fontSize: 18, background: '#f0fdf4', borderRadius: 8, padding: '8px 0' }}>
-                    {item.product?.price ? Number(item.product.price).toLocaleString('vi-VN') + '₫' : '--'}
-                  </div>
-                  {/* Số lượng */}
-                  <div style={{ flex: 1, minWidth: 110, textAlign: 'center', fontWeight: 700, color: '#0d9488', fontSize: 18, background: '#ecfeff', borderRadius: 8, padding: '8px 0' }}>
-                    {item.quantity}
-                  </div>
-                  {/* Số tiền */}
-                  <div style={{ flex: 1, minWidth: 120, textAlign: 'center', fontWeight: 900, color: '#22C55E', fontSize: 19, background: '#f0fdf4', borderRadius: 8, padding: '8px 0' }}>
-                    {item.product?.price ? (Number(item.product.price) * Number(item.quantity)).toLocaleString('vi-VN') + '₫' : '--'}
-                  </div>
-                </div>
-              ))}
-            </div>
-            {/* Tổng số lượng và nút chọn tất cả ở dưới khung sản phẩm */}
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginTop: 8,
-              marginBottom: 18,
-              padding: '0 24px 0 8px',
-              fontWeight: 700,
-              fontSize: 16,
-              color: '#222',
-              gap: 8,
-            }}>
-              {/* Nút chọn tất cả */}
-              <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none', marginLeft: 2 }}>
-                <input
-                  type="checkbox"
-                  checked={selectedItems.length === cartItems.length && cartItems.length > 0}
-                  ref={el => {
-                    if (el) el.indeterminate = selectedItems.length > 0 && selectedItems.length < cartItems.length;
-                  }}
-                  onChange={handleSelectAll}
-                  style={{ accentColor: '#FFD600', width: 24, height: 24, boxShadow: '0 1px 4px #FFD60033', borderRadius: 7, border: '2px solid #FFD600', marginRight: 2 }}
-                  title="Chọn tất cả sản phẩm"
-                />
-                <span style={{ fontWeight: 800, fontSize: 16, color: '#22C55E', letterSpacing: 0.2 }}>
-                  {selectedItems.length === cartItems.length && cartItems.length > 0 ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
-                </span>
-              </label>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ color: '#666', fontWeight: 500 }}>Tổng số lượng:</span>
-                <span style={{
-                  background: '#22C55E',
-                  color: '#fff',
-                  fontWeight: 700,
-                  fontSize: 15,
-                  borderRadius: 8,
-                  padding: '3px 16px',
-                  minWidth: 36,
-                  display: 'inline-block',
-                  textAlign: 'center',
-                  letterSpacing: 0.5,
-                  boxShadow: '0 1px 4px #22C55E22',
-                  border: '1.5px solid #16A34A',
-                }}>
-                  {cartItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0)}
-                </span>
-              </div>
-            </div>
-          </Col>
-          <Col md={4}>
-            {/* Hiện tổng tiền chỉ của các sản phẩm đã chọn */}
-            <Card className="shadow-sm border-0 rounded-4 p-4" style={{ background: '#fff', marginBottom: 18, boxShadow: '0 2px 16px #22C55E22' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 12 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{ fontWeight: 800, fontSize: 22, color: darkGreen }}>
-                    Tổng&nbsp;
-                    <span style={{ fontWeight: 700, fontSize: 17, color: green }}>({selectedItems.length} mặt hàng)</span>
-                  </div>
-                  <div style={{ fontSize: 28, fontWeight: 900, color: green, letterSpacing: 1 }}>
-                    {selectedTotal.toLocaleString('vi-VN')}₫
-                  </div>
-                </div>
-                <Button
-                  size="lg"
-                  disabled={selectedItems.length === 0}
-                  style={{
-                    minWidth: 180,
-                    maxWidth: 260,
-                    alignSelf: 'flex-end',
-                    marginRight: 32,
-                    borderRadius: 12,
-                    fontWeight: 900,
-                    fontSize: 22,
-                    padding: '16px 0 8px 0',
-                    background: selectedItems.length === 0
-                      ? '#f3f4f6'
-                      : 'linear-gradient(90deg, #22C55E 0%, #16A34A 100%)',
-                    color: selectedItems.length === 0 ? '#bdbdbd' : '#fff',
-                    border: 'none',
-                    boxShadow: selectedItems.length === 0 ? 'none' : '0 4px 18px #22C55E22',
-                    transition: 'all 0.2s',
-                    letterSpacing: 1,
-                    cursor: selectedItems.length === 0 ? 'not-allowed' : 'pointer',
-                    marginBottom: 2,
-                    marginTop: 8
-                  }}
-                  className={selectedItems.length === 0 ? '' : 'cjx-pay-btn'}
-                >
-                  Thanh toán
-                </Button>
-              </div>
-              {/* Green-style pay button hover effect */}
-              <style>{`
-                .cjx-pay-btn:not(:disabled):hover {
-                  background: linear-gradient(90deg, #16A34A 0%, #22C55E 100%) !important;
-                  color: #fff !important;
-                  box-shadow: 0 6px 24px #22C55E44 !important;
-                  transform: translateY(-2px) scale(1.01);
-                }
-              `}</style>
-            </Card>
-          </Col>
-        </Row>
-      </Card>
+      </div>
     </Container>
   );
 };
