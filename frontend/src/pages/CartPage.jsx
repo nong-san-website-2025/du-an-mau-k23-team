@@ -12,6 +12,7 @@ const CartPage = () => {
   const { cartItems, loading } = useCart();
   // State for selected items
   const [selectedItems, setSelectedItems] = React.useState([]);
+  const [showSuccess, setShowSuccess] = React.useState(false);
 
 
   // Handler for select one item
@@ -324,9 +325,28 @@ const CartPage = () => {
                 transition: 'all 0.2s',
                 opacity: selectedItems.length === 0 ? 0.7 : 1,
               }}
+              onClick={() => setShowSuccess(true)}
             >
               Tiến hành thanh toán
             </Button>
+            {showSuccess && (
+              <div style={{
+                background: '#d1fae5',
+                color: '#065f46',
+                border: '1.5px solid #10b981',
+                borderRadius: 8,
+                padding: '14px 0',
+                textAlign: 'center',
+                fontWeight: 700,
+                fontSize: 17,
+                marginBottom: 10,
+                marginTop: 8,
+                boxShadow: '0 2px 8px #10b98122',
+                letterSpacing: 0.2,
+              }}>
+                Thanh toán thành công!
+              </div>
+            )}
             <Button
               href="/"
               style={{
