@@ -16,57 +16,43 @@ import {
   Heart,
   ShoppingCart,
   User,
+  Package,
 } from "lucide-react";
+import { productApi } from "../services/productApi";
 
-const categories = [
-  {
-    name: "Rau Củ Quả",
-    icon: Carrot,
-    subcategories: ["Rau lá xanh", "Củ quả", "Nấm các loại", "Rau thơm"],
-  },
-  {
-    name: "Trái Cây",
-    icon: Apple,
-    subcategories: [
-      "Trái cây nhiệt đới",
-      "Trái cây nhập khẩu",
-      "Trái cây sấy",
-      "Nước ép trái cây",
-    ],
-  },
-  {
-    name: "Gạo & Ngũ Cốc",
-    icon: Wheat,
-    subcategories: [
-      "Gạo tẻ",
-      "Gạo nàng hương",
-      "Ngũ cốc dinh dưỡng",
-      "Yến mạch",
-    ],
-  },
-  {
-    name: "Thịt & Hải Sản",
-    icon: Beef,
-    subcategories: ["Thịt bò", "Thịt heo", "Thịt gà", "Hải sản tươi sống"],
-  },
-  {
-    name: "Sữa & Trứng",
-    icon: Milk,
-    subcategories: ["Sữa tươi", "Sữa chua", "Trứng gà", "Phô mai"],
-  },
-  {
-    name: "Gia Vị & Đồ Khô",
-    icon: Coffee,
-    subcategories: ["Gia vị truyền thống", "Nước mắm", "Đồ khô", "Bánh kẹo"],
-  },
-];
+const iconMap = {
+  Carrot: Carrot,
+  Apple: Apple,
+  Wheat: Wheat,
+  Beef: Beef,
+  Milk: Milk,
+  Coffee: Coffee,
+  Package: Package,
+};
 
 export default function Header() {
   const [showCategory, setShowCategory] = useState(false);
   const [hoveredCategory, setHoveredCategory] = useState(null);
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const location = useLocation();
   const [leaveTimeout, setLeaveTimeout] = useState(null);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        setLoading(true);
+        const data = await productApi.getCategoriesWithProducts();
+        setCategories(data);
+      } catch (err) {
+        setCategories([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchCategories();
+  }, []);
 
   const greenStyle = { backgroundColor: "#16a34a" };
   const greenText = { color: "#16a34a" };
@@ -75,7 +61,7 @@ export default function Header() {
   const urlCategory =
     decodeURIComponent(
       new URLSearchParams(location.search).get("category") || ""
-    ) || categories[0].name;
+    ) || (categories[0] && categories[0].name);
 
   // Khi hover vào danh mục, đổi hoveredCategory
   const handleCategoryHover = (cat) => setHoveredCategory(cat.name);
@@ -94,7 +80,7 @@ export default function Header() {
     const timeout = setTimeout(() => {
       setShowCategory(false);
       setHoveredCategory(null);
-    }, 300); // 300ms delay để user có thể di chuyển chuột
+    }, 300);
     setLeaveTimeout(timeout);
   };
 
@@ -179,20 +165,10 @@ export default function Header() {
           {/* Logo */}
           <Link
             to="/"
-            className="d-flex align-items-center text-decoration-none"
+            className="navbar-brand fw-bold fs-3 d-flex align-items-center"
+            style={greenText}
           >
-            <div
-              className="d-flex align-items-center justify-content-center rounded text-white fw-bold fs-4 me-3"
-              style={{ width: 40, height: 40, ...greenStyle }}
-            >
-              N
-            </div>
-            <div>
-              <div className="fw-bold fs-4" style={greenText}>
-                NôngSản.vn
-              </div>
-              <div className="text-muted small">Fresh & Organic</div>
-            </div>
+            <span className="me-2">NôngSản.vn</span>
           </Link>
 
           {/* Navigation */}
@@ -200,169 +176,92 @@ export default function Header() {
             className="d-flex align-items-center flex-grow-1 ms-4"
             style={{ flexWrap: "nowrap" }}
           >
+            {/* Mega menu danh mục sản phẩm */}
             <div
               className="position-relative"
               onMouseEnter={handleMouseEnter}
               onMouseLeave={handleMouseLeave}
             >
               <button
-                className="btn btn-light d-flex align-items-center fw-medium px-3 py-2 me-2"
-                style={{
-                  border: "none",
-                  background: "none",
-                  cursor: "pointer",
-                  whiteSpace: "nowrap",
-                  flexShrink: 0,
-                }}
+                className="btn btn-link fw-bold text-dark px-3 py-2"
+                style={{ fontSize: 18, textDecoration: "none" }}
+                onClick={() => setShowCategory((v) => !v)}
               >
-                Danh mục sản phẩm <ChevronDown size={16} className="ms-1" />
+                Danh mục sản phẩm <ChevronDown size={18} />
               </button>
               {showCategory && (
                 <div
-                  className="position-absolute start-0 mt-2 shadow border"
+                  className="shadow-lg bg-white rounded position-absolute mt-2"
                   style={{
-                    width: 900,
-                    maxWidth: "calc(100vw - 40px)",
-                    zIndex: 9999,
-                    boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
-                    borderRadius: 16,
-                    background: "#fff",
-                    padding: "32px 24px",
-                    top: "100%",
+                    minWidth: 900,
                     left: 0,
+                    top: "100%",
+                    zIndex: 1000,
+                    boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
+                    padding: 32,
                   }}
-                  onMouseEnter={handleMouseEnter}
-                  onMouseLeave={handleMouseLeave}
                 >
-                  <div className="row g-4">
+                  <div className="row" style={{ minWidth: 900 }}>
                     {categories.map((cat) => {
-                      const Icon = cat.icon;
-                      const isActive = cat.name === activeCategory.name;
+                      const IconComponent = iconMap[cat.icon] || Package;
                       return (
                         <div
-                          className="col-4"
-                          key={cat.name}
-                          style={{
-                            cursor: "pointer",
-                            background: isActive ? "#e6faed" : "transparent",
-                            borderRadius: 12,
-                            padding: "20px 18px",
-                            marginBottom: 8,
-                            minHeight: 170,
-                            transition: "background 0.2s",
-                          }}
-                          onMouseEnter={() => handleCategoryHover(cat)}
-                          onClick={() => {
-                            setShowCategory(false);
-                            setHoveredCategory(null);
-                            navigate(
-                              `/productuser?category=${encodeURIComponent(
-                                cat.name
-                              )}`
-                            );
-                          }}
+                          key={cat.id}
+                          className="col-12 col-md-4 mb-4"
+                          style={{ minWidth: 260, maxWidth: 320 }}
                         >
-                          <div className="d-flex align-items-center mb-2">
-                            <div
-                              className="d-flex align-items-center justify-content-center"
-                              style={{
-                                width: 40,
-                                height: 40,
-                                backgroundColor: "#bbf7d0",
-                                borderRadius: 12,
-                                marginRight: 12,
-                              }}
-                            >
-                              <Icon size={22} style={{ color: "#16a34a" }} />
-                            </div>
-                            <div>
-                              <div
-                                className="fw-bold"
-                                style={{
-                                  color: isActive ? "#16a34a" : "#222",
-                                  fontSize: 18,
-                                }}
-                              >
-                                {cat.name}
-                              </div>
-                              <div
-                                className="text-muted"
-                                style={{ fontSize: 14 }}
-                              >
-                                {cat.subcategories.length} danh mục con
-                              </div>
-                            </div>
-                          </div>
-                          <ul
-                            className="ms-5"
+                          <div
+                            className="p-3 h-100 rounded-3"
                             style={{
-                              color: "#555",
-                              fontSize: 16,
-                              marginTop: 8,
-                              marginBottom: 0,
-                              listStyle: "none",
-                              paddingLeft: 0,
-                              lineHeight: 2,
+                              background: "#f0fdf4",
+                              border: "1px solid #e5e7eb",
+                              cursor: "pointer",
+                              transition: "box-shadow 0.2s",
+                            }}
+                            onMouseEnter={() => handleCategoryHover(cat)}
+                            onClick={() => {
+                              navigate(`/productuser?category=${encodeURIComponent(cat.key || cat.name)}`);
+                              setShowCategory(false);
                             }}
                           >
-                            {cat.subcategories.map((sub) => (
-                              <li
-                                key={sub}
+                            <div className="d-flex align-items-center mb-2">
+                              <div
+                                className="d-flex align-items-center justify-content-center me-2"
                                 style={{
-                                  cursor: "pointer",
-                                  background:
-                                    isActive &&
-                                    sub ===
-                                      (location.search.includes("subcategory=")
-                                        ? decodeURIComponent(
-                                            new URLSearchParams(
-                                              location.search
-                                            ).get("subcategory")
-                                          )
-                                        : undefined)
-                                      ? "#bbf7d0"
-                                      : "transparent",
-                                  borderRadius: 8,
-                                  fontWeight:
-                                    isActive &&
-                                    sub ===
-                                      (location.search.includes("subcategory=")
-                                        ? decodeURIComponent(
-                                            new URLSearchParams(
-                                              location.search
-                                            ).get("subcategory")
-                                          )
-                                        : undefined)
-                                      ? 600
-                                      : 400,
-                                  textDecoration:
-                                    isActive &&
-                                    sub ===
-                                      (location.search.includes("subcategory=")
-                                        ? decodeURIComponent(
-                                            new URLSearchParams(
-                                              location.search
-                                            ).get("subcategory")
-                                          )
-                                        : undefined)
-                                      ? "underline"
-                                      : "none",
-                                }}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setShowCategory(false);
-                                  setHoveredCategory(null);
-                                  navigate(
-                                    `/productuser?category=${encodeURIComponent(
-                                      cat.name
-                                    )}&subcategory=${encodeURIComponent(sub)}`
-                                  );
+                                  width: 38,
+                                  height: 38,
+                                  borderRadius: 12,
+                                  background: "#bbf7d0",
                                 }}
                               >
-                                {sub}
-                              </li>
-                            ))}
-                          </ul>
+                                <IconComponent size={24} style={{ color: "#16a34a" }} />
+                              </div>
+                              <div>
+                                <div className="fw-bold" style={{ fontSize: 18, color: "#16a34a" }}>{cat.name}</div>
+                                <div className="small text-muted">{cat.subcategories?.length || 0} danh mục con</div>
+                              </div>
+                            </div>
+                            <div className="ps-2 pt-2" style={{ fontSize: 15, color: "#444" }}>
+                              {cat.subcategories?.length ? (
+                                cat.subcategories.map((sub) => (
+                                  <div
+                                    key={sub.name}
+                                    className="mb-1"
+                                    style={{ cursor: "pointer" }}
+                                    onClick={e => {
+                                      e.stopPropagation();
+                                      navigate(`/productuser?category=${encodeURIComponent(cat.key || cat.name)}&subcategory=${encodeURIComponent(sub.name)}`);
+                                      setShowCategory(false);
+                                    }}
+                                  >
+                                    {sub.name}
+                                  </div>
+                                ))
+                              ) : (
+                                <div className="text-muted small">Không có danh mục con</div>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       );
                     })}

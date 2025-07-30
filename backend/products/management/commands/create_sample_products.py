@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from products.models import Product
+from products.models import Product, Subcategory
 from sellers.models import Seller
 
 class Command(BaseCommand):
@@ -59,16 +59,33 @@ class Command(BaseCommand):
             },
         ]
 
+        # Map tên sản phẩm với subcategory (phải khớp với tên subcategory trong DB)
+        product_sub_map = {
+            'Rau cải xanh hữu cơ': 'Rau lá xanh',
+            'Củ cải trắng': 'Củ quả',
+            'Nấm hương khô': 'Nấm các loại',
+            'Rau thơm tổng hợp': 'Rau thơm',
+            'Cà chua bi': 'Củ quả',
+            'Xà lách xoăn': 'Rau lá xanh',
+        }
+
         created_count = 0
         for product_data in sample_products:
+            sub_name = product_sub_map.get(product_data['name'])
+            try:
+                sub = Subcategory.objects.get(name=sub_name)
+            except Subcategory.DoesNotExist:
+                self.stdout.write(self.style.WARNING(f'Subcategory "{sub_name}" không tồn tại, bỏ qua sản phẩm {product_data["name"]}'))
+                continue
             product, created = Product.objects.get_or_create(
                 name=product_data['name'],
                 seller=seller,
+                subcategory=sub,
                 defaults=product_data
             )
             if created:
                 created_count += 1
-                self.stdout.write(f'Đã tạo sản phẩm: {product.name}')
+                self.stdout.write(f'Đã tạo sản phẩm: {product.name} (subcategory: {sub.name})')
 
         self.stdout.write(
             self.style.SUCCESS(

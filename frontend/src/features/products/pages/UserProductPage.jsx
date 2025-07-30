@@ -22,7 +22,7 @@ import {
   Spinner,
   Alert,
 } from "react-bootstrap";
-import { useLocation, useSearchParams } from "react-router-dom";
+import { useLocation, useSearchParams, useNavigate } from "react-router-dom";
 import { productApi } from "../services/productApi";
 
 // Icon mapping cho API data
@@ -38,7 +38,9 @@ const iconMap = {
 
 const UserProductPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const categoryParam = searchParams.get("category");
+  const subcategoryParam = searchParams.get("subcategory");
 
   // States
   const [categories, setCategories] = useState([]);
@@ -58,20 +60,23 @@ const UserProductPage = () => {
         const categoriesData = await productApi.getCategoriesWithProducts();
         setCategories(categoriesData);
 
-        // Tự động chọn category đầu tiên hoặc theo URL param
-        if (categoriesData.length > 0) {
-          let categoryToSelect = categoriesData[0];
-
-          if (categoryParam) {
-            const foundCategory = categoriesData.find(
-              (cat) => cat.name === categoryParam || cat.key === categoryParam
-            );
-            if (foundCategory) {
-              categoryToSelect = foundCategory;
-            }
+        // Tự động chọn category theo URL param hoặc đầu tiên
+        let categoryToSelect = categoriesData[0] || null;
+        if (categoryParam) {
+          const foundCategory = categoriesData.find(
+            (cat) => cat.name === categoryParam || cat.key === categoryParam
+          );
+          if (foundCategory) {
+            categoryToSelect = foundCategory;
           }
+        }
+        setSelectedCategory(categoryToSelect);
 
-          setSelectedCategory(categoryToSelect);
+        // Nếu có subcategory trên URL thì set luôn
+        if (categoryToSelect && subcategoryParam) {
+          setActiveSub(subcategoryParam);
+        } else {
+          setActiveSub("Tất cả");
         }
 
         console.log("Đã tải được categories từ API:", categoriesData);
@@ -84,7 +89,7 @@ const UserProductPage = () => {
     };
 
     loadData();
-  }, []);
+  }, [categoryParam, subcategoryParam]);
 
   // Cập nhật URL khi chọn category
   const handleCategorySelect = (category) => {
@@ -185,10 +190,15 @@ const UserProductPage = () => {
               key={cat.id}
               variant={isSelected ? "dark" : "light"}
               className={isSelected ? "fw-bold" : ""}
-              onClick={() => handleCategorySelect(cat)}
+              onClick={() => {
+                setSelectedCategory(cat);
+                setActiveSub("Tất cả");
+                setSearchParams({ category: cat.key || cat.name });
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
             >
               <IconComponent size={16} className="me-1" />
-              {cat.name}{" "}
+              {cat.name} {" "}
               <Badge bg="secondary" className="ms-1">
                 {totalProducts}
               </Badge>
@@ -196,13 +206,14 @@ const UserProductPage = () => {
           );
         })}
       </div>
-
-      {/* Tabs subcategory */}
       <div className="d-flex gap-2 mb-3 flex-wrap">
         <Button
           variant={activeSub === "Tất cả" ? "dark" : "light"}
           className={activeSub === "Tất cả" ? "fw-bold" : ""}
-          onClick={() => setActiveSub("Tất cả")}
+          onClick={() => {
+            setActiveSub("Tất cả");
+            setSearchParams({ category: selectedCategory?.key || selectedCategory?.name });
+          }}
         >
           Tất cả{" "}
           <Badge bg="secondary" className="ms-1">
@@ -214,14 +225,20 @@ const UserProductPage = () => {
             key={sub.name}
             variant={activeSub === sub.name ? "dark" : "light"}
             className={activeSub === sub.name ? "fw-bold" : ""}
-            onClick={() => setActiveSub(sub.name)}
+            onClick={() => {
+              setActiveSub(sub.name);
+              setSearchParams({
+                category: selectedCategory?.key || selectedCategory?.name,
+                subcategory: sub.name,
+              });
+            }}
           >
-            {sub.name}{" "}
+            {sub.name} {" "}
             <Badge bg="secondary" className="ms-1">
               {sub.products?.length || 0}
             </Badge>
           </Button>
-        )) || []}
+        ))}
       </div>
 
       <div className="mb-2 text-muted">
@@ -249,7 +266,8 @@ const UserProductPage = () => {
           {displayedProducts.map((product) => (
             <Col key={product.id}>
               <Card className="h-100 shadow-sm border-0">
-                <div className="position-relative" style={{ height: 210 }}>
+                <div className="position-relative" style={{ height: 210, cursor: 'pointer' }}
+                  onClick={() => navigate(`/products/${product.id}`)}>
                   <Card.Img
                     variant="top"
                     src={

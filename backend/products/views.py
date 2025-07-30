@@ -8,7 +8,7 @@ from .serializers import ProductSerializer, ProductListSerializer, CategorySeria
 class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-    
+
     @action(detail=True, methods=['get'])
     def subcategories(self, request, pk=None):
         """Lấy danh sách subcategories của một category"""
@@ -16,20 +16,42 @@ class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
         subcategories = category.subcategories.all()
         serializer = SubcategorySerializer(subcategories, many=True)
         return Response(serializer.data)
-    
+
     @action(detail=True, methods=['get'])
     def products(self, request, pk=None):
         """Lấy tất cả sản phẩm của một category"""
         category = self.get_object()
         products = Product.objects.filter(subcategory__category=category)
-        
+
         # Filter parameters
         subcategory = request.query_params.get('subcategory', None)
         if subcategory:
             products = products.filter(subcategory__name=subcategory)
-            
+
         serializer = ProductListSerializer(products, many=True)
         return Response(serializer.data)
+
+    @action(detail=True, methods=['get'])
+    def grouped_products(self, request, pk=None):
+        """
+        Lấy tất cả subcategories và sản phẩm theo từng subcategory
+        """
+        category = self.get_object()
+        subcategories = category.subcategories.all()
+        products = Product.objects.filter(subcategory__category=category)
+
+        grouped = {}
+        for sub in subcategories:
+            sub_products = products.filter(subcategory=sub)
+            serializer = ProductListSerializer(sub_products, many=True)
+            grouped[sub.name] = serializer.data
+
+        sub_serializer = SubcategorySerializer(subcategories, many=True)
+        return Response({
+            "subcategories": sub_serializer.data,
+            "products_by_subcategory": grouped
+        })
+
 
 class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.select_related('subcategory__category', 'seller').all()
