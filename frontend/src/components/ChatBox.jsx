@@ -164,9 +164,6 @@ function ChatBox({ username, roomName }) {
             </div>
           </div>
 
-          
-          
-
           <div className="chatbox-body">
             <AnimatePresence initial={false}>
               {messages.map((msg, idx) => (

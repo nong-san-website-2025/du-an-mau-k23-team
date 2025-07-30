@@ -1,58 +1,60 @@
-// src/components/VoiceCall.jsx (hoặc giữ tên VideoCall cũng được)
+// src/components/VoiceCall.jsx
 import React, { useEffect, useRef, useState } from "react";
-import "../styles/VideoCall.css"; // Thêm CSS cho giao diện cuộc gọi
-const servers = {
-  iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
-};
+import "../styles/VideoCall.css";
 
-const VideoCall = ({ socketRef, isCaller, onEndCall }) => {
+const servers = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
+
+const VideoCall = ({ socketRef, isCaller, offer, onEndCall }) => {
   const peerRef = useRef(null);
   const [stream, setStream] = useState(null);
 
   useEffect(() => {
     const start = async () => {
-      const localStream = await navigator.mediaDevices.getUserMedia({
-        video: false,
-        audio: true,
-      });
+      const localStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
       setStream(localStream);
 
       peerRef.current = new RTCPeerConnection(servers);
-
-      localStream.getTracks().forEach((track) => {
-        peerRef.current.addTrack(track, localStream);
-      });
+      localStream.getTracks().forEach(track => peerRef.current.addTrack(track, localStream));
 
       peerRef.current.ontrack = (event) => {
         const remoteAudio = new Audio();
         remoteAudio.srcObject = event.streams[0];
+        remoteAudio.autoplay = true;
         remoteAudio.play();
       };
 
       peerRef.current.onicecandidate = (event) => {
         if (event.candidate) {
-          socketRef.current.send(
-            JSON.stringify({ type: "ice_candidate", candidate: event.candidate })
-          );
+          socketRef.current.send(JSON.stringify({ type: "ice_candidate", candidate: event.candidate }));
         }
       };
 
+      // Caller tạo Offer
       if (isCaller) {
-        const offer = await peerRef.current.createOffer();
-        await peerRef.current.setLocalDescription(offer);
-        socketRef.current.send(JSON.stringify({ type: "call_offer", offer }));
+        const offerDesc = await peerRef.current.createOffer();
+        await peerRef.current.setLocalDescription(offerDesc);
+        socketRef.current.send(JSON.stringify({ type: "call_offer", offer: offerDesc }));
+      }
+
+      // Receiver trả lời Offer
+      if (!isCaller && offer) {
+        await peerRef.current.setRemoteDescription(new RTCSessionDescription(offer));
+        const answer = await peerRef.current.createAnswer();
+        await peerRef.current.setLocalDescription(answer);
+        socketRef.current.send(JSON.stringify({ type: "call_answer", answer }));
       }
     };
-
     start();
 
-    return () => {
-      stream?.getTracks().forEach((track) => track.stop());
-      peerRef.current?.close();
-    };
+    return () => cleanup();
   }, []);
 
-  // Expose methods cho socket handler
+  const cleanup = () => {
+    stream?.getTracks().forEach(track => track.stop());
+    peerRef.current?.close();
+  };
+
+  // Expose cho ChatWindow xử lý signaling
   useEffect(() => {
     socketRef.current._call = {
       handleAnswer: async (offer) => {
@@ -70,7 +72,7 @@ const VideoCall = ({ socketRef, isCaller, onEndCall }) => {
         } catch (err) {
           console.error("Error adding ICE candidate:", err);
         }
-      },
+      }
     };
   }, []);
 
@@ -78,10 +80,11 @@ const VideoCall = ({ socketRef, isCaller, onEndCall }) => {
     <div className="voice-call-overlay">
       <div className="voice-call-box">
         <h3>Đang kết nối cuộc gọi thoại...</h3>
-        <button className="end-call" onClick={onEndCall}>Kết thúc</button>
+        <button className="end-call" onClick={() => { cleanup(); onEndCall(); }}>Kết thúc</button>
       </div>
     </div>
   );
 };
+
 
 export default VideoCall;
