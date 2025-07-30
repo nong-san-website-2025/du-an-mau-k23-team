@@ -5,7 +5,7 @@ import './App.css';
 import Layout from "./layouts/layout"; // Sử dụng layout có Header/Footer
 import UserProductPage from './features/products/pages/UserProductPage';
 import SellerProductDashboard from './features/products/pages/SellerProductDashboard';
-import ProductDetailPage from '.features/products/pages/ProductDetailPage';
+import ProductDetailPage from './features/products/pages/ProductDetailPage';
 import { CartProvider } from "./features/cart/services/CartContext";
 
 

@@ -18,7 +18,7 @@ import {
   User,
   Package,
 } from "lucide-react";
-import { productApi } from "../services/productApi";
+import { productApi } from "../features/products/services/productApi";
 
 const iconMap = {
   Carrot: Carrot,

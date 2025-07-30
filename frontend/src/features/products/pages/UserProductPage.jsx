@@ -10,6 +10,7 @@ import {
   Star,
   Star as StarFill,
   ShoppingCart,
+  Banana,
   Package,
 } from "lucide-react";
 import {
@@ -34,6 +35,7 @@ const iconMap = {
   Milk: Milk,
   Coffee: Coffee,
   Package: Package,
+  Banana: Banana,
 };
 
 const UserProductPage = () => {
