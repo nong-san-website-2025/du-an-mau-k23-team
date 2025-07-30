@@ -1,29 +1,15 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import HomePage from "./pages/HomePage";
-import CartPage from "./features/cart/pages/CartPage";
-import './App.css';
-import Layout from "./layouts/layout"; // Sử dụng layout có Header/Footer
-import UserProductPage from './features/products/pages/UserProductPage';
-import SellerProductDashboard from './features/products/pages/SellerProductDashboard';
-import ProductDetailPage from './features/products/pages/ProductDetailPage';
-import { CartProvider } from "./features/cart/services/CartContext";
 
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import HomePage from "./pages/HomePage";
+import MainLayout from "./layouts/MainLayout";
 
 function App() {
   return (
-      <CartProvider>
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Layout />}>
-              <Route index element={<HomePage />} />
-              <Route path="productuser" element={<UserProductPage />} />
-              <Route path="sellerDashboard" element={<SellerProductDashboard />} />
-              <Route path="products/:id" element={<ProductDetailPage />} />
-              <Route path="/cart" element={<CartPage />} />
-            </Route>
-          </Routes>
-        </BrowserRouter>
-      </CartProvider>
+    <BrowserRouter>
+        <Routes element={<MainLayout />}>
+          <Route path="/" element={<HomePage />} />
+        </Routes>
+    </BrowserRouter>
   );
 }
 export default App;

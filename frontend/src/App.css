@@ -12,6 +12,10 @@
     animation: App-logo-spin infinite 20s linear;
   }
 }
+.container {
+  max-width: 1000px; /* ❌ Không dùng nếu muốn full màn hình */
+  margin: auto;
+}
 
 .App-header {
   background-color: #282c34;
@@ -36,3 +40,10 @@
     transform: rotate(360deg);
   }
 }
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+

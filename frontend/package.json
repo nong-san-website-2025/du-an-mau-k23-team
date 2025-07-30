@@ -12,6 +12,7 @@
     "lucide-react": "^0.525.0",
     "axios": "^1.10.0",
     "pillow": "^0.0.9",
+    "framer-motion": "^12.23.0",
     "react": "^19.1.0",
     "react-bootstrap": "^2.10.10",
     "react-bootstrap-icons": "^1.11.6",
@@ -27,6 +28,7 @@
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
+  "proxy": "http://localhost:8000",
   "eslintConfig": {
     "extends": [
       "react-app",

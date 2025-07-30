@@ -1,16 +1,21 @@
-"""
-ASGI config for config project.
-
-It exposes the ASGI callable as a module-level variable named ``application``.
-
-For more information on this file, see
-https://docs.djangoproject.com/en/5.0/howto/deployment/asgi/
-"""
-
 import os
+import django
 
-from django.core.asgi import get_asgi_application
-
+# 1. Thiết lập biến môi trường
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 
-application = get_asgi_application()
+# 2. Setup Django trước khi import các phần khác
+django.setup()
+
+# 3. Import sau khi setup
+from django.core.asgi import get_asgi_application
+from channels.routing import ProtocolTypeRouter, URLRouter
+import chat.routing  # ✅ Phải import dòng này nếu bạn dùng chat.routing ở dưới
+
+# 4. Định nghĩa ứng dụng ASGI
+application = ProtocolTypeRouter({
+    "http": get_asgi_application(),
+    "websocket": URLRouter(
+        chat.routing.websocket_urlpatterns
+    ),
+})
