@@ -1,6 +1,7 @@
 {
   "dependencies": {
     "pillow": "^0.0.9",
-    "react-bootstrap": "^2.10.10"
+    "react-bootstrap": "^2.10.10",
+    "react-toastify": "^11.0.5"
   }
 }

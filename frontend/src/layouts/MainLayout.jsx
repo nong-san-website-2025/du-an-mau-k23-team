@@ -1,4 +1,4 @@
-import Navbar from "../components/Navbar";
+import Navbar from "../features/login_register/components/Navbar";
 import { Outlet } from "react-router-dom";
 
 const MainLayout = () => {

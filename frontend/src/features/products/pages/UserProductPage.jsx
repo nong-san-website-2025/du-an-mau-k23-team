@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+import { toast } from "react-toastify";
+import { useCart } from "../../cart/services/CartContext";
 import {
   Carrot,
   Apple,
@@ -41,6 +43,7 @@ const iconMap = {
 const UserProductPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { addToCart } = useCart();
   const categoryParam = searchParams.get("category");
   const subcategoryParam = searchParams.get("subcategory");
 
@@ -378,7 +381,16 @@ const UserProductPage = () => {
                       )}
                       <small className="text-muted">/{product.unit}</small>
                     </div>
-                    <Button variant="outline-success" size="sm">
+                    <Button
+                      variant="outline-success"
+                      size="sm"
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        await addToCart(product.id, 1, () => {
+                          toast.success("Đã thêm vào giỏ hàng!", { autoClose: 1500 });
+                        });
+                      }}
+                    >
                       <ShoppingCart size={16} />
                     </Button>
                   </div>

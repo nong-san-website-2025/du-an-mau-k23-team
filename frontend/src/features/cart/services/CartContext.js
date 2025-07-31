@@ -25,11 +25,13 @@ export const CartProvider = ({ children }) => {
     setLoading(false);
   };
 
-  const addToCart = async (productId, quantity = 1) => {
+  // Cho phép truyền callback để hiển thị toast khi thêm thành công
+  const addToCart = async (productId, quantity = 1, onSuccess) => {
     setLoading(true);
     try {
       await axios.post('/api/cartitems/add/', { product: productId, quantity });
       await fetchCart();
+      if (onSuccess) onSuccess();
     } catch (err) {}
     setLoading(false);
   };

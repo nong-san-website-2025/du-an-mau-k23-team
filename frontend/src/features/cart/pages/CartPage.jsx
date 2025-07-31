@@ -6,16 +6,19 @@ const green = "#22C55E";
 const darkGreen = "#16A34A";
 
 function QuantityInput({ item }) {
-  const { updateQuantity } = useCart();
+  const { updateQuantity, removeFromCart } = useCart();
   const handleChange = (val) => {
-    if (val > 0) updateQuantity(item.id, val);
+    if (val > 0) {
+      updateQuantity(item.id, val);
+    } else {
+      removeFromCart(item.id);
+    }
   };
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
       <button
         style={{ width: 28, height: 28, border: 'none', background: '#f3f4f6', color: '#222', borderRadius: 5, fontWeight: 700, fontSize: 18, cursor: 'pointer' }}
         onClick={() => handleChange(Number(item.quantity) - 1)}
-        disabled={item.quantity <= 1}
       >-</button>
       <input
         type="number"

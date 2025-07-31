@@ -1,4 +1,7 @@
 import React, { useState, useEffect } from "react";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import { useCart } from "../features/cart/services/CartContext";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import {
   ChevronDown,
@@ -31,24 +34,62 @@ const iconMap = {
 };
 
 export default function Header() {
+  // Lấy số lượng sản phẩm trong giỏ
+  const { cartItems } = useCart();
+  const cartCount = cartItems?.length || 0;
+  // Xử lý đăng xuất
+  const navigate = useNavigate();
+  const [showProfileDropdown, setShowProfileDropdown] = useState(false);
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("username");
+    localStorage.removeItem("role");
+    sessionStorage.clear(); // Nếu có sessionStorage dùng
+    setShowProfileDropdown(false);
+    alert("Đăng xuất thành công!");
+    window.location.replace("/login");
+  };
   const [showCategory, setShowCategory] = useState(false);
   const [hoveredCategory, setHoveredCategory] = useState(null);
   const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
+  //
   const location = useLocation();
+
   const [leaveTimeout, setLeaveTimeout] = useState(null);
+  //
+
+  // Đóng dropdown khi click ngoài
+  useEffect(() => {
+    function handleClick(e) {
+      const btn = document.getElementById("profileDropdownBtn");
+      const dropdown = document.getElementById("profileDropdownMenu");
+      if (
+        btn &&
+        !btn.contains(e.target) &&
+        dropdown &&
+        !dropdown.contains(e.target)
+      ) {
+        setShowProfileDropdown(false);
+      }
+    }
+    if (showProfileDropdown) {
+      document.addEventListener("mousedown", handleClick);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+    };
+  }, [showProfileDropdown]);
 
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        setLoading(true);
+        //
         const data = await productApi.getCategoriesWithProducts();
         setCategories(data);
       } catch (err) {
         setCategories([]);
       } finally {
-        setLoading(false);
+        //
       }
     };
     fetchCategories();
@@ -61,7 +102,8 @@ export default function Header() {
   const urlCategory =
     decodeURIComponent(
       new URLSearchParams(location.search).get("category") || ""
-    ) || (categories[0] && categories[0].name);
+    ) ||
+    (categories[0] && categories[0].name);
 
   // Khi hover vào danh mục, đổi hoveredCategory
   const handleCategoryHover = (cat) => setHoveredCategory(cat.name);
@@ -94,15 +136,43 @@ export default function Header() {
   }, [leaveTimeout]);
 
   // Danh mục đang được highlight (ưu tiên hovered, nếu không thì theo URL)
-  const activeCategory =
-    categories.find((cat) => cat.name === (hoveredCategory || urlCategory)) ||
-    categories[0];
+  //
+
+  //
+  // Đóng dropdown khi click ngoài
+  useEffect(() => {
+    const handleClick = (e) => {
+      if (!document.getElementById("profileDropdownBtn")?.contains(e.target)) {
+        setShowProfileDropdown(false);
+      }
+    };
+    if (showProfileDropdown) {
+      document.addEventListener("mousedown", handleClick);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+    };
+  }, [showProfileDropdown]);
+
 
   return (
-    <header
-      className="shadow-sm"
-      style={{ position: "sticky", top: 0, zIndex: 999 }}
-    >
+    <>
+      <ToastContainer
+        position="top-right"
+        autoClose={2000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="colored"
+      />
+      <header
+        className="shadow-sm"
+        style={{ position: "sticky", top: 0, zIndex: 999 }}
+      >
       {/* Top bar */}
       <div style={greenStyle} className="text-white small py-2">
         <div
@@ -220,7 +290,11 @@ export default function Header() {
                             }}
                             onMouseEnter={() => handleCategoryHover(cat)}
                             onClick={() => {
-                              navigate(`/productuser?category=${encodeURIComponent(cat.key || cat.name)}`);
+                              navigate(
+                                `/productuser?category=${encodeURIComponent(
+                                  cat.key || cat.name
+                                )}`
+                              );
                               setShowCategory(false);
                             }}
                           >
@@ -234,23 +308,42 @@ export default function Header() {
                                   background: "#bbf7d0",
                                 }}
                               >
-                                <IconComponent size={24} style={{ color: "#16a34a" }} />
+                                <IconComponent
+                                  size={24}
+                                  style={{ color: "#16a34a" }}
+                                />
                               </div>
                               <div>
-                                <div className="fw-bold" style={{ fontSize: 18, color: "#16a34a" }}>{cat.name}</div>
-                                <div className="small text-muted">{cat.subcategories?.length || 0} danh mục con</div>
+                                <div
+                                  className="fw-bold"
+                                  style={{ fontSize: 18, color: "#16a34a" }}
+                                >
+                                  {cat.name}
+                                </div>
+                                <div className="small text-muted">
+                                  {cat.subcategories?.length || 0} danh mục con
+                                </div>
                               </div>
                             </div>
-                            <div className="ps-2 pt-2" style={{ fontSize: 15, color: "#444" }}>
+                            <div
+                              className="ps-2 pt-2"
+                              style={{ fontSize: 15, color: "#444" }}
+                            >
                               {cat.subcategories?.length ? (
                                 cat.subcategories.map((sub) => (
                                   <div
                                     key={sub.name}
                                     className="mb-1"
                                     style={{ cursor: "pointer" }}
-                                    onClick={e => {
+                                    onClick={(e) => {
                                       e.stopPropagation();
-                                      navigate(`/productuser?category=${encodeURIComponent(cat.key || cat.name)}&subcategory=${encodeURIComponent(sub.name)}`);
+                                      navigate(
+                                        `/productuser?category=${encodeURIComponent(
+                                          cat.key || cat.name
+                                        )}&subcategory=${encodeURIComponent(
+                                          sub.name
+                                        )}`
+                                      );
                                       setShowCategory(false);
                                     }}
                                   >
@@ -258,7 +351,9 @@ export default function Header() {
                                   </div>
                                 ))
                               ) : (
-                                <div className="text-muted small">Không có danh mục con</div>
+                                <div className="text-muted small">
+                                  Không có danh mục con
+                                </div>
                               )}
                             </div>
                           </div>
@@ -277,11 +372,18 @@ export default function Header() {
               Sản phẩm nổi bật
             </Link>
             <Link
-              to="/promotions"
-              className="btn btn-link fw-medium px-3 py-2 text-danger text-decoration-none"
+              to="/store"
+              className="btn btn-link fw-medium px-3 py-2 text-decoration-none text-dark d-none d-xl-inline-block"
               style={{ whiteSpace: "nowrap" }}
             >
-              Khuyến mãi
+              Cửa hàng
+            </Link>
+            <Link
+              to="/blog"
+              className="btn btn-link fw-medium px-3 py-2 text-decoration-none text-dark d-none d-xl-inline-block"
+              style={{ whiteSpace: "nowrap" }}
+            >
+              Bài viết
             </Link>
             <Link
               to="/about"
@@ -289,13 +391,6 @@ export default function Header() {
               style={{ whiteSpace: "nowrap" }}
             >
               Về chúng tôi
-            </Link>
-            <Link
-              to="/contact"
-              className="btn btn-link fw-medium px-3 py-2 text-decoration-none text-dark d-none d-xl-inline-block"
-              style={{ whiteSpace: "nowrap" }}
-            >
-              Liên hệ
             </Link>
           </nav>
 
@@ -331,21 +426,147 @@ export default function Header() {
             </Link>
             <Link
               to="/cart"
-              className="btn btn-light rounded-circle me-2 p-2"
+              className="btn btn-light rounded-circle me-2 p-2 position-relative"
               style={{ flexShrink: 0 }}
             >
               <ShoppingCart size={22} style={greenText} />
+              {cartCount > 0 && (
+                <span
+                  style={{
+                    position: "absolute",
+                    top: 2,
+                    right: 2,
+                    minWidth: 18,
+                    height: 18,
+                    background: "#dc2626",
+                    color: "#fff",
+                    borderRadius: "50%",
+                    fontSize: 12,
+                    fontWeight: 700,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    padding: "0 5px",
+                    zIndex: 10,
+                    boxShadow: "0 1px 4px #0002"
+                  }}
+                >
+                  {cartCount}
+                </span>
+              )}
             </Link>
-            <Link
-              to="/dashboard"
-              className="btn btn-light rounded-circle p-2"
-              style={{ flexShrink: 0 }}
-            >
-              <User size={22} style={greenText} />
-            </Link>
+            {/* Chỉ hiện dropdown nếu đã đăng nhập, nếu chưa thì hiện nút đăng nhập */}
+            {localStorage.getItem("token") && localStorage.getItem("username") ? (
+              <div className="dropdown" style={{ position: "relative" }}>
+                <button
+                  className="btn btn-light rounded-circle p-2"
+                  style={{ flexShrink: 0 }}
+                  id="profileDropdownBtn"
+                  onClick={() => setShowProfileDropdown((v) => !v)}
+                  aria-expanded={showProfileDropdown ? "true" : "false"}
+                >
+                  <span style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: 28,
+                    height: 28,
+                    borderRadius: "50%",
+                    background: "#16a34a",
+                    color: "#fff",
+                    fontWeight: 700,
+                    fontSize: 18,
+                    textTransform: "uppercase"
+                  }}>
+                    {localStorage.getItem("username")[0]}
+                  </span>
+                </button>
+                {showProfileDropdown && (
+                  <div
+                    id="profileDropdownMenu"
+                    className="dropdown-menu show"
+                    style={{
+                      position: "absolute",
+                      right: 0,
+                      top: "110%",
+                      minWidth: 180,
+                      boxShadow: "0 4px 16px #0002",
+                      borderRadius: 10,
+                      padding: 0,
+                      zIndex: 2000,
+                    }}
+                  >
+                    {/* Avatar + username at top */}
+                    <div style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 12,
+                      padding: "16px 18px 8px 18px",
+                      borderBottom: "1px solid #eee"
+                    }}>
+                      <span style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        width: 38,
+                        height: 38,
+                        borderRadius: "50%",
+                        background: "#16a34a",
+                        color: "#fff",
+                        fontWeight: 700,
+                        fontSize: 20,
+                        textTransform: "uppercase"
+                      }}>
+                        {localStorage.getItem("username")[0]}
+                      </span>
+                      <span style={{ fontWeight: 600, fontSize: 16, color: "#222" }}>
+                        {localStorage.getItem("username")}
+                      </span>
+                    </div>
+                    <Link
+                      to="/profile"
+                      className="dropdown-item"
+                      style={{ padding: "12px 18px", fontWeight: 500 }}
+                    >
+                      Tài khoản
+                    </Link>
+                    <Link
+                      to="/settings"
+                      className="dropdown-item"
+                      style={{ padding: "12px 18px", fontWeight: 500 }}
+                    >
+                      Cài đặt
+                    </Link>
+                    <div
+                      className="dropdown-divider"
+                      style={{ margin: 0, borderTop: "1px solid #eee" }}
+                    />
+                    <button
+                      className="dropdown-item text-danger"
+                      style={{
+                        padding: "12px 18px",
+                        fontWeight: 500,
+                        background: "none",
+                        border: "none",
+                        width: "100%",
+                        textAlign: "left",
+                      }}
+                      onClick={handleLogout}
+                    >
+                      Đăng xuất
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <Link to="/login" className="btn btn-light rounded-circle p-2" style={{ flexShrink: 0 }}>
+                <User size={22} style={greenText} />
+              </Link>
+            )}
           </div>
         </div>
       </div>
-    </header>
+      </header>
+    </>
   );
 }

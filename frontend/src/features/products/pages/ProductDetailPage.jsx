@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from "react";
+import { toast } from "react-toastify";
+import { useCart } from "../../cart/services/CartContext";
 import { useParams, useNavigate } from "react-router-dom";
 import { Badge, Button, Spinner, Alert } from "react-bootstrap";
 import { ShoppingCart, ChevronLeft, Star } from "lucide-react";
@@ -7,6 +9,8 @@ import { productApi } from "../services/productApi";
 const ProductDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { addToCart } = useCart();
+  const [adding, setAdding] = useState(false);
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -114,7 +118,18 @@ const ProductDetailPage = () => {
             <span className="ms-3 text-success">Còn {product.stock} sản phẩm</span>
           </div>
           <div className="mb-3">
-            <Button variant="success" size="lg">
+            <Button
+              variant="success"
+              size="lg"
+              disabled={adding}
+              onClick={async () => {
+                setAdding(true);
+                await addToCart(product.id, 1, () => {
+                  toast.success("Đã thêm vào giỏ hàng!", { autoClose: 1800 });
+                });
+                setAdding(false);
+              }}
+            >
               <ShoppingCart size={20} className="me-2" /> Thêm vào giỏ hàng
             </Button>
           </div>
