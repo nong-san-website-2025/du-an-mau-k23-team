@@ -5,13 +5,17 @@ from products.serializers import ProductSerializer  # nếu cần
 class CartItemSerializer(serializers.ModelSerializer):
     product = ProductSerializer(read_only=True)
     image = serializers.ImageField(read_only=True)
+    
     class Meta:
         model = CartItem
-        fields = ['id', 'product', 'quantity', 'image' ]
-        read_only_fields = ['user']
+        fields = ['id', 'product', 'quantity', 'image']
+        read_only_fields = ['cart']
 
     def create(self, validated_data):
-        validated_data['user'] = self.context['request'].user
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            cart, _ = Cart.objects.get_or_create(user=request.user)
+            validated_data['cart'] = cart
         return super().create(validated_data)
 
 class CartSerializer(serializers.ModelSerializer):

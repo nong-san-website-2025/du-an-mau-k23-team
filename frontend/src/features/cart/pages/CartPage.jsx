@@ -1,6 +1,8 @@
+
 import React from 'react';
 import { useCart } from '../services/CartContext';
 import { Container, Card, Button, Spinner, Image } from 'react-bootstrap';
+import { useNavigate } from 'react-router-dom';
 
 const green = "#22C55E";
 const darkGreen = "#16A34A";
@@ -35,10 +37,11 @@ function QuantityInput({ item }) {
   );
 }
 
+
 function CartPage() {
   const { cartItems, loading } = useCart();
   const [selectedItems, setSelectedItems] = React.useState([]);
-  const [showSuccess, setShowSuccess] = React.useState(false);
+  const navigate = useNavigate();
 
 
   // Chọn tất cả
@@ -178,15 +181,10 @@ function CartPage() {
               size="lg"
               disabled={selectedItems.length === 0}
               style={{ width: '100%', borderRadius: 6, fontWeight: 600, fontSize: 16.5, padding: '11px 0 7px 0', background: selectedItems.length === 0 ? '#fff' : green, color: selectedItems.length === 0 ? green : '#fff', border: selectedItems.length === 0 ? `1.5px solid ${green}` : 'none', marginBottom: 7, marginTop: 2, boxShadow: 'none', letterSpacing: 0.2, cursor: selectedItems.length === 0 ? 'not-allowed' : 'pointer', transition: 'all 0.2s', opacity: selectedItems.length === 0 ? 0.7 : 1 }}
-              onClick={() => setShowSuccess(true)}
+              onClick={() => navigate('/checkout')}
             >
               Tiến hành thanh toán
             </Button>
-            {showSuccess && (
-              <div style={{ background: '#d1fae5', color: '#065f46', border: '1.5px solid #10b981', borderRadius: 8, padding: '14px 0', textAlign: 'center', fontWeight: 700, fontSize: 17, marginBottom: 10, marginTop: 8, boxShadow: '0 2px 8px #10b98122', letterSpacing: 0.2 }}>
-                Thanh toán thành công!
-              </div>
-            )}
             <Button
               href="/productuser"
               style={{ width: '100%', borderRadius: 6, fontWeight: 500, fontSize: 15.5, padding: '9px 0', marginTop: 0, background: '#fff', color: '#111', border: '1.5px solid #111', boxShadow: 'none', transition: 'all 0.2s' }}

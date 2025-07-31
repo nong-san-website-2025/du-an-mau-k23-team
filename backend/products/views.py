@@ -109,5 +109,5 @@ class ProductViewSet(viewsets.ModelViewSet):
         products = self.get_queryset().filter(
             Q(is_best_seller=True) | Q(is_new=True) | Q(discount__gt=0)
         )[:12]
-        serializer = ProductListSerializer(products, many=True)
+        serializer = ProductListSerializer(products, many=True, context={'request': request})
         return Response(serializer.data)

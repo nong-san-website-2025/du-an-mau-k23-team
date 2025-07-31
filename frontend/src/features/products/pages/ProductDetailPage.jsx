@@ -124,9 +124,20 @@ const ProductDetailPage = () => {
               disabled={adding}
               onClick={async () => {
                 setAdding(true);
-                await addToCart(product.id, 1, () => {
-                  toast.success("Đã thêm vào giỏ hàng!", { autoClose: 1800 });
-                });
+                await addToCart(
+                  product.id, 
+                  1, 
+                  () => {
+                    toast.success("Đã thêm vào giỏ hàng!", { autoClose: 1800 });
+                  },
+                  (err) => {
+                    if (err.response?.status === 401) {
+                      toast.error('Vui lòng đăng nhập để thêm vào giỏ hàng');
+                    } else {
+                      toast.error('Không thể thêm vào giỏ hàng. Vui lòng thử lại.');
+                    }
+                  }
+                );
                 setAdding(false);
               }}
             >

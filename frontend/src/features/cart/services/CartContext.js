@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import axios from 'axios';
+import API from '../../login_register/services/api';
+import { toast } from 'react-toastify';
 
 const CartContext = createContext();
 
@@ -17,7 +18,7 @@ export const CartProvider = ({ children }) => {
   const fetchCart = async () => {
     setLoading(true);
     try {
-      const res = await axios.get('/api/cartitems/');
+      const res = await API.get('cartitems/');
       setCartItems(res.data);
     } catch (err) {
       setCartItems([]);
@@ -26,20 +27,34 @@ export const CartProvider = ({ children }) => {
   };
 
   // Cho phép truyền callback để hiển thị toast khi thêm thành công
-  const addToCart = async (productId, quantity = 1, onSuccess) => {
+  const addToCart = async (productId, quantity = 1, onSuccess, onError) => {
     setLoading(true);
     try {
-      await axios.post('/api/cartitems/add/', { product: productId, quantity });
+      await API.post('cartitems/add/', { product: productId, quantity });
       await fetchCart();
       if (onSuccess) onSuccess();
-    } catch (err) {}
+    } catch (err) {
+      console.error('Error adding to cart:', err);
+      if (onError) {
+        onError(err);
+      } else {
+        // Default error handling
+        if (err.response?.status === 401) {
+          toast.error('Vui lòng đăng nhập để thêm vào giỏ hàng');
+        } else if (err.response?.data?.error) {
+          toast.error(err.response.data.error);
+        } else {
+          toast.error('Không thể thêm vào giỏ hàng. Vui lòng thử lại.');
+        }
+      }
+    }
     setLoading(false);
   };
 
   const updateQuantity = async (itemId, quantity) => {
     setLoading(true);
     try {
-      await axios.put(`/api/cartitems/${itemId}/update_quantity/`, { quantity });
+      await API.put(`cartitems/${itemId}/update_quantity/`, { quantity });
       await fetchCart();
     } catch (err) {}
     setLoading(false);
@@ -48,14 +63,29 @@ export const CartProvider = ({ children }) => {
   const removeFromCart = async (itemId) => {
     setLoading(true);
     try {
-      await axios.delete(`/api/cartitems/${itemId}/delete/`);
+      await API.delete(`cartitems/${itemId}/delete/`);
       await fetchCart();
     } catch (err) {}
     setLoading(false);
   };
 
+  // Thêm function để xóa toàn bộ giỏ hàng sau khi đặt hàng thành công
+  const clearCart = async () => {
+    setLoading(true);
+    try {
+      // Xóa từng item trong giỏ hàng
+      for (const item of cartItems) {
+        await API.delete(`cartitems/${item.id}/delete/`);
+      }
+      await fetchCart();
+    } catch (err) {
+      console.error('Error clearing cart:', err);
+    }
+    setLoading(false);
+  };
+
   return (
-    <CartContext.Provider value={{ cartItems, loading, addToCart, updateQuantity, removeFromCart }}>
+    <CartContext.Provider value={{ cartItems, loading, addToCart, updateQuantity, removeFromCart, clearCart }}>
       {children}
     </CartContext.Provider>
   );

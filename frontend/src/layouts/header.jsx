@@ -36,7 +36,7 @@ const iconMap = {
 export default function Header() {
   // Lấy số lượng sản phẩm trong giỏ
   const { cartItems } = useCart();
-  const cartCount = cartItems?.length || 0;
+  const cartCount = cartItems?.reduce((total, item) => total + (item.quantity || 0), 0) || 0;
   // Xử lý đăng xuất
   const navigate = useNavigate();
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
@@ -530,7 +530,17 @@ export default function Header() {
                     >
                       Tài khoản
                     </Link>
-                    <Link
+                    <div
+                      className="dropdown-item"
+                      style={{ padding: "12px 18px", fontWeight: 500, cursor: "pointer" }}
+                      onClick={() => {
+                        setShowProfileDropdown(false);
+                        navigate("/orders");
+                      }}
+                    >
+                      Đơn hàng của tôi
+                    </div>
+                    <Link 
                       to="/settings"
                       className="dropdown-item"
                       style={{ padding: "12px 18px", fontWeight: 500 }}
