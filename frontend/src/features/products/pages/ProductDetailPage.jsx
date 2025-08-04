@@ -2,8 +2,8 @@ import React, { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { useCart } from "../../cart/services/CartContext";
 import { useParams, useNavigate } from "react-router-dom";
-import { Badge, Button, Spinner, Alert } from "react-bootstrap";
-import { ShoppingCart, ChevronLeft, Star } from "lucide-react";
+import { Badge, Button, Spinner, Alert, ButtonGroup } from "react-bootstrap";
+import { ShoppingCart, ChevronLeft, Star, Minus, Plus } from "lucide-react";
 import { productApi } from "../services/productApi";
 
 const ProductDetailPage = () => {
@@ -14,6 +14,7 @@ const ProductDetailPage = () => {
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [quantity, setQuantity] = useState(1); // ✅
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -30,6 +31,26 @@ const ProductDetailPage = () => {
     };
     fetchProduct();
   }, [id]);
+
+  const handleAddToCart = async () => {
+    if (!product || quantity > product.stock) {
+      toast.warning("Số lượng vượt quá hàng trong kho.");
+      return;
+    }
+
+    setAdding(true);
+    await addToCart(
+      product.id,
+      quantity,
+      () => {
+        toast.success("Đã thêm vào giỏ hàng!", { autoClose: 1800 });
+      },
+      (err) => {
+        toast.error("Không thể thêm vào giỏ hàng. Vui lòng thử lại.");
+      }
+    );
+    setAdding(false);
+  };
 
   if (loading) {
     return (
@@ -117,33 +138,44 @@ const ProductDetailPage = () => {
             <span className="ms-2 text-muted">/ {product.unit}</span>
             <span className="ms-3 text-success">Còn {product.stock} sản phẩm</span>
           </div>
+
+          {/* ✅ Chọn số lượng */}
+          <div className="mb-3">
+            <strong>Số lượng:</strong>{" "}
+            <ButtonGroup>
+              <Button
+                variant="outline-secondary"
+                size="sm"
+                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+              >
+                <Minus size={16} />
+              </Button>
+              <Button variant="light" disabled>
+                {quantity}
+              </Button>
+              <Button
+                variant="outline-secondary"
+                size="sm"
+                onClick={() =>
+                  setQuantity((q) => (q < product.stock ? q + 1 : q))
+                }
+              >
+                <Plus size={16} />
+              </Button>
+            </ButtonGroup>
+          </div>
+
           <div className="mb-3">
             <Button
               variant="success"
               size="lg"
               disabled={adding}
-              onClick={async () => {
-                setAdding(true);
-                await addToCart(
-                  product.id, 
-                  1, 
-                  () => {
-                    toast.success("Đã thêm vào giỏ hàng!", { autoClose: 1800 });
-                  },
-                  (err) => {
-                    if (err.response?.status === 401) {
-                      toast.error('Vui lòng đăng nhập để thêm vào giỏ hàng');
-                    } else {
-                      toast.error('Không thể thêm vào giỏ hàng. Vui lòng thử lại.');
-                    }
-                  }
-                );
-                setAdding(false);
-              }}
+              onClick={handleAddToCart}
             >
               <ShoppingCart size={20} className="me-2" /> Thêm vào giỏ hàng
             </Button>
           </div>
+
           <div className="mb-3">
             <span className="me-2">Giao hàng nhanh</span>
             <span className="me-2">Chất lượng đảm bảo</span>

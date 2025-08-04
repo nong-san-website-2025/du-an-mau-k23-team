@@ -1,4 +1,3 @@
-from rest_framework import generics, permissions
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 from rest_framework.views import APIView
@@ -9,11 +8,9 @@ from rest_framework import generics, permissions, status
 from django.core.cache import cache
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.authtoken.models import Token
+from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 from .models import CustomUser
-from .serializers import UserSerializer, RegisterSerializer
-from django.shortcuts import render
 from .serializers import UserSerializer, RegisterSerializer, ForgotPasswordSerializer
 import random
 from django.core.mail import send_mail
@@ -25,6 +22,11 @@ from chat.models import Message  # Cập nhật đúng path
 from django.db.models import Count
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
+from rest_framework import viewsets, status
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from .models import Address
+from .serializers import AddressSerializer
 # --- GOOGLE LOGIN API ---
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -91,39 +93,51 @@ class UserProfileView(APIView):
         serializer = UserSerializer(request.user)
         return Response(serializer.data)
 
+    def put(self, request):
+        user = request.user
+        serializer = UserSerializer(user, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=400)
+
+    def patch(self, request):
+        return self.put(request)
+
+
+
 class LoginView(APIView):
+    permission_classes = [permissions.AllowAny]
+
     def post(self, request):
         username = request.data.get('username')
         password = request.data.get('password')
-        print(f"DEBUG LOGIN: username={username!r}, password={password!r}")
 
         if username is None or password is None:
-            print("DEBUG LOGIN: Thiếu username hoặc password")
             return Response({'error': 'Vui lòng cung cấp username và password.'}, status=status.HTTP_400_BAD_REQUEST)
 
         user = authenticate(username=username, password=password)
-        print(f"DEBUG LOGIN: user={user}")
-
         if not user:
-            print("DEBUG LOGIN: Sai tài khoản hoặc mật khẩu")
             return Response({'error': 'Tài khoản hoặc mật khẩu không chính xác.'}, status=status.HTTP_401_UNAUTHORIZED)
 
-        token, _ = Token.objects.get_or_create(user=user)
+        refresh = RefreshToken.for_user(user)
+
+        # Gán role
         if user.is_superuser:
             role = 'admin'
-        elif getattr(user, 'is_seller', False):  # Nếu có trường is_seller
+        elif getattr(user, 'is_seller', False):
             role = 'seller'
         else:
             role = 'user'
 
-        print(f"DEBUG LOGIN: Đăng nhập thành công, role={role}")
         return Response({
-            'token': token.key,
+            'refresh': str(refresh),
+            'access': str(refresh.access_token),
             'username': user.username,
             'email': user.email,
             'role': role
         })
-        # return Response({'token': token.key})
+    
 class ForgotPasswordView(APIView):
     permission_classes = [permissions.AllowAny]
     def post(self, request):
@@ -270,3 +284,22 @@ def get_chat_history(request, room_name):
     messages = Message.objects.filter(room=room_name).order_by('timestamp')
     serializer = MessageSerializer(messages, many=True)
     return Response(serializer.data)
+
+
+class AddressViewSet(viewsets.ModelViewSet):
+    serializer_class = AddressSerializer
+    permission_classes = [IsAuthenticated] 
+
+    def get_queryset(self):
+        return Address.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+    @action(detail=True, methods=["patch"])
+    def set_default(self, request, pk=None):
+        address = self.get_object()
+        Address.objects.filter(user=request.user).update(is_default=False)
+        address.is_default = True
+        address.save()
+        return Response({"status": "Đã đặt địa chỉ mặc định"})  

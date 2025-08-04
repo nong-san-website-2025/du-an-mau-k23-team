@@ -1,35 +1,27 @@
-
-
+// auth.js
 import axios from 'axios';
 
-const API_URL = 'http://localhost:8000/api/users/token/';
-const API_ME_URL = 'http://localhost:8000/api/users/me/';
+const API_URL = 'http://localhost:8000/api/users/login/';
 
 export const login = async (username, password) => {
   try {
-    const response = await axios.post(API_URL, { username, password });
-    const token = response.data.access; // lấy access token từ JWT
-    localStorage.setItem('token', token);
-    return { success: true, token };
-  } catch (error) {
-    return { success: false, error: error.response?.data?.detail || 'Lỗi không xác định' };
-  }
-};
-
-export const getCurrentUser = async () => {
-  const token = localStorage.getItem('token');
-  if (!token) {
-    return { success: false, error: 'Chưa đăng nhập' };
-  }
-
-  try {
-    const response = await axios.get(API_ME_URL, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+    const response = await axios.post("http://localhost:8000/api/users/login/", {
+      username,
+      password,
     });
-    return { success: true, data: response.data };
+
+    return {
+      success: true,
+      access: response.data.access, // JWT access token
+      refresh: response.data.refresh, // JWT refresh token (optional)
+      username: response.data.username,
+      email: response.data.email,
+      role: response.data.role,
+    };
   } catch (error) {
-    return { success: false, error: error.response?.data?.detail || 'Lỗi khi lấy thông tin user' };
+    return {
+      success: false,
+      error: error.response?.data?.error || "Đăng nhập thất bại.",
+    };
   }
 };

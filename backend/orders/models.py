@@ -14,7 +14,7 @@ class CartItem(models.Model):
     added_at = models.DateTimeField(auto_now_add=True)
 
 class Order(models.Model):
-    user = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True)
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="orders")
     customer_name = models.CharField(max_length=255, null=True, blank=True, default="")
     customer_phone = models.CharField(max_length=20, null=True, blank=True, default="")
     address = models.CharField(max_length=255, null=True, blank=True, default="")

@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { login } from "../services/auth";
 import { useNavigate } from "react-router-dom";
-import "../styles/LoginForm.css";
-// import loginIcon from "../../../assets/login.png";
-// import homeIcon from "../../../assets/homefarm.png";
+import "./../styles/LoginForm.css";
+import loginIcon from "../assets/login.png";
+import homeIcon from "../assets/homefarm.png";
 import logo from "../assets/imagelogo.png";
+import { useCart } from "../../cart/services/CartContext";
 
 function LoginForm() {
   const [username, setUsername] = useState("");
@@ -13,6 +14,7 @@ function LoginForm() {
   const navigate = useNavigate();
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const [showForgotModal, setShowForgotModal] = useState(false);
+  const { fetchCart } = useCart();
 
   // State cho Đăng ký
   const [regUsername, setRegUsername] = useState("");
@@ -41,7 +43,8 @@ function LoginForm() {
     /* global google */
     if (window.google) {
       window.google.accounts.id.initialize({
-        client_id: "638143772671-m6e09jr0o9smb5l1n24bhv7tpeskmvu3.apps.googleusercontent.com",
+        client_id:
+          "638143772671-m6e09jr0o9smb5l1n24bhv7tpeskmvu3.apps.googleusercontent.com",
         callback: handleGoogleResponse,
       });
 
@@ -91,15 +94,15 @@ function LoginForm() {
     e.preventDefault();
     const result = await login(username, password);
 
-    if (result.success) {
-      localStorage.setItem("token", result.token);
+    if (result.access) {
+      localStorage.setItem("token", result.access); // <-- access từ JWT
       localStorage.setItem("role", result.role);
       localStorage.setItem("username", username);
-      // alert('Đăng nhập thành công!');
-      // Đăng nhập thường luôn vào trang user (trang chủ)
-      navigate("/");
+
+      await fetchCart();
+      window.location.replace("/"); // reload và chuyển về trang chủ
     } else {
-      setError(result.error);
+      setError(result.error || "Đăng nhập thất bại");
     }
   };
 
@@ -144,13 +147,7 @@ function LoginForm() {
           localStorage.setItem("token", loginResult.token);
           localStorage.setItem("role", loginResult.role);
           localStorage.setItem("username", regUsername);
-          if (loginResult.role === "seller") {
-            navigate("/seller-dashboard");
-          } else if (loginResult.role === "admin") {
-            navigate("/admin-dashboard");
-          } else {
-            navigate("/");
-          }
+          window.location.replace("/"); // reload và chuyển về trang chủ
         } else {
           alert("Đăng ký thành công nhưng đăng nhập tự động thất bại!");
         }

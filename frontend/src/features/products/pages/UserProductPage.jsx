@@ -58,9 +58,11 @@ const UserProductPage = () => {
   // Load dữ liệu từ API khi component mount
   useEffect(() => {
     const loadData = async () => {
+      const start = Date.now();
       try {
         setLoading(true);
         setError(null);
+
 
         const categoriesData = await productApi.getCategoriesWithProducts();
         setCategories(categoriesData);
@@ -89,7 +91,13 @@ const UserProductPage = () => {
         setError(err.message);
         console.error("Lỗi khi tải dữ liệu:", err);
       } finally {
-        setLoading(false);
+        // Đảm bảo loading hiển thị ít nhất 1s
+        const elapsed = Date.now() - start;
+        if (elapsed < 1000) {
+          setTimeout(() => setLoading(false), 500 - elapsed);
+        } else {
+          setLoading(false);
+        }
       }
     };
 
@@ -103,15 +111,34 @@ const UserProductPage = () => {
     setSearchParams({ category: category.key || category.name });
   };
 
-  // Hiển thị loading
-  if (loading) {
-    return (
-      <div className="container py-4 text-center">
-        <Spinner animation="border" />
-        <p className="mt-2">Đang tải dữ liệu từ backend...</p>
-      </div>
+  const handleAddToCart = async (e, product) => {
+    e.stopPropagation();
+    await addToCart(
+      product.id,
+      1,
+      () => toast.success("Đã thêm vào giỏ hàng!", { autoClose: 1500 }),
+      (err) => {
+        if (err.response?.status === 401) {
+          toast.error("Vui lòng đăng nhập để thêm vào giỏ hàng");
+        } else {
+          toast.error("Không thể thêm vào giỏ hàng. Vui lòng thử lại.");
+        }
+      },
+      {
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        image:
+          product.image && product.image.startsWith("/")
+            ? `http://localhost:8000${product.image}`
+            : product.image?.startsWith("http")
+            ? product.image
+            : "",
+      }
     );
-  }
+  };
+
+  // Không hiển thị loading cho toàn bộ trang, chỉ cho phần sản phẩm
 
   // Hiển thị lỗi
   if (error) {
@@ -161,92 +188,99 @@ const UserProductPage = () => {
   return (
     <div className="container py-4">
       {/* Header với thông tin API */}
-      <div className="mb-3 d-flex align-items-center gap-3">
-        <Badge bg="success">
-          Dữ liệu từ Backend API - {categories.length} danh mục
-        </Badge>
-        <Badge bg="info">{allProducts.length} sản phẩm</Badge>
+      <div className="mb-2 d-flex flex-wrap align-items-center justify-content-between" style={{ fontSize: 14 }}>
+        <div className="d-flex align-items-center gap-2 flex-wrap">
+          <Badge bg="success" style={{ fontSize: 13, padding: "4px 8px" }}>
+            Dữ liệu từ Backend API - {categories.length} danh mục
+          </Badge>
+          <Badge bg="info" style={{ fontSize: 13, padding: "4px 8px" }}>{allProducts.length} sản phẩm</Badge>
+        </div>
+        <Form className="mb-0" style={{ maxWidth: 260, minWidth: 180 }}>
+          <Form.Control
+            type="search"
+            placeholder="Tìm kiếm sản phẩm..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{ fontSize: 14, padding: "6px 10px" }}
+          />
+        </Form>
       </div>
-
-      {/* Thanh tìm kiếm */}
-      <Form className="mb-3">
-        <Form.Control
-          type="search"
-          placeholder="Tìm kiếm sản phẩm..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          style={{ maxWidth: 350 }}
-        />
-      </Form>
 
       {/* Tabs danh mục cha */}
-      <div className="d-flex gap-2 mb-3 flex-wrap">
-        {categories.map((cat) => {
-          const IconComponent = iconMap[cat.icon] || Package;
-          const isSelected = cat.id === selectedCategory?.id;
-          const totalProducts =
-            cat.subcategories?.reduce(
-              (sum, s) => sum + (s.products?.length || 0),
-              0
-            ) || 0;
+      <div className="d-flex gap-1 mb-2 flex-wrap justify-content-between">
+        <div className="d-flex gap-1 flex-wrap">
+          {categories.map((cat) => {
+            const IconComponent = iconMap[cat.icon] || Package;
+            const isSelected = cat.id === selectedCategory?.id;
+            const totalProducts =
+              cat.subcategories?.reduce(
+                (sum, s) => sum + (s.products?.length || 0),
+                0
+              ) || 0;
 
-          return (
-            <Button
-              key={cat.id}
-              variant={isSelected ? "dark" : "light"}
-              className={isSelected ? "fw-bold" : ""}
-              onClick={() => {
-                setSelectedCategory(cat);
-                setActiveSub("Tất cả");
-                setSearchParams({ category: cat.key || cat.name });
-                window.scrollTo({ top: 0, behavior: "smooth" });
-              }}
-            >
-              <IconComponent size={16} className="me-1" />
-              {cat.name} {" "}
-              <Badge bg="secondary" className="ms-1">
-                {totalProducts}
-              </Badge>
-            </Button>
-          );
-        })}
-      </div>
-      <div className="d-flex gap-2 mb-3 flex-wrap">
-        <Button
-          variant={activeSub === "Tất cả" ? "dark" : "light"}
-          className={activeSub === "Tất cả" ? "fw-bold" : ""}
-          onClick={() => {
-            setActiveSub("Tất cả");
-            setSearchParams({ category: selectedCategory?.key || selectedCategory?.name });
-          }}
-        >
-          Tất cả{" "}
-          <Badge bg="secondary" className="ms-1">
-            {allProducts.length}
-          </Badge>
-        </Button>
-        {selectedCategory?.subcategories?.map((sub) => (
+            return (
+              <Button
+                key={cat.id}
+                variant={isSelected ? "dark" : "light"}
+                className={isSelected ? "fw-bold" : ""}
+                style={{ fontSize: 13, padding: "4px 10px", minWidth: 0 }}
+                onClick={() => {
+                  setSelectedCategory(cat);
+                  setActiveSub("Tất cả");
+                  setSearchParams({ category: cat.key || cat.name });
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+              >
+                <IconComponent size={14} className="me-1" />
+                {cat.name}{" "}
+                <Badge bg="secondary" className="ms-1" style={{ fontSize: 11, padding: "2px 6px" }}>
+                  {totalProducts}
+                </Badge>
+              </Button>
+            );
+          })}
+        </div>
+        <div className="d-flex gap-1 flex-wrap">
           <Button
-            key={sub.name}
-            variant={activeSub === sub.name ? "dark" : "light"}
-            className={activeSub === sub.name ? "fw-bold" : ""}
+            variant={activeSub === "Tất cả" ? "dark" : "light"}
+            className={activeSub === "Tất cả" ? "fw-bold" : ""}
+            style={{ fontSize: 13, padding: "4px 10px", minWidth: 0 }}
             onClick={() => {
-              setActiveSub(sub.name);
+              setActiveSub("Tất cả");
               setSearchParams({
                 category: selectedCategory?.key || selectedCategory?.name,
-                subcategory: sub.name,
               });
             }}
           >
-            {sub.name} {" "}
-            <Badge bg="secondary" className="ms-1">
-              {sub.products?.length || 0}
+            Tất cả{" "}
+            <Badge bg="secondary" className="ms-1" style={{ fontSize: 11, padding: "2px 6px" }}>
+              {allProducts.length}
             </Badge>
           </Button>
-        ))}
+          {selectedCategory?.subcategories?.map((sub) => (
+            <Button
+              key={sub.name}
+              variant={activeSub === sub.name ? "dark" : "light"}
+              className={activeSub === sub.name ? "fw-bold" : ""}
+              style={{ fontSize: 13, padding: "4px 10px", minWidth: 0 }}
+              onClick={() => {
+                setActiveSub(sub.name);
+                setSearchParams({
+                  category: selectedCategory?.key || selectedCategory?.name,
+                  subcategory: sub.name,
+                });
+              }}
+            >
+              {sub.name}{" "}
+              <Badge bg="secondary" className="ms-1" style={{ fontSize: 11, padding: "2px 6px" }}>
+                {sub.products?.length || 0}
+              </Badge>
+            </Button>
+          ))}
+        </div>
       </div>
 
-      <div className="mb-2 text-muted">
+      <div className="mb-2 text-muted"> 
         Hiển thị {displayedProducts.length} sản phẩm trong danh mục "
         <b>{selectedCategory?.name}</b>"
         {activeSub !== "Tất cả" && ` - ${activeSub}`}
@@ -256,7 +290,12 @@ const UserProductPage = () => {
       </div>
 
       {/* Danh sách sản phẩm */}
-      {displayedProducts.length === 0 ? (
+      {loading ? (
+        <div className="text-center py-5">
+          <Spinner animation="border" />
+          <p className="mt-2">Đang tải sản phẩm...</p>
+        </div>
+      ) : displayedProducts.length === 0 ? (
         <div className="text-center py-5">
           <Package size={64} className="text-muted mb-3" />
           <h5 className="text-muted">Không có sản phẩm nào</h5>
@@ -271,8 +310,11 @@ const UserProductPage = () => {
           {displayedProducts.map((product) => (
             <Col key={product.id}>
               <Card className="h-100 shadow-sm border-0">
-                <div className="position-relative" style={{ height: 210, cursor: 'pointer' }}
-                  onClick={() => navigate(`/products/${product.id}`)}>
+                <div
+                  className="position-relative"
+                  style={{ height: 210, cursor: "pointer" }}
+                  onClick={() => navigate(`/products/${product.id}`)}
+                >
                   <Card.Img
                     variant="top"
                     src={
@@ -384,23 +426,7 @@ const UserProductPage = () => {
                     <Button
                       variant="outline-success"
                       size="sm"
-                      onClick={async (e) => {
-                        e.stopPropagation();
-                        await addToCart(
-                          product.id, 
-                          1, 
-                          () => {
-                            toast.success("Đã thêm vào giỏ hàng!", { autoClose: 1500 });
-                          },
-                          (err) => {
-                            if (err.response?.status === 401) {
-                              toast.error('Vui lòng đăng nhập để thêm vào giỏ hàng');
-                            } else {
-                              toast.error('Không thể thêm vào giỏ hàng. Vui lòng thử lại.');
-                            }
-                          }
-                        );
-                      }}
+                      onClick={(e) => handleAddToCart(e, product)}
                     >
                       <ShoppingCart size={16} />
                     </Button>

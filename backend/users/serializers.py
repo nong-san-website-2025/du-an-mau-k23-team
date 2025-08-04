@@ -4,11 +4,15 @@ from .models import CustomUser
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from .models import Address
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
-        fields = ["id", "username", "email", "is_seller"]
+        fields = [
+            "id", "username", "email", "is_seller", "avatar",
+            "full_name", "phone", "address"
+        ]
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -37,3 +41,9 @@ class RegisterSerializer(serializers.ModelSerializer):
 # ForgotPasswordSerializer nên được định nghĩa ngoài class RegisterSerializer
 class ForgotPasswordSerializer(serializers.Serializer):
     email = serializers.EmailField()
+
+
+class AddressSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Address
+        fields = "__all__"

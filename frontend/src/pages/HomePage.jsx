@@ -17,7 +17,13 @@ function Homepage() {
   return (
     <div className="homepage-container">
       <h1>Chào mừng bạn đến trang chủ!</h1>
-
+      <Link
+        to="/orders"
+        className="dropdown-item"
+        style={{ padding: "12px 18px", fontWeight: 500 }}
+      >
+        Đơn hàng của tôi
+      </Link>
       <div className="role-links">
         {/* {role === "admin" && <Link to="/admin-dashboard">Quản trị</Link>}
         {role === "seller" && <Link to="/seller-dashboard">Quản lý cửa hàng</Link>}
@@ -31,7 +37,6 @@ function Homepage() {
       {/* {(role === "user" || role === "seller" || role === "admin") && <ChatBox username={username || "Khách"} />}
       <ChatBox username={username} roomName={username} /> */}
     </div>
-    
   );
 }
 

@@ -3,26 +3,28 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 
+
 from .models import Cart, CartItem
 from .serializers import CartSerializer, CartItemSerializer
-from users.models import CustomUser
 from products.models import Product
 
 class CartViewSet(viewsets.ModelViewSet):
     serializer_class = CartSerializer
-    queryset = Cart.objects.all()
     permission_classes = [IsAuthenticated]
+    queryset = Cart.objects.none()  # ✅ Thêm dòng này!
+
+    def get_queryset(self):
+        return Cart.objects.filter(user=self.request.user)
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+        print("POST DATA:", request.data) 
 
 class CartItemViewSet(viewsets.ModelViewSet):
     serializer_class = CartItemSerializer
     queryset = CartItem.objects.all()
     
     def get_permissions(self):
-        if self.action in ['list', 'retrieve']:
-            return [AllowAny()]
         return [IsAuthenticated()]
 
     def get_queryset(self):
@@ -33,6 +35,16 @@ class CartItemViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         cart, _ = Cart.objects.get_or_create(user=self.request.user)
+        product = self.request.data.get('product')
+        quantity = int(self.request.data.get('quantity', 1))
+        if product:
+            try:
+                item = CartItem.objects.get(cart=cart, product_id=product)
+                item.quantity += quantity
+                item.save()
+                return
+            except CartItem.DoesNotExist:
+                pass
         serializer.save(cart=cart)
 
     @action(detail=False, methods=['post'])
