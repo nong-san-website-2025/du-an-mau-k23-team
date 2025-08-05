@@ -13,21 +13,26 @@ import {
   FaPhone,
   FaEnvelope,
   FaMapMarkerAlt,
-  FaTractor,
+  FaLock,
+  FaBell,
+  FaGift,
+  FaStar,
   FaSeedling,
 } from "react-icons/fa";
 import API from "../../login_register/services/api";
 
-const green = "#22C55E";
-const darkGreen = "#1B5E20";
-const iconColor = "#1B5E20";
+// Use your header/footer color scheme
+const mainColor = "#2E8B57"; // Example: header/footer green
+const accentColor = "#F57C00"; // Example: header/footer orange
+const sidebarBg = "#fff";
+const sidebarActive = mainColor;
+const sidebarInactive = "#eee";
+const iconColor = mainColor;
 
 function ProfilePage() {
   const [activeTab, setActiveTab] = useState("profile");
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  // Removed unused navigate
-
   const [editMode, setEditMode] = useState(false);
   const [form, setForm] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -124,8 +129,8 @@ function ProfilePage() {
   if (loading) {
     return (
       <Container className="py-5 text-center">
-        <Spinner animation="border" style={{ color: green }} />
-        <div className="mt-3" style={{ color: green, fontWeight: 600 }}>
+        <Spinner animation="border" style={{ color: mainColor }} />
+        <div className="mt-3" style={{ color: mainColor, fontWeight: 600 }}>
           Đang tải thông tin cá nhân...
         </div>
       </Container>
@@ -135,13 +140,13 @@ function ProfilePage() {
   if (!user || !form) {
     return (
       <Container className="py-5 text-center">
-        <h2 className="mb-2 fw-bold" style={{ color: green }}>
+        <h2 className="mb-2 fw-bold" style={{ color: mainColor }}>
           Không tìm thấy thông tin người dùng
         </h2>
         <Button
           href="/"
           style={{
-            background: green,
+            background: mainColor,
             border: "none",
             borderRadius: 8,
             fontWeight: 700,
@@ -157,127 +162,142 @@ function ProfilePage() {
     <Container className="py-0">
       <Row>
         {/* Sidebar menu - 2/10 */}
-        <Col md={2}>
+        <Col md={3}>
           <Card
             className="shadow border-0 p-3 mb-4"
-            style={{ background: "#fff" }}
+            style={{ background: sidebarBg }}
           >
             <div
               style={{
                 fontWeight: 700,
                 fontSize: 18,
                 marginBottom: 18,
-                color: darkGreen,
+                color: mainColor,
                 display: "flex",
                 alignItems: "center",
                 gap: 8,
               }}
             >
-              <FaTractor
-                color={iconColor}
-                size={22}
-                style={{ marginRight: 4 }}
-              />{" "}
-              Tài khoản
+              <FaUser color={iconColor} size={22} style={{ marginRight: 4 }} /> Tài khoản của tôi
             </div>
             <div style={{ marginBottom: 18 }}>
               <Button
-                variant={
-                  activeTab === "profile" ? "success" : "outline-success"
-                }
                 className="w-100 mb-2"
-                style={{ fontWeight: 700, borderRadius: 0 }}
+                style={{
+                  fontWeight: 700,
+                  borderRadius: 8,
+                  background: activeTab === "profile" ? sidebarActive : sidebarInactive,
+                  color: activeTab === "profile" ? "#fff" : mainColor,
+                  border: "none",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                }}
                 onClick={() => setActiveTab("profile")}
               >
-                {" "}
-                <FaUser style={{ marginRight: 6 }} /> Hồ sơ
+                <FaUser style={{ marginRight: 6 }} /> Hồ Sơ
               </Button>
               <Button
-                variant={
-                  activeTab === "address" ? "success" : "outline-success"
-                }
                 className="w-100 mb-2"
-                style={{ fontWeight: 700, borderRadius: 0 }}
+                style={{
+                  fontWeight: 700,
+                  borderRadius: 8,
+                  background: activeTab === "address" ? sidebarActive : sidebarInactive,
+                  color: activeTab === "address" ? "#fff" : mainColor,
+                  border: "none",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                }}
                 onClick={() => setActiveTab("address")}
               >
-                {" "}
-                <FaMapMarkerAlt style={{ marginRight: 6 }} /> Địa chỉ
+                <FaMapMarkerAlt style={{ marginRight: 6 }} /> Địa Chỉ
               </Button>
               <Button
-                variant={
-                  activeTab === "password" ? "success" : "outline-success"
-                }
                 className="w-100 mb-2"
-                style={{ fontWeight: 700, borderRadius: 0 }}
+                style={{
+                  fontWeight: 700,
+                  borderRadius: 8,
+                  background: activeTab === "password" ? sidebarActive : sidebarInactive,
+                  color: activeTab === "password" ? "#fff" : mainColor,
+                  border: "none",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                }}
                 onClick={() => setActiveTab("password")}
               >
-                🔒 Đổi mật khẩu
+                <FaLock style={{ marginRight: 6 }} /> Đổi Mật Khẩu
               </Button>
               <Button
-                variant={
-                  activeTab === "notification" ? "success" : "outline-success"
-                }
-                className="w-100 mb-2 p-0"
-                style={{ fontWeight: 700, borderRadius: 0 }}
+                className="w-100 mb-2"
+                style={{
+                  fontWeight: 700,
+                  borderRadius: 8,
+                  background: activeTab === "notification" ? sidebarActive : sidebarInactive,
+                  color: activeTab === "notification" ? "#fff" : mainColor,
+                  border: "none",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                }}
                 onClick={() => setActiveTab("notification")}
               >
-                🔔 Cài đặt thông báo
+                <FaBell style={{ marginRight: 6 }} /> Cài Đặt Thông Báo
+              </Button>
+              <Button
+                className="w-100 mb-2"
+                style={{
+                  fontWeight: 700,
+                  borderRadius: 8,
+                  background: activeTab === "voucher" ? accentColor : sidebarInactive,
+                  color: activeTab === "voucher" ? "#fff" : accentColor,
+                  border: "none",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+                onClick={() => setActiveTab("voucher")}
+              >
+                <FaGift style={{ marginRight: 6 }} /> Kho Voucher
+              </Button>
+              <Button
+                className="w-100 mb-2"
+                style={{
+                  fontWeight: 700,
+                  borderRadius: 8,
+                  background: activeTab === "point" ? "#FFD700" : sidebarInactive,
+                  color: activeTab === "point" ? "#fff" : "#FFD700",
+                  border: "none",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+                onClick={() => setActiveTab("point")}
+              >
+                <FaStar style={{ marginRight: 6 }} /> Điểm Thưởng
+              </Button>
+              <Button
+                className="w-100 mb-2"
+                style={{
+                  fontWeight: 700,
+                  borderRadius: 8,
+                  background: activeTab === "special" ? "#D32F2F" : sidebarInactive,
+                  color: activeTab === "special" ? "#fff" : "#D32F2F",
+                  border: "none",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+                onClick={() => setActiveTab("special")}
+              >
+                <FaSeedling style={{ marginRight: 6 }} /> Ưu Đãi Đặc Biệt
               </Button>
             </div>
-            <Button
-              variant={activeTab === "voucher" ? "warning" : "outline-warning"}
-              className="w-100 mb-2"
-              style={{
-                fontWeight: 700,
-                borderRadius: 0,
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-              }}
-              onClick={() => setActiveTab("voucher")}
-            >
-              {" "}
-              <FaSeedling
-                color={iconColor}
-                size={20}
-                style={{ marginRight: 4 }}
-              />{" "}
-              Kho voucher
-            </Button>
-            <Button
-              variant={activeTab === "point" ? "info" : "outline-info"}
-              className="w-100 mb-2"
-              style={{
-                fontWeight: 700,
-                borderRadius: 0,
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-              }}
-              onClick={() => setActiveTab("point")}
-            >
-              {" "}
-              ⭐ Điểm thưởng
-            </Button>
-            <Button
-              variant={activeTab === "special" ? "danger" : "outline-danger"}
-              className="w-100 mb-2"
-              style={{
-                fontWeight: 700,
-                borderRadius: 0,
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-              }}
-              onClick={() => setActiveTab("special")}
-            >
-              {" "}
-              � Ưu đãi đặc biệt
-            </Button>
           </Card>
         </Col>
         {/* Main profile content - 8/10 */}
-        <Col md={10}>
+        <Col md={9}>
           <Card
             className="shadow border-0 p-4 mb-4"
             style={{ background: "#fff" }}
@@ -288,37 +308,63 @@ function ProfilePage() {
                 <div
                   style={{
                     fontWeight: 700,
-                    fontSize: 19,
+                    fontSize: 22,
                     marginBottom: 18,
-                    color: darkGreen,
+                    color: mainColor,
                     display: "flex",
                     alignItems: "center",
                     gap: 8,
                   }}
                 >
-                  <FaUser
-                    color={iconColor}
-                    size={22}
-                    style={{ marginRight: 4 }}
-                  />{" "}
-                  Thông tin cá nhân
+                  <FaUser color={iconColor} size={24} style={{ marginRight: 4 }} /> Hồ Sơ Của Tôi
                 </div>
                 <div className="d-flex align-items-center mb-4">
-                  <Image
-                    src={form.avatar || "/default-avatar.png"}
-                    roundedCircle
-                    width={110}
-                    height={110}
-                    style={{
-                      objectFit: "cover",
-                      marginRight: 24,
-                      border: "2px solid #eee",
-                    }}
-                  />
+                  <div style={{ position: "relative", marginRight: 32 }}>
+                    <Image
+                      src={form.avatar || "/default-avatar.png"}
+                      roundedCircle
+                      width={120}
+                      height={120}
+                      style={{
+                        objectFit: "cover",
+                        border: `3px solid ${mainColor}`,
+                        background: "#f5f5f5",
+                      }}
+                    />
+                    {editMode && (
+                      <label
+                        htmlFor="avatar-upload"
+                        style={{
+                          position: "absolute",
+                          bottom: -10,
+                          left: "50%",
+                          transform: "translateX(-50%)",
+                          background: accentColor,
+                          color: "#fff",
+                          padding: "4px 12px",
+                          borderRadius: 16,
+                          cursor: "pointer",
+                          fontWeight: 600,
+                          fontSize: 14,
+                          boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+                        }}
+                      >
+                        Chọn Ảnh
+                        <input
+                          id="avatar-upload"
+                          type="file"
+                          name="avatar"
+                          accept="image/*"
+                          onChange={handleChange}
+                          style={{ display: "none" }}
+                        />
+                      </label>
+                    )}
+                  </div>
                   <div>
                     <h3
                       style={{
-                        color: darkGreen,
+                        color: mainColor,
                         fontWeight: 800,
                         marginBottom: 4,
                         display: "flex",
@@ -326,11 +372,6 @@ function ProfilePage() {
                         gap: 8,
                       }}
                     >
-                      <FaTractor
-                        color={iconColor}
-                        size={20}
-                        style={{ marginRight: 4 }}
-                      />{" "}
                       {form.full_name || form.username}
                     </h3>
                     <span
@@ -342,47 +383,16 @@ function ProfilePage() {
                         gap: 6,
                       }}
                     >
-                      <FaEnvelope
-                        color={iconColor}
-                        size={15}
-                        style={{ marginRight: 2 }}
-                      />{" "}
-                      {form.email}
+                      <FaEnvelope color={iconColor} size={15} style={{ marginRight: 2 }} /> {form.email}
                     </span>
                   </div>
                 </div>
                 <form onSubmit={handleSave}>
-                  <div
-                    style={{
-                      fontSize: 16,
-                      marginBottom: 10,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                    }}
-                  >
-                    <FaUser
-                      color={iconColor}
-                      size={16}
-                      style={{ marginRight: 2 }}
-                    />{" "}
-                    <b>Tên đăng nhập:</b> {form.username}
+                  <div style={{ fontSize: 16, marginBottom: 10, display: "flex", alignItems: "center", gap: 8 }}>
+                    <FaUser color={iconColor} size={16} style={{ marginRight: 2 }} /> <b>Tên đăng nhập:</b> {form.username}
                   </div>
-                  <div
-                    style={{
-                      fontSize: 16,
-                      marginBottom: 10,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                    }}
-                  >
-                    <FaUser
-                      color={iconColor}
-                      size={16}
-                      style={{ marginRight: 2 }}
-                    />{" "}
-                    <b>Họ tên:</b>{" "}
+                  <div style={{ fontSize: 16, marginBottom: 10, display: "flex", alignItems: "center", gap: 8 }}>
+                    <FaUser color={iconColor} size={16} style={{ marginRight: 2 }} /> <b>Họ tên:</b>{" "}
                     {editMode ? (
                       <input
                         name="full_name"
@@ -390,55 +400,18 @@ function ProfilePage() {
                         onChange={handleChange}
                         style={{
                           marginLeft: 8,
-                          padding: 4,
-                          border: "1px solid #eee",
-                          minWidth: 180,
+                          padding: 6,
+                          border: `1px solid ${mainColor}`,
+                          borderRadius: 8,
+                          minWidth: 200,
                         }}
                       />
                     ) : (
                       form.full_name || "---"
                     )}
                   </div>
-                  <div
-                    style={{
-                      fontSize: 16,
-                      marginBottom: 10,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                    }}
-                  >
-                    <FaUser
-                      color={iconColor}
-                      size={16}
-                      style={{ marginRight: 2 }}
-                    />{" "}
-                    <b>Ảnh đại diện:</b>{" "}
-                    {editMode ? (
-                      <input
-                        type="file"
-                        name="avatar"
-                        accept="image/*"
-                        onChange={handleChange}
-                        style={{ marginLeft: 8 }}
-                      />
-                    ) : null}
-                  </div>
-                  <div
-                    style={{
-                      fontSize: 16,
-                      marginBottom: 10,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                    }}
-                  >
-                    <FaEnvelope
-                      color={iconColor}
-                      size={16}
-                      style={{ marginRight: 2 }}
-                    />{" "}
-                    <b>Email:</b>{" "}
+                  <div style={{ fontSize: 16, marginBottom: 10, display: "flex", alignItems: "center", gap: 8 }}>
+                    <FaEnvelope color={iconColor} size={16} style={{ marginRight: 2 }} /> <b>Email:</b>{" "}
                     {editMode ? (
                       <input
                         name="email"
@@ -446,30 +419,18 @@ function ProfilePage() {
                         onChange={handleChange}
                         style={{
                           marginLeft: 8,
-                          padding: 4,
-                          border: "1px solid #eee",
-                          minWidth: 180,
+                          padding: 6,
+                          border: `1px solid ${mainColor}`,
+                          borderRadius: 8,
+                          minWidth: 200,
                         }}
                       />
                     ) : (
                       form.email
                     )}
                   </div>
-                  <div
-                    style={{
-                      fontSize: 16,
-                      marginBottom: 10,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                    }}
-                  >
-                    <FaPhone
-                      color={iconColor}
-                      size={16}
-                      style={{ marginRight: 2 }}
-                    />{" "}
-                    <b>Số điện thoại:</b>{" "}
+                  <div style={{ fontSize: 16, marginBottom: 10, display: "flex", alignItems: "center", gap: 8 }}>
+                    <FaPhone color={iconColor} size={16} style={{ marginRight: 2 }} /> <b>Số điện thoại:</b>{" "}
                     {editMode ? (
                       <input
                         name="phone"
@@ -477,77 +438,51 @@ function ProfilePage() {
                         onChange={handleChange}
                         style={{
                           marginLeft: 8,
-                          padding: 4,
-                          border: "1px solid #eee",
-                          minWidth: 180,
+                          padding: 6,
+                          border: `1px solid ${mainColor}`,
+                          borderRadius: 8,
+                          minWidth: 200,
                         }}
                       />
                     ) : (
                       form.phone || "---"
                     )}
                   </div>
-                  <div
-                    style={{
-                      fontSize: 16,
-                      marginBottom: 10,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                    }}
-                  >
-                    <FaMapMarkerAlt
-                      color={iconColor}
-                      size={16}
-                      style={{ marginRight: 2 }}
-                    />
-                    <b>Địa chỉ mặc định:</b>{" "}
-                    {addresses.find((addr) => addr.is_default)?.location ||
-                      "---"}
+                  <div style={{ fontSize: 16, marginBottom: 10, display: "flex", alignItems: "center", gap: 8 }}>
+                    <FaMapMarkerAlt color={iconColor} size={16} style={{ marginRight: 2 }} /> <b>Địa chỉ mặc định:</b>{" "}
+                    {addresses.find((addr) => addr.is_default)?.location || "---"}
                   </div>
-                  <div
-                    style={{
-                      fontSize: 16,
-                      marginBottom: 10,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                    }}
-                  >
-                    <FaSeedling
-                      color={iconColor}
-                      size={16}
-                      style={{ marginRight: 2 }}
-                    />{" "}
-                    <b>Ngày tạo tài khoản:</b>{" "}
-                    {form.created_at
-                      ? new Date(form.created_at).toLocaleDateString()
-                      : "---"}
+                  <div style={{ fontSize: 16, marginBottom: 10, display: "flex", alignItems: "center", gap: 8 }}>
+                    <FaSeedling color={iconColor} size={16} style={{ marginRight: 2 }} /> <b>Ngày tạo tài khoản:</b>{" "}
+                    {form.created_at ? new Date(form.created_at).toLocaleDateString() : "---"}
                   </div>
                   {error && (
-                    <div style={{ color: "red", marginBottom: 10 }}>
-                      {error}
-                    </div>
+                    <div style={{ color: "red", marginBottom: 10 }}>{error}</div>
                   )}
                   {editMode ? (
                     <>
                       <Button
                         type="submit"
-                        variant="success"
                         disabled={saving}
                         style={{
                           fontWeight: 700,
-                          minWidth: 120,
-                          borderRadius: 0,
+                          minWidth: 140,
+                          borderRadius: 8,
+                          background: mainColor,
+                          color: "#fff",
+                          border: "none",
                         }}
                       >
                         {saving ? "Đang lưu..." : "Lưu thay đổi"}
                       </Button>
                       <Button
-                        variant="outline-secondary"
                         style={{
                           marginLeft: 12,
                           fontWeight: 700,
-                          borderRadius: 0,
+                          borderRadius: 8,
+                          background: "#eee",
+                          color: mainColor,
+                          border: `1px solid ${mainColor}`,
                         }}
                         onClick={() => {
                           setEditMode(false);
@@ -559,11 +494,13 @@ function ProfilePage() {
                     </>
                   ) : (
                     <Button
-                      variant="outline-success"
                       style={{
                         marginTop: 18,
                         fontWeight: 700,
-                        borderRadius: 0,
+                        borderRadius: 8,
+                        background: mainColor,
+                        color: "#fff",
+                        border: "none",
                       }}
                       onClick={() => setEditMode(true)}
                     >
@@ -578,31 +515,38 @@ function ProfilePage() {
                 <div
                   style={{
                     fontWeight: 700,
-                    fontSize: 19,
+                    fontSize: 22,
                     marginBottom: 18,
-                    color: darkGreen,
+                    color: mainColor,
                   }}
                 >
-                  Địa chỉ của tôi
+                  Địa Chỉ Của Tôi
                 </div>
-
                 {addresses.map((addr) => (
                   <div
                     key={addr.id}
                     className="mb-3 p-3 border rounded"
                     style={{
                       background: addr.is_default ? "#e0ffe0" : "#f9f9f9",
+                      border: addr.is_default ? `2px solid ${mainColor}` : "1px solid #eee",
                     }}
                   >
-                    <div>
-                      <b>{addr.recipient_name}</b> - {addr.phone}
+                    <div style={{ fontWeight: 600, color: mainColor }}>
+                      <FaUser style={{ marginRight: 6 }} /> {addr.recipient_name} - {addr.phone}
                     </div>
-                    <div>{addr.location}</div>
+                    <div style={{ color: "#555" }}>{addr.location}</div>
                     <div>
                       {!addr.is_default && (
                         <Button
                           size="sm"
-                          variant="outline-success"
+                          style={{
+                            background: mainColor,
+                            color: "#fff",
+                            borderRadius: 8,
+                            fontWeight: 700,
+                            border: "none",
+                            marginTop: 6,
+                          }}
                           onClick={() => setDefaultAddress(addr.id)}
                         >
                           Chọn làm mặc định
@@ -611,14 +555,19 @@ function ProfilePage() {
                     </div>
                   </div>
                 ))}
-
                 <Button
-                  variant="success"
+                  style={{
+                    background: accentColor,
+                    color: "#fff",
+                    borderRadius: 8,
+                    fontWeight: 700,
+                    border: "none",
+                    marginTop: 8,
+                  }}
                   onClick={() => setShowAddressForm(!showAddressForm)}
                 >
                   {showAddressForm ? "Huỷ" : "Thêm địa chỉ mới"}
                 </Button>
-
                 {showAddressForm && (
                   <div className="mt-3">
                     <input
@@ -631,6 +580,7 @@ function ProfilePage() {
                           recipient_name: e.target.value,
                         })
                       }
+                      style={{ border: `1px solid ${mainColor}`, borderRadius: 8, padding: 8 }}
                     />
                     <input
                       className="form-control mb-2"
@@ -639,6 +589,7 @@ function ProfilePage() {
                       onChange={(e) =>
                         setNewAddress({ ...newAddress, phone: e.target.value })
                       }
+                      style={{ border: `1px solid ${mainColor}`, borderRadius: 8, padding: 8 }}
                     />
                     <textarea
                       className="form-control mb-2"
@@ -650,8 +601,19 @@ function ProfilePage() {
                           location: e.target.value,
                         })
                       }
+                      style={{ border: `1px solid ${mainColor}`, borderRadius: 8, padding: 8 }}
                     />
-                    <Button variant="primary" onClick={addAddress}>
+                    <Button
+                      style={{
+                        background: mainColor,
+                        color: "#fff",
+                        borderRadius: 8,
+                        fontWeight: 700,
+                        border: "none",
+                        marginTop: 4,
+                      }}
+                      onClick={addAddress}
+                    >
                       Lưu địa chỉ
                     </Button>
                   </div>
@@ -660,27 +622,27 @@ function ProfilePage() {
             )}
 
             {activeTab === "password" && (
-              <div style={{ fontSize: 16, marginBottom: 10 }}>
+              <div style={{ fontSize: 16, marginBottom: 10, color: mainColor }}>
                 Chức năng đổi mật khẩu sẽ được bổ sung.
               </div>
             )}
             {activeTab === "notification" && (
-              <div style={{ fontSize: 16, marginBottom: 10 }}>
+              <div style={{ fontSize: 16, marginBottom: 10, color: mainColor }}>
                 Chức năng cài đặt thông báo sẽ được bổ sung.
               </div>
             )}
             {activeTab === "voucher" && (
-              <div style={{ fontSize: 16, marginBottom: 10 }}>
+              <div style={{ fontSize: 16, marginBottom: 10, color: accentColor }}>
                 Chức năng voucher sẽ được bổ sung.
               </div>
             )}
             {activeTab === "point" && (
-              <div style={{ fontSize: 16, marginBottom: 10 }}>
+              <div style={{ fontSize: 16, marginBottom: 10, color: "#FFD700" }}>
                 Chức năng điểm thưởng sẽ được bổ sung.
               </div>
             )}
             {activeTab === "special" && (
-              <div style={{ fontSize: 16, marginBottom: 10 }}>
+              <div style={{ fontSize: 16, marginBottom: 10, color: "#D32F2F" }}>
                 Chức năng ưu đãi đặc biệt sẽ được bổ sung.
               </div>
             )}
