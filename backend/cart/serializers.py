@@ -5,22 +5,29 @@ from products.serializers import ProductSerializer  # nếu cần
 
 class CartItemSerializer(serializers.ModelSerializer):
     product = ProductSerializer(read_only=True)
-    product_id = serializers.PrimaryKeyRelatedField(queryset=Product.objects.all(), source='product', write_only=True, required=False, allow_null=True)
-    image = serializers.ImageField(read_only=True)
+    product_id = serializers.PrimaryKeyRelatedField(
+        queryset=Product.objects.all(), write_only=True
+    )
 
     class Meta:
         model = CartItem
-        fields = ['id', 'product', 'product_id', 'quantity', 'image']
-        read_only_fields = ['cart']
+        fields = ['id', 'product', 'product_id', 'quantity']
+        read_only_fields = ['id']
 
     def create(self, validated_data):
-        request = self.context.get('request')
-        if request and request.user.is_authenticated:
-            cart, _ = Cart.objects.get_or_create(user=request.user)
-            validated_data['cart'] = cart
-        if 'product' not in validated_data:
-            validated_data['product'] = Product.objects.first()  # auto-select first product
-        return super().create(validated_data)
+        cart = self.context.get('cart')
+        product = validated_data.pop('product_id')
+        quantity = validated_data.get('quantity', 1)
+
+        # Nếu sản phẩm đã tồn tại trong giỏ, cộng dồn số lượng
+        cart_item, created = CartItem.objects.get_or_create(cart=cart, product=product)
+        if not created:
+            cart_item.quantity += quantity
+            cart_item.save()
+            return cart_item
+
+        return CartItem.objects.create(cart=cart, product=product, quantity=quantity)
+
 
 class CartSerializer(serializers.ModelSerializer):
     items = CartItemSerializer(many=True, read_only=True)

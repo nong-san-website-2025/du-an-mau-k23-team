@@ -17,16 +17,15 @@ const Orders = () => {
   }, [location.search]);
 
   return (
-    <div style={{ maxWidth: 800, margin: '0 auto', background: '#fff', padding: 0, borderRadius: 12 }}>
-      <h2>Đơn hàng của tôi</h2>
-      <div style={{ display: 'flex', gap: 16, marginBottom: 24 }}>
+    <div style={{ maxWidth: 800, margin: '0 auto', background: '#fff', padding: 0, borderRadius: 0 }}> 
+      <div style={{ display: 'flex', gap: 0, marginBottom: 24 }}>
         <button
           onClick={() => setTab('pending')}
           style={{
             flex: 1,
             padding: 12,
-            borderRadius: 8,
-            border: tab === 'pending' ? '2px solid #27ae60' : '1px solid #ccc',
+            borderRadius: 0,
+            border: tab === 'pending' ? '2px solid #27ae60' : '1px solid #fff',
             background: tab === 'pending' ? '#eafaf1' : '#f8f8f8',
             color: tab === 'pending' ? '#27ae60' : '#333',
             fontWeight: tab === 'pending' ? 'bold' : 'normal',
@@ -42,8 +41,8 @@ const Orders = () => {
           style={{
             flex: 1,
             padding: 12,
-            borderRadius: 8,
-            border: tab === 'completed' ? '2px solid #27ae60' : '1px solid #ccc',
+            borderRadius: 0,
+            border: tab === 'completed' ? '2px solid #27ae60' : '1px solid #fff',
             background: tab === 'completed' ? '#eafaf1' : '#f8f8f8',
             color: tab === 'completed' ? '#27ae60' : '#333',
             fontWeight: tab === 'completed' ? 'bold' : 'normal',
@@ -59,8 +58,8 @@ const Orders = () => {
           style={{
             flex: 1,
             padding: 12,
-            borderRadius: 8,
-            border: tab === 'cancelled' ? '2px solid #e74c3c' : '1px solid #ccc',
+            borderRadius: 0,
+            border: tab === 'cancelled' ? '2px solid #e74c3c' : '1px solid #fff',
             background: tab === 'cancelled' ? '#faeaea' : '#f8f8f8',
             color: tab === 'cancelled' ? '#e74c3c' : '#333',
             fontWeight: tab === 'cancelled' ? 'bold' : 'normal',

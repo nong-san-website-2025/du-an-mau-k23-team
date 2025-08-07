@@ -143,11 +143,11 @@ function LoginForm() {
         setShowRegisterModal(false);
         // Tự động đăng nhập sau khi đăng ký
         const loginResult = await login(regUsername, regPassword);
-        if (loginResult.success) {
-          localStorage.setItem("token", loginResult.token);
+        if (loginResult.access) {
+          localStorage.setItem("token", loginResult.access);
           localStorage.setItem("role", loginResult.role);
           localStorage.setItem("username", regUsername);
-          window.location.replace("/"); // reload và chuyển về trang chủ
+          window.location.replace("/");
         } else {
           alert("Đăng ký thành công nhưng đăng nhập tự động thất bại!");
         }

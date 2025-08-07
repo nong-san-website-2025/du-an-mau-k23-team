@@ -1,83 +1,49 @@
-from rest_framework import viewsets, permissions, status
+from rest_framework import viewsets, permissions, status, serializers
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.permissions import AllowAny, IsAuthenticated
-
-
+from rest_framework.permissions import IsAuthenticated
 from .models import Cart, CartItem
 from .serializers import CartSerializer, CartItemSerializer
-from products.models import Product
 
 class CartViewSet(viewsets.ModelViewSet):
     serializer_class = CartSerializer
     permission_classes = [IsAuthenticated]
-    queryset = Cart.objects.none()  # ✅ Thêm dòng này!
+    queryset = Cart.objects.none()
 
     def get_queryset(self):
         return Cart.objects.filter(user=self.request.user)
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
-        print("POST DATA:", request.data) 
+        cart, _ = Cart.objects.get_or_create(user=self.request.user)
+        serializer.save(cart=cart)
 
 class CartItemViewSet(viewsets.ModelViewSet):
     serializer_class = CartItemSerializer
-    queryset = CartItem.objects.all()
-    
-    def get_permissions(self):
-        return [IsAuthenticated()]
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        if self.request.user.is_authenticated:
-            cart, _ = Cart.objects.get_or_create(user=self.request.user)
-            return CartItem.objects.filter(cart=cart)
-        return CartItem.objects.none()
-
-    def perform_create(self, serializer):
         cart, _ = Cart.objects.get_or_create(user=self.request.user)
-        product = self.request.data.get('product')
-        quantity = int(self.request.data.get('quantity', 1))
-        if product:
-            try:
-                item = CartItem.objects.get(cart=cart, product_id=product)
-                item.quantity += quantity
-                item.save()
-                return
-            except CartItem.DoesNotExist:
-                pass
-        serializer.save(cart=cart)
+        return CartItem.objects.filter(cart=cart)
 
-    @action(detail=False, methods=['post'])
-    def add(self, request):
-        cart, _ = Cart.objects.get_or_create(user=request.user)
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        cart, _ = Cart.objects.get_or_create(user=self.request.user)
+        context['cart'] = cart
+        return context
 
-        product_id = request.data.get('product')
-        quantity = int(request.data.get('quantity', 1))
-        image = request.FILES.get('image')
+    # ✅ THÊM VÀO: xử lý tạo để đảm bảo luôn trả Response
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
 
-        try:
-            product = Product.objects.get(id=product_id)
-        except Product.DoesNotExist:
-            return Response({'error': 'Sản phẩm không tồn tại'}, status=status.HTTP_400_BAD_REQUEST)
+        cart_item = serializer.save()  # Gọi create() trong serializer
+        status_code = status.HTTP_201_CREATED
 
-        # Kiểm tra xem sản phẩm đã có trong giỏ hàng chưa
-        try:
-            item = CartItem.objects.get(cart=cart, product=product)
-            # Nếu đã có, tăng số lượng
-            item.quantity += quantity
-            item.save()
-        except CartItem.DoesNotExist:
-            # Nếu chưa có, tạo mới
-            item = CartItem.objects.create(cart=cart, product=product, quantity=quantity)
-
-        if image:
-            item.image = image
-            item.save()
-
-        serializer = self.get_serializer(item)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-    @action(detail=True, methods=['put'])
+        # Nếu item đã tồn tại thì serializer sẽ trả lại item đã được cập nhật
+        # => xác định `created` bằng cách xem serializer trả về có gì đặc biệt không
+        return Response(CartItemSerializer(cart_item).data, status=status_code)
+    
+    @action(detail=True, methods=['put'], url_path='update-quantity')
     def update_quantity(self, request, pk=None):
         item = self.get_object()
         quantity = int(request.data.get('quantity', 1))
@@ -88,9 +54,3 @@ class CartItemViewSet(viewsets.ModelViewSet):
         item.save()
         serializer = self.get_serializer(item)
         return Response(serializer.data)
-
-    @action(detail=True, methods=['delete'])
-    def delete(self, request, pk=None):
-        item = self.get_object()
-        item.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)

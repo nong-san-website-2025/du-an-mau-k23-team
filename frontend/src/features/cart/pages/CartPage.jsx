@@ -77,25 +77,29 @@ function CartPage() {
   // Chọn tất cả
   const allChecked =
     cartItems.length > 0 && selectedItems.length === cartItems.length;
+
   const handleCheckAll = (e) => {
     if (e.target.checked) {
-      setSelectedItems(cartItems.map((item) => item.product));
+      setSelectedItems(cartItems.map((item) => item.id));
     } else {
       setSelectedItems([]);
     }
   };
+
   // Chọn từng item
-  const handleCheckItem = (productId) => {
+  const handleCheckItem = (itemId) => {
     setSelectedItems((prev) =>
-      prev.includes(productId)
-        ? prev.filter((i) => i !== productId)
-        : [...prev, productId]
+      prev.includes(itemId)
+        ? prev.filter((id) => id !== itemId)
+        : [...prev, itemId]
     );
   };
+
   // Tính tổng tiền và tổng số lượng các sản phẩm đã chọn
   const selectedItemsData = cartItems.filter((item) =>
-    selectedItems.includes(item.product)
+    selectedItems.includes(item.id)
   );
+
   const selectedTotal = selectedItemsData.reduce((sum, item) => {
     const price = Number(item.product?.price) || 0;
     const quantity = Number(item.quantity) || 0;
@@ -151,11 +155,11 @@ function CartPage() {
     <Container className="py-0">
       <h1
         style={{
-          fontWeight: 900,
-          fontSize: 32,
-          marginBottom: 32,
+          fontWeight: 400,
+          fontSize: 24,
+          marginBottom: 12,
           color: darkGreen,
-          letterSpacing: 0.5,
+          letterSpacing: 0,
         }}
       >
         Giỏ hàng của bạn
@@ -210,10 +214,15 @@ function CartPage() {
 
             {cartItems.map((item) => {
               // Lấy thông tin sản phẩm cho cả guest và user
-              const prod = typeof item.product === "object" ? item.product : item.product_data || {};
+              const prod =
+                typeof item.product === "object"
+                  ? item.product
+                  : item.product_data || {};
               return (
                 <div
-                  key={item.id || item.product || prod.id || JSON.stringify(item)}
+                  key={
+                    item.id || item.product || prod.id || JSON.stringify(item)
+                  }
                   style={{
                     display: "flex",
                     alignItems: "center",
@@ -239,7 +248,7 @@ function CartPage() {
                   {/* Checkbox chọn item */}
                   <input
                     type="checkbox"
-                    checked={selectedItems.includes(item.product)}
+                    checked={selectedItems.includes(item.id)}
                     onChange={() => handleCheckItem(item.id)}
                     style={{
                       width: 18,

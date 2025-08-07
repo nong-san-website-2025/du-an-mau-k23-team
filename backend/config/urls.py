@@ -4,8 +4,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
-    path('api/cart', include('cart.urls')),  # Đưa cart.urls lên thẳng /api/ để endpoint là /api/cartitems/
+    path('admin/', admin.site.urls), 
     path('api/users/', include('users.urls')),
     path('api/products/', include('products.urls')),
     path('api/reviews/', include('reviews.urls')),
