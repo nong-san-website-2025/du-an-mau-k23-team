@@ -19,19 +19,22 @@ import Layout from "./layouts/Layout"; // Sử dụng layout có Header/Footer
 import UserProductPage from './features/products/pages/UserProductPage';
 import ProductDetailPage from './features/products/pages/ProductDetailPage';
 import { CartProvider } from "./features/cart/services/CartContext";
+import { AuthProvider } from "./features/login_register/services/AuthContext";
 import UserProfile from "./features/login_register/pages/UserProfile";
 import LoginForm from "./features/login_register/pages/LoginForm";
 import ManageStore from "./features/login_register/pages/ManageStore";
 import CheckoutPage from './features/cart/pages/CheckoutPage';
 import Orders from './features/orders/pages/Orders';
 import PrivateRoute from "./features/login_register/components/PrivateRoute";
+import AdminPrivateRoute from "./features/login_register/components/AdminPrivateRoute";
 import ProfilePage from "./features/users/pages/ProfilePage";
 
 function App() {
   return (
     <BrowserRouter> {/* ✅ Đây là wrapper bên ngoài */}
-      <CartProvider> {/* ✅ Bên trong, có thể dùng useLocation */}
-        <Routes>
+      <AuthProvider> {/* ✅ Auth context wrapper */}
+        <CartProvider> {/* ✅ Bên trong, có thể dùng useLocation */}
+          <Routes>
           <Route path="/" element={<Layout />}>
             <Route index element={<HomePage />} />
             <Route element={<PrivateRoute />}>
@@ -45,24 +48,27 @@ function App() {
             <Route path="cart" element={<CartPage />} />
             <Route path="manage-products" element={<ManageStore />} />
           </Route>
-          {/* Admin routes with layout */}
-          <Route path="/admin" element={<AdminLayout />}>
-            <Route index element={<DashboardPage />} />
-            <Route path="users" element={<UsersPage />} />
-            <Route path="shops" element={<ShopsPage />} />
-            <Route path="products" element={<ProductsPage />} />
-            <Route path="orders" element={<OrdersPage />} />
-            <Route path="complaints" element={<ComplaintsPage />} />
-            <Route path="vouchers" element={<VouchersPage />} />
-            <Route path="wallet" element={<WalletPage />} />
-            <Route path="banners" element={<BannersPage />} />
-            <Route path="notifications" element={<NotificationsPage />} />
-            <Route path="staff" element={<StaffPage />} />
-            <Route path="reports" element={<ReportsPage />} />
+          {/* Admin routes with authentication protection */}
+          <Route element={<AdminPrivateRoute />}>
+            <Route path="/admin/" element={<AdminLayout />}>
+              <Route index element={<DashboardPage />} />
+              <Route path="users" element={<UsersPage />} />
+              <Route path="shops" element={<ShopsPage />} />
+              <Route path="products" element={<ProductsPage />} />
+              <Route path="orders" element={<OrdersPage />} />
+              <Route path="complaints" element={<ComplaintsPage />} />
+              <Route path="vouchers" element={<VouchersPage />} />
+              <Route path="wallet" element={<WalletPage />} />
+              <Route path="banners" element={<BannersPage />} />
+              <Route path="notifications" element={<NotificationsPage />} />
+              <Route path="staff" element={<StaffPage />} />
+              <Route path="reports" element={<ReportsPage />} />
+            </Route>
           </Route>
           <Route path="/login" element={<LoginForm />} />
-        </Routes>
-      </CartProvider>
+          </Routes>
+        </CartProvider>
+      </AuthProvider>
     </BrowserRouter>
   );
 }

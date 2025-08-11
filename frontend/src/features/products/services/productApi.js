@@ -30,6 +30,12 @@ export const productApi = {
     }
   },
 
+  // Helper lấy token
+  getAuthHeaders() {
+    const token = localStorage.getItem('token');
+    return token ? { 'Authorization': `Bearer ${token}` } : {};
+  },
+
   // Tạo sản phẩm mới
   async createProduct(productData) {
     try {
@@ -37,6 +43,7 @@ export const productApi = {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...productApi.getAuthHeaders(),
         },
         body: JSON.stringify(productData),
       });
@@ -57,6 +64,7 @@ export const productApi = {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          ...productApi.getAuthHeaders(),
         },
         body: JSON.stringify(productData),
       });
@@ -75,6 +83,9 @@ export const productApi = {
     try {
       const response = await fetch(`${API_BASE_URL}/products/${id}/`, {
         method: 'DELETE',
+        headers: {
+          ...productApi.getAuthHeaders(),
+        },
       });
       if (!response.ok) {
         throw new Error('Không thể xóa sản phẩm');

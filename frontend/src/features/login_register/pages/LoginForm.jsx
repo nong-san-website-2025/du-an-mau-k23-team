@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
-import { login } from "../services/auth";
+// Đã gộp login vào useAuth trong AuthContext
 import { useNavigate } from "react-router-dom";
 import "./../styles/LoginForm.css";
 import loginIcon from "../assets/login.png";
 import homeIcon from "../assets/homefarm.png";
 import logo from "../assets/imagelogo.png";
 import { useCart } from "../../cart/services/CartContext";
+import { useAuth } from "../services/AuthContext";
 
 function LoginForm() {
   const [username, setUsername] = useState("");
@@ -15,6 +16,7 @@ function LoginForm() {
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const [showForgotModal, setShowForgotModal] = useState(false);
   const { fetchCart } = useCart();
+  const { login: authLogin } = useAuth();
 
   // State cho Đăng ký
   const [regUsername, setRegUsername] = useState("");
@@ -69,16 +71,18 @@ function LoginForm() {
       });
       const data = await res.json();
       if (res.ok) {
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("role", data.role);
-        if (data.username) {
-          localStorage.setItem("username", data.username);
-        }
-        // alert('Đăng nhập Google thành công!');
+        // Cập nhật AuthContext
+        authLogin({
+          token: data.token,
+          role: data.role,
+          username: data.username
+        });
+        
+        // Chuyển hướng dựa trên role
         if (data.role === "seller") {
           navigate("/seller-dashboard");
         } else if (data.role === "admin") {
-          navigate("/admin-dashboard");
+          navigate("/admin");
         } else {
           navigate("/");
         }
@@ -92,15 +96,16 @@ function LoginForm() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const result = await login(username, password);
-
-    if (result.access) {
-      localStorage.setItem("token", result.access); // <-- access từ JWT
-      localStorage.setItem("role", result.role);
-      localStorage.setItem("username", username);
-
+    const result = await authLogin(username, password);
+    if (result.success) {
       await fetchCart();
-      window.location.replace("/"); // reload và chuyển về trang chủ
+      if (result.is_admin) {
+        navigate('/admin');
+      } else if (result.is_seller) {
+        navigate('/seller-dashboard');
+      } else {
+        navigate('/');
+      }
     } else {
       setError(result.error || "Đăng nhập thất bại");
     }
@@ -133,6 +138,7 @@ function LoginForm() {
           password: regPassword,
           password2: regPassword2,
           is_seller: isSeller,
+          is_admin: false // Đăng ký chỉ cho phép customer/seller, admin tạo qua backend
         }),
       });
 
@@ -142,12 +148,9 @@ function LoginForm() {
         alert("Đăng ký thành công!");
         setShowRegisterModal(false);
         // Tự động đăng nhập sau khi đăng ký
-        const loginResult = await login(regUsername, regPassword);
-        if (loginResult.access) {
-          localStorage.setItem("token", loginResult.access);
-          localStorage.setItem("role", loginResult.role);
-          localStorage.setItem("username", regUsername);
-          window.location.replace("/");
+        const loginResult = await authLogin(regUsername, regPassword);
+        if (loginResult.success) {
+          navigate("/");
         } else {
           alert("Đăng ký thành công nhưng đăng nhập tự động thất bại!");
         }
@@ -394,16 +397,16 @@ function LoginForm() {
                 onChange={(e) => setRegPassword2(e.target.value)}
               />
 
-              {/* <div style={{ margin: '10px 0' }}>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={isSeller}
-                  onChange={(e) => setIsSeller(e.target.checked)}
-                />
-                Seller
-              </label>
-            </div> */}
+              <div style={{ margin: '10px 0' }}>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={isSeller}
+                    onChange={(e) => setIsSeller(e.target.checked)}
+                  />
+                  Đăng ký tài khoản Seller
+                </label>
+              </div>
 
               <button onClick={handleRegister}>Đăng ký</button>
               <button

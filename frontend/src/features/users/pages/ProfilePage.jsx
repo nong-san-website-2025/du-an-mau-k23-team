@@ -47,7 +47,7 @@ function ProfilePage() {
 
   useEffect(() => {
     if (activeTab === "address") {
-      API.get("/addresses/").then((res) => setAddresses(res.data));
+      API.get("users/addresses/").then((res) => setAddresses(res.data));
     }
   }, [activeTab]);
 
@@ -87,14 +87,14 @@ function ProfilePage() {
       setShowAddressForm(false);
       setNewAddress({ recipient_name: "", phone: "", location: "" });
     } catch (err) {
-      console.error("Lỗi thêm địa chỉ:", err);
+      console.error("Lỗi thêm địa chỉ:", err);  
     }
   };
 
   const setDefaultAddress = async (id) => {
     try {
       await API.patch(`users/addresses/${id}/set_default/`);
-      const res = await API.get("/addresses/");
+      const res = await API.get("users/addresses/");
       setAddresses(res.data);
     } catch (err) {
       console.error("Lỗi đặt địa chỉ mặc định:", err);
@@ -299,7 +299,7 @@ function ProfilePage() {
         {/* Main profile content - 8/10 */}
         <Col md={9}>
           <Card
-            className="shadow border-0 p-4 mb-4"
+            className="shadow border-0 p-3 mb-4"
             style={{ background: "#fff" }}
           >
             {/* Tab content */}

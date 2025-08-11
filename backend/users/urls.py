@@ -1,5 +1,6 @@
 from django.urls import path
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+
 from .views import (
     RegisterView, UserProfileView, LoginView, ForgotPasswordView,
     VerifyCodeAPIView, ResetPasswordAPIView, GoogleLoginAPIView,
@@ -9,6 +10,8 @@ from rest_framework.routers import DefaultRouter
 
 router = DefaultRouter()
 router.register("addresses", AddressViewSet, basename="address")
+
+# Remove router from here, move to main urls.py for /api/addresses/
 
 urlpatterns = [
     path("register/", RegisterView.as_view(), name='register'),
@@ -23,6 +26,4 @@ urlpatterns = [
     path("chat/rooms/", get_chat_rooms, name="chat-rooms"),
     path("chat/history/<str:room_name>/", get_chat_history),
 ]
-
-# 👇 Đây là phần bạn thiếu
 urlpatterns += router.urls

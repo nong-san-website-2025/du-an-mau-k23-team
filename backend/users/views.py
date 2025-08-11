@@ -64,14 +64,13 @@ class GoogleLoginAPIView(APIView):
 
             # Phân quyền như ban đầu: admin đăng nhập Google sẽ vào trang quản lý
             # Bắt buộc tất cả tài khoản Google đều là seller
-            role = 'seller'
-
             return Response({
                 'refresh': str(refresh),
                 'access': str(refresh.access_token),
                 'email': email,
                 'username': user.username,
-                'role': role
+                'is_admin': user.is_admin,
+                'is_seller': user.is_seller
             })
 
         except ValueError:
@@ -122,20 +121,13 @@ class LoginView(APIView):
 
         refresh = RefreshToken.for_user(user)
 
-        # Gán role
-        if user.is_superuser:
-            role = 'admin'
-        elif getattr(user, 'is_seller', False):
-            role = 'seller'
-        else:
-            role = 'user'
-
         return Response({
             'refresh': str(refresh),
             'access': str(refresh.access_token),
             'username': user.username,
             'email': user.email,
-            'role': role
+            'is_admin': user.is_admin,
+            'is_seller': user.is_seller
         })
     
 class ForgotPasswordView(APIView):
@@ -288,7 +280,7 @@ def get_chat_history(request, room_name):
 
 class AddressViewSet(viewsets.ModelViewSet):
     serializer_class = AddressSerializer
-    permission_classes = [IsAuthenticated] 
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         return Address.objects.filter(user=self.request.user)
@@ -302,4 +294,4 @@ class AddressViewSet(viewsets.ModelViewSet):
         Address.objects.filter(user=request.user).update(is_default=False)
         address.is_default = True
         address.save()
-        return Response({"status": "Đã đặt địa chỉ mặc định"})  
+        return Response({"status": "Đã đặt địa chỉ mặc định"})

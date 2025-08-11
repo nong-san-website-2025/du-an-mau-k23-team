@@ -12,7 +12,6 @@ class CustomUser(AbstractUser):
     phone = models.CharField(max_length=20, blank=True, null=True)
     address = models.CharField(max_length=255, blank=True, null=True)
     last_activity = models.DateTimeField(blank=True, null=True)  # Lịch sử hoạt động
-    role = models.CharField(max_length=50, blank=True, null=True)  # Phân quyền
     note = models.TextField(blank=True, null=True)  # Ghi chú admin
     tags = models.CharField(max_length=255, blank=True, null=True)  # Tag: shop nổi bật, shop yêu thích
     reset_code = models.CharField(max_length=6, blank=True, null=True)
@@ -25,7 +24,7 @@ class Address(models.Model):
     recipient_name = models.CharField(max_length=100)
     phone = models.CharField(max_length=15)
     location = models.TextField()
-    is_default = models.BooleanField(default=False)
+    is_default = models.BooleanField(default=False, blank=True, null=True)  # Cho phép để trống
 
     def save(self, *args, **kwargs):
         if self.is_default:
