@@ -26,6 +26,7 @@ import CheckoutPage from './features/cart/pages/CheckoutPage';
 import Orders from './features/orders/pages/Orders';
 import PrivateRoute from "./features/login_register/components/PrivateRoute";
 import ProfilePage from "./features/users/pages/ProfilePage";
+import Abouts from "./pages/about/About.jsx"
 
 function App() {
   return (
@@ -34,11 +35,13 @@ function App() {
         <Routes>
           <Route path="/" element={<Layout />}>
             <Route index element={<HomePage />} />
+            <Route path="abouts/" element={<Abouts />} />
             <Route element={<PrivateRoute />}>
               <Route path="me" element={<UserProfile />} />
               <Route path="orders" element={<Orders />} />
               <Route path="checkout" element={<CheckoutPage />} />
               <Route path="profile/" element={<ProfilePage />} />
+              
             </Route>
             <Route path="productuser" element={<UserProductPage />} />
             <Route path="products/:id" element={<ProductDetailPage />} />

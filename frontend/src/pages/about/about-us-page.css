@@ -1,0 +1,58 @@
+/* About Us Page Custom Styles */
+
+.about-us-page {
+  font-family: 'Segoe UI', 'Roboto', Arial, sans-serif;
+}
+
+.about-hero-section {
+  min-height: 600px;
+  position: relative;
+  overflow: hidden;
+}
+
+.about-hero-overlay {
+  background: rgba(0,0,0,0.12);
+  z-index: 0;
+}
+
+.about-hero-title {
+  text-shadow: 0 4px 24px rgba(0,0,0,0.18);
+}
+
+.about-section-title {
+  letter-spacing: 1px;
+}
+
+.about-card {
+  border-radius: 1.5rem;
+  box-shadow: 0 2px 16px rgba(34,139,34,0.08);
+  transition: box-shadow 0.2s, transform 0.2s;
+  overflow: hidden;
+  background: #fff;
+}
+.about-card:hover {
+  box-shadow: 0 8px 32px rgba(34,139,34,0.16);
+  transform: translateY(-4px) scale(1.02);
+}
+
+.about-btn {
+  border-radius: 8px;
+  font-weight: 600;
+  padding: 0.75rem 2.5rem;
+  font-size: 1.1rem;
+  transition: background 0.2s, color 0.2s;
+}
+.about-btn:hover {
+  background: #218838;
+  color: #fff;
+}
+
+.about-section {
+  padding: 64px 0;
+}
+
+@media (max-width: 767px) {
+  .about-section {
+    padding: 32px 0;
+  }
+}
