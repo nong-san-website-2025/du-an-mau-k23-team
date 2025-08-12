@@ -20,6 +20,7 @@ import {
   FaSeedling,
 } from "react-icons/fa";
 import API from "../../login_register/services/api";
+import Rewards from "../../points/pages/Rewards";
 
 // Use your header/footer color scheme
 const mainColor = "#2E8B57"; // Example: header/footer green
@@ -638,7 +639,7 @@ function ProfilePage() {
             )}
             {activeTab === "point" && (
               <div style={{ fontSize: 16, marginBottom: 10, color: "#FFD700" }}>
-                Chức năng điểm thưởng sẽ được bổ sung.
+                <Rewards />
               </div>
             )}
             {activeTab === "special" && (

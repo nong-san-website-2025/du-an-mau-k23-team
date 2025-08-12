@@ -27,6 +27,11 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from .models import Address
 from .serializers import AddressSerializer
+from chat.models import Message
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from chat.serializers import MessageSerializer
 # --- GOOGLE LOGIN API ---
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -270,13 +275,7 @@ def get_chat_rooms(request):
     )
     room_names = [item["room"] for item in user_rooms]
     return Response(room_names)
-
-
-from chat.models import Message
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from chat.serializers import MessageSerializer  # cần serializer
+  # cần serializer
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -303,3 +302,25 @@ class AddressViewSet(viewsets.ModelViewSet):
         address.is_default = True
         address.save()
         return Response({"status": "Đã đặt địa chỉ mặc định"})  
+    
+# views.py
+class UserPointsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        serializer = UserSerializer(request.user)
+        return Response(serializer.data)
+
+    def post(self, request):
+        change = int(request.data.get("points", 0))
+        request.user.points += change
+        request.user.save()
+        return Response({"message": f"Đã cộng {change} điểm", "total_points": request.user.points})
+
+    def patch(self, request):
+        change = int(request.data.get("points", 0))
+        if request.user.points >= change:
+            request.user.points -= change
+            request.user.save()
+            return Response({"message": f"Đã trừ {change} điểm", "total_points": request.user.points})
+        return Response({"error": "Không đủ điểm"}, status=400)

@@ -16,9 +16,14 @@ class CustomUser(AbstractUser):
     note = models.TextField(blank=True, null=True)  # Ghi chú admin
     tags = models.CharField(max_length=255, blank=True, null=True)  # Tag: shop nổi bật, shop yêu thích
     reset_code = models.CharField(max_length=6, blank=True, null=True)
+    points = models.IntegerField(default=0)
 
     def __str__(self):
         return self.username
+
+
+    # Model lưu lịch sử tích điểm
+    
 
 class Address(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="addresses")
@@ -35,6 +40,15 @@ class Address(models.Model):
     def __str__(self):
         return f"{self.recipient_name} - {self.location}"
     
+class PointHistory(models.Model):
+        user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="point_histories")
+        order_id = models.CharField(max_length=50, blank=True, null=True)
+        points = models.IntegerField()
+        amount = models.IntegerField()  # số tiền đơn hàng
+        date = models.DateTimeField(auto_now_add=True)
+        action = models.CharField(max_length=255, default="Cộng điểm khi mua hàng")
 
+        def __str__(self):
+            return f"{self.user.username} - {self.points} điểm - {self.date}"
 
 
