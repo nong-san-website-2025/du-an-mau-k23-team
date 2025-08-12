@@ -15,7 +15,7 @@ import ReportsPage from "./features/admin/pages/ReportsPage";
 import AdminLayout from "./features/admin/components/AdminLayout";
 import CartPage from "./features/cart/pages/CartPage";
 import "./App.css";
-import Layout from "./layouts/Layout"; // Sử dụng layout có Header/Footer
+import Layout from "./layouts/layout"; // Sử dụng layout có Header/Footer
 import UserProductPage from './features/products/pages/UserProductPage';
 import ProductDetailPage from './features/products/pages/ProductDetailPage';
 import { CartProvider } from "./features/cart/services/CartContext";
@@ -26,6 +26,8 @@ import CheckoutPage from './features/cart/pages/CheckoutPage';
 import Orders from './features/orders/pages/Orders';
 import PrivateRoute from "./features/login_register/components/PrivateRoute";
 import ProfilePage from "./features/users/pages/ProfilePage";
+import StoreList from './features/stores/pages/StoreList';
+import StoreDetail from './features/stores/pages/StoreDetail';
 
 function App() {
   return (
@@ -44,6 +46,8 @@ function App() {
             <Route path="products/:id" element={<ProductDetailPage />} />
             <Route path="cart" element={<CartPage />} />
             <Route path="manage-products" element={<ManageStore />} />
+            <Route path="store" element={<StoreList />} />
+            <Route path="store/:id" element={<StoreDetail />} />
           </Route>
           {/* Admin routes with layout */}
           <Route path="/admin" element={<AdminLayout />}>

@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "users", "sellers", "products",
     "reviews", "cart", "orders", "payments","channels", "chat",  
+    "Store",
 ]
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'

@@ -1,8 +1,27 @@
 from rest_framework import serializers
 from .models import Seller
+from products.models import Product
 
-class SellerSerializer(serializers.ModelSerializer):
+class ProductMiniSerializer(serializers.ModelSerializer):
+    discounted_price = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Product
+        fields = ['id', 'name', 'price', 'discount', 'discounted_price', 'image', 'location', 'unit', 'stock']
+
+    def get_discounted_price(self, obj):
+        return obj.discounted_price
+
+class SellerListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Seller
-        fields = "__all__"
-        read_only_fields = ["user", "created_at"]
+        fields = ['id', 'store_name', 'image', 'address']
+
+class SellerDetailSerializer(serializers.ModelSerializer):
+    # reverse relation: product_set (default name) -> list sản phẩm của seller
+    products = ProductMiniSerializer(many=True, read_only=True, source='product_set')
+
+    class Meta:
+        model = Seller
+        fields = ['id', 'store_name', 'bio', 'address', 'phone', 'image', 'created_at', 'products']
+

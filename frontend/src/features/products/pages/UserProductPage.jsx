@@ -25,10 +25,9 @@ import {
   Spinner,
   Alert,
 } from "react-bootstrap";
-import { useLocation, useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { productApi } from "../services/productApi";
 
-// Icon mapping cho API data
 const iconMap = {
   Carrot: Carrot,
   Apple: Apple,
@@ -47,7 +46,6 @@ const UserProductPage = () => {
   const categoryParam = searchParams.get("category");
   const subcategoryParam = searchParams.get("subcategory");
 
-  // States
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [activeSub, setActiveSub] = useState("Tất cả");
@@ -55,61 +53,37 @@ const UserProductPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Load dữ liệu từ API khi component mount
   useEffect(() => {
     const loadData = async () => {
-      const start = Date.now();
       try {
         setLoading(true);
         setError(null);
-
-
         const categoriesData = await productApi.getCategoriesWithProducts();
         setCategories(categoriesData);
 
-        // Tự động chọn category theo URL param hoặc đầu tiên
         let categoryToSelect = categoriesData[0] || null;
         if (categoryParam) {
           const foundCategory = categoriesData.find(
             (cat) => cat.name === categoryParam || cat.key === categoryParam
           );
-          if (foundCategory) {
-            categoryToSelect = foundCategory;
-          }
+          if (foundCategory) categoryToSelect = foundCategory;
         }
         setSelectedCategory(categoryToSelect);
 
-        // Nếu có subcategory trên URL thì set luôn
         if (categoryToSelect && subcategoryParam) {
           setActiveSub(subcategoryParam);
         } else {
           setActiveSub("Tất cả");
         }
-
-        console.log("Đã tải được categories từ API:", categoriesData);
       } catch (err) {
         setError(err.message);
-        console.error("Lỗi khi tải dữ liệu:", err);
       } finally {
-        // Đảm bảo loading hiển thị ít nhất 1s
-        const elapsed = Date.now() - start;
-        if (elapsed < 1000) {
-          setTimeout(() => setLoading(false), 500 - elapsed);
-        } else {
-          setLoading(false);
-        }
+        setLoading(false);
       }
     };
 
     loadData();
   }, [categoryParam, subcategoryParam]);
-
-  // Cập nhật URL khi chọn category
-  const handleCategorySelect = (category) => {
-    setSelectedCategory(category);
-    setActiveSub("Tất cả");
-    setSearchParams({ category: category.key || category.name });
-  };
 
   const handleAddToCart = async (e, product) => {
     e.stopPropagation();
@@ -138,19 +112,13 @@ const UserProductPage = () => {
     );
   };
 
-  // Không hiển thị loading cho toàn bộ trang, chỉ cho phần sản phẩm
-
-  // Hiển thị lỗi
   if (error) {
     return (
       <div className="container py-4 text-center">
         <Alert variant="danger">
           <Alert.Heading>Lỗi khi tải dữ liệu</Alert.Heading>
           <p>{error}</p>
-          <Button
-            variant="outline-danger"
-            onClick={() => window.location.reload()}
-          >
+          <Button variant="outline-danger" onClick={() => window.location.reload()}>
             Thử lại
           </Button>
         </Alert>
@@ -158,7 +126,6 @@ const UserProductPage = () => {
     );
   }
 
-  // Không có dữ liệu
   if (!selectedCategory || categories.length === 0) {
     return (
       <div className="container py-4 text-center">
@@ -173,123 +140,108 @@ const UserProductPage = () => {
   const allProducts =
     selectedCategory?.subcategories?.flatMap((sub) => sub.products) || [];
 
-  // Lọc sản phẩm theo subcategory
   const filteredProducts =
     activeSub === "Tất cả"
       ? allProducts
       : selectedCategory?.subcategories?.find((s) => s.name === activeSub)
           ?.products || [];
 
-  // Lọc theo search
   const displayedProducts = filteredProducts.filter((p) =>
     p.name.toLowerCase().includes(search.toLowerCase())
   );
 
   return (
     <div className="container py-4">
-      {/* Header với thông tin API */}
-      <div className="mb-2 d-flex flex-wrap align-items-center justify-content-between" style={{ fontSize: 14 }}>
+      {/* Header */}
+      <div className="mb-3 d-flex flex-wrap align-items-center justify-content-between">
         <div className="d-flex align-items-center gap-2 flex-wrap">
-          <Badge bg="success" style={{ fontSize: 13, padding: "4px 8px" }}>
+          <Badge bg="success">
             Dữ liệu từ Backend API - {categories.length} danh mục
           </Badge>
-          <Badge bg="info" style={{ fontSize: 13, padding: "4px 8px" }}>{allProducts.length} sản phẩm</Badge>
+          <Badge bg="info">{allProducts.length} sản phẩm</Badge>
         </div>
-        <Form className="mb-0" style={{ maxWidth: 260, minWidth: 180 }}>
+        <Form style={{ maxWidth: 260 }}>
           <Form.Control
             type="search"
             placeholder="Tìm kiếm sản phẩm..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            style={{ fontSize: 14, padding: "6px 10px" }}
           />
         </Form>
       </div>
 
-      {/* Tabs danh mục cha */}
-      <div className="d-flex gap-1 mb-2 flex-wrap justify-content-between">
-        <div className="d-flex gap-1 flex-wrap">
-          {categories.map((cat) => {
-            const IconComponent = iconMap[cat.icon] || Package;
-            const isSelected = cat.id === selectedCategory?.id;
-            const totalProducts =
-              cat.subcategories?.reduce(
-                (sum, s) => sum + (s.products?.length || 0),
-                0
-              ) || 0;
+      {/* Tabs danh mục */}
+      <div className="d-flex flex-wrap gap-2 mb-3">
+        {categories.map((cat) => {
+          const IconComponent = iconMap[cat.icon] || Package;
+          const isSelected = cat.id === selectedCategory?.id;
+          const totalProducts =
+            cat.subcategories?.reduce(
+              (sum, s) => sum + (s.products?.length || 0),
+              0
+            ) || 0;
 
-            return (
-              <Button
-                key={cat.id}
-                variant={isSelected ? "dark" : "light"}
-                className={isSelected ? "fw-bold" : ""}
-                style={{ fontSize: 13, padding: "4px 10px", minWidth: 0 }}
-                onClick={() => {
-                  setSelectedCategory(cat);
-                  setActiveSub("Tất cả");
-                  setSearchParams({ category: cat.key || cat.name });
-                  window.scrollTo({ top: 0, behavior: "smooth" });
-                }}
-              >
-                <IconComponent size={14} className="me-1" />
-                {cat.name}{" "}
-                <Badge bg="secondary" className="ms-1" style={{ fontSize: 11, padding: "2px 6px" }}>
-                  {totalProducts}
-                </Badge>
-              </Button>
-            );
-          })}
-        </div>
-        <div className="d-flex gap-1 flex-wrap">
+          return (
+            <Button
+              key={cat.id}
+              variant={isSelected ? "dark" : "light"}
+              size="sm"
+              onClick={() => {
+                setSelectedCategory(cat);
+                setActiveSub("Tất cả");
+                setSearchParams({ category: cat.key || cat.name });
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+            >
+              <IconComponent size={14} className="me-1" />
+              {cat.name}
+              <Badge bg="secondary" className="ms-1">
+                {totalProducts}
+              </Badge>
+            </Button>
+          );
+        })}
+      </div>
+
+      {/* Subcategory Tabs */}
+      <div className="d-flex flex-wrap gap-2 mb-3">
+        <Button
+          variant={activeSub === "Tất cả" ? "dark" : "light"}
+          size="sm"
+          onClick={() => {
+            setActiveSub("Tất cả");
+            setSearchParams({
+              category: selectedCategory?.key || selectedCategory?.name,
+            });
+          }}
+        >
+          Tất cả
+          <Badge bg="secondary" className="ms-1">
+            {allProducts.length}
+          </Badge>
+        </Button>
+        {selectedCategory?.subcategories?.map((sub) => (
           <Button
-            variant={activeSub === "Tất cả" ? "dark" : "light"}
-            className={activeSub === "Tất cả" ? "fw-bold" : ""}
-            style={{ fontSize: 13, padding: "4px 10px", minWidth: 0 }}
+            key={sub.name}
+            variant={activeSub === sub.name ? "dark" : "light"}
+            size="sm"
             onClick={() => {
-              setActiveSub("Tất cả");
+              setActiveSub(sub.name);
               setSearchParams({
                 category: selectedCategory?.key || selectedCategory?.name,
+                subcategory: sub.name,
               });
             }}
           >
-            Tất cả{" "}
-            <Badge bg="secondary" className="ms-1" style={{ fontSize: 11, padding: "2px 6px" }}>
-              {allProducts.length}
+            {sub.name}
+            <Badge bg="secondary" className="ms-1">
+              {sub.products?.length || 0}
             </Badge>
           </Button>
-          {selectedCategory?.subcategories?.map((sub) => (
-            <Button
-              key={sub.name}
-              variant={activeSub === sub.name ? "dark" : "light"}
-              className={activeSub === sub.name ? "fw-bold" : ""}
-              style={{ fontSize: 13, padding: "4px 10px", minWidth: 0 }}
-              onClick={() => {
-                setActiveSub(sub.name);
-                setSearchParams({
-                  category: selectedCategory?.key || selectedCategory?.name,
-                  subcategory: sub.name,
-                });
-              }}
-            >
-              {sub.name}{" "}
-              <Badge bg="secondary" className="ms-1" style={{ fontSize: 11, padding: "2px 6px" }}>
-                {sub.products?.length || 0}
-              </Badge>
-            </Button>
-          ))}
-        </div>
+        ))}
       </div>
 
-      <div className="mb-2 text-muted"> 
-        Hiển thị {displayedProducts.length} sản phẩm trong danh mục "
-        <b>{selectedCategory?.name}</b>"
-        {activeSub !== "Tất cả" && ` - ${activeSub}`}
-        <Badge bg="success" className="ms-2">
-          API Data
-        </Badge>
-      </div>
-
-      {/* Danh sách sản phẩm */}
+      {/* Product list */}
       {loading ? (
         <div className="text-center py-5">
           <Spinner animation="border" />
@@ -306,13 +258,26 @@ const UserProductPage = () => {
           </p>
         </div>
       ) : (
-        <Row xs={1} sm={2} md={3} lg={4} className="g-4">
+        <Row xs={2} sm={3} md={4} lg={5} xl={6} className="g-3">
           {displayedProducts.map((product) => (
             <Col key={product.id}>
-              <Card className="h-100 shadow-sm border-0">
+              <Card
+                className="h-100 shadow-sm border-0"
+                style={{
+                  borderRadius: "12px",
+                  overflow: "hidden",
+                  transition: "transform 0.2s ease",
+                }}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.transform = "translateY(-5px)")
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.transform = "translateY(0)")
+                }
+              >
                 <div
                   className="position-relative"
-                  style={{ height: 210, cursor: "pointer" }}
+                  style={{ height: 160, cursor: "pointer", backgroundColor: "#f8f9fa" }}
                   onClick={() => navigate(`/products/${product.id}`)}
                 >
                   <Card.Img
@@ -325,52 +290,28 @@ const UserProductPage = () => {
                         : "https://via.placeholder.com/400x300?text=No+Image"
                     }
                     alt={product.name}
-                    style={{
-                      height: 180,
-                      objectFit: "cover",
-                      borderRadius: "1rem 1rem 0 0",
-                    }}
+                    style={{ height: "100%", objectFit: "cover" }}
                   />
-                  {(product.discount || 0) > 0 && (
-                    <Badge
-                      bg="danger"
-                      className="position-absolute top-0 start-0 m-2"
-                    >
-                      -{product.discount}%
-                    </Badge>
-                  )}
                   {product.is_organic && (
-                    <Badge
-                      bg="success"
-                      className="position-absolute top-0 start-50 translate-middle-x m-2"
-                    >
+                    <Badge bg="success" className="position-absolute top-0 start-0 m-2">
                       Hữu cơ
                     </Badge>
                   )}
                   {product.is_best_seller && (
-                    <Badge
-                      bg="warning"
-                      className="position-absolute top-0 end-0 m-2 text-white"
-                    >
+                    <Badge bg="warning" text="dark" className="position-absolute top-0 start-50 translate-middle-x m-2">
                       Bán chạy
                     </Badge>
                   )}
                   {product.is_new && (
-                    <Badge
-                      bg="info"
-                      className="position-absolute bottom-0 start-0 m-2"
-                    >
+                    <Badge bg="info" className="position-absolute top-0 end-0 m-2">
                       Mới
                     </Badge>
                   )}
                 </div>
                 <Card.Body className="d-flex flex-column">
-                  <Card.Title className="fs-6 mb-2">{product.name}</Card.Title>
-                  <Card.Text className="text-muted small mb-2 flex-grow-1">
-                    {product.description}
-                  </Card.Text>
-
-                  {/* Rating */}
+                  <Card.Title className="fs-6 fw-semibold text-truncate" title={product.name}>
+                    {product.name}
+                  </Card.Title>
                   <div className="d-flex align-items-center mb-2">
                     {[...Array(5)].map((_, i) => (
                       <span key={i}>
@@ -382,47 +323,13 @@ const UserProductPage = () => {
                       </span>
                     ))}
                     <small className="text-muted ms-1">
-                      ({product.review_count || product.reviewCount || 0})
+                      ({product.review_count || 0})
                     </small>
                   </div>
-
-                  {/* Brand và Location */}
-                  <div className="mb-2">
-                    {product.brand && (
-                      <Badge bg="light" text="dark" className="me-1">
-                        {product.brand}
-                      </Badge>
-                    )}
-                    {product.location && (
-                      <Badge bg="light" text="dark">
-                        📍 {product.location}
-                      </Badge>
-                    )}
-                  </div>
-
-                  {/* Price */}
-                  <div className="d-flex justify-content-between align-items-center">
-                    <div>
-                      {(product.discount || 0) > 0 ? (
-                        <>
-                          <span className="fw-bold text-danger">
-                            {(
-                              product.price *
-                              (1 - (product.discount || 0) / 100)
-                            ).toLocaleString("vi-VN")}
-                            đ
-                          </span>
-                          <small className="text-muted text-decoration-line-through ms-1">
-                            {product.price?.toLocaleString("vi-VN")}đ
-                          </small>
-                        </>
-                      ) : (
-                        <span className="fw-bold">
-                          {product.price?.toLocaleString("vi-VN")}đ
-                        </span>
-                      )}
-                      <small className="text-muted">/{product.unit}</small>
-                    </div>
+                  <div className="d-flex justify-content-between align-items-center mt-auto">
+                    <span className="fw-bold text-danger">
+                      {product.price?.toLocaleString("vi-VN")}đ
+                    </span>
                     <Button
                       variant="outline-success"
                       size="sm"
