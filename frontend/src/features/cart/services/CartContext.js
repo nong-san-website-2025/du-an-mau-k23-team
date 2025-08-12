@@ -81,29 +81,32 @@ export const CartProvider = ({ children }) => {
   ) => {
     if (!productId || quantity <= 0) return;
 
-    setLoading(true);
     const token = localStorage.getItem("token");
 
     if (token) {
       try {
-        console.log("🟡 Đang gửi:", { product_id: productId, quantity });
-        await API.post("cartitems/", {
+        const res = await API.post("cartitems/", {
           product_id: productId,
           quantity,
         });
-        await fetchCart();
-        if (onSuccess) onSuccess();
+
+        // Nếu status thành công (201 hoặc 200) thì mới fetch giỏ và toast success
+        if (res.status === 200 || res.status === 201) {
+          await fetchCart();
+          if (onSuccess) onSuccess();
+        } else {
+          toast.error("Không thể thêm vào giỏ hàng");
+        }
       } catch (err) {
-        console.error("❌ addToCart error:", err.response?.data || err.message); // ❗ CHỈNH Ở ĐÂY
+        console.error("❌ addToCart error:", err.response?.data || err.message);
+        toast.error(
+          "Lỗi: " +
+            (err.response?.data?.detail || "Không thể thêm vào giỏ hàng")
+        );
         if (onError) onError(err);
-        else
-          toast.error(
-            "Lỗi: " +
-              (err.response?.data?.detail || "Không thể thêm vào giỏ hàng")
-          );
       }
     } else {
-      // Guest
+      // Guest cart
       let items = getGuestCart();
       const idx = items.findIndex((i) => i.product === productId);
       if (idx >= 0) {
@@ -122,9 +125,9 @@ export const CartProvider = ({ children }) => {
       }
       saveGuestCart(items);
       setCartItems(items);
+      toast.success("Đã thêm vào giỏ hàng");
       if (onSuccess) onSuccess();
     }
-    setLoading(false);
   };
 
   // --- Update quantity ---
@@ -151,21 +154,23 @@ export const CartProvider = ({ children }) => {
 
   // --- Remove from cart ---
   const removeFromCart = async (itemId) => {
-    setLoading(true);
     if (isAuthenticated()) {
+      // Cập nhật UI ngay lập tức
+      setCartItems((prev) => prev.filter((item) => item.id !== itemId));
+
       try {
-        await API.delete(`cartitems/${itemId}/delete/`);
-        await fetchCart();
+        await API.delete(`cartitems/${itemId}/`);
       } catch (err) {
         console.error("❌ removeFromCart error:", err);
+        toast.error("Không thể xóa sản phẩm. Vui lòng thử lại.");
+        // Nếu thất bại, fetch lại giỏ để đồng bộ
+        fetchCart();
       }
     } else {
-      let items = getGuestCart();
-      items = items.filter((i) => i.product !== itemId);
+      let items = getGuestCart().filter((i) => i.product !== itemId);
       saveGuestCart(items);
       setCartItems(items);
     }
-    setLoading(false);
   };
 
   // --- Clear cart ---
