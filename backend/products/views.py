@@ -2,6 +2,7 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.db.models import Q
+from rest_framework.parsers import MultiPartParser, FormParser
 from .models import Product, Category, Subcategory
 from .serializers import ProductSerializer, ProductListSerializer, CategorySerializer, SubcategorySerializer
 
@@ -55,11 +56,67 @@ class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
 
 class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.select_related('subcategory__category', 'seller').all()
+    parser_classes = [MultiPartParser, FormParser]
     
     def get_serializer_class(self):
         if self.action == 'list':
             return ProductListSerializer
         return ProductSerializer
+    
+    def create(self, request, *args, **kwargs):
+        
+        print("request.FILES:", request.FILES)
+        if 'image' in request.FILES:
+            print("Image file received:", request.FILES['image'].name)
+        """Override create method to handle FormData properly"""
+        print("=== CREATE PRODUCT DEBUG ===")
+        print("Received data:", request.data)
+        print("Received files:", request.FILES)
+        print("Files keys:", list(request.FILES.keys()) if request.FILES else "No files")
+        
+        if 'image' in request.FILES:
+            image_file = request.FILES['image']
+            print(f"Image file details: name={image_file.name}, size={image_file.size}, content_type={image_file.content_type}")
+        else:
+            print("No image file in request.FILES")
+        
+        try:
+            # Đảm bảo request có context
+            serializer = self.get_serializer(data=request.data, context={'request': request})
+            
+            if not serializer.is_valid():
+                print("Validation errors:", serializer.errors)
+                return Response(
+                    {'error': 'Validation failed', 'details': serializer.errors}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            print("Validated data:", serializer.validated_data)
+            print("Image in validated_data:", 'image' in serializer.validated_data)
+            if 'image' in serializer.validated_data:
+                print(f"Image value: {serializer.validated_data['image']}")
+            
+            self.perform_create(serializer)
+            headers = self.get_success_headers(serializer.data)
+            
+            # Log sản phẩm đã tạo
+            product = serializer.instance
+            print(f"Product created: id={product.id}, name={product.name}")
+            print(f"Product image field: {product.image}")
+            if product.image:
+                print(f"Image path: {product.image.path}")
+                print(f"Image URL: {product.image.url}")
+            
+            return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+            
+        except Exception as e:
+            print(f"Error in create method: {e}")
+            import traceback
+            traceback.print_exc()
+            return Response(
+                {'error': 'Internal server error', 'message': str(e)}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
     
     def get_queryset(self):
         queryset = super().get_queryset()

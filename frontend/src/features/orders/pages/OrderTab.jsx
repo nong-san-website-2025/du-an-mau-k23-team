@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import API from "../../login_register/services/api";
+import { api } from "../../login_register/services/AuthContext";
 
 const statusMap = {
   pending: "Chờ thanh toán",
@@ -15,7 +15,7 @@ const OrderTab = ({ status }) => {
   useEffect(() => {
     setLoading(true);
     setError(null);
-    API.get(`orders/?status=${status}`)
+    api.get(`orders/?status=${status}`)
       .then((res) => {
         const sortedOrders = res.data.sort(
           (a, b) => new Date(b.created_at) - new Date(a.created_at)

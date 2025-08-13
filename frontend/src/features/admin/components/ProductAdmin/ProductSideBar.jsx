@@ -13,9 +13,11 @@ export default function ProductSideBar({
 
   const handleCreateClick = (e) => {
     e.preventDefault();
-    setShowModal(true);
+    // Trì hoãn 500ms (0.5 giây)
+    setTimeout(() => {
+      setShowModal(true);
+    }, 500);
   };
-
   const handleModalClose = () => {
     setShowModal(false);
     setNewSubName("");
@@ -25,13 +27,13 @@ export default function ProductSideBar({
 
   const handleModalSubmit = async (e) => {
     e.preventDefault();
-    
+
     // Validation
     if (!newSubName.trim()) {
       alert("Vui lòng nhập tên loại hàng");
       return;
     }
-    
+
     try {
       const categoryData = {
         name: newSubName.trim(),
@@ -40,17 +42,22 @@ export default function ProductSideBar({
 
       console.log("Creating category:", categoryData);
 
-      const response = await fetch("http://localhost:8000/api/products/categories/", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(categoryData),
-      });
+      const response = await fetch(
+        "http://localhost:8000/api/products/categories/",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(categoryData),
+        }
+      );
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+        throw new Error(
+          errorData.message || `HTTP error! status: ${response.status}`
+        );
       }
 
       const result = await response.json();
@@ -67,7 +74,6 @@ export default function ProductSideBar({
       }
 
       alert("Tạo loại hàng mới thành công!");
-      
     } catch (error) {
       console.error("Error creating category:", error);
       alert(`Có lỗi xảy ra khi tạo loại hàng mới: ${error.message}`);
@@ -132,7 +138,7 @@ export default function ProductSideBar({
                       className="form-label"
                       style={{ fontSize: "14px", paddingRight: "550px" }}
                     >
-                      Tên loại hàng 
+                      Tên loại hàng
                     </label>
                     <input
                       type="text"
@@ -155,7 +161,9 @@ export default function ProductSideBar({
                       value={String(parentCat)}
                       onChange={(e) => setParentCat(String(e.target.value))}
                     >
-                      <option value="">-- Không có (tạo loại hàng gốc) --</option>
+                      <option value="">
+                        -- Không có (tạo loại hàng gốc) --
+                      </option>
                       {categories
                         .filter((cat) => cat.value !== "all") // Loại bỏ option "Tất cả loại hàng"
                         .map((cat) => (

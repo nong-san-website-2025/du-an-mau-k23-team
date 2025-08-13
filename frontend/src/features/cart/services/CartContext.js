@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
-import API from "../../login_register/services/api";
+import { api } from "../../login_register/services/AuthContext";
 import { toast } from "react-toastify";
 import { useLocation } from "react-router-dom";
 
@@ -45,7 +45,7 @@ export const CartProvider = ({ children }) => {
       (async () => {
         for (const item of guestCart) {
           try {
-            await API.post("cartitems/", {
+            await api.post("cartitems/", {
               product_id: item.product_data?.id || item.product,
               quantity: item.quantity,
             });
@@ -63,7 +63,7 @@ export const CartProvider = ({ children }) => {
   const fetchCart = async () => {
     setLoading(true);
     try {
-      const res = await API.get("cartitems/");
+      const res = await api.get("cartitems/");
       setCartItems(res.data);
     } catch {
       setCartItems([]);
@@ -85,7 +85,7 @@ export const CartProvider = ({ children }) => {
 
     if (token) {
       try {
-        const res = await API.post("cartitems/", {
+        const res = await api.post("cartitems/", {
           product_id: productId,
           quantity,
         });
@@ -135,7 +135,7 @@ export const CartProvider = ({ children }) => {
     setLoading(true);
     if (isAuthenticated()) {
       try {
-        await API.put(`cartitems/${itemId}/update-quantity/`, { quantity });
+        await api.put(`cartitems/${itemId}/update-quantity/`, { quantity });
         await fetchCart();
       } catch (err) {
         console.error("❌ updateQuantity error:", err);
@@ -159,7 +159,7 @@ export const CartProvider = ({ children }) => {
       setCartItems((prev) => prev.filter((item) => item.id !== itemId));
 
       try {
-        await API.delete(`cartitems/${itemId}/`);
+        await api.delete(`cartitems/${itemId}/`);
       } catch (err) {
         console.error("❌ removeFromCart error:", err);
         toast.error("Không thể xóa sản phẩm. Vui lòng thử lại.");
@@ -179,7 +179,7 @@ export const CartProvider = ({ children }) => {
     if (isAuthenticated()) {
       try {
         for (const item of cartItems) {
-          await API.delete(`cartitems/${item.id}/delete/`);
+          await api.delete(`cartitems/${item.id}/delete/`);
         }
         await fetchCart();
       } catch (err) {
