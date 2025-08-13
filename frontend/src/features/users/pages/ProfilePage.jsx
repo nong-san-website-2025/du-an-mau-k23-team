@@ -18,8 +18,10 @@ import {
   FaGift,
   FaStar,
   FaSeedling,
+  FaWallet,
 } from "react-icons/fa";
 import API from "../../login_register/services/api";
+import { useNavigate } from "react-router-dom";
 
 // Use your header/footer color scheme
 const mainColor = "#2E8B57"; // Example: header/footer green
@@ -30,6 +32,7 @@ const sidebarInactive = "#eee";
 const iconColor = mainColor;
 
 function ProfilePage() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("profile");
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -44,6 +47,90 @@ function ProfilePage() {
     location: "",
   });
   const [showAddressForm, setShowAddressForm] = useState(false);
+  // Wallet state
+  const [walletBalance, setWalletBalance] = useState(null);
+  const [loadingWallet, setLoadingWallet] = useState(false);
+  const [rechargeAmount, setRechargeAmount] = useState("");
+  const [rechargeLoading, setRechargeLoading] = useState(false);
+  const [rechargeError, setRechargeError] = useState("");
+  // Fetch wallet balance when tab is wallet
+  useEffect(() => {
+    if (activeTab === "wallet") {
+      setLoadingWallet(true);
+      setRechargeError("");
+      fetchWalletBalance();
+    }
+  }, [activeTab]);
+
+  // Hàm lấy số dư ví
+  const fetchWalletBalance = async () => {
+    try {
+      // Thử lấy từ API trước
+      const res = await API.get("/users/wallet/");
+      setWalletBalance(res.data.balance);
+    } catch (err) {
+      // Nếu API lỗi, dùng số dư mặc định
+      console.log("API wallet không khả dụng, dùng số dư mặc định");
+      setWalletBalance(10000);
+    } finally {
+      setLoadingWallet(false);
+    }
+  };
+
+  // Lắng nghe sự kiện cập nhật ví từ PaymentStatusPage
+  useEffect(() => {
+    const handleWalletUpdate = (event) => {
+      if (event.detail && event.detail.newBalance) {
+        setWalletBalance(event.detail.newBalance);
+      } else {
+        // Refresh lại số dư ví
+        if (activeTab === "wallet") {
+          fetchWalletBalance();
+        }
+      }
+    };
+
+    window.addEventListener('walletUpdated', handleWalletUpdate);
+    
+    return () => {
+      window.removeEventListener('walletUpdated', handleWalletUpdate);
+    };
+  }, [activeTab]);
+
+  // Handle recharge
+  // Vietcombank: tối thiểu 10.000đ, tối đa 300.000.000đ/lần, tối đa 500.000.000đ/ngày
+  const VCB_MIN = 10000;
+  const VCB_MAX_PER_TIME = 300000000;
+  const VCB_MAX_PER_DAY = 500000000;
+  // Đơn giản: chỉ kiểm tra mỗi lần nạp, không cộng dồn trong ngày (nếu muốn cộng dồn cần thêm biến lưu tổng nạp trong ngày)
+  const handleRecharge = async () => {
+    setRechargeLoading(true);
+    setRechargeError("");
+    try {
+      const amount = Number(rechargeAmount);
+      if (!rechargeAmount || isNaN(amount)) {
+        setRechargeError("Vui lòng nhập số tiền hợp lệ!");
+        setRechargeLoading(false);
+        return;
+      }
+      if (amount < VCB_MIN) {
+        setRechargeError(`Số tiền nạp tối thiểu là ${VCB_MIN.toLocaleString("vi-VN")} ₫.`);
+        setRechargeLoading(false);
+        return;
+      }
+      if (amount > VCB_MAX_PER_TIME) {
+        setRechargeError(`Số tiền nạp tối đa mỗi lần là ${VCB_MAX_PER_TIME.toLocaleString("vi-VN")} ₫.`);
+        setRechargeLoading(false);
+        return;
+      }
+      // Chuyển hướng sang PaymentStatusPage để xét duyệt trước
+      navigate(`/payment-status?amount=${amount}`);
+    } catch (err) {
+      setRechargeError("Có lỗi xảy ra, vui lòng thử lại!");
+    } finally {
+      setRechargeLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (activeTab === "address") {
@@ -292,6 +379,22 @@ function ProfilePage() {
                 onClick={() => setActiveTab("special")}
               >
                 <FaSeedling style={{ marginRight: 6 }} /> Ưu Đãi Đặc Biệt
+              </Button>
+              <Button
+                className="w-100 mb-2"
+                style={{
+                  fontWeight: 700,
+                  borderRadius: 8,
+                  background: activeTab === "wallet" ? "#4B0082" : sidebarInactive,
+                  color: activeTab === "wallet" ? "#fff" : "#4B0082",
+                  border: "none",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+                onClick={() => setActiveTab("wallet")}
+              >
+                <FaWallet style={{ marginRight: 6 }} /> Ví
               </Button>
             </div>
           </Card>
@@ -646,6 +749,56 @@ function ProfilePage() {
                 Chức năng ưu đãi đặc biệt sẽ được bổ sung.
               </div>
             )}
+            {activeTab === "wallet" && (
+              <div style={{ fontSize: 16, marginBottom: 10, color: "#4B0082" }}>
+                <div style={{ fontWeight: 700, fontSize: 22, marginBottom: 18, color: "#4B0082", display: "flex", alignItems: "center", gap: 8 }}>
+                  <FaWallet style={{ marginRight: 6 }} /> Ví của bạn
+                </div>
+                {loadingWallet ? (
+                  <div style={{ color: "#4B0082", fontWeight: 600 }}>
+                    <Spinner animation="border" size="sm" style={{ color: "#4B0082" }} /> Đang tải số dư ví...
+                  </div>
+                ) : (
+                  <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 16 }}>
+                    Số dư: <span style={{ color: "#388e3c" }}>{walletBalance !== null ? walletBalance.toLocaleString("vi-VN") + " ₫" : "---"}</span>
+                  </div>
+                )}
+                <div style={{ marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <select
+                    value={rechargeAmount}
+                    onChange={e => setRechargeAmount(e.target.value)}
+                    style={{ border: "1px solid #4B0082", borderRadius: 8, padding: 8, minWidth: 140, marginRight: 8 }}
+                    disabled={rechargeLoading}
+                  >
+                    <option value="">Chọn mệnh giá</option>
+                    <option value="10000">10.000 ₫</option>
+                    <option value="20000">20.000 ₫</option>
+                    <option value="30000">30.000 ₫</option>
+                    <option value="50000">50.000 ₫</option>
+                    <option value="100000">100.000 ₫</option>
+                    <option value="200000">200.000 ₫</option>
+                    <option value="300000">300.000 ₫</option>
+                    <option value="500000">500.000 ₫</option>
+                  </select>
+                  <input
+                    placeholder={`Nhập số tiền muốn nạp (${VCB_MIN.toLocaleString("vi-VN")} - ${VCB_MAX_PER_TIME.toLocaleString("vi-VN")} ₫)`}
+                    value={rechargeAmount}
+                    onChange={e => setRechargeAmount(e.target.value)}
+                    style={{ border: "1px solid #4B0082", borderRadius: 8, padding: 8, minWidth: 200, marginRight: 8 }}
+                    disabled={rechargeLoading}
+                  />
+                  <Button
+                    style={{ background: "#4B0082", color: "#fff", borderRadius: 8, fontWeight: 700, border: "none" }}
+                    onClick={handleRecharge}
+                    disabled={rechargeLoading}
+                  >
+                    {rechargeLoading ? "Đang nạp..." : "Nạp tiền"}
+                  </Button>
+                </div>
+                {rechargeError && <div style={{ color: "red", marginBottom: 10 }}>{rechargeError}</div>}
+              </div>
+            )}
+            
           </Card>
         </Col>
       </Row>

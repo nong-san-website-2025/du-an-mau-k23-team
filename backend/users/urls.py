@@ -3,7 +3,8 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from .views import (
     RegisterView, UserProfileView, LoginView, ForgotPasswordView,
     VerifyCodeAPIView, ResetPasswordAPIView, GoogleLoginAPIView,
-    get_chat_rooms, get_chat_history, AddressViewSet
+    get_chat_rooms, get_chat_history, AddressViewSet, WalletBalanceView,
+    VerifyAdminView
 )
 from rest_framework.routers import DefaultRouter
 
@@ -22,6 +23,8 @@ urlpatterns = [
     path("google-login/", GoogleLoginAPIView.as_view(), name='google-login'),
     path("chat/rooms/", get_chat_rooms, name="chat-rooms"),
     path("chat/history/<str:room_name>/", get_chat_history),
+    path("wallet/", WalletBalanceView.as_view(), name="wallet-balance"),
+    path("verify-admin/", VerifyAdminView.as_view(), name="verify-admin"),
 ]
 
 # 👇 Đây là phần bạn thiếu

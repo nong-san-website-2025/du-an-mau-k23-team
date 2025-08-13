@@ -26,6 +26,8 @@ import CheckoutPage from './features/cart/pages/CheckoutPage';
 import Orders from './features/orders/pages/Orders';
 import PrivateRoute from "./features/login_register/components/PrivateRoute";
 import ProfilePage from "./features/users/pages/ProfilePage";
+import PaymentStatusPage from "./features/users/pages/PaymentStatusPage";
+import UserWalletPage from "./features/users/pages/UserWalletPage";
 
 function App() {
   return (
@@ -39,11 +41,14 @@ function App() {
               <Route path="orders" element={<Orders />} />
               <Route path="checkout" element={<CheckoutPage />} />
               <Route path="profile/" element={<ProfilePage />} />
+              <Route path="wallet" element={<UserWalletPage />} />
             </Route>
             <Route path="productuser" element={<UserProductPage />} />
             <Route path="products/:id" element={<ProductDetailPage />} />
             <Route path="cart" element={<CartPage />} />
             <Route path="manage-products" element={<ManageStore />} />
+            {/* Route trạng thái thanh toán VNPAY */}
+            <Route path="payment-status" element={<PaymentStatusPage />} />
           </Route>
           {/* Admin routes with layout */}
           <Route path="/admin" element={<AdminLayout />}>

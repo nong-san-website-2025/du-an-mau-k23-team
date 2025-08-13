@@ -2,6 +2,7 @@ import React from "react";
 import { Outlet, NavLink } from "react-router-dom";
 import { Bell, User, Settings, Globe } from "lucide-react";
 import AdminHeader from "./AdminHeader";
+import AdminRoute from "./AdminRoute";
 
 const adminMenu = [
   { to: "/admin/", label: "Tổng quan" },
@@ -16,7 +17,8 @@ const adminMenu = [
 
 export default function AdminLayout() {
   return (
-    <div className="bg-light" style={{ minHeight: "100vh" }}>
+    <AdminRoute>
+      <div className="bg-light" style={{ minHeight: "100vh" }}>
       {/* Top utility bar */}
       <div className="w-100" style={{ background: '#fff', borderBottom: '1px solid #e5e7eb', minHeight: 48, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 32px', zIndex: 1050 }}>
         <div className="d-flex align-items-center">
@@ -85,6 +87,7 @@ export default function AdminLayout() {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </AdminRoute>
   );
 }

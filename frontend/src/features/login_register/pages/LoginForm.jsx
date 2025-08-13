@@ -69,8 +69,10 @@ function LoginForm() {
       });
       const data = await res.json();
       if (res.ok) {
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("role", data.role);
+        localStorage.setItem("access_token", data.token);
+        localStorage.setItem("token", data.token); // Giữ lại cho tương thích
+        localStorage.setItem("user_role", data.role);
+        localStorage.setItem("role", data.role); // Giữ lại cho tương thích
         if (data.username) {
           localStorage.setItem("username", data.username);
         }
@@ -95,12 +97,20 @@ function LoginForm() {
     const result = await login(username, password);
 
     if (result.access) {
-      localStorage.setItem("token", result.access); // <-- access từ JWT
-      localStorage.setItem("role", result.role);
+      localStorage.setItem("access_token", result.access); // <-- access từ JWT
+      localStorage.setItem("token", result.access); // Giữ lại cho tương thích
+      localStorage.setItem("user_role", result.role);
+      localStorage.setItem("role", result.role); // Giữ lại cho tương thích
       localStorage.setItem("username", username);
 
       await fetchCart();
-      window.location.replace("/"); // reload và chuyển về trang chủ
+      
+      // Redirect based on role
+      if (result.role === "admin") {
+        window.location.replace("/admin");
+      } else {
+        window.location.replace("/"); // reload và chuyển về trang chủ
+      }
     } else {
       setError(result.error || "Đăng nhập thất bại");
     }
@@ -144,8 +154,10 @@ function LoginForm() {
         // Tự động đăng nhập sau khi đăng ký
         const loginResult = await login(regUsername, regPassword);
         if (loginResult.access) {
-          localStorage.setItem("token", loginResult.access);
-          localStorage.setItem("role", loginResult.role);
+          localStorage.setItem("access_token", loginResult.access);
+          localStorage.setItem("token", loginResult.access); // Giữ lại cho tương thích
+          localStorage.setItem("user_role", loginResult.role);
+          localStorage.setItem("role", loginResult.role); // Giữ lại cho tương thích
           localStorage.setItem("username", regUsername);
           window.location.replace("/");
         } else {
