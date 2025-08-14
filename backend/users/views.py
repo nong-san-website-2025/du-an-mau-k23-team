@@ -1,3 +1,23 @@
+from rest_framework.views import APIView
+from rest_framework.authtoken.models import Token
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from payments.models import Payment
+from django.db import models
+
+# API lấy số dư ví của user hiện tại
+class WalletBalanceView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        # Nếu số dư ví lưu ở user
+        if hasattr(user, 'wallet_balance'):
+            balance = user.wallet_balance
+        else:
+            # Nếu số dư ví lưu ở model Payment, lấy tổng các payment thành công
+            balance = Payment.objects.filter(user=user, status='success').aggregate(total=models.Sum('amount'))['total'] or 0
+        return Response({"balance": balance})
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 from rest_framework.views import APIView
@@ -225,6 +245,22 @@ class AdminOnlyView(APIView):
 
     def get(self, request):
         return Response({"message": "Chỉ Admin xem được"})
+
+
+class VerifyAdminView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """Verify if current user is admin"""
+        user = request.user
+        is_admin = user.is_superuser or getattr(user, 'is_admin', False)
+        
+        return Response({
+            "is_admin": is_admin,
+            "username": user.username,
+            "email": user.email,
+            "role": "admin" if is_admin else ("seller" if getattr(user, 'is_seller', False) else "user")
+        })
 
 
 class SellerOnlyView(APIView):

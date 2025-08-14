@@ -33,6 +33,8 @@ import BlogDetail from './pages/Blog/BlogDetail';
 import StoreList from './features/stores/pages/StoreList';
 import StoreDetail from './features/stores/pages/StoreDetail';
 import AboutPage from "./pages/About/About";
+import PaymentStatusPage from "./features/users/pages/PaymentStatusPage";
+import UserWalletPage from "./features/users/pages/UserWalletPage";
 
 function App() {
   return (
@@ -49,6 +51,7 @@ function App() {
               <Route path="orders" element={<Orders />} />
               <Route path="checkout" element={<CheckoutPage />} />
               <Route path="profile/" element={<ProfilePage />} />
+              <Route path="wallet" element={<UserWalletPage />} />
             </Route>
             <Route path="abouts" element={<AboutPage/>} />
             <Route path="productuser" element={<UserProductPage />} />
@@ -57,6 +60,7 @@ function App() {
             <Route path="manage-products" element={<ManageStore />} />
             <Route path="store" element={<StoreList />} />
             <Route path="store/:id" element={<StoreDetail />} />
+            <Route path="payment-status" element={<PaymentStatusPage />} />
           </Route>
           {/* Admin routes with authentication protection */}
           <Route element={<AdminPrivateRoute />}>
