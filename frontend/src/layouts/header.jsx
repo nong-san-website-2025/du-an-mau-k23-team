@@ -385,7 +385,7 @@ export default function Header() {
                 Bài viết
               </Link>
               <Link
-                to="/about"
+                to="/abouts"
                 className="btn btn-link fw-medium px-3 py-2 text-decoration-none text-dark d-none d-xl-inline-block"
                 style={{ whiteSpace: "nowrap" }}
               >
