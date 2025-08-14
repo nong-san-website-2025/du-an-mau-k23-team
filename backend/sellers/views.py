@@ -1,13 +1,11 @@
-from rest_framework import viewsets, permissions
+from rest_framework import generics
 from .models import Seller
-from .serializers import SellerSerializer
+from .serializers import SellerListSerializer, SellerDetailSerializer
 
-class SellerViewSet(viewsets.ModelViewSet):
-    serializer_class = SellerSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+class SellerListAPIView(generics.ListAPIView):
+    queryset = Seller.objects.all()
+    serializer_class = SellerListSerializer
 
-    def get_queryset(self):
-        return Seller.objects.all()
-
-    def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+class SellerDetailAPIView(generics.RetrieveAPIView):
+    queryset = Seller.objects.all()
+    serializer_class = SellerDetailSerializer

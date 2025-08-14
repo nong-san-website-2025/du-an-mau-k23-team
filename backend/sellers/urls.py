@@ -1,6 +1,7 @@
-from rest_framework.routers import DefaultRouter
-from .views import SellerViewSet
+from django.urls import path
+from .views import SellerListAPIView, SellerDetailAPIView
 
-router = DefaultRouter()
-router.register("", SellerViewSet, basename="sellers")
-urlpatterns = router.urls
+urlpatterns = [
+    path('', SellerListAPIView.as_view(), name='seller-list'),  # api/sellers/
+    path('<int:pk>/', SellerDetailAPIView.as_view(), name='seller-detail'),  # api/sellers/1/
+]
