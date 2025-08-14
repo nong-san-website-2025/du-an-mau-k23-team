@@ -18,7 +18,6 @@ from .permissions import IsAdmin, IsSeller, IsNormalUser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.permissions import AllowAny
 from rest_framework.decorators import api_view, permission_classes
-from chat.models import Message  # Cập nhật đúng path
 from django.db.models import Count
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
@@ -246,37 +245,6 @@ from rest_framework.decorators import api_view, permission_classes
 
 class ProductViewSet(ModelViewSet):
     permission_classes = [IsAuthenticated, IsSeller]
-
-
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def get_chat_rooms(request):
-    """
-    Trả về danh sách phòng chat theo từng user đã nhắn vào
-    """
-    user_rooms = (
-        Message.objects
-        .values("room")
-        .annotate(total=Count("id"))
-        .order_by("-total")
-    )
-    room_names = [item["room"] for item in user_rooms]
-    return Response(room_names)
-
-
-from chat.models import Message
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from chat.serializers import MessageSerializer  # cần serializer
-
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def get_chat_history(request, room_name):
-    messages = Message.objects.filter(room=room_name).order_by('timestamp')
-    serializer = MessageSerializer(messages, many=True)
-    return Response(serializer.data)
-
 
 class AddressViewSet(viewsets.ModelViewSet):
     serializer_class = AddressSerializer

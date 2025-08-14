@@ -49,8 +49,8 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt",
     "corsheaders",
     "users", "sellers", "products",
-    "reviews", "cart", "orders", "payments","channels", "chat",  
-    "store",    
+    "reviews", "cart", "orders", "payments","channels", 
+    "store", 'blog',
 ]
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
