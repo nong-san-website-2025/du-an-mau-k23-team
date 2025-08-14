@@ -28,6 +28,8 @@ import Orders from './features/orders/pages/Orders';
 import PrivateRoute from "./features/login_register/components/PrivateRoute";
 import AdminPrivateRoute from "./features/login_register/components/AdminPrivateRoute";
 import ProfilePage from "./features/users/pages/ProfilePage";
+import BlogHome from './pages/Blog/BlogHome';
+import BlogDetail from './pages/Blog/BlogDetail';
 
 function App() {
   return (
@@ -37,6 +39,8 @@ function App() {
           <Routes>
           <Route path="/" element={<Layout />}>
             <Route index element={<HomePage />} />
+            <Route path="/blog" element={<BlogHome />} />
+            <Route path="/blog/:slug" element={<BlogDetail />} />
             <Route element={<PrivateRoute />}>
               <Route path="me" element={<UserProfile />} />
               <Route path="orders" element={<Orders />} />
