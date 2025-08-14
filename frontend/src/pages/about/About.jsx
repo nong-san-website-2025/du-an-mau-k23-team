@@ -33,7 +33,7 @@ export default function AboutPage() {
   {/* <div className="about-hero-overlay position-absolute w-100 h-100"></div> */}
         <Container className="position-relative" style={{ zIndex: 1 }}>
           <h1 className="about-hero-title display-3 fw-bold mb-4 animate__animated animate__fadeInDown">
-            Về NôngSản.vn
+            Về Greenfarm
           </h1>
           <p className="lead mx-auto mb-5 animate__animated animate__fadeInUp" style={{ maxWidth: '900px' }}>
             Nền tảng thương mại điện tử hàng đầu Việt Nam, chuyên cung cấp nông sản tươi sống, an toàn và chất lượng cao trực tiếp từ nông trại đến bàn ăn của bạn.
@@ -296,7 +296,7 @@ export default function AboutPage() {
             Hãy cùng chúng tôi xây dựng một tương lai nơi thực phẩm sạch là điều hiển nhiên.
           </p>
           <Button
-            href="/products"
+            href="/productuser"
             variant="light"
             size="lg"
             className="about-btn fw-bold text-success"

@@ -15,7 +15,7 @@ import ReportsPage from "./features/admin/pages/ReportsPage";
 import AdminLayout from "./features/admin/components/AdminLayout";
 import CartPage from "./features/cart/pages/CartPage";
 import "./App.css";
-import Layout from "./layouts/layout"; // Sử dụng layout có Header/Footer
+import Layout from "./layouts/Layout"; // Sử dụng layout có Header/Footer
 import UserProductPage from './features/products/pages/UserProductPage';
 import ProductDetailPage from './features/products/pages/ProductDetailPage';
 import { CartProvider } from "./features/cart/services/CartContext";
@@ -32,6 +32,7 @@ import BlogHome from './pages/Blog/BlogHome';
 import BlogDetail from './pages/Blog/BlogDetail';
 import StoreList from './features/stores/pages/StoreList';
 import StoreDetail from './features/stores/pages/StoreDetail';
+import AboutPage from "./pages/About/About";
 
 function App() {
   return (
@@ -49,6 +50,7 @@ function App() {
               <Route path="checkout" element={<CheckoutPage />} />
               <Route path="profile/" element={<ProfilePage />} />
             </Route>
+            <Route path="abouts" element={<AboutPage/>} />
             <Route path="productuser" element={<UserProductPage />} />
             <Route path="products/:id" element={<ProductDetailPage />} />
             <Route path="cart" element={<CartPage />} />
