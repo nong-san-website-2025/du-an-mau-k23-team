@@ -4,13 +4,11 @@ import { useNavigate } from 'react-router-dom';
 import { useCart } from '../services/CartContext';
 import { createOrder } from '../services/orderApi';
 import { toast } from 'react-toastify';
-import { useAuth } from '../../login_register/services/AuthContext';
 
 
 const CheckoutPage = () => {
   const navigate = useNavigate();
   const { cartItems, clearCart } = useCart();
-  const { isAuthenticated } = useAuth();
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [address, setAddress] = useState('');
@@ -20,19 +18,21 @@ const CheckoutPage = () => {
 
   // Kiểm tra authentication khi component mount
   useEffect(() => {
-    if (!isAuthenticated()) {
+    const token = localStorage.getItem('token');
+    if (!token) {
       toast.error('Vui lòng đăng nhập để tiếp tục');
       navigate('/login');
       return;
     }
-  }, [navigate, isAuthenticated]);
+  }, [navigate]);
 
 
 
   const total = cartItems.reduce((sum, item) => sum + (Number(item.product?.price) || 0) * (Number(item.quantity) || 0), 0);
 
   const handleOrder = async () => {
-    if (!isAuthenticated()) {
+    const token = localStorage.getItem('token');
+    if (!token) {
       toast.error('Vui lòng đăng nhập để tiếp tục');
       navigate('/login');
       return;

@@ -1,95 +1,62 @@
-
 from rest_framework import serializers
 from .models import Product, Category, Subcategory
-
-class ProductListSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Product
-        fields = ['id', 'name', 'price', 'image', 'discounted_price', 'is_new', 'is_organic', 'is_best_seller']
-
+from sellers.models import Seller
 
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
-        fields = '__all__'
-
+        fields = ['id', 'name', 'key', 'icon']
 
 class SubcategorySerializer(serializers.ModelSerializer):
     category = CategorySerializer(read_only=True)
-
+    
     class Meta:
         model = Subcategory
-        fields = '__all__'
-
+        fields = ['id', 'name', 'category']
 
 class ProductSerializer(serializers.ModelSerializer):
-    subcategory = SubcategorySerializer(read_only=True)
-    category_name = serializers.CharField(source='subcategory.category.name', read_only=True)
+    seller_id = serializers.IntegerField(source='seller.id', read_only=True)
+    subcategory_id = serializers.IntegerField(source='subcategory.id', read_only=True)
+    category_id = serializers.IntegerField(source='category.id', read_only=True)
+
+    seller = serializers.PrimaryKeyRelatedField(queryset=Seller.objects.all(), write_only=True)
     seller_name = serializers.CharField(source='seller.name', read_only=True)
+    subcategory = serializers.PrimaryKeyRelatedField(queryset=Subcategory.objects.all(), write_only=True)
+    subcategory_detail = SubcategorySerializer(source='subcategory', read_only=True)
+    category = serializers.PrimaryKeyRelatedField(queryset=Category.objects.all(), write_only=True, required=False)
+    category_detail = CategorySerializer(source='category', read_only=True)
+    category_name = serializers.CharField(source='category.name', read_only=True)
     discounted_price = serializers.ReadOnlyField()
-    image = serializers.ImageField(required=False)
-    
-    # Thêm các field để nhận dữ liệu từ frontend
-    category_id = serializers.IntegerField(write_only=True, required=False)
-    subcategory_id = serializers.IntegerField(write_only=True, required=False)
+    image = serializers.ImageField()
 
     class Meta:
         model = Product
-        fields = '__all__'
-        
-    def create(self, validated_data):
-        print("Starting create method with:", validated_data)
-        
-        # Xử lý category_id và subcategory_id
-        category_id = validated_data.pop('category_id', None)
-        subcategory_id = validated_data.pop('subcategory_id', None)
-        
-        # Nếu có subcategory_id, lấy subcategory và category từ đó
-        if subcategory_id:
-            # Nếu subcategory_id đã là object Subcategory, không cần query
-            if hasattr(subcategory_id, 'id'):
-                subcategory = subcategory_id
-                validated_data['subcategory'] = subcategory
-                validated_data['category'] = subcategory.category
-                print(f"Subcategory is already an object: {subcategory.name}, category: {subcategory.category.name}")
-            else:
-                try:
-                    subcategory = Subcategory.objects.get(id=subcategory_id)
-                    validated_data['subcategory'] = subcategory
-                    validated_data['category'] = subcategory.category
-                    print(f"Set subcategory: {subcategory.name}, category: {subcategory.category.name}")
-                except Subcategory.DoesNotExist:
-                    raise serializers.ValidationError(f"Subcategory với id {subcategory_id} không tồn tại")
-        # Nếu chỉ có category_id, chỉ set category
-        elif category_id:
-            # Nếu category_id đã là object Category, không cần query
-            if hasattr(category_id, 'id'):
-                category = category_id
-                validated_data['category'] = category
-                print(f"Category is already an object: {category.name}")
-            else:
-                try:
-                    category = Category.objects.get(id=category_id)
-                    validated_data['category'] = category
-                    print(f"Set category: {category.name}")
-                except Category.DoesNotExist:
-                    raise serializers.ValidationError(f"Category với id {category_id} không tồn tại")
-        
-        # Đảm bảo các field boolean được xử lý đúng
-        for field in ['is_new', 'is_organic', 'is_best_seller']:
-            if field in validated_data:
-                validated_data[field] = bool(validated_data[field])
+        fields = [
+            'id', 'name', 'description', 'price', 'discounted_price', 'unit',
+            'stock', 'image', 'rating', 'review_count', 'is_new', 'is_organic',
+            'is_best_seller', 'discount', 'location', 'brand',
+            'category', 'category_id', 'category_detail', 'category_name',
+            'subcategory', 'subcategory_id', 'subcategory_detail',
+            'seller', 'seller_id', 'seller_name',
+            'created_at', 'updated_at', 'seller_id',
+        ]
 
-        print("Final validated_data before create:", validated_data)
-        try:
-            product = super().create(validated_data)
-            print(f"Product created successfully: {product.name}")
-            print(f"Product image after save: {product.image}")
-            return product
-        except Exception as e:
-            print(f"Error creating product: {e}")
-            raise
 
+class ProductListSerializer(serializers.ModelSerializer):
+    """Serializer đơn giản cho danh sách sản phẩm"""
+    discounted_price = serializers.ReadOnlyField()
+    category_name = serializers.CharField(source='subcategory.category.name', read_only=True)
+    subcategory_name = serializers.CharField(source='subcategory.name', read_only=True)
+    image = serializers.SerializerMethodField()
+    category_id = serializers.IntegerField(source='subcategory.category.id', read_only=True)
+
+    class Meta:
+        model = Product
+        fields = [
+            'id', 'name', 'price', 'discounted_price', 'unit', 'image', 
+            'rating', 'review_count', 'is_new', 'is_organic', 'is_best_seller', 
+            'discount', 'location', 'brand', 'category_name', 'subcategory_name', 'category_id'
+        ]
     def get_image(self, obj):
         request = self.context.get('request')
         if obj.image and hasattr(obj.image, 'url'):

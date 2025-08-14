@@ -3,6 +3,7 @@ AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
 ]
 ### CORS settings
+CORS_ALLOW_ALL_ORIGINS = True
 """
 
 Django settings for config project.
@@ -16,7 +17,6 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 
-from datetime import timedelta
 from pathlib import Path
 import os
 
@@ -175,8 +175,3 @@ CORS_ALLOW_ALL_ORIGINS = True
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media') #cho phep luu tru media files la luu cho khac
-
-SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),  # mặc định là 5 phút, tăng lên 60 phút
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),     # refresh token sống 7 ngày
-}

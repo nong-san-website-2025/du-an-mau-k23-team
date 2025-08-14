@@ -19,7 +19,7 @@ import {
   FaStar,
   FaSeedling,
 } from "react-icons/fa";
-import { api } from "../../login_register/services/AuthContext";
+import API from "../../login_register/services/api";
 
 // Use your header/footer color scheme
 const mainColor = "#2E8B57"; // Example: header/footer green
@@ -47,7 +47,7 @@ function ProfilePage() {
 
   useEffect(() => {
     if (activeTab === "address") {
-      api.get("users/addresses/").then((res) => setAddresses(res.data));
+      API.get("users/addresses/").then((res) => setAddresses(res.data));
     }
   }, [activeTab]);
 
@@ -55,7 +55,7 @@ function ProfilePage() {
     async function fetchProfile() {
       try {
         setLoading(true);
-        const res = await api.get("users/me/");
+        const res = await API.get("users/me/");
         setUser(res.data);
       } catch (err) {
         setUser(null);
@@ -81,8 +81,8 @@ function ProfilePage() {
 
   const addAddress = async () => {
     try {
-              await api.post("users/addresses/", newAddress);
-        const res = await api.get("users/addresses/");
+      await API.post("users/addresses/", newAddress);
+      const res = await API.get("users/addresses/");
       setAddresses(res.data);
       setShowAddressForm(false);
       setNewAddress({ recipient_name: "", phone: "", location: "" });
@@ -93,8 +93,8 @@ function ProfilePage() {
 
   const setDefaultAddress = async (id) => {
     try {
-              await api.patch(`users/addresses/${id}/set_default/`);
-        const res = await api.get("users/addresses/");
+      await API.patch(`users/addresses/${id}/set_default/`);
+      const res = await API.get("users/addresses/");
       setAddresses(res.data);
     } catch (err) {
       console.error("Lỗi đặt địa chỉ mặc định:", err);
@@ -114,7 +114,7 @@ function ProfilePage() {
       if (form.avatar instanceof File) {
         formData.append("avatar", form.avatar);
       }
-      const res = await api.put("users/me/", formData, {
+      const res = await API.put("users/me/", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       setEditMode(false);

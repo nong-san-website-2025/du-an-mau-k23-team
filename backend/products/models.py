@@ -19,7 +19,7 @@ class Subcategory(models.Model):
         return f"{self.category.name} - {self.name}"
 
 class Product(models.Model):
-    seller = models.ForeignKey(Seller, on_delete=models.CASCADE, related_name='products')
+    seller = models.ForeignKey(Seller, on_delete=models.CASCADE)
     subcategory = models.ForeignKey(Subcategory, on_delete=models.CASCADE, related_name='products', null=True, blank=True)
     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='products', null=True, blank=True)
     name = models.CharField(max_length=255)
@@ -41,12 +41,6 @@ class Product(models.Model):
     
     def __str__(self):
         return self.name
-    
-    def save(self, *args, **kwargs):
-        # Tự động set category từ subcategory nếu có
-        if self.subcategory and not self.category:
-            self.category = self.subcategory.category
-        super().save(*args, **kwargs)
     
     @property
     def discounted_price(self):

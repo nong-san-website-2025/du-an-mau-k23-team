@@ -4,6 +4,7 @@ import ProductTableRow from "./ProductTableRow";
 import ProductDetailRow from "./ProductDetailRow";
 import ProductEditForm from "./ProductEditForm";
 
+
 export default function ProductTable({
   products,
   loading,
@@ -12,14 +13,13 @@ export default function ProductTable({
   getStatusBadge,
   checkedIds,
   setCheckedIds,
+  onEditProduct,
 }) {
   const [expandedProductId, setExpandedProductId] = useState(null);
   const [loadingAction, setLoadingAction] = useState(false);
-  const [editProduct, setEditProduct] = useState(null); // null hoặc object sản phẩm đang sửa
 
   const handleExpand = (productId) => {
     setExpandedProductId(expandedProductId === productId ? null : productId);
-    setEditProduct(null);
   };
 
   const handleDelete = async (product) => {
@@ -32,33 +32,6 @@ export default function ProductTable({
       window.location.reload(); // hoặc gọi props.reloadProducts nếu có
     } catch (err) {
       alert("Xoá sản phẩm thất bại!");
-    } finally {
-      setLoadingAction(false);
-    }
-  };
-
-  const handleEdit = (product) => {
-    setEditProduct(product);
-  };
-
-  const handleEditSubmit = async (e) => {
-    e.preventDefault();
-    setLoadingAction(true);
-    try {
-      const form = e.target;
-      const data = {
-        name: form.name.value,
-        description: form.description.value,
-        price: form.price.value,
-        stock: form.stock.value,
-        status: form.status.value,
-      };
-      await productApi.updateProduct(editProduct.id, data);
-      alert("Cập nhật sản phẩm thành công!");
-      setEditProduct(null);
-      window.location.reload(); // hoặc gọi props.reloadProducts nếu có
-    } catch (err) {
-      alert("Cập nhật thất bại!");
     } finally {
       setLoadingAction(false);
     }
@@ -134,25 +107,16 @@ export default function ProductTable({
                   onExpand={() => handleExpand(product.id)}
                   getStatusBadge={getStatusBadge}
                   isExpanded={expandedProductId === product.id}
+                  onEdit={() => onEditProduct && onEditProduct(product)}
                 />
                 {expandedProductId === product.id && (
                   <ProductDetailRow
                     product={product}
                     getStatusBadge={getStatusBadge}
-                    onEdit={() => handleEdit(product)}
+                    onEdit={() => onEditProduct && onEditProduct(product)}
                     onDelete={() => handleDelete(product)}
                     loadingAction={loadingAction}
-                    isEditing={editProduct && editProduct.id === product.id}
-                  >
-                    {editProduct && editProduct.id === product.id && (
-                      <ProductEditForm
-                        editProduct={editProduct}
-                        loadingAction={loadingAction}
-                        onSubmit={handleEditSubmit}
-                        onCancel={() => setEditProduct(null)}
-                      />
-                    )}
-                  </ProductDetailRow>
+                  />
                 )}
               </React.Fragment>
             ))

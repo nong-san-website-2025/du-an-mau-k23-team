@@ -1,7 +1,7 @@
 import React from "react";
 import "../ProductAdmin/styles/ProductTableRow.css"; // ✅ nhớ import file CSS mới
 
-export default function ProductTableRow({ product, checked, onCheck, onExpand, getStatusBadge, isExpanded }) {
+export default function ProductTableRow({ product, checked, onCheck, onExpand, getStatusBadge, isExpanded, onEdit }) {
   return (
     <tr
       className={`product-row ${isExpanded ? "expanded" : ""}`}
@@ -65,7 +65,19 @@ export default function ProductTableRow({ product, checked, onCheck, onExpand, g
         <span className={getStatusBadge(product.status)}>{product.status}</span>
       </td>
       <td className="border-0 py-3">
-        <div className="d-flex gap-2"></div>
+        <div className="d-flex gap-2">
+          <button
+            className="btn btn-sm btn-outline-success"
+            title="Chỉnh sửa"
+            style={{ width: "32px", height: "32px", padding: "0" }}
+            onClick={e => {
+              e.stopPropagation();
+              onEdit && onEdit();
+            }}
+          >
+            <i className="bi bi-pencil"></i>
+          </button>
+        </div>
       </td>
     </tr>
   );

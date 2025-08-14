@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { api } from "../../login_register/services/AuthContext";
+import API from "../../login_register/services/api";
 import { toast } from "react-toastify";
 import { useLocation } from "react-router-dom";
 
@@ -45,7 +45,7 @@ export const CartProvider = ({ children }) => {
       (async () => {
         for (const item of guestCart) {
           try {
-            await api.post("cartitems/", {
+            await API.post("cartitems/", {
               product_id: item.product_data?.id || item.product,
               quantity: item.quantity,
             });
@@ -63,7 +63,7 @@ export const CartProvider = ({ children }) => {
   const fetchCart = async () => {
     setLoading(true);
     try {
-      const res = await api.get("cartitems/");
+      const res = await API.get("cartitems/");
       setCartItems(res.data);
     } catch {
       setCartItems([]);
@@ -81,32 +81,29 @@ export const CartProvider = ({ children }) => {
   ) => {
     if (!productId || quantity <= 0) return;
 
+    setLoading(true);
     const token = localStorage.getItem("token");
 
     if (token) {
       try {
-        const res = await api.post("cartitems/", {
+        console.log("🟡 Đang gửi:", { product_id: productId, quantity });
+        await API.post("cartitems/", {
           product_id: productId,
           quantity,
         });
-
-        // Nếu status thành công (201 hoặc 200) thì mới fetch giỏ và toast success
-        if (res.status === 200 || res.status === 201) {
-          await fetchCart();
-          if (onSuccess) onSuccess();
-        } else {
-          toast.error("Không thể thêm vào giỏ hàng");
-        }
+        await fetchCart();
+        if (onSuccess) onSuccess();
       } catch (err) {
-        console.error("❌ addToCart error:", err.response?.data || err.message);
-        toast.error(
-          "Lỗi: " +
-            (err.response?.data?.detail || "Không thể thêm vào giỏ hàng")
-        );
+        console.error("❌ addToCart error:", err.response?.data || err.message); // ❗ CHỈNH Ở ĐÂY
         if (onError) onError(err);
+        else
+          toast.error(
+            "Lỗi: " +
+              (err.response?.data?.detail || "Không thể thêm vào giỏ hàng")
+          );
       }
     } else {
-      // Guest cart
+      // Guest
       let items = getGuestCart();
       const idx = items.findIndex((i) => i.product === productId);
       if (idx >= 0) {
@@ -125,9 +122,9 @@ export const CartProvider = ({ children }) => {
       }
       saveGuestCart(items);
       setCartItems(items);
-      toast.success("Đã thêm vào giỏ hàng");
       if (onSuccess) onSuccess();
     }
+    setLoading(false);
   };
 
   // --- Update quantity ---
@@ -135,7 +132,7 @@ export const CartProvider = ({ children }) => {
     setLoading(true);
     if (isAuthenticated()) {
       try {
-        await api.put(`cartitems/${itemId}/update-quantity/`, { quantity });
+        await API.put(`cartitems/${itemId}/update-quantity/`, { quantity });
         await fetchCart();
       } catch (err) {
         console.error("❌ updateQuantity error:", err);
@@ -154,23 +151,21 @@ export const CartProvider = ({ children }) => {
 
   // --- Remove from cart ---
   const removeFromCart = async (itemId) => {
+    setLoading(true);
     if (isAuthenticated()) {
-      // Cập nhật UI ngay lập tức
-      setCartItems((prev) => prev.filter((item) => item.id !== itemId));
-
       try {
-        await api.delete(`cartitems/${itemId}/`);
+        await API.delete(`cartitems/${itemId}/delete/`);
+        await fetchCart();
       } catch (err) {
         console.error("❌ removeFromCart error:", err);
-        toast.error("Không thể xóa sản phẩm. Vui lòng thử lại.");
-        // Nếu thất bại, fetch lại giỏ để đồng bộ
-        fetchCart();
       }
     } else {
-      let items = getGuestCart().filter((i) => i.product !== itemId);
+      let items = getGuestCart();
+      items = items.filter((i) => i.product !== itemId);
       saveGuestCart(items);
       setCartItems(items);
     }
+    setLoading(false);
   };
 
   // --- Clear cart ---
@@ -179,7 +174,7 @@ export const CartProvider = ({ children }) => {
     if (isAuthenticated()) {
       try {
         for (const item of cartItems) {
-          await api.delete(`cartitems/${item.id}/delete/`);
+          await API.delete(`cartitems/${item.id}/delete/`);
         }
         await fetchCart();
       } catch (err) {

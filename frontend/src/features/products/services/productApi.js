@@ -38,36 +38,40 @@ export const productApi = {
 
   // Tạo sản phẩm mới
   async createProduct(productData) {
-    try {
-      const response = await fetch(`${API_BASE_URL}/products/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...productApi.getAuthHeaders(),
-        },
-        body: JSON.stringify(productData),
-      });
-      if (!response.ok) {
-        throw new Error('Không thể tạo sản phẩm');
-      }
-      return await response.json();
-    } catch (error) {
-      console.error('Lỗi khi tạo sản phẩm:', error);
-      throw error;
+  try {
+    const response = await fetch(`${API_BASE_URL}/products/`, {
+      method: 'POST',
+      headers: {
+        ...productApi.getAuthHeaders(), // Không set Content-Type ở đây
+      },
+      body: productData, // productData phải là FormData()
+    });
+    if (!response.ok) {
+      throw new Error('Không thể tạo sản phẩm');
     }
-  },
+    return await response.json();
+  } catch (error) {
+    console.error('Lỗi khi tạo sản phẩm:', error);
+    throw error;
+  }
+},
 
   // Cập nhật sản phẩm
   async updateProduct(id, productData) {
     try {
-      const response = await fetch(`${API_BASE_URL}/products/${id}/`, {
+      let options = {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json',
           ...productApi.getAuthHeaders(),
         },
-        body: JSON.stringify(productData),
-      });
+        body: productData,
+      };
+      // Nếu không phải FormData thì gửi JSON
+      if (!(productData instanceof FormData)) {
+        options.headers['Content-Type'] = 'application/json';
+        options.body = JSON.stringify(productData);
+      }
+      const response = await fetch(`${API_BASE_URL}/products/${id}/`, options);
       if (!response.ok) {
         throw new Error('Không thể cập nhật sản phẩm');
       }
@@ -232,6 +236,20 @@ async getCategories() {
       return await response.json();
     } catch (error) {
       console.error('Lỗi khi tải sản phẩm nổi bật:', error);
+      throw error;
+    }
+  },
+
+  // Lấy danh sách người bán
+  async getSellers() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/sellers/`);
+      if (!response.ok) {
+        throw new Error('Không thể tải danh sách người bán');
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Lỗi khi tải người bán:', error);
       throw error;
     }
   }

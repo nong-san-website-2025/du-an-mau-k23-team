@@ -4,11 +4,10 @@ import AdminPageLayout from "../components/AdminPageLayout";
 import AdminHeader from "../components/AdminHeader";
 import ProductFilterSidebar from "../components/ProductAdmin/ProductSideBar";
 import ProductTable from "../components/ProductAdmin/ProductTable";
-import ProductAddModal from "../components/ProductAdmin/ProductAddModal";
 import ProductTableActions from "../components/ProductAdmin/ProductTableActions";
-import choiceApi from "../services/choiceApi";
+import AddProductModal from "../components/ProductAdmin/AddProductModal";
 
-function ProductsPage() {
+export default function ProductsPage() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -18,6 +17,7 @@ function ProductsPage() {
   ]);
   const [checkedIds, setCheckedIds] = useState([]);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingProduct, setEditingProduct] = useState(null);
   // Bỏ logic lọc ở đây, để ProductTable tự xử lý
   useEffect(() => {
     fetchProducts();
@@ -73,17 +73,6 @@ function ProductsPage() {
     }
   };
 
-  // Thêm sản phẩm mới
-  const handleAddProduct = async () => {
-    try {
-      // Chỉ cần refresh danh sách sản phẩm sau khi thêm thành công
-      await fetchProducts();
-    } catch (error) {
-      console.error("Error refreshing products:", error);
-      throw new Error("Lỗi khi refresh danh sách sản phẩm: " + (error.message || "Lỗi không xác định"));
-    }
-  };
-
   return (
     <AdminPageLayout
       header={<AdminHeader />}
@@ -101,90 +90,94 @@ function ProductsPage() {
       <div className="bg-white" style={{ minHeight: "100vh" }}>
         {/* Header Section */}
         <div className="p-2 border-bottom">
-          <div className="d-flex justify-content-between align-items-center mb-0 gap-2 flex-wrap">
-            {/* Thanh tìm kiếm bên trái */}
-            <div style={{ flex: 1 }}>
-              <div className="input-group" style={{ width: 420 }}>
-                <span className="input-group-text bg-white border-end-0">
-                  <Search size={18} />
-                </span>
-                <input
-                  type="text"
-                  className="form-control border-start-0 "
-                  placeholder="Tìm kiếm sản phẩm..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  style={{ borderLeft: 0 }}
-                />
+            <div className="d-flex justify-content-between align-items-center mb-0 gap-2 flex-wrap">
+              {/* Thanh tìm kiếm bên trái */}
+              <div style={{ flex: 1 }}>
+                <div className="input-group" style={{ width: 420 }}>
+                  <span className="input-group-text bg-white border-end-0">
+                    <Search size={18} />
+                  </span>
+                  <input
+                    type="text"
+                    className="form-control border-start-0 "
+                    placeholder="Tìm kiếm sản phẩm..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    style={{ borderLeft: 0 }}
+                  />
+                </div>
               </div>
-            </div>
-            {/* Số lượng đã chọn */}
-            <div className="d-flex align-items-center gap-2 flex-shrink-0 mt-2 mt-md-0">
-              {checkedIds.length > 0 && (
-                <span className="badge bg-primary" style={{fontSize:14, fontWeight:500}}>
-                  Đã chọn: {checkedIds.length}
-                </span>
-              )}
-              {checkedIds.length > 0 ? (
-                <button
-                  className="btn btn-danger border"
-                  style={{ fontWeight: "500" }}
-                  title="Xoá sản phẩm đã chọn"
-                  onClick={() => {
-                    if(window.confirm(`Bạn có chắc muốn xoá ${checkedIds.length} sản phẩm đã chọn?`)){
-                      alert('Đã gọi xoá các sản phẩm: ' + checkedIds.join(", "));
-                    }
-                  }}
-                >
-                  <i className="bi bi-trash" style={{fontSize:16, marginRight:6}}></i>
-                  Xoá ({checkedIds.length})
-                </button>
-              ) : (
-                <React.Fragment>
-                  <button
-                    className="btn btn-light border"
-                    style={{ fontWeight: "500", color: "#48474b" }}
-                    title="Nhập file"
-                  >
-                    <Import size={16} />
-                    &ensp; Nhập file
-                  </button>
-                  <button
-                    className="btn btn-light border"
-                    style={{ fontWeight: "500", color: "#48474b" }}
-                    title="Xuất file"
-                  >
-                    <FileUp size={16} />
-                    &ensp; Xuất file
-                  </button>
-                  <button
-                    className="btn btn-light border"
-                    style={{ fontWeight: "500", color: "#48474b" }}
-                    title="Hướng dẫn sử dụng"
-                  >
-                    <HelpCircle size={16} />
-                  </button>
-                  <button
-                    className="btn d-flex align-items-center"
-                    style={{
-                      backgroundColor: "#22C55E",
-                      color: "#fff",
-                      fontWeight: "600",
-                      padding: "6px 20px",
-                      borderRadius: "8px",
-                      border: "none",
-                    }}
-                    onClick={() => setShowAddModal(true)}
-                  >
-                    <Plus size={20} className="me-2 " style={{fontSize:16}} />
-                    Thêm sản phẩm
-                  </button>
-                </React.Fragment>
-              )}
+              {/* Số lượng đã chọn */}
+              <div className="d-flex align-items-center gap-2 flex-shrink-0 mt-2 mt-md-0">
+                {checkedIds.length > 0 && (
+                  <span className="badge bg-primary" style={{fontSize:14, fontWeight:500}}>
+                    Đã chọn: {checkedIds.length}
+                  </span>
+                )}
+                  {checkedIds.length > 0 ? (
+                    <button
+                      className="btn btn-danger border"
+                      style={{ fontWeight: "500" }}
+                      title="Xoá sản phẩm đã chọn"
+                      onClick={() => {
+                        if(window.confirm(`Bạn có chắc muốn xoá ${checkedIds.length} sản phẩm đã chọn?`)){
+                          // Gọi API xoá ở đây
+                          alert('Đã gọi xoá các sản phẩm: ' + checkedIds.join(", "));
+                        }
+                      }}
+                    >
+                      <i className="bi bi-trash" style={{fontSize:16, marginRight:6}}></i>
+                      Xoá ({checkedIds.length})
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        className="btn btn-light border"
+                        style={{ fontWeight: "500", color: "#48474b" }}
+                        title="Nhập file"
+                      >
+                        <Import size={16} />
+                        &ensp; Nhập file
+                      </button>
+                      <button
+                        className="btn btn-light border"
+                        style={{ fontWeight: "500", color: "#48474b" }}
+                        title="Xuất file"
+                      >
+                        <FileUp size={16} />
+                        &ensp; Xuất file
+                      </button>
+                      <button
+                        className="btn btn-light border"
+                        style={{ fontWeight: "500", color: "#48474b" }}
+                        title="Hướng dẫn sử dụng"
+                      >
+                        <HelpCircle size={16} />
+                      </button>
+                      <button
+                        className="btn d-flex align-items-center"
+                        style={{
+                          backgroundColor: "#22C55E",
+                          color: "#fff",
+                          fontWeight: "600",
+                          padding: "6px 20px",
+                          borderRadius: "8px",
+                          border: "none",
+                        }}
+                        onClick={() => {
+                          setEditingProduct(null);
+                          setShowAddModal(true);
+                        }}
+                      >
+                        <Plus size={20} className="me-2 " style={{fontSize:16}} />
+                        Thêm sản phẩm
+                      </button>
+                    </>
+                  )}
             </div>
           </div>
         </div>
-        {/* Table Section */}
+        {/* Product Table */}
         <div className="p-1">
           <ProductTable
             products={products}
@@ -195,18 +188,78 @@ function ProductsPage() {
             ProductTableActions={ProductTableActions}
             checkedIds={checkedIds}
             setCheckedIds={setCheckedIds}
-            fetchProducts={fetchProducts}
+            onEditProduct={(product) => {
+              setEditingProduct(product);
+              setShowAddModal(true);
+            }}
           />
+          {/* Pagination giữ nguyên */}
+          <div className="d-flex justify-content-between align-items-center mt-4">
+            <div className="text-muted">
+              Hiển thị 1-5 trong tổng số 25 sản phẩm
+            </div>
+            <nav aria-label="Pagination">
+              <ul className="pagination mb-0">
+                <li className="page-item disabled">
+                  <span className="page-link">Trước</span>
+                </li>
+                <li className="page-item active">
+                  <span
+                    className="page-link"
+                    style={{
+                      backgroundColor: "#22C55E",
+                      borderColor: "#22C55E",
+                    }}
+                  >
+                    1
+                  </span>
+                </li>
+                <li className="page-item">
+                  <a
+                    className="page-link"
+                    href="#"
+                    style={{ color: "#22C55E" }}
+                  >
+                    2
+                  </a>
+                </li>
+                <li className="page-item">
+                  <a
+                    className="page-link"
+                    href="#"
+                    style={{ color: "#22C55E" }}
+                  >
+                    3
+                  </a>
+                </li>
+                <li className="page-item">
+                  <a
+                    className="page-link"
+                    href="#"
+                    style={{ color: "#22C55E" }}
+                  >
+                    Sau
+                  </a>
+                </li>
+              </ul>
+            </nav>
+          </div>
         </div>
-        {/* Add Product Modal */}
-        <ProductAddModal
-          show={showAddModal}
-          onClose={() => setShowAddModal(false)}
-          onAdd={handleAddProduct}
+        {/* Modal thêm sản phẩm */}
+        <AddProductModal
+          visible={showAddModal}
+          onCancel={() => {
+            setShowAddModal(false);
+            setEditingProduct(null);
+          }}
+          onSuccess={() => {
+            setShowAddModal(false);
+            setEditingProduct(null);
+            fetchProducts();
+          }}
+          product={editingProduct}
         />
       </div>
     </AdminPageLayout>
   );
 }
-
-export default ProductsPage;

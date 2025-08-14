@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
-import { api } from "../../login_register/services/AuthContext";
+import API from "../../login_register/services/api";
 
 export default function useUserProfile() {
   const [profile, setProfile] = useState(null);
   useEffect(() => {
     async function fetchProfile() {
       try {
-        const res = await api.get("users/me/");
+        const res = await API.get("users/me/");
         setProfile(res.data);
       } catch (err) {
         setProfile(null);
