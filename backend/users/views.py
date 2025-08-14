@@ -315,12 +315,14 @@ class UserPointsView(APIView):
         change = int(request.data.get("points", 0))
         request.user.points += change
         request.user.save()
-        return Response({"message": f"Đã cộng {change} điểm", "total_points": request.user.points})
+        serializer = UserSerializer(request.user)
+        return Response(serializer.data)
 
     def patch(self, request):
-        change = int(request.data.get("points", 0))
-        if request.user.points >= change:
-            request.user.points -= change
-            request.user.save()
-            return Response({"message": f"Đã trừ {change} điểm", "total_points": request.user.points})
-        return Response({"error": "Không đủ điểm"}, status=400)
+            change = int(request.data.get("points", 0))
+            if request.user.points >= change:
+                request.user.points -= change
+                request.user.save()
+                serializer = UserSerializer(request.user)
+                return Response(serializer.data)
+            return Response({"error": "Không đủ điểm"}, status=400)
