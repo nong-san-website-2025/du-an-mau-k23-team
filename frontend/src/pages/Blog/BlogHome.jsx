@@ -20,10 +20,9 @@ export default function BlogHome() {
   }, [search]);
 
   return (
-    <div style={{ background: '#f4f8fb', minHeight: '100vh', padding: '40px 0' }}>
-      <div style={{ maxWidth: 900, margin: '0 auto', background: '#fff', borderRadius: 0, boxShadow: '0 4px 24px rgba(0,0,0,0.08)', padding: 32 }}>
-        <h1 style={{ color: '#222', fontWeight: 700, marginBottom: 32, textAlign: 'center', letterSpacing: 1 }}>Sàn Tin Nông Sản</h1>
-
+    <div style={{ background: '#bfbfbf', minHeight: '100vh'}}>
+      <div  style={{ maxWidth: 900, margin: '0 auto', background: '#fff', borderRadius: 0, boxShadow: '0 4px 24px rgba(0,0,0,0.08)', padding: 32 }}>
+        <h1 style={{ color: '#222', fontWeight: 700, textAlign: 'center', letterSpacing: 1 }}>Sàn Tin Nông Sản</h1>
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 32 }}>
           <input
             type="text"
