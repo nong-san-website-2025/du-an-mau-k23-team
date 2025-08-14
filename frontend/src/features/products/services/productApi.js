@@ -1,3 +1,22 @@
+// Hàm tự động refresh token khi hết hạn và retry request
+export async function fetchWithAuthRetry(url, options = {}) {
+  let token = localStorage.getItem('token');
+  options.headers = { ...(options.headers || {}), Authorization: `Bearer ${token}` };
+  let response = await fetch(url, options);
+
+  if (response.status === 401) {
+    // Token hết hạn, thử refresh
+    try {
+      token = await productApi.refreshToken();
+      options.headers.Authorization = `Bearer ${token}`;
+      response = await fetch(url, options);
+    } catch (err) {
+      throw new Error('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại');
+    }
+  }
+  return response;
+}
+
 // API Service để kết nối với Django backend
 const API_BASE_URL = 'http://localhost:8000/api';
 
@@ -243,7 +262,7 @@ async getCategories() {
   // Lấy danh sách người bán
   async getSellers() {
     try {
-      const response = await fetch(`${API_BASE_URL}/sellers/`);
+      const response = await fetchWithAuthRetry(`${API_BASE_URL}/sellers/`);
       if (!response.ok) {
         throw new Error('Không thể tải danh sách người bán');
       }
@@ -252,5 +271,20 @@ async getCategories() {
       console.error('Lỗi khi tải người bán:', error);
       throw error;
     }
-  }
+  },
+
+  // Hàm refresh token
+  async refreshToken() {
+    const refresh = localStorage.getItem('refresh');
+    if (!refresh) throw new Error('No refresh token');
+    const response = await fetch(`${API_BASE_URL}/token/refresh/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh }),
+    });
+    if (!response.ok) throw new Error('Không thể làm mới token');
+    const data = await response.json();
+    localStorage.setItem('token', data.access);
+    return data.access;
+  },
 };

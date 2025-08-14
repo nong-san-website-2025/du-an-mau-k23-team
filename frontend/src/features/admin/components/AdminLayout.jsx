@@ -39,7 +39,7 @@ export default function AdminLayout() {
           alignItems: "center",
           justifyContent: "space-between",
           padding: "0 8px",
-          zIndex: 1050,
+          zIndex: 1,
         }}
       >
         <div className="d-flex align-items-center">
