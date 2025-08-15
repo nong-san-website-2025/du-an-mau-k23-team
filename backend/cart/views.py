@@ -4,6 +4,8 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from .models import Cart, CartItem
 from .serializers import CartSerializer, CartItemSerializer
+from django.db import IntegrityError, transaction
+
 
 class CartViewSet(viewsets.ModelViewSet):
     serializer_class = CartSerializer
@@ -31,26 +33,45 @@ class CartItemViewSet(viewsets.ModelViewSet):
         context['cart'] = cart
         return context
 
-    # ✅ THÊM VÀO: xử lý tạo để đảm bảo luôn trả Response
     def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        cart, _ = Cart.objects.get_or_create(user=request.user)
+        product_id = request.data.get("product_id")
+        quantity = int(request.data.get("quantity", 1))
 
-        cart_item = serializer.save()  # Gọi create() trong serializer
-        status_code = status.HTTP_201_CREATED
+        if not product_id:
+            return Response({"error": "product_id is required"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Nếu item đã tồn tại thì serializer sẽ trả lại item đã được cập nhật
-        # => xác định `created` bằng cách xem serializer trả về có gì đặc biệt không
-        return Response(CartItemSerializer(cart_item).data, status=status_code)
-    
-    @action(detail=True, methods=['put'], url_path='update-quantity')
-    def update_quantity(self, request, pk=None):
-        item = self.get_object()
+        try:
+            with transaction.atomic():
+                cart_item, created = CartItem.objects.get_or_create(
+                    cart=cart, product_id=product_id,
+                    defaults={"quantity": quantity}
+                )
+                if not created:
+                    cart_item.quantity += quantity
+                    cart_item.save()
+
+                serializer = self.get_serializer(cart_item)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+@action(detail=True, methods=['put'], url_path='update-quantity')
+def update_quantity(self, request, pk=None):
+    item = self.get_object()
+    try:
         quantity = int(request.data.get('quantity', 1))
-        if quantity <= 0:
-            item.delete()
-            return Response(status=status.HTTP_204_NO_CONTENT)
-        item.quantity = quantity
-        item.save()
-        serializer = self.get_serializer(item)
-        return Response(serializer.data)
+    except (TypeError, ValueError):
+        return Response({"error": "Quantity must be an integer"}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Nếu số lượng < 1 thì xóa luôn
+    if quantity < 1:
+        item.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    # Ngược lại thì cập nhật số lượng
+    item.quantity = quantity
+    item.save()
+    serializer = self.get_serializer(item)
+    return Response(serializer.data, status=status.HTTP_200_OK)
+

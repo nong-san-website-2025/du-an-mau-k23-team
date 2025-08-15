@@ -27,6 +27,8 @@ class CartItemSerializer(serializers.ModelSerializer):
             return cart_item
 
         return CartItem.objects.create(cart=cart, product=product, quantity=quantity)
+    
+    
 
 
 class CartSerializer(serializers.ModelSerializer):
@@ -34,5 +36,5 @@ class CartSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Cart
-        fields = ['id', 'user', 'created_at', 'items']
+        fields = ['id', 'user', 'created_at', 'items',]
         read_only_fields = ['user', 'created_at']

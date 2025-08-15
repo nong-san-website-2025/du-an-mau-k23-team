@@ -42,7 +42,7 @@ const iconMap = {
 const UserProductPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { addToCart } = useCart();
+   const { addToCart, cartItems, updateQuantity } = useCart();
   const categoryParam = searchParams.get("category");
   const subcategoryParam = searchParams.get("subcategory");
 
@@ -86,31 +86,43 @@ const UserProductPage = () => {
   }, [categoryParam, subcategoryParam]);
 
   const handleAddToCart = async (e, product) => {
-    e.stopPropagation();
-    await addToCart(
-      product.id,
-      1,
-      () => toast.success("Đã thêm vào giỏ hàng!", { autoClose: 1500 }),
-      (err) => {
-        if (err.response?.status === 401) {
-          toast.error("Vui lòng đăng nhập để thêm vào giỏ hàng");
-        } else {
-          toast.error("Không thể thêm vào giỏ hàng. Vui lòng thử lại.");
-        }
-      },
-      {
-        id: product.id,
-        name: product.name,
-        price: product.price,
-        image:
-          product.image && product.image.startsWith("/")
-            ? `http://localhost:8000${product.image}`
-            : product.image?.startsWith("http")
-            ? product.image
-            : "",
+  e.stopPropagation();
+
+  // ✅ Kiểm tra nếu sản phẩm đã tồn tại trong giỏ thì update số lượng
+  const existingItem = cartItems.find(
+    (i) => i.product === product.id || i.product_data?.id === product.id
+  );
+  if (existingItem) {
+    await updateQuantity(existingItem.id, existingItem.quantity + 1);
+    toast.success("Đã cập nhật số lượng trong giỏ hàng!", { autoClose: 1500 });
+    return;
+  }
+
+  // ✅ Nếu chưa có thì gọi addToCart như bình thường
+  await addToCart(
+    product.id,
+    1,
+    () => toast.success("Đã thêm vào giỏ hàng!", { autoClose: 1500 }),
+    (err) => {
+      if (err.response?.status === 401) {
+        toast.error("Vui lòng đăng nhập để thêm vào giỏ hàng");
+      } else {
+        toast.error("Không thể thêm vào giỏ hàng. Vui lòng thử lại.");
       }
-    );
-  };
+    },
+    {
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      image:
+        product.image && product.image.startsWith("/")
+          ? `http://localhost:8000${product.image}`
+          : product.image?.startsWith("http")
+          ? product.image
+          : "",
+    }
+  );
+};
 
   if (error) {
     return (
@@ -151,7 +163,7 @@ const UserProductPage = () => {
   );
 
   return (
-    <div className="container py-4">
+    <div className="container py-0">
       {/* Header */}
       <div className="mb-3 d-flex flex-wrap align-items-center justify-content-between">
         <div className="d-flex align-items-center gap-2 flex-wrap">

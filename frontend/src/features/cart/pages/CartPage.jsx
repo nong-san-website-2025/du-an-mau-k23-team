@@ -1,19 +1,16 @@
 import React from "react";
 import { useCart } from "../services/CartContext";
-import { Container, Card, Button, Spinner, Image } from "react-bootstrap";
+import { Container, Card, Button, Spinner } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
+import { ShoppingBasket, ShoppingCart, Store } from "lucide-react";
 
 const green = "#22C55E";
 const darkGreen = "#16A34A";
 
 function QuantityInput({ item }) {
-  const { updateQuantity, removeFromCart } = useCart();
+  const { updateQuantity } = useCart();
   const handleChange = (val) => {
-    if (val > 0) {
-      updateQuantity(item.id, val);
-    } else {
-      removeFromCart(item.id);
-    }
+    updateQuantity(item.id, val);
   };
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
@@ -123,29 +120,20 @@ function CartPage() {
 
   if (cartItems.length === 0) {
     return (
-      <Container className="py-5 d-flex flex-column align-items-center justify-content-center">
-        <Image src="/empty-cart.png" alt="empty" width={180} className="mb-4" />
-        <h2 className="mb-2 fw-bold" style={{ color: green }}>
-          Giỏ hàng của bạn đang trống
+      <Container className="py-0 d-flex flex-column align-items-center justify-content-center">
+        <h2 className="mb-2 fw-lighter " style={{ color: "grey" }}>
+          <i>Giỏ hàng của bạn đang trống</i>
         </h2>
-        <p className="mb-3 text-secondary">
-          Hãy chọn sản phẩm yêu thích và thêm vào giỏ hàng để mua sắm dễ dàng
-          hơn!
-        </p>
         <Button
           href="/productuser"
-          size="lg"
-          style={{
-            borderRadius: 12,
-            fontWeight: 700,
-            padding: "12px 36px",
-            background: green,
-            border: "none",
-            fontSize: "1.1rem",
-            boxShadow: "0 2px 8px rgba(34,197,94,0.10)",
-          }}
+          size="sm"
+          className="btn btn-outline-success"
+          variant="outline-success"
         >
-          Tiếp tục mua sắm
+          <div className="d-flex align-items-center gap-2">
+            <Store />
+            <h5 style={{ marginTop: 8 }}>Đi tới chợ</h5>
+          </div>
         </Button>
       </Container>
     );
