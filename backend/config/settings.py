@@ -49,7 +49,7 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt",
     "corsheaders",
     "users", "sellers", "products",
-    "reviews", "cart", "orders", "payments","channels", 
+    "reviews", "cart", "orders", "payments",
     "store", 'blog', 'wallet'
 ]
 

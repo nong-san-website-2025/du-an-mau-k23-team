@@ -1,26 +1,8 @@
-from rest_framework.views import APIView
 from rest_framework.authtoken.models import Token
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
 from payments.models import Payment
-from django.db import models
-
-# API lấy số dư ví của user hiện tại
-class WalletBalanceView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        user = request.user
-        # Nếu số dư ví lưu ở user
-        if hasattr(user, 'wallet_balance'):
-            balance = user.wallet_balance
-        else:
-            # Nếu số dư ví lưu ở model Payment, lấy tổng các payment thành công
-            balance = Payment.objects.filter(user=user, status='success').aggregate(total=models.Sum('amount'))['total'] or 0
-        return Response({"balance": balance})
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
-from rest_framework.views import APIView
 from rest_framework import permissions
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth.hashers import make_password
@@ -46,11 +28,21 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from .models import Address
 from .serializers import AddressSerializer
-from chat.models import Message
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from chat.serializers import MessageSerializer
+
+# API lấy số dư ví của user hiện tại
+class WalletBalanceView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        # Nếu số dư ví lưu ở user
+        if hasattr(user, 'wallet_balance'):
+            balance = user.wallet_balance
+        else:
+            # Nếu số dư ví lưu ở model Payment, lấy tổng các payment thành công
+            balance = Payment.objects.filter(user=user, status='success').aggregate(total=models.Sum('amount'))['total'] or 0
+        return Response({"balance": balance})
+
 # --- GOOGLE LOGIN API ---
 
 @method_decorator(csrf_exempt, name='dispatch')
