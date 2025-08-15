@@ -21,6 +21,5 @@ urlpatterns = [
     path("verify-code/", VerifyCodeAPIView.as_view(), name="verify-code"),
     path("reset-password/", ResetPasswordAPIView.as_view(), name='reset-password'),
     path("google-login/", GoogleLoginAPIView.as_view(), name='google-login'),
-    path("wallet/", WalletBalanceView.as_view(), name="wallet-balance"),
 ]
 urlpatterns += router.urls

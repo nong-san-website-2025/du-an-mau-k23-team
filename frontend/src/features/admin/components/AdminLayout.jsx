@@ -3,7 +3,7 @@ import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { Bell, User, Settings, Globe, LogOut } from "lucide-react";
 import AdminHeader from "./AdminHeader";
 import { useAuth } from "../../login_register/services/AuthContext";
-import AdminRoute from "./AdminRoute";
+
 
 
 const adminMenu = [
@@ -29,7 +29,6 @@ export default function AdminLayout() {
   };
 
   return (
-    <AdminRoute>
       <div className="bg-light" style={{ minHeight: "100vh" }}>
       {/* Top utility bar */}
       <div
@@ -141,6 +140,5 @@ export default function AdminLayout() {
         </div>
       </div>
       </div>
-    </AdminRoute>
   );
 }

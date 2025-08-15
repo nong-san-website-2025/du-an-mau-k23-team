@@ -1,385 +1,189 @@
-import React, { useState, useEffect } from "react";
-import { Container, Card, Table, Button, Badge, Alert, Spinner, Modal, Form, Row, Col } from "react-bootstrap";
-import { FaWallet, FaCheckCircle, FaTimesCircle, FaClock, FaEye, FaUsers, FaMoneyBillWave } from "react-icons/fa";
-import walletApi from "../services/walletApi";
+import { useEffect, useState } from "react";
+import { Search, Check, X } from "lucide-react";
+import axios from "axios";
+import AdminPageLayout from "../components/AdminPageLayout";
+import AdminHeader from "../components/AdminHeader";
+import ProductFilterSidebar from "../components/ProductAdmin/ProductSideBar"; // Tái sử dụng Sidebar
+import { Spinner } from "react-bootstrap"; // Hoặc component loading tuỳ bạn
 
-export default function WalletPage() {
-  const [paymentRequests, setPaymentRequests] = useState([]);
-  const [stats, setStats] = useState({});
+const api = axios.create({
+  baseURL: "http://localhost:8000",
+});
+
+function getAuthHeaders() {
+  const token = localStorage.getItem("token");
+  return { Authorization: `Bearer ${token}` };
+}
+
+export default function AdminTopUpRequests() {
+  const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [processing, setProcessing] = useState(null);
-  const [showModal, setShowModal] = useState(false);
-  const [selectedRequest, setSelectedRequest] = useState(null);
-  const [adminNote, setAdminNote] = useState('');
-  const [error, setError] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
 
   useEffect(() => {
-    loadData();
+    fetchRequests();
   }, []);
 
-  const loadData = async () => {
+  const getStatusLabel = (status) => {
+    switch (status) {
+      case "approved":
+        return "Đã duyệt";
+      case "pending":
+        return "Đang chờ";
+      case "rejected":
+        return "Đã từ chối";
+      default:
+        return status;
+    }
+  };
+
+  const fetchRequests = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      setError('');
-      
-      console.log('🔄 Loading wallet data...');
-      
-      const [requestsData, statsData] = await Promise.all([
-        walletApi.getAllWalletRequests(),
-        walletApi.getWalletStats()
-      ]);
-      
-      console.log('📋 Requests data:', requestsData);
-      console.log('📊 Stats data:', statsData);
-      
-      const requests = Array.isArray(requestsData) ? requestsData : requestsData.results || [];
-      console.log('✅ Processed requests:', requests);
-      
-      setPaymentRequests(requests);
-      setStats(statsData);
+      const res = await api.get("/api/admin_wallet_requests/", {
+        headers: getAuthHeaders(),
+      });
+      setRequests(res.data);
     } catch (err) {
-      console.error('❌ Error loading wallet data:', err);
-      setError(`Có lỗi xảy ra khi tải dữ liệu: ${err.message}`);
+      console.error(err);
+      setRequests([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleApprove = async (requestId, note = '') => {
-    setProcessing(requestId);
-    try {
-      await walletApi.approveWalletRequest(requestId, note);
-      
-      // Cập nhật state local
-      setPaymentRequests(prev => 
-        prev.map(req => 
-          req.id === requestId 
-            ? { ...req, status: 'approved', admin_note: note }
-            : req
-        )
-      );
-      
-      // Reload stats
-      const statsData = await walletApi.getWalletStats();
-      setStats(statsData);
-      
-      // Gửi sự kiện cập nhật ví
-      const walletUpdateEvent = new CustomEvent('walletUpdated', {
-        detail: { requestId, status: 'approved' }
-      });
-      window.dispatchEvent(walletUpdateEvent);
-      
-    } catch (err) {
-      console.error('Error approving request:', err);
-      alert('Có lỗi xảy ra khi xác nhận!');
-    } finally {
-      setProcessing(null);
-    }
+  const approve = async (id) => {
+    await api.post(
+      `/api/admin_wallet_requests/${id}/approve/`,
+      {},
+      { headers: getAuthHeaders() }
+    );
+    alert("Đã duyệt!");
+    fetchRequests();
   };
 
-  const handleReject = async (requestId, note = '') => {
-    setProcessing(requestId);
-    try {
-      await walletApi.rejectWalletRequest(requestId, note);
-      
-      // Cập nhật state local
-      setPaymentRequests(prev => 
-        prev.map(req => 
-          req.id === requestId 
-            ? { ...req, status: 'rejected', admin_note: note }
-            : req
-        )
-      );
-      
-      // Reload stats
-      const statsData = await walletApi.getWalletStats();
-      setStats(statsData);
-      
-    } catch (err) {
-      console.error('Error rejecting request:', err);
-      alert('Có lỗi xảy ra khi từ chối!');
-    } finally {
-      setProcessing(null);
-    }
+  const reject = async (id) => {
+    await api.post(
+      `/api/admin_wallet_requests/${id}/reject/`,
+      {},
+      { headers: getAuthHeaders() }
+    );
+    alert("Đã từ chối!");
+    fetchRequests();
   };
+
+  const filteredRequests = requests.filter((r) =>
+    r.user.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const getStatusBadge = (status) => {
+    const baseClasses = "px-2 py-1 rounded-pill text-white fw-bold";
     switch (status) {
-      case 'pending':
-        return <Badge bg="warning"><FaClock className="me-1" />Chờ xác nhận</Badge>;
-      case 'approved':
-        return <Badge bg="success"><FaCheckCircle className="me-1" />Đã xác nhận</Badge>;
-      case 'rejected':
-        return <Badge bg="danger"><FaTimesCircle className="me-1" />Đã từ chối</Badge>;
+      case "approved":
+        return `${baseClasses} bg-success`;
+      case "pending":
+        return `${baseClasses} bg-warning`;
+      case "rejected":
+        return `${baseClasses} bg-danger`;
       default:
-        return <Badge bg="secondary">Không xác định</Badge>;
+        return `${baseClasses} bg-secondary`;
     }
   };
 
-  const viewDetails = (request) => {
-    setSelectedRequest(request);
-    setShowModal(true);
-  };
-
-  if (loading) {
-    return (
-      <Container className="py-5 text-center">
-        <Spinner animation="border" style={{ color: "#2E8B57" }} />
-        <div className="mt-3" style={{ color: "#2E8B57", fontWeight: 600 }}>
-          Đang tải danh sách yêu cầu...
-        </div>
-      </Container>
-    );
-  }
-
-  if (error) {
-    return (
-      <Container className="py-4">
-        <Alert variant="danger">
-          <Alert.Heading>Có lỗi xảy ra</Alert.Heading>
-          <p>{error}</p>
-          <Button variant="outline-danger" onClick={loadData}>
-            Thử lại
-          </Button>
-        </Alert>
-      </Container>
-    );
-  }
-
   return (
-    <Container fluid className="py-4">
-      {/* Stats Cards */}
-      <Row className="mb-4">
-        <Col md={3}>
-          <Card className="border-0 shadow-sm">
-            <Card.Body className="text-center">
-              <FaClock className="text-warning mb-2" size={24} />
-              <h5 className="text-warning">{stats.total_pending || 0}</h5>
-              <small className="text-muted">Chờ xác nhận</small>
-            </Card.Body>
-          </Card>
-        </Col>
-        <Col md={3}>
-          <Card className="border-0 shadow-sm">
-            <Card.Body className="text-center">
-              <FaCheckCircle className="text-success mb-2" size={24} />
-              <h5 className="text-success">{stats.total_approved || 0}</h5>
-              <small className="text-muted">Đã xác nhận</small>
-            </Card.Body>
-          </Card>
-        </Col>
-        <Col md={3}>
-          <Card className="border-0 shadow-sm">
-            <Card.Body className="text-center">
-              <FaMoneyBillWave className="text-info mb-2" size={24} />
-              <h5 className="text-info">
-                {(stats.total_amount_pending || 0).toLocaleString('vi-VN')} ₫
-              </h5>
-              <small className="text-muted">Tổng tiền chờ</small>
-            </Card.Body>
-          </Card>
-        </Col>
-        <Col md={3}>
-          <Card className="border-0 shadow-sm">
-            <Card.Body className="text-center">
-              <FaUsers className="text-primary mb-2" size={24} />
-              <h5 className="text-primary">{stats.total_users_with_wallet || 0}</h5>
-              <small className="text-muted">Người dùng có ví</small>
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
+    <AdminPageLayout
+      header={<AdminHeader />}
+      sidebar={
+        <ProductFilterSidebar
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          selectedCategory={selectedCategory}
+          setSelectedCategory={setSelectedCategory}
+          categories={[{ value: "all", label: "Tất cả" }]}
+        />
+      }
+    >
+      <div className="bg-white" style={{ minHeight: "100vh" }}>
+        {/* Header Section */}
+        <div className="p-2 border-bottom">
+          <div className="d-flex justify-content-between align-items-center gap-2 flex-wrap">
+            <div style={{ flex: 1 }}>
+              <div className="input-group" style={{ width: 420 }}>
+                <span className="input-group-text bg-white border-end-0">
+                  <Search size={18} />
+                </span>
+                <input
+                  type="text"
+                  className="form-control border-start-0"
+                  placeholder="Tìm kiếm theo tên người dùng..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
 
-      <Card className="shadow border-0">
-        <Card.Header className="bg-primary text-white">
-          <h4 className="mb-0">
-            <FaWallet className="me-2" />
-            Quản lý Ví Điện Tử - Yêu cầu Nạp Tiền
-          </h4>
-        </Card.Header>
-        <Card.Body>
-          {paymentRequests.length === 0 ? (
-            <Alert variant="info" className="text-center">
-              <FaClock className="me-2" />
-              Không có yêu cầu nạp tiền nào
-            </Alert>
+        {/* Table Section */}
+        <div className="p-3">
+          {loading ? (
+            <div className="d-flex justify-content-center p-5">
+              <Spinner animation="border" />
+            </div>
           ) : (
-            <Table responsive striped hover>
+            <table className="table table-hover align-middle">
               <thead>
                 <tr>
-                  <th>#</th>
                   <th>Người dùng</th>
-                  <th>Email</th>
                   <th>Số tiền</th>
-                  <th>Thời gian</th>
                   <th>Trạng thái</th>
                   <th>Hành động</th>
                 </tr>
               </thead>
               <tbody>
-                {paymentRequests.map((request, index) => (
-                  <tr key={request.id}>
-                    <td>{index + 1}</td>
-                    <td>
-                      <div>
-                        <strong>{request.user.full_name || request.user.username}</strong>
-                        <br />
-                        <small className="text-muted">@{request.user.username}</small>
-                      </div>
-                    </td>
-                    <td>{request.user.email}</td>
-                    <td>
-                      <strong style={{ color: "#2E8B57" }}>
-                        {request.amount.toLocaleString('vi-VN')} ₫
-                      </strong>
-                    </td>
-                    <td>
-                      <small>
-                        {new Date(request.created_at).toLocaleString('vi-VN')}
-                      </small>
-                    </td>
-                    <td>{getStatusBadge(request.status)}</td>
-                    <td>
-                      <div className="d-flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline-info"
-                          onClick={() => viewDetails(request)}
-                        >
-                          <FaEye />
-                        </Button>
-                        
-                        {request.status === 'pending' && (
-                          <>
-                            <Button
-                              size="sm"
-                              variant="success"
-                              onClick={() => handleApprove(request.id)}
-                              disabled={processing === request.id}
+                {filteredRequests.length > 0 ? (
+                  filteredRequests.map((r) => (
+                    <tr key={r.id}>
+                      <td>{r.user}</td>
+                      <td>{r.amount.toLocaleString()} đ</td>
+                      <td>
+                        <span className={getStatusBadge(r.status)}>
+                          {getStatusLabel(r.status)}
+                        </span>
+                      </td>
+                      <td>
+                        {r.status === "pending" && (
+                          <div className="d-flex gap-2">
+                            <button
+                              className="btn btn-success btn-sm"
+                              onClick={() => approve(r.id)}
                             >
-                              {processing === request.id ? (
-                                <Spinner size="sm" />
-                              ) : (
-                                <FaCheckCircle />
-                              )}
-                            </Button>
-                            
-                            <Button
-                              size="sm"
-                              variant="danger"
-                              onClick={() => handleReject(request.id)}
-                              disabled={processing === request.id}
+                              <Check size={16} /> Duyệt
+                            </button>
+                            <button
+                              className="btn btn-danger btn-sm"
+                              onClick={() => reject(r.id)}
                             >
-                              {processing === request.id ? (
-                                <Spinner size="sm" />
-                              ) : (
-                                <FaTimesCircle />
-                              )}
-                            </Button>
-                          </>
+                              <X size={16} /> Từ chối
+                            </button>
+                          </div>
                         )}
-                      </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={4} className="text-center">
+                      Không có yêu cầu nào
                     </td>
                   </tr>
-                ))}
+                )}
               </tbody>
-            </Table>
+            </table>
           )}
-        </Card.Body>
-      </Card>
-
-      {/* Modal chi tiết */}
-      <Modal show={showModal} onHide={() => setShowModal(false)} size="lg">
-        <Modal.Header closeButton>
-          <Modal.Title>Chi tiết yêu cầu nạp tiền</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          {selectedRequest && (
-            <div>
-              <div className="row mb-3">
-                <div className="col-md-6">
-                  <strong>ID yêu cầu:</strong> #{selectedRequest.id}
-                </div>
-                <div className="col-md-6">
-                  <strong>Trạng thái:</strong> {getStatusBadge(selectedRequest.status)}
-                </div>
-              </div>
-              
-              <div className="row mb-3">
-                <div className="col-md-6">
-                  <strong>Người dùng:</strong> {selectedRequest.user.full_name || selectedRequest.user.username}
-                </div>
-                <div className="col-md-6">
-                  <strong>Email:</strong> {selectedRequest.user.email}
-                </div>
-              </div>
-              
-              <div className="row mb-3">
-                <div className="col-md-6">
-                  <strong>Số tiền:</strong> 
-                  <span style={{ color: "#2E8B57", fontWeight: "bold", fontSize: "18px" }}>
-                    {selectedRequest.amount.toLocaleString('vi-VN')} ₫
-                  </span>
-                </div>
-                <div className="col-md-6">
-                  <strong>Thời gian tạo:</strong> {new Date(selectedRequest.created_at).toLocaleString('vi-VN')}
-                </div>
-              </div>
-              
-              <div className="mb-3">
-                <strong>Mô tả:</strong>
-                <div className="mt-2 p-3" style={{ backgroundColor: "#f8f9fa", borderRadius: "8px" }}>
-                  {selectedRequest.message}
-                </div>
-              </div>
-            </div>
-          )}
-        </Modal.Body>
-        <Modal.Footer>
-          {selectedRequest && selectedRequest.status === 'pending' && (
-            <>
-              <Form.Group className="me-3 flex-grow-1">
-                <Form.Control
-                  type="text"
-                  placeholder="Ghi chú của admin (tùy chọn)"
-                  value={adminNote}
-                  onChange={(e) => setAdminNote(e.target.value)}
-                />
-              </Form.Group>
-              <Button
-                variant="success"
-                onClick={() => {
-                  handleApprove(selectedRequest.id, adminNote);
-                  setShowModal(false);
-                  setAdminNote('');
-                }}
-                disabled={processing === selectedRequest.id}
-              >
-                <FaCheckCircle className="me-2" />
-                Xác nhận
-              </Button>
-              <Button
-                variant="danger"
-                onClick={() => {
-                  handleReject(selectedRequest.id, adminNote);
-                  setShowModal(false);
-                  setAdminNote('');
-                }}
-                disabled={processing === selectedRequest.id}
-              >
-                <FaTimesCircle className="me-2" />
-                Từ chối
-              </Button>
-            </>
-          )}
-          <Button variant="secondary" onClick={() => {
-            setShowModal(false);
-            setAdminNote('');
-          }}>
-            Đóng
-          </Button>
-        </Modal.Footer>
-      </Modal>
-    </Container>
+        </div>
+      </div>
+    </AdminPageLayout>
   );
 }
