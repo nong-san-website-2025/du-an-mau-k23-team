@@ -1,8 +1,6 @@
 from rest_framework import viewsets, permissions
 from .models import Order
 from .serializers import OrderSerializer, OrderCreateSerializer
-
-
 from rest_framework.permissions import AllowAny, IsAuthenticated
 
 class OrderViewSet(viewsets.ModelViewSet):
@@ -28,6 +26,20 @@ class OrderViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(status=status)
         return queryset
 
-
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        order = serializer.save(user=self.request.user)
+        # Tích điểm: cứ 1000đ thì được 10 điểm
+        points_earned = (order.total_price // 1000) * 10
+        if points_earned > 0:
+            user = self.request.user
+            user.points += points_earned
+            user.save()
+            # Lưu lịch sử tích điểm
+            from users.models import PointHistory
+            PointHistory.objects.create(
+                user=user,
+                order_id=str(order.id),
+                points=points_earned,
+                amount=order.total_price,
+                action=f"Cộng điểm khi thanh toán đơn hàng #{order.id}"
+            )

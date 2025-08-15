@@ -1,10 +1,9 @@
 from django.urls import path
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
-
-from .views import (AddressViewSet, WalletBalanceView,
-    VerifyAdminView, UserProfileView, ForgotPasswordView, VerifyCodeAPIView, ResetPasswordAPIView, GoogleLoginAPIView, RegisterView, LoginView,
-)
 from rest_framework.routers import DefaultRouter
+from .views import (AddressViewSet, WalletBalanceView,
+    VerifyAdminView, UserProfileView, ForgotPasswordView, VerifyCodeAPIView, ResetPasswordAPIView, GoogleLoginAPIView, RegisterView, LoginView,)
+from .views import UserPointsView
 
 router = DefaultRouter()
 router.register("addresses", AddressViewSet, basename="address")
@@ -21,5 +20,6 @@ urlpatterns = [
     path("verify-code/", VerifyCodeAPIView.as_view(), name="verify-code"),
     path("reset-password/", ResetPasswordAPIView.as_view(), name='reset-password'),
     path("google-login/", GoogleLoginAPIView.as_view(), name='google-login'),
+    path("points/", UserPointsView.as_view(), name="user-points"),
 ]
 urlpatterns += router.urls

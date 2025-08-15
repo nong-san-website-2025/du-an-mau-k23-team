@@ -1,19 +1,27 @@
-
 from rest_framework import serializers
-from .models import CustomUser
+from .models import CustomUser, PointHistory
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from .models import Address
 
+class UserPointsHistorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PointHistory
+        fields = ["date", "action", "points", "amount", "order_id"]
+
 class UserSerializer(serializers.ModelSerializer):
+    history = serializers.SerializerMethodField()
     class Meta:
         model = CustomUser
         fields = [
             "id", "username", "email", "avatar",
             "full_name", "phone", "address",
-            "is_seller",  "is_admin", "is_support",
+            "is_seller",  "is_admin", "is_support", "points", "history",
         ]
+    def get_history(self, obj):
+        histories = obj.point_histories.order_by('-date')
+        return UserPointsHistorySerializer(histories, many=True).data
 
 
 class RegisterSerializer(serializers.ModelSerializer):

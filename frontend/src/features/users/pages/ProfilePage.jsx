@@ -1,8 +1,26 @@
-    // Hàm nạp tiền ví
-
 import React, { useEffect, useState } from "react";
-import { Container, Card, Button, Spinner, Row, Col } from "react-bootstrap";
+import {
+  Container,
+  Card,
+  Button,
+  Spinner,
+  Row,
+  Col,
+  Image,
+} from "react-bootstrap";
+import {
+  FaUser,
+  FaPhone,
+  FaEnvelope,
+  FaMapMarkerAlt,
+  FaLock,
+  FaBell,
+  FaGift,
+  FaStar,
+  FaSeedling,
+} from "react-icons/fa";
 import API from "../../login_register/services/api";
+import Rewards from "../../points/pages/Rewards";
 import { useNavigate } from "react-router-dom";
 import ProfileSidebar from "../components/ProfileSidebar";
 import ProfileInfo from "../components/ProfileInfo";
@@ -248,7 +266,7 @@ function ProfilePage() {
             )}
             {activeTab === "point" && (
               <div style={{ fontSize: 16, marginBottom: 10, color: "#FFD700" }}>
-                Chức năng điểm thưởng sẽ được bổ sung.
+                <Rewards />
               </div>
             )}
             {activeTab === "special" && (
