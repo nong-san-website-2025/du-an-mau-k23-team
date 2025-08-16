@@ -1,5 +1,5 @@
 import React from "react";
-import "../ProductAdmin/styles/ProductTableRow.css"; // ✅ nhớ import file CSS mới
+import "../../styles/ProductTableRow.css"; // ✅ nhớ import file CSS mới
 
 export default function ProductTableRow({ product, checked, onCheck, onExpand, getStatusBadge, isExpanded }) {
   return (

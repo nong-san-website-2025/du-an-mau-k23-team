@@ -92,8 +92,8 @@ export default function ProductTable({
               />
             </th>
             <th>Tên sản phẩm</th>
+            <th>Danh mục</th>
             <th>Giá</th>
-            <th>Tồn kho</th>
             <th>Trạng thái</th>
             <th>Thao tác</th>
           </tr>

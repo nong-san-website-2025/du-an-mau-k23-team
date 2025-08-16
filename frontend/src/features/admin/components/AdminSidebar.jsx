@@ -8,6 +8,7 @@ const menu = [
   { label: "Sản phẩm", path: "/admin/products" },
   { label: "Đơn hàng", path: "/admin/orders" },
   { label: "Khiếu nại", path: "/admin/complaints" },
+  { label: "Yêu cầu hỗ trợ", path: "/admin/supports" },
   { label: "Voucher", path: "/admin/vouchers" },
   { label: "Ví điện tử", path: "/admin/wallet" },
   { label: "Banner", path: "/admin/banners" },

@@ -33,6 +33,7 @@ import BlogDetail from './pages/Blog/BlogDetail';
 import StoreList from './features/stores/pages/StoreList';
 import StoreDetail from './features/stores/pages/StoreDetail';
 import AboutPage from "./pages/About/About";
+import SupportPage from "./features/admin/pages/SupportPage";
 
 function App() {
   return (
@@ -73,6 +74,7 @@ function App() {
               <Route path="notifications" element={<NotificationsPage />} />
               <Route path="staff" element={<StaffPage />} />
               <Route path="reports" element={<ReportsPage />} />
+              <Route path="supports" element={<SupportPage />} />
             </Route>
           </Route>
           <Route path="/login" element={<LoginForm />} />

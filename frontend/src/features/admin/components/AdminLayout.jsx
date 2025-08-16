@@ -1,20 +1,19 @@
 import React from "react";
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { Bell, User, Settings, Globe, LogOut } from "lucide-react";
-import AdminHeader from "./AdminHeader";
 import { useAuth } from "../../login_register/services/AuthContext";
-
-
+import "../styles/AdminLayout.css"; // Assuming you have a CSS file for styles
 
 const adminMenu = [
   { to: "/admin/", label: "Tổng quan" },
   { to: "/admin/products", label: "Hàng hóa" },
   { to: "/admin/orders", label: "Đơn hàng" },
   { to: "/admin/users", label: "Khách hàng" },
+  { to: "/admin/shops", label: "Cửa hàng" },
   { to: "/admin/staff", label: "Nhân viên" },
   { to: "/admin/wallet", label: "Sổ quỹ" },
   { to: "/admin/reports", label: "Báo cáo" },
-  { to: "/admin/online", label: "Bán online" },
+  { to: "/admin/supports", label: "Yêu cầu hỗ trợ" },
 ];
 
 export default function AdminLayout() {
@@ -29,7 +28,7 @@ export default function AdminLayout() {
   };
 
   return (
-      <div className="bg-light" style={{ minHeight: "100vh" }}>
+    <div className="bg-light" style={{ minHeight: "100vh" }}>
       {/* Top utility bar */}
       <div
         className="w-100"
@@ -98,30 +97,22 @@ export default function AdminLayout() {
         className="navbar navbar-expand-lg"
         style={{
           background: "#22C55E",
-          minHeight: 50,
+          minHeight: 45,
           boxShadow: "0 2px 8px #0001",
           zIndex: 1040,
+          padding: "0px",
         }}
       >
-        <div className="container-fluid px-3">
-          <ul className="navbar-nav flex-row ms-3" style={{ gap: 8 }}>
+        <div className="container-fluid px-2">
+          <ul className="navbar-nav flex-row ms-3 " style={{ gap: 0 }}>
             {adminMenu.map((item) => (
               <li className="nav-item" key={item.to}>
                 <NavLink
                   to={item.to}
                   end={item.to === "/admin/"}
                   className={({ isActive }) =>
-                    "nav-link px-3 py-2 " + (isActive ? " active" : "")
+                    "admin-nav-link px-3 py-2" + (isActive ? " active" : "")
                   }
-                  style={({ isActive }) => ({
-                    color: isActive ? "#fff" : "#fff",
-                    background: isActive ? "	rgba(0, 0, 0, 0.2)" : "transparent",
-                    borderRadius: 6,
-                    fontSize: 14,
-                    transition: "all 0.2s",
-                    fontWeight: 600,
-
-                  })}
                 >
                   {item.label}
                 </NavLink>
@@ -136,9 +127,9 @@ export default function AdminLayout() {
       {/* <AdminHeader /> */}
       <div className="container-fluid py-0">
         <div className="row" style={{ minHeight: "calc(100vh - 56px - 56px)" }}>
-            <Outlet />
+          <Outlet />
         </div>
       </div>
-      </div>
+    </div>
   );
 }
