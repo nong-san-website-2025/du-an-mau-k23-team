@@ -111,6 +111,7 @@ class OrderCreateSerializer(serializers.ModelSerializer):
 
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, required=False, read_only=True)
+    user_email = serializers.CharField(source='user.email', read_only=True)
 
     class Meta:
         model = Order

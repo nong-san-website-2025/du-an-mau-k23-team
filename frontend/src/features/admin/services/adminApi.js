@@ -16,9 +16,75 @@ const adminApi = {
     // Call backend API for products
     return [];
   },
-  getOrders: async () => {
-    // Call backend API for orders
-    return [];
+  getOrders: async (params = {}) => {
+    try {
+      const token = localStorage.getItem('token');
+      const queryParams = new URLSearchParams();
+      
+      if (params.status) queryParams.append('status', params.status);
+      if (params.search) queryParams.append('search', params.search);
+      
+      const response = await fetch(`http://localhost:8000/api/orders/admin-list/?${queryParams}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch orders');
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+      return [];
+    }
+  },
+
+  updateOrderStatus: async (orderId, status) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:8000/api/orders/${orderId}/admin-update-status/`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update order status');
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error updating order status:', error);
+      throw error;
+    }
+  },
+
+  getOrderDetail: async (orderId) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:8000/api/orders/${orderId}/`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch order detail');
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching order detail:', error);
+      throw error;
+    }
   },
   getComplaints: async () => {
     // Call backend API for complaints

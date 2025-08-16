@@ -32,7 +32,7 @@ import BlogHome from './pages/Blog/BlogHome';
 import BlogDetail from './pages/Blog/BlogDetail';
 import StoreList from './features/stores/pages/StoreList';
 import StoreDetail from './features/stores/pages/StoreDetail';
-import AboutPage from "./pages/About/About";
+import AboutPage from "./pages/about/About";
 import SupportPage from "./features/admin/pages/SupportPage";
 import FeaturedProductsPage from "./features/featured/pages/FeaturedProductsPage";
 
@@ -52,7 +52,7 @@ function App() {
               <Route path="checkout" element={<CheckoutPage />} />
               <Route path="profile/" element={<ProfilePage />} />
             </Route>
-            <Route path="abouts" element={<AboutPage/>} />
+            <Route path="about" element={<AboutPage/>} />
             <Route path="productuser" element={<UserProductPage />} />
             <Route path="products/:id" element={<ProductDetailPage />} />
             <Route path="cart" element={<CartPage />} />
