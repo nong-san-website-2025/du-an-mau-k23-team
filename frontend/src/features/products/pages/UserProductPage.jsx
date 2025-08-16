@@ -340,7 +340,7 @@ const UserProductPage = () => {
                   </div>
                   <div className="d-flex justify-content-between align-items-center mt-auto">
                     <span className="fw-bold text-danger">
-                      {product.price?.toLocaleString("vi-VN")}đ
+                      {Math.round(product.price)?.toLocaleString("vi-VN")} VNĐ
                     </span>
                     <Button
                       variant="outline-success"

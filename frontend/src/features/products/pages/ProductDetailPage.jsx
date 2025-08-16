@@ -96,9 +96,13 @@ const ProductDetailPage = () => {
   return (
     <div className="container py-4 product-detail-page">
       <Button
-        variant="link"
         onClick={() => navigate(-1)}
-        className="mb-4 text-decoration-none text-muted"
+        className="mb-4"
+        style={{
+          backgroundColor: "rgb(33, 196, 93)",
+          borderColor: "rgb(33, 196, 93)",
+          color: "white",
+        }}
       >
         <ChevronLeft size={20} /> Quay lại
       </Button>
@@ -147,14 +151,12 @@ const ProductDetailPage = () => {
           <div className="mb-3">
             <span className="fs-3 fw-bold text-success">
               {product.discount > 0
-                ? `${(
-                    product.price * (1 - product.discount / 100)
-                  ).toLocaleString("vi-VN")}đ`
-                : `${product.price?.toLocaleString("vi-VN")}đ`}
+                ? `${Math.round(product.price * (1 - product.discount / 100)).toLocaleString("vi-VN")} VNĐ`
+                : `${Math.round(product.price)?.toLocaleString("vi-VN")} VNĐ`}
             </span>
             {product.discount > 0 && (
               <span className="text-muted text-decoration-line-through ms-2">
-                {product.price?.toLocaleString("vi-VN")}đ
+                {Math.round(product.price)?.toLocaleString("vi-VN")} VNĐ
               </span>
             )}
             <span className="ms-3 text-muted">/ {product.unit}</span>
@@ -240,7 +242,32 @@ const ProductDetailPage = () => {
         </div>
       </Card>
 
-      
+        {/* Cửa hàng đơn giản */}
+        {product.store && (
+          <Card className="mt-4 border-0 shadow-sm p-3">
+            <Row className="align-items-center">
+              <Col xs={2} className="text-center">
+                <img
+                  src={product.store.image || "https://via.placeholder.com/80x80"}
+                  alt={product.store.store_name}
+                  className="img-fluid rounded-circle shadow"
+                  style={{ maxHeight: "60px", objectFit: "cover" }}
+                />
+              </Col>
+              <Col xs={7}>
+                <h5 className="fw-bold mb-0">{product.store.store_name}</h5>
+              </Col>
+              <Col xs={3} className="text-end">
+                <Button
+                  variant="outline-success"
+                  onClick={() => navigate(`/store/${product.store.id}`, { state: { productId: product.id } })}
+                >
+                  Xem shop
+                </Button>
+              </Col>
+            </Row>
+          </Card>
+        )}
     </div>
   );
 };

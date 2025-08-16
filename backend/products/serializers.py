@@ -13,12 +13,18 @@ class SubcategorySerializer(serializers.ModelSerializer):
         model = Subcategory
         fields = ['id', 'name', 'category']
 
+from sellers.serializers import SellerListSerializer
+
 class ProductSerializer(serializers.ModelSerializer):
     subcategory = SubcategorySerializer(read_only=True)
     category = serializers.CharField(source='subcategory.category.name', read_only=True)
     seller_name = serializers.CharField(source='seller.name', read_only=True)
     discounted_price = serializers.ReadOnlyField()
     image = serializers.ImageField()
+    seller_name = serializers.CharField(source='seller.store_name', read_only=True)
+    discounted_price = serializers.ReadOnlyField()
+    image = serializers.SerializerMethodField()
+    store = SellerListSerializer(source='seller', read_only=True)
 
     class Meta:
         model = Product
@@ -26,7 +32,7 @@ class ProductSerializer(serializers.ModelSerializer):
             'id', 'name', 'description', 'price', 'discounted_price', 'unit',
             'stock', 'image', 'rating', 'review_count', 'is_new', 'is_organic',
             'is_best_seller', 'discount', 'location', 'brand', 'subcategory',
-            'seller', 'seller_name', 'created_at', 'updated_at', 'category'
+            'seller', 'seller_name', 'created_at', 'updated_at', 'category', 'store'
         ]
 
     def get_image(self, obj):

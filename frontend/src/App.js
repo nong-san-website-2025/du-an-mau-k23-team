@@ -34,6 +34,7 @@ import StoreList from './features/stores/pages/StoreList';
 import StoreDetail from './features/stores/pages/StoreDetail';
 import AboutPage from "./pages/About/About";
 import SupportPage from "./features/admin/pages/SupportPage";
+import FeaturedProductsPage from "./features/featured/pages/FeaturedProductsPage";
 
 function App() {
   return (
@@ -58,6 +59,7 @@ function App() {
             <Route path="manage-products" element={<ManageStore />} />
             <Route path="store" element={<StoreList />} />
             <Route path="store/:id" element={<StoreDetail />} />
+            <Route path="featured" element={<FeaturedProductsPage />} />
           </Route>
           {/* Admin routes with authentication protection */}
           <Route element={<AdminPrivateRoute />}>
