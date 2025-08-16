@@ -1,6 +1,14 @@
 import React, { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
-import { Container, Row, Col, Card, Spinner, Badge } from "react-bootstrap";
+import { useParams, Link } from "react-router-dom";
+import {
+  Container,
+  Row,
+  Col,
+  Card,
+  Spinner,
+  Badge,
+  Button,
+} from "react-bootstrap"; // thêm Button
 import axios from "axios";
 
 const StoreDetail = () => {
@@ -39,6 +47,20 @@ const StoreDetail = () => {
 
   return (
     <Container className="my-5">
+      {/* Nút quay lại */}
+      <div className="mb-4">
+        <Link to="/store">
+          <Button
+            style={{
+              backgroundColor: "rgb(33, 196, 93)",
+              borderColor: "rgb(33, 196, 93)",
+            }}
+          >
+            ← Quay lại danh sách cửa hàng
+          </Button>
+        </Link>
+      </div>
+
       {/* Thông tin cửa hàng */}
       <Row className="mb-5 align-items-center">
         <Col md={3} className="text-center">
@@ -67,51 +89,56 @@ const StoreDetail = () => {
         {store.products && store.products.length > 0 ? (
           store.products.map((product) => (
             <Col key={product.id} sm={6} md={4} lg={3} className="mb-4">
-              <Card
-                className="h-100 shadow-sm border-0"
-                style={{
-                  borderRadius: "15px",
-                  overflow: "hidden",
-                  transition: "transform 0.3s ease, box-shadow 0.3s ease",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = "translateY(-5px)";
-                  e.currentTarget.style.boxShadow =
-                    "0 8px 20px rgba(0,0,0,0.15)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = "translateY(0)";
-                  e.currentTarget.style.boxShadow =
-                    "0 4px 10px rgba(0,0,0,0.05)";
-                }}
+              <Link
+                to={`/products/${product.id}`}
+                style={{ textDecoration: "none", color: "inherit" }}
               >
-                <Card.Img
-                  variant="top"
-                  src={product.image || "https://via.placeholder.com/300x200"}
-                  style={{ height: "200px", objectFit: "cover" }}
-                />
-                <Card.Body>
-                  <Card.Title
-                    className="fw-bold"
-                    style={{ fontSize: "1rem", minHeight: "48px" }}
-                  >
-                    {product.name}
-                  </Card.Title>
-                  <div className="mb-2">
-                    <span className="text-danger fw-bold">
-                      {product.discounted_price} đ
-                    </span>{" "}
-                    {product.discount > 0 && (
-                      <small className="text-muted text-decoration-line-through">
-                        {product.price} đ
-                      </small>
-                    )}
-                  </div>
-                  <Badge bg="secondary" className="mb-2">
-                    Còn {product.stock} {product.unit}
-                  </Badge>
-                </Card.Body>
-              </Card>
+                <Card
+                  className="h-100 shadow-sm border-0"
+                  style={{
+                    borderRadius: "15px",
+                    overflow: "hidden",
+                    transition: "transform 0.3s ease, box-shadow 0.3s ease",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = "translateY(-5px)";
+                    e.currentTarget.style.boxShadow =
+                      "0 8px 20px rgba(0,0,0,0.15)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = "translateY(0)";
+                    e.currentTarget.style.boxShadow =
+                      "0 4px 10px rgba(0,0,0,0.05)";
+                  }}
+                >
+                  <Card.Img
+                    variant="top"
+                    src={product.image || "https://via.placeholder.com/300x200"}
+                    style={{ height: "200px", objectFit: "cover" }}
+                  />
+                  <Card.Body>
+                    <Card.Title
+                      className="fw-bold"
+                      style={{ fontSize: "1rem", minHeight: "48px" }}
+                    >
+                      {product.name}
+                    </Card.Title>
+                    <div className="mb-2">
+                      <span className="text-danger fw-bold">
+                        {product.discounted_price} đ
+                      </span>{" "}
+                      {product.discount > 0 && (
+                        <small className="text-muted text-decoration-line-through">
+                          {product.price} đ
+                        </small>
+                      )}
+                    </div>
+                    <Badge bg="secondary" className="mb-2">
+                      Còn {product.stock} {product.unit}
+                    </Badge>
+                  </Card.Body>
+                </Card>
+              </Link>
             </Col>
           ))
         ) : (

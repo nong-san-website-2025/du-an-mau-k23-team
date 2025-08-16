@@ -96,9 +96,13 @@ const ProductDetailPage = () => {
   return (
     <div className="container py-4 product-detail-page">
       <Button
-        variant="link"
         onClick={() => navigate(-1)}
-        className="mb-4 text-decoration-none text-muted"
+        className="mb-4"
+        style={{
+          backgroundColor: "rgb(33, 196, 93)",
+          borderColor: "rgb(33, 196, 93)",
+          color: "white",
+        }}
       >
         <ChevronLeft size={20} /> Quay lại
       </Button>
@@ -148,7 +152,8 @@ const ProductDetailPage = () => {
             <span className="fs-3 fw-bold text-success">
               {product.discount > 0
                 ? `${(
-                    product.price * (1 - product.discount / 100)
+                    product.price *
+                    (1 - product.discount / 100)
                   ).toLocaleString("vi-VN")}đ`
                 : `${product.price?.toLocaleString("vi-VN")}đ`}
             </span>
@@ -239,8 +244,6 @@ const ProductDetailPage = () => {
           <strong>Vị trí:</strong> {product.location || "Không có"}
         </div>
       </Card>
-
-      
     </div>
   );
 };
