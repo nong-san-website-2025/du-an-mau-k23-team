@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Container,
   Row,
@@ -13,6 +13,8 @@ import axios from "axios";
 
 const StoreDetail = () => {
   const { id } = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [store, setStore] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -49,16 +51,22 @@ const StoreDetail = () => {
     <Container className="my-5">
       {/* Nút quay lại */}
       <div className="mb-4">
-        <Link to="/store">
-          <Button
-            style={{
-              backgroundColor: "rgb(33, 196, 93)",
-              borderColor: "rgb(33, 196, 93)",
-            }}
-          >
-            ← Quay lại danh sách cửa hàng
-          </Button>
-        </Link>
+        <Button
+          style={{
+            backgroundColor: "rgb(33, 196, 93)",
+            borderColor: "rgb(33, 196, 93)",
+          }}
+          onClick={() => {
+            const productId = location.state?.productId;
+            if (productId) {
+              navigate(`/products/${productId}`);
+            } else {
+              navigate("/store");
+            }
+          }}
+        >
+          ← Quay lại
+        </Button>
       </div>
 
       {/* Thông tin cửa hàng */}

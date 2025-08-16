@@ -244,6 +244,33 @@ const ProductDetailPage = () => {
           <strong>Vị trí:</strong> {product.location || "Không có"}
         </div>
       </Card>
+
+        {/* Cửa hàng đơn giản */}
+        {product.store && (
+          <Card className="mt-4 border-0 shadow-sm p-3">
+            <Row className="align-items-center">
+              <Col xs={2} className="text-center">
+                <img
+                  src={product.store.image || "https://via.placeholder.com/80x80"}
+                  alt={product.store.store_name}
+                  className="img-fluid rounded-circle shadow"
+                  style={{ maxHeight: "60px", objectFit: "cover" }}
+                />
+              </Col>
+              <Col xs={7}>
+                <h5 className="fw-bold mb-0">{product.store.store_name}</h5>
+              </Col>
+              <Col xs={3} className="text-end">
+                <Button
+                  variant="outline-success"
+                  onClick={() => navigate(`/store/${product.store.id}`, { state: { productId: product.id } })}
+                >
+                  Xem shop
+                </Button>
+              </Col>
+            </Row>
+          </Card>
+        )}
     </div>
   );
 };
