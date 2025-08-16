@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import useUserProfile from "../features/users/services/useUserProfile";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -24,6 +24,7 @@ import {
   Bell,
 } from "lucide-react";
 import { productApi } from "../features/products/services/productApi";
+import axios from "axios";
 
 const iconMap = {
   Carrot: Carrot,
@@ -147,8 +148,46 @@ export default function Header() {
     };
   }, [leaveTimeout]);
 
-  // ...existing code...
+  // --- SEARCH FEATURE ---
+  const [search, setSearch] = useState("");
+  const [searchResults, setSearchResults] = useState({ products: [], posts: [] });
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const searchRef = useRef();
 
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (searchRef.current && !searchRef.current.contains(event.target)) {
+        setShowSuggestions(false);
+      }
+    };
+    if (showSuggestions) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showSuggestions]);
+
+  const handleSearchChange = async (e) => {
+    const value = e.target.value;
+    setSearch(value);
+
+    if (value.trim() !== "") {
+      try {
+        const res = await axios.get(`/api/products/search/?q=${value}`);
+        setSearchResults(res.data);
+        setShowSuggestions(true);
+      } catch (error) {
+        setSearchResults({ products: [], posts: [] });
+        setShowSuggestions(false);
+      }
+    } else {
+      setSearchResults({ products: [], posts: [] });
+      setShowSuggestions(false);
+    }
+  };
+
+  // --- END SEARCH FEATURE ---
 
   return (
     <>
@@ -183,14 +222,14 @@ export default function Header() {
                 style={{ whiteSpace: "nowrap", fontSize: 16, fontWeight: 600 }}
               >
                 <Phone size={16} className="me-1" />
-                <span>Hotline: <b style={{letterSpacing:1}}>1900-1234</b></span>
+                <span>Hotline: <b style={{ letterSpacing: 1 }}>1900-1234</b></span>
               </div>
               <div
                 className="d-flex align-items-center d-none d-md-flex"
                 style={{ whiteSpace: "nowrap", fontSize: 16, fontWeight: 600 }}
               >
                 <Mail size={16} className="me-1" />
-                <span>Email: <b style={{letterSpacing:1}}>support@nongsan.vn</b></span>
+                <span>Email: <b style={{ letterSpacing: 1 }}>support@nongsan.vn</b></span>
               </div>
             </div>
             <div
@@ -201,7 +240,7 @@ export default function Header() {
                 className="d-none d-lg-inline"
                 style={{ whiteSpace: "nowrap", fontWeight: 700, fontSize: 15 }}
               >
-                <span style={{color:'#fff', background:'#16a34a', borderRadius:6, padding:'2px 10px'}}>Miễn phí vận chuyển đơn từ 200K</span>
+                <span style={{ color: '#fff', background: '#16a34a', borderRadius: 6, padding: '2px 10px' }}>Miễn phí vận chuyển đơn từ 200K</span>
               </span>
               <div
                 className="d-flex align-items-center"
@@ -234,7 +273,7 @@ export default function Header() {
             <Link
               to="/"
               className="navbar-brand d-flex align-items-center"
-              style={{...greenText, fontSize:32, letterSpacing:2}}
+              style={{ ...greenText, fontSize: 32, letterSpacing: 2 }}
             >
               <img src="assets/logo/imagelogo.png" alt="Logo" className="me-2" style={{ height: 56, borderRadius: 12, boxShadow: '0 2px 8px #0002' }} />
             </Link>
@@ -398,12 +437,15 @@ export default function Header() {
               className="d-flex align-items-center ms-3"
               style={{ flexShrink: 0, flexWrap: "nowrap" }}
             >
-              <div className="position-relative me-3 d-none d-md-block">
+              <div className="position-relative me-3 d-none d-md-block" ref={searchRef} style={{ zIndex: 3000 }}>
                 <input
                   type="text"
-                  placeholder="Tìm kiếm sản phẩm..."
+                  placeholder="Tìm kiếm sản phẩm hoặc bài viết..."
                   className="form-control rounded-pill ps-3 pe-5"
                   style={{ width: 200, minWidth: 150 }}
+                  value={search}
+                  onChange={handleSearchChange}
+                  onFocus={() => search && setShowSuggestions(true)}
                 />
                 <button
                   className="btn btn-link position-absolute end-0 top-50 translate-middle-y p-0"
@@ -411,6 +453,52 @@ export default function Header() {
                 >
                   <Search size={18} />
                 </button>
+                {showSuggestions && (searchResults.products.length > 0 || searchResults.posts.length > 0) && (
+                  <div
+                    className="shadow-lg bg-white rounded position-absolute mt-2"
+                    style={{
+                      left: 0,
+                      top: "100%",
+                      minWidth: 300,
+                      maxWidth: 400,
+                      zIndex: 3000,
+                      boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
+                      padding: 16,
+                    }}
+                  >
+                    {searchResults.products.length > 0 && (
+                      <div>
+                        <strong style={{ color: "#16a34a" }}>Sản phẩm</strong>
+                        <ul style={{ listStyle: "none", paddingLeft: 0 }}>
+                          {searchResults.products.map(product => (
+                            <li key={product.id} style={{ padding: "6px 0" }}>
+                              <Link to={`/products/${product.id}`} style={{ color: "#333", textDecoration: "none" }}>
+                                {product.name}
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {searchResults.posts.length > 0 && (
+                      <div style={{ marginTop: 12 }}>
+                        <strong style={{ color: "#16a34a" }}>Bài viết</strong>
+                        <ul style={{ listStyle: "none", paddingLeft: 0 }}>
+                          {searchResults.posts.map(post => (
+                            <li key={post.id} style={{ padding: "6px 0" }}>
+                              <Link to={`/blog/${post.title}`} style={{ color: "#333", textDecoration: "none" }}>
+                                {post.title}
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {(searchResults.products.length === 0 && searchResults.posts.length === 0) && (
+                      <div style={{ color: "#888" }}>Không tìm thấy kết quả phù hợp</div>
+                    )}
+                  </div>
+                )}
               </div>
               {/* Mobile search button */}
               <button className="btn btn-light rounded-circle me-2 p-2 d-md-none">
@@ -425,8 +513,8 @@ export default function Header() {
               </Link>
               {/* Notification icon and dropdown (hover) */}
               <div style={{ position: "relative" }}
-                   onMouseEnter={() => setShowNotificationDropdown(true)}
-                   onMouseLeave={() => setShowNotificationDropdown(false)}>
+                onMouseEnter={() => setShowNotificationDropdown(true)}
+                onMouseLeave={() => setShowNotificationDropdown(false)}>
                 <button
                   className="btn btn-light rounded-circle me-2 p-2"
                   style={{ flexShrink: 0 }}
@@ -516,8 +604,8 @@ export default function Header() {
               </div>
               {/* Cart icon and dropdown (hover) */}
               <div style={{ position: "relative" }}
-                   onMouseEnter={() => setShowCartDropdown(true)}
-                   onMouseLeave={() => setShowCartDropdown(false)}>
+                onMouseEnter={() => setShowCartDropdown(true)}
+                onMouseLeave={() => setShowCartDropdown(false)}>
                 <button
                   className="btn btn-light rounded-circle me-2 p-2 position-relative"
                   style={{ flexShrink: 0 }}
@@ -634,7 +722,7 @@ export default function Header() {
               </div>
               {/* Chỉ hiện dropdown nếu đã đăng nhập, nếu chưa thì hiện nút đăng nhập */}
               {localStorage.getItem("token") &&
-              localStorage.getItem("username") ? (
+                localStorage.getItem("username") ? (
                 <div className="dropdown" style={{ position: "relative" }}>
                   <button
                     className="btn btn-light rounded-circle p-2"
@@ -692,7 +780,7 @@ export default function Header() {
                         background: "#fff"
                       }}
                     >
-                      <div className="d-flex flex-column align-items-center py-3 px-3 border-bottom" style={{background:'#f0fdf4'}}>
+                      <div className="d-flex flex-column align-items-center py-3 px-3 border-bottom" style={{ background: '#f0fdf4' }}>
                         {userProfile && userProfile.avatar ? (
                           <img
                             src={userProfile.avatar}
@@ -727,11 +815,11 @@ export default function Header() {
                           </span>
                         )}
                         <div className="mt-2 text-center">
-                          <span style={{fontWeight:700,fontSize:18,color:'#16a34a'}}>{localStorage.getItem("username")}</span>
+                          <span style={{ fontWeight: 700, fontSize: 18, color: '#16a34a' }}>{localStorage.getItem("username")}</span>
                         </div>
                         <button
                           className="btn btn-outline-success btn-sm mt-2 px-3 fw-bold"
-                          style={{borderRadius:6,fontSize:15}}
+                          style={{ borderRadius: 6, fontSize: 15 }}
                           onClick={() => {
                             setShowProfileDropdown(false);
                             navigate("/profile");
@@ -748,7 +836,7 @@ export default function Header() {
                       >
                         Đơn hàng của tôi
                       </Link>
-                      
+
                       <Link
                         to="/settings"
                         className="dropdown-item"
@@ -775,7 +863,7 @@ export default function Header() {
                         onMouseLeave={() => setHoveredDropdown(null)}
                         onClick={() => setShowProfileDropdown(false)}
                       >
-                        <span style={{display:'inline-flex',alignItems:'center',gap:8}}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                           Đăng ký bán hàng
                         </span>
                       </Link>

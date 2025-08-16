@@ -60,3 +60,11 @@ class ProductListSerializer(serializers.ModelSerializer):
         if obj.image and hasattr(obj.image, 'url'):
             return request.build_absolute_uri(obj.image.url) if request else obj.image.url
         return None
+    
+    # --- Serializer cho bài viết (Post) dùng cho API tìm kiếm ---
+from blog.models import Post
+
+class PostSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Post
+        fields = ['id', 'title']

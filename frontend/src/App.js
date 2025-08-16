@@ -15,7 +15,7 @@ import ReportsPage from "./features/admin/pages/ReportsPage";
 import AdminLayout from "./features/admin/components/AdminLayout";
 import CartPage from "./features/cart/pages/CartPage";
 import "./App.css";
-import Layout from "./layouts/Layout"; // Sử dụng layout có Header/Footer
+import Layout from "./Layout/Layout";
 import UserProductPage from './features/products/pages/UserProductPage';
 import ProductDetailPage from './features/products/pages/ProductDetailPage';
 import { CartProvider } from "./features/cart/services/CartContext";
