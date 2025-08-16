@@ -28,6 +28,7 @@ import PrivateRoute from "./features/login_register/components/PrivateRoute";
 import ProfilePage from "./features/users/pages/ProfilePage";
 import StoreList from './features/stores/pages/StoreList';
 import StoreDetail from './features/stores/pages/StoreDetail';
+import FeaturedProductsPage from "./features/featured/pages/FeaturedProductsPage";
 
 function App() {
   return (
@@ -48,6 +49,7 @@ function App() {
             <Route path="manage-products" element={<ManageStore />} />
             <Route path="store" element={<StoreList />} />
             <Route path="store/:id" element={<StoreDetail />} />
+            <Route path="featured" element={<FeaturedProductsPage />} />
           </Route>
           {/* Admin routes with layout */}
           <Route path="/admin" element={<AdminLayout />}>
