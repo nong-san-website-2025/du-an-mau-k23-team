@@ -7,7 +7,7 @@ export default function Layout() {
   return (
     <>
       <Header />
-      <main className="py-4">
+      <main className="py-0">
         <Outlet />
       </main>
       <Footer />

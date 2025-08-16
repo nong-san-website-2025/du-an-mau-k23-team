@@ -3,7 +3,7 @@ import { Container, Row, Col, Button, Spinner, Form, InputGroup } from "react-bo
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { Search } from "react-bootstrap-icons";
-import "./StoreList.css";
+import "../styles/StoreList.css";
 
 const StoreListPro = () => {
   const [stores, setStores] = useState([]);
@@ -33,7 +33,7 @@ const StoreListPro = () => {
   }
 
   return (
-    <Container className="store-list-container">
+    <Container className="store-list-container my-4">
       <div className="store-list-header">
         <h2 className="store-list-title">Tất cả người bán</h2>
         <InputGroup className="store-search-box">
