@@ -1,4 +1,7 @@
-from rest_framework import viewsets, permissions
+from rest_framework import viewsets, permissions, status
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from django.db.models import Q
 from .models import Order
 from .serializers import OrderSerializer, OrderCreateSerializer
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -7,6 +10,8 @@ class OrderViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action in ['list', 'retrieve', 'create']:
             return [IsAuthenticated()]
+        elif self.action in ['admin_list', 'admin_detail', 'admin_update_status']:
+            return [IsAuthenticated()]  # Sẽ check is_admin trong method
         return [AllowAny()]
 
     def get_serializer_class(self):
@@ -18,13 +23,85 @@ class OrderViewSet(viewsets.ModelViewSet):
         user = self.request.user
         queryset = Order.objects.all()
 
-        if user.is_authenticated:
-            queryset = queryset.filter(user=user)  # ✅ Chỉ lấy order của user hiện tại
+        # Nếu là admin và gọi admin_list, trả về tất cả orders
+        if self.action == 'admin_list' and user.is_authenticated and getattr(user, 'is_admin', False):
+            # Admin có thể xem tất cả đơn hàng
+            pass
+        elif user.is_authenticated:
+            queryset = queryset.filter(user=user)  # User chỉ xem order của mình
 
-        status = self.request.query_params.get('status')
-        if status:
-            queryset = queryset.filter(status=status)
-        return queryset
+        # Filter theo status
+        status_param = self.request.query_params.get('status')
+        if status_param:
+            queryset = queryset.filter(status=status_param)
+        
+        # Search theo tên khách hàng hoặc số điện thoại
+        search = self.request.query_params.get('search')
+        if search:
+            queryset = queryset.filter(
+                Q(customer_name__icontains=search) | 
+                Q(customer_phone__icontains=search)
+            )
+        
+        return queryset.order_by('-created_at')
+
+    @action(detail=False, methods=['get'], url_path='admin-list')
+    def admin_list(self, request):
+        """API cho admin xem tất cả đơn hàng"""
+        if not request.user.is_authenticated or not getattr(request.user, 'is_admin', False):
+            return Response({'error': 'Chỉ admin mới có quyền truy cập'}, 
+                          status=status.HTTP_403_FORBIDDEN)
+        
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['get'], url_path='admin-detail')
+    def admin_detail(self, request, pk=None):
+        """API cho admin xem chi tiết đơn hàng"""
+        if not request.user.is_authenticated or not getattr(request.user, 'is_admin', False):
+            return Response({'error': 'Chỉ admin mới có quyền truy cập'}, 
+                          status=status.HTTP_403_FORBIDDEN)
+        
+        try:
+            order = Order.objects.get(pk=pk)
+            serializer = self.get_serializer(order)
+            return Response(serializer.data)
+            
+        except Order.DoesNotExist:
+            return Response({'error': 'Không tìm thấy đơn hàng'}, 
+                          status=status.HTTP_404_NOT_FOUND)
+
+    @action(detail=True, methods=['patch'], url_path='admin-update-status')
+    def admin_update_status(self, request, pk=None):
+        """API cho admin cập nhật trạng thái đơn hàng"""
+        if not request.user.is_authenticated or not getattr(request.user, 'is_admin', False):
+            return Response({'error': 'Chỉ admin mới có quyền truy cập'}, 
+                          status=status.HTTP_403_FORBIDDEN)
+        
+        try:
+            order = Order.objects.get(pk=pk)
+            new_status = request.data.get('status')
+            
+            if not new_status:
+                return Response({'error': 'Trạng thái không được để trống'}, 
+                              status=status.HTTP_400_BAD_REQUEST)
+            
+            # Validate status
+            valid_statuses = ['pending', 'processing', 'shipped', 'delivered', 'completed', 'cancelled', 'refunded']
+            if new_status not in valid_statuses:
+                return Response({'error': f'Trạng thái không hợp lệ. Chỉ chấp nhận: {", ".join(valid_statuses)}'}, 
+                              status=status.HTTP_400_BAD_REQUEST)
+            
+            order.status = new_status
+            order.save()
+            
+            serializer = self.get_serializer(order)
+            return Response(serializer.data)
+            
+        except Order.DoesNotExist:
+            return Response({'error': 'Không tìm thấy đơn hàng'}, 
+                          status=status.HTTP_404_NOT_FOUND)
 
     def perform_create(self, serializer):
         order = serializer.save(user=self.request.user)
