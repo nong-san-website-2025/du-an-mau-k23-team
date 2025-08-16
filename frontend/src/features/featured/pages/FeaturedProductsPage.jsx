@@ -75,15 +75,13 @@ const FeaturedProductsPage = () => {
                   <h5 className="fw-bold mb-2">{product.name}</h5>
                   <div className="mb-2">
                     <span className="text-success fw-bold fs-5">
-                      {product.discount > 0
-                        ? `${(
-                            product.price * (1 - product.discount / 100)
-                          ).toLocaleString("vi-VN")}đ`
-                        : `${product.price?.toLocaleString("vi-VN")}đ`}
+                        {product.discount > 0
+                          ? `${Math.round(product.price * (1 - product.discount / 100)).toLocaleString("vi-VN")} VNĐ`
+                          : `${Math.round(product.price)?.toLocaleString("vi-VN")} VNĐ`}
                     </span>
                     {product.discount > 0 && (
                       <span className="text-muted text-decoration-line-through ms-2">
-                        {product.price?.toLocaleString("vi-VN")}đ
+                          {Math.round(product.price)?.toLocaleString("vi-VN")} VNĐ
                       </span>
                     )}
                     <span className="ms-2 text-muted">/ {product.unit}</span>

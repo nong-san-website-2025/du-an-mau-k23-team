@@ -151,15 +151,12 @@ const ProductDetailPage = () => {
           <div className="mb-3">
             <span className="fs-3 fw-bold text-success">
               {product.discount > 0
-                ? `${(
-                    product.price *
-                    (1 - product.discount / 100)
-                  ).toLocaleString("vi-VN")}đ`
-                : `${product.price?.toLocaleString("vi-VN")}đ`}
+                ? `${Math.round(product.price * (1 - product.discount / 100)).toLocaleString("vi-VN")} VNĐ`
+                : `${Math.round(product.price)?.toLocaleString("vi-VN")} VNĐ`}
             </span>
             {product.discount > 0 && (
               <span className="text-muted text-decoration-line-through ms-2">
-                {product.price?.toLocaleString("vi-VN")}đ
+                {Math.round(product.price)?.toLocaleString("vi-VN")} VNĐ
               </span>
             )}
             <span className="ms-3 text-muted">/ {product.unit}</span>

@@ -133,11 +133,11 @@ const StoreDetail = () => {
                     </Card.Title>
                     <div className="mb-2">
                       <span className="text-danger fw-bold">
-                        {product.discounted_price} đ
+                        {Math.round(product.discounted_price)?.toLocaleString("vi-VN")} VNĐ
                       </span>{" "}
                       {product.discount > 0 && (
                         <small className="text-muted text-decoration-line-through">
-                          {product.price} đ
+                          {Math.round(product.price)?.toLocaleString("vi-VN")} VNĐ
                         </small>
                       )}
                     </div>
