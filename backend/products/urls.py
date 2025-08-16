@@ -5,7 +5,7 @@ from .views import ProductViewSet, CategoryViewSet, SearchAPIView
 # Khai báo router cho ViewSet
 router = DefaultRouter()
 router.register("categories", CategoryViewSet)
-router.register("products", ProductViewSet)
+router.register("", ProductViewSet)
 
 # URL patterns
 urlpatterns = [
