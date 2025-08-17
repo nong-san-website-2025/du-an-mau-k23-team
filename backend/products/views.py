@@ -58,17 +58,18 @@ class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
             "products_by_subcategory": grouped
         })
 
-
 class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.select_related('subcategory__category', 'seller').all()
 
     def get_serializer_class(self):
         if self.action == 'list':
             return ProductListSerializer
-        return ProductSerializer
+        return ProductSerializer  # Sử dụng ProductSerializer cho create, retrieve, update, destroy
 
-    def get_queryset(self):
-        queryset = super().get_queryset()
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, context={'request': request})
+        return Response(serializer.data)
 
         # filter by category
         category = self.request.query_params.get('category')

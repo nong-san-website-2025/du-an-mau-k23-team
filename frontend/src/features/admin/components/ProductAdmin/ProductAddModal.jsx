@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { productApi } from "../../../products/services/productApi";
+import "../../styles/ProductAddModal.css";
 
 const initialForm = {
   name: "",
@@ -58,11 +59,43 @@ const ProductAddModal = ({ open, onClose, onSuccess }) => {
     setLoading(true);
     setError("");
     try {
+      // Kiểm tra các trường bắt buộc
+      if (!form.subcategory) {
+        throw new Error("Vui lòng chọn nhóm hàng");
+      }
+      if (!form.seller) {
+        throw new Error("Vui lòng chọn người bán");
+      }
+
       const formData = new FormData();
-      Object.entries(form).forEach(([key, value]) => {
-        if (value !== null && value !== "") formData.append(key, value);
+      const fieldsToInclude = [
+        "name",
+        "description",
+        "price",
+        "unit",
+        "stock",
+        "image",
+        "subcategory",
+        "brand",
+        "location",
+        "discount",
+        "is_new",
+        "is_organic",
+        "is_best_seller",
+        "seller",
+      ];
+      fieldsToInclude.forEach((key) => {
+        if (form[key] !== null && form[key] !== "") {
+          formData.append(key, form[key]);
+        }
       });
-      await productApi.createProduct(formData);
+
+      // Log FormData để kiểm tra
+      console.log("FormData:", [...formData]);
+
+      const response = await productApi.createProduct(formData);
+      console.log("Response:", response); // Log response để kiểm tra
+
       setForm(initialForm);
       if (onSuccess) onSuccess();
       onClose();
@@ -72,137 +105,197 @@ const ProductAddModal = ({ open, onClose, onSuccess }) => {
       setLoading(false);
     }
   };
-
   if (!open) return null;
 
   return (
-    <div className="modal-overlay">
-      <div className="modal-content">
-        <form onSubmit={handleSubmit} className="product-add-form">
-          <h2 style={{ fontSize: 18, marginBottom: 16, textAlign: 'left' }}>Thêm sản phẩm mới</h2>
-          {error && <div className="error">{error}</div>}
-          <div className="form-grid">
+    <div className="pam-modal-overlay">
+      <div className="pam-modal-content wide p-3">
+        <form onSubmit={handleSubmit} className="pam-form">
+          <h6 className="pam-title fw-bold">Thêm sản phẩm mới</h6>
+          {error && <div className="pam-error">{error}</div>}
+
+          <div className="pam-form-grid">
+            {/* Cột trái */}
             <div>
-              <label>Tên sản phẩm *</label>
-              <input name="name" value={form.name} onChange={handleChange} required />
+              <label className="pam-label">Tên sản phẩm * <span className="text-danger">(bắt buộc)</span></label>
+              <input
+                className="pam-input"
+                name="name"
+                value={form.name}
+                onChange={handleChange}
+                required
+              />
 
-              <label>Mô tả</label>
-              <textarea name="description" value={form.description} onChange={handleChange} />
+              <label className="pam-label">Mô tả</label>
+              <textarea
+                className="pam-textarea"
+                name="description"
+                value={form.description}
+                onChange={handleChange}
+              />
 
-              <label>Giá bán *</label>
-              <input name="price" type="number" value={form.price} onChange={handleChange} required />
+              <label className="pam-label">Giá bán *</label>
+              <input
+                className="pam-input"
+                name="price"
+                type="number"
+                value={form.price}
+                onChange={handleChange}
+                required
+              />
 
-              <label>Đơn vị</label>
-              <input name="unit" value={form.unit} onChange={handleChange} />
+              <label className="pam-label">Đơn vị</label>
+              <input
+                className="pam-input"
+                name="unit"
+                value={form.unit}
+                onChange={handleChange}
+              />
 
-              <label>Số lượng tồn kho</label>
-              <input name="stock" type="number" value={form.stock} onChange={handleChange} />
+              <label className="pam-label">Số lượng tồn kho</label>
+              <input
+                className="pam-input"
+                name="stock"
+                type="number"
+                value={form.stock}
+                onChange={handleChange}
+              />
 
-              <label>Ảnh sản phẩm</label>
-              <input name="image" type="file" accept="image/*" onChange={handleChange} />
+              <label className="pam-label">Ảnh sản phẩm</label>
+              <input
+                className="pam-input"
+                name="image"
+                type="file"
+                accept="image/*"
+                onChange={handleChange}
+              />
             </div>
+
+            {/* Cột phải */}
             <div>
-              <label>Danh mục *</label>
-              <select name="category" value={form.category} onChange={handleChange} required>
+              <label className="pam-label">Danh mục * <span className="text-danger">(bắt buộc)</span></label>
+              <select
+                className="pam-select"
+                name="category"
+                value={form.category}
+                onChange={handleChange}
+                required
+              >
                 <option value="">Chọn danh mục</option>
                 {categories.map((cat) => (
-                  <option key={cat.id} value={cat.id}>{cat.name}</option>
+                  <option key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </option>
                 ))}
               </select>
 
-              <label>Nhóm hàng</label>
-              <select name="subcategory" value={form.subcategory} onChange={handleChange}>
+              <label className="pam-label">Nhóm hàng * <span className="text-danger">(bắt buộc)</span></label>
+              <select
+                className="pam-select"
+                name="subcategory"
+                value={form.subcategory}
+                onChange={handleChange}
+              >
                 <option value="">Chọn nhóm hàng</option>
                 {subcategories.map((sub) => (
-                  <option key={sub.id} value={sub.id}>{sub.name}</option>
+                  <option key={sub.id} value={sub.id}>
+                    {sub.name}
+                  </option>
                 ))}
               </select>
 
-              <label>Thương hiệu</label>
-              <input name="brand" value={form.brand} onChange={handleChange} />
+              <label className="pam-label">Thương hiệu</label>
+              <input
+                className="pam-input"
+                name="brand"
+                value={form.brand}
+                onChange={handleChange}
+              />
 
-              <label>Vị trí</label>
-              <input name="location" value={form.location} onChange={handleChange} />
+              <label className="pam-label">Vị trí</label>
+              <input
+                className="pam-input"
+                name="location"
+                value={form.location}
+                onChange={handleChange}
+              />
 
-              <label>Giảm giá (%)</label>
-              <input name="discount" type="number" value={form.discount} onChange={handleChange} />
+              <label className="pam-label">Giảm giá (%)</label>
+              <input
+                className="pam-input"
+                name="discount"
+                type="number"
+                value={form.discount}
+                onChange={handleChange}
+              />
 
-              <div className="checkbox-group">
+              <div className="pam-checkbox-group">
                 <label>
-                  <input type="checkbox" name="is_new" checked={form.is_new} onChange={handleChange} />
+                  <input
+                    type="checkbox"
+                    name="is_new"
+                    checked={form.is_new}
+                    onChange={handleChange}
+                  />{" "}
                   Hàng mới
                 </label>
                 <label>
-                  <input type="checkbox" name="is_organic" checked={form.is_organic} onChange={handleChange} />
+                  <input
+                    type="checkbox"
+                    name="is_organic"
+                    checked={form.is_organic}
+                    onChange={handleChange}
+                  />{" "}
                   Hữu cơ
                 </label>
                 <label>
-                  <input type="checkbox" name="is_best_seller" checked={form.is_best_seller} onChange={handleChange} />
+                  <input
+                    type="checkbox"
+                    name="is_best_seller"
+                    checked={form.is_best_seller}
+                    onChange={handleChange}
+                  />{" "}
                   Bán chạy
                 </label>
               </div>
 
-              <label>Người bán</label>
-              <select name="seller" value={form.seller} onChange={handleChange}>
+              <label className="pam-label">Người bán * <span className="text-danger">(bắt buộc)</span></label>
+              <select
+                className="pam-select"
+                name="seller"
+                value={form.seller}
+                onChange={handleChange}
+                required
+              >
                 <option value="">Chọn người bán</option>
                 {sellers.map((s) => (
-                  <option key={s.id} value={s.id}>{s.store_name}</option>
+                  <option key={s.id} value={s.id}>
+                    {s.store_name}
+                  </option>
                 ))}
               </select>
             </div>
           </div>
-          <div className="modal-actions">
-            <button type="button" onClick={onClose} disabled={loading}>Bỏ qua</button>
-            <button type="submit" disabled={loading}>{loading ? "Đang lưu..." : "Lưu"}</button>
+
+          <div className="pam-actions">
+            <button
+              type="button"
+              className="pam-btn pam-btn-secondary"
+              onClick={onClose}
+              disabled={loading}
+            >
+              Bỏ qua
+            </button>
+            <button
+              type="submit"
+              className="pam-btn pam-btn-primary"
+              disabled={loading}
+            >
+              {loading ? "Đang lưu..." : "Lưu"}
+            </button>
           </div>
         </form>
       </div>
-      <style>{`
-        .modal-overlay {
-          position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-          background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 99999;
-        }
-        .modal-content {
-          background: #fff; border-radius: 8px; padding: 32px; min-width: 700px; max-width: 90vw;
-        }
-        .product-add-form {
-          font-size: 14px;
-        }
-        .form-grid {
-          display: flex;
-          gap: 32px;
-        }
-        .form-grid > div {
-          flex: 1;
-        }
-        .product-add-form label {
-          display: block;
-          margin-top: 10px;
-          margin-bottom: 2px;
-        }
-        .product-add-form input,
-        .product-add-form select,
-        .product-add-form textarea {
-          width: 100%;
-          padding: 5px 8px;
-          margin-top: 2px;
-          border-radius: 4px;
-          border: 1px solid #ccc;
-          font-size: 14px;
-        }
-        .checkbox-group {
-          display: flex;
-          gap: 12px;
-          margin: 8px 0 8px 0;
-        }
-        .checkbox-group label {
-          margin-top: 0;
-          margin-bottom: 0;
-          font-weight: 400;
-        }
-        .modal-actions { margin-top: 20px; display: flex; gap: 12px; justify-content: flex-end; }
-        .error { color: red; margin-bottom: 10px; }
-      `}</style>
     </div>
   );
 };

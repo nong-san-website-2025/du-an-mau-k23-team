@@ -1,72 +1,120 @@
-import React from "react";
-import "../../styles/ProductTableRow.css"; // ✅ nhớ import file CSS mới
+import React, { useState } from "react";
 
-export default function ProductTableRow({ product, checked, onCheck, onExpand, getStatusBadge, isExpanded }) {
+const ProductTableRow = ({
+  product,
+  expanded,
+  onExpand,
+  onDelete,
+  onEdit,
+  getStatusBadge,
+  checked,
+  onCheck,
+  isActive, // ✅ thêm prop để biết row nào đang active
+}) => {
+  const [showPreview, setShowPreview] = useState(false);
+
+  // Hàm format tiền theo chuẩn VNĐ
+  const formatPrice = (price) => {
+    return new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
+    }).format(price);
+  };
+
   return (
     <tr
-      className={`product-row ${isExpanded ? "expanded" : ""}`}
       onClick={onExpand}
+      style={{
+        cursor: "pointer",
+        position: "relative",
+        backgroundColor: isActive ? "#ff0d00ff" : "transparent", // ✅ đổi màu khi active
+        transition: "background-color 0.2s ease",
+      }}
     >
-      <td className="border-0 py-3">
+      <td>
         <input
           type="checkbox"
-          className="form-check-input"
           checked={checked}
-          onClick={e => e.stopPropagation()}
-          onChange={onCheck}
+          onChange={(e) => {
+            e.stopPropagation();
+            onCheck();
+          }}
         />
       </td>
-      <td className="border-0 py-3">
-        <div className="d-flex align-items-center">
-          <div style={{ position: "relative", display: "inline-block" }}>
-            <img
-              src={product.image}
-              alt={product.name}
-              className="rounded"
-              style={{ width: "30px", height: "30px", objectFit: "cover", cursor: "pointer" }}
-              onMouseEnter={e => { const popup = e.currentTarget.nextSibling; if (popup) popup.style.display = "block"; }}
-              onMouseLeave={e => { const popup = e.currentTarget.nextSibling; if (popup) popup.style.display = "none"; }}
-              onClick={e => e.stopPropagation()}
-            />
-            <div className="product-image-popup" style={{
-              display: "none",
-              position: "absolute",
-              left: "110%",
-              top: "50%",
-              transform: "translateY(-50%)",
-              zIndex: 100,
-              background: "#fff",
-              border: "1px solid #eee",
-              borderRadius: 8,
-              boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
-              padding: 6
-            }}>
-              <img src={product.image} alt={product.name} style={{ width: 120, height: 120, objectFit: "cover", borderRadius: 8 }} />
+      <td>{product.id}</td>
+      <td>
+        <div style={{ display: "flex", alignItems: "center", position: "relative" }}>
+          {product.image ? (
+            <div
+              style={{ position: "relative" }}
+              onMouseEnter={() => setShowPreview(true)}
+              onMouseLeave={() => setShowPreview(false)}
+            >
+              <img
+                src={product.image}
+                alt={product.name}
+                style={{
+                  width: "40px",
+                  height: "40px",
+                  objectFit: "cover",
+                  marginRight: "10px",
+                  borderRadius: "4px",
+                }}
+              />
+
+              {/* Preview ảnh lớn khi hover */}
+              {showPreview && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "-20px",
+                    left: "60px",
+                    padding: "5px",
+                    backgroundColor: "#fff",
+                    border: "1px solid #ddd",
+                    borderRadius: "6px",
+                    boxShadow: "0px 4px 8px rgba(0,0,0,0.15)",
+                    zIndex: 100,
+                  }}
+                >
+                  <img
+                    src={product.image}
+                    alt={product.name}
+                    style={{
+                      width: "200px",
+                      height: "200px",
+                      objectFit: "contain",
+                      borderRadius: "6px",
+                    }}
+                  />
+                </div>
+              )}
             </div>
-          </div>
-          <div className="ms-3">
-            <h6 className="mb-1 fw-normal" style={{ fontSize: 14 }}>{product.name}</h6>
-            <p className="text-muted mb-0 small">{product.description}</p>
-          </div>
+          ) : (
+            <div
+              style={{
+                width: "40px",
+                height: "40px",
+                backgroundColor: "#e0e0e0",
+                marginRight: "10px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "12px",
+                color: "#666",
+              }}
+            >
+              No Image
+            </div>
+          )}
+          <span>{product.name}</span>
         </div>
       </td>
-      <td className="border-0 py-3">
-        <span className="badge bg-light text-dark px-3 py-2">
-          {product.category && typeof product.category === "object" ? product.category.name : product.category_name || ""}
-        </span>
-      </td>
-      <td className="border-0 py-3 fw-bold">{Number(product.price).toLocaleString("vi-VN")}</td>
-      <td className="border-0 py-3">
-        <span className={product.stock > 100 ? "text-success" : product.stock > 50 ? "text-warning" : "text-danger"}>
-          {product.stock}
-        </span>
-      </td>
-      <td className="border-0 py-3">
-        <span className={getStatusBadge(product.status)}>{product.status}</span>
-      </td>
-      <td className="border-0 py-3">
-        <div className="d-flex gap-2"></div>
-      </td>
+      <td>{product.category_name}</td>
+      <td>{formatPrice(product.price)}</td>
+      <td>{product.stock ?? 0}</td>
     </tr>
   );
-}
+};
+
+export default ProductTableRow;

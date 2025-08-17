@@ -36,18 +36,21 @@ export const productApi = {
   },
 
   // Lấy sản phẩm theo ID
-  async getProduct(id) {
-    try {
-      const response = await fetch(`${API_BASE_URL}/products/${id}/`);
-      if (!response.ok) {
-        throw new Error('Không thể tải thông tin sản phẩm');
-      }
-      return await response.json();
-    } catch (error) {
-      console.error('Lỗi khi tải sản phẩm:', error);
-      throw error;
+ async getProduct(id) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/products/${id}/`);
+    if (!response.ok) {
+      throw new Error('Không thể tải thông tin sản phẩm');
     }
-  },
+    const data = await response.json();
+    console.log('Product data:', data); // Log để kiểm tra
+    return data;
+  } catch (error) {
+    console.error('Lỗi khi tải sản phẩm:', error);
+    throw error;
+  }
+},
+
 
   // Helper lấy token
   getAuthHeaders() {
@@ -56,19 +59,22 @@ export const productApi = {
   },
 
   // Tạo sản phẩm mới
-  async createProduct(productData) {
+ async createProduct(productData) {
   try {
     const response = await fetch(`${API_BASE_URL}/products/`, {
       method: 'POST',
       headers: {
-        ...productApi.getAuthHeaders(), // Không set Content-Type ở đây
+        ...productApi.getAuthHeaders(),
       },
-      body: productData, // productData phải là FormData()
+      body: productData,
     });
+    const responseData = await response.json();
     if (!response.ok) {
-      throw new Error('Không thể tạo sản phẩm');
+      console.error('Error response:', responseData);
+      throw new Error(responseData.message || 'Không thể tạo sản phẩm');
     }
-    return await response.json();
+    console.log('Create product response:', responseData);
+    return responseData;
   } catch (error) {
     console.error('Lỗi khi tạo sản phẩm:', error);
     throw error;

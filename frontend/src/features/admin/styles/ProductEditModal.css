@@ -21,7 +21,7 @@
 }
 
 .pem-modal-content.wide {
-  min-width: 1100px;   /* 👈 modal rộng ngang */
+  min-width: 900px;   /* 👈 modal rộng ngang */
 }
 
 .pem-form-grid {
@@ -38,8 +38,9 @@
   display: block;
   margin-top: 10px;
   margin-bottom: 6px;
-  font-weight: 500;
+  font-weight: 400;
   color: #111827;
+  font-size: 12px;
 }
 
 .pem-input,
@@ -80,12 +81,12 @@
 }
 
 .pem-btn-primary {
-  background: #4f46e5;
+  background: #2e8b57;
   color: white;
 }
 
 .pem-btn-primary:hover {
-  background: #4338ca;
+  background: #09b654;
 }
 
 .pem-btn-secondary {

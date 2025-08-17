@@ -35,7 +35,7 @@ export default function AdminSidebar() {
                 borderRadius:0,
                 color: location.pathname === item.path ? '#fff' : '#222',
                 background: location.pathname === item.path ? mainColor : 'none',
-                fontWeight: location.pathname === item.path ? 700 : 500,
+                fontWeight: location.pathname ===   item.path ? 700 : 500,
                 boxShadow: location.pathname === item.path ? '0 2px 8px #22c55e22' : 'none',
                 border: location.pathname === item.path ? `1px solid ${mainColor}` : 'none',
                 transition: 'all 0.2s',

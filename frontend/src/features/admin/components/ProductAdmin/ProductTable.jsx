@@ -17,13 +17,14 @@ export default function ProductTable({
 }) {
   const [expandedProductId, setExpandedProductId] = useState(null);
   const [loadingAction, setLoadingAction] = useState(false);
-
   const [showAddModal, setShowAddModal] = useState(false);
   const [editProduct, setEditProduct] = useState(null);
+  const [activeRowId, setActiveRowId] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
 
   const handleExpand = (productId) => {
     setExpandedProductId(expandedProductId === productId ? null : productId);
+    setActiveRowId(productId === activeRowId ? null : productId);
   };
 
   const handleDelete = async (product) => {
@@ -72,11 +73,11 @@ export default function ProductTable({
                 }}
               />
             </th>
+            <th>Mã sản phẩm</th>
             <th>Tên sản phẩm</th>
             <th>Danh mục</th>
             <th>Giá</th>
-            <th>Trạng thái</th>
-            <th>Thao tác</th>
+            <th>Tồn kho</th>
           </tr>
         </thead>
         <tbody>
@@ -95,6 +96,7 @@ export default function ProductTable({
                     setCheckedIds(checkedIds.filter((id) => id !== product.id));
                   else setCheckedIds([...checkedIds, product.id]);
                 }}
+                isActive={activeRowId === product.id} // ✅ truyền vào
               />
               {expandedProductId === product.id && (
                 <ProductDetailRow
@@ -111,7 +113,6 @@ export default function ProductTable({
         </tbody>
       </table>
 
-      {/* Modal chỉnh sửa */}
       <ProductEditModal
         open={showEditModal}
         onClose={() => setShowEditModal(false)}
@@ -119,7 +120,6 @@ export default function ProductTable({
         onSuccess={handleEditSuccess}
       />
 
-      {/* Modal thêm mới */}
       <ProductAddModal
         open={showAddModal}
         onClose={() => setShowAddModal(false)}

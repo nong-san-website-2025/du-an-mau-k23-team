@@ -25,13 +25,13 @@ export default function ProductSideBar({
 
   const handleModalSubmit = async (e) => {
     e.preventDefault();
-    
+
     // Validation
     if (!newSubName.trim()) {
       alert("Vui lòng nhập tên loại hàng");
       return;
     }
-    
+
     try {
       const categoryData = {
         name: newSubName.trim(),
@@ -40,17 +40,22 @@ export default function ProductSideBar({
 
       console.log("Creating category:", categoryData);
 
-      const response = await fetch("http://localhost:8000/api/products/categories/", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(categoryData),
-      });
+      const response = await fetch(
+        "http://localhost:8000/api/products/categories/",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(categoryData),
+        }
+      );
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+        throw new Error(
+          errorData.message || `HTTP error! status: ${response.status}`
+        );
       }
 
       const result = await response.json();
@@ -67,7 +72,6 @@ export default function ProductSideBar({
       }
 
       alert("Tạo loại hàng mới thành công!");
-      
     } catch (error) {
       console.error("Error creating category:", error);
       alert(`Có lỗi xảy ra khi tạo loại hàng mới: ${error.message}`);
@@ -109,80 +113,66 @@ export default function ProductSideBar({
       </div>
       {/* Modal tạo mới subcategory */}
       {showModal && (
-        <div
-          className="modal fade show"
-          tabIndex="-1"
-          style={{ display: "block", background: "#0008" }}
-        >
-          <div className="modal-dialog modal-dialog-centered modal-lg">
-            <div className="modal-content">
-              <form onSubmit={handleModalSubmit}>
-                <div className="modal-header d-flex justify-content-between align-items-center p-0">
-                  <h5 className="modal-title">Tạo loại hàng mới</h5>
-                  <button
-                    type="button"
-                    className="btn-close bg-white"
-                    style={{ width: "20px" }}
-                    onClick={handleModalClose}
-                  ></button>
-                </div>
-                <div className="modal-body">
-                  <div className="mb-0">
-                    <label
-                      className="form-label"
-                      style={{ fontSize: "14px", paddingRight: "550px" }}
-                    >
-                      Tên loại hàng 
-                    </label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      value={newSubName}
-                      onChange={(e) => setNewSubName(e.target.value)}
-                      required
-                      style={{ height: "30px" }}
-                    />
-                  </div>
-                  <div className="mb-2">
-                    <label
-                      className="form-label"
-                      style={{ fontSize: "14px", paddingRight: "450px" }}
-                    >
-                      Chọn loại hàng cha (tùy chọn)
-                    </label>
-                    <select
-                      className="form-select"
-                      value={String(parentCat)}
-                      onChange={(e) => setParentCat(String(e.target.value))}
-                    >
-                      <option value="">-- Không có (tạo loại hàng gốc) --</option>
-                      {categories
-                        .filter((cat) => cat.value !== "all") // Loại bỏ option "Tất cả loại hàng"
-                        .map((cat) => (
-                          <option key={cat.value} value={String(cat.value)}>
-                            {cat.label}
-                          </option>
-                        ))}
-                    </select>
-                  </div>
-                </div>
-                <div className="modal-footer">
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    onClick={handleModalClose}
-                  >
-                    Huỷ
-                  </button>
-                  <button type="submit" className="btn btn-success">
-                    Tạo mới
-                  </button>
-                </div>
-              </form>
-            </div>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg w-[600px] shadow-lg">
+            <form onSubmit={handleModalSubmit}>
+              <div className="flex justify-between items-center border-b p-3">
+                <h5 className="font-bold">Tạo loại hàng mới</h5>
+                <button
+                  type="button"
+                  className="text-gray-500 hover:text-black"
+                  onClick={handleModalClose}
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="p-4">
+                <label className="block text-sm font-medium mb-1">
+                  Tên loại hàng
+                </label>
+                <input
+                  type="text"
+                  className="form-control mb-3"
+                  value={newSubName}
+                  onChange={(e) => setNewSubName(e.target.value)}
+                  required
+                />
+
+                <label className="block text-sm font-medium mb-1">
+                  Loại hàng cha (tuỳ chọn)
+                </label>
+                <select
+                  className="form-select"
+                  value={String(parentCat)}
+                  onChange={(e) => setParentCat(e.target.value)}
+                >
+                  <option value="">-- Không có (gốc) --</option>
+                  {categories
+                    .filter((cat) => cat.value !== "all")
+                    .map((cat) => (
+                      <option key={cat.value} value={String(cat.value)}>
+                        {cat.label}
+                      </option>
+                    ))}
+                </select>
+              </div>
+              <div className="flex justify-end gap-2 border-t p-3">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={handleModalClose}
+                >
+                  Huỷ
+                </button>
+                <button type="submit" className="btn btn-success">
+                  Tạo mới
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
+
       {/* Có thể thêm filter nâng cao ở đây */}
     </div>
   );
