@@ -1,3 +1,4 @@
+import Wishlist from "./pages/wishlist";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import HomePage from "./pages/HomePage";
 import DashboardPage from "./features/admin/pages/DashboardPage";
@@ -15,7 +16,7 @@ import ReportsPage from "./features/admin/pages/ReportsPage";
 import AdminLayout from "./features/admin/components/AdminLayout";
 import CartPage from "./features/cart/pages/CartPage";
 import "./App.css";
-import Layout from "./layouts/Layout"; // Sử dụng layout có Header/Footer
+import Layout from "./layouts/layout"; // Sử dụng layout có Header/Footer
 import UserProductPage from './features/products/pages/UserProductPage';
 import ProductDetailPage from './features/products/pages/ProductDetailPage';
 import { CartProvider } from "./features/cart/services/CartContext";
@@ -44,6 +45,7 @@ function App() {
             <Route path="products/:id" element={<ProductDetailPage />} />
             <Route path="cart" element={<CartPage />} />
             <Route path="manage-products" element={<ManageStore />} />
+            <Route path="wishlist" element={<Wishlist />} />
           </Route>
           {/* Admin routes with layout */}
           <Route path="/admin" element={<AdminLayout />}>

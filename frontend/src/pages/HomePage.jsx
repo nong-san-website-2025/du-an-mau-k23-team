@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useNavigate } from "react-router-dom";
 import a1 from"../assets/image/a1.jpg"
 import a2 from"../assets/image/a2.jpg"
 import a3 from"../assets/image/a3.jpg"
@@ -13,7 +14,6 @@ import {
   Award,
   Phone,
   Mail,
-  MapPin,
   Star,
   Users,
   Globe,
@@ -136,7 +136,15 @@ const productCategories = [
 ]
 
 export default function HomePage() {
-  const [currentBanner, setCurrentBanner] = useState(0)
+  const [currentBanner, setCurrentBanner] = useState(0);
+  const navigate = useNavigate();
+  const [wishlist, setWishlist] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('wishlist')) || [];
+    } catch {
+      return [];
+    }
+  });
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -154,6 +162,26 @@ export default function HomePage() {
   }
 
   const currentBannerData = banners[currentBanner]
+
+  // Thêm vào wishlist và chuyển hướng
+  const handleAddToWishlist = (product) => {
+    const wishlist = JSON.parse(localStorage.getItem('wishlist') || '[]');
+    // Tạo object đơn giản để lưu
+    const item = {
+      id: product.title,
+      name: product.title,
+      image: product.image,
+      price: 100000, // demo, có thể sửa lại nếu có giá
+      inStock: true
+    };
+    // Kiểm tra trùng
+    if (!wishlist.some(p => p.id === item.id)) {
+      wishlist.push(item);
+      localStorage.setItem('wishlist', JSON.stringify(wishlist));
+    }
+    setWishlist(wishlist);
+    navigate('/wishlist');
+  };
 
   return (
     <div className="min-vh-100" style={{ marginBottom: 0, paddingBottom: 0 }}>
@@ -691,7 +719,7 @@ export default function HomePage() {
           <div className="row">
             {productCategories.map((product, index) => (
               <div key={index} className="col-lg-4 mb-4">
-                <div className="card h-100 border-0 shadow-sm overflow-hidden product-card">
+                <div className="card h-100 border-0 shadow-sm overflow-hidden product-card position-relative">
                   <div className="position-relative overflow-hidden" style={{ padding: "10px" }}>
                     <img
                       src={product.image || "/placeholder.svg"}
@@ -710,6 +738,15 @@ export default function HomePage() {
                     >
                       Premium
                     </span>
+                    {/* Icon yêu thích */}
+                    <button
+                      onClick={() => handleAddToWishlist(product)}
+                      className="position-absolute"
+                      style={{ bottom: 15, right: 15, background: 'rgba(255,255,255,0.95)', border: 'none', borderRadius: '50%', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px #eee', cursor: 'pointer', zIndex: 2 }}
+                      title="Thêm vào yêu thích"
+                    >
+                      <span style={{ color: '#e53935', fontSize: 22 }}>&#10084;</span>
+                    </button>
                   </div>
                   <div className="card-body p-4">
                     <h4 className="fw-bold text-dark mb-3 product-title">{product.title}</h4>

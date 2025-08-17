@@ -3,7 +3,7 @@ import { toast } from "react-toastify";
 import { useCart } from "../../cart/services/CartContext";
 import { useParams, useNavigate } from "react-router-dom";
 import { Badge, Button, Spinner, Alert, ButtonGroup } from "react-bootstrap";
-import { ShoppingCart, ChevronLeft, Star, Minus, Plus } from "lucide-react";
+import { ShoppingCart, ChevronLeft, Star, Minus, Plus, Heart, TrendingUp } from "lucide-react";
 import { productApi } from "../services/productApi";
 
 const ProductDetailPage = () => {
@@ -15,6 +15,22 @@ const ProductDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [quantity, setQuantity] = useState(1); // ✅
+  const [showSoldInfo, setShowSoldInfo] = useState(false);
+  const [suggested, setSuggested] = useState([]);
+
+  // Lấy gợi ý sản phẩm cùng danh mục
+  useEffect(() => {
+    if (!product || !product.category) return;
+    const fetchSuggested = async () => {
+      try {
+        const all = await productApi.getAllProducts();
+        // Lọc sản phẩm cùng danh mục, loại trừ chính nó
+        const sameCategory = all.filter(p => p.category === product.category && p.id !== product.id);
+        setSuggested(sameCategory);
+      } catch {}
+    };
+    fetchSuggested();
+  }, [product]);
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -139,6 +155,79 @@ const ProductDetailPage = () => {
             <span className="ms-3 text-success">Còn {product.stock} sản phẩm</span>
           </div>
 
+          {/* Đã bán + icon + yêu thích + modal mô tả */}
+          <div className="mb-3 d-flex align-items-center gap-3">
+            <div style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
+              onClick={() => setShowSoldInfo(true)}
+              title="Xem thông tin lượt bán"
+            >
+              <TrendingUp size={18} className="text-success me-1" />
+              <span className="fw-semibold text-dark">Đã bán 20+</span>
+            </div>
+            <button
+              style={{ background: 'none', border: 'none', padding: 0, marginLeft: 8, cursor: 'pointer' }}
+              title="Thêm vào yêu thích"
+              onClick={() => {
+                // Lưu vào wishlist localStorage
+                const wishlist = JSON.parse(localStorage.getItem('wishlist') || '[]');
+                const item = {
+                  id: product.id,
+                  name: product.name,
+                  image: product.image,
+                  price: product.price,
+                  inStock: product.stock > 0
+                };
+                if (!wishlist.some(p => p.id === item.id)) {
+                  wishlist.push(item);
+                  localStorage.setItem('wishlist', JSON.stringify(wishlist));
+                  toast.success('Đã thêm vào danh sách yêu thích!');
+                } else {
+                  toast.info('Sản phẩm đã có trong danh sách yêu thích.');
+                }
+              }}
+            >
+              <Heart size={22} color="#e53935" fill="none" />
+            </button>
+          </div>
+          {showSoldInfo && (
+            <div
+              style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                width: '100vw',
+                height: '100vh',
+                background: 'rgba(0,0,0,0.25)',
+                zIndex: 9999,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+              onClick={() => setShowSoldInfo(false)}
+            >
+              <div
+                style={{
+                  background: '#fff',
+                  borderRadius: 10,
+                  padding: 24,
+                  maxWidth: 400,
+                  boxShadow: '0 2px 16px #bbb',
+                  textAlign: 'center',
+                  position: 'relative',
+                }}
+                onClick={e => e.stopPropagation()}
+              >
+                <h5 className="mb-3">Thông tin lượt bán</h5>
+                <p style={{ color: '#444', fontSize: 15 }}>
+                  Lượt bán này được tổng hợp từ lượt bán thành công của các sản phẩm tương tự trên Greenfram, để giúp người mua có thêm thông tin tham khảo về sản phẩm trước khi quyết định mua hàng.
+                </p>
+                <Button variant="outline-secondary" size="sm" onClick={() => setShowSoldInfo(false)}>
+                  Đóng
+                </Button>
+              </div>
+            </div>
+          )}
+
           {/* ✅ Chọn số lượng */}
           <div className="mb-3">
             <strong>Số lượng:</strong>{" "}
@@ -165,7 +254,8 @@ const ProductDetailPage = () => {
             </ButtonGroup>
           </div>
 
-          <div className="mb-3">
+
+          <div className="mb-3 d-flex gap-2">
             <Button
               variant="success"
               size="lg"
@@ -173,6 +263,17 @@ const ProductDetailPage = () => {
               onClick={handleAddToCart}
             >
               <ShoppingCart size={20} className="me-2" /> Thêm vào giỏ hàng
+            </Button>
+            <Button
+              variant="warning"
+              size="lg"
+              style={{ color: '#fff', fontWeight: 600 }}
+              onClick={async () => {
+                await handleAddToCart();
+                navigate('/cart');
+              }}
+            >
+              Mua ngay
             </Button>
           </div>
 
@@ -193,6 +294,34 @@ const ProductDetailPage = () => {
           </div>
         </div>
       </div>
+      {/* Gợi ý sản phẩm cùng danh mục */}
+      {suggested.length > 0 && (
+        <div style={{ marginTop: 40 }}>
+          <h5 style={{ fontWeight: 600, marginBottom: 16 }}>Gợi ý cho bạn</h5>
+          <div className="row">
+            {suggested.map(item => (
+              <div key={item.id} className="col-md-4 mb-4">
+                <div
+                  className="card h-100 border-0 shadow-sm overflow-hidden product-card"
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => navigate(`/products/${item.id}`)}
+                >
+                  <img
+                    src={item.image && item.image.startsWith("/") ? `http://localhost:8000${item.image}` : item.image || "/logo192.png"}
+                    alt={item.name}
+                    style={{ height: 180, objectFit: 'cover', width: '100%' }}
+                  />
+                  <div className="card-body p-3">
+                    <div style={{ fontWeight: 500, fontSize: 16, marginBottom: 6 }}>{item.name}</div>
+                    <div style={{ color: "#e53935", fontWeight: 700, fontSize: 16 }}>{item.price?.toLocaleString()} đ</div>
+                    <div style={{ color: item.inStock ? '#388e3c' : '#bdbdbd', fontSize: 13 }}>{item.inStock ? 'Còn hàng' : 'Hết hàng'}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
