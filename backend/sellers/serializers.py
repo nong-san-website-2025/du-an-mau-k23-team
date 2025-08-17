@@ -15,7 +15,12 @@ class ProductMiniSerializer(serializers.ModelSerializer):
 class SellerListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Seller
-        fields = ['id', 'store_name', 'image', 'address']
+        fields = ['id', 'store_name', 'image', 'address', 'status']
+
+class SellerRegisterSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Seller
+        fields = ['id', 'user', 'store_name', 'bio', 'address', 'phone', 'image']
 
 class SellerDetailSerializer(serializers.ModelSerializer):
     # reverse relation: product_set (default name) -> list sản phẩm của seller
