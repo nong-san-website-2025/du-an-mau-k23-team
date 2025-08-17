@@ -6,6 +6,8 @@ class CustomUser(AbstractUser):
     is_admin = models.BooleanField(default=False)  # Quyền admin
     is_support = models.BooleanField(default=False)  # Quyền hỗ trợ
     is_locked = models.BooleanField(default=False)  # Khóa tài khoản
+    is_employee = models.BooleanField(default=False)  # Khóa tài khoản
+
     full_name = models.CharField(max_length=255, blank=True, null=True)
     email = models.EmailField(unique=True)
     avatar = models.ImageField(upload_to='assets/users/', blank=True, null=True)

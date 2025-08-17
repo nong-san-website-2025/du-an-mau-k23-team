@@ -78,10 +78,6 @@ export default function Footer() {
             <a href="#" className="text-muted text-decoration-none">Chính sách vận chuyển</a>
           </div>
           <div className="mt-2 mt-md-0">
-            Phương thức thanh toán:
-            <span className="badge bg-primary ms-2">VISA</span>
-            <span className="badge bg-danger ms-1">MC</span>
-            <span className="badge bg-pink ms-1" style={{backgroundColor: "#ff69b4"}}>MM</span>
           </div>
         </div>
       </div>
