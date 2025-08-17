@@ -35,6 +35,8 @@ import StoreDetail from './features/stores/pages/StoreDetail';
 import AboutPage from "./pages/About/About";
 import SupportPage from "./features/admin/pages/SupportPage";
 import FeaturedProductsPage from "./features/featured/pages/FeaturedProductsPage";
+import SellersPage from "./features/admin/pages/Sellers/SellersPage";
+import SellerRegisterPage from "./features/sellers/pages/SellerRegisterPage";
 
 function App() {
   return (
@@ -51,6 +53,7 @@ function App() {
               <Route path="orders" element={<Orders />} />
               <Route path="checkout" element={<CheckoutPage />} />
               <Route path="profile/" element={<ProfilePage />} />
+              <Route path="/register-seller/" element={<SellerRegisterPage/>} />
             </Route>
             <Route path="about" element={<AboutPage/>} />
             <Route path="productuser" element={<UserProductPage />} />
@@ -77,6 +80,7 @@ function App() {
               <Route path="staff" element={<StaffPage />} />
               <Route path="reports" element={<ReportsPage />} />
               <Route path="supports" element={<SupportPage />} />
+              <Route path="sellers/pending" element={<SellersPage />} />
             </Route>
           </Route>
           <Route path="/login" element={<LoginForm />} />

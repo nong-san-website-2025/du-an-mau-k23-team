@@ -9,6 +9,12 @@ class Seller(models.Model):
     phone = models.CharField(max_length=20, blank=True)     
     image = models.ImageField(upload_to='stores/', blank=True, null=True)  
     created_at = models.DateTimeField(auto_now_add=True)
+    STATUS_CHOICES = [
+        ("pending", "Chờ duyệt"),
+        ("approved", "Đã duyệt"),
+        ("rejected", "Bị từ chối"),
+    ]
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
 
     def __str__(self):
         return self.store_name
