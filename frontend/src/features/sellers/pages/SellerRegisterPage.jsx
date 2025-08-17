@@ -64,74 +64,93 @@ export default function SellerRegisterPage() {
   };
 
   return (
-    <div className="container py-4" style={{ maxWidth: 600 }}>
-      <h2 className="mb-4">Đăng ký cửa hàng</h2>
-      {success && (
-        <div className="alert alert-success">Yêu cầu đăng ký đã gửi, chờ duyệt!</div>
-      )}
-      {error && (
-        <div className="alert alert-danger">{error}</div>
-      )}
-      <form onSubmit={handleSubmit} encType="multipart/form-data">
-        <div className="mb-3">
-          <label className="form-label">Tên cửa hàng *</label>
-          <input
-            type="text"
-            className="form-control"
-            name="store_name"
-            value={form.store_name}
-            onChange={handleChange}
-            required
-          />
-        </div>
-        <div className="mb-3">
-          <label className="form-label">Mô tả</label>
-          <textarea
-            className="form-control"
-            name="bio"
-            value={form.bio}
-            onChange={handleChange}
-            rows={3}
-          />
-        </div>
-        <div className="mb-3">
-          <label className="form-label">Địa chỉ</label>
-          <input
-            type="text"
-            className="form-control"
-            name="address"
-            value={form.address}
-            onChange={handleChange}
-          />
-        </div>
-        <div className="mb-3">
-          <label className="form-label">Số điện thoại</label>
-          <input
-            type="text"
-            className="form-control"
-            name="phone"
-            value={form.phone}
-            onChange={handleChange}
-          />
-        </div>
-        <div className="mb-3">
-          <label className="form-label">Ảnh cửa hàng</label>
-          <input
-            type="file"
-            className="form-control"
-            name="image"
-            accept="image/*"
-            onChange={handleChange}
-          />
-        </div>
-        <button
-          type="submit"
-          className="btn btn-success"
-          disabled={submitting}
-        >
-          {submitting ? "Đang gửi..." : "Gửi yêu cầu đăng ký"}
-        </button>
-      </form>
+    <div className="container py-4" style={{ maxWidth: 520 }}>
+      <div className="card shadow-sm border-0 p-4" style={{ borderRadius: 18 }}>
+        <h2 className="mb-3" style={{ fontWeight: 700 }}>Đăng ký cửa hàng</h2>
+        {success && (
+          <div className="alert alert-success">Yêu cầu đăng ký đã gửi, chờ duyệt!</div>
+        )}
+        {error && (
+          <div className="alert alert-danger">{error}</div>
+        )}
+        <form onSubmit={handleSubmit} encType="multipart/form-data">
+          <div className="row g-3">
+            <div className="col-12">
+              <label className="form-label fw-bold">Tên cửa hàng *</label>
+              <input
+                type="text"
+                className="form-control border rounded-3"
+                name="store_name"
+                value={form.store_name}
+                onChange={handleChange}
+                required
+                placeholder="Nhập tên cửa hàng"
+                autoFocus
+              />
+            </div>
+            <div className="col-12">
+              <label className="form-label fw-bold">Mô tả</label>
+              <textarea
+                className="form-control border rounded-3"
+                name="bio"
+                value={form.bio}
+                onChange={handleChange}
+                rows={3}
+                placeholder="Giới thiệu ngắn về cửa hàng, sản phẩm, dịch vụ..."
+              />
+            </div>
+            <div className="col-12">
+              <label className="form-label fw-bold">Địa chỉ</label>
+              <input
+                type="text"
+                className="form-control border rounded-3"
+                name="address"
+                value={form.address}
+                onChange={handleChange}
+                placeholder="Địa chỉ cửa hàng"
+              />
+            </div>
+            <div className="col-12">
+              <label className="form-label fw-bold">Số điện thoại</label>
+              <input
+                type="text"
+                className="form-control border rounded-3"
+                name="phone"
+                value={form.phone}
+                onChange={handleChange}
+                placeholder="Số điện thoại liên hệ"
+              />
+            </div>
+            <div className="col-12">
+              <label className="form-label fw-bold">Ảnh cửa hàng</label>
+              <input
+                type="file"
+                className="form-control border rounded-3"
+                name="image"
+                accept="image/*"
+                onChange={handleChange}
+              />
+              {form.image && typeof form.image === "object" && (
+                <div className="mt-2">
+                  <img
+                    src={URL.createObjectURL(form.image)}
+                    alt="Preview"
+                    style={{ maxWidth: 120, maxHeight: 120, borderRadius: 10, boxShadow: "0 2px 8px #22c55e33" }}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+          <button
+            type="submit"
+            className="btn btn-success w-100 mt-4 py-2 fw-bold"
+            style={{ borderRadius: 8, fontSize: 17, letterSpacing: 0.5 }}
+            disabled={submitting}
+          >
+            {submitting ? "Đang gửi..." : "Gửi yêu cầu đăng ký"}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

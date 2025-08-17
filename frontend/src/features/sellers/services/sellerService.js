@@ -16,13 +16,11 @@ export async function registerSeller(form) {
   if (!res.ok) throw new Error("Đăng ký thất bại");
   return await res.json();
 }
-
 export async function getPendingSellers() {
   const res = await fetch("http://localhost:8000/api/sellers/pending/");
   if (!res.ok) throw new Error("Không lấy được danh sách chờ duyệt");
   return await res.json();
 }
-
 export async function approveSeller(sellerId) {
   const token = localStorage.getItem("token");
   const headers = token ? { Authorization: `Bearer ${token}` } : {};

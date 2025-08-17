@@ -189,6 +189,38 @@ export default function Header() {
 
   // --- END SEARCH FEATURE ---
 
+  const [storeName, setStoreName] = useState("");
+  useEffect(() => {
+    // Nếu user là seller, lấy tên cửa hàng
+    const token = localStorage.getItem("token");
+    const isSeller = localStorage.getItem("is_seller")?.toLowerCase() === "true";
+
+    if (token && isSeller) {
+      function getUserIdFromToken() {
+        try {
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          return payload.user_id || payload.id;
+        } catch {
+          return null;
+        }
+      }
+      const userId = getUserIdFromToken();
+      if (userId) {
+        fetch(`http://localhost:8000/api/sellers/`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+          .then(res => res.json())
+          .then(data => {
+            console.log("Seller data:", data);
+            const seller = data.find(s => s.status === "approved");
+            if (seller) {
+              setStoreName(seller.store_name);
+            }
+          });
+      }
+    }
+  }, []);
+
   return (
     <>
       <ToastContainer
@@ -846,7 +878,7 @@ export default function Header() {
                         Cài đặt
                       </Link>
                       <Link
-                        to="/register-seller"
+                        to={storeName ? "/store" : "/register-seller"}
                         className="dropdown-item text-white fw-bold d-flex justify-content-left"
                         style={{
                           background: hoveredDropdown === 'register' ? '#16a34a' : '#22C55E',
@@ -864,7 +896,7 @@ export default function Header() {
                         onClick={() => setShowProfileDropdown(false)}
                       >
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                          Đăng ký bán hàng
+                          {storeName ? "Cửa hàng của tôi" : "Đăng ký bán hàng"}
                         </span>
                       </Link>
                       <div

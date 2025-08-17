@@ -170,31 +170,33 @@ export default function SellersPage() {
                       <span className={"badge " + (seller.status === "Đã duyệt" ? "bg-success" : seller.status === "Chờ duyệt" ? "bg-warning" : "bg-secondary")}>{seller.status || "Chờ duyệt"}</span>
                     </td>
                     <td>
-                      <button
-                        className={
-                          "btn btn-success btn-sm d-flex align-items-center gap-1 px-3 py-1 shadow " +
-                          (seller.status === "approved" ? "disabled" : "")
-                        }
-                        style={{ borderRadius: 6, fontWeight: 600, fontSize: 15, boxShadow: seller.status !== "approved" ? "0 2px 8px #22c55e33" : "none", opacity: seller.status === "approved" ? 0.6 : 1, cursor: seller.status === "approved" ? "not-allowed" : "pointer" }}
-                        onClick={() => handleApprove(seller.id)}
-                        disabled={seller.status === "approved"}
-                        title={seller.status === "approved" ? "Đã duyệt" : "Duyệt cửa hàng này"}
-                      >
-                        <CheckCircle2 size={18} />
-                        <span>{seller.status === "approved" ? "Đã duyệt" : "Duyệt"}</span>
-                      </button>
-                      <button
-                        className={
-                          "btn btn-danger btn-sm d-flex align-items-center gap-1 px-3 py-1 ms-2 shadow " +
-                          (seller.status === "rejected" ? "disabled" : "")
-                        }
-                        style={{ borderRadius: 6, fontWeight: 600, fontSize: 15, boxShadow: seller.status !== "rejected" ? "0 2px 8px #ef444433" : "none", opacity: seller.status === "rejected" ? 0.6 : 1, cursor: seller.status === "rejected" ? "not-allowed" : "pointer" }}
-                        onClick={() => handleReject(seller.id)}
-                        disabled={seller.status === "rejected"}
-                        title={seller.status === "rejected" ? "Đã từ chối" : "Từ chối cửa hàng này"}
-                      >
-                        <span style={{ fontWeight: 700 }}>Từ chối</span>
-                      </button>
+                      <div className="d-flex align-items-center gap-2">
+                        <button
+                          className={
+                            "btn btn-success btn-sm d-flex align-items-center gap-1 px-3 py-1 shadow " +
+                            (seller.status === "approved" ? "disabled" : "")
+                          }
+                          style={{ borderRadius: 6, fontWeight: 600, fontSize: 15, boxShadow: seller.status !== "approved" ? "0 2px 8px #22c55e33" : "none", opacity: seller.status === "approved" ? 0.6 : 1, cursor: seller.status === "approved" ? "not-allowed" : "pointer" }}
+                          onClick={() => handleApprove(seller.id)}
+                          disabled={seller.status === "approved"}
+                          title={seller.status === "approved" ? "Đã duyệt" : "Duyệt cửa hàng này"}
+                        >
+                          <CheckCircle2 size={18} />
+                          <span>{seller.status === "approved" ? "Đã duyệt" : "Duyệt"}</span>
+                        </button>
+                        <button
+                          className={
+                            "btn btn-danger btn-sm d-flex align-items-center gap-1 px-3 py-1 shadow " +
+                            (seller.status === "rejected" ? "disabled" : "")
+                          }
+                          style={{ borderRadius: 6, fontWeight: 600, fontSize: 15, boxShadow: seller.status !== "rejected" ? "0 2px 8px #ef444433" : "none", opacity: seller.status === "rejected" ? 0.6 : 1, cursor: seller.status === "rejected" ? "not-allowed" : "pointer" }}
+                          onClick={() => handleReject(seller.id)}
+                          disabled={seller.status === "rejected"}
+                          title={seller.status === "rejected" ? "Đã từ chối" : "Từ chối cửa hàng này"}
+                        >
+                          <span style={{ fontWeight: 700 }}>Từ chối</span>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
