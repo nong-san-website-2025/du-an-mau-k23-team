@@ -1,11 +1,13 @@
 import React from "react";
-// ...existing code...
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
-import { Bell, User, Settings, Globe, LogOut } from "lucide-react";
+import { Bell, User, Settings, Globe } from "lucide-react";
 import { useAuth } from "../../login_register/services/AuthContext";
-import "../styles/AdminLayout.css"; // Assuming you have a CSS file for styles
+import "../styles/AdminLayout.css";
 
 export default function AdminLayout() {
+  const navigate = useNavigate();
+  const { logout } = useAuth();
+
   const adminMenu = [
     { to: "/admin/", label: "Tổng quan" },
     { to: "/admin/products", label: "Hàng hóa" },
@@ -15,11 +17,15 @@ export default function AdminLayout() {
     { to: "/admin/staff", label: "Nhân viên" },
     { to: "/admin/wallet", label: "Sổ quỹ" },
     { to: "/admin/reports", label: "Báo cáo" },
-    { to: "/admin/supports", label: "Yêu cầu hỗ trợ", dropdown: true },
+    {
+      to: "/admin/supports",
+      label: "Yêu cầu hỗ trợ",
+      dropdown: [
+        { label: "Duyệt cửa hàng", to: "/admin/sellers/pending" },
+        { label: "Duyệt tiền", to: "/admin/supports" },
+      ],
+    },
   ];
-
-  const { logout, user } = useAuth();
-  const navigate = useNavigate();
 
   const handleLogout = () => {
     if (window.confirm("Bạn có chắc chắn muốn đăng xuất?")) {
@@ -29,136 +35,106 @@ export default function AdminLayout() {
   };
 
   return (
-    <div className="bg-light" style={{ minHeight: "100vh" }}>
+    <div className="bg-light min-vh-100">
       {/* Top utility bar */}
-      <div
-        className="w-100"
-        style={{
-          background: "#fff",
-          borderBottom: "1px solid #e5e7eb",
-          minHeight: 48,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "0 8px",
-          zIndex: 1,
-        }}
-      >
-        <div className="d-flex align-items-center">
-          <img
-            src="/assets/logo/imagelogo.png"
-            alt="Logo"
-            style={{ height: 32, marginRight: 10, borderRadius: 8 }}
-          />
-          <span
-            style={{
-              fontWeight: 700,
-              fontSize: 20,
-              color: "#022856",
-              letterSpacing: 0.5,
-            }}
-          >
-            GreenFarm
-          </span>
-        </div>
-        <div className="d-flex align-items-center" style={{ gap: 18 }}>
-          <button
-            className="btn btn-link p-0"
-            style={{ color: "#22C55E" }}
-            title="Thông báo"
-          >
-            <Bell size={22} />
-          </button>
+      <TopBar />
 
-          <button
-            className="btn btn-link p-0"
-            style={{ color: "#22C55E" }}
-            title="Ngôn ngữ"
-          >
-            <Globe size={22} />
-          </button>
-          <button
-            className="btn btn-link p-0"
-            style={{ color: "#22C55E" }}
-            title="Cài đặt"
-          >
-            <Settings size={22} />
-          </button>
-          <button
-            className="btn btn-link p-0"
-            style={{ color: "#22C55E" }}
-            title="Tài khoản"
-          >
-            <User size={22} />
-          </button>
-        </div>
-      </div>
-      {/* Top horizontal admin nav bar */}
-      <nav
-        className="navbar navbar-expand-lg"
-        style={{
-          background: "#22C55E",
-          minHeight: 45,
-          boxShadow: "0 2px 8px #0001",
-          zIndex: 1040,
-          padding: "0px",
-        }}
-      >
-        <div className="container-fluid px-2">
-          <ul className="navbar-nav flex-row ms-3 " style={{ gap: 0 }}>
-            {adminMenu.map((item) => (
-              item.dropdown ? (
-                <li className="nav-item position-relative" key={item.to} style={{ zIndex: 1050 }}>
-                  <div className="admin-nav-link px-3 py-2" style={{ cursor: "pointer", position: "relative" }}>
-                    {item.label}
-                    <div className="dropdown-supports" style={{ display: "none", position: "absolute", left: 0, top: "100%", minWidth: 220, background: "#fff", boxShadow: "0 2px 8px #0001", borderRadius: 8, padding: 12, marginTop: 4 }}>
-                      <div className="d-flex flex-column gap-2">
-                        <button
-                          className="btn d-flex align-items-center"
-                          style={{ backgroundColor: "#22C55E", color: "#fff", fontWeight: "600", padding: "6px 12px", borderRadius: "8px", border: "none" }}
-                          onClick={() => navigate("/admin/sellers/pending")}
-                        >
-                          Duyệt cửa hàng
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </li>
-              ) : (
-                <li className="nav-item" key={item.to}>
-                  <NavLink
-                    to={item.to}
-                    end={item.to === "/admin/"}
-                    className={({ isActive }) =>
-                      "admin-nav-link px-3 py-2" + (isActive ? " active" : "")
-                    }
-                  >
-                    {item.label}
-                  </NavLink>
-                </li>
-              )
-            ))}
-          </ul>
-          <div className="ms-auto d-flex align-items-center">
-            {/* Place for user actions, theme, etc. */}
-          </div>
-        </div>
-      </nav>
-      {/* Dropdown hover logic */}
-      <style>{`
-        .nav-item.position-relative:hover .dropdown-supports {
-          display: block !important;
-        }
-        .dropdown-supports button:hover {
-          background: #16a34a;
-        }
-      `}</style>
-      {/* <AdminHeader /> */}
+      {/* Horizontal admin nav bar */}
+      <NavBar adminMenu={adminMenu} navigate={navigate} />
+
+      {/* Main content */}
       <div className="container-fluid py-0">
-        <div className="row" style={{ minHeight: "calc(100vh - 56px - 56px)" }}>
+        <div className="row" style={{ minHeight: "calc(100vh - 96px)" }}>
           <Outlet />
         </div>
       </div>
     </div>
+  );
+}
+
+/* ----------------- Components ----------------- */
+
+function TopBar() {
+  return (
+    <div className="admin-topbar">
+      <div className="d-flex align-items-center">
+        <img
+          src="/assets/logo/imagelogo.png"
+          alt="Logo"
+          className="admin-logo"
+        />
+        <span className="admin-brand">GreenFarm</span>
+      </div>
+      <div className="d-flex align-items-center gap-3">
+        <TopBarButton Icon={Bell} title="Thông báo" />
+        <TopBarButton Icon={Globe} title="Ngôn ngữ" />
+        <TopBarButton Icon={Settings} title="Cài đặt" />
+        <TopBarButton Icon={User} title="Tài khoản" />
+      </div>
+    </div>
+  );
+}
+
+function TopBarButton({ Icon, title }) {
+  return (
+    <button className="btn btn-link p-0 admin-topbar-btn" title={title}>
+      <Icon size={22} />
+    </button>
+  );
+}
+
+function NavBar({ adminMenu, navigate }) {
+  return (
+    <nav className="navbar navbar-expand-lg admin-navbar">
+      <div className="container-fluid px-2">
+        <ul className="navbar-nav flex-row ms-3">
+          {adminMenu.map((item) =>
+            item.dropdown ? (
+              <li
+                className="nav-item position-relative admin-dropdown"
+                key={item.to}
+              >
+                {/* Sửa: dùng NavLink thay vì span */}
+                <NavLink
+                  to={item.to}
+                  end={false}
+                  className={({ isActive }) =>
+                    "admin-nav-link px-3 py-2" + (isActive ? " active" : "")
+                  }
+                >
+                  {item.label}
+                </NavLink>
+
+                {/* Dropdown con */}
+                <div className="dropdown-menu-custom">
+                  {item.dropdown.map((child) => (
+                    <button
+                      key={child.to}
+                      className="dropdown-item-custom"
+                      onClick={() => navigate(child.to)}
+                      
+                    >
+                      {child.label}
+                    </button>
+                  ))}
+                </div>
+              </li>
+            ) : (
+              <li className="nav-item" key={item.to}>
+                <NavLink
+                  to={item.to}
+                  end={item.to === "/admin/"}
+                  className={({ isActive }) =>
+                    "admin-nav-link px-3 py-2" + (isActive ? " active" : "")
+                  }
+                >
+                  {item.label}
+                </NavLink>
+              </li>
+            )
+          )}
+        </ul>
+      </div>
+    </nav>
   );
 }
