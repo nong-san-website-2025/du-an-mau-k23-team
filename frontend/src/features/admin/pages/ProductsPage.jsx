@@ -116,13 +116,13 @@ export default function ProductsPage() {
             backgroundColor: "#22C55E",
             color: "#fff",
             fontWeight: "600",
-            padding: "6px 20px",
+            padding: "6px 12px",
             borderRadius: "8px",
             border: "none",
           }}
           onClick={() => setShowAddModal(true)}
         >
-          <Plus size={20} className="me-2" /> Thêm sản phẩm
+          <Plus size={20} className="me-0" /> Tạo mới
         </button>
       </>
     );

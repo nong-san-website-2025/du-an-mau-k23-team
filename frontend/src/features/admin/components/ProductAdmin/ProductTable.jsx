@@ -1,10 +1,9 @@
 import React, { useState } from "react";
-
 import ProductTableRow from "./ProductTableRow";
 import ProductDetailRow from "./ProductDetailRow";
-import ProductEditForm from "./ProductEditForm";
 import { productApi } from "../../../products/services/productApi";
 import ProductAddModal from "./ProductAddModal";
+import ProductEditModal from "./ProductEditModal";
 
 export default function ProductTable({
   products,
@@ -14,16 +13,17 @@ export default function ProductTable({
   getStatusBadge,
   checkedIds,
   setCheckedIds,
-  reloadProducts, // optional prop nếu muốn reload sau khi thêm
+  reloadProducts,
 }) {
   const [expandedProductId, setExpandedProductId] = useState(null);
   const [loadingAction, setLoadingAction] = useState(false);
-  const [editProduct, setEditProduct] = useState(null); // null hoặc object sản phẩm đang sửa
+
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editProduct, setEditProduct] = useState(null);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   const handleExpand = (productId) => {
     setExpandedProductId(expandedProductId === productId ? null : productId);
-    setEditProduct(null);
   };
 
   const handleDelete = async (product) => {
@@ -33,7 +33,8 @@ export default function ProductTable({
     try {
       await productApi.deleteProduct(product.id);
       alert("Đã xoá sản phẩm thành công!");
-      window.location.reload(); // hoặc gọi props.reloadProducts nếu có
+      if (reloadProducts) reloadProducts();
+      else window.location.reload();
     } catch (err) {
       alert("Xoá sản phẩm thất bại!");
     } finally {
@@ -43,38 +44,18 @@ export default function ProductTable({
 
   const handleEdit = (product) => {
     setEditProduct(product);
+    setShowEditModal(true);
   };
 
-  const handleEditSubmit = async (e) => {
-    e.preventDefault();
-    setLoadingAction(true);
-    try {
-      const form = e.target;
-      const data = {
-        name: form.name.value,
-        description: form.description.value,
-        price: form.price.value,
-        stock: form.stock.value,
-        status: form.status.value,
-      };
-      await productApi.updateProduct(editProduct.id, data);
-      alert("Cập nhật sản phẩm thành công!");
-      setEditProduct(null);
-      window.location.reload(); // hoặc gọi props.reloadProducts nếu có
-    } catch (err) {
-      alert("Cập nhật thất bại!");
-    } finally {
-      setLoadingAction(false);
-    }
-  };
-
-  // Thêm sản phẩm thành công thì reload
   const handleAddSuccess = () => {
     if (reloadProducts) reloadProducts();
     else window.location.reload();
   };
 
-  // ...existing code...
+  const handleEditSuccess = () => {
+    if (reloadProducts) reloadProducts();
+    else window.location.reload();
+  };
 
   return (
     <>
@@ -115,28 +96,35 @@ export default function ProductTable({
                   else setCheckedIds([...checkedIds, product.id]);
                 }}
               />
-              {expandedProductId === product.id && !editProduct && (
-                <ProductDetailRow 
+              {expandedProductId === product.id && (
+                <ProductDetailRow
                   product={product}
                   getStatusBadge={getStatusBadge}
                   onEdit={() => handleEdit(product)}
                   onDelete={() => handleDelete(product)}
                   loadingAction={loadingAction}
-                  isEditing={editProduct && editProduct.id === product.id}
-                />
-              )}
-              {expandedProductId === product.id && editProduct && (
-                <ProductEditForm
-                  product={editProduct}
-                  onSubmit={handleEditSubmit}
-                  onCancel={() => setEditProduct(null)}
+                  isEditing={false}
                 />
               )}
             </React.Fragment>
           ))}
         </tbody>
       </table>
-      <ProductAddModal open={showAddModal} onClose={() => setShowAddModal(false)} onSuccess={handleAddSuccess} />
+
+      {/* Modal chỉnh sửa */}
+      <ProductEditModal
+        open={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        product={editProduct}
+        onSuccess={handleEditSuccess}
+      />
+
+      {/* Modal thêm mới */}
+      <ProductAddModal
+        open={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onSuccess={handleAddSuccess}
+      />
     </>
   );
 }
