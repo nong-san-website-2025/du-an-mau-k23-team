@@ -26,9 +26,6 @@ export default function Footer() {
             </div>
             <div className="d-flex gap-2">
               <a href="#" className="btn btn-outline-secondary rounded-circle p-2" aria-label="Facebook"><Facebook size={20} /></a>
-              <a href="#" className="btn btn-outline-secondary rounded-circle p-2" aria-label="Instagram"><Instagram size={20} /></a>
-              <a href="#" className="btn btn-outline-secondary rounded-circle p-2" aria-label="Twitter"><Twitter size={20} /></a>
-              <a href="#" className="btn btn-outline-secondary rounded-circle p-2" aria-label="Youtube"><Youtube size={20} /></a>
             </div>
           </div>
           {/* Liên kết nhanh */}
@@ -69,19 +66,9 @@ export default function Footer() {
         <hr className="my-4" />
         <div className="d-flex flex-column flex-md-row justify-content-between align-items-center small text-muted">
           <div>
-            © 2024 NôngSản.vn. Tất cả quyền được bảo lưu.
-            <span className="mx-2">|</span>
-            <a href="#" className="text-muted text-decoration-none">Chính sách bảo mật</a>
-            <span className="mx-2">|</span>
-            <a href="#" className="text-muted text-decoration-none">Điều khoản sử dụng</a>
-            <span className="mx-2">|</span>
-            <a href="#" className="text-muted text-decoration-none">Chính sách vận chuyển</a>
+            © 2024 NôngSản.vn
           </div>
           <div className="mt-2 mt-md-0">
-            Phương thức thanh toán:
-            <span className="badge bg-primary ms-2">VISA</span>
-            <span className="badge bg-danger ms-1">MC</span>
-            <span className="badge bg-pink ms-1" style={{backgroundColor: "#ff69b4"}}>MM</span>
           </div>
         </div>
       </div>

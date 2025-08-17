@@ -1,8 +1,10 @@
 {
   "dependencies": {
     "bootstrap": "^5.3.7",
+    "i18next": "^25.3.6",
     "pillow": "^0.0.9",
     "react-bootstrap": "^2.10.10",
+    "react-i18next": "^15.6.1",
     "react-toastify": "^11.0.5"
   }
 }

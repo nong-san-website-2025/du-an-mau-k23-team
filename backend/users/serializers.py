@@ -47,3 +47,15 @@ class AddressSerializer(serializers.ModelSerializer):
     class Meta:
         model = Address
         fields = "__all__"
+
+
+# Serializer cho đổi mật khẩu
+class ChangePasswordSerializer(serializers.Serializer):
+    old_password = serializers.CharField(required=True)
+    new_password = serializers.CharField(required=True)
+    confirm_password = serializers.CharField(required=True)
+
+    def validate(self, data):
+        if data['new_password'] != data['confirm_password']:
+            raise serializers.ValidationError("Mật khẩu mới và xác nhận không khớp.")
+        return data

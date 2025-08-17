@@ -27,6 +27,14 @@ import CheckoutPage from './features/cart/pages/CheckoutPage';
 import Orders from './features/orders/pages/Orders';
 import PrivateRoute from "./features/login_register/components/PrivateRoute";
 import ProfilePage from "./features/users/pages/ProfilePage";
+import Settings from "./pages/Settings";
+import Profile from "./pages/Profile";
+import Security from "./pages/Security";
+import Addresses from "./pages/Addresses";
+import UpdateAvatar from "./pages/UpdateAvatar";
+import OrderHistory from "./pages/OrderHistory";
+import NotificationSettings from "./pages/NotificationSettings";
+import DeleteAccount from "./pages/DeleteAccount";
 
 function App() {
   return (
@@ -46,6 +54,16 @@ function App() {
             <Route path="cart" element={<CartPage />} />
             <Route path="manage-products" element={<ManageStore />} />
             <Route path="wishlist" element={<Wishlist />} />
+
+            <Route path="settings" element={<Settings />} />
+            <Route path="profile" element={<Profile />} />
+            <Route path="security" element={<Security />} />
+            <Route path="addresses" element={<Addresses />} />
+            <Route path="update-avatar" element={<UpdateAvatar />} />
+            <Route path="order-history" element={<OrderHistory />} />
+            <Route path="notifications-settings" element={<NotificationSettings />} />
+            <Route path="delete-account" element={<DeleteAccount />} />
+
           </Route>
           {/* Admin routes with layout */}
           <Route path="/admin" element={<AdminLayout />}>
