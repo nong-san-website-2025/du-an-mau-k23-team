@@ -1,3 +1,4 @@
+import Wishlist from "./pages/wishlist";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import HomePage from "./pages/HomePage";
 import DashboardPage from "./features/admin/pages/DashboardPage";
@@ -60,6 +61,7 @@ function App() {
             <Route path="store" element={<StoreList />} />
             <Route path="store/:id" element={<StoreDetail />} />
             <Route path="featured" element={<FeaturedProductsPage />} />
+            <Route path="wishlist" element={<Wishlist />} />
           </Route>
           {/* Admin routes with authentication protection */}
           <Route element={<AdminPrivateRoute />}>
