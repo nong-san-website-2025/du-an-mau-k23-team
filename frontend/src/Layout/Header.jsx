@@ -870,14 +870,6 @@ export default function Header() {
                       </Link>
 
                       <Link
-                        to="/settings"
-                        className="dropdown-item"
-                        style={{ padding: "12px 18px", fontWeight: 500 }}
-                        onClick={() => setShowProfileDropdown(false)}
-                      >
-                        Cài đặt
-                      </Link>
-                      <Link
                         to={storeName ? "" : "/register-seller"}
                         className="dropdown-item text-white fw-bold d-flex justify-content-left"
                         style={{

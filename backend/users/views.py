@@ -4,7 +4,6 @@ from payments.models import Payment
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 from rest_framework import permissions
-from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth.hashers import make_password
 from rest_framework import generics, permissions, status
 from django.core.cache import cache
@@ -25,7 +24,6 @@ from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
-from rest_framework.response import Response
 from .models import Address
 from .serializers import AddressSerializer
 
@@ -40,7 +38,7 @@ class WalletBalanceView(APIView):
             balance = user.wallet_balance
         else:
             # Nếu số dư ví lưu ở model Payment, lấy tổng các payment thành công
-            balance = Payment.objects.filter(user=user, status='success').aggregate(total=models.Sum('amount'))['total'] or 0
+            balance = Payment.objects.filter(user=user, status='success').aggregate(total=ModelViewSet.Sum('amount'))['total'] or 0
         return Response({"balance": balance})
 
 # --- GOOGLE LOGIN API ---
