@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import { Card, Row, Col, Spinner, Button, Badge } from "react-bootstrap";
 import { ShoppingCart, Star, Star as StarFill } from "lucide-react";
@@ -48,24 +49,32 @@ const FeaturedProductsPage = () => {
     e.stopPropagation();
     setAddingId(product.id);
     await addToCart(
-  product.id,
-  1,
-  () => toast.success("Đã thêm vào giỏ hàng!", { autoClose: 1500 }), // chỉ thêm toast
-  () => {}, // giữ callback thất bại như cũ
-  {
-    id: product.id,
-    name: product.name,
-    price: product.price,
-    image:
-      product.image && product.image.startsWith("/")
-        ? `http://localhost:8000${product.image}`
-        : product.image?.startsWith("http")
-        ? product.image
-        : "",
-  }
-);
-
-    setAddingId(null);
+      product.id,
+      1,
+      () => {
+        toast.success("Đã thêm vào giỏ hàng!", { position: "top-right", autoClose: 1500 });
+        setAddingId(null);
+      },
+      (err) => {
+        setAddingId(null);
+        if (err?.response?.status === 401) {
+          toast.error("Vui lòng đăng nhập để thêm vào giỏ hàng", { position: "top-right" });
+        } else {
+          toast.error("Không thể thêm vào giỏ hàng. Vui lòng thử lại.", { position: "top-right" });
+        }
+      },
+      {
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        image:
+          product.image && product.image.startsWith("/")
+            ? `http://localhost:8000${product.image}`
+            : product.image?.startsWith("http")
+            ? product.image
+            : "",
+      }
+    );
   };
 
   return (

@@ -1,5 +1,13 @@
 import React, { useEffect, useState } from "react";
-import { Container, Row, Col, Button, Spinner, Form, InputGroup } from "react-bootstrap";
+import {
+  Container,
+  Row,
+  Col,
+  Button,
+  Spinner,
+  Form,
+  InputGroup,
+} from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { Search } from "react-bootstrap-icons";
@@ -67,9 +75,13 @@ const StoreListPro = () => {
                     {"☆".repeat(5 - (store.rating || 0))}
                   </div>
                   <Button
-                    variant="light"
-                    className="store-btn"
-                    onClick={() => navigate(`/store/${store.id}`)}
+                    onClick={() => navigate(-1)}
+                    className="mb-4"
+                    style={{
+                      backgroundColor: "rgb(33, 196, 93)",
+                      borderColor: "rgb(33, 196, 93)",
+                      color: "white",
+                    }}
                   >
                     Xem gian hàng &gt;
                   </Button>
