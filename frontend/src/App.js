@@ -15,7 +15,7 @@ import ReportsPage from "./features/admin/pages/ReportsPage";
 import AdminLayout from "./features/admin/components/AdminLayout";
 import CartPage from "./features/cart/pages/CartPage";
 import "./App.css";
-import Layout from "./layouts/Layout"; // Sử dụng layout có Header/Footer
+import Layout from "./layouts/layout"; // Sử dụng layout có Header/Footer
 import UserProductPage from './features/products/pages/UserProductPage';
 import ProductDetailPage from './features/products/pages/ProductDetailPage';
 import { CartProvider } from "./features/cart/services/CartContext";
@@ -28,6 +28,23 @@ import Orders from './features/orders/pages/Orders';
 import PrivateRoute from "./features/login_register/components/PrivateRoute";
 import AdminPrivateRoute from "./features/login_register/components/AdminPrivateRoute";
 import ProfilePage from "./features/users/pages/ProfilePage";
+import BlogHome from './pages/Blog/BlogHome';
+import BlogDetail from './pages/Blog/BlogDetail';
+import StoreList from './features/stores/pages/StoreList';
+import StoreDetail from './features/stores/pages/StoreDetail';
+import AboutPage from "./pages/about/about";
+import SupportPage from "./features/admin/pages/SupportPage";
+
+import ShopLayout from "./features/admin/components/ShopAdmin/ShopLayout";
+import ShopPrivateRoute from "./features/login_register/components/ShopPrivateRoute";
+import ShopDashboardPage from "./features/admin/pages/ShopAdmin/ShopDashboardPage";
+import ShopProductsPage from "./features/admin/pages/ShopAdmin/ShopProductsPage";
+import ShopOrdersPage from "./features/admin/pages/ShopAdmin/ShopOrdersPage";
+import ShopCustomersPage from "./features/admin/pages/ShopAdmin/ShopCustomersPage";
+import ShopVouchersPage from "./features/admin/pages/ShopAdmin/ShopVouchersPage";
+import ShopWalletPage from "./features/admin/pages/ShopAdmin/ShopWalletPage";
+import ShopReportsPage from "./features/admin/pages/ShopAdmin/ShopReportsPage";
+
 
 function App() {
   return (
@@ -37,16 +54,21 @@ function App() {
           <Routes>
           <Route path="/" element={<Layout />}>
             <Route index element={<HomePage />} />
+            <Route path="/blog" element={<BlogHome />} />
+            <Route path="/blog/:slug" element={<BlogDetail />} />
             <Route element={<PrivateRoute />}>
               <Route path="me" element={<UserProfile />} />
               <Route path="orders" element={<Orders />} />
               <Route path="checkout" element={<CheckoutPage />} />
               <Route path="profile/" element={<ProfilePage />} />
             </Route>
+            <Route path="abouts" element={<AboutPage/>} />
             <Route path="productuser" element={<UserProductPage />} />
             <Route path="products/:id" element={<ProductDetailPage />} />
             <Route path="cart" element={<CartPage />} />
             <Route path="manage-products" element={<ManageStore />} />
+            <Route path="store" element={<StoreList />} />
+            <Route path="store/:id" element={<StoreDetail />} />
           </Route>
           {/* Admin routes with authentication protection */}
           <Route element={<AdminPrivateRoute />}>
@@ -63,6 +85,18 @@ function App() {
               <Route path="notifications" element={<NotificationsPage />} />
               <Route path="staff" element={<StaffPage />} />
               <Route path="reports" element={<ReportsPage />} />
+              <Route path="supports" element={<SupportPage />} />
+            </Route>
+          </Route>
+          <Route element={<ShopPrivateRoute />}>
+            <Route path="/ShopAdmin/" element={<ShopLayout />}>
+              <Route index element={<ShopDashboardPage />} />
+              <Route path="products" element={<ShopProductsPage />} />
+              <Route path="orders" element={<ShopOrdersPage />} />
+              <Route path="customers" element={<ShopCustomersPage />} />
+              <Route path="vouchers" element={<ShopVouchersPage />} />
+              <Route path="wallet" element={<ShopWalletPage />} />
+              <Route path="reports" element={<ShopReportsPage />} />
             </Route>
           </Route>
           <Route path="/login" element={<LoginForm />} />

@@ -8,7 +8,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('orders', '0004_remove_order_status_remove_order_total_price_and_more'),
-        ('products', '0002_initial'),
+        ('products', '0001_initial'),
     ]
 
     operations = [

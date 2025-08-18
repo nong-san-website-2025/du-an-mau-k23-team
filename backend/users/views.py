@@ -1,6 +1,8 @@
+from rest_framework.authtoken.models import Token
+from rest_framework.permissions import IsAuthenticated
+from payments.models import Payment
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
-from rest_framework.views import APIView
 from rest_framework import permissions
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth.hashers import make_password
@@ -15,10 +17,8 @@ from .serializers import UserSerializer, RegisterSerializer, ForgotPasswordSeria
 import random
 from django.core.mail import send_mail
 from .permissions import IsAdmin, IsSeller, IsNormalUser
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.permissions import AllowAny
 from rest_framework.decorators import api_view, permission_classes
-from chat.models import Message  # Cập nhật đúng path
 from django.db.models import Count
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
@@ -27,6 +27,27 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from .models import Address
 from .serializers import AddressSerializer
+from rest_framework.generics import ListAPIView
+from .models import Role
+from .serializers import RoleSerializer
+
+from rest_framework_simplejwt.authentication import JWTAuthentication
+
+# API lấy số dư ví của user hiện tại
+class WalletBalanceView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        # Nếu số dư ví lưu ở user
+        if hasattr(user, 'wallet_balance'):
+            balance = user.wallet_balance
+        else:
+            # Nếu số dư ví lưu ở model Payment, lấy tổng các payment thành công
+            balance = Payment.objects.filter(user=user, status='success').aggregate(total=models.Sum('amount'))['total'] or 0
+        return Response({"balance": balance})
+
+
 # --- GOOGLE LOGIN API ---
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -228,6 +249,22 @@ class AdminOnlyView(APIView):
         return Response({"message": "Chỉ Admin xem được"})
 
 
+class VerifyAdminView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """Verify if current user is admin"""
+        user = request.user
+        is_admin = user.is_superuser or getattr(user, 'is_admin', False)
+        
+        return Response({
+            "is_admin": is_admin,
+            "username": user.username,
+            "email": user.email,
+            "role": "admin" if is_admin else ("seller" if getattr(user, 'is_seller', False) else "user")
+        })
+
+
 class SellerOnlyView(APIView):
     permission_classes = [IsAuthenticated, IsSeller]
 
@@ -248,27 +285,7 @@ class ProductViewSet(ModelViewSet):
     permission_classes = [IsAuthenticated, IsSeller]
 
 
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def get_chat_rooms(request):
-    """
-    Trả về danh sách phòng chat theo từng user đã nhắn vào
-    """
-    user_rooms = (
-        Message.objects
-        .values("room")
-        .annotate(total=Count("id"))
-        .order_by("-total")
-    )
-    room_names = [item["room"] for item in user_rooms]
-    return Response(room_names)
-
-
-from chat.models import Message
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from chat.serializers import MessageSerializer  # cần serializer
+  # cần serializer
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -277,6 +294,47 @@ def get_chat_history(request, room_name):
     serializer = MessageSerializer(messages, many=True)
     return Response(serializer.data)
 
+
+
+
+class RoleCreateView(APIView):
+    def post(self, request):
+        serializer = RoleSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=201)
+        return Response(serializer.errors, status=400)
+class RoleListView(ListAPIView):
+    queryset = Role.objects.all()
+    serializer_class = RoleSerializer
+
+
+class UserListView(ListAPIView):
+    queryset = CustomUser.objects.all()
+    serializer_class = UserSerializer
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class UserViewSet(viewsets.ModelViewSet):
+    queryset = CustomUser.objects.all()
+    serializer_class = UserSerializer
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    
+
+
+class RoleViewSet(viewsets.ModelViewSet):
+    queryset = Role.objects.all()
+    serializer_class = RoleSerializer
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+@method_decorator(csrf_exempt, name='dispatch')
+class AddressViewSet(viewsets.ModelViewSet):
+    queryset = Address.objects.all()
+    serializer_class = AddressSerializer
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
 
 class AddressViewSet(viewsets.ModelViewSet):
     serializer_class = AddressSerializer
@@ -295,3 +353,27 @@ class AddressViewSet(viewsets.ModelViewSet):
         address.is_default = True
         address.save()
         return Response({"status": "Đã đặt địa chỉ mặc định"})
+# views.py
+class UserPointsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        serializer = UserSerializer(request.user)
+        return Response(serializer.data)
+
+    def post(self, request):
+        change = int(request.data.get("points", 0))
+        request.user.points += change
+        request.user.save()
+        serializer = UserSerializer(request.user)
+        return Response(serializer.data)
+
+    def patch(self, request):
+            change = int(request.data.get("points", 0))
+            if request.user.points >= change:
+                request.user.points -= change
+                request.user.save()
+                serializer = UserSerializer(request.user)
+                return Response(serializer.data)
+            return Response({"error": "Không đủ điểm"}, status=400)
+

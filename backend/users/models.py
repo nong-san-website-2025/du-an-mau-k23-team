@@ -1,11 +1,19 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
+
+class Role(models.Model):
+    name = models.CharField(max_length=50, unique=True)
+
+    def __str__(self):
+        return self.name
+
+
 class CustomUser(AbstractUser):
     is_seller = models.BooleanField(default=False)
     is_admin = models.BooleanField(default=False)  # Quyền admin
     is_support = models.BooleanField(default=False)  # Quyền hỗ trợ
-    is_locked = models.BooleanField(default=False)  # Khóa tài khoản
+    is_locked = models.BooleanField(default=False)  # Khóa tài khoản  # Quyền nhân viên
     full_name = models.CharField(max_length=255, blank=True, null=True)
     email = models.EmailField(unique=True)
     avatar = models.ImageField(upload_to='assets/users/', blank=True, null=True)
@@ -16,8 +24,28 @@ class CustomUser(AbstractUser):
     tags = models.CharField(max_length=255, blank=True, null=True)  # Tag: shop nổi bật, shop yêu thích
     reset_code = models.CharField(max_length=6, blank=True, null=True)
 
+    role = models.ForeignKey(Role, on_delete=models.SET_NULL, null=True, blank=True)
+
+    STATUS_CHOICES = (
+        ('active', 'Đang hoạt động'),
+        ('inactive', 'Ngừng hoạt động'),
+    )
+    status = models.CharField(
+        max_length=10,
+        choices=STATUS_CHOICES,
+        blank=True,
+        null=True
+    )
+
+
     def __str__(self):
         return self.username
+
+
+
+    # Model lưu lịch sử tích điểm
+    
+
 
 class Address(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="addresses")
@@ -33,7 +61,17 @@ class Address(models.Model):
 
     def __str__(self):
         return f"{self.recipient_name} - {self.location}"
-    
+
+class PointHistory(models.Model):
+        user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="point_histories")
+        order_id = models.CharField(max_length=50, blank=True, null=True)
+        points = models.IntegerField()
+        amount = models.IntegerField()  # số tiền đơn hàng
+        date = models.DateTimeField(auto_now_add=True)
+        action = models.CharField(max_length=255, default="Cộng điểm khi mua hàng")
+
+        def __str__(self):
+            return f"{self.user.username} - {self.points} điểm - {self.date}"
 
 
 

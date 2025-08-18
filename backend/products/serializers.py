@@ -18,16 +18,16 @@ class ProductSerializer(serializers.ModelSerializer):
     category = serializers.CharField(source='subcategory.category.name', read_only=True)
     seller_name = serializers.CharField(source='seller.name', read_only=True)
     discounted_price = serializers.ReadOnlyField()
-    image = serializers.SerializerMethodField()
-    
+    image = serializers.ImageField()
+
     class Meta:
         model = Product
         fields = [
-            'id', 'name', 'description', 'price', 'discounted_price', 'unit', 
-            'stock', 'image', 'rating', 'review_count', 'is_new', 'is_organic', 
-            'is_best_seller', 'discount', 'location', 'brand', 'subcategory', 
-            'seller_name', 'created_at', 'updated_at', 'category_name',
-            ]
+            'id', 'name', 'description', 'price', 'discounted_price', 'unit',
+            'stock', 'image', 'rating', 'review_count', 'is_new', 'is_organic',
+            'is_best_seller', 'discount', 'location', 'brand', 'subcategory',
+            'seller', 'seller_name', 'created_at', 'updated_at', 'category'
+        ]
 
     def get_image(self, obj):
         request = self.context.get('request')

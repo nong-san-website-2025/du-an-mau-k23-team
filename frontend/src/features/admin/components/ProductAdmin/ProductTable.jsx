@@ -1,8 +1,10 @@
 import React, { useState } from "react";
-import { productApi } from "../../../products/services/productApi";
+
 import ProductTableRow from "./ProductTableRow";
 import ProductDetailRow from "./ProductDetailRow";
 import ProductEditForm from "./ProductEditForm";
+import { productApi } from "../../../products/services/productApi";
+import ProductAddModal from "./ProductAddModal";
 
 export default function ProductTable({
   products,
@@ -12,10 +14,12 @@ export default function ProductTable({
   getStatusBadge,
   checkedIds,
   setCheckedIds,
+  reloadProducts, // optional prop nếu muốn reload sau khi thêm
 }) {
   const [expandedProductId, setExpandedProductId] = useState(null);
   const [loadingAction, setLoadingAction] = useState(false);
   const [editProduct, setEditProduct] = useState(null); // null hoặc object sản phẩm đang sửa
+  const [showAddModal, setShowAddModal] = useState(false);
 
   const handleExpand = (productId) => {
     setExpandedProductId(expandedProductId === productId ? null : productId);
@@ -64,103 +68,75 @@ export default function ProductTable({
     }
   };
 
-  // Filtered products
-  const filteredProducts = products.filter((product) => {
-    let productCategoryId;
-    if (product.category && typeof product.category === "object") {
-      productCategoryId = product.category.id;
-    } else if (product.category_id) {
-      productCategoryId = product.category_id;
-    } else if (product.category && typeof product.category === "number") {
-      productCategoryId = product.category;
-    } else {
-      productCategoryId = null;
-    }
-    const categoryMatch = selectedCategory === "all" || productCategoryId === Number(selectedCategory);
-    const searchMatch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) || (product.description && product.description.toLowerCase().includes(searchTerm.toLowerCase()));
-    return categoryMatch && searchMatch;
-  });
+  // Thêm sản phẩm thành công thì reload
+  const handleAddSuccess = () => {
+    if (reloadProducts) reloadProducts();
+    else window.location.reload();
+  };
+
+  // ...existing code...
 
   return (
-    <div className="table-responsive" style={{ maxHeight: "70vh", overflowY: "auto" }}>
-      <table className="table table-hover" style={{ margin: 0 }}>
+    <>
+      <table className="table table-hover align-middle">
         <thead>
-          <tr style={{ borderBottom: "2px solid #e5e7eb" }}>
-            <th className="border-0 text-3 py-0" style={{ position: "sticky", top: 0, zIndex: 5, background: "#fff", height: "26px", fontWeight: "normal" }}>
+          <tr>
+            <th>
               <input
                 type="checkbox"
-                className="form-check-input"
-                checked={products.length > 0 && checkedIds.length === filteredProducts.length}
-                onChange={e => {
-                  const visibleIds = filteredProducts.map(p => p.id);
-                  if (e.target.checked) {
-                    setCheckedIds(Array.from(new Set([...checkedIds, ...visibleIds])));
-                  } else {
-                    setCheckedIds(checkedIds.filter(id => !visibleIds.includes(id)));
-                  }
+                checked={checkedIds.length === products.length && products.length > 0}
+                onChange={(e) => {
+                  if (e.target.checked) setCheckedIds(products.map((p) => p.id));
+                  else setCheckedIds([]);
                 }}
               />
             </th>
-            <th className="border-0 text-3 py-0" style={{ position: "sticky", top: 0, zIndex: 5, background: "#fff", height: "26px", fontSize: "12px", fontWeight: "500", paddingLeft: "76px" }}>Sản phẩm</th>
-            <th className="border-0 text-3 py-0" style={{ position: "sticky", top: 0, zIndex: 5, background: "#fff", height: "26px", fontSize: "12px", fontWeight: "500" }}>Danh mục</th>
-            <th className="border-0 text-3 py-0" style={{ position: "sticky", top: 0, zIndex: 5, background: "#fff", height: "26px", fontSize: "12px", fontWeight: "500" }}>Giá (VNĐ)</th>
-            <th className="border-0 text-3 py-0" style={{ position: "sticky", top: 0, zIndex: 5, background: "#fff", height: "26px", fontSize: "12px", fontWeight: "500" }}>Tồn kho</th>
-            <th className="border-0 text-3 py-0" style={{ position: "sticky", top: 0, zIndex: 5, background: "#fff", height: "26px", fontSize: "12px", fontWeight: "500" }}>Trạng thái</th>
-            <th className="border-0 text-muted py-0" style={{ position: "sticky", top: 0, zIndex: 5, background: "#fff", height: "26px", fontSize: "12px", fontWeight: "500" }}>Thao tác</th>
+            <th>Tên sản phẩm</th>
+            <th>Danh mục</th>
+            <th>Giá</th>
+            <th>Trạng thái</th>
+            <th>Thao tác</th>
           </tr>
         </thead>
         <tbody>
-          {loading ? (
-            <tr>
-              <td colSpan={7} className="text-center text-muted">Đang tải dữ liệu...</td>
-            </tr>
-          ) : filteredProducts.length === 0 ? (
-            <tr>
-              <td colSpan={7} className="text-center text-muted">Không có sản phẩm</td>
-            </tr>
-          ) : (
-            filteredProducts.map(product => (
-              <React.Fragment key={product.id}>
-                <ProductTableRow
+          {products.map((product) => (
+            <React.Fragment key={product.id}>
+              <ProductTableRow
+                product={product}
+                expanded={expandedProductId === product.id}
+                onExpand={() => handleExpand(product.id)}
+                onDelete={() => handleDelete(product)}
+                onEdit={() => handleEdit(product)}
+                getStatusBadge={getStatusBadge}
+                checked={checkedIds.includes(product.id)}
+                onCheck={() => {
+                  if (checkedIds.includes(product.id))
+                    setCheckedIds(checkedIds.filter((id) => id !== product.id));
+                  else setCheckedIds([...checkedIds, product.id]);
+                }}
+              />
+              {expandedProductId === product.id && !editProduct && (
+                <ProductDetailRow 
                   product={product}
-                  checked={checkedIds.includes(product.id)}
-                  onCheck={e => {
-                    if (e.target.checked) {
-                      setCheckedIds([...checkedIds, product.id]);
-                    } else {
-                      setCheckedIds(checkedIds.filter(id => id !== product.id));
-                    }
-                  }}
-                  onExpand={() => handleExpand(product.id)}
                   getStatusBadge={getStatusBadge}
-                  isExpanded={expandedProductId === product.id}
+                  onEdit={() => handleEdit(product)}
+                  onDelete={() => handleDelete(product)}
+                  loadingAction={loadingAction}
+                  isEditing={editProduct && editProduct.id === product.id}
                 />
-                {expandedProductId === product.id && (
-                  <ProductDetailRow
-                    product={product}
-                    getStatusBadge={getStatusBadge}
-                    onEdit={() => handleEdit(product)}
-                    onDelete={() => handleDelete(product)}
-                    loadingAction={loadingAction}
-                    isEditing={editProduct && editProduct.id === product.id}
-                  >
-                    {editProduct && editProduct.id === product.id && (
-                      <ProductEditForm
-                        editProduct={editProduct}
-                        loadingAction={loadingAction}
-                        onSubmit={handleEditSubmit}
-                        onCancel={() => setEditProduct(null)}
-                      />
-                    )}
-                  </ProductDetailRow>
-                )}
-              </React.Fragment>
-            ))
-          )}
+              )}
+              {expandedProductId === product.id && editProduct && (
+                <ProductEditForm
+                  product={editProduct}
+                  onSubmit={handleEditSubmit}
+                  onCancel={() => setEditProduct(null)}
+                />
+              )}
+            </React.Fragment>
+          ))}
         </tbody>
       </table>
-    </div>
+      <ProductAddModal open={showAddModal} onClose={() => setShowAddModal(false)} onSuccess={handleAddSuccess} />
+    </>
   );
 }
-    
-

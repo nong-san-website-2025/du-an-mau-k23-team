@@ -35,10 +35,11 @@ const login = async (username, password) => {
   try {
     const { data } = await api.post('users/login/', { username, password });
     // data: { access, refresh, username, email, is_admin, is_seller }
-    localStorage.setItem('token', data.access);
-    localStorage.setItem('username', data.username);
-    localStorage.setItem('is_admin', data.is_admin);
-    localStorage.setItem('is_seller', data.is_seller);
+  localStorage.setItem('token', data.access);
+  localStorage.setItem('refresh', data.refresh); // Lưu refresh token
+  localStorage.setItem('username', data.username);
+  localStorage.setItem('is_admin', data.is_admin);
+  localStorage.setItem('is_seller', data.is_seller);
     return {
       success: true,
       ...data,

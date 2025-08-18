@@ -72,7 +72,7 @@ export default function Header() {
     localStorage.removeItem("role");
     sessionStorage.clear(); // Nếu có sessionStorage dùng
     setShowProfileDropdown(false);
-    alert("Đăng xuất thành công!");
+    // alert("Đăng xuất thành công!");
     window.location.replace("/login");
   };
   const [showCategory, setShowCategory] = useState(false);
@@ -385,7 +385,7 @@ export default function Header() {
                 Bài viết
               </Link>
               <Link
-                to="/about"
+                to="/abouts"
                 className="btn btn-link fw-medium px-3 py-2 text-decoration-none text-dark d-none d-xl-inline-block"
                 style={{ whiteSpace: "nowrap" }}
               >

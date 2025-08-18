@@ -3,6 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.db.models import Q
 from .models import Product, Category, Subcategory
+from rest_framework.permissions import AllowAny
 from .serializers import ProductSerializer, ProductListSerializer, CategorySerializer, SubcategorySerializer
 
 class CategoryViewSet(viewsets.ReadOnlyModelViewSet):

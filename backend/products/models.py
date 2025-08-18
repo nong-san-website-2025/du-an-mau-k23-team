@@ -47,4 +47,3 @@ class Product(models.Model):
         if self.discount > 0:
             return self.price * (100 - self.discount) / 100
         return self.price
-

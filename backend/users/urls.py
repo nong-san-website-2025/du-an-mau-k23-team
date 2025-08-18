@@ -1,17 +1,20 @@
 from django.urls import path
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from .views import (
     RegisterView, UserProfileView, LoginView, ForgotPasswordView,
     VerifyCodeAPIView, ResetPasswordAPIView, GoogleLoginAPIView,
-    get_chat_rooms, get_chat_history, AddressViewSet
+     get_chat_history, AddressViewSet, UserViewSet,
+    RoleCreateView, RoleListView, UserListView, RoleViewSet
 )
-from rest_framework.routers import DefaultRouter
 
-router = DefaultRouter()
-router.register("addresses", AddressViewSet, basename="address")
 
-# Remove router from here, move to main urls.py for /api/addresses/
+router = DefaultRouter() 
+router.register(r'users', UserViewSet, basename='user')
+router.register(r'roles', RoleViewSet, basename='role')
+router.register(r'addresses', AddressViewSet, basename='address')
 
 urlpatterns = [
     path("register/", RegisterView.as_view(), name='register'),
@@ -23,7 +26,15 @@ urlpatterns = [
     path("verify-code/", VerifyCodeAPIView.as_view(), name="verify-code"),
     path("reset-password/", ResetPasswordAPIView.as_view(), name='reset-password'),
     path("google-login/", GoogleLoginAPIView.as_view(), name='google-login'),
-    path("chat/rooms/", get_chat_rooms, name="chat-rooms"),
+
+    # path("chat/rooms/", get_chat_rooms, name="chat-rooms"),
     path("chat/history/<str:room_name>/", get_chat_history),
+    path("roles/", RoleCreateView.as_view(), name="role-create"),
+    path("roles/list/", RoleListView.as_view(), name="role-list"),
+    path("", UserListView.as_view(), name="user-list"),
+    path('', include(router.urls)),
+    
 ]
-urlpatterns += router.urls
+
+
+

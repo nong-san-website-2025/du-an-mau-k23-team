@@ -1,8 +1,10 @@
+
 from django.utils import timezone
 from decimal import Decimal
 import random
 from sellers.models import Seller
 from products.models import Category, Subcategory, Product
+
 
 def generate_sample_products():
     # Giả sử đã có một số seller trong database

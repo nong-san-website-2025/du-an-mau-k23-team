@@ -2,6 +2,8 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import API from "../../login_register/services/api";
 import { toast } from "react-toastify";
 import { useLocation } from "react-router-dom";
+import axios from "axios";
+
 
 const CartContext = createContext();
 
@@ -13,6 +15,8 @@ export const CartProvider = ({ children }) => {
   const location = useLocation();
 
   const isAuthenticated = () => !!localStorage.getItem("token");
+
+  
 
   // --- Guest Cart Helpers ---
   const getGuestCart = () => {
@@ -87,14 +91,61 @@ export const CartProvider = ({ children }) => {
     if (token) {
       try {
         console.log("🟡 Đang gửi:", { product_id: productId, quantity });
-        await API.post("cartitems/", {
+        const res = await API.post("cartitems/", {
           product_id: productId,
           quantity,
         });
-        await fetchCart();
-        if (onSuccess) onSuccess();
+        // Nếu API trả về status 200/201 hoặc có data, coi là thành công
+        if (res && res.status >= 200 && res.status < 300) {
+          await fetchCart();
+          if (onSuccess) onSuccess();
+        } else {
+          if (onError) onError(new Error("Không thể thêm vào giỏ hàng"));
+        }
       } catch (err) {
-        console.error("❌ addToCart error:", err.response?.data || err.message); // ❗ CHỈNH Ở ĐÂY
+        // Nếu lỗi là UNIQUE constraint (đã có sản phẩm trong cart), thì gọi updateQuantity để tăng số lượng
+        const errMsg = err.response?.data?.detail || err.message || "";
+        if (
+          errMsg.includes("UNIQUE constraint failed") ||
+          errMsg.includes("unique")
+        ) {
+          // Luôn fetch lại cart để lấy itemId mới nhất từ response, không lấy từ state
+          let latestCart = [];
+          try {
+            setLoading(true);
+            const res = await API.get("cartitems/");
+            latestCart = res.data || [];
+            setCartItems(latestCart); // vẫn update state cho UI
+          } catch {}
+          // Tìm item trong latestCart (không lấy từ state)
+          const item = latestCart.find(
+            (i) => i.product === productId || i.product_data?.id === productId
+          );
+          if (item) {
+            await API.put(`cartitems/${item.id}/update-quantity/`, {
+              quantity: item.quantity + quantity,
+            });
+            await fetchCart();
+            if (onSuccess) onSuccess();
+            setLoading(false);
+            return;
+          }
+        }
+        // Nếu lỗi nhưng vẫn fetchCart được (trường hợp backend trả lỗi nhưng vẫn thêm)
+        try {
+          await fetchCart();
+          // Kiểm tra xem sản phẩm đã có trong cart chưa
+          const found = cartItems.some(
+            (item) =>
+              item.product === productId || item.product_data?.id === productId
+          );
+          if (found) {
+            if (onSuccess) onSuccess();
+            setLoading(false);
+            return;
+          }
+        } catch {}
+        console.error("❌ addToCart error:", err.response?.data || err.message);
         if (onError) onError(err);
         else
           toast.error(
@@ -128,33 +179,55 @@ export const CartProvider = ({ children }) => {
   };
 
   // --- Update quantity ---
-  const updateQuantity = async (itemId, quantity) => {
-    setLoading(true);
+  // CartContext.js
+// --- Update quantity ---
+const updateQuantity = async (cartItemId, newQuantity) => {
+  try {
     if (isAuthenticated()) {
-      try {
-        await API.put(`cartitems/${itemId}/update-quantity/`, { quantity });
-        await fetchCart();
-      } catch (err) {
-        console.error("❌ updateQuantity error:", err);
+      if (newQuantity < 1) {
+        // Xóa item nếu số lượng < 1
+        await API.delete(`cartitems/${cartItemId}/`);
+        setCartItems((prev) => prev.filter((item) => item.id !== cartItemId));
+      } else {
+        // Update số lượng
+        const res = await API.patch(`cartitems/${cartItemId}/`, {
+          quantity: newQuantity,
+        });
+        setCartItems((prev) =>
+          prev.map((item) =>
+            item.id === cartItemId
+              ? { ...item, quantity: res.data.quantity }
+              : item
+          )
+        );
       }
     } else {
+      // --- Guest cart ---
       let items = getGuestCart();
-      const idx = items.findIndex((i) => i.product === itemId);
-      if (idx >= 0) {
-        items[idx].quantity = quantity;
-        saveGuestCart(items);
-        setCartItems(items);
+      if (newQuantity < 1) {
+        items = items.filter((item) => item.product !== cartItemId);
+      } else {
+        items = items.map((item) =>
+          item.product === cartItemId
+            ? { ...item, quantity: newQuantity }
+            : item
+        );
       }
+      saveGuestCart(items);
+      setCartItems(items);
     }
-    setLoading(false);
-  };
+  } catch (err) {
+    console.error("❌ updateQuantity error:", err.response?.data || err.message);
+    toast.error("Không thể cập nhật số lượng sản phẩm");
+  }
+};
 
   // --- Remove from cart ---
   const removeFromCart = async (itemId) => {
     setLoading(true);
     if (isAuthenticated()) {
       try {
-        await API.delete(`cartitems/${itemId}/delete/`);
+        await API.delete(`cartitems/${itemId}/`);
         await fetchCart();
       } catch (err) {
         console.error("❌ removeFromCart error:", err);
@@ -171,18 +244,17 @@ export const CartProvider = ({ children }) => {
   // --- Clear cart ---
   const clearCart = async () => {
     setLoading(true);
+    setCartItems([]); // Cập nhật UI ngay lập tức
     if (isAuthenticated()) {
       try {
         for (const item of cartItems) {
-          await API.delete(`cartitems/${item.id}/delete/`);
+          await API.delete(`cartitems/${item.id}/`);
         }
-        await fetchCart();
       } catch (err) {
         console.error("❌ clearCart error:", err);
       }
     } else {
       saveGuestCart([]);
-      setCartItems([]);
     }
     setLoading(false);
   };

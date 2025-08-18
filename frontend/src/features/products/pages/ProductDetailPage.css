@@ -1,0 +1,123 @@
+.product-detail-container {
+  font-family: "Segoe UI", sans-serif;
+  background: #fafafa;
+  padding: 30px 15px;
+}
+
+.image-section .main-image {
+  border-radius: 16px;
+  box-shadow: 0 6px 25px rgba(0, 0, 0, 0.12);
+  transition: transform 0.4s ease, box-shadow 0.4s ease;
+}
+.image-section .main-image:hover {
+  transform: scale(1.02);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.18);
+}
+
+.thumbnail-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+}
+.thumbnail-row .thumbnail {
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  opacity: 0.85;
+}
+.thumbnail-row .thumbnail:hover {
+  transform: scale(1.07);
+  opacity: 1;
+}
+.thumbnail.active {
+  border: 2px solid #ff6f61;
+  opacity: 1;
+}
+
+.info-section {
+  padding: 20px;
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 3px 15px rgba(0, 0, 0, 0.06);
+}
+
+.product-title {
+  font-size: 1.8rem;
+  font-weight: 700;
+  margin-bottom: 10px;
+  color: #222;
+}
+
+.product-price {
+  color: #ff6f61;
+  font-weight: 700;
+  font-size: 1.6rem;
+  margin-bottom: 15px;
+}
+
+.quantity-selector {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.quantity-selector button {
+  background: #f2f2f2;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 1.2rem;
+  transition: background 0.3s ease;
+}
+.quantity-selector button:hover {
+  background: #e6e6e6;
+}
+.quantity-value {
+  font-size: 1.2rem;
+  font-weight: 500;
+}
+
+.add-to-cart-btn {
+  border-radius: 10px;
+  padding: 14px 24px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  background: linear-gradient(135deg, #ff6f61, #ff3d3d);
+  color: #fff;
+  border: none;
+  transition: all 0.3s ease;
+}
+.add-to-cart-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(255, 111, 97, 0.4);
+}
+
+.tab-content-custom {
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid #eee;
+  padding: 20px;
+}
+
+.related-product-card {
+  border-radius: 14px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  background: #fff;
+}
+.related-product-card img {
+  transition: transform 0.4s ease;
+}
+.related-product-card:hover img {
+  transform: scale(1.05);
+}
+.related-product-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+.loading-text {
+  text-align: center;
+  margin-top: 50px;
+  font-size: 1.1rem;
+  color: #777;
+}

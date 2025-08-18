@@ -1,5 +1,5 @@
 // API Configuration
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+const API_BASE_URL = 'http://localhost:8000/api';
 
 class ApiService {
   constructor() {
@@ -8,9 +8,14 @@ class ApiService {
 
   async request(endpoint, options = {}) {
     const url = `${this.baseURL}${endpoint}`;
+    
+    // Lấy access token trong localStorage
+    const token = localStorage.getItem("access_token");
+
     const config = {
       headers: {
         'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}), // gắn token
         ...options.headers,
       },
       ...options,
@@ -18,11 +23,19 @@ class ApiService {
 
     try {
       const response = await fetch(url, config);
-      
+
+      // Nếu token hết hạn -> thử refresh
+      if (response.status === 401) {
+        const refreshed = await this.refreshToken();
+        if (refreshed) {
+          return this.request(endpoint, options); // gọi lại API với token mới
+        }
+      }
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       return await response.json();
     } catch (error) {
       console.error('API request failed:', error);
@@ -30,16 +43,43 @@ class ApiService {
     }
   }
 
+  // Hàm refresh token
+  async refreshToken() {
+    const refresh = localStorage.getItem("refresh_token");
+    if (!refresh) return false;
+
+    try {
+      const res = await fetch(`${this.baseURL}/token/refresh/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        localStorage.setItem("access_token", data.access);
+        return true;
+      } else {
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("refresh_token");
+        window.location.href = "/login"; // bắt login lại
+        return false;
+      }
+    } catch (err) {
+      console.error("Refresh token failed:", err);
+      return false;
+    }
+  }
+
   // Categories
   async getCategories() {
-  return this.request('/products/categories/');
-}
-  
+    return this.request('/products/categories/');
+  }
 
   async getCategoryProducts(categoryId, params = {}) {
-  const queryString = new URLSearchParams(params).toString();
-  return this.request(`/products/categories/${categoryId}/products/?${queryString}`);
-}
+    const queryString = new URLSearchParams(params).toString();
+    return this.request(`/products/categories/${categoryId}/products/?${queryString}`);
+  }
 
   // Products
   async getProducts(params = {}) {

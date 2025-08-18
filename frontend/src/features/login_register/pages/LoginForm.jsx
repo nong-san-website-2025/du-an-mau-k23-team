@@ -7,6 +7,7 @@ import homeIcon from "../assets/homefarm.png";
 import logo from "../assets/imagelogo.png";
 import { useCart } from "../../cart/services/CartContext";
 import { useAuth } from "../services/AuthContext";
+// import { authApi } from "../services/authApi";
 
 function LoginForm() {
   const [username, setUsername] = useState("");
@@ -61,6 +62,8 @@ function LoginForm() {
     sendTokenToBackend(response.credential);
   };
 
+  
+
   const sendTokenToBackend = async (token) => {
     console.log("[DEBUG] Sending token to backend:", token);
     try {
@@ -80,7 +83,7 @@ function LoginForm() {
         
         // Chuyển hướng dựa trên role
         if (data.role === "seller") {
-          navigate("/seller-dashboard");
+          navigate("/ShopAdmin");
         } else if (data.role === "admin") {
           navigate("/admin");
         } else {
@@ -102,7 +105,7 @@ function LoginForm() {
       if (result.is_admin) {
         navigate('/admin');
       } else if (result.is_seller) {
-        navigate('/seller-dashboard');
+        navigate('/ShopAdmin');
       } else {
         navigate('/');
       }
@@ -338,7 +341,7 @@ function LoginForm() {
           <i className="fas fa-lock input-icon-lock"></i>
           <input
             type="password"
-            placeholder="Mật khẩu"
+            placeholder="Mật khẩu"  
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
@@ -397,7 +400,7 @@ function LoginForm() {
                 onChange={(e) => setRegPassword2(e.target.value)}
               />
 
-              <div style={{ margin: '10px 0' }}>
+              {/* <div style={{ margin: '10px 0' }}>
                 <label>
                   <input
                     type="checkbox"
@@ -406,7 +409,7 @@ function LoginForm() {
                   />
                   Đăng ký tài khoản Seller
                 </label>
-              </div>
+              </div> */}
 
               <button onClick={handleRegister}>Đăng ký</button>
               <button
