@@ -14,11 +14,11 @@ const OrdersPage = () => {
   const [error, setError] = useState("");
 
   const [checkedIds, setCheckedIds] = useState([]);
-  
+
   // Filter states
   const [statusFilter, setStatusFilter] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-  
+
   // Status options
   const statusOptions = [
     { value: "", label: "Tất cả trạng thái" },
@@ -38,7 +38,7 @@ const OrdersPage = () => {
       const params = {};
       if (statusFilter) params.status = statusFilter;
       if (searchTerm.trim()) params.search = searchTerm.trim();
-      
+
       const data = await adminApi.getOrders(params);
       setOrders(data);
       setError("");
@@ -72,8 +72,8 @@ const OrdersPage = () => {
     try {
       const orderDetail = await adminApi.getOrderDetail(orderId);
       // Update the order in the orders array with detailed information
-      setOrders(prevOrders => 
-        prevOrders.map(order => 
+      setOrders(prevOrders =>
+        prevOrders.map(order =>
           order.id === orderId ? { ...order, ...orderDetail } : order
         )
       );
@@ -152,7 +152,7 @@ const OrdersPage = () => {
           <FileUp size={16} /> &ensp; Xuất file
         </button>
         <button className="btn btn-light border" style={{ fontWeight: "500", color: "#48474b" }}>
-          <HelpCircle size={16} />
+          <a href="http://localhost:3000/blog/hng-dn-djn-hang"><HelpCircle size={16} color="#22C55E" /></a>
         </button>
         <button
           className="btn btn-outline-secondary border"
