@@ -3,7 +3,7 @@ import { toast } from "react-toastify";
 import { useCart } from "../../cart/services/CartContext";
 import { useParams, useNavigate } from "react-router-dom";
 import { Badge, Button, Spinner, Alert, ButtonGroup } from "react-bootstrap";
-import { ShoppingCart, ChevronLeft, Star, Minus, Plus, Heart, TrendingUp } from "lucide-react";
+import { ShoppingCart, ChevronLeft, Star, Minus, Plus, Heart, TrendingUp, ChevronLeftIcon, ChevronLeftCircle, CornerUpLeft, MoveLeft } from "lucide-react";
 import { productApi } from "../services/productApi";
 
 const ProductDetailPage = () => {
@@ -94,7 +94,7 @@ const ProductDetailPage = () => {
   return (
     <div className="container py-4">
       <Button variant="link" onClick={() => navigate(-1)} className="mb-3">
-        <ChevronLeft size={20} /> Quay lại danh sách sản phẩm
+        <MoveLeft size={36} color="green" />
       </Button>
       <div className="row">
         <div className="col-md-5">

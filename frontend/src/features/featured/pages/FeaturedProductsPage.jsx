@@ -4,6 +4,7 @@ import { Card, Row, Col, Spinner, Button, Badge } from "react-bootstrap";
 import { ShoppingCart, Star, Star as StarFill } from "lucide-react";
 import { productApi } from "../../products/services/productApi";
 import { useCart } from "../../cart/services/CartContext";
+import { toast } from "react-toastify";
 
 const FeaturedProductsPage = () => {
   const [products, setProducts] = useState([]);
@@ -47,22 +48,23 @@ const FeaturedProductsPage = () => {
     e.stopPropagation();
     setAddingId(product.id);
     await addToCart(
-      product.id,
-      1,
-      () => {},
-      () => {},
-      {
-        id: product.id,
-        name: product.name,
-        price: product.price,
-        image:
-          product.image && product.image.startsWith("/")
-            ? `http://localhost:8000${product.image}`
-            : product.image?.startsWith("http")
-            ? product.image
-            : "",
-      }
-    );
+  product.id,
+  1,
+  () => toast.success("Đã thêm vào giỏ hàng!", { autoClose: 1500 }), // chỉ thêm toast
+  () => {}, // giữ callback thất bại như cũ
+  {
+    id: product.id,
+    name: product.name,
+    price: product.price,
+    image:
+      product.image && product.image.startsWith("/")
+        ? `http://localhost:8000${product.image}`
+        : product.image?.startsWith("http")
+        ? product.image
+        : "",
+  }
+);
+
     setAddingId(null);
   };
 

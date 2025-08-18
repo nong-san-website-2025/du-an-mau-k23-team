@@ -17,6 +17,11 @@ class CustomUser(AbstractUser):
     reset_code = models.CharField(max_length=6, blank=True, null=True)
     points = models.IntegerField(default=0)
 
+    def save(self, *args, **kwargs):
+        # Nếu user là superuser thì tự động set is_admin=True
+        if self.is_superuser:
+            self.is_admin = True
+        super().save(*args, **kwargs)
     def __str__(self):
         return self.username
 

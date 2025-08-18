@@ -52,6 +52,7 @@ class ProductListSerializer(serializers.ModelSerializer):
     subcategory = serializers.PrimaryKeyRelatedField(read_only=True)
     seller = serializers.PrimaryKeyRelatedField(read_only=True)
     seller_name = serializers.CharField(source='seller.store_name', read_only=True)
+    image = serializers.ImageField()
 
     class Meta:
         model = Product

@@ -64,7 +64,7 @@ export default function SellerRegisterPage() {
   };
 
   return (
-    <div className="container py-4" style={{ maxWidth: 520 }}>
+    <div className="container py-0" style={{ maxWidth: 520 }}>
       <div className="card shadow-sm border-0 p-4" style={{ borderRadius: 18 }}>
         <h2 className="mb-3" style={{ fontWeight: 700 }}>Đăng ký cửa hàng</h2>
         {success && (
