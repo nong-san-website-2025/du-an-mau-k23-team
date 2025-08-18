@@ -1,0 +1,86 @@
+.pam-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.pam-modal-content {
+  background: #fff;
+  border-radius: 12px;
+  max-height: 90vh;
+  overflow-y: auto;
+  width: 700px;
+}
+
+.pam-modal-content.wide {
+  width: 900px;
+  max-width: 95vw;
+}
+
+.pam-form {
+  font-size: 14px;
+}
+
+.pam-title {
+  margin-bottom: 16px;
+  font-size: 18px;
+}
+
+.pam-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.pam-label {
+  display: block;
+  margin-top: 10px;
+  margin-bottom: 4px;
+  font-weight: 400;
+  font-size: 12px;
+}
+
+.pam-input {
+  width: 100%;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+}
+
+.pam-actions {
+  margin-top: 20px;
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.pam-btn {
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.pam-btn-primary {
+  background: rgb(33, 196, 93);
+  color: white;
+}
+
+.pam-btn-primary:hover {
+  background: #09b654;
+}
+
+.pam-btn-secondary {
+  background: #ccc;
+  color: black;
+}
+
+.pam-btn-secondary:hover {
+  background: #949494;
+}

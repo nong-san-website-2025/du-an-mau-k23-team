@@ -8,7 +8,7 @@ import ProductDetailPage from '../features/products/pages/ProductDetailPage';
 import CartPage from '../features/cart/pages/CartPage';
 import CheckoutPage from '../features/cart/pages/CheckoutPage';
 import Wishlist from "../pages/wishlist";
-import AboutPage from "../pages/About/About";
+import AboutPage from "../pages/about/About";
 import StoreList from '../features/stores/pages/StoreList';
 import StoreDetail from '../features/stores/pages/StoreDetail';
 import FeaturedProductsPage from "../features/featured/pages/FeaturedProductsPage";

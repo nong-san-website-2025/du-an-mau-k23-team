@@ -4,9 +4,12 @@ from rest_framework.routers import DefaultRouter
 from .views import (AddressViewSet, WalletBalanceView,
     VerifyAdminView, UserProfileView, ForgotPasswordView, VerifyCodeAPIView, ResetPasswordAPIView, GoogleLoginAPIView, RegisterView, LoginView,)
 from .views import UserPointsView
+from .views import EmployeeViewSet
+
 
 router = DefaultRouter()
 router.register("addresses", AddressViewSet, basename="address")
+router.register("employees", EmployeeViewSet, basename="employee")
 
 # Remove router from here, move to main urls.py for /api/addresses/
 

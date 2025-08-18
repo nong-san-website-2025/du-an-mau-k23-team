@@ -26,6 +26,14 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from .models import Address
 from .serializers import AddressSerializer
+from .serializers import (
+    UserSerializer, 
+    RegisterSerializer, 
+    ForgotPasswordSerializer, 
+    ChangePasswordSerializer,
+    AddressSerializer,
+    EmployeeSerializer,   # 👈 thêm dòng này
+)
 
 # API lấy số dư ví của user hiện tại
 class WalletBalanceView(APIView):
@@ -321,3 +329,12 @@ class ChangePasswordView(APIView):
             user.save()
             return Response({"message": "Đổi mật khẩu thành công!"}, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+
+class EmployeeViewSet(viewsets.ModelViewSet):
+    queryset = CustomUser.objects.filter(is_employee=True)
+    serializer_class = EmployeeSerializer
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+    def perform_create(self, serializer):
+        serializer.save(is_employee=True)
