@@ -13,7 +13,7 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 from .models import CustomUser
-from .serializers import UserSerializer, RegisterSerializer, ForgotPasswordSerializer
+from .serializers import UserSerializer, RegisterSerializer, ForgotPasswordSerializer, ChangePasswordSerializer
 import random
 from django.core.mail import send_mail
 from .permissions import IsAdmin, IsSeller, IsNormalUser
@@ -226,16 +226,6 @@ class ResetPasswordAPIView(APIView):
 
         return Response({"message": "Đặt lại mật khẩu thành công!"}, status=status.HTTP_200_OK)
 
-class LogoutAPIView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
-
-    def post(self, request):
-        try:
-            token = Token.objects.get(user=request.user)
-            token.delete()
-            return Response({"message": "Đăng xuất thành công!"}, status=status.HTTP_200_OK)
-        except Token.DoesNotExist:
-            return Response({"error": "Không tìm thấy token!"}, status=status.HTTP_400_BAD_REQUEST)
 
 class AdminOnlyView(APIView):
     permission_classes = [IsAuthenticated, IsAdmin]
@@ -318,3 +308,18 @@ class UserPointsView(APIView):
                 serializer = UserSerializer(request.user)
                 return Response(serializer.data)
             return Response({"error": "Không đủ điểm"}, status=400)
+class ChangePasswordView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        serializer = ChangePasswordSerializer(data=request.data)
+        user = request.user
+        if serializer.is_valid():
+            old_password = serializer.validated_data['old_password']
+            new_password = serializer.validated_data['new_password']
+            if not user.check_password(old_password):
+                return Response({"error": "Mật khẩu hiện tại không đúng."}, status=status.HTTP_400_BAD_REQUEST)
+            user.set_password(new_password)
+            user.save()
+            return Response({"message": "Đổi mật khẩu thành công!"}, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

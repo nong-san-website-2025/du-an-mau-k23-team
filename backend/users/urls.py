@@ -21,5 +21,6 @@ urlpatterns = [
     path("reset-password/", ResetPasswordAPIView.as_view(), name='reset-password'),
     path("google-login/", GoogleLoginAPIView.as_view(), name='google-login'),
     path("points/", UserPointsView.as_view(), name="user-points"),
+    
 ]
 urlpatterns += router.urls
