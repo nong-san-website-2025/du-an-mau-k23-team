@@ -8,7 +8,6 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth.hashers import make_password
 from rest_framework import generics, permissions, status
 from django.core.cache import cache
-from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
@@ -17,7 +16,6 @@ from .serializers import UserSerializer, RegisterSerializer, ForgotPasswordSeria
 import random
 from django.core.mail import send_mail
 from .permissions import IsAdmin, IsSeller, IsNormalUser
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.permissions import AllowAny
 from rest_framework.decorators import api_view, permission_classes
 from django.db.models import Count
@@ -28,6 +26,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from .models import Address
 from .serializers import AddressSerializer
+from rest_framework import status
 
 # API lấy số dư ví của user hiện tại
 class WalletBalanceView(APIView):
@@ -266,6 +265,28 @@ class SellerOnlyView(APIView):
     def get(self, request):
         return Response({"message": "Chỉ Seller xem được"})
 
+class ChangePasswordAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        current_password = request.data.get("current_password")
+        new_password = request.data.get("new_password")
+        confirm_password = request.data.get("confirm_password")
+
+        if not current_password or not new_password or not confirm_password:
+            return Response({"error": "Vui lòng nhập đầy đủ thông tin."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not user.check_password(current_password):
+            return Response({"error": "Mật khẩu hiện tại không đúng."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if new_password != confirm_password:
+            return Response({"error": "Mật khẩu mới không trùng khớp."}, status=status.HTTP_400_BAD_REQUEST)
+
+        user.set_password(new_password)
+        user.save()
+
+        return Response({"message": "Đổi mật khẩu thành công."})
 
 class NormalUserOnlyView(APIView):
     permission_classes = [IsAuthenticated, IsNormalUser]
@@ -304,17 +325,32 @@ class UserPointsView(APIView):
         return Response(serializer.data)
 
     def post(self, request):
-        change = int(request.data.get("points", 0))
+        # Tăng điểm cho user
+        try:
+            change = int(request.data.get("points", 0))
+        except (ValueError, TypeError):
+            return Response({"error": "Điểm không hợp lệ"}, status=400)
+
         request.user.points += change
         request.user.save()
         serializer = UserSerializer(request.user)
         return Response(serializer.data)
 
     def patch(self, request):
+        # Giảm điểm cho user nếu đủ điểm
+        try:
             change = int(request.data.get("points", 0))
-            if request.user.points >= change:
-                request.user.points -= change
-                request.user.save()
-                serializer = UserSerializer(request.user)
-                return Response(serializer.data)
+        except (ValueError, TypeError):
+            return Response({"error": "Điểm không hợp lệ"}, status=400)
+
+        if change < 0:
+            return Response({"error": "Điểm cần giảm phải là số dương"}, status=400)
+
+        if request.user.points >= change:
+            request.user.points -= change
+            request.user.save()
+            serializer = UserSerializer(request.user)
+            return Response(serializer.data)
+        else:
             return Response({"error": "Không đủ điểm"}, status=400)
+
