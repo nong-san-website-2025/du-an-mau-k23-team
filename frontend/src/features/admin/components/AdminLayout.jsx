@@ -11,7 +11,6 @@ const adminMenu = [
   { to: "/admin/users", label: "Khách hàng" },
   { to: "/admin/shops", label: "Cửa hàng" },
   { to: "/admin/staff", label: "Nhân viên" },
-  { to: "/admin/shops", label: "Cửa hàng" },
   // { to: "/admin/complaints", label: "Khiếu nại" },
   // { to: "/admin/vouchers", label: "Phiếu giảm giá" },
   // { to: "/admin/banners", label: "Quảng cáo" },

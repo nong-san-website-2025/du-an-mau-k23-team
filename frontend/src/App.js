@@ -32,7 +32,7 @@ import BlogHome from './pages/Blog/BlogHome';
 import BlogDetail from './pages/Blog/BlogDetail';
 import StoreList from './features/stores/pages/StoreList';
 import StoreDetail from './features/stores/pages/StoreDetail';
-import AboutPage from "./pages/about/about";
+import AboutPage from "./pages/about/ABout";
 import SupportPage from "./features/admin/pages/SupportPage";
 
 import ShopLayout from "./features/admin/components/ShopAdmin/ShopLayout";

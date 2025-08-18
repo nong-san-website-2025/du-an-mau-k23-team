@@ -2,6 +2,7 @@ from django.urls import path
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from . import views
 
 from .views import (
     RegisterView, UserProfileView, LoginView, ForgotPasswordView,
@@ -26,6 +27,7 @@ urlpatterns = [
     path("verify-code/", VerifyCodeAPIView.as_view(), name="verify-code"),
     path("reset-password/", ResetPasswordAPIView.as_view(), name='reset-password'),
     path("google-login/", GoogleLoginAPIView.as_view(), name='google-login'),
+    path('<int:pk>/', views.UserDetailView.as_view(), name='user-detail'),
 
     # path("chat/rooms/", get_chat_rooms, name="chat-rooms"),
     path("chat/history/<str:room_name>/", get_chat_history),

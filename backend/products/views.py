@@ -56,6 +56,41 @@ class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
 
 class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.select_related('subcategory__category', 'seller').all()
+
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return ProductListSerializer
+        return ProductSerializer
+
+    def get_serializer_context(self):
+        # Đảm bảo image trả về URL đầy đủ
+        context = super().get_serializer_context()
+        context.update({"request": self.request})
+        return context
+
+    def get_queryset(self):
+        user = self.request.user
+        qs = super().get_queryset()
+
+        # Seller chỉ thấy sản phẩm của chính mình
+        if hasattr(user, "seller"):
+            qs = qs.filter(seller=user.seller)
+
+        # Admin thấy tất cả
+        if user.is_staff or getattr(user, "is_admin", False):
+            return qs
+
+        # Nếu là customer hoặc user thường → không thấy gì
+        return qs.none()
+
+    def perform_create(self, serializer):
+        # Khi seller tạo sản phẩm → tự động gán seller
+        if hasattr(self.request.user, "seller"):
+            serializer.save(seller=self.request.user.seller)
+        else:
+            raise PermissionDenied("Bạn không có quyền thêm sản phẩm")
+
+    queryset = Product.objects.select_related('subcategory__category', 'seller').all()
     
     def get_serializer_class(self):
         if self.action == 'list':

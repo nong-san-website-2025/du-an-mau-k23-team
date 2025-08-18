@@ -15,10 +15,10 @@ class SubcategorySerializer(serializers.ModelSerializer):
 
 class ProductSerializer(serializers.ModelSerializer):
     subcategory = SubcategorySerializer(read_only=True)
-    category = serializers.CharField(source='subcategory.category.name', read_only=True)
-    seller_name = serializers.CharField(source='seller.name', read_only=True)
+    category_name = serializers.CharField(source='subcategory.category.name', read_only=True)
+    seller_name = serializers.CharField(source='seller.store_name', read_only=True)
     discounted_price = serializers.ReadOnlyField()
-    image = serializers.ImageField()
+    image = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
@@ -26,7 +26,7 @@ class ProductSerializer(serializers.ModelSerializer):
             'id', 'name', 'description', 'price', 'discounted_price', 'unit',
             'stock', 'image', 'rating', 'review_count', 'is_new', 'is_organic',
             'is_best_seller', 'discount', 'location', 'brand', 'subcategory',
-            'seller', 'seller_name', 'created_at', 'updated_at', 'category'
+            'seller', 'seller_name', 'created_at', 'updated_at', 'category_name'
         ]
 
     def get_image(self, obj):
@@ -34,6 +34,7 @@ class ProductSerializer(serializers.ModelSerializer):
         if obj.image and hasattr(obj.image, 'url'):
             return request.build_absolute_uri(obj.image.url) if request else obj.image.url
         return None
+
 class ProductListSerializer(serializers.ModelSerializer):
     """Serializer đơn giản cho danh sách sản phẩm"""
     discounted_price = serializers.ReadOnlyField()

@@ -27,7 +27,7 @@ class UserSerializer(serializers.ModelSerializer):
         fields = [
             "id", "username", "email", "avatar",
             "full_name", "phone", "address",
-            "is_seller",  "is_admin", "is_support", "points", "history",
+            "is_seller",  "is_admin", "is_support", "history",
         ]
     def get_history(self, obj):
         histories = obj.point_histories.order_by('-date')

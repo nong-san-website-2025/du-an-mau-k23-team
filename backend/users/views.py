@@ -30,10 +30,15 @@ from .serializers import AddressSerializer
 from rest_framework.generics import ListAPIView
 from .models import Role
 from .serializers import RoleSerializer
+from django.contrib.auth import get_user_model
+
 
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
 # API lấy số dư ví của user hiện tại
+
+User = get_user_model() 
+
 class WalletBalanceView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -123,6 +128,11 @@ class UserProfileView(APIView):
 
     def patch(self, request):
         return self.put(request)
+    
+class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    permission_classes = [IsAuthenticated]
 
 
 
