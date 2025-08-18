@@ -10,7 +10,6 @@ class CustomUser(AbstractUser):
     email = models.EmailField(unique=True)
     avatar = models.ImageField(upload_to='assets/users/', blank=True, null=True)
     phone = models.CharField(max_length=20, blank=True, null=True)
-    address = models.CharField(max_length=255, blank=True, null=True)
     last_activity = models.DateTimeField(blank=True, null=True)  # Lịch sử hoạt động
     note = models.TextField(blank=True, null=True)  # Ghi chú admin
     tags = models.CharField(max_length=255, blank=True, null=True)  # Tag: shop nổi bật, shop yêu thích

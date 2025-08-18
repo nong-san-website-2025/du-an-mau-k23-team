@@ -19,9 +19,10 @@ import {
   FaStar,
   FaSeedling,
 } from "react-icons/fa";
+import { toast } from 'react-toastify';
 import API from "../../login_register/services/api";
 import Rewards from "../../points/pages/Rewards";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import ProfileSidebar from "../components/ProfileSidebar";
 import ProfileInfo from "../components/ProfileInfo";
 import AddressList from "../components/AddressList";
@@ -31,6 +32,7 @@ const accentColor = "#F57C00";
 
 function ProfilePage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState("profile");
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -51,19 +53,76 @@ function ProfilePage() {
   const [rechargeAmount, setRechargeAmount] = useState("");
   const [rechargeLoading, setRechargeLoading] = useState(false);
   const [rechargeError, setRechargeError] = useState("");
+  const [lastNotificationCheck, setLastNotificationCheck] = useState(Date.now());
   // Fetch wallet balance when tab is wallet
+
+  // Check for wallet notifications
+  const checkWalletNotifications = async () => {
+    try {
+      const response = await API.get(`/wallet/notifications/?since=${lastNotificationCheck}`);
+      const notifications = response.data;
+      
+      notifications.forEach(notification => {
+        if (notification.type === 'topup_approved') {
+          toast.success(`✅ Nạp tiền thành công! Đã cộng ${notification.amount.toLocaleString('vi-VN')} ₫ vào ví của bạn.`, {
+            position: "top-right",
+            autoClose: 6000,
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+          });
+          // Refresh wallet balance
+          refreshWalletBalance();
+        } else if (notification.type === 'topup_rejected') {
+          toast.error(`❌ Yêu cầu nạp tiền ${notification.amount.toLocaleString('vi-VN')} ₫ đã bị từ chối. ${notification.reason || ''}`, {
+            position: "top-right",
+            autoClose: 6000,
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+          });
+        }
+      });
+      
+      if (notifications.length > 0) {
+        setLastNotificationCheck(Date.now());
+      }
+    } catch (error) {
+      // Silently fail - không cần thông báo lỗi cho việc check notification
+      console.log('Notification check failed:', error);
+    }
+  };
+
+  const refreshWalletBalance = async () => {
+    try {
+      const res = await API.get("/wallet/my_wallet/");
+      setWalletBalance(res.data.balance);
+    } catch (error) {
+      console.error('Failed to refresh wallet balance:', error);
+    }
+  };
 
   useEffect(() => {
     if (activeTab === "wallet") {
       setLoadingWallet(true);
       setRechargeError("");
       // Gọi API lấy số dư ví
-  API.get("/wallet/my_wallet/")
+      API.get("/wallet/my_wallet/")
         .then(res => setWalletBalance(res.data.balance))
         .catch(() => setWalletBalance(null))
         .finally(() => setLoadingWallet(false));
+      
+      // Check for notifications immediately
+      checkWalletNotifications();
+      
+      // Set up polling for notifications every 30 seconds
+      const notificationInterval = setInterval(checkWalletNotifications, 30000);
+      
+      return () => clearInterval(notificationInterval);
     }
-  }, [activeTab]);
+  }, [activeTab, lastNotificationCheck]);
 
 
   useEffect(() => {
@@ -85,7 +144,13 @@ function ProfilePage() {
       }
     }
     fetchProfile();
-  }, []);
+    
+    // Check for tab parameter in URL
+    const tabParam = searchParams.get('tab');
+    if (tabParam) {
+      setActiveTab(tabParam);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (user) setForm(user);
@@ -107,31 +172,47 @@ function ProfilePage() {
         const amount = Number(rechargeAmount);
         if (!rechargeAmount || isNaN(amount)) {
           setRechargeError("Vui lòng nhập số tiền hợp lệ!");
+          toast.error("Vui lòng nhập số tiền hợp lệ!");
           setRechargeLoading(false);
           return;
         }
         if (amount < 10000) {
           setRechargeError("Số tiền nạp tối thiểu là 10.000 ₫.");
+          toast.error("Số tiền nạp tối thiểu là 10.000 ₫.");
           setRechargeLoading(false);
           return;
         }
         if (amount > 300000000) {
           setRechargeError("Số tiền nạp tối đa mỗi lần là 300.000.000 ₫.");
+          toast.error("Số tiền nạp tối đa mỗi lần là 300.000.000 ₫.");
           setRechargeLoading(false);
           return;
         }
-    // Gọi API nạp tiền đúng endpoint backend
-    await API.post("/wallet/request_topup/", { amount });
+
+        // Gọi API nạp tiền đúng endpoint backend
+        await API.post("/wallet/request_topup/", { amount });
+        
+        // Hiển thị thông báo đã gửi yêu cầu nạp tiền
+        toast.info(`📝 Đã gửi yêu cầu nạp tiền ${amount.toLocaleString('vi-VN')} ₫. Vui lòng chờ xét duyệt!`, {
+          position: "top-right",
+          autoClose: 5000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+        });
+
         setRechargeAmount("");
         setRechargeError("");
-        // Sau khi nạp thành công, reload số dư
-        setLoadingWallet(true);
-    const res = await API.get("/wallet/my_wallet/");
-        setWalletBalance(res.data.balance);
-        setLoadingWallet(false);
+
       } catch (err) {
-        setRechargeError("Có lỗi xảy ra, vui lòng thử lại!");
-        setLoadingWallet(false);
+        console.error("Recharge error:", err);
+        const errorMessage = err.response?.data?.message || err.response?.data?.error || "Có lỗi xảy ra, vui lòng thử lại!";
+        setRechargeError(errorMessage);
+        toast.error(`❌ ${errorMessage}`, {
+          position: "top-right",
+          autoClose: 5000,
+        });
       } finally {
         setRechargeLoading(false);
       }
@@ -146,6 +227,28 @@ function ProfilePage() {
       setNewAddress({ recipient_name: "", phone: "", location: "" });
     } catch (err) {
       console.error("Lỗi thêm địa chỉ:", err);  
+    }
+  };
+
+  const editAddress = async (addressId, addressData) => {
+    try {
+      await API.put(`users/addresses/${addressId}/`, addressData);
+      const res = await API.get("users/addresses/");
+      setAddresses(res.data);
+    } catch (err) {
+      console.error("Lỗi chỉnh sửa địa chỉ:", err);
+      throw err;
+    }
+  };
+
+  const deleteAddress = async (addressId) => {
+    try {
+      await API.delete(`users/addresses/${addressId}/`);
+      const res = await API.get("users/addresses/");
+      setAddresses(res.data);
+    } catch (err) {
+      console.error("Lỗi xóa địa chỉ:", err);
+      throw err;
     }
   };
 
@@ -247,6 +350,8 @@ function ProfilePage() {
                 newAddress={newAddress}
                 setNewAddress={setNewAddress}
                 addAddress={addAddress}
+                editAddress={editAddress}
+                deleteAddress={deleteAddress}
               />
             )}
             {activeTab === "password" && (

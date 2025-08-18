@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { useCart } from '../services/CartContext';
 import { createOrder } from '../services/orderApi';
 import { toast } from 'react-toastify';
+import API from '../../login_register/services/api';
+import '../styles/CheckoutPage.css';
 
 
 const CheckoutPage = () => {
@@ -15,8 +17,16 @@ const CheckoutPage = () => {
   const [note, setNote] = useState('');
   const [payment, setPayment] = useState('Thanh toán khi nhận hàng');
   const [isLoading, setIsLoading] = useState(false);
+  
+  // States for user profile and addresses
+  const [userProfile, setUserProfile] = useState(null);
+  const [addresses, setAddresses] = useState([]);
+  const [selectedAddressId, setSelectedAddressId] = useState('');
 
-  // Kiểm tra authentication khi component mount
+  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [autoFillStatus, setAutoFillStatus] = useState('');
+
+  // Kiểm tra authentication và load thông tin user khi component mount
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -24,7 +34,60 @@ const CheckoutPage = () => {
       navigate('/login');
       return;
     }
+    
+    // Load user profile and addresses
+    loadUserData();
   }, [navigate]);
+
+  const loadUserData = async () => {
+    try {
+      setLoadingProfile(true);
+      
+      // Load user profile
+      const profileRes = await API.get('users/me/');
+      setUserProfile(profileRes.data);
+      
+      // Load user addresses
+      const addressRes = await API.get('users/addresses/');
+      setAddresses(addressRes.data);
+      
+      // Auto-fill with default address if available
+      const defaultAddress = addressRes.data.find(addr => addr.is_default);
+      if (defaultAddress) {
+        setSelectedAddressId(defaultAddress.id);
+        setCustomerName(defaultAddress.recipient_name);
+        setCustomerPhone(defaultAddress.phone);
+        setAddress(defaultAddress.location);
+        setAutoFillStatus('Đã tự động điền thông tin từ địa chỉ mặc định');
+        setTimeout(() => setAutoFillStatus(''), 3000);
+      }
+    } catch (error) {
+      console.error('Error loading user data:', error);
+      toast.error('Không thể tải thông tin người dùng');
+    } finally {
+      setLoadingProfile(false);
+    }
+  };
+
+  // Handle address selection
+  const handleAddressSelect = (addressId) => {
+    setSelectedAddressId(addressId);
+    if (addressId === '') {
+      // Manual input
+      setCustomerName('');
+      setCustomerPhone('');
+      setAddress('');
+    } else {
+      const selectedAddr = addresses.find(addr => addr.id === parseInt(addressId));
+      if (selectedAddr) {
+        setCustomerName(selectedAddr.recipient_name);
+        setCustomerPhone(selectedAddr.phone);
+        setAddress(selectedAddr.location);
+      }
+    }
+  };
+
+
 
 
 
@@ -105,38 +168,139 @@ const CheckoutPage = () => {
     }
   };
 
+  if (loadingProfile) {
+    return (
+      <div className="checkout-container">
+        <div className="loading-spinner">
+          <div className="spinner-border text-primary" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
+          <p className="loading-text">Đang tải thông tin...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div style={{ maxWidth: 700, margin: '0 auto', background: '#fff', padding: 24, borderRadius: 12 }}>
-      <h2>Thanh toán đơn hàng</h2>
-      <div style={{ marginBottom: 16 }}>
+    <div className="checkout-container">
+      <h2 className="checkout-title">Thanh toán đơn hàng</h2>
+      
+      {/* Auto-fill Status Notification */}
+      {autoFillStatus && (
+        <div style={{
+          marginBottom: 20,
+          padding: 12,
+          background: 'linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%)',
+          border: '1px solid #28a745',
+          borderRadius: 8,
+          color: '#155724',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          animation: 'slideIn 0.3s ease'
+        }}>
+          <span>✅</span>
+          <span style={{ fontWeight: 500 }}>{autoFillStatus}</span>
+        </div>
+      )}
+      
+      {/* Address Selection Section */}
+      <div className="delivery-info-section">
+        <h5 className="delivery-info-title">Thông tin giao hàng</h5>
+        
+        {/* Address Selection Dropdown */}
+        {addresses.length > 0 ? (
+          <div className="address-selection-container">
+            <label className="address-selection-label">
+              Chọn địa chỉ giao hàng:
+            </label>
+            <select
+              value={selectedAddressId}
+              onChange={(e) => handleAddressSelect(e.target.value)}
+              className="address-select"
+            >
+              <option value="">✏️ Nhập thủ công</option>
+              {addresses.map(addr => (
+                <option key={addr.id} value={addr.id}>
+                  {addr.recipient_name} - {addr.phone} - {addr.location}
+                  {addr.is_default ? ' (Mặc định)' : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : (
+          <div className="no-address-warning">
+            <p>
+              Bạn chưa có địa chỉ giao hàng nào. 
+              <button
+                type="button"
+                onClick={() => navigate('/profile?tab=address')}
+                className="no-address-link"
+              >
+                Thêm địa chỉ ngay
+              </button>
+            </p>
+          </div>
+        )}
+
+
+      </div>
+
+      {/* Customer Information Form */}
+      <div className="customer-form-section">
         <input
           type="text"
-          placeholder="Họ và tên người nhận"
+          placeholder="👤 Họ và tên người nhận"
           value={customerName}
           onChange={e => setCustomerName(e.target.value)}
-          style={{ width: '100%', marginBottom: 8, padding: 8, borderRadius: 4, border: '1px solid #ccc' }}
+          className="form-input"
+          disabled={selectedAddressId !== '' && selectedAddressId !== undefined}
         />
         <input
           type="tel"
-          placeholder="Số điện thoại"
+          placeholder="📞 Số điện thoại"
           value={customerPhone}
           onChange={e => setCustomerPhone(e.target.value)}
-          style={{ width: '100%', marginBottom: 8, padding: 8, borderRadius: 4, border: '1px solid #ccc' }}
+          className="form-input"
+          disabled={selectedAddressId !== '' && selectedAddressId !== undefined}
         />
         <input
           type="text"
-          placeholder="Địa chỉ nhận hàng"
+          placeholder="🏠 Địa chỉ nhận hàng"
           value={address}
           onChange={e => setAddress(e.target.value)}
-          style={{ width: '100%', marginBottom: 8, padding: 8, borderRadius: 4, border: '1px solid #ccc' }}
+          className="form-input"
+          disabled={selectedAddressId !== '' && selectedAddressId !== undefined}
         />
         <input
           type="text"
-          placeholder="Ghi chú cho shop (tuỳ chọn)"
+          placeholder="📝 Ghi chú cho shop (tuỳ chọn)"
           value={note}
           onChange={e => setNote(e.target.value)}
-          style={{ width: '100%', marginBottom: 8, padding: 8, borderRadius: 4, border: '1px solid #ccc' }}
+          className="form-input"
         />
+        
+        {/* Quick Actions */}
+        <div className="quick-actions">
+          <button
+            type="button"
+            onClick={() => navigate('/profile?tab=address')}
+            className="quick-action-btn manage-address-btn"
+          >
+            <span>⚙️</span>
+            Quản lý địa chỉ
+          </button>
+          {selectedAddressId && (
+            <button
+              type="button"
+              onClick={() => handleAddressSelect('')}
+              className="quick-action-btn manual-input-btn"
+            >
+              <span>✏️</span>
+              Nhập thủ công
+            </button>
+          )}
+        </div>
       </div>
       <div style={{ marginBottom: 16 }}>
         <strong>Phương thức thanh toán:</strong>

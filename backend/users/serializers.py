@@ -12,16 +12,25 @@ class UserPointsHistorySerializer(serializers.ModelSerializer):
 
 class UserSerializer(serializers.ModelSerializer):
     history = serializers.SerializerMethodField()
+    default_address = serializers.SerializerMethodField()
+
     class Meta:
         model = CustomUser
         fields = [
             "id", "username", "email", "avatar",
-            "full_name", "phone", "address",
-            "is_seller",  "is_admin", "is_support", "points", "history",
+            "full_name", "phone", "is_seller",  
+            "is_admin", "is_support", "points", 
+            "history", "default_address"
         ]
+
+    def get_default_address(self, obj):
+        default = obj.addresses.filter(is_default=True).first()
+        return default.location if default else None
+
     def get_history(self, obj):
         histories = obj.point_histories.order_by('-date')
         return UserPointsHistorySerializer(histories, many=True).data
+
 
 
 class RegisterSerializer(serializers.ModelSerializer):

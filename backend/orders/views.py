@@ -10,7 +10,7 @@ class OrderViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action in ['list', 'retrieve', 'create']:
             return [IsAuthenticated()]
-        elif self.action in ['admin_list', 'admin_detail', 'admin_update_status']:
+        elif self.action in ['admin_list', 'admin_detail']:
             return [IsAuthenticated()]  # Sẽ check is_admin trong method
         return [AllowAny()]
 
@@ -21,11 +21,12 @@ class OrderViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
+        # Sử dụng default manager để chỉ lấy orders chưa bị xóa (soft delete)
         queryset = Order.objects.all()
 
-        # Nếu là admin và gọi admin_list, trả về tất cả orders
+        # Nếu là admin và gọi admin_list, trả về tất cả orders (không bị xóa)
         if self.action == 'admin_list' and user.is_authenticated and getattr(user, 'is_admin', False):
-            # Admin có thể xem tất cả đơn hàng
+            # Admin có thể xem tất cả đơn hàng chưa bị xóa
             pass
         elif user.is_authenticated:
             queryset = queryset.filter(user=user)  # User chỉ xem order của mình
@@ -72,36 +73,50 @@ class OrderViewSet(viewsets.ModelViewSet):
             return Response({'error': 'Không tìm thấy đơn hàng'}, 
                           status=status.HTTP_404_NOT_FOUND)
 
-    @action(detail=True, methods=['patch'], url_path='admin-update-status')
-    def admin_update_status(self, request, pk=None):
-        """API cho admin cập nhật trạng thái đơn hàng"""
+    @action(detail=True, methods=['patch'], url_path='admin-soft-delete')
+    def admin_soft_delete(self, request, pk=None):
+        """API cho admin ẩn đơn hàng (soft delete) - chỉ để tham khảo, không sử dụng trong UI"""
         if not request.user.is_authenticated or not getattr(request.user, 'is_admin', False):
             return Response({'error': 'Chỉ admin mới có quyền truy cập'}, 
                           status=status.HTTP_403_FORBIDDEN)
         
         try:
-            order = Order.objects.get(pk=pk)
-            new_status = request.data.get('status')
+            # Sử dụng all_objects để có thể tìm cả orders đã bị xóa
+            order = Order.all_objects.get(pk=pk)
             
-            if not new_status:
-                return Response({'error': 'Trạng thái không được để trống'}, 
+            if order.is_deleted:
+                return Response({'error': 'Đơn hàng đã bị ẩn trước đó'}, 
                               status=status.HTTP_400_BAD_REQUEST)
             
-            # Validate status
-            valid_statuses = ['pending', 'processing', 'shipped', 'delivered', 'completed', 'cancelled', 'refunded']
-            if new_status not in valid_statuses:
-                return Response({'error': f'Trạng thái không hợp lệ. Chỉ chấp nhận: {", ".join(valid_statuses)}'}, 
-                              status=status.HTTP_400_BAD_REQUEST)
-            
-            order.status = new_status
-            order.save()
-            
-            serializer = self.get_serializer(order)
-            return Response(serializer.data)
+            order.soft_delete()
+            return Response({'message': 'Đã ẩn đơn hàng thành công'})
             
         except Order.DoesNotExist:
             return Response({'error': 'Không tìm thấy đơn hàng'}, 
                           status=status.HTTP_404_NOT_FOUND)
+
+    @action(detail=True, methods=['patch'], url_path='admin-restore')
+    def admin_restore(self, request, pk=None):
+        """API cho admin khôi phục đơn hàng đã bị ẩn - chỉ để tham khảo"""
+        if not request.user.is_authenticated or not getattr(request.user, 'is_admin', False):
+            return Response({'error': 'Chỉ admin mới có quyền truy cập'}, 
+                          status=status.HTTP_403_FORBIDDEN)
+        
+        try:
+            # Sử dụng all_objects để có thể tìm cả orders đã bị xóa
+            order = Order.all_objects.get(pk=pk)
+            
+            if not order.is_deleted:
+                return Response({'error': 'Đơn hàng chưa bị ẩn'}, 
+                              status=status.HTTP_400_BAD_REQUEST)
+            
+            order.restore()
+            return Response({'message': 'Đã khôi phục đơn hàng thành công'})
+            
+        except Order.DoesNotExist:
+            return Response({'error': 'Không tìm thấy đơn hàng'}, 
+                          status=status.HTTP_404_NOT_FOUND)
+
 
     def perform_create(self, serializer):
         order = serializer.save(user=self.request.user)

@@ -42,29 +42,7 @@ const adminApi = {
     }
   },
 
-  updateOrderStatus: async (orderId, status) => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:8000/api/orders/${orderId}/admin-update-status/`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status }),
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to update order status');
-      }
-      
-      return await response.json();
-    } catch (error) {
-      console.error('Error updating order status:', error);
-      throw error;
-    }
-  },
+
 
   getOrderDetail: async (orderId) => {
     try {

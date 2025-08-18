@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 from products.models import Product
 from users.models import CustomUser
 
@@ -12,6 +13,17 @@ class CartItem(models.Model):
     product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True, blank=True, related_name="orders_cart_items")
     quantity = models.PositiveIntegerField(default=1)
     added_at = models.DateTimeField(auto_now_add=True)
+
+# Custom manager for soft delete
+class OrderManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset().filter(is_deleted=False)
+    
+    def deleted(self):
+        return super().get_queryset().filter(is_deleted=True)
+    
+    def all_with_deleted(self):
+        return super().get_queryset()
 
 class Order(models.Model):
     STATUS_CHOICES = [
@@ -32,7 +44,25 @@ class Order(models.Model):
     payment_method = models.CharField(max_length=50, default="Thanh toán khi nhận hàng", null=True, blank=True)
     total_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
+    is_deleted = models.BooleanField(default=False)  # Soft delete field
     created_at = models.DateTimeField(auto_now_add=True)
+    deleted_at = models.DateTimeField(null=True, blank=True)  # Timestamp when deleted
+    
+    # Managers
+    objects = OrderManager()  # Default manager excludes deleted orders
+    all_objects = models.Manager()  # Manager that includes all orders
+    
+    def soft_delete(self):
+        """Soft delete the order"""
+        self.is_deleted = True
+        self.deleted_at = timezone.now()
+        self.save()
+    
+    def restore(self):
+        """Restore a soft deleted order"""
+        self.is_deleted = False
+        self.deleted_at = None
+        self.save()
     
     def __str__(self):
         return f"Order #{self.id} - {self.customer_name} - {self.get_status_display()}"
