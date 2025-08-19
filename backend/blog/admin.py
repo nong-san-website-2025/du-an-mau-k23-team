@@ -1,7 +1,6 @@
 from django.contrib import admin
 from .models import Category, Post
 from .forms import PostForm
-
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
     prepopulated_fields = {"slug": ("name",)}

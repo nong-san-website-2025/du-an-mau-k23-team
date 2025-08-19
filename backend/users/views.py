@@ -1,8 +1,11 @@
 
+from rest_framework.authtoken.models import Token
 from rest_framework.permissions import IsAuthenticated
 from payments.models import Payment
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
+from rest_framework import permissions
+from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth.hashers import make_password
 from rest_framework import generics, permissions, status, viewsets
 from django.core.cache import cache
@@ -14,14 +17,26 @@ from .serializers import UserSerializer, RegisterSerializer, ForgotPasswordSeria
 import random
 from django.core.mail import send_mail
 from .permissions import IsAdmin, IsSeller, IsNormalUser
+from rest_framework.permissions import AllowAny
+from rest_framework.decorators import api_view, permission_classes
+from django.db.models import Count
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from rest_framework.decorators import action
 from .models import Address
 from .serializers import AddressSerializer
+from rest_framework.generics import ListAPIView
+from .models import Role
+from .serializers import RoleSerializer
+from django.contrib.auth import get_user_model
+from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.response import Response
 
 # API lấy số dư ví của user hiện tại
+
+User = get_user_model() 
+
+
 class WalletBalanceView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -32,10 +47,10 @@ class WalletBalanceView(APIView):
             balance = user.wallet_balance
         else:
             # Nếu số dư ví lưu ở model Payment, lấy tổng các payment thành công
-            balance = Payment.objects.filter(user=user, status='success').aggregate(total=ModelViewSet.Sum('amount'))['total'] or 0
+
+            balance = Payment.objects.filter(user=user, status='success').aggregate(total=models.Sum('amount'))['total'] or 0
         return Response({"balance": balance})
 
-# --- GOOGLE LOGIN API ---
 
 @method_decorator(csrf_exempt, name='dispatch')
 class GoogleLoginAPIView(APIView):
@@ -110,6 +125,11 @@ class UserProfileView(APIView):
 
     def patch(self, request):
         return self.put(request)
+    
+class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    permission_classes = [IsAuthenticated]
 
 
 
@@ -282,6 +302,47 @@ from rest_framework.decorators import api_view, permission_classes
 
 class ProductViewSet(ModelViewSet):
     permission_classes = [IsAuthenticated, IsSeller]
+
+  # cần serializer
+
+class RoleCreateView(APIView):
+    def post(self, request):
+        serializer = RoleSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=201)
+        return Response(serializer.errors, status=400)
+class RoleListView(ListAPIView):
+    queryset = Role.objects.all()
+    serializer_class = RoleSerializer
+
+
+class UserListView(ListAPIView):
+    queryset = CustomUser.objects.all()
+    serializer_class = UserSerializer
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class UserViewSet(viewsets.ModelViewSet):
+    queryset = CustomUser.objects.all()
+    serializer_class = UserSerializer
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    
+
+
+class RoleViewSet(viewsets.ModelViewSet):
+    queryset = Role.objects.all()
+    serializer_class = RoleSerializer
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+@method_decorator(csrf_exempt, name='dispatch')
+class AddressViewSet(viewsets.ModelViewSet):
+    queryset = Address.objects.all()
+    serializer_class = AddressSerializer
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
 class AddressViewSet(viewsets.ModelViewSet):
     serializer_class = AddressSerializer
     permission_classes = [IsAuthenticated]
@@ -314,6 +375,7 @@ class UserPointsView(APIView):
         except (ValueError, TypeError):
             return Response({"error": "Điểm không hợp lệ"}, status=400)
 
+        change = int(request.data.get("points", 0))
         request.user.points += change
         request.user.save()
         serializer = UserSerializer(request.user)
@@ -336,6 +398,7 @@ class UserPointsView(APIView):
             return Response(serializer.data)
         else:
             return Response({"error": "Không đủ điểm"}, status=400)
+
 class ChangePasswordView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -351,3 +414,5 @@ class ChangePasswordView(APIView):
             user.save()
             return Response({"message": "Đổi mật khẩu thành công!"}, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+

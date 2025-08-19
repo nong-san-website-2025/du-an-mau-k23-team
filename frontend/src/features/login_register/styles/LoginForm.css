@@ -106,7 +106,8 @@
   border-radius: 50%;
   box-shadow: 0 4px 0 rgba(0, 0, 0, 0.2);
   width: 150px;
-  margin: 0 auto 150px;
+  height: auto;
+  margin: 0 auto 170px;
   display: block; 
 }
 
@@ -119,180 +120,316 @@
 }
 
 .login-form {
-  background: #fff;
-  padding: 40px 30px;
-  border-radius: 12px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
-  width: 100%;
-  max-width: 400px;
-  display: flex;
-  flex-direction: column;
-  animation: slideUp 0.8s ease;
-}
+    background: white;
+    padding: 40px 30px;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    width: 100%;
+    max-width: 400px;
+    display: flex;
+    flex-direction: column;
+    animation: slideUp 0.8s ease;
+  }
+
+  @keyframes slideUp {
+    from {
+      transform: translateY(20px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
 
 .login-form h2 {
-  text-align: center;
-  margin-top: -100px;
-  color: #0f641a;
-}
+    text-align: center;
+     margin-top: -130px; /* đẩy lên trên */
+  margin-bottom: 50px;
+    color: #0f641a;
+  }
 
 .login-form input {
-  padding: 12px 12px 12px 35px;
+    position: relative;
+    padding: 12px 12px 12px 35px;
+    margin-bottom: 18px;
+    border: none;
+    border-bottom: 1px solid #ccc;
+    outline: none;
+    transition: border-color 0.3s, box-shadow 0.3s;
+    color: #727171;
+    font-size: 15px;
+  }
+
+  .login-form input::placeholder {
+    /* padding-left: 10px; */
+    color: #ccc;
+    padding-top: 10px;
+  }
+
+  /* .login-form input:focus {
+    border-color: #4e73df;
+    box-shadow: 0 0 8px rgba(78, 115, 223, 0.6);
+  } */
+
+  .login-form button {
+    padding: 12px;
+    background-color: #0f701c;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background 0.3s, transform 0.1s;
+    box-shadow: 0 4px 12px rgba(78, 115, 223, 0.5);
+  }
+
+  .login-form button:hover {
+    background-color: #15a150;
+  }
+
+  .login-form button:active {
+    transform: scale(0.97);
+  }
+
+  .error {
+    color: red;
+    margin-bottom: 12px;
+    text-align: center;
+    animation: shake 0.3s;
+  }
+
+  @keyframes shake {
+    0% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    50% { transform: translateX(5px); }
+    75% { transform: translateX(-5px); }
+    100% { transform: translateX(0); }
+  }
+  .login-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px; /* Khoảng cách giữa icon và chữ */
+    padding: 12px;
+    background-color: #4e73df;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background 0.3s, transform 0.1s;
+    box-shadow: 0 4px 12px rgba(78, 115, 223, 0.5);
+  }
+
+  .login-btn:hover {
+    background-color: #0f701c;
+  }
+
+  .login-btn:active {
+    transform: scale(0.97);
+  }
+
+  .login-icon {
+    width: 50px;
+    height: 50px;
+    margin-bottom: -15px;
+  }
+
+  .home-icon {
+    width: 20px;
+    height: 20px;
+    margin-bottom: 3px;
+  }
+  .extra-options {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 15px;
+  }
+
+
+  .input-group {
+  position: relative;
   margin-bottom: 18px;
+}
+
+.input-group i {
+  position: absolute;
+  top: 50%;
+  left: 12px;
+  transform: translateY(-50%);
+  font-size: 15px;
+  color: #ccc;
+}
+
+.input-group input {
+  width: 100%;
+  padding: 12px 12px 12px 40px; /* chừa chỗ cho icon */
   border: none;
   border-bottom: 1px solid #ccc;
   outline: none;
-  color: #727171;
   font-size: 15px;
-  transition: border-color 0.3s, box-shadow 0.3s;
+  color: #727171;
 }
 
-.login-form input::placeholder {
-  color: #ccc;
-}
+  /* .register-btn {
+    background: transparent;
+    border: 2px solid #0ee768;
+    color: #4e73df;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s;
+  } */
 
-.login-form button,
-.login-btn {
-  padding: 12px;
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 16px;
-  transition: background 0.3s, transform 0.1s;
-  box-shadow: 0 4px 12px rgba(78, 115, 223, 0.5);
-}
+  /* .register-btn:hover {
+    background-color: #036749;
+    color: white;
+  } */
 
-.login-form button {
-  background-color: #0f701c;
-}
+  .forgot-link {
+    color: #0f701c;
+    cursor: pointer;
+    text-decoration: underline;
+    transition: color 0.3s;
+  }
 
-.login-form button:hover {
-  background-color: #15a150;
-}
-
-.login-form button:active {
-  transform: scale(0.97);
-}
-
-.login-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  background-color: #4e73df;
-}
-
-.login-btn:hover {
-  background-color: #0f701c;
-}
-
-.login-icon {
-  width: 50px;
-  height: 50px;
-  margin-bottom: -15px;
-}
-
-.home-icon {
-  width: 20px;
-  height: 20px;
-  margin-bottom: 3px;
-}
-
-.extra-options {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 15px;
-}
-
-.forgot-link {
-  color: #0f701c;
-  cursor: pointer;
-  text-decoration: underline;
-  transition: color 0.3s;
-}
-
-.forgot-link:hover {
-  color: #129649;
-}
-
-.error {
-  color: red;
-  margin-bottom: 12px;
-  text-align: center;
-  animation: shake 0.3s;
-}
-
-@keyframes shake {
-  25% { transform: translateX(-5px); }
-  50% { transform: translateX(5px); }
-  75% { transform: translateX(-5px); }
-}
-
-.login-form .input-icon-user {
-  position: absolute;
-  top: 50.8%;
-  left: 40%;
-  font-size: 13px;
-  color: #ccc;
-}
-
-.login-form .input-icon-lock {
-  position: absolute;
-  top: 59.3%;
-  left: 40%;
-  font-size: 13px;
-  color: #ccc;
-}
-
-/* ================== MODAL ================== */
-.modal-overlay {
+  .forgot-link:hover {
+    color:  #129649;
+  }
+  .modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0,0,0,0.4);
+  inset: 0;
+  background: rgba(0,0,0,0.5);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 1000;
-  animation: fadeIn 0.3s ease;
 }
 
 .modal-content {
   background: #fff;
-  padding: 25px;
-  border-radius: 10px;
-  width: 350px;
-  max-width: 90%;
+  border-radius: 12px;
+  padding: 25px 30px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
   text-align: center;
-  box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-  animation: slideUp 0.4s ease;
 }
 
+/* Tiêu đề */
 .modal-content h3 {
-  font-size: 22px;
   margin-bottom: 20px;
-  color: #2c3e50;
+  font-size: 22px;
+  color: #0f701c;
+  font-weight: bold;
 }
-
-.modal-content input[type="text"],
-.modal-content input[type="password"],
-.modal-content input[type="email"] {
-  width: 90%;
+.modal-content input {
   padding: 10px;
-  margin-bottom: 15px;
+  margin-bottom: 12px;
   border: 1px solid #ccc;
   border-radius: 6px;
-  font-size: 15px;
-  outline: none;
-  transition: 0.3s;
+}
+
+  /* .modal-content button {
+    padding: 10px;
+    background-color: #0ee768;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.3s;
+  } */
+
+
+  .close-btn {
+    background-color: gray;
+    margin-top: 8px;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes slideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  /* .modal-content {
+    background: white;
+    padding: 50px 40px;
+    border-radius: 12px;
+    width: 100%;
+    max-width: 550px;
+    box-shadow: 0 0 30px rgba(0,0,0,0.35);
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    animation: slideUp 0.4s ease;
+  } */
+
+  
+
+  
+  /* .modal-content button {
+    padding: 14px;
+    background-color: #00dbc1;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.3s;
+    font-size: 17px;
+  } */
+
+  .modal-content button:hover {
+    background-color: #149253;
+  }
+
+  .close-btn {
+    background-color: gray;
+    margin-top: 10px;
+  }
+  .login-form {
+    background: white;
+    padding: 40px 30px;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    width: 100%;
+    max-width: 400px;
+    display: flex;
+    flex-direction: column;
+    animation: slideUp 0.8s ease;
+  }
+
+  .modal-content .checkbox-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 18px;
+  font-size: 14px;
+  color: #333;
+}
+
+
+.modal-content input[type="text"],
+.modal-content input[type="email"],
+.modal-content input[type="password"] {
+  width: 100%;
+  padding: 12px 14px;
+  margin-bottom: 15px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: border-color 0.3s;
 }
 
 .modal-content input:focus {
-  border-color: #058879;
-  box-shadow: 0 0 5px rgba(52, 152, 219, 0.5);
+  border-color: #0f701c;
+  box-shadow: 0 0 6px rgba(15, 112, 28, 0.3);
+  outline: none;
 }
 
 .modal-content button {
@@ -306,6 +443,34 @@
   font-size: 16px;
   cursor: pointer;
   transition: 0.3s;
+}
+
+.modal-content .btn {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  margin-bottom: 12px;
+  transition: background 0.3s;
+}
+
+.btn-primary {
+  background-color: #0f701c;
+  color: #fff;
+}
+.btn-primary:hover {
+  background-color: #15a150;
+}
+
+.btn-secondary {
+  background-color: #ccc;
+  color: #333;
+}
+.btn-secondary:hover {
+  background-color: #b5b5b5;
 }
 
 .modal-content button:hover {
@@ -395,13 +560,22 @@
   background-color: #c9302c;
 }
 
-/* ================== ANIMATIONS ================== */
-@keyframes fadeIn {
-  from { opacity: 0; transform: scale(0.95); }
-  to { opacity: 1; transform: scale(1); }
+.login-form .input-icon-user {
+  position: absolute;
+  top: 51.1%;
+  left: 41.8%;
+  z-index: 5;
+  font-size: 13px;
+  color: #ccc;
 }
 
-@keyframes slideUp {
-  from { transform: translateY(20px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+.login-form .input-icon-lock {
+  position: absolute;
+  top: 60.5%;
+  left: 41.8%;
+  gap: 10px;
+  z-index: 5;
+  font-size: 13px;
+  color: #ccc;
 }
+

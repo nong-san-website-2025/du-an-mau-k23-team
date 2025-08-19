@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { productApi } from "../../../products/services/productApi";
 import "../../styles/ProductAddModal.css";
 
+
 const initialForm = {
   name: "",
   description: "",
@@ -258,7 +259,6 @@ const ProductAddModal = ({ open, onClose, onSuccess }) => {
                   Bán chạy
                 </label>
               </div>
-
               <label className="pam-label">Người bán * <span className="text-danger">(bắt buộc)</span></label>
               <select
                 className="pam-select"
@@ -272,6 +272,7 @@ const ProductAddModal = ({ open, onClose, onSuccess }) => {
                   <option key={s.id} value={s.id}>
                     {s.store_name}
                   </option>
+
                 ))}
               </select>
             </div>

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+
 import { useParams, Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Container,
@@ -9,12 +10,15 @@ import {
   Badge,
   Button,
 } from "react-bootstrap"; // thêm Button
+
 import axios from "axios";
 
 const StoreDetail = () => {
   const { id } = useParams();
+
   const location = useLocation();
   const navigate = useNavigate();
+
   const [store, setStore] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -49,6 +53,7 @@ const StoreDetail = () => {
 
   return (
     <Container className="my-5">
+
       {/* Nút quay lại */}
       <div className="mb-4">
         <Button
@@ -158,3 +163,4 @@ const StoreDetail = () => {
 };
 
 export default StoreDetail;
+

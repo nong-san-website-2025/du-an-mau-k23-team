@@ -5,6 +5,7 @@ import { FaWallet, FaMoneyBillWave, FaPlusCircle, FaCheckCircle } from "react-ic
 import WalletNotifications from './WalletNotifications';
 import './WalletTab.css';
 
+
 const mainColor = "#4B0082";
 
 // Hàm format tiền với dấu phẩy ngăn cách
@@ -91,6 +92,7 @@ export default function WalletTab({
                 />
               ) : walletBalance !== null ? (
                 `${formatMoney(walletBalance)} ₫`
+
               ) : (
                 "---"
               )}
@@ -173,6 +175,7 @@ export default function WalletTab({
                 <FaPlusCircle /> Nạp tiền
               </>
             )}
+
           </Button>
         </Col>
       </Row>

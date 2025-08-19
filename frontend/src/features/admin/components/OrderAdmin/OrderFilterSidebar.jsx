@@ -28,7 +28,7 @@ export default function OrderFilterSidebar({
         </select>
       </div>
 
-      <div className="mb-3">
+      {/* <div className="mb-3">
         <label className="form-label fw-bold" style={{ fontSize: "14px" }}>
           Tìm kiếm
         </label>
@@ -39,7 +39,7 @@ export default function OrderFilterSidebar({
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
-      </div>
+      </div> */}
     </div>
   );
 }

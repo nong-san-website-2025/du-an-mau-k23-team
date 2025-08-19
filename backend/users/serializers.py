@@ -1,9 +1,19 @@
 from rest_framework import serializers
 from .models import CustomUser, PointHistory
 from rest_framework_simplejwt.tokens import RefreshToken
-from django.contrib.auth.models import AbstractUser
-from django.db import models
 from .models import Address
+from .models import Role
+
+
+class RoleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Role
+        fields = ['id', 'name']
+
+class UserPointsHistorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PointHistory
+        fields = ["date", "action", "points", "amount", "order_id"]
 
 class UserPointsHistorySerializer(serializers.ModelSerializer):
     class Meta:
@@ -27,11 +37,26 @@ class UserSerializer(serializers.ModelSerializer):
         default = obj.addresses.filter(is_default=True).first()
         return default.location if default else None
 
+
     def get_history(self, obj):
         histories = obj.point_histories.order_by('-date')
         return UserPointsHistorySerializer(histories, many=True).data
 
 
+    def create(self, validated_data):
+        user = CustomUser(**validated_data)
+        user.set_password(validated_data["password"])
+        user.save()
+        return user
+
+    def update(self, instance, validated_data):
+        password = validated_data.pop("password", None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        if password:
+            instance.set_password(password)
+        instance.save()
+        return instance
 
 class RegisterSerializer(serializers.ModelSerializer):
     password2 = serializers.CharField(write_only=True)
@@ -78,3 +103,12 @@ class ChangePasswordSerializer(serializers.Serializer):
         if data['new_password'] != data['confirm_password']:
             raise serializers.ValidationError("Mật khẩu mới và xác nhận không khớp.")
         return data
+    
+
+class CustomUserSerializer(serializers.ModelSerializer):
+    role = RoleSerializer(read_only=True)
+    role_id = serializers.PrimaryKeyRelatedField(queryset=Role.objects.all(), source='role', write_only=True)
+
+    class Meta:
+        model = CustomUser
+        fields = ['id', 'username', 'email', 'role', 'role_id']

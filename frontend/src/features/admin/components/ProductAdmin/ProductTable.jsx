@@ -100,6 +100,7 @@ export default function ProductTable({
               />
               {expandedProductId === product.id && (
                 <ProductDetailRow
+
                   product={product}
                   getStatusBadge={getStatusBadge}
                   onEdit={() => handleEdit(product)}
@@ -112,7 +113,6 @@ export default function ProductTable({
           ))}
         </tbody>
       </table>
-
       <ProductEditModal
         open={showEditModal}
         onClose={() => setShowEditModal(false)}

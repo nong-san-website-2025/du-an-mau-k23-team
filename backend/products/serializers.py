@@ -38,12 +38,12 @@ class ProductSerializer(serializers.ModelSerializer):
         if obj.image and hasattr(obj.image, 'url'):
             return request.build_absolute_uri(obj.image.url) if request else obj.image.url
         return None
-
     def validate(self, data):
         # Tự động gán category dựa trên subcategory
         if 'subcategory' in data and data['subcategory']:
             data['category'] = data['subcategory'].category
         return data
+
 class ProductListSerializer(serializers.ModelSerializer):
     discounted_price = serializers.ReadOnlyField()
     category_name = serializers.CharField(source='subcategory.category.name', read_only=True)

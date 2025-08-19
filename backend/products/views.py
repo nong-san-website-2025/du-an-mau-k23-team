@@ -1,18 +1,12 @@
-from rest_framework import viewsets
+from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.views import APIView
 from django.db.models import Q
-
-from .models import Product, Category, Subcategory
-from .serializers import (
-    ProductSerializer, ProductListSerializer,
-    CategorySerializer, SubcategorySerializer
-)
-
-from blog.models import Post as BlogPost
+from .models import Product, Category
+from .serializers import ProductSerializer, ProductListSerializer, CategorySerializer, SubcategorySerializer
+from rest_framework.views import APIView
 from blog.serializers import PostSerializer
-
+from blog.models import Post
 
 class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Category.objects.all()
@@ -32,7 +26,8 @@ class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
         category = self.get_object()
         products = Product.objects.filter(subcategory__category=category)
 
-        subcategory = request.query_params.get('subcategory')
+        # Filter parameters
+        subcategory = request.query_params.get('subcategory', None)
         if subcategory:
             products = products.filter(subcategory__name=subcategory)
 
@@ -41,7 +36,9 @@ class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
 
     @action(detail=True, methods=['get'])
     def grouped_products(self, request, pk=None):
-        """Lấy tất cả subcategories và sản phẩm theo từng subcategory"""
+        """
+        Lấy tất cả subcategories và sản phẩm theo từng subcategory
+        """
         category = self.get_object()
         subcategories = category.subcategories.all()
         products = Product.objects.filter(subcategory__category=category)
@@ -58,52 +55,57 @@ class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
             "products_by_subcategory": grouped
         })
 
+
 class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.select_related('subcategory__category', 'seller').all()
-
+    
     def get_serializer_class(self):
         if self.action == 'list':
             return ProductListSerializer
-        return ProductSerializer  # Sử dụng ProductSerializer cho create, retrieve, update, destroy
-
-    def retrieve(self, request, *args, **kwargs):
-        instance = self.get_object()
-        serializer = self.get_serializer(instance, context={'request': request})
-        return Response(serializer.data)
-
-        # filter by category
-        category = self.request.query_params.get('category')
+        return ProductSerializer
+    
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        
+        # Filter by category
+        category = self.request.query_params.get('category', None)
         if category:
             queryset = queryset.filter(subcategory__category__key=category)
-
-        # filter by subcategory
-        subcategory = self.request.query_params.get('subcategory')
+        
+        # Filter by subcategory
+        subcategory = self.request.query_params.get('subcategory', None)
         if subcategory:
             queryset = queryset.filter(subcategory__name=subcategory)
-
-        # search
-        search = self.request.query_params.get('search')
+        
+        # Search
+        search = self.request.query_params.get('search', None)
         if search:
             queryset = queryset.filter(
-                Q(name__icontains=search) |
+                Q(name__icontains=search) | 
                 Q(description__icontains=search) |
                 Q(brand__icontains=search)
             )
-
-        # feature filters
-        if self.request.query_params.get('is_new') == 'true':
+        
+        # Filter by features
+        is_new = self.request.query_params.get('is_new', None)
+        if is_new == 'true':
             queryset = queryset.filter(is_new=True)
-        if self.request.query_params.get('is_organic') == 'true':
+            
+        is_organic = self.request.query_params.get('is_organic', None)
+        if is_organic == 'true':
             queryset = queryset.filter(is_organic=True)
-        if self.request.query_params.get('is_best_seller') == 'true':
+            
+        is_best_seller = self.request.query_params.get('is_best_seller', None)
+        if is_best_seller == 'true':
             queryset = queryset.filter(is_best_seller=True)
-
-        # sort
+        
+        # Sort
         ordering = self.request.query_params.get('ordering', '-created_at')
-        queryset = queryset.order_by(ordering)
-
+        if ordering:
+            queryset = queryset.order_by(ordering)
+        
         return queryset
-
+    
     @action(detail=False, methods=['get'])
     def featured(self, request):
         """Lấy sản phẩm nổi bật"""
@@ -112,15 +114,13 @@ class ProductViewSet(viewsets.ModelViewSet):
         )[:12]
         serializer = ProductListSerializer(products, many=True, context={'request': request})
         return Response(serializer.data)
-
-
+    
 class SearchAPIView(APIView):
     def get(self, request):
         query = request.GET.get('q', '')
         products = Product.objects.filter(name__icontains=query)[:5]
-        posts = BlogPost.objects.filter(title__icontains=query)[:5]
+        posts = Post.objects.filter(title__icontains=query)[:5]
         return Response({
             'products': ProductSerializer(products, many=True).data,
             'posts': PostSerializer(posts, many=True).data
-
         })

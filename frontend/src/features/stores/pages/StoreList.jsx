@@ -5,7 +5,8 @@ import axios from "axios";
 import { Search } from "react-bootstrap-icons";
 import "../styles/StoreList.css";
 
-const StoreListPro = () => {
+
+const StoreList = () => {
   const [stores, setStores] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -87,4 +88,7 @@ const StoreListPro = () => {
   );
 };
 
-export default StoreListPro;
+
+export default StoreList;
+
+

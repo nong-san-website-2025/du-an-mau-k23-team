@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     "users", "sellers", "products",
     "reviews", "cart", "orders", "payments",
         "store", 'blog', 'wallet'
+
 ]
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
@@ -172,6 +173,13 @@ REST_FRAMEWORK = {
 CORS_ALLOW_CREDENTIALS = True
 
 CORS_ALLOW_ALL_ORIGINS = True  
+
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:3000",   # React frontend
+    "http://127.0.0.1:3000",  # React frontend (localhost)
+    "http://localhost:8000",   # Django backend
+    "http://127.0.0.1:8000"   # Django backend
+]
 
 
 MEDIA_URL = '/media/'

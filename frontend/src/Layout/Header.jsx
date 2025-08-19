@@ -73,7 +73,7 @@ export default function Header() {
     localStorage.removeItem("role");
     sessionStorage.clear(); // Nếu có sessionStorage dùng
     setShowProfileDropdown(false);
-    alert("Đăng xuất thành công!");
+    // alert("Đăng xuất thành công!");
     window.location.replace("/login");
   };
   const [showCategory, setShowCategory] = useState(false);
@@ -514,7 +514,7 @@ export default function Header() {
               >
                 <Heart size={22} style={greenText} />
               </Link>
-              {/* Notification icon and dropdown (hover) */}
+              {/* Notification icon and dropdown (hover)
               <div style={{ position: "relative" }}
                 onMouseEnter={() => setShowNotificationDropdown(true)}
                 onMouseLeave={() => setShowNotificationDropdown(false)}>
@@ -604,7 +604,7 @@ export default function Header() {
                     )}
                   </div>
                 )}
-              </div>
+              </div> */}
               {/* Cart icon and dropdown (hover) */}
               <div style={{ position: "relative" }}
                 onMouseEnter={() => setShowCartDropdown(true)}

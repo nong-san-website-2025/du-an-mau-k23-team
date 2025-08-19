@@ -1,6 +1,14 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
+
+class Role(models.Model):
+    name = models.CharField(max_length=50, unique=True)
+
+    def __str__(self):
+        return self.name
+
+
 class CustomUser(AbstractUser):
     is_seller = models.BooleanField(default=False)
     is_admin = models.BooleanField(default=False)  # Quyền admin
@@ -22,12 +30,22 @@ class CustomUser(AbstractUser):
         if self.is_superuser:
             self.is_admin = True
         super().save(*args, **kwargs)
+
+    role = models.ForeignKey(Role, on_delete=models.SET_NULL, null=True, blank=True)
+
+    STATUS_CHOICES = (
+        ('active', 'Đang hoạt động'),
+        ('inactive', 'Ngừng hoạt động'),
+    )
+    status = models.CharField(
+        max_length=10,
+        choices=STATUS_CHOICES,
+        blank=True,
+        null=True
+    )
+
     def __str__(self):
         return self.username
-
-
-    # Model lưu lịch sử tích điểm
-    
 
 class Address(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="addresses")
@@ -53,5 +71,4 @@ class PointHistory(models.Model):
 
         def __str__(self):
             return f"{self.user.username} - {self.points} điểm - {self.date}"
-
 

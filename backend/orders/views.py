@@ -117,7 +117,6 @@ class OrderViewSet(viewsets.ModelViewSet):
             return Response({'error': 'Không tìm thấy đơn hàng'}, 
                           status=status.HTTP_404_NOT_FOUND)
 
-
     def perform_create(self, serializer):
         order = serializer.save(user=self.request.user)
         # Tích điểm: cứ 1000đ thì được 10 điểm
