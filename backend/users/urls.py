@@ -1,13 +1,24 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
-from . import views
+from .views import (AddressViewSet, WalletBalanceView,
+    VerifyAdminView, UserProfileView, ForgotPasswordView, VerifyCodeAPIView, ResetPasswordAPIView, GoogleLoginAPIView, RegisterView, LoginView,)
+from .views import UserPointsView
+from .views import EmployeeViewSet
+from users import views
+from rest_framework_simplejwt.views import (
+    TokenObtainPairView,
+    TokenRefreshView,
+)
+
 
 # Router tự động cho ViewSet
 router = DefaultRouter()
+
 router.register(r'users', views.UserViewSet, basename='user')
 router.register(r'roles', views.RoleViewSet, basename='role')
 router.register(r'addresses', views.AddressViewSet, basename='address')
+router.register("employees", EmployeeViewSet, basename="employee")
+
 
 urlpatterns = [
     # Authentication

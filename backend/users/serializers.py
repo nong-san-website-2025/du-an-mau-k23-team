@@ -112,3 +112,21 @@ class CustomUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
         fields = ['id', 'username', 'email', 'role', 'role_id']
+
+class EmployeeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomUser
+        fields = ["id", "username", "email", "full_name", "phone", "address", "is_employee", "is_locked"]
+
+    def create(self, validated_data):
+        user = CustomUser.objects.create_user(
+            username=validated_data["username"],
+            email=validated_data["email"],
+            password=validated_data.get("password", "123456"), # default
+            full_name=validated_data.get("full_name", ""),
+            phone=validated_data.get("phone", ""),
+            address=validated_data.get("address", "")
+        )
+        user.is_employee = True
+        user.save()
+        return user

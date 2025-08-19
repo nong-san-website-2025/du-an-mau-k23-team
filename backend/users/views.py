@@ -31,6 +31,14 @@ from .serializers import RoleSerializer
 from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.response import Response
+from .serializers import (
+    UserSerializer, 
+    RegisterSerializer, 
+    ForgotPasswordSerializer, 
+    ChangePasswordSerializer,
+    AddressSerializer,
+    EmployeeSerializer,   # 👈 thêm dòng này
+)
 
 # API lấy số dư ví của user hiện tại
 
@@ -414,5 +422,12 @@ class ChangePasswordView(APIView):
             user.save()
             return Response({"message": "Đổi mật khẩu thành công!"}, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
 
+class EmployeeViewSet(viewsets.ModelViewSet):
+    queryset = CustomUser.objects.filter(is_employee=True)
+    serializer_class = EmployeeSerializer
+    permission_classes = [IsAuthenticated, IsAdmin]
 
+    def perform_create(self, serializer):
+        serializer.save(is_employee=True)
