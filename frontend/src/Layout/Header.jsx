@@ -251,7 +251,7 @@ export default function Header() {
               style={{ whiteSpace: "nowrap", fontSize: 16, fontWeight: 600 }}
             >
               <Phone size={16} className="me-1" />
-              <span>Hotline: <b style={{ letterSpacing: 1 }}>1900-1234</b></span>
+              <span>Hotline: <b style={{ letterSpacing: 1 }}>0328002213</b></span>
             </div>
 
             {/* Bên phải: Email */}
@@ -260,7 +260,7 @@ export default function Header() {
               style={{ whiteSpace: "nowrap", fontSize: 16, fontWeight: 600 }}
             >
               <Mail size={16} className="me-1" />
-              <span>Email: <b style={{ letterSpacing: 1 }}>support@nongsan.vn</b></span>
+              <span>Email: <b style={{ letterSpacing: 1 }}>greenfarmorganicvietnam@gmail.com</b></span>
             </div>
           </div>
         </div>
