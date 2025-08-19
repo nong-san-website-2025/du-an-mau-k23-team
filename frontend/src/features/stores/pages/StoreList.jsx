@@ -3,7 +3,7 @@ import { Container, Row, Col, Button, Spinner, Form, InputGroup } from "react-bo
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { Search } from "react-bootstrap-icons";
-import "../styles/StoreList.css"; // Import your custom styles
+import "../styles/StoreList.css";
 
 const StoreListPro = () => {
   const [stores, setStores] = useState([]);
