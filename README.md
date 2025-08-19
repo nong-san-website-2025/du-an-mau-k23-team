@@ -83,24 +83,8 @@ cd du-an-mau-k23-team
     # Chạy frontend
     npm start
 
+## Chay sample_products.py de tao san pham demo
+from generate_sample_products import generate_sample_products
+generate_sample_products()
 
-<!-- ## Bước 3: Lấy branch để làm(tô có thể mỗi branch riêng cho từng người)
 
-    git checkout -b feature/<ten-chuc-nang>(của người đảm nhiệm chức năng đó)
-    # sau khi code
-    git add .
-    git commit -m "feat: mô tả chức năng"
-    git push origin feature/<ten-chuc-nang>
-
-# Chatbox 
-sudo apt update <br>
-sudo apt install redis-server redis-cliping <br>
-tải redis <br>
-cd .. <br>
-cd E:/Redis <br>
-.\redis-server.exe 
-
-# Backend
-python manage.py runserver <br>
-ctrl C <br>
-daphne chatproject.asgi:application
