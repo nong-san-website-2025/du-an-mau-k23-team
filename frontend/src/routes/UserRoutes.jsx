@@ -7,7 +7,6 @@ import UserProductPage from '../features/products/pages/UserProductPage';
 import ProductDetailPage from '../features/products/pages/ProductDetailPage';
 import CartPage from '../features/cart/pages/CartPage';
 import CheckoutPage from '../features/cart/pages/CheckoutPage';
-import Wishlist from "../pages/wishlist";
 import AboutPage from "../pages/About/About";
 import StoreList from '../features/stores/pages/StoreList';
 import StoreDetail from '../features/stores/pages/StoreDetail';
@@ -18,6 +17,7 @@ import Orders from '../features/orders/pages/Orders';
 import ProfilePage from "../features/users/pages/ProfilePage";
 import SellerRegisterPage from "../features/sellers/pages/SellerRegisterPage";
 import ManageStore from "../features/login_register/pages/ManageStore";
+import Wishlist from "../pages/Wishlist/Wishlist";
 
 export const userRoutes = [
   <Route path="/" element={<Layout />} key="layout">

@@ -150,7 +150,7 @@ export const CartProvider = ({ children }) => {
         else
           toast.error(
             "Lỗi: " +
-              (err.response?.data?.detail || "Không thể thêm vào giỏ hàng")
+              (err.response?.data?.detail || "Không thể thêm vào giỏ hàng" , {position: "bottom-right"})
           );
       }
     } else {
@@ -218,7 +218,7 @@ const updateQuantity = async (cartItemId, newQuantity) => {
     }
   } catch (err) {
     console.error("❌ updateQuantity error:", err.response?.data || err.message);
-    toast.error("Không thể cập nhật số lượng sản phẩm");
+    toast.error("Không thể cập nhật số lượng sản phẩm", {position: "bottom-right"});
   }
 };
 

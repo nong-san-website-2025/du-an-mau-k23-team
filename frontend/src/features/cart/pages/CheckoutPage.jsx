@@ -26,12 +26,12 @@ const CheckoutPage = () => {
 
   const handleOrder = async () => {
     if (!customerName.trim() || !customerPhone.trim() || !address.trim()) {
-      toast.error("Vui lòng nhập đầy đủ thông tin");
+      toast.error("Vui lòng nhập đầy đủ thông tin", {position: "bottom-right"});
       return;
     }
 
     if (items.length === 0) {
-      toast.error("Chưa có sản phẩm nào để thanh toán");
+      toast.error("Chưa có sản phẩm nào để thanh toán", {position: "bottom-right"});
       return;
     }
 
@@ -53,10 +53,10 @@ const CheckoutPage = () => {
       };
       await createOrder(orderData);
       await clearCart();
-      toast.success("Đặt hàng thành công!");
+      toast.success("Đặt hàng thành công!", {position: "bottom-right"});
       navigate("/orders?tab=completed");
     } catch (error) {
-      toast.error("Đặt hàng thất bại!");
+      toast.error("Đặt hàng thất bại!", {position: "bottom-right"});
     } finally {
       setIsLoading(false);
     }

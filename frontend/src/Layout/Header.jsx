@@ -305,9 +305,9 @@ export default function Header() {
             <Link
               to="/"
               className="navbar-brand d-flex align-items-center"
-              style={{ ...greenText, fontSize: 32, letterSpacing: 2 }}
+              style={{ ...greenText, fontSize: 32 }}
             >
-              <img src="assets/logo/imagelogo.png" alt="Logo" className="me-2" style={{ height: 56, borderRadius: 12, boxShadow: '0 2px 8px #0002' }} />
+              <img src="/assets/logo/imagelogo.png" alt="Logo" style={{ height: 62, borderRadius: 12}} />
             </Link>
 
             {/* Navigation */}
@@ -322,7 +322,7 @@ export default function Header() {
                 onMouseLeave={handleMouseLeave}
               >
                 <button
-                  className="btn btn-link fw-bold text-dark px-3 py-2"
+                  className="btn btn-link fw-bold text-dark px-2 py-2"
                   style={{ fontSize: 18, textDecoration: "none" }}
                   onClick={() => navigate("/productuser")} // ← chuyển sang productuser
                 >
@@ -437,28 +437,28 @@ export default function Header() {
               <Link
                 to="/featured"
                 className="btn btn-link fw-medium px-3 py-2 text-decoration-none text-dark d-none d-lg-inline-block"
-                style={{ whiteSpace: "nowrap" }}
+                style={{ whiteSpace: "nowrap", fontSize: 14 }}
               >
                 Sản phẩm nổi bật
               </Link>
               <Link
                 to="/store"
                 className="btn btn-link fw-medium px-3 py-2 text-decoration-none text-dark d-none d-xl-inline-block"
-                style={{ whiteSpace: "nowrap" }}
+                style={{ whiteSpace: "nowrap", fontSize: 14 }}
               >
                 Cửa hàng
               </Link>
               <Link
                 to="/blog"
                 className="btn btn-link fw-medium px-3 py-2 text-decoration-none text-dark d-none d-xl-inline-block"
-                style={{ whiteSpace: "nowrap" }}
+                style={{ whiteSpace: "nowrap", fontSize: 14 }}
               >
                 Bài viết
               </Link>
               <Link
                 to="/abouts"
                 className="btn btn-link fw-medium px-3 py-2 text-decoration-none text-dark d-none d-xl-inline-block"
-                style={{ whiteSpace: "nowrap" }}
+                style={{ whiteSpace: "nowrap", fontSize: 14 }}
               >
                 Về chúng tôi
               </Link>
@@ -474,7 +474,7 @@ export default function Header() {
                   type="text"
                   placeholder="Tìm kiếm sản phẩm hoặc bài viết..."
                   className="form-control rounded-pill ps-3 pe-5"
-                  style={{ width: 200, minWidth: 150 }}
+                  style={{ width: 290, minWidth: 150, fontSize: 14, fontStyle: 'italic'}}
                   value={search}
                   onChange={handleSearchChange}
                   onFocus={() => search && setShowSuggestions(true)}
@@ -483,7 +483,6 @@ export default function Header() {
                   className="btn btn-link position-absolute end-0 top-50 translate-middle-y p-0"
                   style={{ right: 10, color: "#16a34a" }}
                 >
-                  <Search size={18} />
                 </button>
                 {showSuggestions && (searchResults.products.length > 0 || searchResults.posts.length > 0) && (
                   <div

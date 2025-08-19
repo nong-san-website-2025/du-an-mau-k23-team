@@ -69,7 +69,9 @@ class ProductListSerializer(serializers.ModelSerializer):
             return request.build_absolute_uri(obj.image.url) if request else obj.image.url
         return None
     
-    # --- Serializer cho bài viết (Post) dùng cho API tìm kiếm ---
+    def get_discounted_price(self, obj):
+        return obj.discounted_price
+
 
 class PostSerializer(serializers.ModelSerializer):
     class Meta:

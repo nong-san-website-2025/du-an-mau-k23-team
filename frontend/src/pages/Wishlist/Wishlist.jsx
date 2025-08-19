@@ -4,10 +4,10 @@
 
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import a1 from "../assets/image/a1.jpg";
-import a2 from "../assets/image/a2.jpg";
-import a3 from "../assets/image/a3.jpg";
-import TopBanner from "../components/TopBanner";
+import a1 from "../../assets/image/a1.jpg";
+import a2 from "../../assets/image/a2.jpg";
+import a3 from "../../assets/image/a3.jpg";
+import TopBanner from "./components/TopBanner";
 
 
 // Lấy danh sách sản phẩm từ HomePage (giả lập, nên đồng bộ id, name, image, ...)

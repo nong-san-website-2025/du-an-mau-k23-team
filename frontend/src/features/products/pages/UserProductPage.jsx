@@ -102,12 +102,12 @@ const UserProductPage = () => {
   await addToCart(
     product.id,
     1,
-    () => toast.success("Đã thêm vào giỏ hàng!", { autoClose: 1500 }),
+    () => toast.success("Đã thêm vào giỏ hàng!", { autoClose: 1500, position: "bottom-right" }),
     (err) => {
       if (err.response?.status === 401) {
-        toast.error("Vui lòng đăng nhập để thêm vào giỏ hàng");
+        toast.error("Vui lòng đăng nhập để thêm vào giỏ hàng", {position: "bottom-right"});
       } else {
-        toast.error("Không thể thêm vào giỏ hàng. Vui lòng thử lại.");
+        toast.error("Không thể thêm vào giỏ hàng. Vui lòng thử lại.", {position: "bottom-right"});
       }
     },
     {

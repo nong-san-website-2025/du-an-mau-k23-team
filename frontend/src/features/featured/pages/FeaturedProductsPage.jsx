@@ -5,7 +5,6 @@ import { Card, Row, Col, Spinner, Button, Badge } from "react-bootstrap";
 import { ShoppingCart, Star, Star as StarFill } from "lucide-react";
 import { productApi } from "../../products/services/productApi";
 import { useCart } from "../../cart/services/CartContext";
-import { toast } from "react-toastify";
 
 const FeaturedProductsPage = () => {
   const [products, setProducts] = useState([]);
@@ -52,15 +51,15 @@ const FeaturedProductsPage = () => {
       product.id,
       1,
       () => {
-        toast.success("Đã thêm vào giỏ hàng!", { position: "top-right", autoClose: 1500 });
+        toast.success("Đã thêm vào giỏ hàng!", { position: "bottom-right", autoClose: 1500 });
         setAddingId(null);
       },
       (err) => {
         setAddingId(null);
         if (err?.response?.status === 401) {
-          toast.error("Vui lòng đăng nhập để thêm vào giỏ hàng", { position: "top-right" });
+          toast.error("Vui lòng đăng nhập để thêm vào giỏ hàng", { position: "bottom-right" });
         } else {
-          toast.error("Không thể thêm vào giỏ hàng. Vui lòng thử lại.", { position: "top-right" });
+          toast.error("Không thể thêm vào giỏ hàng. Vui lòng thử lại.", { position: "bottom-right" });
         }
       },
       {

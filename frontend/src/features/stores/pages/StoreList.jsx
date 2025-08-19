@@ -1,17 +1,9 @@
 import React, { useEffect, useState } from "react";
-import {
-  Container,
-  Row,
-  Col,
-  Button,
-  Spinner,
-  Form,
-  InputGroup,
-} from "react-bootstrap";
+import { Container, Row, Col, Button, Spinner, Form, InputGroup } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { Search } from "react-bootstrap-icons";
-import "../styles/StoreList.css";
+import "../styles/StoreList.css"; // Import your custom styles
 
 const StoreListPro = () => {
   const [stores, setStores] = useState([]);
@@ -41,7 +33,7 @@ const StoreListPro = () => {
   }
 
   return (
-    <Container className="store-list-container my-4">
+    <Container className="store-list-container">
       <div className="store-list-header">
         <h2 className="store-list-title">Tất cả người bán</h2>
         <InputGroup className="store-search-box">
@@ -75,13 +67,9 @@ const StoreListPro = () => {
                     {"☆".repeat(5 - (store.rating || 0))}
                   </div>
                   <Button
-                    onClick={() => navigate(-1)}
-                    className="mb-4"
-                    style={{
-                      backgroundColor: "rgb(33, 196, 93)",
-                      borderColor: "rgb(33, 196, 93)",
-                      color: "white",
-                    }}
+                    variant="light"
+                    className="store-btn"
+                    onClick={() => navigate(`/store/${store.id}`)}
                   >
                     Xem gian hàng &gt;
                   </Button>
