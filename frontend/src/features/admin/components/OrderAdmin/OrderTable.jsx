@@ -11,9 +11,6 @@ export default function OrderTable({
   getStatusLabel,
   formatCurrency,
   formatDate,
-  checkedIds,
-  setCheckedIds,
-  onStatusUpdate,
   onViewDetail,
 }) {
   const [expandedOrderId, setExpandedOrderId] = useState(null);
@@ -56,29 +53,18 @@ export default function OrderTable({
     <table className="table table-hover align-middle">
       <thead>
         <tr>
-          <th>
-            <input
-              type="checkbox"
-              checked={checkedIds.length === filteredOrders.length && filteredOrders.length > 0}
-              onChange={(e) => {
-                if (e.target.checked) setCheckedIds(filteredOrders.map((o) => o.id));
-                else setCheckedIds([]);
-              }}
-            />
-          </th>
           <th>ID</th>
           <th>Khách hàng</th>
           <th>Số điện thoại</th>
           <th>Tổng tiền</th>
           <th>Trạng thái</th>
           <th>Ngày tạo</th>
-          <th>Thao tác</th>
         </tr>
       </thead>
       <tbody>
         {filteredOrders.length === 0 ? (
           <tr>
-            <td colSpan="8" className="text-center py-4">
+            <td colSpan="6" className="text-center py-4">
               <i className="bi bi-inbox" style={{ fontSize: "3rem", color: "#6c757d", marginBottom: "1rem" }}></i>
               <p className="text-muted">Không có đơn hàng nào</p>
             </td>
@@ -94,13 +80,6 @@ export default function OrderTable({
                 getStatusLabel={getStatusLabel}
                 formatCurrency={formatCurrency}
                 formatDate={formatDate}
-                checked={checkedIds.includes(order.id)}
-                onCheck={() => {
-                  if (checkedIds.includes(order.id))
-                    setCheckedIds(checkedIds.filter((id) => id !== order.id));
-                  else setCheckedIds([...checkedIds, order.id]);
-                }}
-                onStatusUpdate={onStatusUpdate}
               />
               {expandedOrderId === order.id && (
                 <OrderDetailRow 

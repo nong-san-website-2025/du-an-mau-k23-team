@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Search, Import, FileUp, HelpCircle, RefreshCw } from "lucide-react";
+import { Search, RefreshCw } from "lucide-react";
 import adminApi from "../services/adminApi";
 import AdminPageLayout from "../components/AdminPageLayout";
 import AdminHeader from "../components/AdminHeader";
@@ -12,7 +12,6 @@ const OrdersPage = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-
   const [checkedIds, setCheckedIds] = useState([]);
 
   // Filter states
@@ -55,17 +54,7 @@ const OrdersPage = () => {
     loadOrders();
   }, [statusFilter, searchTerm]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Handle status update
-  const handleStatusUpdate = async (orderId, newStatus) => {
-    try {
-      await adminApi.updateOrderStatus(orderId, newStatus);
-      // Reload orders to get updated data
-      await loadOrders();
-      alert("Cập nhật trạng thái thành công!");
-    } catch (err) {
-      alert("Lỗi khi cập nhật trạng thái: " + err.message);
-    }
-  };
+
 
   // Handle view order detail
   const handleViewDetail = async (orderId) => {
@@ -115,53 +104,16 @@ const OrdersPage = () => {
     return new Date(dateString).toLocaleString('vi-VN');
   };
 
-  // Render action buttons
+  // Render action buttons - chỉ giữ lại nút làm mới
   const renderActionButtons = () => {
-    if (checkedIds.length > 0) {
-      return (
-        <button
-          className="btn btn-danger border"
-          style={{ fontWeight: "500" }}
-          title="Xoá đơn hàng đã chọn"
-          onClick={() => {
-            if (
-              window.confirm(
-                `Bạn có chắc muốn xoá ${checkedIds.length} đơn hàng đã chọn?`
-              )
-            ) {
-              // TODO: Gọi API xoá nhiều đơn hàng với checkedIds
-              alert("Đã gọi xoá các đơn hàng: " + checkedIds.join(", "));
-            }
-          }}
-        >
-          <i
-            className="bi bi-trash"
-            style={{ fontSize: 16, marginRight: 6 }}
-          ></i>
-          Xoá ({checkedIds.length})
-        </button>
-      );
-    }
-
     return (
-      <>
-        <button className="btn btn-light border" style={{ fontWeight: "500", color: "#48474b" }}>
-          <Import size={16} /> &ensp; Nhập file
-        </button>
-        <button className="btn btn-light border" style={{ fontWeight: "500", color: "#48474b" }}>
-          <FileUp size={16} /> &ensp; Xuất file
-        </button>
-        <button className="btn btn-light border" style={{ fontWeight: "500", color: "#48474b" }}>
-          <a href="http://localhost:3000/blog/hng-dn-djn-hang"><HelpCircle size={16} color="#22C55E" /></a>
-        </button>
-        <button
-          className="btn btn-outline-secondary border"
-          style={{ fontWeight: "500", color: "#48474b" }}
-          onClick={loadOrders}
-        >
-          <RefreshCw size={16} /> &ensp; Làm mới
-        </button>
-      </>
+      <button
+        className="btn btn-outline-secondary border"
+        style={{ fontWeight: "500", color: "#48474b" }}
+        onClick={loadOrders}
+      >
+        <RefreshCw size={16} /> &ensp; Làm mới
+      </button>
     );
   };
 
@@ -199,14 +151,6 @@ const OrdersPage = () => {
             </div>
             {/* Action buttons */}
             <div className="d-flex align-items-center gap-2 flex-shrink-0 mt-2 mt-md-0">
-              {checkedIds.length > 0 && (
-                <span
-                  className="badge bg-primary"
-                  style={{ fontSize: 14, fontWeight: 500 }}
-                >
-                  Đã chọn: {checkedIds.length}
-                </span>
-              )}
               {renderActionButtons()}
             </div>
           </div>
@@ -229,9 +173,6 @@ const OrdersPage = () => {
             getStatusLabel={getStatusLabel}
             formatCurrency={formatCurrency}
             formatDate={formatDate}
-            checkedIds={checkedIds}
-            setCheckedIds={setCheckedIds}
-            onStatusUpdate={handleStatusUpdate}
             onViewDetail={handleViewDetail}
           />
 

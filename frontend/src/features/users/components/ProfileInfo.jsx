@@ -154,6 +154,7 @@ const ProfileInfo = ({ form, editMode, setEditMode, handleChange, handleSave, sa
       <div style={{ fontSize: 16, marginBottom: 10, display: "flex", alignItems: "center", gap: 8 }}>
         <FaMapMarkerAlt color={iconColor} size={16} style={{ marginRight: 2 }} /> <b>Địa chỉ mặc định:</b>{" "}
         {addresses.find((addr) => addr.is_default)?.location || "---"}
+
       </div>
       <div style={{ fontSize: 16, marginBottom: 10, display: "flex", alignItems: "center", gap: 8 }}>
         <FaSeedling color={iconColor} size={16} style={{ marginRight: 2 }} /> <b>Ngày tạo tài khoản:</b>{" "}

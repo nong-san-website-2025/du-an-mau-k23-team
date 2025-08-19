@@ -1,7 +1,9 @@
 import { CircleDollarSign } from "lucide-react";
-import React from "react";
-import { Card, Button, Spinner, Row, Col } from "react-bootstrap";
-import { FaWallet, FaMoneyBillWave, FaPlusCircle } from "react-icons/fa";
+import React, { useState } from "react";
+import { Card, Button, Spinner, Row, Col, Alert } from "react-bootstrap";
+import { FaWallet, FaMoneyBillWave, FaPlusCircle, FaCheckCircle } from "react-icons/fa";
+import WalletNotifications from './WalletNotifications';
+import './WalletTab.css';
 
 const mainColor = "#4B0082";
 
@@ -88,7 +90,7 @@ export default function WalletTab({
                   style={{ color: mainColor }}
                 />
               ) : walletBalance !== null ? (
-                formatMoney(walletBalance)
+                `${formatMoney(walletBalance)} ₫`
               ) : (
                 "---"
               )}
@@ -96,6 +98,9 @@ export default function WalletTab({
           </div>
         </Card.Body>
       </Card>
+
+      {/* Thông báo yêu cầu đang chờ */}
+      <WalletNotifications />
 
       {/* Nạp tiền */}
       <div style={{ fontWeight: 600, color: mainColor, marginBottom: 10 }}>
@@ -146,7 +151,7 @@ export default function WalletTab({
           />
           <Button
             style={{
-              background: mainColor,
+              background: rechargeLoading ? "#6c757d" : mainColor,
               border: "none",
               borderRadius: 10,
               fontWeight: 700,
@@ -158,16 +163,32 @@ export default function WalletTab({
             onClick={handleRecharge}
             disabled={rechargeLoading}
           >
-            <FaPlusCircle /> {rechargeLoading ? "Đang nạp..." : "Nạp tiền"}
+            {rechargeLoading ? (
+              <>
+                <Spinner animation="border" size="sm" />
+                Đang gửi...
+              </>
+            ) : (
+              <>
+                <FaPlusCircle /> Nạp tiền
+              </>
+            )}
           </Button>
         </Col>
       </Row>
 
+      {/* Thông báo lỗi */}
       {rechargeError && (
-        <div style={{ color: "red", marginBottom: 10 }}>{rechargeError}</div>
+        <Alert variant="danger" className="mt-3 mb-2" style={{ borderRadius: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span>⚠️</span>
+            <span>{rechargeError}</span>
+          </div>
+        </Alert>
       )}
+
       <div style={{ color: "#888", fontSize: 13, marginTop: 8 }}>
-        Số tiền nạp tối thiểu 10.000 ₫, tối đa 300.000.000 ₫/lần.
+        💡 Số tiền nạp tối thiểu 10.000 ₫, tối đa 300.000.000 ₫/lần.
       </div>
     </Card>
   );
