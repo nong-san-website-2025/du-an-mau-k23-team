@@ -132,12 +132,14 @@ export default function ProductsPage() {
         >
           <FileUp size={16} /> &ensp; Xuất file
         </button>
-        <button
+        <a
           className="btn btn-light border"
           style={{ fontWeight: "500", color: "#48474b" }}
+          title="Hướng dẫn sử dụng"
+          href="http://localhost:3000/blog/hng-dn-s-dng-trang-hang-hoa"
         >
-          <HelpCircle size={16} />
-        </button>
+          <HelpCircle size={16} color="#22C55E" />
+        </a>
         <button
           className="btn d-flex align-items-center"
           style={{
@@ -246,9 +248,8 @@ export default function ProductsPage() {
                 {Array.from({ length: totalPages }, (_, i) => (
                   <li
                     key={i}
-                    className={`page-item ${
-                      currentPage === i + 1 ? "active" : ""
-                    }`}
+                    className={`page-item ${currentPage === i + 1 ? "active" : ""
+                      }`}
                   >
                     <button
                       className="page-link"
@@ -259,9 +260,8 @@ export default function ProductsPage() {
                   </li>
                 ))}
                 <li
-                  className={`page-item ${
-                    currentPage === totalPages ? "disabled" : ""
-                  }`}
+                  className={`page-item ${currentPage === totalPages ? "disabled" : ""
+                    }`}
                 >
                   <button
                     className="page-link"
