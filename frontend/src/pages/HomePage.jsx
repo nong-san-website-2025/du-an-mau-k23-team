@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom";
+import { useBanner } from "../features/contexts/BannerContext";
 import a1 from"../assets/image/a1.jpg"
 import a2 from"../assets/image/a2.jpg"
 import a3 from"../assets/image/a3.jpg"
@@ -20,62 +21,7 @@ import {
   CheckCircle,
 } from "lucide-react"
 
-// Dữ liệu banners
-const banners = [
-  {
-    id: 1,
-    title: "Sạch Tuyệt Đối Đẳng Cấp Premium",
-    subtitle: "Trực tiếp từ nông trường đến bàn ăn của bạn",
-    description:
-      "Chúng tôi cam kết mang đến những sản phẩm nông nghiệp tươi ngon, an toàn và chất lượng cao nhất với tiêu chuẩn quốc tế. Được chứng nhận bởi các tổ chức uy tín thế giới.",
-    image: a1,
-    bgGradient: "linear-gradient(135deg, #10b981 0%, #059669 50%, #0d9488 100%)",
-    rating: 4.9,
-    reviews: "15,247",
-    badge: "Chứng nhận USDA Organic",
-    features: ["100% Hữu cơ", "Không hóa chất", "Tươi ngon tự nhiên"],
-  },
-  {
-    id: 2,
-    title: "Công Nghệ Nông Nghiệp 4.0",
-    subtitle: "Ứng dụng AI và IoT trong canh tác hiện đại",
-    description:
-      "Sử dụng công nghệ tiên tiến nhất bao gồm trí tuệ nhân tạo, IoT và blockchain để đảm bảo chất lượng, năng suất và tính bền vững trong sản xuất nông nghiệp.",
-    image: a2,
-    bgGradient: "linear-gradient(135deg, #3b82f6 0%, #6366f1 50%, #8b5cf6 100%)",
-    rating: 4.8,
-    reviews: "8,932",
-    badge: "Công nghệ AI tiên tiến",
-    features: ["Smart Farming", "AI Monitoring", "IoT Sensors"],
-  },
-  {
-    id: 3,
-    title: "Trồng Tự Nhiên Sống An Nhiên",
-    subtitle: "Không hóa chất - Không GMO - Không thuốc trừ sâu",
-    description:
-      "Tất cả sản phẩm đều được trồng theo phương pháp hữu cơ nghiêm ngặt, thân thiện với môi trường và sức khỏe. Được kiểm định bởi các tổ chức chứng nhận quốc tế uy tín.",
-    image: a3,
-    bgGradient: "linear-gradient(135deg, #22c55e 0%, #10b981 50%, #84cc16 100%)",
-    rating: 5.0,
-    reviews: "22,156",
-    badge: "Chứng nhận EU Organic",
-    features: ["Zero Pesticide", "Non-GMO", "Eco-Friendly"],
-  },
-  {
-    id: 4,
-    title: "Giao Hàng Super Premium",
-    subtitle: "Giao hàng trong 2 giờ - Tươi ngon đảm bảo",
-    description:
-      "Hệ thống logistics hiện đại với chuỗi lạnh hoàn hảo, đội ngũ giao hàng chuyên nghiệp và công nghệ theo dõi real-time đảm bảo sản phẩm luôn tươi ngon khi đến tay bạn.",
-    image: a1,
-    bgGradient: "linear-gradient(135deg, #f97316 0%, #ef4444 50%, #ec4899 100%)",
-    rating: 4.9,
-    reviews: "31,428",
-    badge: "Giao hàng 2h Express",
-    features: ["Cold Chain", "Real-time Tracking", "Premium Service"],
-  },
-
-]
+// Dữ liệu banners chuyển sang BannerContext. Chỉ giữ lại phần khác.
 
 const features = [
   {
@@ -136,6 +82,8 @@ const productCategories = [
 ]
 
 export default function HomePage() {
+  const { banners } = useBanner();
+  const activeBanners = banners.filter((b) => b.isActive);
   const [currentBanner, setCurrentBanner] = useState(0);
   const navigate = useNavigate();
   const [wishlist, setWishlist] = useState(() => {
@@ -146,35 +94,41 @@ export default function HomePage() {
     }
   });
 
+  // Reset index when active list changes to avoid out-of-range
   useEffect(() => {
+    setCurrentBanner(0);
+  }, [activeBanners.length]);
+
+  useEffect(() => {
+    if (activeBanners.length === 0) return; // nothing to rotate
     const timer = setInterval(() => {
-      setCurrentBanner((prev) => (prev + 1) % banners.length)
+      setCurrentBanner((prev) => (prev + 1) % activeBanners.length)
     }, 6000)
     return () => clearInterval(timer)
-  }, [])
+  }, [activeBanners.length])
 
   const nextBanner = () => {
-    setCurrentBanner((prev) => (prev + 1) % banners.length)
+    if (activeBanners.length === 0) return;
+    setCurrentBanner((prev) => (prev + 1) % activeBanners.length)
   }
 
   const prevBanner = () => {
-    setCurrentBanner((prev) => (prev - 1 + banners.length) % banners.length)
+    if (activeBanners.length === 0) return;
+    setCurrentBanner((prev) => (prev - 1 + activeBanners.length) % activeBanners.length)
   }
 
-  const currentBannerData = banners[currentBanner]
+  const currentBannerData = activeBanners[currentBanner] || {};
 
   // Thêm vào wishlist và chuyển hướng
   const handleAddToWishlist = (product) => {
     const wishlist = JSON.parse(localStorage.getItem('wishlist') || '[]');
-    // Tạo object đơn giản để lưu
     const item = {
       id: product.title,
       name: product.title,
       image: product.image,
-      price: 100000, // demo, có thể sửa lại nếu có giá
+      price: 100000,
       inStock: true
     };
-    // Kiểm tra trùng
     if (!wishlist.some(p => p.id === item.id)) {
       wishlist.push(item);
       localStorage.setItem('wishlist', JSON.stringify(wishlist));
@@ -212,12 +166,11 @@ export default function HomePage() {
 
               <div className="mb-4">
                 <h1 className="display-3 fw-bold text-dark mb-3 lh-1">
-                  {currentBannerData.title.split(" ").map((word, idx) => (
+                  {(currentBannerData.title || "").split(" ").map((word, idx, arr) => (
                     <span
-                      key={idx}
-                      className={idx === currentBannerData.title.split(" ").length - 1 ? "" : ""}
+                      key={`${word}-${idx}`}
                       style={
-                        idx === currentBannerData.title.split(" ").length - 1
+                        idx === arr.length - 1
                           ? {
                               background: currentBannerData.bgGradient,
                               WebkitBackgroundClip: "text",
@@ -239,7 +192,7 @@ export default function HomePage() {
               </p>
 
               <div className="d-flex flex-wrap gap-2 mb-4">
-                {currentBannerData.features.map((feature, idx) => (
+                {(currentBannerData.features || []).map((feature, idx) => (
                   <span
                     key={idx}
                     className="badge bg-light text-dark px-3 py-2 d-flex align-items-center border"
@@ -284,7 +237,6 @@ export default function HomePage() {
                     style={{ height: "500px", objectFit: "cover", width: "100%", zIndex: 2, position: "relative" }}
                     className="rounded-4"
                   />
-                  {/* Removed overlay gradient to prevent color from covering the image */}
                 </div>
 
                 {/* Rating Card */}
@@ -314,13 +266,13 @@ export default function HomePage() {
                               key={i}
                               size={16}
                               className={
-                                i < Math.floor(currentBannerData.rating)
+                                i < Math.floor(currentBannerData.rating || 0)
                                   ? "text-warning"
-                                  : i < currentBannerData.rating
+                                  : i < (currentBannerData.rating || 0)
                                     ? "text-warning opacity-50"
                                     : "text-muted"
                               }
-                              fill={i < Math.floor(currentBannerData.rating) ? "currentColor" : "none"}
+                              fill={i < Math.floor(currentBannerData.rating || 0) ? "currentColor" : "none"}
                             />
                           ))}
                           <span className="fs-5 fw-bold text-dark ms-2">{currentBannerData.rating}</span>

@@ -17,6 +17,7 @@ export default function AdminLayout() {
     { to: "/admin/staff", label: "Nhân viên" },
     { to: "/admin/wallet", label: "Sổ quỹ" },
     { to: "/admin/reports", label: "Báo cáo" },
+    { to: "/admin/banners", label: "Giao diện" },
     {
       to: "/admin/supports",
       label: "Yêu cầu hỗ trợ",
