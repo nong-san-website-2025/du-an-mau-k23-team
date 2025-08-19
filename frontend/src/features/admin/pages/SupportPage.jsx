@@ -98,15 +98,15 @@ export default function SupportPage() {
 
   return (
     <AdminPageLayout
-      sidebar={
-        <ProductFilterSidebar
-          searchTerm={searchTerm}
-          setSearchTerm={setSearchTerm}
-          selectedCategory={selectedCategory}
-          setSelectedCategory={setSelectedCategory}
-          categories={[{ value: "all", label: "Tất cả" }]}
-        />
-      }
+      // sidebar={
+      //   <ProductFilterSidebar
+      //     searchTerm={searchTerm}
+      //     setSearchTerm={setSearchTerm}
+      //     selectedCategory={selectedCategory}
+      //     setSelectedCategory={setSelectedCategory}
+      //     categories={[{ value: "all", label: "Tất cả" }]}
+      //   />
+      // }
     >
       <div className="bg-white" style={{ minHeight: "100vh" }}>
         {/* Header Section */}

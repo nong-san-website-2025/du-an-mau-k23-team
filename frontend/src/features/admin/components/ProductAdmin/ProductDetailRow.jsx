@@ -16,7 +16,6 @@ export default function ProductDetailRow({ product, getStatusBadge, onEdit, onDe
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 32 }}>
               <div><b>Giá:</b> {Number(product.price).toLocaleString('vi-VN')} VNĐ</div>
               <div><b>Tồn kho:</b> {product.stock}</div>
-              <div><b>Trạng thái:</b> <span className={getStatusBadge(product.status)}>{product.status}</span></div>
             </div>
             <div style={{ marginTop: 8 }}><b>Mô tả:</b> {product.description}</div>
             <div style={{ flex: 1 }}></div>
