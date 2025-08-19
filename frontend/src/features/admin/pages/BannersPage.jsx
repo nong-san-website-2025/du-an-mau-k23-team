@@ -2,7 +2,7 @@
 import { useState } from "react"
 import { Container, Row, Col, Card, Form, Button, Badge, Modal, Alert, Nav } from "react-bootstrap"
 import { FaEdit, FaEye, FaEyeSlash, FaSave, FaTimes, FaImage, FaPalette, FaStar } from "react-icons/fa"
-import { useBanner } from "../../contexts/BannerContext"
+import { useBanner } from "../contexts/BannerContext"
 
 const BannerEditor = ({ banner, onSave, onCancel }) => {
   const [editedBanner, setEditedBanner] = useState({ ...banner })

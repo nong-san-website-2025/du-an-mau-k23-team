@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
-import a1 from "../../assets/image/a1.jpg";
-import a2 from "../../assets/image/a2.jpg";
-import a3 from "../../assets/image/a3.jpg";
+import a1 from "../../../assets/image/a1.jpg";
+import a2 from "../../../assets/image/a2.jpg";
+import a3 from "../../../assets/image/a3.jpg";
 
 
 // 1) Shape of a banner

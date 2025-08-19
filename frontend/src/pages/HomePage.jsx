@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom";
-import { useBanner } from "../features/contexts/BannerContext";
+import { useBanner } from "../features/admin/contexts/BannerContext";
 import a1 from"../assets/image/a1.jpg"
 import a2 from"../assets/image/a2.jpg"
 import a3 from"../assets/image/a3.jpg"
