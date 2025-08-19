@@ -27,6 +27,9 @@ import ProfileSidebar from "../components/ProfileSidebar";
 import ProfileInfo from "../components/ProfileInfo";
 import AddressList from "../components/AddressList";
 import WalletTab from "../components/WalletTab";
+import ChangePassword from "../components/ChangePassword";
+import NotificationSettings from "../components/NotificationSettings";
+import VoucherList from "../components/VoucherList";
 const mainColor = "#2E8B57";
 const accentColor = "#F57C00";
 
@@ -355,20 +358,18 @@ function ProfilePage() {
               />
             )}
             {activeTab === "password" && (
-              <div style={{ fontSize: 16, marginBottom: 10, color: mainColor }}>
-                Chức năng đổi mật khẩu sẽ được bổ sung.
-              </div>
+              <ChangePassword />
             )}
+
             {activeTab === "notification" && (
-              <div style={{ fontSize: 16, marginBottom: 10, color: mainColor }}>
-                Chức năng cài đặt thông báo sẽ được bổ sung.
-              </div>
-            )}
+              <NotificationSettings />)}
+
             {activeTab === "voucher" && (
-              <div style={{ fontSize: 16, marginBottom: 10, color: accentColor }}>
-                Chức năng voucher sẽ được bổ sung.
-              </div>
+            <div style={{ fontSize: 16, marginBottom: 10, color: accentColor }}>
+              <VoucherList />
+            </div>
             )}
+
             {activeTab === "point" && (
               <div style={{ fontSize: 16, marginBottom: 10, color: "#FFD700" }}>
                 <Rewards />

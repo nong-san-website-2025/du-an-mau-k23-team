@@ -239,59 +239,31 @@ export default function Header() {
         className="shadow-sm"
         style={{ position: "sticky", top: 0, zIndex: 999, fontFamily: 'Montserrat, Arial, sans-serif', background: '#f8fafc' }}
       >
-        {/* Top bar */}
-        <div style={greenStyle} className="text-white small py-0" >
+                {/* Top bar */}
+        <div style={greenStyle} className="text-white small py-0">
           <div
             className="container d-flex justify-content-between align-items-center px-2"
             style={{ minHeight: "36px" }}
           >
+            {/* Bên trái: Hotline */}
             <div
               className="d-flex align-items-center"
-              style={{ gap: "2rem", flexWrap: "nowrap" }}
+              style={{ whiteSpace: "nowrap", fontSize: 16, fontWeight: 600 }}
             >
-              <div
-                className="d-flex align-items-center"
-                style={{ whiteSpace: "nowrap", fontSize: 16, fontWeight: 600 }}
-              >
-                <Phone size={16} className="me-1" />
-                <span>Hotline: <b style={{ letterSpacing: 1 }}>1900-1234</b></span>
-              </div>
-              <div
-                className="d-flex align-items-center d-none d-md-flex"
-                style={{ whiteSpace: "nowrap", fontSize: 16, fontWeight: 600 }}
-              >
-                <Mail size={16} className="me-1" />
-                <span>Email: <b style={{ letterSpacing: 1 }}>support@nongsan.vn</b></span>
-              </div>
+              <Phone size={16} className="me-1" />
+              <span>Hotline: <b style={{ letterSpacing: 1 }}>1900-1234</b></span>
             </div>
+
+            {/* Bên phải: Email */}
             <div
-              className="d-flex align-items-center"
-              style={{ gap: "2rem", flexWrap: "nowrap" }}
+              className="d-flex align-items-center d-none d-md-flex"
+              style={{ whiteSpace: "nowrap", fontSize: 16, fontWeight: 600 }}
             >
-              <span
-                className="d-none d-lg-inline"
-                style={{ whiteSpace: "nowrap", fontWeight: 700, fontSize: 15 }}
-              >
-                <span style={{ color: '#fff', background: '#16a34a', borderRadius: 6, padding: '2px 10px' }}>Miễn phí vận chuyển đơn từ 200K</span>
-              </span>
-              <div
-                className="d-flex align-items-center"
-                style={{ whiteSpace: "nowrap", fontWeight: 700, fontSize: 15 }}
-              >
-                <Globe size={16} className="me-1" />
-                <span>Tiếng Việt</span>
-                <ChevronDown size={14} className="ms-1" />
-              </div>
-              <button
-                className="btn btn-link text-white p-0"
-                style={{ boxShadow: "none", flexShrink: 0 }}
-              >
-                <Sun size={16} />
-              </button>
+              <Mail size={16} className="me-1" />
+              <span>Email: <b style={{ letterSpacing: 1 }}>support@nongsan.vn</b></span>
             </div>
           </div>
         </div>
-
         {/* Main header */}
         <div
           className="bg-white border-bottom"
