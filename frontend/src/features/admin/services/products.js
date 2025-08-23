@@ -1,7 +1,8 @@
 import axios from "axios";
 
-const API_URL = "http://localhost:8000/api/products/";
-const CATEGORY_URL = "http://localhost:8000/api/categories/";
+const API_BASE = process.env.REACT_APP_API_URL; // 👈 lấy từ .env
+const API_URL = `${API_BASE}/products/`;
+const CATEGORY_URL = `${API_BASE}/categories/`;
 
 // Hàm tiện ích: thêm token vào header
 const authAxios = () => {
