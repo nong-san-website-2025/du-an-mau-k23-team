@@ -7,7 +7,7 @@ import ProductTable from "../components/ProductAdmin/ProductTable";
 import ProductTableActions from "../components/ProductAdmin/ProductTableActions";
 import ProductAddModal from "../components/ProductAdmin/ProductAddModal";
 
-const API_URL = process.env.REACT_APP_API_URL;
+const API_URL = process.env.REACT_APP_API_URL; // ví dụ: "http://localhost:8000/api"
 
 export default function ProductsPage() {
   const [products, setProducts] = useState([]);
@@ -28,8 +28,15 @@ export default function ProductsPage() {
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      const res = await API_URL.get("/products/"); // dùng API từ services/api.js
-      const data = res.data;
+      const token = localStorage.getItem("token"); // nếu có JWT
+      const res = await fetch(`${API_URL}/products/`, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+      if (!res.ok) throw new Error("Network error");
+      const data = await res.json();
       setProducts(data);
 
       // Lấy category duy nhất từ data
@@ -39,12 +46,10 @@ export default function ProductsPage() {
           unique[prod.category_id] = prod.category_name;
         }
       });
-
       const mapped = Object.entries(unique).map(([value, label]) => ({
         value: Number(value),
         label,
       }));
-
       setCategories([{ value: "all", label: "Tất cả loại hàng" }, ...mapped]);
     } catch (err) {
       console.error("Lỗi khi fetch products:", err);
