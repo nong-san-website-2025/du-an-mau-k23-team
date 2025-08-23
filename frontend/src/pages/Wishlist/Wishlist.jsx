@@ -1,7 +1,3 @@
-// src/pages/Wishlist.jsx
-
-
-
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import a1 from "../../assets/image/a1.jpg";
