@@ -2,9 +2,14 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from django.http import HttpResponse
+
+def home(request):
+    return HttpResponse("Hello, world!")
 
 urlpatterns = [
     path('admin/', admin.site.urls), 
+    path('', home),
     path('api/users/', include('users.urls')),
     path('api/sellers/', include('sellers.urls')),
     path('api/products/', include('products.urls')),
