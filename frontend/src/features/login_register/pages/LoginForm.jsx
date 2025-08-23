@@ -64,8 +64,6 @@ function LoginForm() {
     sendTokenToBackend(response.credential);
   };
 
-  
-
   const sendTokenToBackend = async (token) => {
     console.log("[DEBUG] Sending token to backend:", token);
     try {
@@ -80,9 +78,9 @@ function LoginForm() {
         authLogin({
           token: data.token,
           role: data.role,
-          username: data.username
+          username: data.username,
         });
-        
+
         // Chuyển hướng dựa trên role
         if (data.role === "seller") {
           navigate("/ShopAdmin");
@@ -102,14 +100,28 @@ function LoginForm() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const result = await authLogin(username, password);
+
     if (result.success) {
+      // Lưu user info vào localStorage
+      const userData = {
+        username: username,
+        role: result.is_admin
+          ? "admin"
+          : result.is_seller
+            ? "seller"
+            : "customer",
+        token: result.token, // nếu authLogin trả token
+      };
+      localStorage.setItem("user", JSON.stringify(userData));
+
       await fetchCart();
+
       if (result.is_admin) {
-        navigate('/admin');
+        navigate("/admin");
       } else if (result.is_seller) {
-        navigate('/ShopAdmin');
+        navigate("/ShopAdmin");
       } else {
-        navigate('/');
+        navigate("/");
       }
     } else {
       setError(result.error || "Đăng nhập thất bại");
@@ -133,7 +145,7 @@ function LoginForm() {
       return;
     }
 
-    try { 
+    try {
       const response = await fetch(`${API_URL}/users/register/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -143,7 +155,7 @@ function LoginForm() {
           password: regPassword,
           password2: regPassword2,
           is_seller: isSeller,
-          is_admin: false // Đăng ký chỉ cho phép customer/seller, admin tạo qua backend
+          is_admin: false, // Đăng ký chỉ cho phép customer/seller, admin tạo qua backend
         }),
       });
 
@@ -343,18 +355,25 @@ function LoginForm() {
           <i className="fas fa-lock input-icon-lock"></i>
           <input
             type="password"
-            placeholder="Mật khẩu"  
+            placeholder="Mật khẩu"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
           />
-          <div style={{ display: "flex", alignItems: "center", marginTop: "-10px", gap: "10px" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              marginTop: "-10px",
+              gap: "10px",
+            }}
+          >
             <input
-                    type="checkbox"
-                    checked={isSeller}
-                    onChange={(e) => setIsSeller(e.target.checked)}
-                  />  
-                  <p>Toi dong y voi dieu khoan nay</p>
+              type="checkbox"
+              checked={isSeller}
+              onChange={(e) => setIsSeller(e.target.checked)}
+            />
+            <p>Toi dong y voi dieu khoan nay</p>
           </div>
           <br />
           <button type="submit" className="login-btn">
