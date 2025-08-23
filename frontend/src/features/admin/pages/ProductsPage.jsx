@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
-import { Search, Import, FileUp, HelpCircle, Plus } from "lucide-react";
+import { Search, HelpCircle, Plus } from "lucide-react";
 import AdminPageLayout from "../components/AdminPageLayout";
 import AdminHeader from "../components/AdminHeader";
 import ProductFilterSidebar from "../components/ProductAdmin/ProductSideBar";
 import ProductTable from "../components/ProductAdmin/ProductTable";
 import ProductTableActions from "../components/ProductAdmin/ProductTableActions";
 import ProductAddModal from "../components/ProductAdmin/ProductAddModal";
+
+const API_URL = process.env.REACT_APP_API_URL;
 
 export default function ProductsPage() {
   const [products, setProducts] = useState([]);
@@ -26,9 +28,8 @@ export default function ProductsPage() {
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/products/");
-      if (!res.ok) throw new Error("Network error");
-      const data = await res.json();
+      const res = await API_URL.get("/products/"); // dùng API từ services/api.js
+      const data = res.data;
       setProducts(data);
 
       // Lấy category duy nhất từ data
@@ -44,11 +45,7 @@ export default function ProductsPage() {
         label,
       }));
 
-      // Giữ lại "Tất cả loại hàng" ở đầu
-      setCategories([
-        { value: "all", label: "Tất cả loại hàng" },
-        ...mapped,
-      ]);
+      setCategories([{ value: "all", label: "Tất cả loại hàng" }, ...mapped]);
     } catch (err) {
       console.error("Lỗi khi fetch products:", err);
       setProducts([]);
@@ -85,15 +82,11 @@ export default function ProductsPage() {
                 `Bạn có chắc muốn xoá ${checkedIds.length} sản phẩm đã chọn?`
               )
             ) {
-              // TODO: Gọi API xoá nhiều sản phẩm với checkedIds
               alert("Đã gọi xoá các sản phẩm: " + checkedIds.join(", "));
             }
           }}
         >
-          <i
-            className="bi bi-trash"
-            style={{ fontSize: 16, marginRight: 6 }}
-          ></i>
+          <i className="bi bi-trash" style={{ fontSize: 16, marginRight: 6 }}></i>
           Xoá ({checkedIds.length})
         </button>
       );
@@ -101,12 +94,6 @@ export default function ProductsPage() {
 
     return (
       <>
-        {/* <button className="btn btn-light border" style={{ fontWeight: "500", color: "#48474b" }}>
-          <Import size={16} /> &ensp; Nhập file
-        </button>
-        <button className="btn btn-light border" style={{ fontWeight: "500", color: "#48474b" }}>
-          <FileUp size={16} /> &ensp; Xuất file
-        </button> */}
         <button className="btn btn-light border" style={{ fontWeight: "500", color: "#48474b" }}>
           <HelpCircle size={16} />
         </button>
@@ -129,12 +116,7 @@ export default function ProductsPage() {
   };
 
   return (
-    <AdminPageLayout
-      header={<AdminHeader />}
-      // Không dùng sidebar trái cho trang sản phẩm; đặt filter trên đầu
-      sidebar={null}
-    >
-      {/* Top filter bar */}
+    <AdminPageLayout header={<AdminHeader />} sidebar={null}>
       <ProductFilterSidebar
         variant="top"
         selectedCategory={selectedCategory}
@@ -143,10 +125,8 @@ export default function ProductsPage() {
         onCategoryCreated={fetchProducts}
       />
       <div className="bg-white" style={{ minHeight: "100vh" }}>
-        {/* Header Section */}
         <div className="p-2 border-bottom">
           <div className="d-flex justify-content-between align-items-center mb-0 gap-2 flex-wrap">
-            {/* Thanh tìm kiếm */}
             <div style={{ flex: 1 }}>
               <div className="input-group" style={{ width: 420 }}>
                 <span className="input-group-text bg-white border-end-0">
@@ -161,13 +141,9 @@ export default function ProductsPage() {
                 />
               </div>
             </div>
-            {/* Action buttons */}
             <div className="d-flex align-items-center gap-2 flex-shrink-0 mt-2 mt-md-0">
               {checkedIds.length > 0 && (
-                <span
-                  className="badge bg-primary"
-                  style={{ fontSize: 14, fontWeight: 500 }}
-                >
+                <span className="badge bg-primary" style={{ fontSize: 14, fontWeight: 500 }}>
                   Đã chọn: {checkedIds.length}
                 </span>
               )}
@@ -176,7 +152,6 @@ export default function ProductsPage() {
           </div>
         </div>
 
-        {/* Product Table */}
         <div className="p-1">
           <ProductTable
             products={products}
@@ -194,13 +169,8 @@ export default function ProductsPage() {
             onClose={() => setShowAddModal(false)}
             onSuccess={fetchProducts}
           />
-
-          {/* Pagination */}
           <div className="d-flex justify-content-between align-items-center mt-4">
-            <div className="text-muted">
-              Hiển thị {products.length} sản phẩm
-            </div>
-            {/* TODO: Pagination component riêng */}
+            <div className="text-muted">Hiển thị {products.length} sản phẩm</div>
           </div>
         </div>
       </div>
