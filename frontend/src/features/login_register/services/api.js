@@ -1,8 +1,10 @@
 // src/services/api.js
 import axios from 'axios';
 
+const API_URL = process.env.REACT_APP_API_URL; // Lấy từ .env
+
 const API = axios.create({
-  baseURL: 'http://localhost:8000/api/',
+  baseURL: API_URL, // dùng biến môi trường
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -21,8 +23,6 @@ API.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-export default API;
-
 // Interceptor cho response: Tự động refresh token nếu access token hết hạn
 API.interceptors.response.use(
   (response) => response,
@@ -35,7 +35,7 @@ API.interceptors.response.use(
         const refreshToken = localStorage.getItem('refresh');
         if (!refreshToken) throw new Error('No refresh token');
         // Gọi API refresh token
-        const res = await axios.post('http://localhost:8000/api/users/token/refresh/', {
+        const res = await axios.post(`${API_URL}/users/token/refresh/`, {
           refresh: refreshToken,
         });
         const newAccessToken = res.data.access;
@@ -54,3 +54,5 @@ API.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+export default API;
