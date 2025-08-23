@@ -27,6 +27,7 @@
   color: #22c55e;
 }
 
+/* Old horizontal navbar (kept for reference, no longer used) */
 .admin-navbar {
   background: #22c55e;
   min-height: 45px;
@@ -61,10 +62,10 @@
 .admin-dropdown::after {
   content: "";
   position: absolute;
-  top: 100%;   /* ngay dưới item */
+  top: 100%;
   left: 0;
   width: 100%;
-  height: 40px; /* khoảng cách hover thêm */
+  height: 40px;
 }
 
 .dropdown-menu-custom {
@@ -93,4 +94,109 @@
 
 .dropdown-item-custom:hover {
   background: #f5f5f5;
+}
+
+/* New left sidebar layout */
+.admin-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-main {
+  display: flex;
+  min-height: calc(100vh - 48px); /* below topbar */
+}
+
+.admin-sidebar {
+  width: 240px;
+  background: #fff;
+  border-right: 1px solid #e5e7eb;
+  position: sticky;
+  top: 48px; /* stick under topbar */
+  height: calc(100vh - 48px);
+  overflow: auto;
+  box-shadow: 2px 0 8px #f3f4f6;
+}
+
+.admin-content {
+  flex: 1;
+  padding: 12px;
+  min-width: 0; /* prevent overflow with flex */
+}
+
+.admin-sidemenu {
+  list-style: none;
+  margin: 0;
+  padding: 8px;
+}
+
+.admin-sidemenu-item + .admin-sidemenu-item {
+  margin-top: 4px;
+}
+
+.admin-sidemenu-link {
+  display: block;
+  padding: 10px 12px;
+  color: #022856;
+  text-decoration: none;
+  border-radius: 6px;
+  transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+}
+
+/* Toggle buttons are <button>, keep same look */
+.admin-sidemenu-toggle {
+  width: 100%;
+  background: transparent;
+  border: none;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.admin-sidemenu-link:hover,
+.admin-sidemenu-toggle:hover {
+  background: #f3f4f6;
+}
+
+.admin-sidemenu-link.active,
+.admin-sidemenu-toggle.active {
+  background: #22c55e;
+  color: #fff;
+  box-shadow: 0 2px 8px #22c55e22;
+}
+
+.admin-caret {
+  transition: transform 0.2s ease;
+}
+.admin-caret.rotated {
+  transform: rotate(180deg);
+}
+
+.admin-sidemenu-sub {
+  margin-left: 8px;
+  padding-left: 8px;
+  border-left: 2px solid #eef2f7;
+  padding-top: 4px;
+}
+
+.admin-sidemenu-sublink {
+  display: block;
+  padding: 8px 10px;
+  color: #334155;
+  text-decoration: none;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.admin-sidemenu-sublink:hover {
+  background: #f3f4f6;
+}
+
+.admin-sidemenu-sublink.active {
+  background: #e8f9ef;
+  color: #16a34a;
 }

@@ -97,7 +97,7 @@ const StoreDetail = () => {
       </Row>
 
       {/* Danh sách sản phẩm */}
-      <h4 className="fw-bold mb-4">🛒 Sản phẩm của cửa hàng</h4>
+      <h4 className="fw-bold mb-4">🛒 Sản phẩm của cửa hàng</h4> 
       <Row>
         {store.products && store.products.length > 0 ? (
           store.products.map((product) => (
@@ -145,18 +145,23 @@ const StoreDetail = () => {
                           {Math.round(product.price)?.toLocaleString("vi-VN")} VNĐ
                         </small>
                       )}
-                    </div>
+                    </div>  
                     <Badge bg="secondary" className="mb-2">
                       Còn {product.stock} {product.unit}
                     </Badge>
                   </Card.Body>
                 </Card>
               </Link>
+              
             </Col>
+            
           ))
         ) : (
           <p className="text-muted">Chưa có sản phẩm nào.</p>
         )}
+        <div>
+                  CHu abc
+                </div>
       </Row>
     </Container>
   );

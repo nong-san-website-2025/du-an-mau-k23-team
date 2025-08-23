@@ -160,6 +160,9 @@ const ProductEditModal = ({ open, onClose, product, onSuccess }) => {
                 onChange={handleChange} 
               />
 
+               <label className="pem-label">Giá mua * <span className="text-danger">(bắt buộc)</span></label>
+              <input className="pem-input" name="price" type="number" value="0"  />  
+
               <label className="pem-label">Giá bán * <span className="text-danger">(bắt buộc)</span></label>
               <input className="pem-input" name="price" type="number" value={form.price} onChange={handleChange} required />
 

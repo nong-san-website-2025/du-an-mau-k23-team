@@ -346,6 +346,14 @@ function LoginForm() {
             onChange={(e) => setPassword(e.target.value)}
             required
           />
+          <div style={{ display: "flex", alignItems: "center", marginTop: "-10px", gap: "10px" }}>
+            <input
+                    type="checkbox"
+                    checked={isSeller}
+                    onChange={(e) => setIsSeller(e.target.checked)}
+                  />  
+                  <p>Toi dong y voi dieu khoan nay</p>
+          </div>
           <br />
           <button type="submit" className="login-btn">
             {/* <img src={homeIcon} alt="icon" className="login-icon home-icon"/> */}

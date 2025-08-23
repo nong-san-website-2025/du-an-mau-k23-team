@@ -336,7 +336,7 @@ class UserViewSet(viewsets.ModelViewSet):
     serializer_class = UserSerializer
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
-    
+        
 
 
 class RoleViewSet(viewsets.ModelViewSet):
@@ -425,9 +425,11 @@ class ChangePasswordView(APIView):
     
 
 class EmployeeViewSet(viewsets.ModelViewSet):
-    queryset = CustomUser.objects.filter(is_employee=True)
+    # Filter by Role name since 'role' is a ForeignKey
+    queryset = CustomUser.objects.filter(role__name="employee")
     serializer_class = EmployeeSerializer
     permission_classes = [IsAuthenticated, IsAdmin]
 
     def perform_create(self, serializer):
-        serializer.save(is_employee=True)
+        # EmployeeSerializer.create already sets role = Role(name="employee")
+        serializer.save()

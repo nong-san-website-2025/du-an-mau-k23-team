@@ -3,35 +3,31 @@ from django.db import models
 
 
 class Role(models.Model):
-    name = models.CharField(max_length=50, unique=True)
+    name = models.CharField(max_length=50, unique=True)  # "admin", "seller", "employee", "customer", "support"
+    description = models.TextField(blank=True, null=True)
 
     def __str__(self):
         return self.name
 
 
 class CustomUser(AbstractUser):
-    is_seller = models.BooleanField(default=False)
-    is_admin = models.BooleanField(default=False)  # Quyền admin
-    is_support = models.BooleanField(default=False)  # Quyền hỗ trợ
-    is_locked = models.BooleanField(default=False)  # Khóa tài khoản
-    is_employee = models.BooleanField(default=False)  # Khóa tài khoản
+    ROLE_CHOICES = (
+        ("admin", "Admin"),
+        ("seller", "Seller"),
+        ("employee", "Employee"),
+        ("cashier", "Cashier"),
+        ("chef", "Chef"),
+    )
+    role = models.ForeignKey(Role, on_delete=models.SET_NULL, null=True, blank=True, choices= ROLE_CHOICES)
+
     full_name = models.CharField(max_length=255, blank=True, null=True)
     email = models.EmailField(unique=True)
     avatar = models.ImageField(upload_to='assets/users/', blank=True, null=True)
     phone = models.CharField(max_length=20, blank=True, null=True)
-    last_activity = models.DateTimeField(blank=True, null=True)  # Lịch sử hoạt động
-    note = models.TextField(blank=True, null=True)  # Ghi chú admin
-    tags = models.CharField(max_length=255, blank=True, null=True)  # Tag: shop nổi bật, shop yêu thích
-    reset_code = models.CharField(max_length=6, blank=True, null=True)
+    last_activity = models.DateTimeField(blank=True, null=True)
+    note = models.TextField(blank=True, null=True)
+    tags = models.CharField(max_length=255, blank=True, null=True)
     points = models.IntegerField(default=0)
-
-    def save(self, *args, **kwargs):
-        # Nếu user là superuser thì tự động set is_admin=True
-        if self.is_superuser:
-            self.is_admin = True
-        super().save(*args, **kwargs)
-
-    role = models.ForeignKey(Role, on_delete=models.SET_NULL, null=True, blank=True)
 
     STATUS_CHOICES = (
         ('active', 'Đang hoạt động'),
@@ -44,15 +40,39 @@ class CustomUser(AbstractUser):
         null=True
     )
 
+    def save(self, *args, **kwargs):
+        # Nếu user là superuser thì tự động set role=admin
+        if self.is_superuser and (not self.role or self.role.name != "admin"):
+            admin_role, _ = Role.objects.get_or_create(name="admin")
+            self.role = admin_role
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return self.username
+    
+    @property
+    def is_employee(self):
+        return self.role and self.role.name == "employee"
+
+    @property
+    def is_admin(self):
+        return self.role and self.role.name == "admin"
+
+    @property
+    def is_seller(self):
+        return self.role and self.role.name == "seller"
+
+    @property
+    def is_support(self):
+        return self.role and self.role.name == "support"
+
 
 class Address(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="addresses")
     recipient_name = models.CharField(max_length=100)
     phone = models.CharField(max_length=15)
     location = models.TextField()
-    is_default = models.BooleanField(default=False, blank=True, null=True)  # Cho phép để trống
+    is_default = models.BooleanField(default=False)
 
     def save(self, *args, **kwargs):
         if self.is_default:
@@ -61,14 +81,15 @@ class Address(models.Model):
 
     def __str__(self):
         return f"{self.recipient_name} - {self.location}"
+
+
 class PointHistory(models.Model):
-        user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="point_histories")
-        order_id = models.CharField(max_length=50, blank=True, null=True)
-        points = models.IntegerField()
-        amount = models.IntegerField()  # số tiền đơn hàng
-        date = models.DateTimeField(auto_now_add=True)
-        action = models.CharField(max_length=255, default="Cộng điểm khi mua hàng")
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="point_histories")
+    order_id = models.CharField(max_length=50, blank=True, null=True)
+    points = models.IntegerField()
+    amount = models.IntegerField()  # số tiền đơn hàng
+    date = models.DateTimeField(auto_now_add=True)
+    action = models.CharField(max_length=255, default="Cộng điểm khi mua hàng")
 
-        def __str__(self):
-            return f"{self.user.username} - {self.points} điểm - {self.date}"
-
+    def __str__(self):
+        return f"{self.user.username} - {self.points} điểm - {self.date}"

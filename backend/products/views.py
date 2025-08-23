@@ -7,6 +7,9 @@ from .serializers import ProductSerializer, ProductListSerializer, CategorySeria
 from rest_framework.views import APIView
 from blog.serializers import PostSerializer
 from blog.models import Post
+from rest_framework import generics, permissions
+from reviews.models import Review
+from reviews.serializers import ReviewSerializer
 
 class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Category.objects.all()
@@ -124,3 +127,14 @@ class SearchAPIView(APIView):
             'products': ProductSerializer(products, many=True).data,
             'posts': PostSerializer(posts, many=True).data
         })
+    
+class ReviewListCreateView(generics.ListCreateAPIView):
+    serializer_class = ReviewSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+    def get_queryset(self):
+        product_id = self.kwargs["product_id"]
+        return Review.objects.filter(product_id=product_id)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user, product_id=self.kwargs["product_id"])

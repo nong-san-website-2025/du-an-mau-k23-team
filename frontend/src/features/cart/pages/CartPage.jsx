@@ -144,6 +144,16 @@ function CartPage() {
           >
             Tiến hành thanh toán
           </Button>
+            <Button
+            
+            className="btn-checkout"
+            onClick={() =>
+              navigate("/", { state: { items: selectedItemsData } })
+            }
+          >
+            Tiến tucj mua hang
+          </Button>
+
         </Card>
       </div>
     </div>

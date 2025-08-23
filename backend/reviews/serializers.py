@@ -8,7 +8,7 @@ class ReviewSerializer(serializers.ModelSerializer):
     class Meta:
         model = Review
         fields = "__all__"
-        fields = ["id", "product", "rating", "comment", "created_at", "user"]
+        read_only_fields = ["user"]
 
     def get_user_avatar(self, obj):
     # Nếu user có profile với avatar

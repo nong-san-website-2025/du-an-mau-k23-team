@@ -114,19 +114,23 @@ class CustomUserSerializer(serializers.ModelSerializer):
         fields = ['id', 'username', 'email', 'role', 'role_id']
 
 class EmployeeSerializer(serializers.ModelSerializer):
+    role = RoleSerializer(read_only=True)
+    role_id = serializers.PrimaryKeyRelatedField(queryset=Role.objects.all(), source='role', write_only=True)
+
     class Meta:
         model = CustomUser
-        fields = ["id", "username", "email", "full_name", "phone", "address", "is_employee", "is_locked"]
+        fields = ["id", "username", "email", "full_name", "phone", "role", "role_id", "status"]
 
     def create(self, validated_data):
+        # Mặc định tạo nhân viên với role = "employee"
+        employee_role = Role.objects.get(name="employee")
         user = CustomUser.objects.create_user(
             username=validated_data["username"],
             email=validated_data["email"],
-            password=validated_data.get("password", "123456"), # default
+            password=validated_data.get("password", "123456"),  # default
             full_name=validated_data.get("full_name", ""),
             phone=validated_data.get("phone", ""),
-            address=validated_data.get("address", "")
+            role=employee_role
         )
-        user.is_employee = True
-        user.save()
         return user
+

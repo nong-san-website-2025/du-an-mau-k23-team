@@ -217,6 +217,13 @@ const AddressList = ({
             value={newAddress.phone}
             onChange={e => setNewAddress({ ...newAddress, phone: e.target.value })}
           />
+          
+           <input
+            className="form-control add-form-input"
+            placeholder="email"
+            value={newAddress.phone}
+            onChange={e => setNewAddress({ ...newAddress, phone: e.target.value })}
+          />
           <textarea
             className="form-control add-form-textarea"
             placeholder="Địa chỉ chi tiết"

@@ -131,17 +131,17 @@ export default function ProductsPage() {
   return (
     <AdminPageLayout
       header={<AdminHeader />}
-      sidebar={
-        <ProductFilterSidebar
-          searchTerm={searchTerm}
-          setSearchTerm={setSearchTerm}
-          selectedCategory={selectedCategory}
-          setSelectedCategory={setSelectedCategory}
-          categories={categories}
-          onCategoryCreated={fetchProducts}
-        />
-      }
+      // Không dùng sidebar trái cho trang sản phẩm; đặt filter trên đầu
+      sidebar={null}
     >
+      {/* Top filter bar */}
+      <ProductFilterSidebar
+        variant="top"
+        selectedCategory={selectedCategory}
+        setSelectedCategory={setSelectedCategory}
+        categories={categories}
+        onCategoryCreated={fetchProducts}
+      />
       <div className="bg-white" style={{ minHeight: "100vh" }}>
         {/* Header Section */}
         <div className="p-2 border-bottom">
