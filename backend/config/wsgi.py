@@ -21,7 +21,7 @@ else:
 # --- Tạo User bình thường ---
 if not User.objects.filter(username="khoatest").exists():
     User.objects.create_user(
-        username="khoahuynh",
+        username="khoahuynh133",
         email="khoatest@example.com",
         password="12345",
         is_staff=False,
