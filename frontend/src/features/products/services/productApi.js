@@ -1,4 +1,4 @@
-// Hàm tự động refresh token khi hết hạn và retry request
+const API_URL = process.env.REACT_APP_API_URL;
 export async function fetchWithAuthRetry(url, options = {}) {
   let token = localStorage.getItem('token');
   options.headers = { ...(options.headers || {}), Authorization: `Bearer ${token}` };
@@ -18,13 +18,12 @@ export async function fetchWithAuthRetry(url, options = {}) {
 }
 
 // API Service để kết nối với Django backend
-const API_BASE_URL = 'http://localhost:8000/api';
 
 export const productApi = {
   // Lấy tất cả sản phẩm
   async getAllProducts() {
     try {
-      const response = await fetch(`${API_BASE_URL}/products/`);
+      const response = await fetch(`${API_URL}/products/`);
       if (!response.ok) {
         throw new Error('Không thể tải dữ liệu sản phẩm');
       }
@@ -38,7 +37,7 @@ export const productApi = {
   // Lấy sản phẩm theo ID
  async getProduct(id) {
   try {
-    const response = await fetch(`${API_BASE_URL}/products/${id}/`);
+    const response = await fetch(`${API_URL}/products/${id}/`);
     if (!response.ok) {
       throw new Error('Không thể tải thông tin sản phẩm');
     }
@@ -62,7 +61,7 @@ export const productApi = {
  async createProduct(productData) {
 
   try {
-    const response = await fetch(`${API_BASE_URL}/products/`, {
+    const response = await fetch(`${API_URL}/products/`, {
       method: 'POST',
       headers: {
         ...productApi.getAuthHeaders(),
@@ -97,7 +96,7 @@ export const productApi = {
         options.headers['Content-Type'] = 'application/json';
         options.body = JSON.stringify(productData);
       }
-      const response = await fetch(`${API_BASE_URL}/products/${id}/`, options);
+      const response = await fetch(`${API_URL}/products/${id}/`, options);
       if (!response.ok) {
         throw new Error('Không thể cập nhật sản phẩm');
       }
@@ -111,7 +110,7 @@ export const productApi = {
   // Xóa sản phẩm
   async deleteProduct(id) {
     try {
-      const response = await fetch(`${API_BASE_URL}/products/${id}/`, {
+      const response = await fetch(`${API_URL}/products/${id}/`, {
         method: 'DELETE',
         headers: {
           ...productApi.getAuthHeaders(),
@@ -131,7 +130,7 @@ export const productApi = {
 // Lấy tất cả categories
 async getCategories() {
   try {
-    const response = await fetch(`${API_BASE_URL}/products/categories/`);
+    const response = await fetch(`${API_URL}/products/categories/`);
     if (!response.ok) {
       throw new Error('Không thể tải danh mục');
     }
@@ -146,7 +145,7 @@ async getCategories() {
   // Lấy subcategories của một category
   async getSubcategories(categoryId) {
     try {
-       const response = await fetch(`${API_BASE_URL}/products/categories/${categoryId}/subcategories/`);
+       const response = await fetch(`${API_URL}/products/categories/${categoryId}/subcategories/`);
       if (!response.ok) {
         throw new Error('Không thể tải danh mục con');
       }
@@ -160,7 +159,7 @@ async getCategories() {
   // Lấy products của một category
   async getProductsByCategory(categoryId, subcategory = null) {
     try {
-      let url = `${API_BASE_URL}/products/categories/${categoryId}/products/`;
+      let url = `${API_URL}/products/categories/${categoryId}/products/`;
       if (subcategory) {
         url += `?subcategory=${encodeURIComponent(subcategory)}`;
       }
@@ -241,7 +240,7 @@ async getCategories() {
       if (filters.is_best_seller) params.append('is_best_seller', filters.is_best_seller);
       if (filters.ordering) params.append('ordering', filters.ordering);
 
-      const response = await fetch(`${API_BASE_URL}/products/?${params.toString()}`);
+      const response = await fetch(`${API_URL}/products/?${params.toString()}`);
       if (!response.ok) {
         throw new Error('Không thể tìm kiếm sản phẩm');
       }
@@ -255,7 +254,7 @@ async getCategories() {
   // Lấy sản phẩm nổi bật
   async getFeaturedProducts() {
     try {
-      const response = await fetch(`${API_BASE_URL}/products/featured/`);
+      const response = await fetch(`${API_URL}/products/featured/`);
       if (!response.ok) {
         throw new Error('Không thể tải sản phẩm nổi bật');
       }
@@ -269,7 +268,7 @@ async getCategories() {
   // Lấy danh sách người bán
   async getSellers() {
     try {
-      const response = await fetchWithAuthRetry(`${API_BASE_URL}/sellers/`);
+      const response = await fetchWithAuthRetry(`${API_URL}/sellers/`);
       if (!response.ok) {
         throw new Error('Không thể tải danh sách người bán');
       }
@@ -284,7 +283,7 @@ async getCategories() {
   async refreshToken() {
     const refresh = localStorage.getItem('refresh');
     if (!refresh) throw new Error('No refresh token');
-    const response = await fetch(`${API_BASE_URL}/token/refresh/`, {
+    const response = await fetch(`${API_URL}/token/refresh/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refresh }),

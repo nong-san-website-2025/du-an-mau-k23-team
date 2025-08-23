@@ -1,9 +1,7 @@
-// API Configuration
-const API_BASE_URL = 'http://localhost:8000/api';
-
+const API_URL = process.env.REACT_APP_API_URL;
 class ApiService {
   constructor() {
-    this.baseURL = API_BASE_URL;
+    this.baseURL = API_URL;
   }
 
   async request(endpoint, options = {}) {
