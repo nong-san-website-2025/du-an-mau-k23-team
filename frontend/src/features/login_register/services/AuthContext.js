@@ -4,54 +4,41 @@ import axios from 'axios';
 const AuthContext = createContext();
 
 export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
+  return useContext(AuthContext);
 };
 
-// Lấy baseURL từ .env
-const API_URL = process.env.REACT_APP_API_URL;
+const API_URL = process.env.REACT_APP_API_URL; // từ .env
 
-// Tạo một instance axios chung cho toàn app
+// Axios instance dùng chung
 const api = axios.create({
   baseURL: API_URL,
-  timeout: 10000,
   headers: { 'Content-Type': 'application/json' },
 });
 
-// Gắn access token vào mọi request
+// Gắn token vào header
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
-    if (token) {
-      config.headers['Authorization'] = `Bearer ${token}`;
-    }
+    if (token) config.headers['Authorization'] = `Bearer ${token}`;
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// Hàm login dùng chung (thay cho file auth.js)
+// Login function
 const login = async (username, password) => {
   try {
     const { data } = await api.post('users/login/', { username, password });
-    // data: { access, refresh, username, email, is_admin, is_seller }
+    // Lưu token + role vào localStorage
     localStorage.setItem('token', data.access);
-    localStorage.setItem('refresh', data.refresh); // Lưu refresh token
+    localStorage.setItem('refresh', data.refresh);
     localStorage.setItem('username', data.username);
     localStorage.setItem('is_admin', data.is_admin);
     localStorage.setItem('is_seller', data.is_seller);
-    return {
-      success: true,
-      ...data,
-    };
-  } catch (error) {
-    return {
-      success: false,
-      error: error.response?.data?.detail || 'Đăng nhập thất bại.',
-    };
+
+    return { success: true, ...data };
+  } catch (err) {
+    return { success: false, error: err.response?.data?.detail || 'Login failed' };
   }
 };
 
@@ -60,23 +47,18 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Load info từ localStorage
     const token = localStorage.getItem('token');
     const username = localStorage.getItem('username');
     const is_admin = localStorage.getItem('is_admin') === 'true';
     const is_seller = localStorage.getItem('is_seller') === 'true';
+
     if (token && username) {
-      setUser({
-        token,
-        username,
-        is_admin,
-        is_seller,
-        isAuthenticated: true,
-      });
+      setUser({ token, username, is_admin, is_seller, isAuthenticated: true });
     }
     setLoading(false);
   }, []);
 
-  // Đăng nhập: gọi login, cập nhật context
   const handleLogin = async (username, password) => {
     const result = await login(username, password);
     if (result.success) {
@@ -100,15 +82,12 @@ export const AuthProvider = ({ children }) => {
     user,
     login: handleLogin,
     logout,
-    isAuthenticated: () => user?.isAuthenticated,
+    isAuthenticated: () => !!user?.isAuthenticated,
     isAdmin: () => user?.is_admin,
+    isSeller: () => user?.is_seller,
+    api,
     loading,
-    api, // axios instance dùng chung
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
