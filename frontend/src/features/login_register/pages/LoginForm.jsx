@@ -67,7 +67,7 @@ function LoginForm() {
   const sendTokenToBackend = async (token) => {
     console.log("[DEBUG] Sending token to backend:", token);
     try {
-      const res = await fetch("/api/users/google-login/", {
+      const res = await fetch("/users/google-login/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token }),
@@ -132,7 +132,7 @@ function LoginForm() {
     }
 
     try {
-      const response = await fetch("/api/users/register/", {
+      const response = await fetch("/users/register/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -184,7 +184,7 @@ function LoginForm() {
     }
     setForgotEmailError("");
     try {
-      const response = await fetch("/api/users/forgot-password/", {
+      const response = await fetch("/users/forgot-password/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: forgotEmail }),
@@ -237,7 +237,7 @@ function LoginForm() {
       return;
     }
     try {
-      const response = await fetch("/api/users/verify-code/", {
+      const response = await fetch("/users/verify-code/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: forgotEmail, code: codeString }),
@@ -276,7 +276,7 @@ function LoginForm() {
       return;
     }
     try {
-      const response = await fetch("/api/users/reset-password/", {
+      const response = await fetch("/users/reset-password/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

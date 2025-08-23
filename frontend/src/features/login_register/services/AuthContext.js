@@ -11,9 +11,12 @@ export const useAuth = () => {
   return context;
 };
 
+// Lấy baseURL từ .env
+const API_URL = process.env.REACT_APP_API_URL;
+
 // Tạo một instance axios chung cho toàn app
 const api = axios.create({
-  baseURL: 'http://localhost:8000/api/',
+  baseURL: API_URL,
   timeout: 10000,
   headers: { 'Content-Type': 'application/json' },
 });
@@ -35,11 +38,11 @@ const login = async (username, password) => {
   try {
     const { data } = await api.post('users/login/', { username, password });
     // data: { access, refresh, username, email, is_admin, is_seller }
-  localStorage.setItem('token', data.access);
-  localStorage.setItem('refresh', data.refresh); // Lưu refresh token
-  localStorage.setItem('username', data.username);
-  localStorage.setItem('is_admin', data.is_admin);
-  localStorage.setItem('is_seller', data.is_seller);
+    localStorage.setItem('token', data.access);
+    localStorage.setItem('refresh', data.refresh); // Lưu refresh token
+    localStorage.setItem('username', data.username);
+    localStorage.setItem('is_admin', data.is_admin);
+    localStorage.setItem('is_seller', data.is_seller);
     return {
       success: true,
       ...data,
