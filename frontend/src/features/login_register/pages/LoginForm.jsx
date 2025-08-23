@@ -9,6 +9,8 @@ import { useCart } from "../../cart/services/CartContext";
 import { useAuth } from "../services/AuthContext";
 // import { authApi } from "../services/authApi";
 
+const API_URL = process.env.REACT_APP_API_URL;
+
 function LoginForm() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -67,7 +69,7 @@ function LoginForm() {
   const sendTokenToBackend = async (token) => {
     console.log("[DEBUG] Sending token to backend:", token);
     try {
-      const res = await fetch("/users/google-login/", {
+      const res = await fetch(`${API_URL}/users/google-login/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token }),
@@ -132,7 +134,7 @@ function LoginForm() {
     }
 
     try {
-      const response = await fetch("/users/register/", {
+      const response = await fetch(`${API_URL}/users/register/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -184,7 +186,7 @@ function LoginForm() {
     }
     setForgotEmailError("");
     try {
-      const response = await fetch("/users/forgot-password/", {
+      const response = await fetch(`${API_URL}/forgot-password/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: forgotEmail }),
