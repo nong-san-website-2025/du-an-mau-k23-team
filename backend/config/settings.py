@@ -39,6 +39,11 @@ INSTALLED_APPS = [
     "users", "sellers", "products", "reviews",
     "cart", "orders", "payments", "store",
     "blog", "wallet",
+
+    # Cloudinary
+
+    'cloudinary',
+    'cloudinary_storage',
 ]
 
 # --- Email
@@ -142,6 +147,14 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+
+CLOUDINARY_STORAGE = {
+    'CLOUD_NAME': os.getenv("CLOUDINARY_CLOUD_NAME", "dwsjnkn9c"),
+    'API_KEY': os.getenv("CLOUDINARY_API_KEY", "967357934317834"),
+    'API_SECRET': os.getenv("CLOUDINARY_API_SECRET", "t-BweAUOngVkY6GBvMNpc1IYJdg"),
+}
+
+DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 
 # --- CORS & CSRF
 CORS_ALLOW_CREDENTIALS = True
