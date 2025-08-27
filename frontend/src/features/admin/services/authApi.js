@@ -4,13 +4,13 @@ const API_BASE = process.env.REACT_APP_API_URL; // 👈 lấy từ .env
 
 // Lưu token vào localStorage
 function saveTokens(access, refresh) {
-  localStorage.setItem("access_token", access);
+  localStorage.setItem("token", access);
   localStorage.setItem("refresh_token", refresh);
 }
 
 // Xóa token (logout)
 function clearTokens() {
-  localStorage.removeItem("access_token");
+  localStorage.removeItem("token");
   localStorage.removeItem("refresh_token");
 }
 
@@ -56,6 +56,6 @@ export const authApi = {
 
   // Kiểm tra đang đăng nhập hay không
   isAuthenticated: () => {
-    return !!localStorage.getItem("access_token");
+    return !!localStorage.getItem("token");
   },
 };

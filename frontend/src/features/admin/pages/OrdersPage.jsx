@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { Search, RefreshCw } from "lucide-react";
 import adminApi from "../services/adminApi";
 import AdminPageLayout from "../components/AdminPageLayout";
-import AdminHeader from "../components/AdminHeader";
 import OrderFilterSidebar from "../components/OrderAdmin/OrderFilterSidebar";
 import OrderTable from "../components/OrderAdmin/OrderTable";
 
@@ -119,7 +118,6 @@ const OrdersPage = () => {
 
   return (
     <AdminPageLayout
-      header={<AdminHeader />}
       sidebar={
         <OrderFilterSidebar
           statusFilter={statusFilter}

@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import ProductTableRow from "./ProductTableRow";
 import ProductDetailRow from "./ProductDetailRow";
 import { productApi } from "../../../products/services/productApi";
@@ -28,8 +29,7 @@ export default function ProductTable({
   };
 
   const handleDelete = async (product) => {
-    if (!window.confirm(`Bạn có chắc muốn xoá sản phẩm "${product.name}"?`))
-      return;
+    if (!window.confirm(`Bạn có chắc muốn xoá sản phẩm "${product.name}"?`)) return;
     setLoadingAction(true);
     try {
       await productApi.deleteProduct(product.id);
@@ -58,61 +58,78 @@ export default function ProductTable({
     else window.location.reload();
   };
 
+  const filtered = products.filter((p) => {
+    const byKeyword = !searchTerm || p.name?.toLowerCase().includes(searchTerm.toLowerCase());
+    const byCategory = selectedCategory === "all" || String(p.category_id) === String(selectedCategory);
+    return byKeyword && byCategory;
+  });
+
   return (
     <>
-      <table className="table table-hover align-middle">
-        <thead>
-          <tr>
-            <th>
-              <input
-                type="checkbox"
-                checked={checkedIds.length === products.length && products.length > 0}
-                onChange={(e) => {
-                  if (e.target.checked) setCheckedIds(products.map((p) => p.id));
-                  else setCheckedIds([]);
-                }}
-              />
-            </th>
-            <th>Mã sản phẩm</th>
-            <th>Tên sản phẩm</th>
-            <th>Danh mục</th>
-            <th>Giá</th>
-            <th>Tồn kho</th>
-          </tr>
-        </thead>
-        <tbody>
-          {products.map((product) => (
-            <React.Fragment key={product.id}>
-              <ProductTableRow
-                product={product}
-                expanded={expandedProductId === product.id}
-                onExpand={() => handleExpand(product.id)}
-                onDelete={() => handleDelete(product)}
-                onEdit={() => handleEdit(product)}
-                getStatusBadge={getStatusBadge}
-                checked={checkedIds.includes(product.id)}
-                onCheck={() => {
-                  if (checkedIds.includes(product.id))
-                    setCheckedIds(checkedIds.filter((id) => id !== product.id));
-                  else setCheckedIds([...checkedIds, product.id]);
-                }}
-                isActive={activeRowId === product.id} // ✅ truyền vào
-              />
-              {expandedProductId === product.id && (
-                <ProductDetailRow
-
-                  product={product}
-                  getStatusBadge={getStatusBadge}
-                  onEdit={() => handleEdit(product)}
-                  onDelete={() => handleDelete(product)}
-                  loadingAction={loadingAction}
-                  isEditing={false}
+      <div className="table-responsive rounded border">
+        <table className="table align-middle m-0">
+          <thead className="table-light">
+            <tr>
+              <th style={{ width: 44 }}>
+                <input
+                  type="checkbox"
+                  checked={checkedIds.length === filtered.length && filtered.length > 0}
+                  onChange={(e) => {
+                    if (e.target.checked) setCheckedIds(filtered.map((p) => p.id));
+                    else setCheckedIds([]);
+                  }}
                 />
+              </th>
+              <th style={{ width: 110 }}>Mã sản phẩm</th>
+              <th>Tên sản phẩm</th>
+              <th>Danh mục</th>
+              <th style={{ width: 150 }}>Giá</th>
+              <th style={{ width: 110 }}>Tồn kho</th>
+            </tr>
+          </thead>
+          <tbody>
+            <AnimatePresence initial={false}>
+              {filtered.map((product) => (
+                <React.Fragment key={product.id}>
+                  <ProductTableRow
+                    product={product}
+                    expanded={expandedProductId === product.id}
+                    onExpand={() => handleExpand(product.id)}
+                    onDelete={() => handleDelete(product)}
+                    onEdit={() => handleEdit(product)}
+                    getStatusBadge={getStatusBadge}
+                    checked={checkedIds.includes(product.id)}
+                    onCheck={() => {
+                      if (checkedIds.includes(product.id))
+                        setCheckedIds(checkedIds.filter((id) => id !== product.id));
+                      else setCheckedIds([...checkedIds, product.id]);
+                    }}
+                    isActive={activeRowId === product.id}
+                  />
+                  {expandedProductId === product.id && (
+                    <ProductDetailRow
+                      product={product}
+                      getStatusBadge={getStatusBadge}
+                      onEdit={() => handleEdit(product)}
+                      onDelete={() => handleDelete(product)}
+                      loadingAction={loadingAction}
+                      isEditing={false}
+                    />
+                  )}
+                </React.Fragment>
+              ))}
+              {filtered.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="text-center text-muted py-4">
+                    {loading ? "Đang tải..." : "Không có sản phẩm phù hợp"}
+                  </td>
+                </tr>
               )}
-            </React.Fragment>
-          ))}
-        </tbody>
-      </table>
+            </AnimatePresence>
+          </tbody>
+        </table>
+      </div>
+
       <ProductEditModal
         open={showEditModal}
         onClose={() => setShowEditModal(false)}

@@ -1,33 +1,74 @@
 from rest_framework.response import Response
 from rest_framework import status as drf_status
 from rest_framework.views import APIView
-
-class SellerRejectAPIView(APIView):
-    def post(self, request, pk):
-        from .models import Seller
-        try:
-            seller = Seller.objects.get(pk=pk, status="pending")
-        except Seller.DoesNotExist:
-            return Response({"detail": "Seller not found or already processed."}, status=drf_status.HTTP_404_NOT_FOUND)
-        seller.status = "rejected"
-        seller.save()
-        return Response({"detail": "Seller rejected."}, status=drf_status.HTTP_200_OK)
 from rest_framework.response import Response
 from rest_framework import status as drf_status
 from rest_framework.views import APIView
 from rest_framework import generics
 from .models import Seller
 from .serializers import SellerListSerializer, SellerDetailSerializer, SellerRegisterSerializer
+from rest_framework import viewsets, permissions
+from .models import Seller, Shop, Product, Order, Voucher
+from .serializers import SellerSerializer,  ShopSerializer, ProductSerializer, OrderSerializer, VoucherSerializer
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework.decorators import api_view
+from django.contrib.auth.models import User
 
-class SellerApproveAPIView(APIView):
+class SellerRejectAPIView(APIView):
     def post(self, request, pk):
         try:
             seller = Seller.objects.get(pk=pk, status="pending")
         except Seller.DoesNotExist:
-            return Response({"detail": "Seller not found or already approved."}, status=drf_status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"detail": "Seller not found or already processed."},
+                status=drf_status.HTTP_404_NOT_FOUND,
+            )
+
+        seller.status = "rejected"
+        seller.save()
+
+        # ❌ Không đổi role user, họ vẫn là customer
+        return Response(
+            {"detail": "Seller rejected."}, status=drf_status.HTTP_200_OK
+        )
+
+
+
+class SellerApproveAPIView(APIView):
+    def post(self, request, pk):
+        from users.models import Role  # import Role riêng của bạn
+
+        try:
+            seller = Seller.objects.get(pk=pk, status="pending")
+        except Seller.DoesNotExist:
+            return Response(
+                {"detail": "Seller not found or already approved."},
+                status=drf_status.HTTP_404_NOT_FOUND,
+            )
+
+        # Đổi trạng thái seller
         seller.status = "approved"
         seller.save()
-        return Response({"detail": "Seller approved."}, status=drf_status.HTTP_200_OK)
+
+        # 🔥 Đổi role user sang "seller"
+        try:
+            seller_role = Role.objects.get(name="seller")
+        except Role.DoesNotExist:
+            return Response(
+                {"detail": "Role 'seller' chưa tồn tại."},
+                status=drf_status.HTTP_400_BAD_REQUEST,
+            )
+
+        user = seller.user
+        user.role = seller_role
+        user.save(update_fields=["role"])
+
+        return Response(
+            {"detail": "Seller approved & user role updated."},
+            status=drf_status.HTTP_200_OK,
+        )
+
 
 
 
@@ -41,10 +82,6 @@ class SellerRegisterAPIView(generics.CreateAPIView):
 
     def perform_create(self, serializer):
         seller = serializer.save()
-        # Cập nhật is_seller cho user
-        user = seller.user
-        user.is_seller = True
-        user.save()
 
 class SellerPendingListAPIView(generics.ListAPIView):
     serializer_class = SellerListSerializer
@@ -54,15 +91,6 @@ class SellerPendingListAPIView(generics.ListAPIView):
 class SellerDetailAPIView(generics.RetrieveAPIView):
     queryset = Seller.objects.all()
     serializer_class = SellerDetailSerializer
-
-from rest_framework import viewsets, permissions
-from .models import Seller, Shop, Product, Order, Voucher
-from .serializers import SellerSerializer,  ShopSerializer, ProductSerializer, OrderSerializer, VoucherSerializer
-from rest_framework.response import Response
-from rest_framework import status
-from rest_framework.decorators import api_view
-from django.contrib.auth.models import User
-
 
 
 @api_view(['GET'])

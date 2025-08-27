@@ -2,11 +2,10 @@ import { useEffect, useState } from "react";
 import { Search, Check, X } from "lucide-react";
 import axios from "axios";
 import AdminPageLayout from "../components/AdminPageLayout";
-import ProductFilterSidebar from "../components/ProductAdmin/ProductSideBar"; // Tái sử dụng Sidebar
-import { Spinner } from "react-bootstrap"; // Hoặc component loading tuỳ bạn
+import { Spinner } from "react-bootstrap";
 
 const api = axios.create({
-  baseURL: "http://localhost:8000",
+  baseURL: process.env.REACT_APP_API_URL, // lấy từ .env
 });
 
 function getAuthHeaders() {
@@ -18,7 +17,6 @@ export default function SupportPage() {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("all");
 
   useEffect(() => {
     fetchRequests();
@@ -27,7 +25,7 @@ export default function SupportPage() {
   function formatMoney(amount) {
     const num = parseFloat(amount);
     if (isNaN(num)) return "0";
-    return num.toLocaleString("en-US"); // ngăn cách 3 số bằng dấu phẩy
+    return num.toLocaleString("en-US");
   }
 
   const getStatusLabel = (status) => {
@@ -46,7 +44,7 @@ export default function SupportPage() {
   const fetchRequests = async () => {
     setLoading(true);
     try {
-      const res = await api.get("/api/admin_wallet_requests/", {
+      const res = await api.get("/admin_wallet_requests/", {
         headers: getAuthHeaders(),
       });
       setRequests(res.data);
@@ -60,7 +58,7 @@ export default function SupportPage() {
 
   const approve = async (id) => {
     await api.post(
-      `/api/admin_wallet_requests/${id}/approve/`,
+      `/admin_wallet_requests/${id}/approve/`,
       {},
       { headers: getAuthHeaders() }
     );
@@ -70,7 +68,7 @@ export default function SupportPage() {
 
   const reject = async (id) => {
     await api.post(
-      `/api/admin_wallet_requests/${id}/reject/`,
+      `/admin_wallet_requests/${id}/reject/`,
       {},
       { headers: getAuthHeaders() }
     );
@@ -97,19 +95,8 @@ export default function SupportPage() {
   };
 
   return (
-    <AdminPageLayout
-      // sidebar={
-      //   <ProductFilterSidebar
-      //     searchTerm={searchTerm}
-      //     setSearchTerm={setSearchTerm}
-      //     selectedCategory={selectedCategory}
-      //     setSelectedCategory={setSelectedCategory}
-      //     categories={[{ value: "all", label: "Tất cả" }]}
-      //   />
-      // }
-    >
+    <AdminPageLayout>
       <div className="bg-white" style={{ minHeight: "100vh" }}>
-        {/* Header Section */}
         <div className="p-2 border-bottom">
           <div className="d-flex justify-content-between align-items-center gap-2 flex-wrap">
             <div style={{ flex: 1 }}>
@@ -129,7 +116,6 @@ export default function SupportPage() {
           </div>
         </div>
 
-        {/* Table Section */}
         <div className="p-3">
           {loading ? (
             <div className="d-flex justify-content-center p-5">

@@ -48,7 +48,7 @@ export default function SellerRegisterPage() {
       // Gửi yêu cầu đăng ký seller, trạng thái mặc định là "pending"
       const token = localStorage.getItem("token");
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      const res = await fetch("http://localhost:8000/api/sellers/register/", {
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/sellers/register/`, {
         method: "POST",
         body: formData,
         headers,
@@ -56,6 +56,8 @@ export default function SellerRegisterPage() {
       if (!res.ok) throw new Error("Đăng ký thất bại");
       setSuccess(true);
       setForm({ store_name: "", bio: "", address: "", phone: "", image: null });
+      // đánh dấu trạng thái chờ duyệt để Header hiện 'Đang chờ duyệt'
+      localStorage.setItem("is_seller", "true");
     } catch (err) {
       setError(err.message || "Có lỗi xảy ra");
     } finally {

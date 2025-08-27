@@ -29,7 +29,7 @@ class UserSerializer(serializers.ModelSerializer):
         fields = [
             "id", "username", "email", "avatar",
             "full_name", "phone", "is_seller",  
-            "is_admin", "is_support", "points", 
+            "is_admin", "points", 
             "history", "default_address"
         ]
 

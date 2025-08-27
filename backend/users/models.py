@@ -4,21 +4,14 @@ from django.db import models
 
 class Role(models.Model):
     name = models.CharField(max_length=50, unique=True)  # "admin", "seller", "employee", "customer", "support"
-    description = models.TextField(blank=True, null=True)
 
     def __str__(self):
         return self.name
 
 
 class CustomUser(AbstractUser):
-    ROLE_CHOICES = (
-        ("admin", "Admin"),
-        ("seller", "Seller"),
-        ("employee", "Employee"),
-        ("cashier", "Cashier"),
-        ("chef", "Chef"),
-    )
-    role = models.ForeignKey(Role, on_delete=models.SET_NULL, null=True, blank=True, choices= ROLE_CHOICES)
+
+    role = models.ForeignKey(Role, on_delete=models.SET_NULL, null=True, blank=True,default="customer" )
 
     full_name = models.CharField(max_length=255, blank=True, null=True)
     email = models.EmailField(unique=True)
@@ -41,30 +34,29 @@ class CustomUser(AbstractUser):
     )
 
     def save(self, *args, **kwargs):
-        # Nếu user là superuser thì tự động set role=admin
+        # Nếu superuser thì auto gán role=admin
         if self.is_superuser and (not self.role or self.role.name != "admin"):
             admin_role, _ = Role.objects.get_or_create(name="admin")
             self.role = admin_role
+        # Nếu user thường chưa có role thì gán mặc định là "customer"
+        if not self.role and not self.is_superuser:
+            customer_role, _ = Role.objects.get_or_create(name="customer")
+            self.role = customer_role
         super().save(*args, **kwargs)
 
     def __str__(self):
         return self.username
-    
-    @property
-    def is_employee(self):
-        return self.role and self.role.name == "employee"
 
+    # 👇 Các property này mặc định False nếu không phải role tương ứng
     @property
     def is_admin(self):
-        return self.role and self.role.name == "admin"
+        return self.is_superuser or (self.role and self.role.name == "admin")
 
     @property
     def is_seller(self):
         return self.role and self.role.name == "seller"
 
-    @property
-    def is_support(self):
-        return self.role and self.role.name == "support"
+    
 
 
 class Address(models.Model):

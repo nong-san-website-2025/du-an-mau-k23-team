@@ -200,3 +200,12 @@
   background: #e8f9ef;
   color: #16a34a;
 }
+
+.admin-main a {
+  text-decoration: none;  /* bỏ gạch chân */
+  color: inherit; 
+}
+
+.admin-main div {         /* full chiều cao */           /* màu nền sidebar */
+  
+}

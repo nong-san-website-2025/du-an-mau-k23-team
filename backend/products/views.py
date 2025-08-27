@@ -10,10 +10,12 @@ from blog.models import Post
 from rest_framework import generics, permissions
 from reviews.models import Review
 from reviews.serializers import ReviewSerializer
+from rest_framework.permissions import IsAuthenticated
 
-class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
+class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
+    permission_classes = [IsAuthenticated]
 
     @action(detail=True, methods=['get'])
     def subcategories(self, request, pk=None):

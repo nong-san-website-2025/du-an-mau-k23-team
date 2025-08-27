@@ -1,0 +1,27 @@
+.sidebar a {
+  text-decoration: none;  /* bỏ gạch chân */
+  color: inherit;         /* giữ màu mặc định của menu */
+}
+
+.ant-menu-item-selected {
+  background-color: #b3ffb3  !important; /* màu nền khi active */
+  color: rgb(34, 197, 94) !important;               /* màu chữ khi active */
+  border-radius: 6px;                   /* bo góc nhẹ cho đẹp */
+}
+
+.ant-menu-submenu-title {
+  font-weight: 500; /* chữ đậm hơn */
+  color: #333;      /* màu chữ mặc định */
+}
+
+/* Khi hover vào submenu */
+.ant-menu-submenu-title:hover {
+  background-color: #b3ffb3 !important; /* nền xanh nhạt */
+  color: rgb(34, 197, 94) !important;            /* chữ xanh */
+}
+
+.ant-menu-submenu-open > .ant-menu-submenu-title {
+  background-color: #fff !important; /* nền xanh nhạt hơn */
+  color: rgb(34, 197, 94) !important;
+  font-weight: 600;
+}

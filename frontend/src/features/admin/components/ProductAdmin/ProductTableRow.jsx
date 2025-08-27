@@ -1,5 +1,5 @@
-
 import React, { useState } from "react";
+import { motion } from "framer-motion";
 
 const ProductTableRow = ({
   product,
@@ -10,27 +10,25 @@ const ProductTableRow = ({
   getStatusBadge,
   checked,
   onCheck,
-  isActive, // ✅ thêm prop để biết row nào đang active
+  isActive,
 }) => {
   const [showPreview, setShowPreview] = useState(false);
 
-  // Hàm format tiền theo chuẩn VNĐ
   const formatPrice = (price) => {
     return new Intl.NumberFormat("vi-VN", {
       style: "currency",
       currency: "VND",
+      maximumFractionDigits: 0,
     }).format(price);
   };
 
   return (
-    <tr
+    <motion.tr
       onClick={onExpand}
-      style={{
-        cursor: "pointer",
-        position: "relative",
-        backgroundColor: isActive ? "#ff0d00ff" : "transparent", // ✅ đổi màu khi active
-        transition: "background-color 0.2s ease",
-      }}
+      initial={false}
+      animate={{ backgroundColor: isActive ? "#fff7ed" : "#ffffff" }}
+      transition={{ duration: 0.2 }}
+      style={{ cursor: "pointer", position: "relative" }}
     >
       <td>
         <input
@@ -55,66 +53,67 @@ const ProductTableRow = ({
                 src={product.image}
                 alt={product.name}
                 style={{
-                  width: "40px",
-                  height: "40px",
+                  width: 40,
+                  height: 40,
                   objectFit: "cover",
-                  marginRight: "10px",
-                  borderRadius: "4px",
+                  marginRight: 10,
+                  borderRadius: 6,
+                  border: "1px solid #eee",
                 }}
               />
 
-              {/* Preview ảnh lớn khi hover */}
               {showPreview && (
-                <div
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.96 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.96 }}
+                  transition={{ type: "spring", stiffness: 260, damping: 20 }}
                   style={{
                     position: "absolute",
-                    top: "-20px",
-                    left: "60px",
-                    padding: "5px",
+                    top: -20,
+                    left: 60,
+                    padding: 6,
                     backgroundColor: "#fff",
                     border: "1px solid #ddd",
-                    borderRadius: "6px",
-                    boxShadow: "0px 4px 8px rgba(0,0,0,0.15)",
+                    borderRadius: 10,
+                    boxShadow: "0px 6px 16px rgba(0,0,0,0.15)",
                     zIndex: 100,
                   }}
                 >
                   <img
                     src={product.image}
                     alt={product.name}
-                    style={{
-                      width: "200px",
-                      height: "200px",
-                      objectFit: "contain",
-                      borderRadius: "6px",
-                    }}
+                    style={{ width: 220, height: 220, objectFit: "contain", borderRadius: 8 }}
                   />
-                </div>
+                </motion.div>
               )}
             </div>
           ) : (
             <div
               style={{
-                width: "40px",
-                height: "40px",
-                backgroundColor: "#e0e0e0",
-                marginRight: "10px",
+                width: 40,
+                height: 40,
+                backgroundColor: "#f3f4f6",
+                marginRight: 10,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                fontSize: "12px",
+                fontSize: 12,
                 color: "#666",
+                borderRadius: 6,
+                border: "1px dashed #ddd",
               }}
             >
               No Image
             </div>
           )}
-          <span>{product.name}</span>
+          <span className="fw-semibold">{product.name}</span>
         </div>
       </td>
       <td>{product.category_name}</td>
       <td>{formatPrice(product.price)}</td>
       <td>{product.stock ?? 0}</td>
-    </tr>
+    </motion.tr>
   );
 };
 

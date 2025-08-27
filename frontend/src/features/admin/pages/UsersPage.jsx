@@ -2,7 +2,6 @@
 import React, { useEffect, useState } from "react";
 import { Search, Plus, Import, FileUp, HelpCircle } from "lucide-react";
 import AdminPageLayout from "../components/AdminPageLayout";
-import AdminHeader from "../components/AdminHeader";
 import UserSideBar from "../components/UserAdmin/UserSidebar";
 import UserTable from "../components/UserAdmin/UserTable";
 import UserDetailModal from "../components/UserAdmin/UserDetailRow";
@@ -82,7 +81,6 @@ export default function UsersPage() {
 
   return (
     <AdminPageLayout
-      header={<AdminHeader />}
       sidebar={
         <UserSideBar
           searchTerm={searchTerm}

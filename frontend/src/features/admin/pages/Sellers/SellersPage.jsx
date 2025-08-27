@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { Search, HelpCircle, CheckCircle2 } from "lucide-react";
 import AdminPageLayout from "../../components/AdminPageLayout";
-import AdminHeader from "../../components/AdminHeader";
 import { approveSeller, rejectSeller } from "../../../sellers/services/sellerService";
-// Bạn có thể tạo SellerFilterSidebar, SellerTable, SellerTableActions tương tự như Product* nếu muốn tách riêng
+
+const API_URL = process.env.REACT_APP_API_URL;
 
 export default function SellersPage() {
   const [sellers, setSellers] = useState([]);
@@ -19,7 +19,11 @@ export default function SellersPage() {
   const fetchSellers = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/sellers/");
+      const res = await fetch(`${API_URL}/sellers/`, {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
       if (!res.ok) throw new Error("Network error");
       const data = await res.json();
       setSellers(data);
@@ -73,19 +77,17 @@ export default function SellersPage() {
       );
     }
     return (
-      <>
-        <button className="btn btn-light border" style={{ fontWeight: "500", color: "#48474b" }}>
-          <HelpCircle size={16} />
-        </button>
-      </>
+      <button
+        className="btn btn-light border"
+        style={{ fontWeight: "500", color: "#48474b" }}
+      >
+        <HelpCircle size={16} />
+      </button>
     );
   };
 
   return (
-    <AdminPageLayout
-      header={<AdminHeader />}
-      sidebar={null}
-    >
+    <AdminPageLayout sidebar={null}>
       <div className="bg-white" style={{ minHeight: "100vh" }}>
         {/* Header Section */}
         <div className="p-2 border-bottom">
@@ -122,7 +124,6 @@ export default function SellersPage() {
 
         {/* Sellers Table */}
         <div className="p-1">
-          {/* TODO: SellerTable component, tạm thời render bảng đơn giản */}
           <table className="table table-hover">
             <thead>
               <tr>
@@ -130,8 +131,10 @@ export default function SellersPage() {
                   <input
                     type="checkbox"
                     checked={checkedIds.length === sellers.length && sellers.length > 0}
-                    onChange={e => {
-                      setCheckedIds(e.target.checked ? sellers.map(s => s.id) : []);
+                    onChange={(e) => {
+                      setCheckedIds(
+                        e.target.checked ? sellers.map((s) => s.id) : []
+                      );
                     }}
                   />
                 </th>
@@ -146,68 +149,129 @@ export default function SellersPage() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={8}>Đang tải...</td></tr>
+                <tr>
+                  <td colSpan={8}>Đang tải...</td>
+                </tr>
               ) : sellers.length === 0 ? (
-                <tr><td colSpan={8}>Không có cửa hàng nào</td></tr>
+                <tr>
+                  <td colSpan={8}>Không có cửa hàng nào</td>
+                </tr>
               ) : (
-                sellers.filter(s => s.store_name.toLowerCase().includes(searchTerm.toLowerCase())).map(seller => (
-                  <tr key={seller.id}>
-                    <td>
-                      <input
-                        type="checkbox"
-                        checked={checkedIds.includes(seller.id)}
-                        onChange={e => {
-                          setCheckedIds(e.target.checked ? [...checkedIds, seller.id] : checkedIds.filter(id => id !== seller.id));
-                        }}
-                      />
-                    </td>
-                    <td>{seller.store_name}</td>
-                    <td>{seller.owner_name || seller.user_name}</td>
-                    <td>{seller.address}</td>
-                    <td>{seller.phone}</td>
-                    <td>{seller.created_at}</td>
-                    <td>
-                      <span className={"badge " + (seller.status === "Đã duyệt" ? "bg-success" : seller.status === "Chờ duyệt" ? "bg-warning" : "bg-secondary")}>{seller.status || "Chờ duyệt"}</span>
-                    </td>
-                    <td>
-                      <div className="d-flex align-items-center gap-2">
-                        <button
+                sellers
+                  .filter((s) =>
+                    s.store_name
+                      .toLowerCase()
+                      .includes(searchTerm.toLowerCase())
+                  )
+                  .map((seller) => (
+                    <tr key={seller.id}>
+                      <td>
+                        <input
+                          type="checkbox"
+                          checked={checkedIds.includes(seller.id)}
+                          onChange={(e) => {
+                            setCheckedIds(
+                              e.target.checked
+                                ? [...checkedIds, seller.id]
+                                : checkedIds.filter((id) => id !== seller.id)
+                            );
+                          }}
+                        />
+                      </td>
+                      <td>{seller.store_name}</td>
+                      <td>{seller.owner_name || seller.user_name}</td>
+                      <td>{seller.address}</td>
+                      <td>{seller.phone}</td>
+                      <td>{seller.created_at}</td>
+                      <td>
+                        <span
                           className={
-                            "btn btn-success btn-sm d-flex align-items-center gap-1 px-3 py-1 shadow " +
-                            (seller.status === "approved" ? "disabled" : "")
+                            "badge " +
+                            (seller.status === "Đã duyệt"
+                              ? "bg-success"
+                              : seller.status === "Chờ duyệt"
+                              ? "bg-warning"
+                              : "bg-secondary")
                           }
-                          style={{ borderRadius: 6, fontWeight: 600, fontSize: 15, boxShadow: seller.status !== "approved" ? "0 2px 8px #22c55e33" : "none", opacity: seller.status === "approved" ? 0.6 : 1, cursor: seller.status === "approved" ? "not-allowed" : "pointer" }}
-                          onClick={() => handleApprove(seller.id)}
-                          disabled={seller.status === "approved"}
-                          title={seller.status === "approved" ? "Đã duyệt" : "Duyệt cửa hàng này"}
                         >
-                          <CheckCircle2 size={18} />
-                          <span>{seller.status === "approved" ? "Đã duyệt" : "Duyệt"}</span>
-                        </button>
-                        <button
-                          className={
-                            "btn btn-danger btn-sm d-flex align-items-center gap-1 px-3 py-1 shadow " +
-                            (seller.status === "rejected" ? "disabled" : "")
-                          }
-                          style={{ borderRadius: 6, fontWeight: 600, fontSize: 15, boxShadow: seller.status !== "rejected" ? "0 2px 8px #ef444433" : "none", opacity: seller.status === "rejected" ? 0.6 : 1, cursor: seller.status === "rejected" ? "not-allowed" : "pointer" }}
-                          onClick={() => handleReject(seller.id)}
-                          disabled={seller.status === "rejected"}
-                          title={seller.status === "rejected" ? "Đã từ chối" : "Từ chối cửa hàng này"}
-                        >
-                          <span style={{ fontWeight: 700 }}>Từ chối</span>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                          {seller.status || "Chờ duyệt"}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="d-flex align-items-center gap-2">
+                          <button
+                            className={
+                              "btn btn-success btn-sm d-flex align-items-center gap-1 px-3 py-1 shadow " +
+                              (seller.status === "approved" ? "disabled" : "")
+                            }
+                            style={{
+                              borderRadius: 6,
+                              fontWeight: 600,
+                              fontSize: 15,
+                              boxShadow:
+                                seller.status !== "approved"
+                                  ? "0 2px 8px #22c55e33"
+                                  : "none",
+                              opacity: seller.status === "approved" ? 0.6 : 1,
+                              cursor:
+                                seller.status === "approved"
+                                  ? "not-allowed"
+                                  : "pointer",
+                            }}
+                            onClick={() => handleApprove(seller.id)}
+                            disabled={seller.status === "approved"}
+                            title={
+                              seller.status === "approved"
+                                ? "Đã duyệt"
+                                : "Duyệt cửa hàng này"
+                            }
+                          >
+                            <CheckCircle2 size={18} />
+                            <span>
+                              {seller.status === "approved"
+                                ? "Đã duyệt"
+                                : "Duyệt"}
+                            </span>
+                          </button>
+                          <button
+                            className={
+                              "btn btn-danger btn-sm d-flex align-items-center gap-1 px-3 py-1 shadow " +
+                              (seller.status === "rejected" ? "disabled" : "")
+                            }
+                            style={{
+                              borderRadius: 6,
+                              fontWeight: 600,
+                              fontSize: 15,
+                              boxShadow:
+                                seller.status !== "rejected"
+                                  ? "0 2px 8px #ef444433"
+                                  : "none",
+                              opacity: seller.status === "rejected" ? 0.6 : 1,
+                              cursor:
+                                seller.status === "rejected"
+                                  ? "not-allowed"
+                                  : "pointer",
+                            }}
+                            onClick={() => handleReject(seller.id)}
+                            disabled={seller.status === "rejected"}
+                            title={
+                              seller.status === "rejected"
+                                ? "Đã từ chối"
+                                : "Từ chối cửa hàng này"
+                            }
+                          >
+                            <span style={{ fontWeight: 700 }}>Từ chối</span>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
               )}
             </tbody>
           </table>
           {/* Pagination */}
           <div className="d-flex justify-content-between align-items-center mt-4">
-            <div className="text-muted">
-              Hiển thị {sellers.length} cửa hàng
-            </div>
+            <div className="text-muted">Hiển thị {sellers.length} cửa hàng</div>
             {/* TODO: Pagination component riêng */}
           </div>
         </div>

@@ -2,7 +2,6 @@
 import React, { useEffect, useState } from "react";
 import { Search, Plus } from "lucide-react";
 import AdminPageLayout from "../components/AdminPageLayout";
-import AdminHeader from "../components/AdminHeader";
 import ShopSideBar from "../components/UserAdmin/UserSidebar"; // hoặc tạo ShopSidebar riêng
 import axios from "axios";
 import { FaEdit, FaTrash } from "react-icons/fa";
@@ -185,7 +184,6 @@ export default function ShopsPage() {
 
   return (
     <AdminPageLayout
-      header={<AdminHeader />}
       sidebar={
         <ShopSideBar
           searchTerm={searchTerm}

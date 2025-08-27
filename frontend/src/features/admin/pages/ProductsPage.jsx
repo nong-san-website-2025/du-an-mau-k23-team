@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { Search, HelpCircle, Plus } from "lucide-react";
 import AdminPageLayout from "../components/AdminPageLayout";
-import AdminHeader from "../components/AdminHeader";
 import ProductFilterSidebar from "../components/ProductAdmin/ProductSideBar";
 import ProductTable from "../components/ProductAdmin/ProductTable";
 import ProductTableActions from "../components/ProductAdmin/ProductTableActions";
@@ -14,9 +14,7 @@ export default function ProductsPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
-  const [categories, setCategories] = useState([
-    { value: "all", label: "Tất cả loại hàng" },
-  ]);
+  const [categories, setCategories] = useState([{ value: "all", label: "Tất cả loại hàng" }]);
   const [checkedIds, setCheckedIds] = useState([]);
   const [showAddModal, setShowAddModal] = useState(false);
 
@@ -28,7 +26,7 @@ export default function ProductsPage() {
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem("token"); // nếu có JWT
+      const token = localStorage.getItem("token");
       const res = await fetch(`${API_URL}/products/`, {
         headers: {
           "Content-Type": "application/json",
@@ -39,17 +37,13 @@ export default function ProductsPage() {
       const data = await res.json();
       setProducts(data);
 
-      // Lấy category duy nhất từ data
       const unique = {};
       data.forEach((prod) => {
         if (prod.category_id && prod.category_name) {
           unique[prod.category_id] = prod.category_name;
         }
       });
-      const mapped = Object.entries(unique).map(([value, label]) => ({
-        value: Number(value),
-        label,
-      }));
+      const mapped = Object.entries(unique).map(([value, label]) => ({ value: Number(value), label }));
       setCategories([{ value: "all", label: "Tất cả loại hàng" }, ...mapped]);
     } catch (err) {
       console.error("Lỗi khi fetch products:", err);
@@ -59,6 +53,14 @@ export default function ProductsPage() {
       setLoading(false);
     }
   };
+
+  const filteredCount = useMemo(() => {
+    return products.filter((p) => {
+      const byKeyword = !searchTerm || p.name?.toLowerCase().includes(searchTerm.toLowerCase());
+      const byCategory = selectedCategory === "all" || String(p.category_id) === String(selectedCategory);
+      return byKeyword && byCategory;
+    }).length;
+  }, [products, searchTerm, selectedCategory]);
 
   const getStatusBadge = (status) => {
     const baseClasses = "px-2 py-1 rounded-pill text-white fw-bold";
@@ -82,11 +84,7 @@ export default function ProductsPage() {
           style={{ fontWeight: "500" }}
           title="Xoá sản phẩm đã chọn"
           onClick={() => {
-            if (
-              window.confirm(
-                `Bạn có chắc muốn xoá ${checkedIds.length} sản phẩm đã chọn?`
-              )
-            ) {
+            if (window.confirm(`Bạn có chắc muốn xoá ${checkedIds.length} sản phẩm đã chọn?`)) {
               alert("Đã gọi xoá các sản phẩm: " + checkedIds.join(", "));
             }
           }}
@@ -104,14 +102,7 @@ export default function ProductsPage() {
         </button>
         <button
           className="btn d-flex align-items-center"
-          style={{
-            backgroundColor: "#22C55E",
-            color: "#fff",
-            fontWeight: "600",
-            padding: "6px 20px",
-            borderRadius: "8px",
-            border: "none",
-          }}
+          style={{ backgroundColor: "#22C55E", color: "#fff", fontWeight: "600", padding: "6px 20px", borderRadius: "8px", border: "none" }}
           onClick={() => setShowAddModal(true)}
         >
           <Plus size={20} className="me-2" /> Thêm sản phẩm
@@ -121,7 +112,7 @@ export default function ProductsPage() {
   };
 
   return (
-    <AdminPageLayout header={<AdminHeader />} sidebar={null}>
+    <AdminPageLayout sidebar={null}>
       <ProductFilterSidebar
         variant="top"
         selectedCategory={selectedCategory}
@@ -169,13 +160,19 @@ export default function ProductsPage() {
             setCheckedIds={setCheckedIds}
             reloadProducts={fetchProducts}
           />
-          <ProductAddModal
-            open={showAddModal}
-            onClose={() => setShowAddModal(false)}
-            onSuccess={fetchProducts}
-          />
+
+          <AnimatePresence>
+            {showAddModal && (
+              <ProductAddModal
+                open={showAddModal}
+                onClose={() => setShowAddModal(false)}
+                onSuccess={fetchProducts}
+              />
+            )}
+          </AnimatePresence>
+
           <div className="d-flex justify-content-between align-items-center mt-4">
-            <div className="text-muted">Hiển thị {products.length} sản phẩm</div>
+            <div className="text-muted">Hiển thị {filteredCount} sản phẩm</div>
           </div>
         </div>
       </div>

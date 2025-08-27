@@ -130,7 +130,7 @@ export const productApi = {
 // Lấy tất cả categories
 async getCategories() {
   try {
-    const response = await fetch(`${API_URL}/products/categories/`);
+    const response = await fetchWithAuthRetry(`${API_URL}/products/categories/`);
     if (!response.ok) {
       throw new Error('Không thể tải danh mục');
     }
@@ -145,7 +145,7 @@ async getCategories() {
   // Lấy subcategories của một category
   async getSubcategories(categoryId) {
     try {
-       const response = await fetch(`${API_URL}/products/categories/${categoryId}/subcategories/`);
+      const response = await fetchWithAuthRetry(`${API_URL}/products/categories/${categoryId}/subcategories/`);
       if (!response.ok) {
         throw new Error('Không thể tải danh mục con');
       }
@@ -163,7 +163,7 @@ async getCategories() {
       if (subcategory) {
         url += `?subcategory=${encodeURIComponent(subcategory)}`;
       }
-      const response = await fetch(url);
+      const response = await fetchWithAuthRetry(url);
       if (!response.ok) {
         throw new Error('Không thể tải sản phẩm');
       }
@@ -281,7 +281,8 @@ async getCategories() {
 
   // Hàm refresh token
   async refreshToken() {
-    const refresh = localStorage.getItem('refresh');
+    // Đồng bộ với nơi lưu trữ refresh token trong auth.js
+    const refresh = localStorage.getItem('refresh_token');
     if (!refresh) throw new Error('No refresh token');
     const response = await fetch(`${API_URL}/token/refresh/`, {
       method: 'POST',
@@ -290,6 +291,7 @@ async getCategories() {
     });
     if (!response.ok) throw new Error('Không thể làm mới token');
     const data = await response.json();
+    // Lưu access token dạng "token" (đồng bộ với phần còn lại của app)
     localStorage.setItem('token', data.access);
     return data.access;
   },

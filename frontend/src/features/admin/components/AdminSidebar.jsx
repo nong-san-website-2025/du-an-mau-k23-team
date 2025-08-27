@@ -1,51 +1,108 @@
-import React from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Layout, Menu } from "antd";
+import { Link } from "react-router-dom";
+import {
+  HomeOutlined,
+  UserOutlined,
+  ShopOutlined,
+  ShoppingCartOutlined,
+  DollarOutlined,
+  BarChartOutlined,
+  NotificationOutlined,
+} from "@ant-design/icons";
+import "../styles/AdminSidebar.css"
 
-const menu = [
-  { label: "Dashboard", path: "/admin" },
-  { label: "Người dùng", path: "/admin/users" },
-  { label: "Shop", path: "/admin/shops" },
-  { label: "Sản phẩm", path: "/admin/products" },
-  { label: "Đơn hàng", path: "/admin/orders" },
-  { label: "Khiếu nại", path: "/admin/complaints" },
-  { label: "Yêu cầu hỗ trợ", path: "/admin/supports" },
-  { label: "Voucher", path: "/admin/vouchers" },
-  { label: "Ví điện tử", path: "/admin/wallet" },
-  { label: "Banner", path: "/admin/banners" },
-  { label: "Thông báo", path: "/admin/notifications" },
-  { label: "Nhân sự", path: "/admin/staff" },
-  { label: "Báo cáo", path: "/admin/reports" },
-];
+const { Sider } = Layout;
 
-export default function AdminSidebar() {
-  const location = useLocation();
-  const mainColor = "#22C55E";
+const Sidebar = () => {
   return (
-    <div className="bg-light vh-100" style={{width:240, position:'fixed', left:0, top:0, bottom:0, zIndex:100, borderRight:`4px solid ${mainColor}`}}>
-      <div className="p-0 border-bottom d-flex align-items-center gap-2" style={{color:mainColor}}>
-        <img src="/assets/logo/imagelogo.png" alt="Logo" style={{height:72, width:72, objectFit:'contain', borderRadius:0 }} />
-      </div>
-      <ul className="nav flex-column mt-3">
-        {menu.map(item => (
-          <li className="nav-item" key={item.path}>
-            <Link
-              to={item.path}
-              className={`nav-link px-3 py-2 ${location.pathname === item.path ? 'fw-bold' : 'text-dark'}`}
-              style={{
-                borderRadius:0,
-                color: location.pathname === item.path ? '#fff' : '#222',
-                background: location.pathname === item.path ? mainColor : 'none',
-                fontWeight: location.pathname ===   item.path ? 700 : 500,
-                boxShadow: location.pathname === item.path ? '0 2px 8px #22c55e22' : 'none',
-                border: location.pathname === item.path ? `1px solid ${mainColor}` : 'none',
-                transition: 'all 0.2s',
-              }}
-            >
-              {item.label}
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </div>
+    <Sider width={250} className="sidebar">
+      <Menu
+        mode="inline"
+        defaultSelectedKeys={["dashboard"]}
+        style={{ height: "100%", borderRight: 0 }}
+        
+      >
+        <Menu.Item key="dashboard" icon={<HomeOutlined />}>
+          <Link to="/admin/">Dashboard</Link>
+        </Menu.Item>
+
+        <Menu.SubMenu key="users" icon={<UserOutlined />} title="Người dùng & Seller">
+          <Menu.Item key="users-list">
+            <Link to="/admin/users">Quản lý người dùng</Link>
+          </Menu.Item>
+          <Menu.Item key="seller">
+            <Link to="/admin/shops">Quản lý cửa hàng</Link>
+          </Menu.Item>
+          <Menu.Item key="seller-approval">
+            <Link to="/admin/sellers/approval">Duyệt seller đăng ký</Link>
+          </Menu.Item>
+          <Menu.Item key="roles">
+            <Link to="/admin/roles">Phân quyền & vai trò</Link>
+          </Menu.Item>
+        </Menu.SubMenu>
+
+        <Menu.SubMenu key="products" icon={<ShopOutlined />} title="Sản phẩm & Danh mục">
+          <Menu.Item key="product-approval">
+            <Link to="/admin/products/approval">Duyệt sản phẩm</Link>
+          </Menu.Item>
+          <Menu.Item key="categories">
+            <Link to="/admin/categories">Quản lý danh mục</Link>
+          </Menu.Item>
+          <Menu.Item key="brands">
+            <Link to="/admin/brands">Quản lý thương hiệu</Link>
+          </Menu.Item>
+          <Menu.Item key="violations">
+            <Link to="/admin/products/violations">Sản phẩm vi phạm</Link>
+          </Menu.Item>
+        </Menu.SubMenu>
+
+        <Menu.SubMenu key="orders" icon={<ShoppingCartOutlined />} title="Đơn hàng & Vận chuyển">
+          <Menu.Item key="order-monitor">
+            <Link to="/admin/orders">Giám sát đơn hàng</Link>
+          </Menu.Item>
+          <Menu.Item key="shipping-partners">
+            <Link to="/admin/shipping">Đối tác vận chuyển</Link>
+          </Menu.Item>
+        </Menu.SubMenu>
+
+        <Menu.SubMenu key="payments" icon={<DollarOutlined />} title="Thanh toán">
+          <Menu.Item key="transactions">
+            <Link to="/admin/payments/transactions">Giao dịch</Link>
+          </Menu.Item>
+          <Menu.Item key="wallets">
+            <Link to="/admin/payments/wallets">Ví tiền seller</Link>
+          </Menu.Item>
+          <Menu.Item key="revenue">
+            <Link to="/admin/payments/revenue">Đối soát doanh thu</Link>
+          </Menu.Item>
+          <Menu.Item key="fraud">
+            <Link to="/admin/payments/fraud">Phát hiện gian lận</Link>
+          </Menu.Item>
+        </Menu.SubMenu>
+
+        <Menu.SubMenu key="reports" icon={<BarChartOutlined />} title="Thống kê & Báo cáo">
+          <Menu.Item key="report-revenue">
+            <Link to="/admin/reports/revenue">Doanh thu</Link>
+          </Menu.Item>
+          <Menu.Item key="report-top-products">
+            <Link to="/admin/reports/top-products">Sản phẩm bán chạy</Link>
+          </Menu.Item>
+          <Menu.Item key="report-cancel-rate">
+            <Link to="/admin/reports/cancel-rate">Tỉ lệ huỷ/hoàn đơn</Link>
+          </Menu.Item>
+        </Menu.SubMenu>
+
+        <Menu.SubMenu key="marketing" icon={<NotificationOutlined />} title="Marketing">
+          <Menu.Item key="banner">
+            <Link to="/admin/marketing/banners">Banner quảng cáo</Link>
+          </Menu.Item>
+          <Menu.Item key="flash-sale">
+            <Link to="/admin/marketing/flashsale">Flash Sale / Campaign</Link>
+          </Menu.Item>
+        </Menu.SubMenu>
+      </Menu>
+    </Sider>
   );
-}
+};
+
+export default Sidebar;

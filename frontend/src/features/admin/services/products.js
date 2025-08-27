@@ -39,3 +39,8 @@ export async function getCategories() {
   const res = await authAxios().get(CATEGORY_URL);
   return Array.isArray(res.data) ? res.data : [];
 }
+
+export const addCategory = async (data) => {
+  const res = await authAxios().post(CATEGORY_URL, data);
+  return res.data;
+};

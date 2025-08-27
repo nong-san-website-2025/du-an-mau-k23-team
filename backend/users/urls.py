@@ -11,6 +11,7 @@ from rest_framework_simplejwt.views import (
 )
 
 
+
 # Router tự động cho ViewSet
 router = DefaultRouter()
 
@@ -33,7 +34,7 @@ urlpatterns = [
     path("forgot-password/", views.ForgotPasswordView.as_view(), name='forgot-password'),
     path("verify-code/", views.VerifyCodeAPIView.as_view(), name="verify-code"),
     path("reset-password/", views.ResetPasswordAPIView.as_view(), name='reset-password'),
-    path("change-password/", views.ChangePasswordAPIView.as_view(), name='change-password'),
+    path("change-password/", views.ChangePasswordView.as_view(), name='change-password'),
 
     # Points
     path("points/", views.UserPointsView.as_view(), name="user-points"),
