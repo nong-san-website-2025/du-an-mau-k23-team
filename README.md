@@ -54,8 +54,10 @@ cd du-an-mau-k23-team
     # Chạy frontend
     npm start
 
-## Chay sample_products.py de tao san pham demo
+### Chay sample_products.py de tao san pham demo
 from generate_sample_products import generate_sample_products
 generate_sample_products()
+
+#
 
 
