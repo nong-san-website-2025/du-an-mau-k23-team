@@ -59,7 +59,7 @@ from generate_sample_products import generate_sample_products
 generate_sample_products()
 
 ## Huong dan dung tam sqlite3
-- Vao settings.py của backend/config/settings.py đổi đoạn:
+```bash - Vao settings.py của backend/config/settings.py đổi đoạn:
   else:
     DATABASES = {
         'default': {
@@ -78,5 +78,5 @@ generate_sample_products()
             'NAME': BASE_DIR / 'db.sqlite3',
         }
     }
-
+```
 
