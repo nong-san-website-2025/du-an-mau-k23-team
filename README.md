@@ -58,6 +58,25 @@ cd du-an-mau-k23-team
 from generate_sample_products import generate_sample_products
 generate_sample_products()
 
-#
+## Huong dan dung tam sqlite3
+- Vao settings.py của backend/config/settings.py đổi đoạn:
+  else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': 'ecom_db',
+            'USER': 'postgres',
+            'PASSWORD': '12345',
+            'HOST': 'localhost',
+            'PORT': '5432',
+        }
+    } thành đoạn:
+  else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 
