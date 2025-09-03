@@ -1,10 +1,8 @@
 import { Route } from "react-router-dom";
 import AdminLayout from "../features/admin/components/AdminLayout";
-import AdminPrivateRoute from "../features/login_register/components/AdminPrivateRoute";
+import AdminPrivateRoute from "../components/PrivateRoutes/AdminPrivateRoute.jsx";
 import DashboardPage from "../features/admin/pages/DashboardPage";
 import UsersPage from "../features/admin/pages/UsersPage";
-import ShopsPage from "../features/admin/pages/ShopsPage";
-import ProductsPage from "../features/admin/pages/ProductsPage";
 import OrdersPage from "../features/admin/pages/OrdersPage";
 import ComplaintsPage from "../features/admin/pages/ComplaintsPage";
 import VouchersPage from "../features/admin/pages/VouchersPage";
@@ -15,14 +13,23 @@ import StaffPage from "../features/admin/pages/StaffPage";
 import ReportsPage from "../features/admin/pages/ReportsPage";
 import SupportPage from "../features/admin/pages/SupportPage";
 import SellersPage from "../features/admin/pages/Sellers/SellersPage";
+import ActiveLockedSellersPage from "../features/admin/pages/ShopPage/ActiveLockedSellersPage.jsx.jsx";
+import ApprovalSellersPage from "../features/admin/pages/ShopPage/ApprovalSellersPage.jsx";
+import ApprovalProductsPage from "../features/admin/pages/ProductPage/ApprovalProductsPage.jsx";
+import CategoryManagementPage from "../features/admin/pages/ProductPage/CategoryManagement.jsx";
 
 export const adminRoutes = [
   <Route element={<AdminPrivateRoute />} key="admin-protect">
     <Route path="/admin" element={<AdminLayout />}>
       <Route index element={<DashboardPage />} />
       <Route path="users" element={<UsersPage />} />
-      <Route path="shops" element={<ShopsPage />} />
-      <Route path="products" element={<ProductsPage />} />
+      {/* Shop management */}
+      <Route path="sellers/business" element={<ActiveLockedSellersPage />} />
+      <Route path="sellers/approval" element={<ApprovalSellersPage />} />
+      {/* Product management */}
+      <Route path="products/approval" element={<ApprovalProductsPage />} />
+      <Route path="products/categories" element={<CategoryManagementPage />} />
+
       <Route path="orders" element={<OrdersPage />} />
       <Route path="complaints" element={<ComplaintsPage />} />
       <Route path="vouchers" element={<VouchersPage />} />

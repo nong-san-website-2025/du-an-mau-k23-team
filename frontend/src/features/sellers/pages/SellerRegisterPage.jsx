@@ -1,158 +1,251 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import {
+  Form,
+  Input,
+  Button,
+  Upload,
+  message,
+  Result,
+  Spin,
+  Card,
+  Steps,
+} from "antd";
+import {
+  UploadOutlined,
+  ShopOutlined,
+  CheckCircleOutlined,
+  ClockCircleOutlined,
+  CloseCircleOutlined,
+} from "@ant-design/icons";
+import { useAuth } from "../../login_register/services/AuthContext";
+
+const { Step } = Steps;
 
 export default function SellerRegisterPage() {
-  const [form, setForm] = useState({
-    store_name: "",
-    bio: "",
-    address: "",
-    phone: "",
-    image: null,
-  });
+  const [form] = Form.useForm();
+  const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [error, setError] = useState("");
+  const [sellerStatus, setSellerStatus] = useState(null); // null, pending, approved, active, rejected
+  const [fileList, setFileList] = useState([]);
 
-  const handleChange = (e) => {
-    const { name, value, files } = e.target;
-    setForm((prev) => ({
-      ...prev,
-      [name]: files ? files[0] : value,
-    }));
-  };
+  const token = localStorage.getItem("token");
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setSubmitting(true);
-    setError("");
-    setSuccess(false);
-    try {
-      const formData = new FormData();
-      // Lấy user id từ token JWT trước khi gửi request
-      function getUserIdFromToken() {
-        const token = localStorage.getItem("token");
-        if (!token) return null;
-        try {
-          const payload = JSON.parse(atob(token.split('.')[1]));
-          return payload.user_id || payload.id;
-        } catch {
-          return null;
+   const { setRole } = useAuth();
+
+  useEffect(() => {
+    async function fetchSeller() {
+      if (!token) return setLoading(false);
+      try {
+        const res = await fetch(
+          `${process.env.REACT_APP_API_URL}/sellers/me/`,
+          { headers }
+        );
+        if (!res.ok) throw new Error("Không tìm thấy seller của bạn");
+        const data = await res.json();
+        setSellerStatus(data.status?.toLowerCase() || null);
+
+        if (
+          ["pending", "approved", "active", "rejected"].includes(
+            data.status?.toLowerCase()
+          )
+        ) {
+          form.setFieldsValue({
+            store_name: data.store_name,
+            bio: data.bio,
+            address: data.address,
+            phone: data.phone,
+          });
         }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
       }
-      const userId = getUserIdFromToken();
-      if (userId) {
-        formData.append("user", userId);
+    }
+    fetchSeller();
+  }, []);
+
+  const handleSubmit = async (values) => {
+    setSubmitting(true);
+    const formData = new FormData();
+    if (token) {
+      const payload = JSON.parse(atob(token.split(".")[1]));
+      formData.append("user", payload.user_id || payload.id);
+    }
+    Object.entries(values).forEach(([key, value]) => {
+      if (key === "image" && fileList.length > 0) {
+        formData.append("image", fileList[0].originFileObj);
+      } else if (value) {
+        formData.append(key, value);
       }
-      Object.entries(form).forEach(([key, value]) => {
-        if (value !== null && value !== "") formData.append(key, value);
-      });
-      // Gửi yêu cầu đăng ký seller, trạng thái mặc định là "pending"
-      const token = localStorage.getItem("token");
-      const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      const res = await fetch(`${process.env.REACT_APP_API_URL}/sellers/register/`, {
-        method: "POST",
-        body: formData,
-        headers,
-      });
+    });
+
+    try {
+      const res = await fetch(
+        `${process.env.REACT_APP_API_URL}/sellers/register/`,
+        {
+          method: "POST",
+          body: formData,
+          headers,
+        }
+      );
       if (!res.ok) throw new Error("Đăng ký thất bại");
-      setSuccess(true);
-      setForm({ store_name: "", bio: "", address: "", phone: "", image: null });
-      // đánh dấu trạng thái chờ duyệt để Header hiện 'Đang chờ duyệt'
-      localStorage.setItem("is_seller", "true");
+      await res.json();
+      message.success("Gửi yêu cầu đăng ký thành công!");
+      setSellerStatus("pending");
     } catch (err) {
-      setError(err.message || "Có lỗi xảy ra");
+      message.error(err.message || "Có lỗi xảy ra");
     } finally {
       setSubmitting(false);
     }
   };
 
+  const handleOpenShop = async () => {
+    try {
+      const res = await fetch(
+        `${process.env.REACT_APP_API_URL}/sellers/activate/`,
+        {
+          method: "POST",
+          headers,
+        }
+      );
+      if (!res.ok) throw new Error("Mở cửa hàng thất bại");
+
+      message.success("Cửa hàng đã mở thành công!");
+      setSellerStatus("active");
+
+      // 🔥 Cập nhật role sang "seller" ngay
+      setRole("seller");
+
+      // Optionally: gọi lại /users/me/ để sync dữ liệu backend
+      const userRes = await fetch(
+        `${process.env.REACT_APP_API_URL}/users/me/`,
+        { headers }
+      );
+      if (userRes.ok) {
+        const userData = await userRes.json();
+        localStorage.setItem("user", JSON.stringify(userData));
+      }
+    } catch (err) {
+      message.error(err.message || "Có lỗi xảy ra");
+    }
+  };
+
+  if (loading)
+    return <Spin tip="Đang tải..." style={{ width: "100%", marginTop: 50 }} />;
+
   return (
-    <div className="container py-0" style={{ maxWidth: 520 }}>
-      <div className="card shadow-sm border-0 p-4" style={{ borderRadius: 18 }}>
-        <h2 className="mb-3" style={{ fontWeight: 700 }}>Đăng ký cửa hàng</h2>
-        {success && (
-          <div className="alert alert-success">Yêu cầu đăng ký đã gửi, chờ duyệt!</div>
+    <div style={{ maxWidth: 650, margin: "20px auto" }}>
+      <Card>
+        <Steps
+          current={
+            sellerStatus === "pending"
+              ? 1
+              : sellerStatus === "approved"
+                ? 2
+                : sellerStatus === "active"
+                  ? 3
+                  : 0
+          }
+        >
+          <Step title="Chưa đăng ký" icon={<ShopOutlined />} />
+          <Step title="Chờ duyệt" icon={<ClockCircleOutlined />} />
+          <Step title="Duyệt" icon={<CheckCircleOutlined />} />
+          <Step title="Hoạt động" icon={<CheckCircleOutlined />} />
+        </Steps>
+
+        {sellerStatus === "pending" && (
+          <Result
+            status="info"
+            title="Yêu cầu của bạn đang chờ duyệt"
+            subTitle="Quản trị viên sẽ xem xét yêu cầu đăng ký cửa hàng của bạn."
+          />
         )}
-        {error && (
-          <div className="alert alert-danger">{error}</div>
+
+        {sellerStatus === "approved" && (
+          <Result
+            status="success"
+            title="Cửa hàng đã được duyệt"
+            extra={
+              <Button type="primary" size="large" onClick={handleOpenShop}>
+                Mở cửa hàng
+              </Button>
+            }
+          />
         )}
-        <form onSubmit={handleSubmit} encType="multipart/form-data">
-          <div className="row g-3">
-            <div className="col-12">
-              <label className="form-label fw-bold">Tên cửa hàng *</label>
-              <input
-                type="text"
-                className="form-control border rounded-3"
-                name="store_name"
-                value={form.store_name}
-                onChange={handleChange}
-                required
-                placeholder="Nhập tên cửa hàng"
-                autoFocus
-              />
-            </div>
-            <div className="col-12">
-              <label className="form-label fw-bold">Mô tả</label>
-              <textarea
-                className="form-control border rounded-3"
-                name="bio"
-                value={form.bio}
-                onChange={handleChange}
-                rows={3}
+
+        {sellerStatus === "active" && (
+          <Result
+            status="success"
+            title="Cửa hàng của bạn đang hoạt động"
+            subTitle="Bạn có thể thêm sản phẩm và bắt đầu bán hàng."
+          />
+        )}
+
+        {sellerStatus === "rejected" && (
+          <Result
+            status="error"
+            title="Yêu cầu đăng ký bị từ chối"
+            subTitle="Bạn có thể chỉnh sửa thông tin và gửi lại."
+          />
+        )}
+
+        {!sellerStatus && (
+          <Form
+            form={form}
+            layout="vertical"
+            onFinish={handleSubmit}
+            style={{ marginTop: 30 }}
+          >
+            <Form.Item
+              name="store_name"
+              label="Tên cửa hàng"
+              rules={[{ required: true, message: "Nhập tên cửa hàng" }]}
+            >
+              <Input placeholder="Nhập tên cửa hàng" />
+            </Form.Item>
+
+            <Form.Item name="bio" label="Mô tả">
+              <Input.TextArea
+                rows={4}
                 placeholder="Giới thiệu ngắn về cửa hàng, sản phẩm, dịch vụ..."
               />
-            </div>
-            <div className="col-12">
-              <label className="form-label fw-bold">Địa chỉ</label>
-              <input
-                type="text"
-                className="form-control border rounded-3"
-                name="address"
-                value={form.address}
-                onChange={handleChange}
-                placeholder="Địa chỉ cửa hàng"
-              />
-            </div>
-            <div className="col-12">
-              <label className="form-label fw-bold">Số điện thoại</label>
-              <input
-                type="text"
-                className="form-control border rounded-3"
-                name="phone"
-                value={form.phone}
-                onChange={handleChange}
-                placeholder="Số điện thoại liên hệ"
-              />
-            </div>
-            <div className="col-12">
-              <label className="form-label fw-bold">Ảnh cửa hàng</label>
-              <input
-                type="file"
-                className="form-control border rounded-3"
-                name="image"
-                accept="image/*"
-                onChange={handleChange}
-              />
-              {form.image && typeof form.image === "object" && (
-                <div className="mt-2">
-                  <img
-                    src={URL.createObjectURL(form.image)}
-                    alt="Preview"
-                    style={{ maxWidth: 120, maxHeight: 120, borderRadius: 10, boxShadow: "0 2px 8px #22c55e33" }}
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-          <button
-            type="submit"
-            className="btn btn-success w-100 mt-4 py-2 fw-bold"
-            style={{ borderRadius: 8, fontSize: 17, letterSpacing: 0.5 }}
-            disabled={submitting}
-          >
-            {submitting ? "Đang gửi..." : "Gửi yêu cầu đăng ký"}
-          </button>
-        </form>
-      </div>
+            </Form.Item>
+
+            <Form.Item name="address" label="Địa chỉ">
+              <Input placeholder="Địa chỉ cửa hàng" />
+            </Form.Item>
+
+            <Form.Item name="phone" label="Số điện thoại">
+              <Input placeholder="Số điện thoại liên hệ" />
+            </Form.Item>
+
+            <Form.Item name="image" label="Ảnh cửa hàng">
+              <Upload
+                beforeUpload={() => false}
+                fileList={fileList}
+                onChange={({ fileList }) => setFileList(fileList)}
+                listType="picture"
+              >
+                <Button icon={<UploadOutlined />}>Chọn ảnh</Button>
+              </Upload>
+            </Form.Item>
+
+            <Form.Item>
+              <Button
+                type="primary"
+                htmlType="submit"
+                loading={submitting}
+                block
+                size="large"
+              >
+                Gửi yêu cầu đăng ký
+              </Button>
+            </Form.Item>
+          </Form>
+        )}
+      </Card>
     </div>
   );
 }

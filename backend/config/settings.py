@@ -1,10 +1,7 @@
-"""
-Django settings for config project.
-"""
-
 from pathlib import Path
 import os
 import dj_database_url
+from datetime import timedelta
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -174,3 +171,20 @@ USE_I18N = True
 USE_TZ = True
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),  # access token sống 60 phút
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),     # refresh token sống 7 ngày
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+}
+
+MOMO_CONFIG = {
+    "partnerCode": "MOMO",
+    "accessKey": "F8BBA842ECF85",
+    "secretKey": "K951B6PE1waDMi640xX08PD3vg6EkVlz",
+    "endpoint": "https://test-payment.momo.vn/v2/gateway/api/create",  # API mới
+    "redirectUrl": "http://localhost:3000/payment/result",  # frontend React
+    "ipnUrl": "http://localhost:8000/api/payments/momo/notify/",
+    "notifyUrl": "http://localhost:8000/api/payments/momo/ipn",  # backend nhận callback
+}

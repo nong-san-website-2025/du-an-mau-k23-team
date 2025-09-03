@@ -25,3 +25,20 @@
   color: rgb(34, 197, 94) !important;
   font-weight: 600;
 }
+
+.ant-menu-submenu-selected:not(.ant-menu-submenu-open) > .ant-menu-submenu-title {
+  background-color: transparent !important;
+  color: #333 !important;
+  font-weight: 500;
+}
+
+.sidebar {
+  position: fixed;
+  top: 5;
+  left: 0;
+  height: 100vh;   /* full chiều cao màn hình */
+  width: 240px;    /* tùy bạn */
+  background: #fff;
+  border-right: 1px solid #eee;
+  overflow-y: auto; /* nếu menu dài thì cho scroll riêng */
+}

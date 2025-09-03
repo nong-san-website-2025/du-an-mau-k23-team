@@ -246,7 +246,7 @@ export default function UserActions({
                 Đơn hàng của tôi
               </Link>
               <Link
-                to={storeName ? "/manage-products" : sellerStatus === "pending" ? "/register-seller" : "/register-seller"}
+                to={storeName ? "/seller-center" : sellerStatus === "active" ? "/register-seller" : "/register-seller"}
                 className="dropdown-item text-white fw-bold d-flex justify-content-left"
                 style={{
                   background: hoveredDropdown === "register" ? "#16a34a" : "#22C55E",

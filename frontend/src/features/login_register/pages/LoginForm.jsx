@@ -1,5 +1,5 @@
+// LoginForm.js
 import { useState, useEffect } from "react";
-// Đã gộp login vào useAuth trong AuthContext
 import { useNavigate } from "react-router-dom";
 import "./../styles/LoginForm.css";
 import loginIcon from "../assets/login.png";
@@ -7,7 +7,6 @@ import homeIcon from "../assets/homefarm.png";
 import logo from "../assets/imagelogo.png";
 import { useCart } from "../../cart/services/CartContext";
 import { useAuth } from "../services/AuthContext";
-// import { authApi } from "../services/authApi";
 
 const API_URL = process.env.REACT_APP_API_URL;
 
@@ -26,7 +25,8 @@ function LoginForm() {
   const [regEmail, setRegEmail] = useState("");
   const [regPassword, setRegPassword] = useState("");
   const [regPassword2, setRegPassword2] = useState("");
-  const [isSeller, setIsSeller] = useState(false);
+  const [registrationRole, setRegistrationRole] = useState('customer'); // Mặc định là customer
+
   // State cho Quên mật khẩu
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotEmailError, setForgotEmailError] = useState("");
@@ -40,7 +40,7 @@ function LoginForm() {
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
   const [showResetPasswordForm, setShowResetPasswordForm] = useState(false);
 
-  const [countdown, setCountdown] = useState(60); // 60 giây
+  const [countdown, setCountdown] = useState(60);
   const [intervalId, setIntervalId] = useState(null);
   const [passwordError, setPasswordError] = useState("");
 
@@ -48,8 +48,7 @@ function LoginForm() {
     /* global google */
     if (window.google) {
       window.google.accounts.id.initialize({
-        client_id:
-          "638143772671-m6e09jr0o9smb5l1n24bhv7tpeskmvu3.apps.googleusercontent.com",
+        client_id: "638143772671-m6e09jr0o9smb5l1n24bhv7tpeskmvu3.apps.googleusercontent.com",
         callback: handleGoogleResponse,
       });
 
@@ -59,6 +58,7 @@ function LoginForm() {
       );
     }
   }, []);
+
   const handleGoogleResponse = (response) => {
     console.log(response.credential);
     sendTokenToBackend(response.credential);
@@ -74,21 +74,13 @@ function LoginForm() {
       });
       const data = await res.json();
       if (res.ok) {
-        // Cập nhật AuthContext
-        authLogin({
-          token: data.token,
-          role: data.role,
-          username: data.username,
-        });
+        // Lưu thông tin vào localStorage
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("username", data.username);
+        localStorage.setItem("role", data.role);
 
         // Chuyển hướng dựa trên role
-        if (data.role === "seller") {
-          navigate("/ShopAdmin");
-        } else if (data.role === "admin") {
-          navigate("/admin");
-        } else {
-          navigate("/");
-        }
+        navigateByRole(data.role);
       } else {
         alert(data.error || "Đăng nhập thất bại!");
       }
@@ -97,32 +89,28 @@ function LoginForm() {
     }
   };
 
+  const navigateByRole = (role) => {
+    switch (role) {
+      case "admin":
+        navigate("/admin");
+        break;
+      case "seller":
+        navigate("/seller-center");
+        break;
+      case "customer":
+      default:
+        navigate("/");
+        break;
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     const result = await authLogin(username, password);
 
     if (result.success) {
-      // Lưu user info vào localStorage
-      const userData = {
-        username: username,
-        role: result.is_admin
-          ? "admin"
-          : result.is_seller
-            ? "seller"
-            : "customer",
-        token: result.token, // nếu authLogin trả token
-      };
-      localStorage.setItem("user", JSON.stringify(userData));
-
       await fetchCart();
-
-      if (result.is_admin) {
-        navigate("/admin");
-      } else if (result.is_seller) {
-        navigate("/ShopAdmin");
-      } else {
-        navigate("/");
-      }
+      navigateByRole(result.role);
     } else {
       setError(result.error || "Đăng nhập thất bại");
     }
@@ -154,8 +142,7 @@ function LoginForm() {
           email: regEmail,
           password: regPassword,
           password2: regPassword2,
-          is_seller: isSeller,
-          is_admin: false, // Đăng ký chỉ cho phép customer/seller, admin tạo qua backend
+          role: registrationRole, // Sử dụng role thay vì is_seller, is_admin
         }),
       });
 
@@ -164,20 +151,18 @@ function LoginForm() {
       if (response.ok) {
         alert("Đăng ký thành công!");
         setShowRegisterModal(false);
+        
         // Tự động đăng nhập sau khi đăng ký
         const loginResult = await authLogin(regUsername, regPassword);
         if (loginResult.success) {
-          navigate("/");
+          navigateByRole(loginResult.role);
         } else {
           alert("Đăng ký thành công nhưng đăng nhập tự động thất bại!");
         }
-        setRegUsername("");
-        setRegEmail("");
-        setRegPassword("");
-        setRegPassword2("");
-        setIsSeller(false);
+        
+        // Reset form
+        resetRegistrationForm();
       } else {
-        // Hiển thị lỗi chi tiết từ backend
         alert(
           data && typeof data === "object"
             ? JSON.stringify(data)
@@ -189,14 +174,22 @@ function LoginForm() {
     }
   };
 
+  const resetRegistrationForm = () => {
+    setRegUsername("");
+    setRegEmail("");
+    setRegPassword("");
+    setRegPassword2("");
+    setRegistrationRole('customer');
+  };
+
   const handleForgotPassword = async () => {
-    // Kiểm tra định dạng email hợp lệ
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!forgotEmail || !emailPattern.test(forgotEmail)) {
       setForgotEmailError("Vui lòng nhập đúng định dạng email!");
       return;
     }
     setForgotEmailError("");
+    
     try {
       const response = await fetch(`${API_URL}/forgot-password/`, {
         method: "POST",
@@ -204,11 +197,11 @@ function LoginForm() {
         body: JSON.stringify({ email: forgotEmail }),
       });
       const data = await response.json();
+      
       if (response.ok) {
         alert("Mã khôi phục đã được gửi về email!");
         setShowVerifyCodeForm(true);
         startCountdown();
-        // KHÔNG reset forgotEmail ở đây để giữ lại email cho bước xác thực mã và đặt lại mật khẩu
       } else {
         alert(data.error || "Gửi email thất bại!");
       }
@@ -216,9 +209,11 @@ function LoginForm() {
       alert("Lỗi kết nối máy chủ!");
     }
   };
+
   const startCountdown = () => {
-    setCountdown(60); // Bắt đầu từ 60 giây
-    if (intervalId) clearInterval(intervalId); // Clear nếu có đếm trước đó
+    setCountdown(60);
+    if (intervalId) clearInterval(intervalId);
+    
     const newInterval = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {
@@ -234,31 +229,32 @@ function LoginForm() {
   const validatePasswordRealtime = (password) => {
     const passwordRegex = /^(?=.*[A-Z]).{8,}$/;
     if (!passwordRegex.test(password)) {
-      setPasswordError(
-        "Mật khẩu phải có ít nhất 8 ký tự và chứa ít nhất 1 chữ viết hoa!"
-      );
+      setPasswordError("Mật khẩu phải có ít nhất 8 ký tự và chứa ít nhất 1 chữ viết hoa!");
     } else {
       setPasswordError("");
     }
   };
+
   const handleVerifyCode = async () => {
-    // Đảm bảo gửi code là chuỗi, không phải mảng
     const codeString = Array.isArray(verificationCode)
       ? verificationCode.join("")
       : verificationCode;
+      
     if (!codeString || codeString.length < 6) {
       alert("Vui lòng nhập đầy đủ mã xác thực!");
       return;
     }
+    
     try {
-      const response = await fetch("/users/verify-code/", {
+      const response = await fetch(`${API_URL}/users/verify-code/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: forgotEmail, code: codeString }),
       });
       const data = await response.json();
+      
       if (response.ok) {
-        setShowResetPasswordForm(true); // Hiện form cấp lại mật khẩu
+        setShowResetPasswordForm(true);
         setShowVerifyCodeForm(false);
       } else {
         alert(data.error || "Mã xác thực không đúng!");
@@ -267,30 +263,33 @@ function LoginForm() {
       alert("Lỗi kết nối máy chủ!");
     }
   };
+
   const handleResetPassword = async () => {
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!forgotEmail || !emailPattern.test(forgotEmail)) {
-      alert(
-        "Email không hợp lệ, vui lòng thực hiện lại quy trình quên mật khẩu!"
-      );
+      alert("Email không hợp lệ, vui lòng thực hiện lại quy trình quên mật khẩu!");
       setShowResetPasswordForm(false);
       return;
     }
+    
     if (!newPassword || !confirmNewPassword) {
       alert("Vui lòng nhập đầy đủ thông tin!");
       return;
     }
+    
     const passwordRegex = /^(?=.*[A-Z]).{8,}$/;
     if (!passwordRegex.test(newPassword)) {
       alert("Mật khẩu phải có ít nhất 8 ký tự và chứa ít nhất 1 chữ viết hoa!");
       return;
     }
+    
     if (newPassword !== confirmNewPassword) {
       alert("Mật khẩu nhập lại không khớp!");
       return;
     }
+    
     try {
-      const response = await fetch("/users/reset-password/", {
+      const response = await fetch(`${API_URL}/users/reset-password/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -299,27 +298,35 @@ function LoginForm() {
         }),
       });
       const data = await response.json();
+      
       if (response.ok) {
-        setShowForgotModal(false);
-        setShowResetPasswordForm(false);
-        setForgotEmail("");
-        setVerificationCode("");
-        setNewPassword("");
-        setConfirmNewPassword("");
+        alert("Đặt lại mật khẩu thành công!");
+        resetForgotPasswordFlow();
+      } else {
+        alert(data.error || "Đặt lại mật khẩu thất bại!");
       }
     } catch (err) {
       alert("Lỗi kết nối máy chủ!");
     }
   };
+
+  const resetForgotPasswordFlow = () => {
+    setShowForgotModal(false);
+    setShowResetPasswordForm(false);
+    setForgotEmail("");
+    setVerificationCode(Array(6).fill(""));
+    setNewPassword("");
+    setConfirmNewPassword("");
+  };
+
   const handleOtpChange = (e, index) => {
-    const value = e.target.value.replace(/[^0-9a-zA-Z]/g, ""); // Chỉ cho phép chữ và số
+    const value = e.target.value.replace(/[^0-9a-zA-Z]/g, "");
     if (value.length > 1) return;
 
     const newCode = [...verificationCode];
     newCode[index] = value;
     setVerificationCode(newCode);
 
-    // Tự động focus ô tiếp theo nếu có giá trị
     if (value && index < 5) {
       const nextInput = document.querySelectorAll(".otp-input")[index + 1];
       nextInput && nextInput.focus();
@@ -338,11 +345,9 @@ function LoginForm() {
       <div className="login-page login-right">
         <form onSubmit={handleSubmit} className="login-form">
           <img src={logo} alt="Logo" className="login-logo" />
-          <h2>
-            {/* <img src={loginIcon} alt="icon" className="login-icon" /> */}
-            Đăng nhập
-          </h2>
+          <h2>Đăng nhập</h2>
           {error && <p style={{ color: "red" }}>{error}</p>}
+          
           <i className="fas fa-user input-icon-user"></i>
           <input
             type="text"
@@ -352,6 +357,7 @@ function LoginForm() {
             required
           />
           <br />
+          
           <i className="fas fa-lock input-icon-lock"></i>
           <input
             type="password"
@@ -360,26 +366,12 @@ function LoginForm() {
             onChange={(e) => setPassword(e.target.value)}
             required
           />
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              marginTop: "-10px",
-              gap: "10px",
-            }}
-          >
-            <input
-              type="checkbox"
-              checked={isSeller}
-              onChange={(e) => setIsSeller(e.target.checked)}
-            />
-            <p>Toi dong y voi dieu khoan nay</p>
-          </div>
           <br />
+          
           <button type="submit" className="login-btn">
-            {/* <img src={homeIcon} alt="icon" className="login-icon home-icon"/> */}
             Đăng nhập
           </button>
+          
           <div className="extra-options">
             <button
               type="button"
@@ -396,6 +388,7 @@ function LoginForm() {
             </span>
           </div>
         </form>
+
         {/* Modal Đăng ký */}
         {showRegisterModal && (
           <div className="modal-overlay">
@@ -422,6 +415,9 @@ function LoginForm() {
                   validatePasswordRealtime(e.target.value);
                 }}
               />
+              {passwordError && (
+                <p className="password-error">{passwordError}</p>
+              )}
               <input
                 type="password"
                 placeholder="Nhập lại mật khẩu"
@@ -430,26 +426,31 @@ function LoginForm() {
               />
 
               {/* <div style={{ margin: '10px 0' }}>
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={isSeller}
-                    onChange={(e) => setIsSeller(e.target.checked)}
-                  />
-                  Đăng ký tài khoản Seller
-                </label>
+                <label>Loại tài khoản:</label>
+                <select
+                  value={registrationRole}
+                  onChange={(e) => setRegistrationRole(e.target.value)}
+                  style={{ width: '100%', padding: '8px', margin: '5px 0' }}
+                >
+                  <option value="customer">Khách hàng</option>
+                  <option value="seller">Người bán</option>
+                </select>
               </div> */}
 
               <button onClick={handleRegister}>Đăng ký</button>
               <button
                 className="close-btn"
-                onClick={() => setShowRegisterModal(false)}
+                onClick={() => {
+                  setShowRegisterModal(false);
+                  resetRegistrationForm();
+                }}
               >
                 Đóng
               </button>
             </div>
           </div>
         )}
+
         {/* Modal Quên mật khẩu */}
         {showForgotModal && (
           <div className="modal-overlay">
@@ -461,12 +462,11 @@ function LoginForm() {
                 value={forgotEmail}
                 autoComplete="off"
                 onChange={(e) => {
-                  // Chỉ nhận email hợp lệ, không nhận username
                   const value = e.target.value;
                   const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
                   if (!value || !emailPattern.test(value)) {
                     setForgotEmailError("Vui lòng nhập đúng định dạng email!");
-                    setForgotEmail(value); // vẫn cho nhập để hiện lỗi
+                    setForgotEmail(value);
                   } else {
                     setForgotEmailError("");
                     setForgotEmail(value);
@@ -498,6 +498,8 @@ function LoginForm() {
             </div>
           </div>
         )}
+
+        {/* Modal nhập mã xác thực */}
         {showVerifyCodeForm && (
           <div className="modal-overlay">
             <div className="modal-content">
@@ -532,6 +534,8 @@ function LoginForm() {
             </div>
           </div>
         )}
+
+        {/* Modal đặt lại mật khẩu */}
         {showResetPasswordForm && (
           <div className="modal-overlay">
             <div className="modal-content">
@@ -568,21 +572,7 @@ function LoginForm() {
                 value={confirmNewPassword}
                 onChange={(e) => setConfirmNewPassword(e.target.value)}
               />
-              <button
-                onClick={() => {
-                  if (
-                    !forgotEmail ||
-                    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(forgotEmail)
-                  ) {
-                    alert(
-                      "Không tìm thấy email hợp lệ để đặt lại mật khẩu. Vui lòng thực hiện lại quy trình quên mật khẩu!"
-                    );
-                    setShowResetPasswordForm(false);
-                    return;
-                  }
-                  handleResetPassword();
-                }}
-              >
+              <button onClick={handleResetPassword}>
                 Đặt lại mật khẩu
               </button>
               <button
@@ -595,6 +585,7 @@ function LoginForm() {
           </div>
         )}
       </div>
+      
       <div className="google-login-container">
         <div id="googleSignInDiv"></div>
       </div>

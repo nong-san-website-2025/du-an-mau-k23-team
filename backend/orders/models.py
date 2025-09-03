@@ -27,13 +27,9 @@ class OrderManager(models.Manager):
 
 class Order(models.Model):
     STATUS_CHOICES = [
-        ('pending', 'Chờ xử lý'),
-        ('processing', 'Đang xử lý'),
-        ('shipped', 'Đã giao vận'),
-        ('delivered', 'Đã giao hàng'),
-        ('completed', 'Hoàn thành'),
-        ('cancelled', 'Đã hủy'),
-        ('refunded', 'Đã hoàn tiền'),
+        ('pending', 'Pending'),
+        ('success', 'Success'),
+        ('cancelled', 'Cancelled'),
     ]
     
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="orders")

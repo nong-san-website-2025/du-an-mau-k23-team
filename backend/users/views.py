@@ -139,14 +139,24 @@ class LoginView(APIView):
             )
 
         refresh = RefreshToken.for_user(user)
+
+        # Determine role consistently
+        if user.is_superuser or getattr(user, "is_admin", False) or (getattr(user, "role", None) and getattr(user.role, "name", None) == "admin"):
+            role_name = "admin"
+        elif getattr(user, "is_seller", False) or (getattr(user, "role", None) and getattr(user.role, "name", None) == "seller"):
+            role_name = "seller"
+        else:
+            role_name = "customer"
+
         return Response(
             {
                 "refresh": str(refresh),
                 "access": str(refresh.access_token),
                 "username": user.username,
                 "email": user.email,
-                "is_admin": user.is_admin,
-                "is_seller": user.is_seller,
+                "role": role_name,
+                "is_admin": role_name == "admin",
+                "is_seller": role_name == "seller",
             }
         )
 

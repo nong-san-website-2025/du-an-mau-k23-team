@@ -21,16 +21,13 @@ class UserPointsHistorySerializer(serializers.ModelSerializer):
         fields = ["date", "action", "points", "amount", "order_id"]
 
 class UserSerializer(serializers.ModelSerializer):
-    history = serializers.SerializerMethodField()
     default_address = serializers.SerializerMethodField()
 
     class Meta:
         model = CustomUser
         fields = [
             "id", "username", "email", "avatar",
-            "full_name", "phone", "is_seller",  
-            "is_admin", "points", 
-            "history", "default_address"
+            "full_name", "phone", "points", "role", "default_address"
         ]
 
     def get_default_address(self, obj):
@@ -60,11 +57,13 @@ class UserSerializer(serializers.ModelSerializer):
 
 class RegisterSerializer(serializers.ModelSerializer):
     password2 = serializers.CharField(write_only=True)
-    is_seller = serializers.BooleanField(default=False)
+    # Hỗ trợ cả 2 cách: role (mới) hoặc is_seller (cũ)
+    role = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    is_seller = serializers.BooleanField(default=False, required=False)
 
     class Meta:
         model = CustomUser
-        fields = ('username', 'email', 'password', 'password2', 'is_seller')
+        fields = ('username', 'email', 'password', 'password2', 'role', 'is_seller')
 
     def validate(self, data):
         if data['password'] != data['password2']:
@@ -72,13 +71,29 @@ class RegisterSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
+        from .models import Role as RoleModel
         validated_data.pop('password2')
         password = validated_data.pop('password')
-        is_seller = validated_data.pop('is_seller', False)
+
+        # Lấy role từ payload nếu có; fallback sang is_seller
+        role_str = validated_data.pop('role', None)
+        is_seller_flag = validated_data.pop('is_seller', False)
+
         user = CustomUser(**validated_data)
         user.set_password(password)
-        user.is_seller = is_seller
-        user.save()
+        user.save()  # cần save trước để gán role ForeignKey
+
+        if role_str:
+            role_name = str(role_str).strip().lower()
+            role_obj, _ = RoleModel.objects.get_or_create(name=role_name)
+            user.role = role_obj
+            user.save()
+        elif is_seller_flag:
+            role_obj, _ = RoleModel.objects.get_or_create(name='seller')
+            user.role = role_obj
+            user.save()
+        # nếu không có role và không is_seller: model.save() đã gán mặc định 'customer'
+
         return user
 
 # ForgotPasswordSerializer nên được định nghĩa ngoài class RegisterSerializer

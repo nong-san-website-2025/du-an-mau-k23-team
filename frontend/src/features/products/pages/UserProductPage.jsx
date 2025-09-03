@@ -37,6 +37,7 @@ const iconMap = {
   Coffee: Coffee,
   Package: Package,
   Banana: Banana,
+  Beef: Beef,
 };
 
 const UserProductPage = () => {

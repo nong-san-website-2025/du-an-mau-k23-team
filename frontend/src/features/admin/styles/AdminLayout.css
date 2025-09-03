@@ -121,8 +121,6 @@
 
 .admin-content {
   flex: 1;
-  padding: 12px;
-  min-width: 0; /* prevent overflow with flex */
 }
 
 .admin-sidemenu {
@@ -132,7 +130,7 @@
 }
 
 .admin-sidemenu-item + .admin-sidemenu-item {
-  margin-top: 4px;
+  margin-top: 0px;
 }
 
 .admin-sidemenu-link {
@@ -206,6 +204,8 @@
   color: inherit; 
 }
 
-.admin-main div {         /* full chiều cao */           /* màu nền sidebar */
-  
+.admin-main {
+  margin-left: 240px;
+  margin-top: 50px; 
+  padding: 0px;
 }

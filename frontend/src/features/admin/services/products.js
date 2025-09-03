@@ -44,3 +44,7 @@ export const addCategory = async (data) => {
   const res = await authAxios().post(CATEGORY_URL, data);
   return res.data;
 };
+
+// Duyệt nhiều sản phẩm cùng lúc
+export const bulkApproveProducts = (productIds) =>
+  authAxios().post(`${API_URL}bulk-approve/`, { product_ids: productIds }).then(res => res.data);

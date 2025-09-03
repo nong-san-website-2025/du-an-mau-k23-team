@@ -4,7 +4,15 @@ import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { useCart } from "../features/cart/services/CartContext";
 import { useLocation } from "react-router-dom";
-import { Carrot, Apple, Wheat, Beef, Milk, Coffee, Package } from "lucide-react";
+import {
+  Carrot,
+  Apple,
+  Wheat,
+  Beef,
+  Milk,
+  Coffee,
+  Package,
+} from "lucide-react";
 import { productApi } from "../features/products/services/productApi";
 import axiosInstance from "../features/admin/services/axiosInstance";
 
@@ -35,14 +43,30 @@ export default function Header() {
 
   // Dropdown visibility
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
-  const [showNotificationDropdown, setShowNotificationDropdown] = useState(false);
+  const [showNotificationDropdown, setShowNotificationDropdown] =
+    useState(false);
   const [showCartDropdown, setShowCartDropdown] = useState(false);
 
   // Notifications (kept for future use/compatibility)
   const [notifications, setNotifications] = useState([
-    { id: 1, title: "Đơn hàng #1234 đã được xác nhận", detail: "Chi tiết đơn hàng #1234...", thumbnail: "/media/cart_items/order-confirmed.png" },
-    { id: 2, title: "Bạn nhận được voucher mới", detail: "Bạn vừa nhận được voucher giảm giá 10%...", thumbnail: "/media/cart_items/voucher.png" },
-    { id: 3, title: "Cập nhật chính sách vận chuyển", detail: "Chính sách vận chuyển mới áp dụng từ 8/8...", thumbnail: "/media/cart_items/policy-update.png" },
+    {
+      id: 1,
+      title: "Đơn hàng #1234 đã được xác nhận",
+      detail: "Chi tiết đơn hàng #1234...",
+      thumbnail: "/media/cart_items/order-confirmed.png",
+    },
+    {
+      id: 2,
+      title: "Bạn nhận được voucher mới",
+      detail: "Bạn vừa nhận được voucher giảm giá 10%...",
+      thumbnail: "/media/cart_items/voucher.png",
+    },
+    {
+      id: 3,
+      title: "Cập nhật chính sách vận chuyển",
+      detail: "Chính sách vận chuyển mới áp dụng từ 8/8...",
+      thumbnail: "/media/cart_items/policy-update.png",
+    },
   ]);
 
   const handleLogout = () => {
@@ -73,10 +97,16 @@ export default function Header() {
     fetchCategories();
   }, []);
 
-  const greenText = { color: "#22C55E", fontFamily: "Montserrat, Arial, sans-serif", fontWeight: 800 };
+  const greenText = {
+    color: "#22C55E",
+    fontFamily: "Montserrat, Arial, sans-serif",
+    fontWeight: 800,
+  };
 
   const urlCategory =
-    decodeURIComponent(new URLSearchParams(location.search).get("category") || "") ||
+    decodeURIComponent(
+      new URLSearchParams(location.search).get("category") || ""
+    ) ||
     (categories[0] && categories[0].name);
 
   const handleCategoryHover = (cat) => setHoveredCategory(cat.name);
@@ -104,7 +134,10 @@ export default function Header() {
 
   // Search feature
   const [search, setSearch] = useState("");
-  const [searchResults, setSearchResults] = useState({ products: [], posts: [] });
+  const [searchResults, setSearchResults] = useState({
+    products: [],
+    posts: [],
+  });
   const [showSuggestions, setShowSuggestions] = useState(false);
   const searchRef = useRef();
 
@@ -128,7 +161,9 @@ export default function Header() {
 
     if (value.trim() !== "") {
       try {
-        const res = await axiosInstance.get(`/products/search/`, { params: { q: value } });
+        const res = await axiosInstance.get(`/products/search/`, {
+          params: { q: value },
+        });
         setSearchResults(res.data);
         setShowSuggestions(true);
       } catch (error) {
@@ -164,15 +199,22 @@ export default function Header() {
           const username = localStorage.getItem("username");
           const list = Array.isArray(res.data) ? res.data : [];
           seller = list.find(
-            (s) => (s.user_name || s.owner_name || s.user)?.toLowerCase() === username?.toLowerCase()
+            (s) =>
+              (s.user_name || s.owner_name || s.user)?.toLowerCase() ===
+              username?.toLowerCase()
           );
         }
 
         if (seller) {
           const status = (seller.status || "").toLowerCase();
           if (status === "approved" || status === "đã duyệt") {
+            // Seller đã được duyệt nhưng chưa active
             setStoreName(seller.store_name || "");
             setSellerStatus("approved");
+          } else if (status === "active") {
+            // Seller đang hoạt động
+            setStoreName(seller.store_name || "");
+            setSellerStatus("active");
           } else if (status === "pending" || status === "chờ duyệt") {
             setSellerStatus("pending");
             setStoreName("");
@@ -202,20 +244,49 @@ export default function Header() {
 
   return (
     <>
-      <ToastContainer position="top-right" autoClose={2000} hideProgressBar={false} newestOnTop={false} closeOnClick rtl={false} pauseOnFocusLoss draggable pauseOnHover theme="colored" />
+      <ToastContainer
+        position="top-right"
+        autoClose={2000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="colored"
+      />
 
-      <header className="shadow-sm" style={{ position: "sticky", top: 0, zIndex: 999, fontFamily: "Montserrat, Arial, sans-serif", background: "#f8fafc" }}>
+      <header
+        className="shadow-sm"
+        style={{
+          position: "sticky",
+          top: 0,
+          zIndex: 999,
+          fontFamily: "Montserrat, Arial, sans-serif",
+          background: "#f8fafc",
+        }}
+      >
         {/* Top bar */}
         <TopBar />
 
         {/* Main header */}
-        <div className="bg-white border-bottom" style={{ position: "relative", boxShadow: "0 2px 8px #0001" }}>
-          <div className="container d-flex align-items-center justify-content-between py-2 px-2" style={{ minHeight: "60px", flexWrap: "nowrap" }}>
+        <div
+          className="bg-white border-bottom"
+          style={{ position: "relative", boxShadow: "0 2px 8px #0001" }}
+        >
+          <div
+            className="container d-flex align-items-center justify-content-between py-2 px-2"
+            style={{ minHeight: "60px", flexWrap: "nowrap" }}
+          >
             {/* Logo */}
             <Logo greenText={greenText} />
 
             {/* Navigation */}
-            <nav className="d-flex align-items-center flex-grow-1 ms-4" style={{ flexWrap: "nowrap" }}>
+            <nav
+              className="d-flex align-items-center flex-grow-1 ms-4"
+              style={{ flexWrap: "nowrap" }}
+            >
               <CategoryMegaMenu
                 categories={categories}
                 iconMap={iconMap}

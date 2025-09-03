@@ -1,10 +1,10 @@
+from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import PaymentViewSet, VNPayCreatePaymentView
-from django.urls import path
+from .views import create_momo_payment, momo_ipn
 
 router = DefaultRouter()
-router.register(r"", PaymentViewSet, basename="payments")
 
-urlpatterns = router.urls + [
-    path('vnpay-create/', VNPayCreatePaymentView.as_view(), name='vnpay-create'),
+urlpatterns = [
+    path('momo/create/', create_momo_payment, name='create_momo_payment'),
+    path('momo/ipn/', momo_ipn, name='momo_ipn'),
 ]

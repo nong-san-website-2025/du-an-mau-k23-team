@@ -22,7 +22,7 @@ export default function AdminLayout() {
       <TopBar onLogout={handleLogout} />
 
       {/* Main area with left sidebar */}
-      <div className="admin-main">
+      <div className="admin-main ">
         <AdminSidebar /> {/* 👉 Sidebar đã tách riêng */}
         <main className="admin-content">
           <Outlet />
@@ -35,7 +35,7 @@ export default function AdminLayout() {
 /* ----------------- Components ----------------- */
 function TopBar() {
   return (
-    <div className="admin-topbar">
+    <div className="admin-topbar fixed-top" style={{ zIndex: 999 }}>
       <div className="d-flex align-items-center">
         <img
           src="/assets/logo/imagelogo.png"

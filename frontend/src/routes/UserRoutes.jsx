@@ -11,13 +11,14 @@ import AboutPage from "../pages/about/about";
 import StoreList from '../features/stores/pages/StoreList';
 import StoreDetail from '../features/stores/pages/StoreDetail';
 import FeaturedProductsPage from "../features/featured/pages/FeaturedProductsPage";
-import PrivateRoute from "../features/login_register/components/PrivateRoute";
+import PrivateRoute from "../components/PrivateRoutes/PrivateRoute";
 import UserProfile from "../features/login_register/pages/UserProfile";
 import Orders from '../features/orders/pages/Orders';
 import ProfilePage from "../features/users/pages/ProfilePage";
 import SellerRegisterPage from "../features/sellers/pages/SellerRegisterPage";
 import ManageStore from "../features/login_register/pages/ManageStore";
 import Wishlist from "../pages/Wishlist/Wishlist";
+import PaymentResultPage from "../features/cart/pages/PaymentResultPage";
 
 export const userRoutes = [
   <Route path="/" element={<Layout />} key="layout">
@@ -41,6 +42,7 @@ export const userRoutes = [
       <Route path="profile" element={<ProfilePage />} />
       <Route path="manage-products" element={<ManageStore />} />
       <Route path="register-seller" element={<SellerRegisterPage />} />
+      <Route path="/payment/result" element={<PaymentResultPage />} />
     </Route>
   </Route>
 ];

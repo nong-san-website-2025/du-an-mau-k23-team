@@ -1,5 +1,5 @@
 import { Layout, Menu } from "antd";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate  } from "react-router-dom";
 import {
   HomeOutlined,
   UserOutlined,
@@ -8,17 +8,22 @@ import {
   DollarOutlined,
   BarChartOutlined,
   NotificationOutlined,
+  InboxOutlined,
 } from "@ant-design/icons";
 import "../styles/AdminSidebar.css"
 
 const { Sider } = Layout;
 
+
 const Sidebar = () => {
+  const location = useLocation(); 
+  const navigate = useNavigate();
   return (
     <Sider width={250} className="sidebar">
       <Menu
         mode="inline"
-        defaultSelectedKeys={["dashboard"]}
+        selectedKeys={[location.pathname]}
+        onClick={({ key }) => navigate(key)}
         style={{ height: "100%", borderRight: 0 }}
         
       >
@@ -26,26 +31,29 @@ const Sidebar = () => {
           <Link to="/admin/">Dashboard</Link>
         </Menu.Item>
 
-        <Menu.SubMenu key="users" icon={<UserOutlined />} title="Người dùng & Seller">
+        <Menu.SubMenu key="users" icon={<UserOutlined />} title="Người dùng">
           <Menu.Item key="users-list">
             <Link to="/admin/users">Quản lý người dùng</Link>
-          </Menu.Item>
-          <Menu.Item key="seller">
-            <Link to="/admin/shops">Quản lý cửa hàng</Link>
-          </Menu.Item>
-          <Menu.Item key="seller-approval">
-            <Link to="/admin/sellers/approval">Duyệt seller đăng ký</Link>
           </Menu.Item>
           <Menu.Item key="roles">
             <Link to="/admin/roles">Phân quyền & vai trò</Link>
           </Menu.Item>
         </Menu.SubMenu>
 
-        <Menu.SubMenu key="products" icon={<ShopOutlined />} title="Sản phẩm & Danh mục">
-          <Menu.Item key="product-approval">
+        <Menu.SubMenu key="seller-management" icon={<ShopOutlined  />} title="Cửa hàng">
+          <Menu.Item key="/admin/sellers/business">
+            <Link to="/admin/sellers/business">Cửa hàng hoạt động/khóa</Link>
+          </Menu.Item>
+          <Menu.Item key="/admin/sellers/approval">
+            <Link to="/admin/sellers/approval">Duyệt cửa hàng đăng ký</Link>
+          </Menu.Item>
+        </Menu.SubMenu>
+
+        <Menu.SubMenu key="products" icon={<InboxOutlined /> } title="Sản phẩm & Danh mục">
+          <Menu.Item key="/admin/products/approval">
             <Link to="/admin/products/approval">Duyệt sản phẩm</Link>
           </Menu.Item>
-          <Menu.Item key="categories">
+          <Menu.Item key="/admin/products/categories">
             <Link to="/admin/categories">Quản lý danh mục</Link>
           </Menu.Item>
           <Menu.Item key="brands">

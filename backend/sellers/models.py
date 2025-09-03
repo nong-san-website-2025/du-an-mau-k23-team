@@ -1,6 +1,8 @@
 from django.db import models
 from users.models import CustomUser
 from django.conf import settings
+from products.models import Product
+
 
 class Seller(models.Model):
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name="seller")
@@ -14,29 +16,27 @@ class Seller(models.Model):
         ("pending", "Chờ duyệt"),
         ("approved", "Đã duyệt"),
         ("rejected", "Bị từ chối"),
+        ("active", "Đang hoạt động"),
+        ("locked", "Đã khóa")
     ]
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
 
     def __str__(self):
         return self.store_name
 class Shop(models.Model):
-    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="shops")
-    name = models.CharField(max_length=255)              # tên cửa hàng
-    description = models.TextField(blank=True, null=True) # mô tả
+    owner = models.OneToOneField(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.CASCADE, 
+        related_name="shop"
+    )
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=True)
 
     def __str__(self):
         return self.name
-    
-class Product(models.Model):
-    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name="products")
-    name = models.CharField(max_length=100)
-    price = models.DecimalField(max_digits=10, decimal_places=2)
-    stock = models.IntegerField(default=0)
 
-    def __str__(self):
-        return self.name
 
 class Order(models.Model):
     shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name="orders")

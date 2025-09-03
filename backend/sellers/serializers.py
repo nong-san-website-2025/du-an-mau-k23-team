@@ -1,7 +1,8 @@
 from rest_framework import serializers
 from .models import Seller
 from products.models import Product
-
+from rest_framework import serializers
+from .models import Seller, Shop, Product, Order, Voucher
 class ProductMiniSerializer(serializers.ModelSerializer):
     discounted_price = serializers.SerializerMethodField()
 
@@ -14,9 +15,11 @@ class ProductMiniSerializer(serializers.ModelSerializer):
 
 class SellerListSerializer(serializers.ModelSerializer):
     owner_username = serializers.CharField(source='user.username', read_only=True)
+    user_email = serializers.EmailField(source="user.email", read_only=True)
+    created_at = serializers.DateTimeField(format="%d/%m/%Y %H:%M", read_only=True)
     class Meta:
         model = Seller
-        fields = ['id', 'store_name', 'image', 'address', 'status', 'bio', 'owner_username', 'phone']
+        fields = ['id', 'store_name', 'image', 'address', 'status', 'bio', 'owner_username', 'phone', 'user_email', 'created_at', ]
 
 class SellerRegisterSerializer(serializers.ModelSerializer):
     class Meta:
@@ -24,15 +27,22 @@ class SellerRegisterSerializer(serializers.ModelSerializer):
         fields = ['id', 'user', 'store_name', 'bio', 'address', 'phone', 'image']
 
 class SellerDetailSerializer(serializers.ModelSerializer):
-    # reverse relation: product_set (default name) -> list sản phẩm của seller
     products = ProductMiniSerializer(many=True, read_only=True, source='product_set')
 
     class Meta:
         model = Seller
-        fields = ['id', 'store_name', 'bio', 'address', 'phone', 'image', 'created_at', 'products']
+        fields = [
+            'id',
+            'store_name',
+            'bio',
+            'address',
+            'phone',
+            'image',
+            'created_at',
+            'status',      
+            'products'
+        ]
 
-from rest_framework import serializers
-from .models import Seller, Shop, Product, Order, Voucher
 
 class SellerSerializer(serializers.ModelSerializer):
     user_username = serializers.CharField(source="user.username", read_only=True)
@@ -42,9 +52,9 @@ class SellerSerializer(serializers.ModelSerializer):
         model = Seller
         fields = [
             "id", "store_name", "bio", "address", "phone", "image",
-            "created_at", "user", "user_username", "user_email"
+            "created_at", "user", "user_username", "user_email", 
         ]
-        read_only_fields = ["created_at"]  # chỉ để created_at readonly
+        read_only_fields = ["created_at"]
 
     def update(self, instance, validated_data):
         request = self.context.get("request")

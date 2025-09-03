@@ -11,7 +11,7 @@ class Role(models.Model):
 
 class CustomUser(AbstractUser):
 
-    role = models.ForeignKey(Role, on_delete=models.SET_NULL, null=True, blank=True,default="customer" )
+    role = models.ForeignKey(Role, on_delete=models.SET_NULL, null=True, blank=True)
 
     full_name = models.CharField(max_length=255, blank=True, null=True)
     email = models.EmailField(unique=True)
@@ -47,14 +47,6 @@ class CustomUser(AbstractUser):
     def __str__(self):
         return self.username
 
-    # 👇 Các property này mặc định False nếu không phải role tương ứng
-    @property
-    def is_admin(self):
-        return self.is_superuser or (self.role and self.role.name == "admin")
-
-    @property
-    def is_seller(self):
-        return self.role and self.role.name == "seller"
 
     
 
