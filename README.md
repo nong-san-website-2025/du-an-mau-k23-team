@@ -1,13 +1,4 @@
-
 # 🌾 Dự án Website Sàn Thương Mại Nông Sản
-
-## 🚀 Giới thiệu
-Dự án xây dựng một sàn thương mại điện tử chuyên về nông sản, bao gồm:
-- Frontend: ReactJS
-- Backend: Django REST Framework
-- Database: SQLite3 (mặc định của Django)
-
----
 
 ## Nếu dùng Git Desktop
     - Nhấn vào File/Clone repository từ GitHub
@@ -18,26 +9,6 @@ Dự án xây dựng một sàn thương mại điện tử chuyên về nông s
     - Chọn nhánh của mình
     - Mở viusual rồi code thôi ae
     - Chuyển qua bước 2 luôn
-
-## 📁 Cấu trúc thư mục
-```bash
-├── frontend/
-│   ├── src/
-│   │   └── ...
-│   ├── package.json
-│   └── README.md
-└── backend/
-    ├── api/
-    │   └── ...
-    ├── manage.py
-    └── README.md
-```
-
-## Nếu dùng Terminal
-
- Bước cơ bản: 
-    Tạo thư mục với hẳn làm nhe, đẻ clone về thư mục đó chứ ko để lung tung rồi mở terminal làm như bên dưới
-
 
 ## 📥 Bước 1: Clone source về
 
@@ -83,8 +54,30 @@ cd du-an-mau-k23-team
     # Chạy frontend
     npm start
 
-## Chay sample_products.py de tao san pham demo
+### Chay sample_products.py de tao san pham demo
 from generate_sample_products import generate_sample_products
 generate_sample_products()
 
+## Hướng dẫn dùng tạm sqlite3
+```bash
+ - Vao settings.py của backend/config/settings.py đổi đoạn:
+  else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': 'ecom_db',
+            'USER': 'postgres',
+            'PASSWORD': '12345',
+            'HOST': 'localhost',
+            'PORT': '5432',
+        }
+    } thành đoạn:
+  else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
+```
 
