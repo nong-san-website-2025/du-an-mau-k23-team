@@ -6,6 +6,7 @@ import LoginForm from "./features/login_register/pages/LoginForm";
 import { userRoutes } from "./routes/UserRoutes";
 import { adminRoutes } from "./routes/AdminRoutes";
 import { sellerRoutes } from "./routes/SellerRoutes.jsx";
+import DashboardPage from "./features/admin/pages/DashboardPage";
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
               {userRoutes}
               {adminRoutes}
               {sellerRoutes}
+              <Route path="/admin/dashboard" element={<DashboardPage />} />
             </Routes>
           </BannerProvider>
         </CartProvider>

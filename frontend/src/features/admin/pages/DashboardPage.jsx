@@ -1,94 +1,108 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import axios from "axios";
 import RevenueChart from "../components/RevenueChart";
 import OrderPieChart from "../components/OrderPieChart";
 
 export default function DashboardPage() {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const response = await axios.get(
+          "http://127.0.0.1:8000/api/dashboard/",
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+        console.log("Dashboard API response:", response.data);
+        setData(response.data);
+        setLoading(false);
+      } catch (err) {
+        if (err.response) {
+          console.error(
+            "Server error:",
+            err.response.status,
+            err.response.data
+          );
+        } else {
+          console.error("Network/Client error:", err.message);
+        }
+        setError(err);
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  if (error) {
+    return <div>Error loading data. Please try again.</div>;
+  }
+
   return (
-    <div className="bg-light" style={{minHeight:'100vh'}}>
-      <div style={{marginLeft:0}}>
+    <div className="bg-light" style={{ minHeight: "100vh" }}>
+      <div style={{ marginLeft: 0 }}>
         <div className="container-fluid py-4">
-          <h2 className="fw-bold mb-4">Projects</h2>
+          <h2 className="fw-bold mb-4">Dashboard</h2>
           <div className="row mb-4">
             <div className="col-md-3 mb-3">
               <div className="card shadow-sm">
                 <div className="card-body">
-                  <div className="fs-3 fw-bold">18</div>
-                  <div className="text-muted">Projects</div>
-                  <div className="small text-success">2 Completed</div>
+                  <div className="fs-3 fw-bold">{data.total_users}</div>
+                  <div className="text-muted">Tổng số người dùng</div>
                 </div>
               </div>
             </div>
             <div className="col-md-3 mb-3">
               <div className="card shadow-sm">
                 <div className="card-body">
-                  <div className="fs-3 fw-bold">132</div>
-                  <div className="text-muted">Active Task</div>
-                  <div className="small text-primary">28 Completed</div>
+                  <div className="fs-3 fw-bold">{data.total_products}</div>
+                  <div className="text-muted">Tổng số sản phẩm</div>
                 </div>
               </div>
             </div>
             <div className="col-md-3 mb-3">
               <div className="card shadow-sm">
                 <div className="card-body">
-                  <div className="fs-3 fw-bold">12</div>
-                  <div className="text-muted">Teams</div>
-                  <div className="small text-info">1 Completed</div>
+                  <div className="fs-3 fw-bold">{data.total_orders}</div>
+                  <div className="text-muted">Tổng số đơn hàng</div>
                 </div>
               </div>
             </div>
             <div className="col-md-3 mb-3">
               <div className="card shadow-sm">
                 <div className="card-body">
-                  <div className="fs-3 fw-bold">76%</div>
-                  <div className="text-muted">Productivity</div>
-                  <div className="small text-warning">5% Completed</div>
+                  <div className="fs-3 fw-bold">${data.total_revenue}</div>
+                  <div className="text-muted">Doanh thu</div>
                 </div>
               </div>
             </div>
           </div>
-          <div className="row mb-4">
-            <div className="col-md-6 mb-3">
-              <RevenueChart />
-            </div>
-            <div className="col-md-6 mb-3">
-              <OrderPieChart />
-            </div>
-          </div>
-          <h4 className="fw-bold mb-3">Active Projects</h4>
+          <h4 className="fw-bold mb-3">Sản phẩm bán chạy</h4>
           <div className="card shadow-sm">
             <div className="card-body p-0">
               <table className="table mb-0">
                 <thead>
                   <tr>
-                    <th>Project Name</th>
-                    <th>Hours</th>
-                    <th>Priority</th>
-                    <th>Members</th>
-                    <th>Progress</th>
+                    <th>Tên sản phẩm</th>
+                    <th>Số lượng bán</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr>
-                    <td>Dropbox Design System</td>
-                    <td>34</td>
-                    <td><span className="badge bg-warning text-dark">Medium</span></td>
-                    <td><span className="badge bg-info">+5</span></td>
-                    <td><div className="progress" style={{height:6}}><div className="progress-bar bg-primary" style={{width:'15%'}}></div></div></td>
-                  </tr>
-                  <tr>
-                    <td>Slack Team UI Design</td>
-                    <td>47</td>
-                    <td><span className="badge bg-danger">High</span></td>
-                    <td><span className="badge bg-info">+5</span></td>
-                    <td><div className="progress" style={{height:6}}><div className="progress-bar bg-success" style={{width:'35%'}}></div></div></td>
-                  </tr>
-                  <tr>
-                    <td>GitHub Satellite</td>
-                    <td>120</td>
-                    <td><span className="badge bg-primary">Low</span></td>
-                    <td><span className="badge bg-info">+5</span></td>
-                    <td><div className="progress" style={{height:6}}><div className="progress-bar bg-info" style={{width:'75%'}}></div></div></td>
-                  </tr>
+                  {data.top_products.map((product, index) => (
+                    <tr key={index}>
+                      <td>{product.name}</td>
+                      <td>{product.sales}</td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>

@@ -27,17 +27,17 @@ const Sidebar = () => {
         style={{ height: "100%", borderRight: 0 }}
         
       >
-        <Menu.Item key="dashboard" icon={<HomeOutlined />}>
+        <Menu.Item key="" icon={<HomeOutlined />}>
           <Link to="/admin/">Dashboard</Link>
         </Menu.Item>
 
         <Menu.SubMenu key="users" icon={<UserOutlined />} title="Người dùng">
-          <Menu.Item key="users-list">
+          <Menu.Item key="users">
             <Link to="/admin/users">Quản lý người dùng</Link>
           </Menu.Item>
-          <Menu.Item key="roles">
+          {/* <Menu.Item key="roles">
             <Link to="/admin/roles">Phân quyền & vai trò</Link>
-          </Menu.Item>
+          </Menu.Item> */}
         </Menu.SubMenu>
 
         <Menu.SubMenu key="seller-management" icon={<ShopOutlined  />} title="Cửa hàng">

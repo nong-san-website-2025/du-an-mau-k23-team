@@ -33,7 +33,7 @@ export default function AdminLayout() {
 }
 
 /* ----------------- Components ----------------- */
-function TopBar() {
+function TopBar({ onLogout }) {
   return (
     <div className="admin-topbar fixed-top" style={{ zIndex: 999 }}>
       <div className="d-flex align-items-center">
@@ -60,19 +60,26 @@ function TopBar() {
           title="Cài đặt"
           style={{ color: "black" }}
         />
-        <TopBarButton Icon={User}
+        <TopBarButton
+          Icon={User}
           title="Tài khoản"
           style={{ color: "black" }}
-        >
-        </TopBarButton>
+        ></TopBarButton>
+        {/* <TopBarButton
+          Icon={User}
+          title="Đăng xuất"
+          style={{ color: "black" }}
+          onClick={onLogout}
+        /> */}
       </div>
     </div>
   );
 }
 
-function TopBarButton({ Icon, title, style }) {
+function TopBarButton({ Icon, title, style, onClick }) {
   return (
     <button
+      onClick={onClick}
       style={{
         display: "flex",
         alignItems: "center",

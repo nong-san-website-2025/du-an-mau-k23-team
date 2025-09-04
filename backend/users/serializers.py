@@ -22,18 +22,25 @@ class UserPointsHistorySerializer(serializers.ModelSerializer):
 
 class UserSerializer(serializers.ModelSerializer):
     default_address = serializers.SerializerMethodField()
+    role = RoleSerializer(read_only=True)
+    role_id = serializers.PrimaryKeyRelatedField(
+        queryset=Role.objects.all(),
+        source='role',
+        write_only=True,
+        required=False,
+        allow_null=True
+    )
 
     class Meta:
         model = CustomUser
         fields = [
             "id", "username", "email", "avatar",
-            "full_name", "phone", "points", "role", "default_address"
+            "full_name", "phone", "points", "role", "role_id", "default_address"
         ]
 
     def get_default_address(self, obj):
         default = obj.addresses.filter(is_default=True).first()
         return default.location if default else None
-
 
     def get_history(self, obj):
         histories = obj.point_histories.order_by('-date')
@@ -48,10 +55,19 @@ class UserSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         password = validated_data.pop("password", None)
+    
+    # Lấy role object nếu có
+        role_obj = validated_data.pop("role", None)
+        if role_obj is not None:
+            instance.role = role_obj
+
+        # Cập nhật các trường còn lại
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
+        
         if password:
             instance.set_password(password)
+        
         instance.save()
         return instance
 

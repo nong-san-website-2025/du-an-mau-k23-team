@@ -23,11 +23,23 @@ export default function UserTable({
   const sameId = (a, b) => String(a ?? "") === String(b ?? "");
 
   const renderRole = (user) => {
-  if (user?.is_admin) return <span className="badge bg-danger">Admin</span>;
-  if (user?.is_seller) return <span className="badge bg-success">Seller</span>;
-  if (user?.is_support) return <span className="badge bg-warning">Support</span>;
-  return <span className="badge bg-secondary">User</span>;
-};
+    const roleName = user?.role?.name?.toLowerCase();
+
+    switch (roleName) {
+      case "admin":
+        return <span className="badge bg-danger">Admin</span>;
+      case "seller":
+        return <span className="badge bg-success">Seller</span>;
+      case "support":
+        return <span className="badge bg-warning">Support</span>;
+      default:
+        return (
+          <span className="badge bg-secondary">
+            {user?.role?.name || "User"}
+          </span>
+        );
+    }
+  };
 
   // --- Lọc theo searchTerm + role, hoàn toàn null-safe ---
   const filteredUsers = useMemo(() => {

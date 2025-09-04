@@ -9,6 +9,7 @@ from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
 )
+from .views import DashboardAPIView
 
 
 
@@ -19,6 +20,7 @@ router.register(r'users', views.UserViewSet, basename='user')
 router.register(r'roles', views.RoleViewSet, basename='role')
 router.register(r'addresses', views.AddressViewSet, basename='address')
 router.register("employees", EmployeeViewSet, basename="employee")
+router.register(r'user-management', views.UserManagementViewSet, basename='user-management')
 
 
 urlpatterns = [
@@ -49,4 +51,6 @@ urlpatterns = [
 
     # Include router urls
     path('', include(router.urls)),
+
+    path("dashboard/", DashboardAPIView.as_view(), name="dashboard"),
 ]

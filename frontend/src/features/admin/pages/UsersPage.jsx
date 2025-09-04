@@ -50,34 +50,40 @@ export default function UsersPage() {
   }, []);
 
   const handleDeleteSelected = async () => {
-  if (checkedIds.length === 0) return;
+    if (checkedIds.length === 0) return;
 
-  if (!window.confirm(`Bạn có chắc muốn xoá ${checkedIds.length} người dùng?`)) {
-    return;
-  }
-
-  try {
-    console.log("👉 Gọi API xoá:", checkedIds);
-
-    // ✅ Nếu backend chỉ hỗ trợ DELETE từng user
-    for (const userId of checkedIds) {
-      await axios.delete(`http://localhost:8000/api/users/${userId}/`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      });
+    if (
+      !window.confirm(`Bạn có chắc muốn xoá ${checkedIds.length} người dùng?`)
+    ) {
+      return;
     }
 
-    // ✅ Xoá khỏi state để cập nhật UI
-    setUsers((prev) => prev.filter((u) => !checkedIds.includes(u.id)));
-    setCheckedIds([]);
-    alert("Đã xoá thành công!");
-  } catch (err) {
-    console.error("❌ Lỗi xoá user:", err.response?.data || err.message);
-    alert("Xoá thất bại!");
-  }
-};
+    try {
+      console.log("👉 Gọi API xoá:", checkedIds);
 
+      // ✅ Nếu backend chỉ hỗ trợ DELETE từng user
+      for (const userId of checkedIds) {
+        await axios.delete(`http://localhost:8000/api/users/${userId}/`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        });
+      }
+
+      // ✅ Xoá khỏi state để cập nhật UI
+      setUsers((prev) => prev.filter((u) => !checkedIds.includes(u.id)));
+      setCheckedIds([]);
+      alert("Đã xoá thành công!");
+    } catch (err) {
+      console.error("❌ Lỗi xoá user:", err.response?.data || err.message);
+      alert("Xoá thất bại!");
+    }
+  };
+  function handleUserUpdated(updatedUser) {
+  setUsers(prev =>
+    prev.map(u => (u.id === updatedUser.id ? { ...u, ...updatedUser } : u))
+  );
+}
 
   return (
     <AdminPageLayout
@@ -186,7 +192,7 @@ export default function UsersPage() {
             <UserDetailModal
               user={selectedUser}
               onClose={() => setSelectedUser(null)}
-              onUserUpdated={fetchUsers}
+              onUserUpdated={handleUserUpdated}
             />
           )}
         </div>

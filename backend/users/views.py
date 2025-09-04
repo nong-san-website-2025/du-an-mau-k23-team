@@ -2,7 +2,7 @@ from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.hashers import make_password
 from django.core.cache import cache
 from django.core.mail import send_mail
-from django.db.models import Sum
+from django.db.models import Sum, Count
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 
@@ -33,6 +33,8 @@ from .serializers import (
     RoleSerializer,
 )
 from .permissions import IsAdmin, IsSeller, IsNormalUser
+from products.models import Product
+from orders.models import Order
 
 
 User = get_user_model()
@@ -414,3 +416,54 @@ class EmployeeViewSet(viewsets.ModelViewSet):
     queryset = CustomUser.objects.filter(role__name="employee")
     serializer_class = EmployeeSerializer
     permission_classes = [IsAuthenticated, IsAdmin]
+
+# API quản lý người dùng
+class UserManagementViewSet(viewsets.ModelViewSet):
+    queryset = CustomUser.objects.all()
+    serializer_class = UserSerializer
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+    def list(self, request, *args, **kwargs):
+        """Lấy danh sách người dùng"""
+        return super().list(request, *args, **kwargs)
+
+    def create(self, request, *args, **kwargs):
+        """Tạo người dùng mới"""
+        return super().create(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        """Cập nhật thông tin người dùng"""
+        return super().update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        """Xóa người dùng"""
+        return super().destroy(request, *args, **kwargs)
+
+# -------------------- DASHBOARD --------------------
+class DashboardAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        total_users = CustomUser.objects.count()
+        total_products = Product.objects.count()
+        total_orders = Order.objects.count()
+        total_revenue = Order.objects.filter(status="completed").aggregate(Sum("total_price"))["total_price__sum"] or 0
+        active_sellers = CustomUser.objects.filter(is_seller=True, is_active=True).count()
+        pending_sellers = CustomUser.objects.filter(is_seller=True, is_active=False).count()
+
+        top_products = Product.objects.annotate(sales=Count("order_items")).order_by("-sales")[:5]
+        top_products_data = [
+            {"name": product.name, "sales": product.sales} for product in top_products
+        ]
+
+        data = {
+            "total_users": total_users,
+            "total_products": total_products,
+            "total_orders": total_orders,
+            "total_revenue": total_revenue,
+            "active_sellers": active_sellers,
+            "pending_sellers": pending_sellers,
+            "top_products": top_products_data,
+        }
+
+        return Response(data)
