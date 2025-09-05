@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { useCart } from "../../cart/services/CartContext";
 import { useParams, useNavigate } from "react-router-dom";
-import { AiFillStar } from 'react-icons/ai';
+import { AiFillStar, AiFillHeart } from 'react-icons/ai';
 import {
   Badge,
   Button,
@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { productApi } from "../services/productApi";
 import { reviewApi } from "../services/reviewApi";
+import { favoriteApi } from "../services/favoriteApi";
 import { useAuth } from "../../login_register/services/AuthContext";
 
 const ProductDetailPage = () => {
@@ -38,6 +39,49 @@ const ProductDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [quantity, setQuantity] = useState(1);
+  const [isFavorite, setIsFavorite] = useState(false);
+  // Kiểm tra trạng thái yêu thích từ localStorage khi load trang
+  useEffect(() => {
+    try {
+      const list = JSON.parse(localStorage.getItem('wishlist') || '[]');
+      const fav = list.some(item => String(item.id) === String(id));
+      setIsFavorite(fav);
+    } catch {
+      setIsFavorite(false);
+    }
+  }, [id]);
+
+  // Xử lý bấm vào icon trái tim
+  const handleToggleFavorite = async () => {
+    try {
+      const list = JSON.parse(localStorage.getItem('wishlist') || '[]');
+      if (isFavorite) {
+        // Remove
+        const newList = list.filter(item => String(item.id) !== String(product.id));
+        localStorage.setItem('wishlist', JSON.stringify(newList));
+        setIsFavorite(false);
+        toast.success("Đã xóa khỏi mục yêu thích", { position: "bottom-right" });
+      } else {
+        // Add
+        const item = {
+          id: product.id,
+          name: product.name,
+          image: (product.image && product.image.startsWith("/") ? `http://localhost:8000${product.image}` : product.image) || "",
+          price: Number(product.discounted_price ?? product.price) || 0,
+          inStock: product.stock > 0
+        };
+        if (!list.some(p => String(p.id) === String(item.id))) {
+          list.push(item);
+          localStorage.setItem('wishlist', JSON.stringify(list));
+        }
+        setIsFavorite(true);
+        toast.success("Đã thêm vào mục yêu thích", { position: "bottom-right" });
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Có lỗi xảy ra khi cập nhật mục yêu thích", { position: "bottom-right" });
+    }
+  };
 
   // Reviews state
   const [reviews, setReviews] = useState([]);
@@ -202,8 +246,8 @@ const handleSubmitReview = async () => {
       <Row className="g-4">
         {/* Ảnh sản phẩm */}
         <Col md={6}>
-          <Card className="shadow-sm border-0 p-3">
-            <div className="text-center">
+          <Card className="shadow-sm border-0 p-3 position-relative">
+            <div className="text-center position-relative">
               <img
                 src={
                   product.image && product.image.startsWith("/")
@@ -216,13 +260,23 @@ const handleSubmitReview = async () => {
                 className="img-fluid rounded main-product-img"
                 style={{ maxHeight: 450, objectFit: "contain" }}
               />
+              <button
+                onClick={handleToggleFavorite}
+                className="position-absolute"
+                style={{ bottom: 15, right: 15, background: 'rgba(255,255,255,0.95)', border: 'none', borderRadius: '50%', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px #eee', cursor: 'pointer', zIndex: 2 }}
+                title={isFavorite ? "Bỏ khỏi mục yêu thích" : "Thêm vào yêu thích"}
+              >
+                <span style={{ color: isFavorite ? '#e53935' : '#ccc', fontSize: 22, transition: 'color 0.2s' }}>&#10084;</span>
+              </button>
             </div>
           </Card>
         </Col>
 
         {/* Thông tin sản phẩm */}
         <Col md={6}>
-          <h2 className="fw-bold">{product.name}</h2>
+          <h2 className="fw-bold d-flex align-items-center">
+            {product.name}
+          </h2>
           <div className="mb-2">
   {[...Array(5)].map((_, i) => (
     <AiFillStar

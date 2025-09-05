@@ -1,163 +1,312 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import a1 from "../../assets/image/a1.jpg";
-import a2 from "../../assets/image/a2.jpg";
-import a3 from "../../assets/image/a3.jpg";
+"use client"
+
+import { useState, useEffect } from "react"
+import { useNavigate } from "react-router-dom"
+import { Container, Row, Col, Card, Button, Form, InputGroup, Badge } from "react-bootstrap"
+import { Search, Heart, Trash2, ShoppingCart, Filter, Leaf, CheckCircle, XCircle } from "lucide-react"
 import TopBanner from "./components/TopBanner";
 
-
-// Lấy danh sách sản phẩm từ HomePage (giả lập, nên đồng bộ id, name, image, ...)
-const suggestedProducts = [
-  {
-    id: 1,
-    name: "Rau Củ Hữu Cơ Premium",
-    image: a1,
-    price: 35000,
-    badge: "Hữu cơ",
-    category: "rau-cu"
-  },
-  {
-    id: 2,
-    name: "Trái Cây Nhiệt Đới",
-    image: a2,
-    price: 45000,
-    badge: "Tươi ngon",
-    category: "trai-cay"
-  },
-  {
-    id: 3,
-    name: "Gạo Hữu Cơ Cao Cấp",
-    image: a3,
-    price: 80000,
-    badge: "Gạo ngon",
-    category: "gao"
-  },
-];
-
-
 const Wishlist = () => {
-  // Lấy danh sách wishlist từ localStorage
   const [wishlist, setWishlist] = useState(() => {
     try {
-      return JSON.parse(localStorage.getItem('wishlist')) || [];
+      return JSON.parse(localStorage.getItem("wishlist")) || []
     } catch {
-      return [];
+      return []
     }
-  });
-  const [filter, setFilter] = useState({ status: "", category: "" });
-  const [search, setSearch] = useState("");
-  const navigate = useNavigate();
+  })
+  const [filter, setFilter] = useState({ status: "", category: "" })
+  const [search, setSearch] = useState(() => {
+    try {
+      return localStorage.getItem("wishlist_search") || ""
+    } catch {
+      return ""
+    }
+  })
 
-  // Xóa sản phẩm khỏi wishlist
+  // Lưu search vào localStorage mỗi khi thay đổi
+  useEffect(() => {
+    localStorage.setItem("wishlist_search", search)
+  }, [search])
+  const navigate = useNavigate()
+
   const handleRemove = (id) => {
-    const newList = wishlist.filter(item => item.id !== id);
-    setWishlist(newList);
-    localStorage.setItem('wishlist', JSON.stringify(newList));
-  };
+    const newList = wishlist.filter((item) => item.id !== id)
+    setWishlist(newList)
+    localStorage.setItem("wishlist", JSON.stringify(newList))
+  }
+
+  function filteredWishlist() {
+    return wishlist.filter((item) => {
+      const matchName = item.name?.toLowerCase().includes(search.toLowerCase())
+      const matchStatus =
+        filter.status === "" ||
+        (filter.status === "conhang" && item.inStock) ||
+        (filter.status === "hethang" && !item.inStock)
+      return matchName && matchStatus
+    })
+  }
+
+  const agriculturalStyles = {
+    pageBackground: {
+      background: "linear-gradient(135deg, #f8fdf8 0%, #e8f5e8 100%)",
+      minHeight: "100vh",
+    },
+    headerSection: {
+      background: "linear-gradient(135deg, #2d5016 0%, #4a7c59 100%)",
+      color: "white",
+      padding: "2rem 0",
+      boxShadow: "0 4px 20px rgba(45, 80, 22, 0.3)",
+    },
+    filterSection: {
+      background: "rgba(255, 255, 255, 0.95)",
+      backdropFilter: "blur(10px)",
+      borderBottom: "3px solid #4a7c59",
+      padding: "1.5rem 0",
+    },
+    productCard: {
+      background: "white",
+      borderRadius: "20px",
+      border: "2px solid #e8f5e8",
+      boxShadow: "0 8px 32px rgba(74, 124, 89, 0.1)",
+      transition: "all 0.3s ease",
+      overflow: "hidden",
+    },
+    productImage: {
+      borderRadius: "15px",
+      border: "3px solid #f0f8f0",
+      transition: "transform 0.3s ease",
+    },
+    priceText: {
+      color: "#d32f2f",
+      fontWeight: "bold",
+      fontSize: "1.4rem",
+    },
+    stockBadge: {
+      fontSize: "0.9rem",
+      padding: "0.5rem 1rem",
+    },
+  }
 
   return (
-    <div className="wishlist-page" style={{ background: "#f7f7f7", minHeight: "100vh" }}>
-      {/* TopBanner ưu đãi sale */}
-      <TopBanner />
-      {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "16px 16px 0 16px", background: "#fff", borderBottom: "1px solid #eee", position: "sticky", top: 0, zIndex: 10 }}>
-        <div style={{ fontWeight: 700, fontSize: 20, textAlign: "center" }}>Lượt Thích</div>
-      </div>
+    <div style={agriculturalStyles.pageBackground}>
 
-      {/* Filter bar + Search */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", background: "#fff", borderBottom: "1px solid #eee", flexWrap: "wrap" }}>
-        <button style={{ background: filter.status === "" && filter.category === "" ? "#1976d2" : "#f1f1f1", color: filter.status === "" && filter.category === "" ? "#fff" : "#333", border: "none", borderRadius: 5, padding: "6px 16px", fontWeight: 500, cursor: "pointer" }} onClick={() => setFilter({ status: "", category: "" })}>Tất Cả</button>
-        <select value={filter.status} onChange={e => setFilter(f => ({ ...f, status: e.target.value }))} style={{ padding: "6px 10px", borderRadius: 5, border: "1px solid #ccc" }}>
-          <option value="">Trạng thái</option>
-          <option value="conhang">Còn hàng</option>
-          <option value="hethang">Hết hàng</option>
-        </select>
-        <button style={{ background: "#f1f1f1", color: "#333", border: "none", borderRadius: 5, padding: "6px 16px", fontWeight: 500, cursor: "pointer" }}>Giảm giá</button>
-        <select value={filter.category} onChange={e => setFilter(f => ({ ...f, category: e.target.value }))} style={{ padding: "6px 10px", borderRadius: 5, border: "1px solid #ccc" }}>
-          <option value="">Ngành hàng</option>
-          <option value="thoitrang">Thời trang</option>
-          <option value="giaydep">Giày dép</option>
-          <option value="phukien">Phụ kiện</option>
-        </select>
-        <input
-          type="text"
-          placeholder="Tìm kiếm sản phẩm yêu thích..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          style={{ flex: 1, minWidth: 220, padding: "6px 12px", borderRadius: 5, border: "1px solid #ccc", fontSize: 15 }}
-        />
-      </div>
-
-
-      {/* Nếu wishlist rỗng */}
-      {filteredWishlist().length === 0 ? (
-        <div style={{ textAlign: "center", padding: "48px 16px 16px 16px" }}>
-          <img src="/empty-cart.png" alt="empty" style={{ width: 120, opacity: 0.7, marginBottom: 16 }} />
-          <div style={{ color: "#888", fontSize: 18, marginBottom: 12 }}>Không tìm thấy sản phẩm yêu thích phù hợp</div>
-          <button style={{ background: "#1976d2", color: "#fff", border: "none", borderRadius: 6, padding: "10px 28px", fontWeight: 600, fontSize: 16, cursor: "pointer" }} onClick={() => window.location.href = "/"}>Mua sắm ngay!</button>
-        </div>
-      ) : (
-        <div style={{ padding: "16px" }}>
-          <div style={{ fontWeight: 600, fontSize: 18, marginBottom: 12 }}>Sản phẩm bạn yêu thích</div>
-          <div className="wishlist-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-            {filteredWishlist().map(item => (
-              <div
-                key={item.id}
-                style={{ background: "#fff", borderRadius: 10, boxShadow: "0 2px 8px #eee", padding: 12, position: "relative", display: 'flex', alignItems: 'center', gap: 16, cursor: 'pointer' }}
-                onClick={e => {
-                  // Không chuyển trang khi bấm nút Xóa
-                  if (e.target.tagName === 'BUTTON') return;
-                  navigate(`/products/${item.id}`);
-                }}
+      {/* Filter and Search Section */}
+      <div style={agriculturalStyles.filterSection}>
+        <Container>
+          <Row className="g-3 align-items-center">
+            <Col lg={2} md={3} sm={6}>
+              <Button
+                variant={filter.status === "" && filter.category === "" ? "success" : "outline-success"}
+                className="w-100 fw-semibold"
+                onClick={() => setFilter({ status: "", category: "" })}
               >
-                <img src={item.image || '/logo192.png'} alt={item.name} style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 8, border: '1px solid #eee' }} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 500, fontSize: 15, marginBottom: 4 }}>{item.name}</div>
-                  <div style={{ color: "#e53935", fontWeight: 700, fontSize: 16 }}>{item.price?.toLocaleString()} đ</div>
-                  <div style={{ color: item.inStock ? '#388e3c' : '#bdbdbd', fontSize: 13 }}>{item.inStock ? 'Còn hàng' : 'Hết hàng'}</div>
-                </div>
-                <button onClick={() => handleRemove(item.id)} style={{ background: '#fff', color: '#e53935', border: '1px solid #e53935', borderRadius: 6, padding: '6px 14px', cursor: 'pointer' }}>Xóa</button>
+                <Filter size={16} className="me-2" />
+                Tất Cả
+              </Button>
+            </Col>
+
+            <Col lg={2} md={3} sm={6}>
+              <Form.Select
+                value={filter.status}
+                onChange={(e) => setFilter((f) => ({ ...f, status: e.target.value }))}
+                className="border-success"
+              >
+                <option value="">Trạng thái</option>
+                <option value="conhang">Còn hàng</option>
+                <option value="hethang">Hết hàng</option>
+              </Form.Select>
+            </Col>
+            <Col lg={6} md={3} sm={6} className="d-flex align-items-center">
+              <div style={{ position: 'relative', width: '100%', maxWidth: 380, marginLeft: 'auto', marginRight: 0 }}>
+                <Form.Control
+                  type="text"
+                  placeholder="Tìm kiếm nông sản yêu thích..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  style={{
+                    borderRadius: 24,
+                    fontSize: 18,
+                    padding: '8px 44px 8px 18px',
+                    height: 40,
+                    border: '1.5px solid #22c55e',
+                    boxShadow: 'none',
+                    fontStyle: 'italic',
+                  }}
+                />
+                <span
+                  style={{
+                    position: 'absolute',
+                    right: 14,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    zIndex: 2,
+                    display: 'flex',
+                    alignItems: 'center',
+                    pointerEvents: 'none',
+                  }}
+                >
+                  <Search size={22} color="#22c55e" />
+                </span>
               </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-
-      {/* Gợi ý sản phẩm */}
-      <div style={{ padding: "16px" }}>
-        <div style={{ fontWeight: 600, fontSize: 18, marginBottom: 12 }}>Gợi ý cho bạn</div>
-        <div className="suggested-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-          {suggestedProducts.map(product => (
-            <div
-              key={product.id}
-              style={{ background: "#fff", borderRadius: 10, boxShadow: "0 2px 8px #eee", padding: 12, position: "relative", cursor: 'pointer' }}
-              onClick={() => navigate(`/category/${product.category}`)}
-            >
-              <img src={product.image} alt={product.name} style={{ width: "100%", height: 120, objectFit: "cover", borderRadius: 8, marginBottom: 8 }} />
-              {product.badge && <span style={{ position: "absolute", top: 10, left: 10, background: "#ff5252", color: "#fff", borderRadius: 4, fontSize: 12, padding: "2px 8px", fontWeight: 600 }}>{product.badge}</span>}
-              <div style={{ fontWeight: 500, fontSize: 15, marginBottom: 4 }}>{product.name}</div>
-              <div style={{ color: "#e53935", fontWeight: 700, fontSize: 16 }}>{product.price?.toLocaleString()} đ</div>
-            </div>
-          ))}
-        </div>
+            </Col>
+          </Row>
+        </Container>
       </div>
 
-      <style>{`
-        @media (max-width: 700px) {
-          .suggested-grid { grid-template-columns: 1fr; }
-        }
-      `}</style>
-    </div>
-  );
-  // Lọc wishlist theo search và filter
-  function filteredWishlist() {
-    return wishlist.filter(item => {
-      const matchName = item.name?.toLowerCase().includes(search.toLowerCase());
-      // Có thể mở rộng thêm filter trạng thái, category nếu cần
-      return matchName;
-    });
-  }
-};
+      {/* Content Section */}
+      <Container className="py-5">
+        {filteredWishlist().length === 0 ? (
+          <Row className="justify-content-center">
+            <Col lg={6} className="text-center">
+              <div className="py-5">
+                <div className="mb-4">
+                  <img
+                    src="/empty-basket-with-vegetables.jpg"
+                    alt="Giỏ trống"
+                    className="img-fluid opacity-75"
+                    style={{ maxWidth: "150px" }}
+                  />
+                </div>
+                <h3 className="text-muted mb-3">Chưa có nông sản yêu thích</h3>
+                <p className="text-muted mb-4">
+                  Hãy khám phá và thêm những sản phẩm tươi ngon vào danh sách yêu thích của bạn!
+                </p>
+                <Button
+                  variant="success"
+                  size="lg"
+                  className="px-4 py-2 fw-bold"
+                  onClick={() => (window.location.href = "/")}
+                >
+                  <ShoppingCart className="me-2" size={20} />
+                  Khám Phá Nông Sản
+                </Button>
+              </div>
+            </Col>
+          </Row>
+        ) : (
+          <>
+            <Row>
+              <Col>
+                <h2
+                  className="text-center fw-bold text-success"
+                  style={{ marginTop: -40, marginBottom: 20 }}
+                >
+                  🌱 Nông Sản Tươi Ngon Yêu Thích
+                </h2>
+                <p
+                  className="text-center text-muted"
+                  style={{ marginTop: 0, marginBottom: 20 }}
+                >
+                  {filteredWishlist().length} sản phẩm trong danh sách của bạn
+                </p>
+              </Col>
+            </Row>
 
-export default Wishlist;
+            <Row className="g-4">
+              {filteredWishlist().map((item) => (
+                <Col key={item.id} xl={3} lg={4} md={6} sm={6}>
+                  <Card
+                    className="h-100 position-relative"
+                    style={agriculturalStyles.productCard}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = "translateY(-8px)"
+                      e.currentTarget.style.boxShadow = "0 16px 48px rgba(74, 124, 89, 0.2)"
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = "translateY(0)"
+                      e.currentTarget.style.boxShadow = "0 8px 32px rgba(74, 124, 89, 0.1)"
+                    }}
+                  >
+                    {/* Remove Button */}
+                    <Button
+                      variant="outline-danger"
+                      size="sm"
+                      className="position-absolute top-0 end-0 m-3 rounded-circle"
+                      style={{ zIndex: 10, width: "40px", height: "40px" }}
+                      onClick={() => handleRemove(item.id)}
+                    >
+                      <Trash2 size={16} />
+                    </Button>
+
+                    <Card.Body className="p-4 text-center">
+                      {/* Product Image */}
+                      <div className="mb-3 position-relative" style={{margin: 0, padding: 0}}>
+                        {/* Stock Badge Top-Left */}
+                        <Badge
+                          bg={item.inStock ? "success" : "secondary"}
+                          style={{
+                            ...agriculturalStyles.stockBadge,
+                            position: 'absolute',
+                            top: 0,
+                            left: -12,
+                            margin: -25,
+                            zIndex: 10,
+                          }}
+                        >
+                          {item.inStock ? (
+                            <>
+                              <CheckCircle size={14} className="me-1" />
+                              Còn hàng
+                            </>
+                          ) : (
+                            <>
+                              <XCircle size={14} className="me-1" />
+                              Hết hàng
+                            </>
+                          )}
+                        </Badge>
+                        <img
+                          src={item.image || "/placeholder.svg?height=400&width=400&query=fresh vegetables and fruits"}
+                          alt={item.name}
+                          className="img-fluid"
+                          style={{
+                            display: 'block',
+                            width: '100%',
+                            height: '260px',
+                            objectFit: 'cover',
+                            borderRadius: '18px',
+                            border: '0',
+                            margin: 0,
+                            padding: 0,
+                            boxShadow: '0 2px 12px #e8f5e8',
+                            transition: 'transform 0.3s',
+                          }}
+                          onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.04)')}
+                          onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
+                          onClick={() => navigate(`/products/${item.id}`)}
+                        />
+                      </div>
+
+                      {/* Product Info */}
+                      <h5 className="fw-bold text-dark" style={{ minHeight: "5px", lineHeight: "1.2", marginBottom: 2 }}>
+                        {item.name}
+                      </h5>
+                      <div style={{ ...agriculturalStyles.priceText, marginBottom: 10, marginTop: 2 }}>
+                        {item.price?.toLocaleString()} đ
+                      </div>
+
+
+                      <div className="d-grid">
+                        <Button
+                          variant="success"
+                          className="fw-semibold"
+                          onClick={() => navigate(`/products/${item.id}`)}
+                          disabled={!item.inStock}
+                        >
+                          <ShoppingCart size={16} className="me-2" />
+                          {item.inStock ? "Xem Chi Tiết" : "Hết Hàng"}
+                        </Button>
+                      </div>
+                    </Card.Body>
+                  </Card>
+                </Col>
+              ))}
+            </Row>
+          </>
+        )}
+      </Container>
+    </div>
+  )
+}
+
+export default Wishlist
