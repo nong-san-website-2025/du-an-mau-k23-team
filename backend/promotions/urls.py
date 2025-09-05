@@ -1,12 +1,7 @@
-from rest_framework.routers import DefaultRouter
-from django.urls import path, include
-from .views import PromotionViewSet, FlashSaleViewSet, StoreVoucherViewSet
-
-router = DefaultRouter()
-router.register(r'promotions', PromotionViewSet)
-router.register(r'flash-sales', FlashSaleViewSet)
-router.register(r'store-vouchers', StoreVoucherViewSet)
+from django.urls import path
+from .views import PromotionListCreateAPIView, PromotionDetailAPIView
 
 urlpatterns = [
-    path("", include(router.urls)),
+    path('promotions/', PromotionListCreateAPIView.as_view(), name='promotion-list'),
+    path('promotions/<int:pk>/', PromotionDetailAPIView.as_view(), name='promotion-detail'),
 ]

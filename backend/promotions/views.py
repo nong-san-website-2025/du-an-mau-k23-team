@@ -1,18 +1,13 @@
-from rest_framework import viewsets, permissions
-from .models import Promotion, FlashSale, StoreVoucher
-from .serializers import PromotionSerializer, FlashSaleSerializer, StoreVoucherSerializer
+from rest_framework import generics
+from .models import Promotion
+from .serializers import PromotionSerializer
 
-class PromotionViewSet(viewsets.ModelViewSet):
-    queryset = Promotion.objects.all().order_by('-created_at')
+# List all promotions & create new promotion
+class PromotionListCreateAPIView(generics.ListCreateAPIView):
+    queryset = Promotion.objects.all()
     serializer_class = PromotionSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
-class FlashSaleViewSet(viewsets.ModelViewSet):
-    queryset = FlashSale.objects.all().order_by('-start_at')
-    serializer_class = FlashSaleSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
-
-class StoreVoucherViewSet(viewsets.ModelViewSet):
-    queryset = StoreVoucher.objects.all().order_by('-start_at')
-    serializer_class = StoreVoucherSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+# Retrieve, update, delete a single promotion
+class PromotionDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Promotion.objects.all()
+    serializer_class = PromotionSerializer

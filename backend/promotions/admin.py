@@ -1,6 +1,4 @@
 from django.contrib import admin
-from .models import Promotion, FlashSale, StoreVoucher
+from .models import Promotion
 
 admin.site.register(Promotion)
-admin.site.register(FlashSale)
-admin.site.register(StoreVoucher)
