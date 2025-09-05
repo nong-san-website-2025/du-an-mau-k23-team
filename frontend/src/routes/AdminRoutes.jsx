@@ -17,6 +17,8 @@ import ActiveLockedSellersPage from "../features/admin/pages/ShopPage/ActiveLock
 import ApprovalSellersPage from "../features/admin/pages/ShopPage/ApprovalSellersPage.jsx";
 import ApprovalProductsPage from "../features/admin/pages/ProductPage/ApprovalProductsPage.jsx";
 import CategoryManagementPage from "../features/admin/pages/ProductPage/CategoryManagement.jsx";
+import UserReports from "../features/admin/pages/ComplaintAdmin/UserReports.jsx";
+import Coupons from "../features/admin/pages/ComplaintAdmin/Coupons.jsx";
 
 export const adminRoutes = [
   <Route element={<AdminPrivateRoute />} key="admin-protect">
@@ -29,6 +31,10 @@ export const adminRoutes = [
       {/* Product management */}
       <Route path="products/approval" element={<ApprovalProductsPage />} />
       <Route path="products/categories" element={<CategoryManagementPage />} />
+       {/* Complaint management */}
+      <Route path="/admin/complaints/user-reports" element={<UserReports />} />
+       {/* Complaint Coupons */}
+  <Route path="/admin/promotions/coupons" element={<Coupons />} />
 
       <Route path="orders" element={<OrdersPage />} />
       <Route path="complaints" element={<ComplaintsPage />} />

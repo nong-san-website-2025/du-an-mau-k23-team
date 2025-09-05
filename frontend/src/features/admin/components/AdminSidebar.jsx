@@ -1,5 +1,5 @@
 import { Layout, Menu } from "antd";
-import { Link, useLocation, useNavigate  } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   HomeOutlined,
   UserOutlined,
@@ -9,15 +9,17 @@ import {
   BarChartOutlined,
   NotificationOutlined,
   InboxOutlined,
+  WarningOutlined,
+  GiftOutlined,
 } from "@ant-design/icons";
-import "../styles/AdminSidebar.css"
+import "../styles/AdminSidebar.css";
 
 const { Sider } = Layout;
 
-
 const Sidebar = () => {
-  const location = useLocation(); 
+  const location = useLocation();
   const navigate = useNavigate();
+
   return (
     <Sider width={250} className="sidebar">
       <Menu
@@ -25,22 +27,21 @@ const Sidebar = () => {
         selectedKeys={[location.pathname]}
         onClick={({ key }) => navigate(key)}
         style={{ height: "100%", borderRight: 0 }}
-        
       >
         <Menu.Item key="dashboard" icon={<HomeOutlined />}>
           <Link to="/admin/">Dashboard</Link>
         </Menu.Item>
 
         <Menu.SubMenu key="users" icon={<UserOutlined />} title="Người dùng">
-          <Menu.Item key="users-list">
+          <Menu.Item key="/admin/users">
             <Link to="/admin/users">Quản lý người dùng</Link>
           </Menu.Item>
-          <Menu.Item key="roles">
+          <Menu.Item key="/admin/roles">
             <Link to="/admin/roles">Phân quyền & vai trò</Link>
           </Menu.Item>
         </Menu.SubMenu>
 
-        <Menu.SubMenu key="seller-management" icon={<ShopOutlined  />} title="Cửa hàng">
+        <Menu.SubMenu key="seller-management" icon={<ShopOutlined />} title="Cửa hàng">
           <Menu.Item key="/admin/sellers/business">
             <Link to="/admin/sellers/business">Cửa hàng hoạt động/khóa</Link>
           </Menu.Item>
@@ -49,63 +50,83 @@ const Sidebar = () => {
           </Menu.Item>
         </Menu.SubMenu>
 
-        <Menu.SubMenu key="products" icon={<InboxOutlined /> } title="Sản phẩm & Danh mục">
+        <Menu.SubMenu key="products" icon={<InboxOutlined />} title="Sản phẩm & Danh mục">
           <Menu.Item key="/admin/products/approval">
             <Link to="/admin/products/approval">Duyệt sản phẩm</Link>
           </Menu.Item>
-          <Menu.Item key="/admin/products/categories">
+          <Menu.Item key="/admin/categories">
             <Link to="/admin/categories">Quản lý danh mục</Link>
           </Menu.Item>
-          <Menu.Item key="brands">
+          <Menu.Item key="/admin/brands">
             <Link to="/admin/brands">Quản lý thương hiệu</Link>
           </Menu.Item>
-          <Menu.Item key="violations">
+          <Menu.Item key="/admin/products/violations">
             <Link to="/admin/products/violations">Sản phẩm vi phạm</Link>
           </Menu.Item>
         </Menu.SubMenu>
 
         <Menu.SubMenu key="orders" icon={<ShoppingCartOutlined />} title="Đơn hàng & Vận chuyển">
-          <Menu.Item key="order-monitor">
+          <Menu.Item key="/admin/orders">
             <Link to="/admin/orders">Giám sát đơn hàng</Link>
           </Menu.Item>
-          <Menu.Item key="shipping-partners">
+          <Menu.Item key="/admin/shipping">
             <Link to="/admin/shipping">Đối tác vận chuyển</Link>
           </Menu.Item>
         </Menu.SubMenu>
 
         <Menu.SubMenu key="payments" icon={<DollarOutlined />} title="Thanh toán">
-          <Menu.Item key="transactions">
+          <Menu.Item key="/admin/payments/transactions">
             <Link to="/admin/payments/transactions">Giao dịch</Link>
           </Menu.Item>
-          <Menu.Item key="wallets">
+          <Menu.Item key="/admin/payments/wallets">
             <Link to="/admin/payments/wallets">Ví tiền seller</Link>
           </Menu.Item>
-          <Menu.Item key="revenue">
+          <Menu.Item key="/admin/payments/revenue">
             <Link to="/admin/payments/revenue">Đối soát doanh thu</Link>
           </Menu.Item>
-          <Menu.Item key="fraud">
+          <Menu.Item key="/admin/payments/fraud">
             <Link to="/admin/payments/fraud">Phát hiện gian lận</Link>
           </Menu.Item>
         </Menu.SubMenu>
 
         <Menu.SubMenu key="reports" icon={<BarChartOutlined />} title="Thống kê & Báo cáo">
-          <Menu.Item key="report-revenue">
+          <Menu.Item key="/admin/reports/revenue">
             <Link to="/admin/reports/revenue">Doanh thu</Link>
           </Menu.Item>
-          <Menu.Item key="report-top-products">
+          <Menu.Item key="/admin/reports/top-products">
             <Link to="/admin/reports/top-products">Sản phẩm bán chạy</Link>
           </Menu.Item>
-          <Menu.Item key="report-cancel-rate">
+          <Menu.Item key="/admin/reports/cancel-rate">
             <Link to="/admin/reports/cancel-rate">Tỉ lệ huỷ/hoàn đơn</Link>
           </Menu.Item>
         </Menu.SubMenu>
 
         <Menu.SubMenu key="marketing" icon={<NotificationOutlined />} title="Marketing">
-          <Menu.Item key="banner">
+          <Menu.Item key="/admin/marketing/banners">
             <Link to="/admin/marketing/banners">Banner quảng cáo</Link>
           </Menu.Item>
-          <Menu.Item key="flash-sale">
+          <Menu.Item key="/admin/marketing/flashsale">
             <Link to="/admin/marketing/flashsale">Flash Sale / Campaign</Link>
+          </Menu.Item>
+        </Menu.SubMenu>
+
+        {/* 📑 Khiếu nại / Báo cáo */}
+        <Menu.SubMenu key="complaints" icon={<WarningOutlined />} title="Khiếu nại / Báo cáo">
+          <Menu.Item key="/admin/complaints/user-reports">
+            <Link to="/admin/complaints/user-reports">Người dùng báo cáo</Link>
+          </Menu.Item>
+        </Menu.SubMenu>
+
+        {/* 🎁 Khuyến mãi */}
+        <Menu.SubMenu key="promotions" icon={<GiftOutlined />} title="Khuyến mãi">
+          <Menu.Item key="/admin/promotions/coupons">
+            <Link to="/admin/promotions/coupons">Mã giảm giá hệ thống</Link>
+          </Menu.Item>
+          <Menu.Item key="/admin/promotions/flashsale">
+            <Link to="/admin/promotions/flashsale">Flash Sale / Voucher</Link>
+          </Menu.Item>
+          <Menu.Item key="/admin/promotions/seller-support">
+            <Link to="/admin/promotions/seller-support">Hỗ trợ seller</Link>
           </Menu.Item>
         </Menu.SubMenu>
       </Menu>
