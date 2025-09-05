@@ -5,6 +5,7 @@ import SellerLayout from "../features/seller_center/components/SellerLayout";
 import SellerPrivateRoute from "../components/PrivateRoutes/SellerPrivateRoute";
 import Dashboard from "../features/seller_center/pages/Dashboard";
 import ProductsPage from "../features/seller_center/pages/ProductsPage";
+import StoreInfo from "../features/seller_center/pages/StoreInfo";
 
 export const sellerRoutes = [
   <Route element={<SellerPrivateRoute />} key="seller-protect">
@@ -12,6 +13,7 @@ export const sellerRoutes = [
       {/* index route: khi vào /seller-center thì mặc định hiển thị dashboard */}
       <Route index element={<Dashboard />} /> 
       <Route path="dashboard" element={<Dashboard />} />
+      <Route path="store/info" element={<StoreInfo />} />
       <Route path="products" element={<ProductsPage />} />
     </Route>
   </Route>,
