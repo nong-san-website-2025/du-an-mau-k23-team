@@ -1,5 +1,5 @@
 import { Layout, Menu } from "antd";
-import { Link, useLocation, useNavigate  } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   HomeOutlined,
   UserOutlined,
@@ -10,14 +10,16 @@ import {
   NotificationOutlined,
   InboxOutlined,
 } from "@ant-design/icons";
-import "../styles/AdminSidebar.css"
+import { useTranslation } from "react-i18next";
+import "../styles/AdminSidebar.css";
 
 const { Sider } = Layout;
 
-
 const Sidebar = () => {
-  const location = useLocation(); 
+  const { t } = useTranslation();
+  const location = useLocation();
   const navigate = useNavigate();
+
   return (
     <Sider width={250} className="sidebar">
       <Menu
@@ -25,87 +27,95 @@ const Sidebar = () => {
         selectedKeys={[location.pathname]}
         onClick={({ key }) => navigate(key)}
         style={{ height: "100%", borderRight: 0 }}
-        
       >
         <Menu.Item key="" icon={<HomeOutlined />}>
-          <Link to="/admin/">Dashboard</Link>
+          <Link to="/admin/">{t("Dashboard")}</Link>
         </Menu.Item>
 
-        <Menu.SubMenu key="users" icon={<UserOutlined />} title="Người dùng">
+        <Menu.SubMenu key="users" icon={<UserOutlined />} title={t("Users")}>
           <Menu.Item key="users">
-            <Link to="/admin/users">Quản lý người dùng</Link>
+            <Link to="/admin/users">{t("User_manage")}</Link>
           </Menu.Item>
-          {/* <Menu.Item key="roles">
-            <Link to="/admin/roles">Phân quyền & vai trò</Link>
-          </Menu.Item> */}
         </Menu.SubMenu>
 
-        <Menu.SubMenu key="seller-management" icon={<ShopOutlined  />} title="Cửa hàng">
+        <Menu.SubMenu
+          key="seller-management"
+          icon={<ShopOutlined />}
+          title={t("Shops")}
+        >
           <Menu.Item key="/admin/sellers/business">
-            <Link to="/admin/sellers/business">Cửa hàng hoạt động/khóa</Link>
+            <Link to="/admin/sellers/business">{t("Shops_active_blocked")}</Link>
           </Menu.Item>
           <Menu.Item key="/admin/sellers/approval">
-            <Link to="/admin/sellers/approval">Duyệt cửa hàng đăng ký</Link>
+            <Link to="/admin/sellers/approval">{t("Approve_shops")}</Link>
           </Menu.Item>
         </Menu.SubMenu>
 
-        <Menu.SubMenu key="products" icon={<InboxOutlined /> } title="Sản phẩm & Danh mục">
+        <Menu.SubMenu
+          key="products"
+          icon={<InboxOutlined />}
+          title={t("Products_categories")}
+        >
           <Menu.Item key="/admin/products/approval">
-            <Link to="/admin/products/approval">Duyệt sản phẩm</Link>
+            <Link to="/admin/products/approval">{t("Approve_products")}</Link>
           </Menu.Item>
           <Menu.Item key="/admin/products/categories">
-            <Link to="/admin/categories">Quản lý danh mục</Link>
+            <Link to="/admin/categories">{t("Manage_categories")}</Link>
           </Menu.Item>
           <Menu.Item key="brands">
-            <Link to="/admin/brands">Quản lý thương hiệu</Link>
+            <Link to="/admin/brands">{t("Manage_brands")}</Link>
           </Menu.Item>
           <Menu.Item key="violations">
-            <Link to="/admin/products/violations">Sản phẩm vi phạm</Link>
+            <Link to="/admin/products/violations">{t("Violations")}</Link>
           </Menu.Item>
         </Menu.SubMenu>
 
-        <Menu.SubMenu key="orders" icon={<ShoppingCartOutlined />} title="Đơn hàng & Vận chuyển">
+        <Menu.SubMenu
+          key="orders"
+          icon={<ShoppingCartOutlined />}
+          title={t("Orders_shipping")}
+        >
           <Menu.Item key="order-monitor">
-            <Link to="/admin/orders">Giám sát đơn hàng</Link>
+            <Link to="/admin/orders">{t("Order_monitor")}</Link>
           </Menu.Item>
           <Menu.Item key="shipping-partners">
-            <Link to="/admin/shipping">Đối tác vận chuyển</Link>
+            <Link to="/admin/shipping">{t("Shipping_partners")}</Link>
           </Menu.Item>
         </Menu.SubMenu>
 
-        <Menu.SubMenu key="payments" icon={<DollarOutlined />} title="Thanh toán">
+        <Menu.SubMenu key="payments" icon={<DollarOutlined />} title={t("Payments")}>
           <Menu.Item key="transactions">
-            <Link to="/admin/payments/transactions">Giao dịch</Link>
+            <Link to="/admin/payments/transactions">{t("Transactions")}</Link>
           </Menu.Item>
           <Menu.Item key="wallets">
-            <Link to="/admin/payments/wallets">Ví tiền seller</Link>
+            <Link to="/admin/payments/wallets">{t("Wallets")}</Link>
           </Menu.Item>
           <Menu.Item key="revenue">
-            <Link to="/admin/payments/revenue">Đối soát doanh thu</Link>
+            <Link to="/admin/payments/revenue">{t("Revenue")}</Link>
           </Menu.Item>
           <Menu.Item key="fraud">
-            <Link to="/admin/payments/fraud">Phát hiện gian lận</Link>
+            <Link to="/admin/payments/fraud">{t("Fraud")}</Link>
           </Menu.Item>
         </Menu.SubMenu>
 
-        <Menu.SubMenu key="reports" icon={<BarChartOutlined />} title="Thống kê & Báo cáo">
+        <Menu.SubMenu key="reports" icon={<BarChartOutlined />} title={t("Reports")}>
           <Menu.Item key="report-revenue">
-            <Link to="/admin/reports/revenue">Doanh thu</Link>
+            <Link to="/admin/reports/revenue">{t("Report_revenue")}</Link>
           </Menu.Item>
           <Menu.Item key="report-top-products">
-            <Link to="/admin/reports/top-products">Sản phẩm bán chạy</Link>
+            <Link to="/admin/reports/top-products">{t("Report_top_products")}</Link>
           </Menu.Item>
           <Menu.Item key="report-cancel-rate">
-            <Link to="/admin/reports/cancel-rate">Tỉ lệ huỷ/hoàn đơn</Link>
+            <Link to="/admin/reports/cancel-rate">{t("Report_cancel_rate")}</Link>
           </Menu.Item>
         </Menu.SubMenu>
 
-        <Menu.SubMenu key="marketing" icon={<NotificationOutlined />} title="Marketing">
+        <Menu.SubMenu key="marketing" icon={<NotificationOutlined />} title={t("Marketing")}>
           <Menu.Item key="banner">
-            <Link to="/admin/marketing/banners">Banner quảng cáo</Link>
+            <Link to="/admin/marketing/banners">{t("Banner")}</Link>
           </Menu.Item>
           <Menu.Item key="flash-sale">
-            <Link to="/admin/marketing/flashsale">Flash Sale / Campaign</Link>
+            <Link to="/admin/marketing/flashsale">{t("Flash_sale")}</Link>
           </Menu.Item>
         </Menu.SubMenu>
       </Menu>

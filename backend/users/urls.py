@@ -5,6 +5,8 @@ from .views import (AddressViewSet, WalletBalanceView,
 from .views import UserPointsView
 from .views import EmployeeViewSet
 from users import views
+from .views import CurrentUserView
+from .views import UserMeView, UploadAvatarView 
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
@@ -53,4 +55,10 @@ urlpatterns = [
     path('', include(router.urls)),
 
     path("dashboard/", DashboardAPIView.as_view(), name="dashboard"),
+
+    path('user/me/', CurrentUserView.as_view(), name='current-user'),
+
+    path('user/me/', UserMeView.as_view(), name='user-me'),
+
+    path("user/upload-avatar/", UploadAvatarView.as_view(), name="upload-avatar"),
 ]

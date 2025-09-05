@@ -1,10 +1,12 @@
 // src/layouts/AdminLayout.jsx
-import React from "react";
-import { Outlet } from "react-router-dom";
+import React, { useState } from "react";
+import { Outlet, useNavigate } from "react-router-dom";
 import { Bell, User, Settings, Globe } from "lucide-react";
 import { useAuth } from "../../login_register/services/AuthContext";
 import AdminSidebar from "../components/AdminSidebar";
 import "../styles/AdminLayout.css";
+import { useTranslation } from "react-i18next";
+import { Badge, Dropdown, List, Button, Menu } from "antd";
 
 export default function AdminLayout() {
   const { logout } = useAuth();
@@ -18,12 +20,9 @@ export default function AdminLayout() {
 
   return (
     <div className="admin-shell bg-light">
-      {/* Top utility bar */}
       <TopBar onLogout={handleLogout} />
-
-      {/* Main area with left sidebar */}
-      <div className="admin-main ">
-        <AdminSidebar /> {/* 👉 Sidebar đã tách riêng */}
+      <div className="admin-main">
+        <AdminSidebar />
         <main className="admin-content">
           <Outlet />
         </main>
@@ -32,67 +31,106 @@ export default function AdminLayout() {
   );
 }
 
-/* ----------------- Components ----------------- */
+/* ----------------- TopBar ----------------- */
 function TopBar({ onLogout }) {
+  const navigate = useNavigate();
+  const { t, i18n } = useTranslation();
+  const currentLangLabel = i18n.language === "en" ? "English" : "Tiếng Việt";
+
+  const notifications = [
+    { text: "Không có thông báo!" }
+    // Có thể fetch từ API nếu muốn
+  ];
+
   return (
-    <div className="admin-topbar fixed-top" style={{ zIndex: 999 }}>
+    <div
+      className="admin-topbar fixed-top d-flex justify-content-between align-items-center px-3"
+      style={{ zIndex: 999 }}
+    >
       <div className="d-flex align-items-center">
         <img
           src="/assets/logo/imagelogo.png"
           alt="Logo"
           className="admin-logo"
         />
-        <span className="admin-brand">GreenFarm</span>
+        <span className="admin-brand ms-2">GreenFarm</span>
       </div>
       <div className="d-flex align-items-center gap-3">
-        <TopBarButton
-          Icon={Bell}
-          title="Thông báo"
-          style={{ color: "black" }}
-        />
-        <TopBarButton
+        <NotificationDropdown notifications={notifications} />
+        <DropdownTopBarButton
           Icon={Globe}
-          title="Ngôn ngữ"
-          style={{ color: "black" }}
+          defaultLabel={currentLangLabel}
+          items={[
+            { label: "Tiếng Việt", onClick: () => { i18n.changeLanguage("vi"); localStorage.setItem("i18nextLng", "vi"); } },
+            { label: "English", onClick: () => { i18n.changeLanguage("en"); localStorage.setItem("i18nextLng", "en"); } },
+          ]}
         />
-        <TopBarButton
+        <DropdownTopBarButton
           Icon={Settings}
-          title="Cài đặt"
-          style={{ color: "black" }}
+          items={[
+            { label: t("Trang cài đặt"), onClick: () => navigate("/admin/settings") },
+            { label: t("Quản lý tài khoản"), onClick: () => navigate("/admin/account") },
+            { label: "Phân quyền", onClick: () => navigate("/admin/roles") },
+            { label: "Cấu hình hệ thống", onClick: () => navigate("/admin/system-config") },
+            { label: "Log hệ thống", onClick: () => navigate("/admin/system-logs") },
+          ]}
         />
-        <TopBarButton
+        <DropdownTopBarButton
           Icon={User}
-          title="Tài khoản"
-          style={{ color: "black" }}
-        ></TopBarButton>
-        {/* <TopBarButton
-          Icon={User}
-          title="Đăng xuất"
-          style={{ color: "black" }}
-          onClick={onLogout}
-        /> */}
+          items={[
+            { label: t("Thông tin"), onClick: () => navigate("/admin/profile") },
+            // { label: t("Thay đổi mật khẩu"), onClick: () => navigate("/admin/change-password") },
+            { label: t("Đăng xuất"), onClick: onLogout },
+          ]}
+        />
       </div>
     </div>
   );
 }
 
-function TopBarButton({ Icon, title, style, onClick }) {
+/* ----------------- Dropdown TopBarButton ----------------- */
+function DropdownTopBarButton({ Icon, items, defaultLabel }) {
+  const navigate = useNavigate();
+
+  const menu = (
+    <Menu
+      items={items.map((item) => ({
+        key: item.label,
+        label: item.label,
+        disabled: item.disabled,
+        onClick: () => item.onClick && item.onClick(),
+      }))}
+    />
+  );
+
   return (
-    <button
-      onClick={onClick}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: "6px",
-        padding: "6px 0px",
-        background: "transparent",
-        border: "none",
-        cursor: "pointer",
-        fontSize: "14px",
-        ...style, // nhận inline style từ props
-      }}
+    <Dropdown overlay={menu} placement="bottomRight" trigger={['click']}>
+      <Button type="text" icon={<Icon size={20} />} />
+    </Dropdown>
+  );
+}
+
+/* ----------------- Notification Dropdown ----------------- */
+function NotificationDropdown({ notifications }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Dropdown
+      overlay={
+        <List
+          size="small"
+          dataSource={notifications}
+          renderItem={(item) => <List.Item>{item.text}</List.Item>}
+          style={{ width: 250 }}
+        />
+      }
+      trigger={['click']}
+      open={open}
+      onOpenChange={(flag) => setOpen(flag)}
+      placement="bottomRight"
     >
-      <Icon style={{ fontSize: "18px", ...style }} />
-    </button>
+      <Badge count={notifications.length} offset={[0, 0]}>
+        <Button type="text" icon={<Bell size={20} />} />
+      </Badge>
+    </Dropdown>
   );
 }

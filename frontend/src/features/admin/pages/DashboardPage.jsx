@@ -97,12 +97,20 @@ export default function DashboardPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {data.top_products.map((product, index) => (
-                    <tr key={index}>
-                      <td>{product.name}</td>
-                      <td>{product.sales}</td>
+                  {data.top_products && data.top_products.length > 0 ? (
+                    data.top_products.map((product, index) => (
+                      <tr key={index}>
+                        <td>{product.name}</td>
+                        <td>{product.sales}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="2" className="text-center text-muted">
+                        Không có dữ liệu
+                      </td>
                     </tr>
-                  ))}
+                  )}
                 </tbody>
               </table>
             </div>

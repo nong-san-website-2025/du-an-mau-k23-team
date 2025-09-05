@@ -18,6 +18,10 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
+from .serializers import AccountSerializer, ChangePasswordSerializer
+from rest_framework.parsers import MultiPartParser, FormParser
+from .serializers import ProfileSerializer
+
 
 import random
 
@@ -467,3 +471,38 @@ class DashboardAPIView(APIView):
         }
 
         return Response(data)
+
+class CurrentUserView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        serializer = UserSerializer(request.user)
+        return Response(serializer.data)
+
+class AccountView(generics.RetrieveUpdateAPIView):
+    serializer_class = AccountSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_object(self):
+        return self.request.user
+    
+class UserMeView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        serializer = CustomUserSerializer(request.user)
+        return Response(serializer.data)
+    
+    
+class UploadAvatarView(APIView):
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser]
+
+    def post(self, request):
+        user = request.user
+        file_obj = request.FILES.get("avatar")
+        if not file_obj:
+            return Response({"detail": "Chưa chọn file"}, status=status.HTTP_400_BAD_REQUEST)
+        user.avatar = file_obj
+        user.save()
+        return Response({"avatar": user.avatar.url})

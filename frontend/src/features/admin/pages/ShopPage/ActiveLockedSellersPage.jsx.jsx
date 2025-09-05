@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Input, message, Spin, Modal, Descriptions } from "antd";
 import SellerTable from "../../components/ShopAdmin/SellerTable";
 import axios from "axios";
+import { useTranslation } from "react-i18next";
 
 const api = axios.create({
   baseURL: process.env.REACT_APP_API_URL,
@@ -13,6 +14,7 @@ function getAuthHeaders() {
 }
 
 const ActiveLockedSellersPage = () => {
+  const { t } = useTranslation();
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -25,14 +27,13 @@ const ActiveLockedSellersPage = () => {
       const res = await api.get("/sellers/group/business", {
         headers: getAuthHeaders(),
       });
-      // chỉ lấy seller có trạng thái active và locked
       const filtered = res.data.filter((item) =>
         ["active", "locked"].includes(item.status)
       );
       setData(filtered);
     } catch (err) {
       console.error(err);
-      message.error("Không tải được danh sách người bán");
+      message.error(t("sellers_active_locked.load_failed"));
     } finally {
       setLoading(false);
     }
@@ -42,7 +43,6 @@ const ActiveLockedSellersPage = () => {
     fetchSellers();
   }, []);
 
-  // filter theo từ khóa tìm kiếm
   const filteredData = data.filter((item) => {
     return (
       item.store_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -59,13 +59,13 @@ const ActiveLockedSellersPage = () => {
       );
       message.success(
         record.status === "active"
-          ? `Đã khóa tài khoản: ${record.store_name}`
-          : `Đã mở khóa tài khoản: ${record.store_name}`
+          ? t("sellers_active_locked.locked", { name: record.store_name })
+          : t("sellers_active_locked.unlocked", { name: record.store_name })
       );
       fetchSellers();
     } catch (err) {
       console.error(err);
-      message.error("Thao tác thất bại");
+      message.error(t("sellers_active_locked.action_failed"));
     }
   };
 
@@ -76,16 +76,18 @@ const ActiveLockedSellersPage = () => {
 
   return (
     <div style={{ padding: 20, background: "#fff", minHeight: "100vh" }}>
-      <h2 style={{ padding: 10 }}>Tài khoản đang hoạt động / bị khóa</h2>
+      <h2 style={{ padding: 10 }}>{t("sellers_active_locked.title")}</h2>
+
       {/* Toolbar tìm kiếm */}
       <div style={{ display: "flex", gap: 16, marginBottom: 16 }}>
         <Input
-          placeholder="Tìm kiếm theo tên cửa hàng hoặc email"
+          placeholder={t("sellers_active_locked.search_placeholder")}
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           style={{ width: 300 }}
         />
       </div>
+
       {loading ? (
         <Spin />
       ) : (
@@ -95,16 +97,19 @@ const ActiveLockedSellersPage = () => {
           onLock={handleLock}
         />
       )}
+
       {selectedSeller && (
         <Modal
           open={modalVisible}
-          title={`Chi tiết cửa hàng: ${selectedSeller.store_name}`}
+          title={t("sellers_active_locked.detail_title", {
+            name: selectedSeller.store_name,
+          })}
           onCancel={() => setModalVisible(false)}
           footer={null}
           width={800}
         >
           <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
-            {/* Phần ảnh */}
+            {/* Ảnh */}
             <div style={{ flex: "0 0 250px", textAlign: "center" }}>
               {selectedSeller.image ? (
                 <img
@@ -132,7 +137,7 @@ const ActiveLockedSellersPage = () => {
                     fontStyle: "italic",
                   }}
                 >
-                  Không có hình
+                  {t("sellers_active_locked.no_image")}
                 </div>
               )}
             </div>
@@ -149,28 +154,28 @@ const ActiveLockedSellersPage = () => {
                 <Descriptions.Item label="ID">
                   {selectedSeller.id}
                 </Descriptions.Item>
-                <Descriptions.Item label="Tên cửa hàng">
+                <Descriptions.Item label={t("sellers_active_locked.store_name")}>
                   {selectedSeller.store_name}
                 </Descriptions.Item>
-                <Descriptions.Item label="Chủ sở hữu">
+                <Descriptions.Item label={t("sellers_active_locked.owner")}>
                   {selectedSeller.owner_username}
                 </Descriptions.Item>
                 <Descriptions.Item label="Email">
                   {selectedSeller.user_email}
                 </Descriptions.Item>
-                <Descriptions.Item label="Phone">
+                <Descriptions.Item label={t("sellers_active_locked.phone")}>
                   {selectedSeller.phone}
                 </Descriptions.Item>
-                <Descriptions.Item label="Địa chỉ">
+                <Descriptions.Item label={t("sellers_active_locked.address")}>
                   {selectedSeller.address}
                 </Descriptions.Item>
-                <Descriptions.Item label="Trạng thái">
+                <Descriptions.Item label={t("sellers_active_locked.status")}>
                   {selectedSeller.status.toUpperCase()}
                 </Descriptions.Item>
-                <Descriptions.Item label="Ngày tạo">
+                <Descriptions.Item label={t("sellers_active_locked.created_at")}>
                   {selectedSeller.created_at}
                 </Descriptions.Item>
-                <Descriptions.Item label="Bio">
+                <Descriptions.Item label={t("sellers_active_locked.bio")}>
                   {selectedSeller.bio || "-"}
                 </Descriptions.Item>
               </Descriptions>

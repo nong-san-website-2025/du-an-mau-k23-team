@@ -5,6 +5,7 @@ from .models import Address
 from .models import Role
 
 
+
 class RoleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Role
@@ -35,10 +36,10 @@ class UserSerializer(serializers.ModelSerializer):
         model = CustomUser
         fields = [
             "id", "username", "email", "avatar",
-            "full_name", "phone", "points", "role", "role_id", "default_address"
+            "full_name", "phone", "points", "role", "role_id", "default_address", "password"
         ]
 
-    def get_default_address(self, obj):
+    def get_default_address(self, obj): 
         default = obj.addresses.filter(is_default=True).first()
         return default.location if default else None
 
@@ -142,7 +143,7 @@ class CustomUserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CustomUser
-        fields = ['id', 'username', 'email', 'role', 'role_id']
+        fields = ['id', 'username', 'email', 'role', 'role_id', "phone", "avatar", "full_name", "status"]
 
 class EmployeeSerializer(serializers.ModelSerializer):
     role = RoleSerializer(read_only=True)
@@ -164,4 +165,15 @@ class EmployeeSerializer(serializers.ModelSerializer):
             role=employee_role
         )
         return user
+    
 
+class AccountSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomUser
+        fields = ['username', 'email', 'full_name', 'phone']
+
+
+class ProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomUser
+        fields = ['id', 'username', 'email', 'full_name', 'phone']
