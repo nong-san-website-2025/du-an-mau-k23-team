@@ -132,9 +132,44 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
     console.log("AuthProvider: Logging out user");
-    localStorage.clear();
+
+    // Optionally: try to persist server cart to guest_cart during logout
+    try {
+      const token = localStorage.getItem("token");
+      if (token) {
+        const res = await api.get("/cartitems/");
+        const serverCart = Array.isArray(res.data) ? res.data : [];
+        const guestCart = serverCart.map((item) => ({
+          product: item.product_data?.id || item.product,
+          quantity: item.quantity,
+          product_data: {
+            id: item.product_data?.id || item.product,
+            name: item.product_data?.name || "",
+            price: item.product_data?.price || 0,
+            image: item.product_data?.image || "",
+          },
+        }));
+        if (guestCart.length > 0) {
+          localStorage.setItem("guest_cart", JSON.stringify(guestCart));
+        }
+      }
+    } catch (e) {
+      console.warn("Could not sync cart to guest_cart on logout", e);
+    }
+
+    // Remove only auth-related keys to avoid losing app data
+    const keysToRemove = [
+      "token",
+      "refresh",
+      "username",
+      "role",
+      "is_admin",
+      "is_seller",
+    ];
+    keysToRemove.forEach((k) => localStorage.removeItem(k));
+
     setUser(null);
   };
 

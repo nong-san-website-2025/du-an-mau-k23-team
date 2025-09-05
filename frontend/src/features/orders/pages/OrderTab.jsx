@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import API from "../../login_register/services/api";
 
 const statusMap = {
-  pending: "Chờ thanh toán",
+  pending: "Chờ xác nhận",
   completed: "Đã thanh toán",
   cancelled: "Đã huỷ",
 };
@@ -15,7 +15,9 @@ const OrderTab = ({ status }) => {
   useEffect(() => {
     setLoading(true);
     setError(null);
-    API.get(`orders/?status=${status}`)
+    // Backend dùng "success" cho đã thanh toán, và có thêm trạng thái "shipping"
+    const statusParam = status === "completed" ? "success" : status;
+    API.get(`orders/?status=${statusParam}`)
       .then((res) => {
         const sortedOrders = res.data.sort(
           (a, b) => new Date(b.created_at) - new Date(a.created_at)

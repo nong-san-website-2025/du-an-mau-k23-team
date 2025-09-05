@@ -11,7 +11,7 @@ const Orders = () => {
   useEffect(() => {
     const urlParams = new URLSearchParams(location.search);
     const tabParam = urlParams.get('tab');
-    if (tabParam && ['pending', 'completed', 'cancelled'].includes(tabParam)) {
+    if (tabParam && ['pending', 'shipping', 'completed', 'cancelled'].includes(tabParam)) {
       setTab(tabParam);
     }
   }, [location.search]);
@@ -34,7 +34,24 @@ const Orders = () => {
             transition: 'all 0.2s',
           }}
         >
-          Chờ thanh toán
+          Chờ xác nhận
+        </button>
+        <button
+          onClick={() => setTab('shipping')}
+          style={{
+            flex: 1,
+            padding: 12,
+            borderRadius: 0,
+            border: tab === 'shipping' ? '2px solid #2980b9' : '1px solid #fff',
+            background: tab === 'shipping' ? '#eaf2fb' : '#f8f8f8',
+            color: tab === 'shipping' ? '#2980b9' : '#333',
+            fontWeight: tab === 'shipping' ? 'bold' : 'normal',
+            fontSize: 16,
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+          }}
+        >
+          Chờ nhận hàng
         </button>
         <button
           onClick={() => setTab('completed')}
@@ -71,7 +88,7 @@ const Orders = () => {
           Đã huỷ
         </button>
       </div>
-      <OrderTab status={tab} />
+  <OrderTab status={tab} />
     </div>
   );
 };

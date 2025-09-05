@@ -28,6 +28,7 @@ class OrderManager(models.Manager):
 class Order(models.Model):
     STATUS_CHOICES = [
         ('pending', 'Pending'),
+        ('shipping', 'Shipping'),
         ('success', 'Success'),
         ('cancelled', 'Cancelled'),
     ]

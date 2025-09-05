@@ -244,6 +244,7 @@ const updateQuantity = async (cartItemId, newQuantity) => {
   // --- Clear cart ---
   const clearCart = async () => {
     setLoading(true);
+    // Nếu muốn giữ giỏ hàng của khách vãng lai khi đăng xuất, không xoá guest_cart ở đây
     setCartItems([]); // Cập nhật UI ngay lập tức
     if (isAuthenticated()) {
       try {
@@ -254,7 +255,8 @@ const updateQuantity = async (cartItemId, newQuantity) => {
         console.error("❌ clearCart error:", err);
       }
     } else {
-      saveGuestCart([]);
+      // Không xoá guest_cart ở đây để tránh mất dữ liệu khi chưa mong muốn
+      saveGuestCart(getGuestCart());
     }
     setLoading(false);
   };
