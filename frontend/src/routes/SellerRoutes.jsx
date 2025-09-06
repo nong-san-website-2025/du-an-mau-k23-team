@@ -5,6 +5,8 @@ import SellerLayout from "../features/seller_center/components/SellerLayout";
 import SellerPrivateRoute from "../components/PrivateRoutes/SellerPrivateRoute";
 import Dashboard from "../features/seller_center/pages/Dashboard";
 import ProductsPage from "../features/seller_center/pages/ProductsPage";
+import AdminLayout from "../features/admin/components/AdminLayout.jsx";
+
 
 export const sellerRoutes = [
   <Route element={<SellerPrivateRoute />} key="seller-protect">
