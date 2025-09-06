@@ -3,6 +3,7 @@ import { Input, Select, message, Spin, Modal, Descriptions } from "antd";
 import SellerTable from "../../components/ShopAdmin/SellerTable";
 import axios from "axios";
 import { useLocation } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 const { Option } = Select;
 
@@ -16,6 +17,7 @@ function getAuthHeaders() {
 }
 
 const ApprovalSellersPage = () => {
+  const { t } = useTranslation();
   const location = useLocation();
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -28,27 +30,26 @@ const ApprovalSellersPage = () => {
     try {
       setLoading(true);
       const res = await api.get("/sellers/", { headers: getAuthHeaders() });
-      const filtered = res.data.filter(item =>
+      const filtered = res.data.filter((item) =>
         ["pending", "approved", "rejected"].includes(item.status)
       );
       setData(filtered);
     } catch (err) {
       console.error(err);
-      message.error("Không tải được danh sách người bán");
+      message.error(t("approval_sellers.load_failed"));
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    // Nếu có seller mới từ SellerRegisterPage thì thêm vào data
     if (location.state?.newSeller) {
-      setData(prev => [location.state.newSeller, ...prev]);
+      setData((prev) => [location.state.newSeller, ...prev]);
     }
     fetchSellers();
   }, []);
 
-  const filteredData = data.filter(item => {
+  const filteredData = data.filter((item) => {
     const matchesSearch =
       item.store_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.user_email.toLowerCase().includes(searchTerm.toLowerCase());
@@ -59,22 +60,22 @@ const ApprovalSellersPage = () => {
   const handleApprove = async (record) => {
     try {
       await api.post(`/sellers/${record.id}/approve/`, {}, { headers: getAuthHeaders() });
-      message.success(`Đã duyệt seller: ${record.store_name}`);
+      message.success(t("approval_sellers.approved", { name: record.store_name }));
       fetchSellers();
     } catch (err) {
       console.error(err);
-      message.error("Duyệt thất bại");
+      message.error(t("approval_sellers.approve_failed"));
     }
   };
 
   const handleReject = async (record) => {
     try {
       await api.post(`/sellers/${record.id}/reject/`, {}, { headers: getAuthHeaders() });
-      message.success(`Đã từ chối seller: ${record.store_name}`);
+      message.success(t("approval_sellers.rejected", { name: record.store_name }));
       fetchSellers();
     } catch (err) {
       console.error(err);
-      message.error("Từ chối thất bại");
+      message.error(t("approval_sellers.reject_failed"));
     }
   };
 
@@ -85,25 +86,25 @@ const ApprovalSellersPage = () => {
 
   return (
     <div style={{ padding: 20, background: "#fff", minHeight: "100vh" }}>
-      <h2 style={{ padding: 10 }}>Quản lý duyệt hồ sơ người bán</h2>
+      <h2 style={{ padding: 10 }}>{t("approval_sellers.title")}</h2>
 
       <div style={{ display: "flex", gap: 16, marginBottom: 16 }}>
         <Input
-          placeholder="Tìm kiếm theo tên cửa hàng hoặc email"
+          placeholder={t("approval_sellers.search_placeholder")}
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           style={{ width: 300 }}
         />
         <Select
-          placeholder="Lọc theo trạng thái"
+          placeholder={t("approval_sellers.filter_status")}
           value={statusFilter}
           onChange={(value) => setStatusFilter(value)}
           style={{ width: 200 }}
           allowClear
         >
-          <Option value="pending">Chờ duyệt</Option>
-          <Option value="approved">Đã duyệt</Option>
-          <Option value="rejected">Bị từ chối</Option>
+          <Option value="pending">{t("approval_sellers.pending")}</Option>
+          <Option value="approved">{t("approval_sellers.approved_status")}</Option>
+          <Option value="rejected">{t("approval_sellers.rejected_status")}</Option>
         </Select>
       </div>
 
@@ -121,7 +122,7 @@ const ApprovalSellersPage = () => {
       {selectedSeller && (
         <Modal
           open={modalVisible}
-          title={`Chi tiết cửa hàng: ${selectedSeller.store_name}`}
+          title={t("approval_sellers.detail_title", { name: selectedSeller.store_name })}
           onCancel={() => setModalVisible(false)}
           footer={null}
           width={800}
@@ -154,7 +155,7 @@ const ApprovalSellersPage = () => {
                     fontStyle: "italic",
                   }}
                 >
-                  Không có hình
+                  {t("approval_sellers.no_image")}
                 </div>
               )}
             </div>
@@ -162,14 +163,28 @@ const ApprovalSellersPage = () => {
             <div style={{ flex: "1 1 400px" }}>
               <Descriptions column={1} bordered size="middle" labelStyle={{ width: 150, fontWeight: 500 }} contentStyle={{ fontWeight: 400 }}>
                 <Descriptions.Item label="ID">{selectedSeller.id}</Descriptions.Item>
-                <Descriptions.Item label="Tên cửa hàng">{selectedSeller.store_name}</Descriptions.Item>
-                <Descriptions.Item label="Chủ sở hữu">{selectedSeller.owner_username}</Descriptions.Item>
+                <Descriptions.Item label={t("approval_sellers.store_name")}>
+                  {selectedSeller.store_name}
+                </Descriptions.Item>
+                <Descriptions.Item label={t("approval_sellers.owner")}>
+                  {selectedSeller.owner_username}
+                </Descriptions.Item>
                 <Descriptions.Item label="Email">{selectedSeller.user_email}</Descriptions.Item>
-                <Descriptions.Item label="Phone">{selectedSeller.phone}</Descriptions.Item>
-                <Descriptions.Item label="Địa chỉ">{selectedSeller.address}</Descriptions.Item>
-                <Descriptions.Item label="Trạng thái">{selectedSeller.status.toUpperCase()}</Descriptions.Item>
-                <Descriptions.Item label="Ngày tạo">{selectedSeller.created_at}</Descriptions.Item>
-                <Descriptions.Item label="Bio">{selectedSeller.bio || "-"}</Descriptions.Item>
+                <Descriptions.Item label={t("approval_sellers.phone")}>
+                  {selectedSeller.phone}
+                </Descriptions.Item>
+                <Descriptions.Item label={t("approval_sellers.address")}>
+                  {selectedSeller.address}
+                </Descriptions.Item>
+                <Descriptions.Item label={t("approval_sellers.status")}>
+                  {selectedSeller.status.toUpperCase()}
+                </Descriptions.Item>
+                <Descriptions.Item label={t("approval_sellers.created_at")}>
+                  {selectedSeller.created_at}
+                </Descriptions.Item>
+                <Descriptions.Item label={t("approval_sellers.bio")}>
+                  {selectedSeller.bio || "-"}
+                </Descriptions.Item>
               </Descriptions>
             </div>
           </div>
@@ -178,6 +193,5 @@ const ApprovalSellersPage = () => {
     </div>
   );
 };
-
 
 export default ApprovalSellersPage;

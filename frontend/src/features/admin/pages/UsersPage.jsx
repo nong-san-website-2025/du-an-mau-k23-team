@@ -1,11 +1,12 @@
 // pages/UsersPage.jsx
 import React, { useEffect, useState } from "react";
-import { Search, Plus, Import, FileUp, HelpCircle } from "lucide-react";
+import { Search, Plus, HelpCircle } from "lucide-react";
 import AdminPageLayout from "../components/AdminPageLayout";
 import UserSideBar from "../components/UserAdmin/UserSidebar";
 import UserTable from "../components/UserAdmin/UserTable";
 import UserDetailModal from "../components/UserAdmin/UserDetailRow";
 import axios from "axios";
+import { useTranslation } from "react-i18next";
 
 export default function UsersPage() {
   const [users, setUsers] = useState([]);
@@ -15,31 +16,38 @@ export default function UsersPage() {
   const [selectedRole, setSelectedRole] = useState("all");
   const [checkedIds, setCheckedIds] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
-
-  // ✅ chỉ giữ triggerAddUser
   const [triggerAddUser, setTriggerAddUser] = useState(false);
+  const { t } = useTranslation();
+  const [showDetailModal, setShowDetailModal] = useState(false);
 
+  // Fetch users
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:8000/api/users/");
-      const data = await res.json();
-      setUsers(Array.isArray(data) ? data : []);
+      const res = await axios.get("http://localhost:8000/api/users/", {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      });
+      setUsers(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
-      console.error("Lỗi khi fetch users:", err);
+      console.error(err);
       setUsers([]);
     } finally {
       setLoading(false);
     }
   };
 
+  // Fetch roles
   const fetchRoles = async () => {
     try {
-      const res = await fetch("http://localhost:8000/api/users/roles/list/");
-      const data = await res.json();
-      setRoles(Array.isArray(data) ? data : []);
+      const res = await axios.get(
+        "http://localhost:8000/api/users/roles/list/",
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        }
+      );
+      setRoles(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
-      console.error("Lỗi khi fetch roles:", err);
+      console.error(err);
       setRoles([]);
     }
   };
@@ -49,147 +57,127 @@ export default function UsersPage() {
     fetchRoles();
   }, []);
 
+  // Delete selected users
   const handleDeleteSelected = async () => {
-  if (checkedIds.length === 0) return;
+    if (checkedIds.length === 0) return;
+    if (
+      !window.confirm(
+        t("users_page.confirm_delete", { count: checkedIds.length })
+      )
+    )
+      return;
 
-  if (!window.confirm(`Bạn có chắc muốn xoá ${checkedIds.length} người dùng?`)) {
-    return;
-  }
-
-  try {
-    console.log("👉 Gọi API xoá:", checkedIds);
-
-    // ✅ Nếu backend chỉ hỗ trợ DELETE từng user
-    for (const userId of checkedIds) {
-      await axios.delete(`http://localhost:8000/api/users/${userId}/`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      });
+    try {
+      for (const id of checkedIds) {
+        await axios.delete(`http://localhost:8000/api/users/${id}/`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        });
+      }
+      setUsers((prev) => prev.filter((u) => !checkedIds.includes(u.id)));
+      setCheckedIds([]);
+      alert(t("users_page.delete_success"));
+    } catch (err) {
+      console.error(err);
+      alert(t("users_page.delete_failed"));
     }
+  };
 
-    // ✅ Xoá khỏi state để cập nhật UI
-    setUsers((prev) => prev.filter((u) => !checkedIds.includes(u.id)));
-    setCheckedIds([]);
-    alert("Đã xoá thành công!");
-  } catch (err) {
-    console.error("❌ Lỗi xoá user:", err.response?.data || err.message);
-    alert("Xoá thất bại!");
-  }
-};
-
+  const handleUserUpdated = (updatedUser) => {
+    setUsers((prev) =>
+      prev.map((u) => (u.id === updatedUser.id ? { ...u, ...updatedUser } : u))
+    );
+  };
+  const handleShowDetail = (user) => {
+    setSelectedUser(user);
+    setShowDetailModal(true);
+  };
 
   return (
-    <AdminPageLayout
-      sidebar={
-        <UserSideBar
-          searchTerm={searchTerm}
-          setSearchTerm={setSearchTerm}
-          selectedRole={selectedRole}
-          setSelectedRole={setSelectedRole}
-          roles={roles}
-          onRoleCreated={() => {
-            fetchRoles();
-            fetchUsers();
-          }}
-        />
-      }
-    >
-      <div className="bg-white" style={{ minHeight: "100vh" }}>
-        {/* Toolbar */}
-        <div className="p-2 border-bottom">
-          <div className="d-flex justify-content-between align-items-center mb-0 gap-2 flex-wrap">
-            <div style={{ flex: 1 }}>
-              <div className="input-group" style={{ width: 420 }}>
-                <Search
-                  size={16}
-                  style={{
-                    position: "absolute",
-                    top: "30px",
-                    zIndex: 11,
-                    left: "10px",
-                  }}
-                />
-                <input
-                  className="form-control"
-                  placeholder="Tìm kiếm người dùng"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  style={{
-                    height: "20px",
-                    width: "400px",
-                    padding: "17px 35px",
-                    border: "1px solid #ccc",
-                    marginTop: "20px",
-                    position: "relative",
-                    borderRadius: "8px",
-                  }}
-                />
-              </div>
-            </div>
+    <AdminPageLayout>
+      <div className="container py-3">
+        {/* ===================== Filter + Create Role ===================== */}
+        <div className="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+          <UserSideBar
+            roles={roles}
+            selectedRole={selectedRole}
+            setSelectedRole={setSelectedRole}
+            onRoleCreated={() => {
+              fetchRoles();
+              fetchUsers();
+            }}
+          />
+        </div>
 
-            <div className="d-flex align-items-center gap-2 flex-shrink-0 mt-2 mt-md-0">
-              {checkedIds.length > 0 ? (
-                <button
-                  className="btn btn-danger border"
-                  onClick={handleDeleteSelected} // ✅ Gọi hàm xoá nhiều
-                >
-                  Xoá ({checkedIds.length})
+        {/* ===================== Toolbar (Search + Buttons) ===================== */}
+        <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+          <div className="position-relative" style={{ flex: 1, minWidth: 250 }}>
+            <Search
+              size={16}
+              className="position-absolute"
+              style={{
+                top: "50%",
+                left: 10,
+                transform: "translateY(-50%)",
+                zIndex: 10,
+              }}
+            />
+            <input
+              type="text"
+              className="form-control ps-5"
+              placeholder={t("users_page.search_placeholder")}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={{ minHeight: 40 }}
+            />
+          </div>
+
+          <div className="d-flex align-items-center gap-2 flex-shrink-0 mt-2 mt-md-0">
+            {checkedIds.length > 0 ? (
+              <button className="btn btn-danger" onClick={handleDeleteSelected}>
+                {t("users_page.delete_selected")} ({checkedIds.length})
+              </button>
+            ) : (
+              <>
+                <button className="btn btn-light" title={t("users_page.help")}>
+                  <HelpCircle size={16} />
                 </button>
-              ) : (
-                <>
-                  {/* <button className="btn btn-light border">
-                    <Import size={16} /> Nhập file
-                  </button>
-                  <button className="btn btn-light border">
-                    <FileUp size={16} /> Xuất file
-                  </button> */}
-                  <button className="btn btn-light border">
-                    <HelpCircle size={16} />
-                  </button>
-                  {/* ✅ nút thêm user bắn trigger */}
-                  <button
-                    className="btn"
-                    style={{
-                      backgroundColor: "#22C55E",
-                      color: "#fff",
-                      fontWeight: "600",
-                    }}
-                    onClick={() => setTriggerAddUser(true)} // ✅ mở modal
-                  >
-                    <Plus size={20} className="me-2" /> Thêm người dùng
-                  </button>
-                </>
-              )}
-            </div>
+                <button
+                  className="btn text-white"
+                  style={{ backgroundColor: "#0c0febff", fontWeight: 600 }}
+                  onClick={() => setTriggerAddUser(true)}
+                >
+                  <Plus size={20} className="me-2" /> {t("users_page.add_user")}
+                </button>
+              </>
+            )}
           </div>
         </div>
 
-        {/* Table */}
-        <div className="p-1">
-          <UserTable
-            users={users}
-            setUsers={setUsers}
-            loading={loading}
-            selectedRole={selectedRole}
-            searchTerm={searchTerm}
-            roles={roles}
-            checkedIds={checkedIds}
-            setCheckedIds={setCheckedIds}
-            onShowDetail={setSelectedUser}
-            triggerAddUser={triggerAddUser} // ✅ truyền xuống
-            setTriggerAddUser={setTriggerAddUser} // ✅ để reset khi modal mở
-          />
+        {/* ===================== User Table ===================== */}
+        <UserTable
+          users={users}
+          setUsers={setUsers}
+          loading={loading}
+          selectedRole={selectedRole}
+          searchTerm={searchTerm}
+          roles={roles}
+          checkedIds={checkedIds}
+          setCheckedIds={setCheckedIds}
+          
+          triggerAddUser={triggerAddUser}
+          setTriggerAddUser={setTriggerAddUser}
+          onShowDetail={handleShowDetail}
+        />
 
-          {/* Modal chi tiết */}
-          {selectedUser && (
-            <UserDetailModal
-              user={selectedUser}
-              onClose={() => setSelectedUser(null)}
-              onUserUpdated={fetchUsers}
-            />
-          )}
-        </div>
+        {/* ===================== User Detail Modal ===================== */}
+        {selectedUser && (
+          <UserDetailModal
+            user={selectedUser}
+            visible={showDetailModal} // state quản lý mở/đóng
+            onClose={() => setShowDetailModal(false)}
+            onUserUpdated={handleUserUpdated}
+          />
+        )}
       </div>
     </AdminPageLayout>
   );

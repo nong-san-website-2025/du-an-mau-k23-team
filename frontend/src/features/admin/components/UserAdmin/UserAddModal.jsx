@@ -1,241 +1,143 @@
-// components/UserAdmin/UserAddModal.jsx
+// src/features/admin/components/UserAdmin/UserAddModal.jsx
 import React, { useState, useEffect } from "react";
+import { Modal, Form, Input, Select, Button, message } from "antd";
 import axios from "axios";
 
+const { Option } = Select;
 const API_BASE_URL = "http://localhost:8000/api";
 
-export default function UserAddModal({ onClose, onUserAdded }) {
-  const [formData, setFormData] = useState({
-    username: "",
-    email: "",
-    full_name: "",
-    phone: "",
-    password: "",
-    status: "",
-    address: "",
-    role_id: "",
-    is_seller: false,
-    is_admin: false,
-    is_support: false,
-    is_locked: false,
-  });
-
+export default function UserAddModal({ visible, onClose, onUserAdded }) {
+  const [form] = Form.useForm();
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(false);
 
   const getToken = () =>
     localStorage.getItem("access_token") || localStorage.getItem("token") || "";
 
-  // load roles nếu có API
+  // Load roles từ backend
   useEffect(() => {
     const token = getToken();
     axios
-      .get(`${API_BASE_URL}/roles/`, {
+      .get(`${API_BASE_URL}/roles/list/`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       .then((res) => setRoles(res.data || []))
-      .catch((err) => console.error("Lỗi load roles:", err));
+      .catch((err) => console.error("❌ Lỗi load roles:", err));
   }, []);
 
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: type === "checkbox" ? checked : value,
-    }));
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (values) => {
     setLoading(true);
-
     try {
-      const res = await axios.post(`${API_BASE_URL}/users/`, formData, {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${getToken()}`,
-        },
-      });
+      const payload = {
+        username: values.username,
+        email: values.email,
+        full_name: values.full_name || "",
+        phone: values.phone || "",
+        password: values.password?.trim() || "123456", // luôn gửi password
+        role_id: Number(values.role_id), // ✅ gửi role_id, backend map đúng
+      };
 
-      if (onUserAdded) onUserAdded(res.data);
+      const res = await axios.post(
+        `${API_BASE_URL}/user-management/`,
+        payload,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${getToken()}`,
+          },
+        }
+      );
+
+      message.success("Thêm người dùng thành công!");
+      form.resetFields();
       onClose();
+      onUserAdded?.(res.data);
     } catch (err) {
       console.error("❌ Lỗi thêm user:", err.response?.data || err.message);
-      alert("Không thể thêm user, xem console để biết chi tiết.");
+      if (err.response?.data) {
+        message.error(
+          `Không thể thêm user: ${JSON.stringify(err.response.data)}`
+        );
+      } else {
+        message.error("Không thể thêm user, xem console để biết chi tiết.");
+      }
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div
-      className="modal show d-block"
-      tabIndex="-1"
-      style={{
-        background: "rgba(0,0,0,0.5)",
-        position: "fixed",
-        top: 0,
-        left: 0,
-        width: "100%",
-        height: "100%",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 1050,
-      }}
+    <Modal
+      title="Thêm người dùng"
+      open={visible}
+      onCancel={onClose}
+      footer={null}
+      centered
+      width={600}
+      destroyOnClose
     >
-      <div
-        className="modal-dialog modal-lg"
-        style={{ marginLeft: "40%"}}
+      <Form
+        form={form}
+        layout="vertical"
+        onFinish={handleSubmit}
+        initialValues={{ role_id: "", password: "" }}
       >
-        <div className="modal-content shadow-lg border-0" style={{ width: "1000px" }}>
-          <div className="modal-header border-0 pb-0">
-            <h4 className="modal-title fw-bold">Thêm người dùng</h4>
-          </div>
+        <Form.Item
+          label="Tên đăng nhập"
+          name="username"
+          rules={[{ required: true, message: "Vui lòng nhập tên đăng nhập!" }]}
+        >
+          <Input placeholder="Nhập tên đăng nhập" />
+        </Form.Item>
 
-          <form onSubmit={handleSubmit}>
-            <div className="modal-body">
-              {/* Thông tin cơ bản */}
-              <div className="mb-2">
-                <label className="form-label">Tên đăng nhập</label>
-                <input
-                  type="text"
-                  name="username"
-                  value={formData.username}
-                  onChange={handleChange}
-                  className="form-control"
-                  required
-                />
-              </div>
-              <div className="mb-2">
-                <label className="form-label">Email</label>
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  className="form-control"
-                  required
-                />
-              </div>
-              <div className="mb-2">
-                <label className="form-label">Họ và tên</label>
-                <input
-                  type="text"
-                  name="full_name"
-                  value={formData.full_name}
-                  onChange={handleChange}
-                  className="form-control"
-                />
-              </div>
-              <div className="mb-2">
-                <label className="form-label">Số điện thoại</label>
-                <input
-                  type="text"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleChange}
-                  className="form-control"
-                />
-              </div>
+        <Form.Item
+          label="Email"
+          name="email"
+          rules={[
+            { required: true, message: "Vui lòng nhập email!" },
+            { type: "email", message: "Email không hợp lệ!" },
+          ]}
+        >
+          <Input placeholder="Nhập email" />
+        </Form.Item>
 
-              {/* Mật khẩu */}
-              <div className="mb-2">
-                <label className="form-label">Mật khẩu</label>
-                <input
-                  type="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  className="form-control"
-                  required
-                />
-              </div>
+        <Form.Item label="Họ và tên" name="full_name">
+          <Input placeholder="Nhập họ và tên" />
+        </Form.Item>
 
-              {/* Dropdown Role */}
-              {Array.isArray(roles) && roles.length > 0 && (
-                <div className="mb-2">
-                  <label className="form-label">Quyền (role)</label>
-                  <select
-                    name="role_id"
-                    value={formData.role_id}
-                    onChange={handleChange}
-                    className="form-select"
-                    required
-                  >
-                    <option value="">-- Chọn quyền --</option>
-                    {roles.map((r) => (
-                      <option key={r.id} value={r.id}>
-                        {r.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
+        <Form.Item label="Số điện thoại" name="phone">
+          <Input placeholder="Nhập số điện thoại" />
+        </Form.Item>
 
-              {/* Quyền flags */}
-              <div className="form-check">
-                <input
-                  type="checkbox"
-                  className="form-check-input"
-                  name="is_seller"
-                  checked={formData.is_seller}
-                  onChange={handleChange}
-                />
-                <label className="form-check-label">Seller</label>
-              </div>
-              <div className="form-check">
-                <input
-                  type="checkbox"
-                  className="form-check-input"
-                  name="is_admin"
-                  checked={formData.is_admin}
-                  onChange={handleChange}
-                />
-                <label className="form-check-label">Admin</label>
-              </div>
-              <div className="form-check">
-                <input
-                  type="checkbox"
-                  className="form-check-input"
-                  name="is_support"
-                  checked={formData.is_support}
-                  onChange={handleChange}
-                />
-                <label className="form-check-label">Support</label>
-              </div>
-              <div className="form-check mb-3">
-                <input
-                  type="checkbox"
-                  className="form-check-input"
-                  name="is_locked"
-                  checked={formData.is_locked}
-                  onChange={handleChange}
-                />
-                <label className="form-check-label">Khóa tài khoản</label>
-              </div>
-            </div>
+        <Form.Item label="Mật khẩu (tùy chọn)" name="password">
+          <Input.Password placeholder="Để trống nếu muốn tạo mặc định" />
+        </Form.Item>
 
-            {/* Footer */}
-            <div className="modal-footer border-0">
-              <button
-                type="button"
-                className="btn btn-outline-secondary"
-                onClick={onClose}
-              >
-                Hủy
-              </button>
-              <button
-                type="submit"
-                className="btn btn-success"
-                disabled={loading}
-              >
-                {loading ? "Đang lưu..." : "Thêm người dùng"}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
+        {roles.length > 0 && (
+          <Form.Item
+            label="Quyền (role)"
+            name="role_id"
+            rules={[{ required: true, message: "Vui lòng chọn quyền!" }]}
+          >
+            <Select placeholder="-- Chọn quyền --">
+              {roles.map((r) => (
+                <Option key={r.id} value={r.id}>
+                  {r.name}
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
+        )}
+
+        <Form.Item style={{ textAlign: "right", marginTop: 20 }}>
+          <Button onClick={onClose} style={{ marginRight: 8 }}>
+            Hủy
+          </Button>
+          <Button type="primary" htmlType="submit" loading={loading}>
+            Thêm người dùng
+          </Button>
+        </Form.Item>
+      </Form>
+    </Modal>
   );
 }
