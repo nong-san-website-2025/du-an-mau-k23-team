@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Search, Heart, ShoppingCart, User } from "lucide-react";
+import { Search, Heart, ShoppingCart, User, Bell } from "lucide-react";
 
 export default function UserActions({
   greenText,
@@ -22,6 +22,30 @@ export default function UserActions({
 }) {
   const navigate = useNavigate();
 
+  // Lấy thông báo từ localStorage và sắp xếp giống NotificationPage
+  const getNotifications = () => {
+    let notis = [];
+    try {
+      notis = JSON.parse(localStorage.getItem('notifications')) || [];
+    } catch {
+      notis = [];
+    }
+    return notis;
+  };
+  const notificationsData = getNotifications();
+  // Sắp xếp theo sản phẩm, sau đó thời gian mới nhất
+  const getProduct = (noti) => {
+    const match = noti.detail && noti.detail.match(/Khiếu nại sản phẩm: (.*?)(\.|\n)/);
+    return match ? match[1] : '';
+  };
+  const sortedNotifications = [...notificationsData].sort((a, b) => {
+    const prodA = getProduct(a).toLowerCase();
+    const prodB = getProduct(b).toLowerCase();
+    if (prodA < prodB) return -1;
+    if (prodA > prodB) return 1;
+    return b.id - a.id;
+  });
+
   return (
     <div className="d-flex align-items-center ms-3" style={{ flexShrink: 0, flexWrap: "nowrap" }}>
       {/* Mobile search button */}
@@ -29,10 +53,122 @@ export default function UserActions({
         <Search size={22} style={greenText} />
       </button>
 
+
       <Link to="/wishlist" className="btn btn-light rounded-circle me-2 p-2 d-none d-sm-inline-block" style={{ flexShrink: 0 }}>
         <Heart size={22} style={greenText} />
       </Link>
 
+      {/* Notification icon */}
+      <div
+        style={{ position: 'relative', display: 'inline-block' }}
+        onMouseEnter={() => setShowNotificationDropdown && setShowNotificationDropdown(true)}
+        onMouseLeave={() => setShowNotificationDropdown && setShowNotificationDropdown(false)}
+      >
+        <button
+          className="btn btn-light rounded-circle me-2 p-2"
+          style={{ flexShrink: 0, position: 'relative' }}
+          aria-label="Thông báo"
+        >
+          <Bell size={22} style={greenText} />
+          {sortedNotifications && sortedNotifications.length > 0 && (
+            <span
+              style={{
+                position: "absolute",
+                top: 2,
+                right: 2,
+                minWidth: 16,
+                height: 16,
+                background: "#c62828", // đỏ
+                color: "#fff",
+                borderRadius: "50%",
+                fontSize: 11,
+                fontWeight: 700,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "0 4px",
+                zIndex: 10,
+                boxShadow: "0 1px 4px #0002",
+              }}
+            >
+              {sortedNotifications.length}
+            </span>
+          )}
+        </button>
+        {showNotificationDropdown && (
+          <div
+            style={{
+              position: "absolute",
+              right: 0,
+              top: "110%",
+              minWidth: 340,
+              maxWidth: 400,
+              background: "#fff",
+              boxShadow: "0 4px 24px #16a34a22",
+              borderRadius: 16,
+              zIndex: 2000,
+              padding: "12px 0",
+              color: '#166534',
+              border: '1px solid #bbf7d0',
+            }}
+          >
+            <div style={{ fontWeight: 700, fontSize: 17, padding: "0 18px 10px 18px", color: "#16a34a" }}>Thông báo</div>
+            {(!sortedNotifications || sortedNotifications.length === 0) ? (
+              <div style={{ padding: "12px 18px", color: "#6b7280" }}>Không có thông báo mới</div>
+            ) : (
+              <>
+                {sortedNotifications.slice(0, 3).map((noti, idx) => (
+                  <div
+                    key={noti.id || idx}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      background: noti.read ? '#f0fdf4' : '#e6f4ea',
+                      borderRadius: 10,
+                      border: '1px solid #bbf7d0',
+                      padding: '12px 16px',
+                      margin: '0 12px 10px 12px',
+                      color: '#166534',
+                      fontWeight: noti.read ? 400 : 600,
+                      boxShadow: noti.read ? 'none' : '0 2px 10px #16a34a22',
+                      transition: 'background 0.2s, box-shadow 0.2s',
+                      cursor: 'pointer',
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.background = '#d1fae5';
+                      e.currentTarget.style.boxShadow = noti.read ? 'none' : '0 4px 16px #16a34a33';
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.background = noti.read ? '#f0fdf4' : '#e6f4ea';
+                      e.currentTarget.style.boxShadow = noti.read ? 'none' : '0 2px 10px #16a34a22';
+                    }}
+                  >
+                    {noti.thumbnail && <img src={noti.thumbnail} alt="thumb" style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: 6, marginRight: 10, border: '1px solid #bbf7d0', background: '#fff' }} />}
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 600, color: '#166534', fontSize: 15 }}>{noti.title || noti.message}</div>
+                      {noti.detail && <div style={{ fontSize: 13, color: '#166534', marginTop: 2 }}>{noti.detail}</div>}
+                      {noti.time && (
+                        <div style={{ fontSize: 12, color: "#6b7280", marginTop: 4 }}>
+                          {typeof noti.time === 'string' ? noti.time : (noti.time && noti.time.toLocaleString ? noti.time.toLocaleString() : '')}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                <div style={{ textAlign: "center", padding: "10px 0 0 0" }}>
+                  <button
+                    className="btn btn-link"
+                    style={{ color: "#16a34a", fontWeight: 600, fontSize: 15 }}
+                    onClick={() => navigate("/payment/NotificationPage")}
+                  >
+                    Xem tất cả thông báo
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </div>
       {/* Cart icon + dropdown */}
       <div style={{ position: "relative" }} onMouseEnter={() => setShowCartDropdown(true)} onMouseLeave={() => setShowCartDropdown(false)}>
         <button
@@ -141,17 +277,16 @@ export default function UserActions({
         )}
       </div>
 
-      {/* Profile or login */}
-      {localStorage.getItem("token") && localStorage.getItem("username") ? (
-        <div className="dropdown" style={{ position: "relative" }}>
+      {/* User profile or login button */}
+      {userProfile && userProfile.id ? (
+        <div style={{ position: "relative" }}>
           <button
             className="btn btn-light rounded-circle p-2"
             style={{ flexShrink: 0 }}
-            id="profileDropdownBtn"
-            onClick={() => setShowProfileDropdown((v) => !v)}
-            aria-expanded={showProfileDropdown ? "true" : "false"}
+            aria-label="Tài khoản"
+            onClick={() => setShowProfileDropdown(!showProfileDropdown)}
           >
-            {userProfile && userProfile.avatar ? (
+            {userProfile.avatar ? (
               <img
                 src={userProfile.avatar}
                 alt="avatar"

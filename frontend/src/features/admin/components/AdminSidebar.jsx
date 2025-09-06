@@ -9,6 +9,8 @@ import {
   BarChartOutlined,
   NotificationOutlined,
   InboxOutlined,
+  WarningOutlined,
+  GiftOutlined,
 } from "@ant-design/icons";
 import { useTranslation } from "react-i18next";
 import "../styles/AdminSidebar.css";
@@ -116,6 +118,26 @@ const Sidebar = () => {
           </Menu.Item>
           <Menu.Item key="flash-sale">
             <Link to="/admin/marketing/flashsale">{t("Flash_sale")}</Link>
+          </Menu.Item>
+        </Menu.SubMenu>
+
+        {/* 📑 Khiếu nại / Báo cáo */}
+        <Menu.SubMenu key="complaints" icon={<WarningOutlined />} title="Khiếu nại / Báo cáo">
+          <Menu.Item key="/admin/complaints/user-reports">
+            <Link to="/admin/complaints/user-reports">Người dùng báo cáo</Link>
+          </Menu.Item>
+        </Menu.SubMenu>
+
+        {/* 🎁 Khuyến mãi */}
+        <Menu.SubMenu key="promotions" icon={<GiftOutlined />} title="Khuyến mãi">
+          <Menu.Item key="/admin/promotions/coupons">
+            <Link to="/admin/promotions/coupons">Mã giảm giá hệ thống</Link>
+          </Menu.Item>
+          <Menu.Item key="/admin/promotions/flashsale">
+            <Link to="/admin/promotions/flashsale">Flash Sale / Voucher</Link>
+          </Menu.Item>
+          <Menu.Item key="/admin/promotions/seller-support">
+            <Link to="/admin/promotions/seller-support">Hỗ trợ seller</Link>
           </Menu.Item>
         </Menu.SubMenu>
       </Menu>

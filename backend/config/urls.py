@@ -23,10 +23,11 @@ urlpatterns = [
     path('api/cart/', include('cart.urls')),
 
     path('api/advertisements/', include('advertisements.urls')),
-    path("api/", include("users.urls")), 
       
     path("api/promotions/", include("promotions.urls")),
     path('', include('reviews.urls')),
+
+    path('api/complaints/', include('complaints.urls')),
 
 ]
 

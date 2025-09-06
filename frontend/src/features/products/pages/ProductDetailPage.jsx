@@ -16,7 +16,6 @@ import {
 import {
   ShoppingCart,
   ChevronLeft,
-  Star,
   Minus,
   Plus,
   Truck,
@@ -89,64 +88,137 @@ const ProductDetailPage = () => {
   const [newRating, setNewRating] = useState(5);
   const [hasReviewed, setHasReviewed] = useState(false);
   const [myReview, setMyReview] = useState(null);
-  useEffect(() => {
-  const loadData = async () => {
-    const productData = await productApi.getProduct(id);
-    setProduct(productData);
 
-    const reviewList = await reviewApi.getReviews(id);
-    setReviews(reviewList);
+  // Complaint state
+  const [complaintText, setComplaintText] = useState("");
+  const [complaintFiles, setComplaintFiles] = useState([]); // lưu file ảnh/video
+  const [sendingComplaint, setSendingComplaint] = useState(false);
+  const [showComplaintForm, setShowComplaintForm] = useState(false);
 
-    if (user) {
-      // Gọi API lấy review của chính user hiện tại
-      try {
-        const myReview = await reviewApi.getMyReview(id);
-        setMyReview(myReview);
-      } catch {
-        setMyReview(null);
+  // Hàm gửi khiếu nại
+ // Helper fetchWithAuth: tự động thêm token + refresh nếu hết hạn
+const fetchWithAuth = async (url, options = {}) => {
+  let token = localStorage.getItem("token");
+
+  let res = await fetch(url, {
+    ...options,
+    headers: {
+      ...options.headers,
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  // Nếu token hết hạn → thử refresh
+  if (res.status === 401) {
+    const refresh = localStorage.getItem("refresh");
+    if (refresh) {
+      const refreshRes = await fetch("http://localhost:8000/api/token/refresh/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh }),
+      });
+
+      if (refreshRes.ok) {
+        const data = await refreshRes.json();
+        token = data.access;
+        localStorage.setItem("token", token);
+
+        // gọi lại request gốc với token mới
+        res = await fetch(url, {
+          ...options,
+          headers: {
+            ...options.headers,
+            Authorization: `Bearer ${token}`,
+          },
+        });
       }
     }
-  };
-  loadData();
-}, [id, user]);
+  }
+
+  return res;
+};
 
 
+// ✅ Hàm gửi khiếu nại (có file)
+const handleSendComplaint = async () => {
+  if (!user) {
+    toast.info("Bạn cần đăng nhập để gửi khiếu nại");
+    return;
+  }
+  if (!complaintText.trim()) {
+    toast.warning("Vui lòng nhập nội dung khiếu nại");
+    return;
+  }
+
+  try {
+    setSendingComplaint(true);
+
+    const formData = new FormData();
+    formData.append("user", user.id);
+    formData.append("product", id);
+    formData.append("reason", complaintText);
+    // Thêm file ảnh/video
+    for (let i = 0; i < complaintFiles.length; i++) {
+      formData.append("media", complaintFiles[i]);
+    }
+
+    const token = localStorage.getItem("token");
+    const res = await fetch("http://localhost:8000/api/complaints/", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`
+      },
+      body: formData,
+    });
+
+    if (!res.ok) {
+      throw new Error(`Lỗi API: ${res.status}`);
+    }
+
+    toast.success("✅ Đã gửi khiếu nại thành công!");
+    setComplaintText("");
+    setComplaintFiles([]);
+    setShowComplaintForm(false);
+  } catch (err) {
+    toast.error("❌ Gửi khiếu nại thất bại!");
+    console.error("Complaint error:", err);
+  } finally {
+    setSendingComplaint(false);
+  }
+};
+
+
+  // Load dữ liệu sản phẩm và review
   useEffect(() => {
-    const fetchProduct = async () => {
+    const loadData = async () => {
       try {
         setLoading(true);
         setError(null);
-        const data = await productApi.getProduct(id);
-        setProduct(data);
+        const productData = await productApi.getProduct(id);
+        setProduct(productData);
 
-        const reviewData = await reviewApi.getReviews(id);
-        setReviews(reviewData);
+        const reviewList = await reviewApi.getReviews(id);
+        setReviews(reviewList);
+
+        if (user) {
+          const myReview = await reviewApi.getMyReview(id).catch(() => null);
+          setMyReview(myReview);
+          setHasReviewed(!!myReview);
+        }
       } catch (err) {
         setError("Không thể tải chi tiết sản phẩm.");
       } finally {
         setLoading(false);
       }
     };
-    fetchProduct();
-  }, [id]);
-
-  useEffect(() => {
-  const fetchReviews = async () => {
-    const data = await reviewApi.getReviews(id);
-    setReviews(data);
-
-    if (user) {
-      const hasReviewed = data.some(r => r.user === user.id);
-      setHasReviewed(hasReviewed);
-    }
-  };
-  fetchReviews();
-}, [id, user]);
-
+    loadData();
+  }, [id, user]);
 
   const handleAddToCart = async () => {
     if (!product || quantity > product.stock) {
-      toast.warning("Số lượng vượt quá hàng trong kho.", {position: "bottom-right"});
+      toast.warning("Số lượng vượt quá hàng trong kho.", {
+        position: "bottom-right",
+      });
       return;
     }
 
@@ -155,55 +227,59 @@ const ProductDetailPage = () => {
       product.id,
       quantity,
       () => {
-        toast.success("Đã thêm vào giỏ hàng!", { autoClose: 1800, position: "bottom-right" });
+        toast.success("Đã thêm vào giỏ hàng!", {
+          autoClose: 1800,
+          position: "bottom-right",
+        });
       },
       () => {
-        toast.error("Không thể thêm vào giỏ hàng. Vui lòng thử lại.", {position: "bottom-right"});
+        toast.error("Không thể thêm vào giỏ hàng. Vui lòng thử lại.", {
+          position: "bottom-right",
+        });
       }
     );
     setAdding(false);
   };
 
-const handleSubmitReview = async () => {
-  if (!user) {
-    toast.info("Bạn cần đăng nhập để đánh giá", {position: "bottom-right"});
-    return;
-  }
-  if (newComment.trim() === "") {
-    toast.warning("Vui lòng nhập bình luận", {position: "bottom-right"});
-    return;
-  }
-  try {
-    // Gửi review mới
-    await reviewApi.addReview(id, {
-      rating: newRating,
-      comment: newComment,
-    });
-
-    // ✅ Gọi lại API để cập nhật dữ liệu mới nhất từ backend
-    const updatedProduct = await productApi.getProduct(id);
-    const updatedReviews = await reviewApi.getReviews(id);
-
-    setProduct(updatedProduct);
-    setReviews(updatedReviews);
-
-    // Reset form
-    setNewComment("");
-    setNewRating(5);
-
-    toast.success("Đã gửi đánh giá!", {position: "bottom-right"});
-  } catch (err) {
-    const errorData = err.response?.data;
-    if (errorData?.non_field_errors) {
-      toast.warning(errorData.non_field_errors[0], {position: "bottom-right"});
-    } else {
-      toast.error("Không thể gửi đánh giá", {position: "bottom-right"});
+  const handleSubmitReview = async () => {
+    if (!user) {
+      toast.info("Bạn cần đăng nhập để đánh giá", {
+        position: "bottom-right",
+      });
+      return;
     }
-  }
-};
+    if (newComment.trim() === "") {
+      toast.warning("Vui lòng nhập bình luận", {
+        position: "bottom-right",
+      });
+      return;
+    }
+    try {
+      await reviewApi.addReview(id, {
+        rating: newRating,
+        comment: newComment,
+      });
 
+      const updatedProduct = await productApi.getProduct(id);
+      const updatedReviews = await reviewApi.getReviews(id);
 
+      setProduct(updatedProduct);
+      setReviews(updatedReviews);
+      setNewComment("");
+      setNewRating(5);
 
+      toast.success("Đã gửi đánh giá!", { position: "bottom-right" });
+    } catch (err) {
+      const errorData = err.response?.data;
+      if (errorData?.non_field_errors) {
+        toast.warning(errorData.non_field_errors[0], {
+          position: "bottom-right",
+        });
+      } else {
+        toast.error("Không thể gửi đánh giá", { position: "bottom-right" });
+      }
+    }
+  };
 
   if (loading) {
     return (
@@ -278,21 +354,22 @@ const handleSubmitReview = async () => {
             {product.name}
           </h2>
           <div className="mb-2">
-  {[...Array(5)].map((_, i) => (
-    <AiFillStar
-      key={i}
-      size={18}
-      className={
-        i < Math.round(product.rating || 0)
-          ? "text-warning"
-          : "text-muted"
-      }
-    />
-  ))}
-  <span className="ms-2 text-muted">
-    {Number(product.rating).toFixed(1)} ★ ({product.review_count} đánh giá)
-  </span>
-</div>
+            {[...Array(5)].map((_, i) => (
+              <AiFillStar
+                key={i}
+                size={18}
+                className={
+                  i < Math.round(product.rating || 0)
+                    ? "text-warning"
+                    : "text-muted"
+                }
+              />
+            ))}
+            <span className="ms-2 text-muted">
+              {Number(product.rating).toFixed(1)} ★ ({product.review_count}{" "}
+              đánh giá)
+            </span>
+          </div>
 
           <div className="mb-3">
             <span className="fs-3 fw-bold text-success">
@@ -354,7 +431,11 @@ const handleSubmitReview = async () => {
               variant="warning"
               size="lg"
               className="px-4 shadow-sm"
-              onClick={() => toast.info("Chức năng mua ngay đang phát triển", {position: "bottom-right"})}
+              onClick={() =>
+                toast.info("Chức năng mua ngay đang phát triển", {
+                  position: "bottom-right",
+                })
+              }
             >
               Mua ngay
             </Button>
@@ -390,7 +471,54 @@ const handleSubmitReview = async () => {
         </div>
       </Card>
 
-      {/* Cửa hàng đơn giản */}
+      {/* Nút mở form khiếu nại */}
+      <div className="mt-4 text-end">
+        <Button
+          variant="outline-danger"
+          onClick={() => setShowComplaintForm((v) => !v)}
+        >
+          {showComplaintForm ? "Đóng khiếu nại" : "Khiếu nại sản phẩm"}
+        </Button>
+      </div>
+
+      {/* Form khiếu nại */}
+      {showComplaintForm && (
+        <Card className="mt-2 border-0 shadow-sm p-4">
+          <h4 className="fw-bold mb-3">Gửi khiếu nại về sản phẩm</h4>
+          {user ? (
+            <>
+              <textarea
+                className="form-control mb-2"
+                rows={3}
+                placeholder="Nhập nội dung khiếu nại..."
+                value={complaintText}
+                onChange={(e) => setComplaintText(e.target.value)}
+              />
+              <label className="form-label fw-normal mb-1">
+                Hình ảnh hoặc video đính kèm minh họa (tùy chọn):
+              </label>
+              <input
+                type="file"
+                className="form-control mb-2"
+                multiple
+                accept="image/*,video/*"
+                onChange={e => setComplaintFiles(Array.from(e.target.files))}
+              />
+              <Button
+                variant="danger"
+                onClick={handleSendComplaint}
+                disabled={sendingComplaint}
+              >
+                {sendingComplaint ? "Đang gửi..." : "Gửi khiếu nại"}
+              </Button>
+            </>
+          ) : (
+            <p className="text-muted">Đăng nhập để gửi khiếu nại</p>
+          )}
+        </Card>
+      )}
+
+      {/* Cửa hàng */}
       {product.store && (
         <Card className="mt-4 border-0 shadow-sm p-3">
           <Row className="align-items-center">
@@ -425,85 +553,85 @@ const handleSubmitReview = async () => {
 
       {/* Đánh giá & Bình luận */}
       <Card className="mt-5 border-0 shadow-sm p-4">
-  <h4 className="fw-bold mb-3">Đánh giá & Bình luận</h4>
+        <h4 className="fw-bold mb-3">Đánh giá & Bình luận</h4>
 
-  {user ? (
-  myReview ? (
-    <div className="border p-3 rounded bg-light">
-      <p className="fw-bold text-success">✅ Bạn đã đánh giá sản phẩm này</p>
-      <div>
-        {[...Array(5)].map((_, i) => (
-          <AiFillStar
-            key={i}
-            size={16}
-            className={i < myReview.rating ? "text-warning" : "text-muted"}
-          />
-        ))}
-      </div>
-      <p className="mb-1">{myReview.comment}</p>
-      <small className="text-muted">
-        {new Date(myReview.created_at).toLocaleString()}
-      </small>
-    </div>
-  ) : (
-    <>
-      {/* Form nhập review nếu chưa có */}
-      <div className="mb-3">
-        <label>Chọn số sao:</label>
-        <select
-          value={newRating}
-          onChange={(e) => setNewRating(Number(e.target.value))}
-          className="form-select w-auto d-inline ms-2"
-        >
-          {[1, 2, 3, 4, 5].map((r) => (
-            <option key={r} value={r}>
-              {r} ★
-            </option>
+        {user ? (
+          myReview ? (
+            <div className="border p-3 rounded bg-light">
+              <p className="fw-bold text-success">
+                ✅ Bạn đã đánh giá sản phẩm này
+              </p>
+              <div>
+                {[...Array(5)].map((_, i) => (
+                  <AiFillStar
+                    key={i}
+                    size={16}
+                    className={
+                      i < myReview.rating ? "text-warning" : "text-muted"
+                    }
+                  />
+                ))}
+              </div>
+              <p className="mb-1">{myReview.comment}</p>
+              <small className="text-muted">
+                {new Date(myReview.created_at).toLocaleString()}
+              </small>
+            </div>
+          ) : (
+            <>
+              <div className="mb-3">
+                <label>Chọn số sao:</label>
+                <select
+                  value={newRating}
+                  onChange={(e) => setNewRating(Number(e.target.value))}
+                  className="form-select w-auto d-inline ms-2"
+                >
+                  {[1, 2, 3, 4, 5].map((r) => (
+                    <option key={r} value={r}>
+                      {r} ★
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <textarea
+                className="form-control mb-2"
+                rows={3}
+                placeholder="Viết bình luận..."
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+              />
+              <Button variant="success" onClick={handleSubmitReview}>
+                Gửi đánh giá
+              </Button>
+            </>
+          )
+        ) : (
+          <p className="text-muted">Đăng nhập để đánh giá</p>
+        )}
+
+        {/* Danh sách review */}
+        <div className="mt-4">
+          {reviews.length === 0 && <p>Chưa có đánh giá nào.</p>}
+          {reviews.map((r) => (
+            <div key={r.id} className="border-bottom py-2">
+              <div>
+                <strong>{r.user_name}</strong>{" "}
+                {[...Array(5)].map((_, i) => (
+                  <AiFillStar
+                    key={i}
+                    size={14}
+                    className={i < r.rating ? "text-warning" : "text-muted"}
+                  />
+                ))}
+              </div>
+              <p className="mb-1">{r.comment}</p>
+              <small className="text-muted">
+                {new Date(r.created_at).toLocaleString()}
+              </small>
+            </div>
           ))}
-        </select>
-      </div>
-      <textarea
-        className="form-control mb-2"
-        rows={3}
-        placeholder="Viết bình luận..."
-        value={newComment}
-        onChange={(e) => setNewComment(e.target.value)}
-      />
-      <Button variant="success" onClick={handleSubmitReview}>
-        Gửi đánh giá
-      </Button>
-    </>
-  )
-) : (
-  <p className="text-muted">Đăng nhập để đánh giá</p>
-)}
-
-
-  {/* Danh sách review */}
-  <div className="mt-4">
-    {reviews.length === 0 && <p>Chưa có đánh giá nào.</p>}
-    {reviews.map((r) => (
-  <div key={r.id} className="border-bottom py-2">
-    <div>
-      <strong>{r.user_name}</strong>{" "}
-      {[...Array(5)].map((_, i) => (
-        <AiFillStar
-          key={i}
-          size={14}
-          className={i < r.rating ? "text-warning" : "text-muted"}
-        />
-      ))}
-    </div>
-    <p className="mb-1">{r.comment}</p>
-    <small className="text-muted">
-      {new Date(r.created_at).toLocaleString()}
-    </small>
-  </div>
-))}
-
-  </div>
-</Card>
-
+        </div>
+      </Card>
     </div>
   );
 };
