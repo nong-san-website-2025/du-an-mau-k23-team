@@ -7,6 +7,7 @@ import Dashboard from "../features/seller_center/pages/Dashboard";
 import ProductsPage from "../features/seller_center/pages/ProductsPage";
 import OrdersNew from "../features/seller_center/pages/OrdersNew";
 import OrdersProcessing from "../features/seller_center/pages/OrdersProcessing";
+import StoreInfo from "../features/seller_center/pages/StoreInfo";
 
 export const sellerRoutes = [
   <Route element={<SellerPrivateRoute />} key="seller-protect">
@@ -14,6 +15,7 @@ export const sellerRoutes = [
       {/* index route: khi vào /seller-center thì mặc định hiển thị dashboard */}
       <Route index element={<Dashboard />} /> 
       <Route path="dashboard" element={<Dashboard />} />
+      <Route path="store/info" element={<StoreInfo />} />
       <Route path="products" element={<ProductsPage />} />
       <Route path="orders/new" element={<OrdersNew />} />
       <Route path="orders/processing" element={<OrdersProcessing />} />
