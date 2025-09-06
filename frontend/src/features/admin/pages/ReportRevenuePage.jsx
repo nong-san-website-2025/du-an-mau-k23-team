@@ -36,9 +36,9 @@ const COLORS = ["#2ecc71", "#27ae60"]; // xanh lá hiện đại
 
 export default function ReportRevenuePage() {
   return (
-    <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
+    <div className="px-4 space-y-6 bg-gray min-h-screen">
       {/* Doanh thu */}
-      <Card title="🌱 Doanh thu theo tháng" className="shadow-lg rounded-2xl">
+      <Card title="🌱 Doanh thu theo tháng" className="">
         <ResponsiveContainer width="100%" height={300}>
           <LineChart data={revenueData}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
@@ -52,7 +52,7 @@ export default function ReportRevenuePage() {
       </Card>
 
       {/* Top sản phẩm */}
-      <Card title="🥦 Sản phẩm bán chạy" className="shadow-lg rounded-2xl">
+      <Card title="🥦 Sản phẩm bán chạy" className=" rounded-2xl">
         <Table
           dataSource={topProducts}
           columns={[
@@ -64,7 +64,7 @@ export default function ReportRevenuePage() {
       </Card>
 
       {/* Top nhà cung cấp */}
-      <Card title="🏆 Top nhà cung cấp" className="shadow-lg rounded-2xl">
+      <Card title="🏆 Top nhà cung cấp" className="rounded-2xl">
         <Table
           dataSource={topSellers}
           columns={[
@@ -76,7 +76,7 @@ export default function ReportRevenuePage() {
       </Card>
 
       {/* Phân tích khách hàng */}
-      <Card title="👥 Phân tích khách hàng" className="shadow-lg rounded-2xl">
+      <Card title="👥 Phân tích khách hàng" className="rounded-2xl">
         <ResponsiveContainer width="100%" height={300}>
           <PieChart>
             <Pie

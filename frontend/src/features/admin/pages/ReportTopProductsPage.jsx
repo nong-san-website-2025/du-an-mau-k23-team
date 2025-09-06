@@ -27,7 +27,7 @@ const ReportTopProductsPage = () => {
   const COLORS = ["#00C49F", "#0088FE"];
 
   return (
-    <div className="p-4 space-y-6">
+    <div className="px-4 space-y-6">
       {/* Sản phẩm bán chạy */}
       <Card
         title={
