@@ -47,8 +47,12 @@ class CustomUser(AbstractUser):
     def __str__(self):
         return self.username
 
-
-    
+    @property
+    def is_admin(self):
+        """Xác định người dùng có quyền admin.
+        - True nếu là superuser hoặc có role tên 'admin'.
+        """
+        return bool(self.is_superuser or (self.role and self.role.name == "admin"))
 
 
 class Address(models.Model):
