@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useCart } from '../services/CartContext';
 import { toast } from 'react-toastify';
 import { QRCodeSVG } from 'qrcode.react';
+import API from '../../login_register/services/api';
 import '../styles/CheckoutPage.css';
 
 const CheckoutPage = () => {
@@ -56,33 +57,32 @@ const CheckoutPage = () => {
   const completeOrder = async () => {
     setIsLoading(true);
     try {
-      // Tạo đơn hàng fake
+      // Gửi đơn hàng thật tới backend
       const orderData = {
         total_price: total,
-        status: 'completed',
+        status: 'pending', // chờ xác nhận
         customer_name: customerName.trim(),
         customer_phone: customerPhone.trim(),
         address: address.trim(),
         note: note.trim(),
         payment_method: payment,
         items: cartItems.map(item => ({
-          product: item.product?.id || item.product,
+          product: item.product?.id || item.product, // gửi ID sản phẩm
           quantity: parseInt(item.quantity) || 1,
           price: parseFloat(item.product?.price) || 0,
         })),
       };
 
-      console.log('Fake order data:', orderData);
-
-      // Giả lập delay 1s
-      await new Promise(res => setTimeout(res, 1000));
+      const res = await API.post('orders/', orderData);
 
       await clearCart();
-      toast.success('Đơn hàng hoàn tất! (Mock payment)');
-      navigate('/orders?tab=completed');
+      toast.success('Đặt hàng thành công!');
+      // Điều hướng sang trang đơn hàng - tab chờ xác nhận
+      navigate('/orders?tab=pending');
     } catch (error) {
       console.error(error);
-      toast.error('Đặt hàng thất bại! Vui lòng thử lại.');
+      const message = error?.response?.data?.error || 'Đặt hàng thất bại! Vui lòng thử lại.';
+      toast.error(message);
     } finally {
       setIsLoading(false);
       setShowQR(false);
@@ -92,7 +92,7 @@ const CheckoutPage = () => {
 
   return (
     <div className="checkout-container">
-      <h2 className="checkout-title">Thanh toán đơn hàng (Mock Payment)</h2>
+      <h2 className="checkout-title">Thanh toán đơn hàng</h2>
 
       <input type="text" placeholder="Họ và tên" value={customerName} onChange={e => setCustomerName(e.target.value)} />
       <input type="tel" placeholder="Số điện thoại" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} />

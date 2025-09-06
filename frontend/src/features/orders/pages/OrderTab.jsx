@@ -1,179 +1,191 @@
 import React, { useEffect, useState } from "react";
+import {
+  Collapse,
+  Tag,
+  Typography,
+  Skeleton,
+  Empty,
+  List,
+  Divider,
+  Image,
+  Space,
+  message,
+} from "antd";
 import API from "../../login_register/services/api";
 
+const { Panel } = Collapse;
+const { Text } = Typography;
+
+// Map trạng thái đơn hàng -> label + màu
 const statusMap = {
-  pending: "Chờ thanh toán",
-  completed: "Đã thanh toán",
-  cancelled: "Đã huỷ",
+  pending: { label: "Chờ xác nhận", color: "gold" },
+  shipping: { label: "Chờ nhận hàng", color: "blue" },
+  success: { label: "Đã thanh toán", color: "green" },
+  cancelled: { label: "Đã huỷ", color: "red" },
 };
 
 const OrderTab = ({ status }) => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
+  // Fetch dữ liệu từ API
   useEffect(() => {
     setLoading(true);
-    setError(null);
-    API.get(`orders/?status=${status}`)
+
+    const statusParam = status === "completed" ? "success" : status;
+
+    API.get(`orders/?status=${statusParam}`)
       .then((res) => {
         const sortedOrders = res.data.sort(
           (a, b) => new Date(b.created_at) - new Date(a.created_at)
         );
         setOrders(sortedOrders);
-        setLoading(false);
       })
-      .catch((err) => {
-        setError("Không thể tải đơn hàng");
-        setLoading(false);
-      });
+      .catch(() => {
+        message.error("Không thể tải đơn hàng");
+        setOrders([]);
+      })
+      .finally(() => setLoading(false));
   }, [status]);
 
-  if (loading) return <div style={{ padding: 24 }}>Đang tải...</div>;
-  if (error) return <div style={{ padding: 24, color: "red" }}>{error}</div>;
-  if (!orders.length)
+  // Loading
+  if (loading) {
     return (
-      <div style={{ padding: 24 }}>Không có đơn hàng {statusMap[status]}</div>
+      <div className="flex justify-center items-center min-h-[300px]">
+        <Skeleton active paragraph={{ rows: 2 }} />
+      </div>
     );
+  }
+
+  // Không có đơn hàng
+  if (!orders.length) {
+    return (
+      <div className="flex justify-center items-center min-h-[300px]">
+        <Empty description="Không có đơn hàng nào" />
+      </div>
+    );
+  }
 
   return (
-    <div style={{ padding: 24 }}>
-      {orders.map((order) => (
-        <div
-          key={order.id}
-          style={{
-            border: "1px solid #eee",
-            borderRadius: 12,
-            marginBottom: 20,
-            padding: 20,
-            backgroundColor: "#fafafa",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: 12,
-              paddingBottom: 12,
-              borderBottom: "1px solid #eee",
-            }}
-          >
-            <div style={{ fontWeight: 600, fontSize: 16 }}>
-              Mã đơn: #{order.id}
-            </div>
-            <div style={{ fontSize: 14, color: "#666" }}>
-              {new Date(order.created_at).toLocaleString("vi-VN")}
-            </div>
-          </div>
+    <div className="flex justify-content-center min-h-screen py-10 bg-gray-50 w-75" style={{ paddingLeft: '300px' }}>
+      <div className="w-full max-w-6xl">
+        <Collapse accordion bordered={false} style={{ background: "#fff" }}>
+          {orders.map((order) => (
+            <Panel
+              key={order.id}
+              header={
+                <div className="flex justify-between items-center w-full">
+                  {/* Mã đơn + trạng thái */}
+                  <Space size="middle">
+                    <Text strong>Mã đơn: #{order.id}</Text>
+                    <Tag
+                      color={statusMap[order.status]?.color || "default"}
+                      style={{ fontSize: 12 }}
+                    >
+                      {statusMap[order.status]?.label || "Không xác định"}
+                    </Tag>
+                  </Space>
 
-          <div style={{ marginBottom: 12 }}>
-            <div
+                  {/* Tổng tiền + Ngày đặt */}
+                  <Space size="large">
+                    <Text strong style={{ color: "#27ae60" }}>
+                      {Number(order.total_price).toLocaleString()}đ
+                    </Text>
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                      {new Date(order.created_at).toLocaleString("vi-VN")}
+                    </Text>
+                  </Space>
+                </div>
+              }
               style={{
-                display: "flex",
-                flexWrap: "wrap",
-                gap: "12px 24px",
-                fontSize: 14,
+                background: "#fafafa",
+                borderRadius: 8,
                 marginBottom: 12,
+                border: "1px solid #f0f0f0",
               }}
             >
-              {order.customer_name && (
-                <div>
-                  <strong>Người nhận:</strong> {order.customer_name}
-                </div>
-              )}
-              {order.customer_phone && (
-                <div>
-                  <strong>SĐT:</strong> {order.customer_phone}
-                </div>
-              )}
-              {order.address && (
-                <div>
-                  <strong>Địa chỉ:</strong> {order.address}
-                </div>
-              )}
-              {order.payment_method && (
-                <div>
-                  <strong>Thanh toán:</strong> {order.payment_method}
-                </div>
-              )}
-              {order.note && (
-                <div>
-                  <strong>Ghi chú:</strong> {order.note}
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div style={{ marginBottom: 12 }}>
-            <strong>Sản phẩm:</strong>
-            <div style={{ marginTop: 8 }}>
-              {order.items &&
-                order.items.map((item) => (
-                  <div
-                    key={item.id}
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      padding: "8px 0",
-                      borderBottom: "1px solid #f0f0f0",
-                    }}
-                  >
-                    <div
-                      style={{ flex: 1, display: "flex", alignItems: "center" }}
-                    >
-                      {item.product_image && (
-                        <img
-                          src={`http://localhost:8000/media/${item.product_image}`}
-                          alt={item.product_name || item.product}
-                          style={{
-                            width: 40,
-                            height: 40,
-                            borderRadius: 4,
-                            marginRight: 12,
-                            objectFit: "cover",
-                          }}
-                        />
-                      )}
-                      <div>
-                        <div style={{ fontWeight: "bold" }}>
-                          {item.product_name || item.product}
-                        </div>
-                        <div style={{ fontSize: 12, color: "#666" }}>
-                          {Number(item.price).toLocaleString()}đ x{" "}
-                          {item.quantity}
-                        </div>
-                      </div>
-                    </div>
-                    <div style={{ fontWeight: "bold", color: "#27ae60" }}>
-                      {(
-                        Number(item.price) * Number(item.quantity)
-                      ).toLocaleString()}
-                      đ
-                    </div>
+              {/* Nội dung chi tiết */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* BÊN TRÁI - Thông tin người nhận */}
+                <div className="bg-gray-50 p-4 rounded-lg shadow-sm">
+                  <h3 className="font-semibold text-lg mb-3">
+                    Thông tin người nhận
+                  </h3>
+                  <div className="space-y-2 text-sm">
+                    <p>
+                      <strong>Người nhận:</strong> {order.customer_name}
+                    </p>
+                    <p>
+                      <strong>SĐT:</strong> {order.customer_phone}
+                    </p>
+                    <p>
+                      <strong>Địa chỉ:</strong> {order.address}
+                    </p>
+                    {order.note && (
+                      <p>
+                        <strong>Ghi chú:</strong> {order.note}
+                      </p>
+                    )}
+                    <p>
+                      <strong>Thanh toán:</strong> {order.payment_method}
+                    </p>
                   </div>
-                ))}
-            </div>
-          </div>
+                </div>
 
-          <div
-            style={{
-              textAlign: "right",
-              paddingTop: 12,
-              borderTop: "2px solid #27ae60",
-              fontSize: 18,
-              fontWeight: "bold",
-            }}
-          >
-            Tổng tiền:{" "}
-            <span style={{ color: "#27ae60" }}>
-              {Number(order.total_price).toLocaleString()}đ
-            </span>
-          </div>
-        </div>
-      ))}
+                {/* BÊN PHẢI - Sản phẩm trong đơn */}
+                <div className="bg-gray-50 p-4 rounded-lg shadow-sm">
+                  <h3 className="font-semibold text-lg mb-3">Sản phẩm</h3>
+                  <List
+                    dataSource={order.items}
+                    renderItem={(item) => (
+                      <List.Item style={{ padding: "8px 0" }}>
+                        <div className="flex items-center justify-between w-full">
+                          <div className="flex items-center">
+                            <Image
+                              src={`http://localhost:8000/media/${item.product_image}`}
+                              alt={item.product_name}
+                              width={50}
+                              height={50}
+                              style={{
+                                borderRadius: 8,
+                                objectFit: "cover",
+                                marginRight: 12,
+                              }}
+                              preview={false}
+                            />
+                            <div>
+                              <Text strong>{item.product_name}</Text>
+                              <br />
+                              <Text type="secondary" style={{ fontSize: 13 }}>
+                                {Number(item.price).toLocaleString()}đ x{" "}
+                                {item.quantity}
+                              </Text>
+                            </div>
+                          </div>
+
+                          {/* Thành tiền */}
+                          <Text strong style={{ color: "#27ae60" }}>
+                            {(
+                              Number(item.price) * Number(item.quantity)
+                            ).toLocaleString()}
+                            đ
+                          </Text>
+                        </div>
+                      </List.Item>
+                    )}
+                  />
+                  <Divider />
+                  <div className="text-right">
+                    <Text strong style={{ fontSize: 16, color: "#27ae60" }}>
+                      Tổng tiền: {Number(order.total_price).toLocaleString()}đ
+                    </Text>
+                  </div>
+                </div>
+              </div>
+            </Panel>
+          ))}
+        </Collapse>
+      </div>
     </div>
   );
 };

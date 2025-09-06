@@ -74,12 +74,6 @@ const Sidebar = () => {
         </Menu.SubMenu>
 
         <Menu.SubMenu key="payments" icon={<DollarOutlined />} title="Thanh toán">
-          <Menu.Item key="transactions">
-            <Link to="/admin/payments/transactions">Giao dịch</Link>
-          </Menu.Item>
-          <Menu.Item key="wallets">
-            <Link to="/admin/payments/wallets">Ví tiền seller</Link>
-          </Menu.Item>
           <Menu.Item key="revenue">
             <Link to="/admin/payments/revenue">Đối soát doanh thu</Link>
           </Menu.Item>
@@ -91,9 +85,6 @@ const Sidebar = () => {
         <Menu.SubMenu key="reports" icon={<BarChartOutlined />} title="Thống kê & Báo cáo">
           <Menu.Item key="report-revenue">
             <Link to="/admin/reports/revenue">Doanh thu</Link>
-          </Menu.Item>
-          <Menu.Item key="report-top-products">
-            <Link to="/admin/reports/top-products">Sản phẩm bán chạy</Link>
           </Menu.Item>
           <Menu.Item key="report-cancel-rate">
             <Link to="/admin/reports/cancel-rate">Tỉ lệ huỷ/hoàn đơn</Link>

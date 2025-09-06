@@ -49,7 +49,7 @@ class OrderCreateSerializer(serializers.ModelSerializer):
         
         # Đảm bảo trạng thái được lưu đúng
         if 'status' not in validated_data:
-            validated_data['status'] = 'completed'  # Mặc định là completed khi checkout
+            validated_data['status'] = 'pending'  # Mặc định là chờ xác nhận khi checkout
         
         try:
             # Tạo đơn hàng
