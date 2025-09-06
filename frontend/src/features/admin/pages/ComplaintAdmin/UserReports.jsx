@@ -11,6 +11,12 @@ const UserReports = () => {
   const [previewMedia, setPreviewMedia] = useState(null);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [detailComplaint, setDetailComplaint] = useState(null);
+  // Modal xử lý khiếu nại
+  const [resolveModalVisible, setResolveModalVisible] = useState(false);
+  const [resolveComplaint, setResolveComplaint] = useState(null);
+  const [resolutionType, setResolutionType] = useState("");
+  const [refundAmount, setRefundAmount] = useState("");
+  const [voucherCode, setVoucherCode] = useState("");
 
   // Hàm làm mới dữ liệu khiếu nại
   const refreshReports = async () => {
@@ -173,6 +179,88 @@ const UserReports = () => {
     });
   };
 
+  // Gửi thông báo cho user (localStorage)
+  const sendNotification = async (userId, complaint) => {
+    let detail = `Khiếu nại sản phẩm: ${complaint.product_name || ''}.\nLý do: ${complaint.reason || ''}.\nHình thức xử lý: `;
+    switch (resolutionType) {
+      case 'refund_full':
+        detail += 'Hoàn tiền toàn bộ';
+        break;
+      case 'refund_partial':
+        detail += `Hoàn tiền một phần (${refundAmount}đ)`;
+        break;
+      case 'replace':
+        detail += 'Đổi sản phẩm';
+        break;
+      case 'voucher':
+        detail += `Tặng voucher/điểm thưởng (${voucherCode})`;
+        break;
+      case 'reject':
+        detail += 'Từ chối khiếu nại';
+        break;
+      default:
+        detail += resolutionType;
+    }
+    // Lấy thumbnail hình ảnh sản phẩm bị khiếu nại
+    let thumbnail = null;
+    if (Array.isArray(complaint.media_urls) && complaint.media_urls.length > 0) {
+      // Ưu tiên ảnh, nếu không có thì lấy video
+      const img = complaint.media_urls.find(url => url.match(/\.(jpg|jpeg|png|gif)$/i));
+      thumbnail = img || complaint.media_urls[0];
+    }
+    const notifications = JSON.parse(localStorage.getItem('notifications') || '[]');
+    notifications.unshift({
+      id: Date.now(),
+      message: `Khiếu nại của bạn đã được xử lý!`,
+      detail,
+      time: new Date().toLocaleString(),
+      read: false,
+      userId,
+      thumbnail,
+    });
+    localStorage.setItem('notifications', JSON.stringify(notifications));
+  };
+
+  // Mở modal xử lý khiếu nại
+  const openResolveModal = (complaint) => {
+    setResolveComplaint(complaint);
+    setResolutionType("");
+    setRefundAmount("");
+    setVoucherCode("");
+    setResolveModalVisible(true);
+  };
+
+  // Xác nhận xử lý khiếu nại
+  const handleConfirmResolve = async () => {
+    if (!resolutionType) {
+      message.error('Vui lòng chọn hình thức xử lý!');
+      return;
+    }
+    try {
+      const token = localStorage.getItem('token');
+      await fetch(`http://localhost:8000/api/complaints/${resolveComplaint.id}/`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          status: 'resolved',
+          resolution_type: resolutionType,
+          refund_amount: refundAmount || null,
+          voucher_code: voucherCode || null,
+        }),
+      });
+      message.success('Đã xử lý khiếu nại!');
+      setResolveModalVisible(false);
+      refreshReports();
+      // Gửi thông báo cho user
+      await sendNotification(resolveComplaint.user, resolveComplaint);
+    } catch (err) {
+      message.error('Lỗi khi cập nhật!');
+    }
+  };
+
   const columns = [
     {
       title: "Người dùng",
@@ -221,7 +309,7 @@ const UserReports = () => {
           </Button>
           {record.status === "pending" && (
             <>
-              <Button type="primary" onClick={() => handleResolve(record.id)}>
+              <Button type="primary" onClick={() => openResolveModal(record)}>
                 Duyệt
               </Button>
               <Button danger onClick={() => handleReject(record.id)}>
@@ -370,6 +458,73 @@ const UserReports = () => {
             </div>
           </div>
         )}
+      </Modal>
+      {/* Modal xử lý khiếu nại */}
+      <Modal
+        open={resolveModalVisible}
+        title="Xử lý khiếu nại"
+        onCancel={() => setResolveModalVisible(false)}
+        onOk={handleConfirmResolve}
+        okText="Duyệt"
+        width={500}
+      >
+        <div>
+          <div style={{ marginBottom: 12 }}>
+            <b>Hình thức xử lý:</b>
+            <select
+              value={resolutionType}
+              onChange={(e) => setResolutionType(e.target.value)}
+              style={{
+                width: "100%",
+                marginTop: 6,
+                padding: 6,
+                borderRadius: 4,
+              }}
+            >
+              <option value="">-- Chọn --</option>
+              <option value="refund_full">Hoàn tiền toàn bộ</option>
+              <option value="refund_partial">Hoàn tiền một phần</option>
+              <option value="replace">Đổi sản phẩm</option>
+              <option value="voucher">Tặng voucher/điểm thưởng</option>
+              <option value="reject">Từ chối khiếu nại</option>
+            </select>
+          </div>
+          {(resolutionType === "refund_partial" ||
+            resolutionType === "refund_full") && (
+            <div style={{ marginBottom: 12 }}>
+              <b>Số tiền hoàn:</b>
+              <input
+                type="number"
+                value={refundAmount}
+                onChange={(e) => setRefundAmount(e.target.value)}
+                placeholder="Nhập số tiền hoàn"
+                style={{
+                  width: "100%",
+                  marginTop: 6,
+                  padding: 6,
+                  borderRadius: 4,
+                }}
+              />
+            </div>
+          )}
+          {resolutionType === "voucher" && (
+            <div style={{ marginBottom: 12 }}>
+              <b>Mã voucher/điểm thưởng:</b>
+              <input
+                type="text"
+                value={voucherCode}
+                onChange={(e) => setVoucherCode(e.target.value)}
+                placeholder="Nhập mã voucher hoặc điểm thưởng"
+                style={{
+                  width: "100%",
+                  marginTop: 6,
+                  padding: 6,
+                  borderRadius: 4,
+                }}
+              />
+            </div>
+          )}
+        </div>
       </Modal>
     </div>
   );

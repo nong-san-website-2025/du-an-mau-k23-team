@@ -18,8 +18,42 @@ const CheckoutPage = () => {
 
   const [showQR, setShowQR] = useState(false);
   const [qrScanned, setQrScanned] = useState(false); // Người dùng đã quét QR chưa
+  const [voucher, setVoucher] = useState("");
+  const [discount, setDiscount] = useState(0);
+  const [voucherError, setVoucherError] = useState("");
+
+  // Danh sách mã giảm giá mẫu
+  const voucherList = [
+    { code: "SALE10", type: "percent", value: 10, desc: "Giảm 10% tổng đơn" },
+    { code: "FREESHIP", type: "fixed", value: 20000, desc: "Giảm 20.000đ" },
+    { code: "GREENFARM50", type: "fixed", value: 50000, desc: "Giảm 50.000đ cho đơn từ 500k", minOrder: 500000 },
+  ];
 
   const total = cartItems.reduce((sum, item) => sum + (Number(item.product?.price) || 0) * (Number(item.quantity) || 0), 0);
+
+  // Áp dụng mã giảm giá
+  const handleApplyVoucher = () => {
+    setVoucherError("");
+    setDiscount(0);
+    if (!voucher.trim()) return;
+    const found = voucherList.find(v => v.code === voucher.trim().toUpperCase());
+    if (!found) {
+      setVoucherError("Mã giảm giá không hợp lệ!");
+      return;
+    }
+    if (found.minOrder && total < found.minOrder) {
+      setVoucherError(`Đơn tối thiểu ${found.minOrder.toLocaleString()}đ mới dùng mã này!"`);
+      return;
+    }
+    if (found.type === "percent") {
+      setDiscount(Math.floor((total * found.value) / 100));
+    } else if (found.type === "fixed") {
+      setDiscount(found.value);
+    }
+    toast.success(`Áp dụng mã ${found.code} thành công!`);
+  };
+
+  const totalAfterDiscount = Math.max(total - discount, 0);
 
   // Khi nhấn Xác nhận đặt hàng
   const handleOrder = () => {
@@ -99,28 +133,38 @@ const CheckoutPage = () => {
       <input type="text" placeholder="Địa chỉ nhận hàng" value={address} onChange={e => setAddress(e.target.value)} />
       <input type="text" placeholder="Ghi chú (tùy chọn)" value={note} onChange={e => setNote(e.target.value)} />
 
-      <div style={{ marginBottom: 16 }}>
-        <strong>Phương thức thanh toán:</strong>
-        <select
-          value={payment}
-          onChange={e => { setPayment(e.target.value); setShowQR(false); setQrScanned(false); }}
-          style={{ marginLeft: 8 }}
+      {/* Voucher section */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+        <input
+          type="text"
+          placeholder="Nhập mã giảm giá/vocher"
+          value={voucher}
+          onChange={e => setVoucher(e.target.value)}
+          style={{ flex: 1, padding: 6, borderRadius: 4, border: '1px solid #ccc' }}
+        />
+        <button
+          onClick={handleApplyVoucher}
+          style={{ padding: '7px 16px', borderRadius: 4, background: '#f39c12', color: '#fff', fontWeight: 'bold', border: 'none', cursor: 'pointer' }}
         >
-          <option>Thanh toán khi nhận hàng</option>
-          <option>Chuyển khoản ngân hàng</option>
-          <option>Ví điện tử</option>
-        </select>
+          Áp dụng
+        </button>
       </div>
+      {voucherError && <div style={{ color: 'red', marginBottom: 8 }}>{voucherError}</div>}
+      {discount > 0 && (
+        <div style={{ color: '#27ae60', marginBottom: 8 }}>
+          Đã giảm: -{discount.toLocaleString()}đ
+        </div>
+      )}
 
       <div style={{ marginBottom: 16 }}>
-        <strong>Tổng thanh toán:</strong> {total.toLocaleString()}đ
+        <strong>Tổng thanh toán:</strong> {totalAfterDiscount.toLocaleString()}đ
       </div>
 
       {/* QR code Section */}
       {showQR && (
         <div style={{ textAlign: 'center', marginBottom: 16 }}>
-          <p>Quét QR để thanh toán số tiền: <strong>{total.toLocaleString()}đ</strong></p>
-          <QRCodeSVG value={`mock_payment_amount:${total}`} size={180} />
+          <p>Quét QR để thanh toán số tiền: <strong>{totalAfterDiscount.toLocaleString()}đ</strong></p>
+          <QRCodeSVG value={`mock_payment_amount:${totalAfterDiscount}`} size={180} />
           {!qrScanned ? (
             <button
               onClick={handleQrScan}
