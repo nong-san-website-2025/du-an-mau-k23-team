@@ -1,26 +1,16 @@
 from django.db import models
 
 class Promotion(models.Model):
-    TYPE_CHOICES = [
-        ("Promotion", "Promotion"),
-        ("Flash Sale", "Flash Sale"),
-        ("Voucher", "Voucher"),
-    ]
-
-    name = models.CharField(max_length=255)
-    type = models.CharField(max_length=20, choices=TYPE_CHOICES)
-    discount = models.FloatField(default=0)
+    code = models.CharField(max_length=50, unique=True)  # Mã voucher duy nhất
+    name = models.CharField(max_length=200)
+    description = models.TextField(blank=True, null=True)  # Mô tả ngắn
+    type = models.CharField(max_length=50, choices=[('Promotion','Giảm tiền'), ('Flash Sale','Giảm %'), ('Voucher','Freeship')])
+    condition = models.CharField(max_length=255, blank=True, null=True)  # Điều kiện áp dụng
     start = models.DateTimeField()
     end = models.DateTimeField()
-    products = models.IntegerField(default=0)  # số sản phẩm áp dụng
-    used = models.IntegerField(default=0)      # số lượt đã dùng
-    total = models.IntegerField(default=0)     # tổng số lượt
-
-    is_locked = models.BooleanField(default=False)
+    total = models.PositiveIntegerField(default=0)
+    used = models.PositiveIntegerField(default=0)
+    products = models.PositiveIntegerField(default=0)  # Số sản phẩm áp dụng
 
     def __str__(self):
-        return self.name
-
-    @property
-    def discount_display(self):
-        return f"{self.discount}%"
+        return f"{self.code} - {self.name}"

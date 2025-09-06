@@ -1,66 +1,46 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { useParams, useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
 const EditPromotion = () => {
   const { id } = useParams();
-  const [promo, setPromo] = useState(null);
-  const [name, setName] = useState("");
-  const [type, setType] = useState("");
-  const [start, setStart] = useState("");
-  const [end, setEnd] = useState("");
   const navigate = useNavigate();
+  const [formData, setFormData] = useState({});
 
   useEffect(() => {
-    const fetchPromotion = async () => {
-      try {
-        const res = await axios.get(`http://127.0.0.1:8000/api/promotions/${id}/`);
-        setPromo(res.data);
-        setName(res.data.name);
-        setType(res.data.type);
-        setStart(res.data.start);
-        setEnd(res.data.end);
-      } catch (err) {
-        console.error(err);
-      }
-    };
-    fetchPromotion();
+    axios.get(`http://127.0.0.1:8000/api/promotions/promotions/${id}/`)
+      .then(res => setFormData(res.data))
+      .catch(err => console.error(err));
   }, [id]);
 
-  const handleSave = async () => {
-    try {
-      await axios.put(`http://127.0.0.1:8000/api/promotions/${id}/`, { name, type, start, end });
-      alert("Cập nhật thành công!");
-      navigate("/seller-center/promotions");
-    } catch (err) {
-      console.error(err);
-      alert("Cập nhật thất bại!");
-    }
+  const handleChange = (e) => setFormData({...formData, [e.target.name]: e.target.value});
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    axios.put(`http://127.0.0.1:8000/api/promotions/promotions/${id}/`, formData)
+      .then(() => {
+        alert("Cập nhật thành công!");
+        navigate("/seller-center/promotions");
+      })
+      .catch(err => {
+        console.error(err.response?.data || err.message);
+        alert("Cập nhật thất bại!");
+      });
   };
 
-  if (!promo) return <p>Đang tải dữ liệu...</p>;
-
   return (
-    <div style={{ maxWidth: "600px", margin: "20px auto", padding: "20px", background: "#fff", borderRadius: "12px" }}>
-      <h2>Chỉnh sửa khuyến mãi</h2>
-      <div>
-        <label>Tên:</label>
-        <input value={name} onChange={(e) => setName(e.target.value)} />
-      </div>
-      <div>
-        <label>Loại:</label>
-        <input value={type} onChange={(e) => setType(e.target.value)} />
-      </div>
-      <div>
-        <label>Start:</label>
-        <input type="datetime-local" value={start} onChange={(e) => setStart(e.target.value)} />
-      </div>
-      <div>
-        <label>End:</label>
-        <input type="datetime-local" value={end} onChange={(e) => setEnd(e.target.value)} />
-      </div>
-      <button onClick={handleSave}>Lưu</button>
-      <button onClick={() => navigate(-1)}>Hủy</button>
+    <div>
+      <h2>Sửa Khuyến mãi</h2>
+      <form onSubmit={handleSubmit}>
+        <input name="code" value={formData.code || ""} onChange={handleChange} required />
+        <input name="name" value={formData.name || ""} onChange={handleChange} required />
+        <input name="description" value={formData.description || ""} onChange={handleChange} />
+        <input name="type" value={formData.type || ""} onChange={handleChange} />
+        <input type="datetime-local" name="start" value={formData.start || ""} onChange={handleChange} required />
+        <input type="datetime-local" name="end" value={formData.end || ""} onChange={handleChange} required />
+        <input type="number" name="products" value={formData.products || 0} onChange={handleChange} />
+        <button type="submit">Lưu</button>
+      </form>
     </div>
   );
 };
