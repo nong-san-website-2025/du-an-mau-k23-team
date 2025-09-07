@@ -110,15 +110,11 @@ if os.environ.get("DATABASE_URL"):
     }
 else:
     DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'ecom_db',
-        'USER': 'postgres',       # user của bạn trong pgAdmin
-        'PASSWORD': '12345',  # mật khẩu khi bạn cài PostgreSQL
-        'HOST': 'localhost',
-        'PORT': '5432',
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
     }
-}
 
 # --- Auth
 AUTH_USER_MODEL = "users.CustomUser"
