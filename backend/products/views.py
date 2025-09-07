@@ -26,9 +26,12 @@ from django.db.models import Q
 from .serializers import ProductSerializer
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])  # chỉ admin được gọi
+@permission_classes([IsAuthenticated])
 def products_by_seller(request, seller_id):
-    products = Product.objects.filter(seller_id=seller_id)
+    if not request.user.is_staff:  # chỉ admin
+        return Response({"detail": "Không có quyền"}, status=403)
+
+    products = Product.objects.filter(shop__owner__seller__id=seller_id)
     serializer = ProductSerializer(products, many=True)
     return Response(serializer.data)
 

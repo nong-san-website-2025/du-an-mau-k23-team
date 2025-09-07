@@ -1,5 +1,5 @@
 import { Layout, Menu } from "antd";
-import { Link, useLocation, useNavigate  } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   HomeOutlined,
   UserOutlined,
@@ -9,14 +9,14 @@ import {
   BarChartOutlined,
   NotificationOutlined,
   InboxOutlined,
+  TagOutlined,
 } from "@ant-design/icons";
-import "../styles/AdminSidebar.css"
+import "../styles/AdminSidebar.css";
 
 const { Sider } = Layout;
 
-
 const Sidebar = () => {
-  const location = useLocation(); 
+  const location = useLocation();
   const navigate = useNavigate();
   return (
     <Sider width={250} className="sidebar">
@@ -25,7 +25,6 @@ const Sidebar = () => {
         selectedKeys={[location.pathname]}
         onClick={({ key }) => navigate(key)}
         style={{ height: "100%", borderRight: 0 }}
-        
       >
         <Menu.Item key="dashboard" icon={<HomeOutlined />}>
           <Link to="/admin/">Dashboard</Link>
@@ -40,7 +39,11 @@ const Sidebar = () => {
           </Menu.Item>
         </Menu.SubMenu>
 
-        <Menu.SubMenu key="seller-management" icon={<ShopOutlined  />} title="Cửa hàng">
+        <Menu.SubMenu
+          key="seller-management"
+          icon={<ShopOutlined />}
+          title="Cửa hàng"
+        >
           <Menu.Item key="/admin/sellers/business">
             <Link to="/admin/sellers/business">Cửa hàng hoạt động/khóa</Link>
           </Menu.Item>
@@ -49,7 +52,11 @@ const Sidebar = () => {
           </Menu.Item>
         </Menu.SubMenu>
 
-        <Menu.SubMenu key="products" icon={<InboxOutlined /> } title="Sản phẩm & Danh mục">
+        <Menu.SubMenu
+          key="products"
+          icon={<InboxOutlined />}
+          title="Sản phẩm & Danh mục"
+        >
           <Menu.Item key="/admin/products/approval">
             <Link to="/admin/products/approval">Duyệt sản phẩm</Link>
           </Menu.Item>
@@ -64,7 +71,11 @@ const Sidebar = () => {
           </Menu.Item>
         </Menu.SubMenu>
 
-        <Menu.SubMenu key="orders" icon={<ShoppingCartOutlined />} title="Đơn hàng & Vận chuyển">
+        <Menu.SubMenu
+          key="orders"
+          icon={<ShoppingCartOutlined />}
+          title="Đơn hàng & Vận chuyển"
+        >
           <Menu.Item key="order-monitor">
             <Link to="/admin/orders">Giám sát đơn hàng</Link>
           </Menu.Item>
@@ -73,7 +84,11 @@ const Sidebar = () => {
           </Menu.Item>
         </Menu.SubMenu>
 
-        <Menu.SubMenu key="payments" icon={<DollarOutlined />} title="Thanh toán">
+        <Menu.SubMenu
+          key="payments"
+          icon={<DollarOutlined />}
+          title="Thanh toán"
+        >
           <Menu.Item key="transactions">
             <Link to="/admin/payments/transactions">Giao dịch</Link>
           </Menu.Item>
@@ -88,7 +103,11 @@ const Sidebar = () => {
           </Menu.Item>
         </Menu.SubMenu>
 
-        <Menu.SubMenu key="reports" icon={<BarChartOutlined />} title="Thống kê & Báo cáo">
+        <Menu.SubMenu
+          key="reports"
+          icon={<BarChartOutlined />}
+          title="Thống kê & Báo cáo"
+        >
           <Menu.Item key="report-revenue">
             <Link to="/admin/reports/revenue">Doanh thu</Link>
           </Menu.Item>
@@ -100,12 +119,29 @@ const Sidebar = () => {
           </Menu.Item>
         </Menu.SubMenu>
 
-        <Menu.SubMenu key="marketing" icon={<NotificationOutlined />} title="Marketing">
+        <Menu.SubMenu
+          key="marketing"
+          icon={<NotificationOutlined />}
+          title="Marketing"
+        >
           <Menu.Item key="banner">
             <Link to="/admin/marketing/banners">Banner quảng cáo</Link>
           </Menu.Item>
           <Menu.Item key="flash-sale">
             <Link to="/admin/marketing/flashsale">Flash Sale / Campaign</Link>
+          </Menu.Item>
+        </Menu.SubMenu>
+
+        <Menu.SubMenu
+          key="promotions"
+          icon={<TagOutlined />}
+          title="Khuyến mãi"
+        >
+          <Menu.Item key="/admin/promotions">
+            <Link to="/admin/promotions">Quản lý khuyến mãi</Link>
+          </Menu.Item>
+          <Menu.Item key="/admin/promotions/flashsale">
+            <Link to="/admin/promotions/flashsale">Flash Sale</Link>
           </Menu.Item>
         </Menu.SubMenu>
       </Menu>

@@ -165,7 +165,17 @@ class SellerProductsAPIView(APIView):
         if not seller:
             return Response({"detail": "Bạn không phải seller"}, status=403)
 
+        search = request.GET.get("search", "")
+        status_filter = request.GET.get("status", "")
+
         products = Product.objects.filter(seller=seller)
+
+        if search:
+            products = products.filter(name__icontains=search)
+
+        if status_filter:
+            products = products.filter(status=status_filter)
+
         serializer = ProductSerializer(products, many=True)
         return Response(serializer.data)
 
