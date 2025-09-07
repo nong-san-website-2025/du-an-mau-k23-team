@@ -450,19 +450,32 @@ class DashboardAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        # Tổng số liệu cơ bản
         total_users = CustomUser.objects.count()
         total_products = Product.objects.count()
         total_orders = Order.objects.count()
-        total_revenue = Order.objects.filter(status="completed").aggregate(Sum("total_price"))["total_price__sum"] or 0
-        active_sellers = CustomUser.objects.filter(is_seller=True, is_active=True).count()
-        pending_sellers = CustomUser.objects.filter(is_seller=True, is_active=False).count()
 
-        top_products = Product.objects.annotate(sales=Count("order_items")).order_by("-sales")[:5]
+        # Tổng doanh thu: chỉ tính các đơn hàng thành công
+        total_revenue = (
+            Order.objects.filter(status="success")
+            .aggregate(Sum("total_price"))["total_price__sum"] or 0
+        )
+
+        # Seller đang hoạt động và pending
+        active_sellers = CustomUser.objects.filter(role__name="seller", is_active=True).count()
+        pending_sellers = CustomUser.objects.filter(role__name="seller", is_active=False).count()
+
+        # Top sản phẩm bán chạy
+        top_products = (
+            Product.objects.annotate(sales=Count("order_items"))  # <- đã sửa đúng
+            .order_by("-sales")[:5]
+        )
         top_products_data = [
             {"name": product.name, "sales": product.sales} for product in top_products
         ]
 
-        data = {
+        # Trả về dữ liệu
+        return Response({
             "total_users": total_users,
             "total_products": total_products,
             "total_orders": total_orders,
@@ -470,9 +483,7 @@ class DashboardAPIView(APIView):
             "active_sellers": active_sellers,
             "pending_sellers": pending_sellers,
             "top_products": top_products_data,
-        }
-
-        return Response(data)
+        })
 
 class CurrentUserView(APIView):
     permission_classes = [IsAuthenticated]
