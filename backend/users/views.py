@@ -21,6 +21,8 @@ from google.auth.transport import requests as google_requests
 from .serializers import AccountSerializer, ChangePasswordSerializer
 from rest_framework.parsers import MultiPartParser, FormParser
 from .serializers import ProfileSerializer
+from .serializers import CustomUserSerializer
+
 
 
 import random
@@ -31,7 +33,6 @@ from .serializers import (
     UserSerializer,
     RegisterSerializer,
     ForgotPasswordSerializer,
-    ChangePasswordSerializer,
     AddressSerializer,
     EmployeeSerializer,
     RoleSerializer,
@@ -316,6 +317,7 @@ class RoleCreateView(APIView):
 class RoleListView(ListAPIView):
     queryset = Role.objects.all()
     serializer_class = RoleSerializer
+    permission_classes = [AllowAny]
 
 
 class RoleViewSet(viewsets.ModelViewSet):

@@ -1,13 +1,10 @@
-from django.db.models.signals import post_save
+from django.db.models.signals import post_migrate
 from django.dispatch import receiver
-from .models import CustomUser, Role
+from .models import Role
 
-@receiver(post_save, sender=CustomUser)
-def assign_default_role(sender, instance, created, **kwargs):
-    if created and instance.role is None:
-        try:
-            default_role = Role.objects.get(name="khách hàng")
-            instance.role = default_role
-            instance.save()
-        except Role.DoesNotExist:
-            pass  # Nếu chưa có role "khách hàng" thì bỏ qua
+@receiver(post_migrate)
+def create_default_roles(sender, **kwargs):
+    if sender.name == "users":  # chỉ chạy khi migrate app users
+        default_roles = ["admin", "seller", "customer"]
+        for role_name in default_roles:
+            Role.objects.get_or_create(name=role_name)

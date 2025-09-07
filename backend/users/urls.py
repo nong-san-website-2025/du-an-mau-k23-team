@@ -56,7 +56,7 @@ urlpatterns = [
 
     path("dashboard/", DashboardAPIView.as_view(), name="dashboard"),
 
-    path('user/me/', CurrentUserView.as_view(), name='current-user'),
+    # path('user/me/', CurrentUserView.as_view(), name='current-user'),
 
     path('user/me/', UserMeView.as_view(), name='user-me'),
 

@@ -65,7 +65,7 @@ export const AuthProvider = ({ children }) => {
     try {
       console.log("AuthProvider: Attempting login for username:", username);
       
-      const { data } = await api.post("/users/login/", { username, password });
+      const { data } = await api.post("/login/", { username, password });
       
       console.log("Login response data:", data);
       
