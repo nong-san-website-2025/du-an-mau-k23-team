@@ -27,7 +27,9 @@ const Sidebar = () => {
       <Menu
         mode="inline"
         selectedKeys={[location.pathname]}
-        onClick={({ key }) => navigate(key)}
+        onClick={({ key }) => {
+          if (typeof key === 'string' && key.startsWith('/')) navigate(key);
+        }}
         style={{ height: "100%", borderRight: 0 }}
       >
         <Menu.Item key="" icon={<HomeOutlined />}>
@@ -77,10 +79,10 @@ const Sidebar = () => {
           icon={<ShoppingCartOutlined />}
           title={t("Orders_shipping")}
         >
-          <Menu.Item key="order-monitor">
+          <Menu.Item key="/admin/orders">
             <Link to="/admin/orders">{t("Order_monitor")}</Link>
           </Menu.Item>
-          <Menu.Item key="shipping-partners">
+          <Menu.Item key="/admin/shipping">
             <Link to="/admin/shipping">{t("Shipping_partners")}</Link>
           </Menu.Item>
         </Menu.SubMenu>

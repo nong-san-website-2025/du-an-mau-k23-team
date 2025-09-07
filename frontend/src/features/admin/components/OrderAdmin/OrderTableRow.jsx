@@ -8,7 +8,8 @@ export default function OrderTableRow({
   getStatusLabel,
   formatCurrency,
   formatDate,
-  expanded
+  expanded,
+  onCancel
 }) {
 
 
@@ -41,6 +42,12 @@ export default function OrderTableRow({
       </td>
       <td className="border-0 py-3">
         {formatDate(order.created_at)}
+      </td>
+      <td className="border-0 py-3">
+        <div className="d-flex flex-column">
+          <span className="fw-semibold" style={{fontSize: 13}}>{order.shop_name || 'N/A'}</span>
+          <small className="text-muted">{order.shop_phone || ''}</small>
+        </div>
       </td>
     </tr>
   );

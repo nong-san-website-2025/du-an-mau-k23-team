@@ -117,6 +117,23 @@ class OrderViewSet(viewsets.ModelViewSet):
         order.save(update_fields=['status'])
         return Response({'message': 'Đã duyệt đơn, chuyển sang chờ nhận hàng', 'status': order.status})
 
+    @action(detail=True, methods=['post'], url_path='admin-cancel')
+    def admin_cancel(self, request, pk=None):
+        """Admin hủy đơn hàng"""
+        if not request.user.is_authenticated or not getattr(request.user, 'is_admin', False):
+            return Response({'error': 'Chỉ admin mới có quyền hủy đơn'}, status=status.HTTP_403_FORBIDDEN)
+        try:
+            order = Order.objects.get(pk=pk)
+        except Order.DoesNotExist:
+            return Response({'error': 'Không tìm thấy đơn hàng'}, status=status.HTTP_404_NOT_FOUND)
+
+        if order.status in ['success', 'cancelled']:
+            return Response({'error': 'Không thể hủy đơn ở trạng thái hiện tại'}, status=status.HTTP_400_BAD_REQUEST)
+
+        order.status = 'cancelled'
+        order.save(update_fields=['status'])
+        return Response({'message': 'Đã hủy đơn hàng thành công', 'status': order.status})
+
     @action(detail=False, methods=['get'], url_path='admin-list')
     def admin_list(self, request):
         """API cho admin xem tất cả đơn hàng"""

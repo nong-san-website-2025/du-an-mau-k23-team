@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { Search, RefreshCw } from "lucide-react";
+import { message, Input, Select, Button, Space } from "antd";
+import { ReloadOutlined, SearchOutlined } from "@ant-design/icons";
 import adminApi from "../services/adminApi";
 import AdminPageLayout from "../components/AdminPageLayout";
-import OrderFilterSidebar from "../components/OrderAdmin/OrderFilterSidebar";
-import OrderTable from "../components/OrderAdmin/OrderTable";
+import OrderTableAntd from "../components/OrderAdmin/OrderTableAntd";
+import { useAuth } from "../../login_register/services/AuthContext";
 
 import "../styles/OrdersPage.css";
 
@@ -38,20 +39,25 @@ const OrdersPage = () => {
       if (searchTerm.trim()) params.search = searchTerm.trim();
 
       const data = await adminApi.getOrders(params);
-      setOrders(data);
+      setOrders(Array.isArray(data) ? data : []);
       setError("");
     } catch (err) {
       setError("Không thể tải danh sách đơn hàng");
       console.error(err);
+      setOrders([]);
     } finally {
       setLoading(false);
     }
   };
 
   // Load orders on component mount and when filters change
+  // Delay until auth context finishes loading and user is admin to avoid 403 on first render
+  const { user, loading: authLoading } = useAuth();
   useEffect(() => {
-    loadOrders();
-  }, [statusFilter, searchTerm]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!authLoading && user?.isAuthenticated && user?.role === 'admin') {
+      loadOrders();
+    }
+  }, [statusFilter, searchTerm, authLoading, user]); // eslint-disable-line react-hooks/exhaustive-deps
 
 
 
@@ -67,6 +73,30 @@ const OrdersPage = () => {
       );
     } catch (err) {
       alert("Không thể tải chi tiết đơn hàng");
+    }
+  };
+
+  // Admin cancel order
+  const handleCancelOrder = async (order) => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/orders/${order.id}/admin-cancel/`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text);
+      }
+      // Update status in list
+      setOrders(prev => prev.map(o => o.id === order.id ? { ...o, status: 'cancelled' } : o));
+      message.success(`Đã hủy đơn #${order.id}`);
+    } catch (e) {
+      message.error('Hủy đơn thất bại');
+      console.error(e);
     }
   };
 
@@ -103,55 +133,47 @@ const OrdersPage = () => {
     return new Date(dateString).toLocaleString('vi-VN');
   };
 
-  // Render action buttons - chỉ giữ lại nút làm mới
-  const renderActionButtons = () => {
-    return (
-      <button
-        className="btn btn-outline-secondary border"
-        style={{ fontWeight: "500", color: "#48474b" }}
-        onClick={loadOrders}
-      >
-        <RefreshCw size={16} /> &ensp; Làm mới
-      </button>
-    );
-  };
+  // Toolbar giống ApprovalProductsPage
+  const renderToolbar = () => (
+    <Space wrap>
+      <Input
+        placeholder="Tìm kiếm đơn hàng..."
+        prefix={<SearchOutlined />}
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+        style={{ width: 320 }}
+        allowClear
+      />
+      <Select
+        placeholder="Lọc theo trạng thái"
+        value={statusFilter || undefined}
+        onChange={(v) => setStatusFilter(v || "")}
+        style={{ width: 220 }}
+        allowClear
+        options={[
+          { value: "pending", label: "Chờ xử lý" },
+          { value: "processing", label: "Đang xử lý" },
+          { value: "shipped", label: "Đã giao vận" },
+          { value: "delivered", label: "Đã giao hàng" },
+          { value: "completed", label: "Hoàn thành" },
+          { value: "cancelled", label: "Đã hủy" },
+          { value: "refunded", label: "Đã hoàn tiền" },
+        ]}
+      />
+      <Button icon={<ReloadOutlined />} onClick={loadOrders}>
+        Làm mới
+      </Button>
+    </Space>
+  );
 
   return (
-    <AdminPageLayout
-      sidebar={
-        <OrderFilterSidebar
-          statusFilter={statusFilter}
-          setStatusFilter={setStatusFilter}
-          searchTerm={searchTerm}
-          setSearchTerm={setSearchTerm}
-          statusOptions={statusOptions}
-        />
-      }
-    >
-      <div className="bg-white" style={{ minHeight: "100vh" }}>
-        {/* Header Section */}
-        <div className="p-2 border-bottom">
-          <div className="d-flex justify-content-between align-items-center mb-0 gap-2 flex-wrap">
-            {/* Thanh tìm kiếm */}
-            <div style={{ flex: 1 }}>
-              <div className="input-group" style={{ width: 420 }}>
-                <span className="input-group-text bg-white border-end-0">
-                  <Search size={18} />
-                </span>
-                <input
-                  type="text"
-                  className="form-control border-start-0"
-                  placeholder="Tìm kiếm đơn hàng..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-            </div>
-            {/* Action buttons */}
-            <div className="d-flex align-items-center gap-2 flex-shrink-0 mt-2 mt-md-0">
-              {renderActionButtons()}
-            </div>
-          </div>
+    <AdminPageLayout>
+      <div style={{ padding: 20, background: '#fff', minHeight: '100vh' }}>
+        <h2 style={{ padding: 10 }}>Quản lý đơn hàng</h2>
+
+        {/* Toolbar */}
+        <div style={{ display: 'flex', gap: 16, marginBottom: 16, flexWrap: 'wrap' }}>
+          {renderToolbar()}
         </div>
 
         {error && (
@@ -161,25 +183,21 @@ const OrdersPage = () => {
         )}
 
         {/* Orders Table */}
-        <div className="p-1">
-          <OrderTable
+        <div>
+          {/* Ant Design Table for Orders */}
+          <OrderTableAntd
             orders={orders}
             loading={loading}
-            statusFilter={statusFilter}
-            searchTerm={searchTerm}
-            getStatusBadgeClass={getStatusBadgeClass}
             getStatusLabel={getStatusLabel}
             formatCurrency={formatCurrency}
             formatDate={formatDate}
             onViewDetail={handleViewDetail}
+            onCancel={handleCancelOrder}
           />
 
-          {/* Pagination */}
+          {/* Footer info / Pagination placeholder */}
           <div className="d-flex justify-content-between align-items-center mt-4">
-            <div className="text-muted">
-              Hiển thị {orders.length} đơn hàng
-            </div>
-            {/* TODO: Pagination component riêng */}
+            <div className="text-muted">Hiển thị {orders.length} đơn hàng</div>
           </div>
         </div>
       </div>
