@@ -14,7 +14,7 @@ export default function UserEditForm({ editUser, onCancel, onSave }) {
   const [loading, setLoading] = useState(false);
 
   const getToken = () =>
-    localStorage.getItem("access_token") || localStorage.getItem("token") || "";
+    localStorage.getItem("token") || localStorage.getItem("token") || "";
 
   // Load roles + fill data từ user
   useEffect(() => {
