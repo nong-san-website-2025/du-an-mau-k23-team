@@ -28,7 +28,11 @@ urlpatterns = [
     path("api/promotions/", include("promotions.urls")),
     path('', include('reviews.urls')),
 
+
     path('api/complaints/', include('complaints.urls')),
+    path("api/dashboard/", dashboard_data, name="dashboard-data"),
+    path("api/dashboard/", include("dashboard.urls")),
+
 
 ]
 
