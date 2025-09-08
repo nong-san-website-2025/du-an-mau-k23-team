@@ -14,6 +14,8 @@ import axios from "axios";
 import ProductTable from "../../seller_center/components/ProductSeller/ProductTable";
 import { UploadOutlined } from "@ant-design/icons";
 
+const { Search } = Input;
+
 const api = axios.create({
   baseURL: process.env.REACT_APP_API_URL,
 });
@@ -32,11 +34,19 @@ export default function ProductsPage() {
   const [subcategories, setSubcategories] = useState([]);
   const [form] = Form.useForm();
 
-  const fetchProducts = async () => {
+  // state cho search & filter
+  const [statusFilter, setStatusFilter] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const fetchProducts = async (status = "", keyword = "") => {
     setLoading(true);
     try {
       const res = await api.get("/sellers/productseller/", {
         headers: getAuthHeaders(),
+        params: {
+          status: status || undefined,
+          search: keyword || undefined, // backend hỗ trợ query ?search=
+        },
       });
       setProducts(res.data.results || res.data);
     } catch (err) {
@@ -131,7 +141,7 @@ export default function ProductsPage() {
       }
 
       setModalVisible(false);
-      fetchProducts();
+      fetchProducts(statusFilter, searchTerm);
     } catch (err) {
       console.error(err.response?.data || err);
       message.error("Có lỗi xảy ra");
@@ -144,7 +154,7 @@ export default function ProductsPage() {
         headers: getAuthHeaders(),
       });
       message.success("Xóa sản phẩm thành công");
-      fetchProducts();
+      fetchProducts(statusFilter, searchTerm);
     } catch (err) {
       console.error(err);
       message.error("Không thể xóa sản phẩm");
@@ -154,21 +164,40 @@ export default function ProductsPage() {
   return (
     <div style={{ padding: 20, background: "#fff", minHeight: "100vh" }}>
       <h2 style={{ marginBottom: 16 }}>Quản lý sản phẩm</h2>
-      <Button type="primary" className="mb-4" onClick={() => openModal()}>
-        Thêm sản phẩm
-      </Button>
-      <Select
-        placeholder="Lọc trạng thái"
-        style={{ width: 150, marginBottom: 16 }}
-        onChange={(value) => {
-          fetchProducts(value); // call API lọc theo status
-        }}
-      >
-        <Select.Option value="">Tất cả</Select.Option>
-        <Select.Option value="pending">Chờ duyệt</Select.Option>
-        <Select.Option value="approved">Đã duyệt</Select.Option>
-        <Select.Option value="rejected">Bị từ chối</Select.Option>
-      </Select>
+
+      {/* Thanh công cụ: Thêm sản phẩm + Tìm kiếm + Lọc */}
+      <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
+        <Button type="primary" onClick={() => openModal()}>
+          Thêm sản phẩm
+        </Button>
+
+        {/* Search bar */}
+        <Search
+          placeholder="Tìm sản phẩm theo tên hoặc mã"
+          allowClear
+          onSearch={(value) => {
+            setSearchTerm(value);
+            fetchProducts(statusFilter, value);
+          }}
+          style={{ width: 300 }}
+        />
+
+        {/* Lọc trạng thái */}
+        <Select
+          placeholder="Lọc trạng thái"
+          style={{ width: 150 }}
+          value={statusFilter || undefined}
+          onChange={(value) => {
+            setStatusFilter(value);
+            fetchProducts(value, searchTerm);
+          }}
+        >
+          <Select.Option value="">Tất cả</Select.Option>
+          <Select.Option value="pending">Chờ duyệt</Select.Option>
+          <Select.Option value="approved">Đã duyệt</Select.Option>
+          <Select.Option value="rejected">Bị từ chối</Select.Option>
+        </Select>
+      </div>
 
       <ProductTable
         data={products}
@@ -294,7 +323,6 @@ export default function ProductsPage() {
             </Col>
           </Row>
 
-          {/* Thêm mô tả */}
           <Form.Item name="description" label="Mô tả">
             <Input.TextArea rows={4} placeholder="Nhập mô tả sản phẩm" />
           </Form.Item>

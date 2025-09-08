@@ -11,6 +11,7 @@ import {
   InboxOutlined,
   WarningOutlined,
   GiftOutlined,
+    TagOutlined,
 } from "@ant-design/icons";
 import { useTranslation } from "react-i18next";
 import "../styles/AdminSidebar.css";
@@ -19,6 +20,7 @@ const { Sider } = Layout;
 
 const Sidebar = () => {
   const { t } = useTranslation();
+
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -85,7 +87,11 @@ const Sidebar = () => {
           </Menu.Item>
         </Menu.SubMenu>
 
-        <Menu.SubMenu key="payments" icon={<DollarOutlined />} title={t("Payments")}>
+        <Menu.SubMenu
+          key="payments"
+          icon={<DollarOutlined />}
+          title="Thanh toán"
+        >
           <Menu.Item key="transactions">
             <Link to="/admin/payments/transactions">{t("Transactions")}</Link>
           </Menu.Item>
@@ -100,7 +106,11 @@ const Sidebar = () => {
           </Menu.Item>
         </Menu.SubMenu>
 
-        <Menu.SubMenu key="reports" icon={<BarChartOutlined />} title={t("Reports")}>
+        <Menu.SubMenu
+          key="reports"
+          icon={<BarChartOutlined />}
+          title="Thống kê & Báo cáo"
+        >
           <Menu.Item key="report-revenue">
             <Link to="/admin/reports/revenue">{t("Report_revenue")}</Link>
           </Menu.Item>
@@ -112,7 +122,11 @@ const Sidebar = () => {
           </Menu.Item>
         </Menu.SubMenu>
 
-        <Menu.SubMenu key="marketing" icon={<NotificationOutlined />} title={t("Marketing")}>
+        <Menu.SubMenu
+          key="marketing"
+          icon={<NotificationOutlined />}
+          title="Marketing"
+        >
           <Menu.Item key="banner">
             <Link to="/admin/marketing/banners">{t("Banner")}</Link>
           </Menu.Item>
@@ -138,6 +152,19 @@ const Sidebar = () => {
           </Menu.Item>
           <Menu.Item key="/admin/promotions/seller-support">
             <Link to="/admin/promotions/seller-support">Hỗ trợ seller</Link>
+          </Menu.Item>
+        </Menu.SubMenu>
+
+        <Menu.SubMenu
+          key="promotions"
+          icon={<TagOutlined />}
+          title="Khuyến mãi"
+        >
+          <Menu.Item key="/admin/promotions">
+            <Link to="/admin/promotions">Quản lý khuyến mãi</Link>
+          </Menu.Item>
+          <Menu.Item key="/admin/promotions/flashsale">
+            <Link to="/admin/promotions/flashsale">Flash Sale</Link>
           </Menu.Item>
         </Menu.SubMenu>
       </Menu>
