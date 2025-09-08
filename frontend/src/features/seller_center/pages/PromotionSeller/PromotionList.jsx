@@ -6,52 +6,58 @@ const PromotionList = () => {
   const [promotions, setPromotions] = useState([]);
   const navigate = useNavigate();
 
-  const fetchPromotions = () => {
-    axios.get("http://127.0.0.1:8000/api/promotions/promotions/")
-      .then(res => setPromotions(res.data))
-      .catch(err => console.error(err));
+  const fetchPromotions = async () => {
+    try {
+      const res = await axios.get("http://127.0.0.1:8000/api/promotions/promotions/");
+      setPromotions(res.data);
+    } catch (err) {
+      console.error(err);
+      alert("Lấy dữ liệu thất bại");
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm("Bạn có chắc muốn xóa không?")) return;
+    try {
+      await axios.delete(`http://127.0.0.1:8000/api/promotions/promotions/${id}/`);
+      setPromotions(promotions.filter((p) => p.id !== id)); // cập nhật trực tiếp trên React
+    } catch (err) {
+      console.error(err);
+      alert("Xóa thất bại");
+    }
   };
 
   useEffect(() => {
     fetchPromotions();
   }, []);
 
-  const handleDelete = (id) => {
-    if (!window.confirm("Bạn có chắc chắn muốn xóa?")) return;
-    axios.delete(`http://127.0.0.1:8000/api/promotions/promotions/${id}/`)
-      .then(() => {
-        setPromotions(promotions.filter(p => p.id !== id));
-        alert("Xóa thành công!");
-      })
-      .catch(err => {
-        console.error(err.response?.data || err.message);
-        alert("Xóa thất bại!");
-      });
-  };
-
   return (
     <div>
       <h2>Danh sách Khuyến mãi</h2>
-      <button onClick={() => navigate("/seller-center/promotions/add")}>Thêm mới</button>
-      <table>
+      <button onClick={() => navigate("/seller-center/promotions/add")}>
+        Thêm mới
+      </button>
+      <table border={1} cellPadding={8} cellSpacing={0}>
         <thead>
           <tr>
-            <th>Code</th>
+            <th>ID</th>
+            <th>Mã</th>
             <th>Tên</th>
             <th>Loại</th>
-            <th>Hành động</th>
+            <th>Thao tác</th>
           </tr>
         </thead>
         <tbody>
-          {promotions.map(p => (
-            <tr key={p.id}>
-              <td>{p.code}</td>
-              <td>{p.name}</td>
-              <td>{p.type}</td>
+          {promotions.map((promo) => (
+            <tr key={promo.id}>
+              <td>{promo.id}</td>
+              <td>{promo.code}</td>
+              <td>{promo.name}</td>
+              <td>{promo.type}</td>
               <td>
-                <button onClick={() => navigate(`/seller-center/promotions/view/${p.id}`)}>Xem</button>
-                <button onClick={() => navigate(`/seller-center/promotions/edit/${p.id}`)}>Sửa</button>
-                <button onClick={() => handleDelete(p.id)}>Xóa</button>
+                <button onClick={() => navigate(`/seller-center/promotions/view/${promo.id}`)}>Xem</button>
+                <button onClick={() => navigate(`/seller-center/promotions/edit/${promo.id}`)}>Sửa</button>
+                <button onClick={() => handleDelete(promo.id)}>Xóa</button>
               </td>
             </tr>
           ))}
