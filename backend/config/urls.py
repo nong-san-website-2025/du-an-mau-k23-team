@@ -11,7 +11,6 @@ def home(request):
 urlpatterns = [
     path('admin/', admin.site.urls), 
     path('', home),
-    path('api/', include('users.urls')),
     path('api/users/', include('users.urls')),
     path('api/sellers/', include('sellers.urls')),
     path('api/products/', include('products.urls')),
@@ -30,9 +29,6 @@ urlpatterns = [
     path('', include('reviews.urls')),
 
     path('api/complaints/', include('complaints.urls')),
-    path("api/dashboard/", dashboard_data, name="dashboard-data"),
-    path("api/dashboard/", include("dashboard.urls")),
-
 
 ]
 
