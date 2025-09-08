@@ -12,7 +12,7 @@ export default function UserAddModal({ visible, onClose, onUserAdded }) {
   const [loading, setLoading] = useState(false);
 
   const getToken = () =>
-    localStorage.getItem("access_token") || localStorage.getItem("token") || "";
+    localStorage.getItem("token") || localStorage.getItem("token") || "";
 
   // Load roles từ backend
   useEffect(() => {
@@ -40,12 +40,16 @@ export default function UserAddModal({ visible, onClose, onUserAdded }) {
         role_id: values.role_id ? Number(values.role_id) : null,
       };
 
-      const res = await axios.post(`${API_BASE_URL}/user-management/`, payload, {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${getToken()}`,
-        },
-      });
+      const res = await axios.post(
+        `${API_BASE_URL}/user-management/`,
+        payload,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${getToken()}`,
+          },
+        }
+      );
 
       message.success("Thêm người dùng thành công!");
       form.resetFields();
@@ -54,7 +58,9 @@ export default function UserAddModal({ visible, onClose, onUserAdded }) {
     } catch (err) {
       console.error("❌ Lỗi thêm user:", err.response?.data || err.message);
       if (err.response?.data) {
-        message.error(`Không thể thêm user: ${JSON.stringify(err.response.data)}`);
+        message.error(
+          `Không thể thêm user: ${JSON.stringify(err.response.data)}`
+        );
       } else {
         message.error("Không thể thêm user, xem console để biết chi tiết.");
       }
@@ -116,7 +122,11 @@ export default function UserAddModal({ visible, onClose, onUserAdded }) {
             name="role_id"
             rules={[{ required: true, message: "Vui lòng chọn quyền!" }]}
           >
-            <Select placeholder="-- Chọn quyền --">
+            <Select
+              placeholder="-- Chọn quyền --"
+              loading={roles.length === 0}
+              notFoundContent="Không có role nào"
+            >
               {roles.map((r) => (
                 <Option key={r.id} value={String(r.id)}>
                   {r.name}
