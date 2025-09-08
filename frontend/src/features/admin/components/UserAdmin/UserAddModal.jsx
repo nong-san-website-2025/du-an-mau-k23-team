@@ -4,7 +4,7 @@ import { Modal, Form, Input, Select, Button, message } from "antd";
 import axios from "axios";
 
 const { Option } = Select;
-const API_BASE_URL = "http://localhost:8000/api";
+const API_BASE_URL = process.env.REACT_APP_API_URL 
 
 export default function UserAddModal({ visible, onClose, onUserAdded }) {
   const [form] = Form.useForm();
@@ -12,13 +12,13 @@ export default function UserAddModal({ visible, onClose, onUserAdded }) {
   const [loading, setLoading] = useState(false);
 
   const getToken = () =>
-    localStorage.getItem("token") || localStorage.getItem("token") || "";
+    localStorage.getItem("token")
 
   // Load roles từ backend
   useEffect(() => {
     const token = getToken();
     axios
-      .get(`${API_BASE_URL}/roles/list/`, {
+      .get(`${API_BASE_URL}/users/roles/list/`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       .then((res) => {
@@ -116,9 +116,9 @@ export default function UserAddModal({ visible, onClose, onUserAdded }) {
           <Input.Password placeholder="Để trống nếu muốn tạo mặc định" />
         </Form.Item>
 
-        {roles.length > 0 && (
+        {roles.length >= 0 && (
           <Form.Item
-            label="Quyền (role)"
+            label="Vai trò"
             name="role_id"
             rules={[{ required: true, message: "Vui lòng chọn quyền!" }]}
           >
