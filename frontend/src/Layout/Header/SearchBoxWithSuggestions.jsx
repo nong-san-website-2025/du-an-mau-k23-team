@@ -16,14 +16,14 @@ export default function SearchBoxWithSuggestions({
       <input
         type="text"
         placeholder="Tìm kiếm sản phẩm hoặc bài viết..."
-        className="form-control rounded-pill ps-3 pe-5"
-        style={{ width: 290, minWidth: 150, fontSize: 14, fontStyle: "italic" }}
+        className="form-control ps-3 pe-5"
+  style={{ width: 500, height: 40, fontSize: 16, fontFamily: "Roboto" }}
         value={search}
         onChange={handleSearchChange}
         onFocus={() => search && setShowSuggestions(true)}
       />
-      <button className="btn btn-link position-absolute end-0 top-50 translate-middle-y p-0" style={{ right: 10, color: "#16a34a" }}>
-        <Search size={18} style={greenText} />
+      <button className="btn btn-link position-absolute end-0 top-50 translate-middle-y" style={{ right: 10, color: "#16a34a", backgroundColor: "#4CAF50", padding: "6.5px 17px", borderRadius: "0px 6px 6px 0px" }}>
+        <Search size={24} style={{ color: "#FFFFFF"}} />
       </button>
       {showSuggestions && (searchResults.products.length > 0 || searchResults.posts.length > 0) && (
         <div

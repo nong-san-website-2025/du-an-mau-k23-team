@@ -265,18 +265,19 @@ export default function Header() {
           zIndex: 999,
           fontFamily: "Montserrat, Arial, sans-serif",
           background: "#f8fafc",
+          width: "100%",
         }}
       >
         {/* Top bar */}
-        <TopBar />
+        {/* <TopBar /> */}
 
         {/* Main header */}
         <div
-          className="bg-white border-bottom"
-          style={{ position: "relative", boxShadow: "0 2px 8px #0001" }}
+          className="border-bottom"
+          style={{ position: "relative", boxShadow: "0 2px 8px #0001", background: "#2E7D32" }}
         >
           <div
-            className="container d-flex align-items-center justify-content-between py-2 px-2"
+            className="container d-flex align-items-center justify-content-between py-1 px-1"
             style={{ minHeight: "60px", flexWrap: "nowrap" }}
           >
             {/* Logo */}
@@ -284,7 +285,7 @@ export default function Header() {
 
             {/* Navigation */}
             <nav
-              className="d-flex align-items-center flex-grow-1 ms-4"
+              className="d-flex align-items-center flex-grow-1 ms-1"
               style={{ flexWrap: "nowrap" }}
             >
               <CategoryMegaMenu
@@ -296,7 +297,7 @@ export default function Header() {
                 handleCategoryHover={handleCategoryHover}
                 setShowCategory={setShowCategory}
               />
-              <NavLinks />
+              {/* <NavLinks /> */}
             </nav>
 
             {/* Search & Actions */}

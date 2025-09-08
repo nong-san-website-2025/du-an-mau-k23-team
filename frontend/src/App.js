@@ -16,41 +16,41 @@ import SystemLogsPage from "./features/admin/pages/Setting/SystemLogsPage";
 import ProfilePage from "./features/admin/pages/Users/ProfilePage";
 import ChangePasswordPage from "./features/admin/pages/Users/ChangePasswordPage";
 
+
+
 function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <CartProvider>
-          <BannerProvider>
-            <Routes>
-              <Route path="/login" element={<LoginForm />} />
-              {userRoutes}
-              {adminRoutes}
-              {sellerRoutes}
+    <div className="main-container">
+      <BrowserRouter>
+        <AuthProvider>
+          <CartProvider>
+            <BannerProvider>
+              <Routes>
+                <Route path="/login" element={<LoginForm />} />
+                {userRoutes}
+                {adminRoutes}
+                {sellerRoutes}
 
-              <Route path="/admin" element={<AdminLayout />}>
-                <Route index element={<DashboardPage />} /> // /admin
-                <Route path="dashboard" element={<DashboardPage />} /> //
-                /admin/dashboard
-                <Route path="settings" element={<SettingsPage />} /> //
-                /admin/settings
-                <Route path="account" element={<AccountPage />} /> //
-                /admin/account
-                <Route path="roles" element={<RolesPage />} /> // nếu bạn tạo
-                page
-                <Route path="system-config" element={<SystemConfigPage />} />
-                <Route path="system-logs" element={<SystemLogsPage />} />
-                <Route path="profile" element={<ProfilePage />} />
-                <Route
-                  path="change-password"
-                  element={<ChangePasswordPage />}
-                />
-              </Route>
-            </Routes>
-          </BannerProvider>
-        </CartProvider>
-      </AuthProvider>
-    </BrowserRouter>
+                <Route path="/admin" element={<AdminLayout />}>
+                  <Route index element={<DashboardPage />} /> {/* /admin */}
+                  <Route path="dashboard" element={<DashboardPage />} /> {/* /admin/dashboard */}
+                  <Route path="settings" element={<SettingsPage />} /> {/* /admin/settings */}
+                  <Route path="account" element={<AccountPage />} /> {/* /admin/account */}
+                  <Route path="roles" element={<RolesPage />} /> {/* nếu bạn tạo page */}
+                  <Route path="system-config" element={<SystemConfigPage />} />
+                  <Route path="system-logs" element={<SystemLogsPage />} />
+                  <Route path="profile" element={<ProfilePage />} />
+                  <Route
+                    path="change-password"
+                    element={<ChangePasswordPage />}
+                  />
+                </Route>
+              </Routes>
+            </BannerProvider>
+          </CartProvider>
+        </AuthProvider>
+      </BrowserRouter>
+    </div>
   );
 }
 

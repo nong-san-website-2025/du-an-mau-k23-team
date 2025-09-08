@@ -21,13 +21,15 @@ export default function CategoryMegaMenu({
         style={{ fontSize: 18, textDecoration: "none" }}
         onClick={() => navigate("/productuser")}
       >
-        Danh mục sản phẩm <ChevronDown size={18} />
+        <span style={{ fontSize: 18, color: "#FFFFFF" }}>Danh mục sản phẩm</span>
       </button>
       {showCategory && (
         <div
           className="shadow-lg bg-white rounded position-absolute mt-2"
           style={{
-            minWidth: 900,
+            minWidth: 0,
+            width: 950,
+            
             left: 0,
             top: "100%",
             zIndex: 1000,
@@ -35,11 +37,11 @@ export default function CategoryMegaMenu({
             padding: 32,
           }}
         >
-          <div className="row" style={{ minWidth: 900 }}>
+          <div className="row" style={{ minWidth: 0, width: 1000}}>
             {categories.map((cat) => {
               const IconComponent = iconMap[cat.icon] || Package;
               return (
-                <div key={cat.id} className="col-12 col-md-4 mb-4" style={{ minWidth: 260, maxWidth: 320 }}>
+                <div key={cat.id} className="col-12 col-md-4 mb-4" style={{ minWidth: 260, width: 300 }}>
                   <div
                     className="p-3 h-100 rounded-3"
                     style={{

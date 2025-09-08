@@ -19,7 +19,6 @@ body {
   }
 }
 .container {
-  max-width: 1000px; /* ❌ Không dùng nếu muốn full màn hình */
   margin: auto;
 }
 
@@ -45,12 +44,6 @@ body {
   to {
     transform: rotate(360deg);
   }
-}
-
-html, body, #root {
-  height: 100%;
-  margin: 0;
-  padding: 0;
 }
 
 .dropdown-menu .dropdown-item:hover {
