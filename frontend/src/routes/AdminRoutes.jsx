@@ -13,12 +13,12 @@ import BannersPage from "../features/admin/pages/BannersPage";
 import NotificationsPage from "../features/admin/pages/NotificationsPage";
 import StaffPage from "../features/admin/pages/StaffPage";
 import ReportsPage from "../features/admin/pages/ReportsPage";
-import ReportRevenuePage from "../features/admin/pages/ReportRevenuePage";  // ✅ thêm ở đây
+import ReportRevenuePage from "../features/admin/pages/ReportRevenuePage";  
+import ReportTopProductsPage from "../features/admin/pages/ReportTopProductsPage.jsx";
+import ReportCancelRatePage from "../features/admin/pages/ReportCancelRatePage.jsx"; // ✅ thêm import
 import SupportPage from "../features/admin/pages/SupportPage";
 import StatisticsPage from "../features/admin/pages/StatisticsPage";
 import SettingsPage from "../features/admin/pages/SettingsPage";
-import ReportTopProductsPage from "../features/admin/pages/ReportTopProductsPage.jsx";
-
 
 // Shop management
 import SellersPage from "../features/admin/pages/Sellers/SellersPage";
@@ -28,13 +28,18 @@ import ApprovalSellersPage from "../features/admin/pages/ShopPage/ApprovalSeller
 // Product management
 import ApprovalProductsPage from "../features/admin/pages/ProductPage/ApprovalProductsPage.jsx";
 import CategoryManagementPage from "../features/admin/pages/ProductPage/CategoryManagement.jsx";
+
+// Complaints & Promotions
 import UserReports from "../features/admin/pages/ComplaintAdmin/UserReports.jsx";
 import Coupons from "../features/admin/pages/ComplaintAdmin/Coupons.jsx";
 
 export const adminRoutes = [
   <Route element={<AdminPrivateRoute />} key="admin-protect">
     <Route path="/admin" element={<AdminLayout />}>
+      {/* Dashboard */}
       <Route index element={<DashboardPage />} />
+
+      {/* Users */}
       <Route path="users" element={<UsersPage />} />
 
       {/* Shop management */}
@@ -45,10 +50,12 @@ export const adminRoutes = [
       {/* Product management */}
       <Route path="products/approval" element={<ApprovalProductsPage />} />
       <Route path="products/categories" element={<CategoryManagementPage />} />
-       {/* Complaint management */}
+
+      {/* Complaint management */}
       <Route path="/admin/complaints/user-reports" element={<UserReports />} />
-       {/* Complaint Coupons */}
-  <Route path="/admin/promotions/coupons" element={<Coupons />} />
+
+      {/* Promotions */}
+      <Route path="/admin/promotions/coupons" element={<Coupons />} />
 
       {/* Other features */}
       <Route path="orders" element={<OrdersPage />} />
@@ -61,11 +68,14 @@ export const adminRoutes = [
 
       {/* Reports */}
       <Route path="reports" element={<ReportsPage />} />
-      <Route path="report-revenue" element={<ReportRevenuePage />} /> {/* ✅ thêm route con */}
+      <Route path="report-revenue" element={<ReportRevenuePage />} />
       <Route path="report-top-products" element={<ReportTopProductsPage />} />
+      <Route path="report-cancel-rate" element={<ReportCancelRatePage />} /> {/* ✅ route mới */}
+
+      {/* Support */}
       <Route path="supports" element={<SupportPage />} />
 
-      {/* New pages */}
+      {/* Other pages */}
       <Route path="statistics" element={<StatisticsPage />} />
       <Route path="settings" element={<SettingsPage />} />
     </Route>
