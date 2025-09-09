@@ -29,22 +29,29 @@ function App() {
               {sellerRoutes}
 
               <Route path="/admin" element={<AdminLayout />}>
-                <Route index element={<DashboardPage />} /> // /admin
-                <Route path="dashboard" element={<DashboardPage />} /> //
-                /admin/dashboard
-                <Route path="settings" element={<SettingsPage />} /> //
-                /admin/settings
-                <Route path="account" element={<AccountPage />} /> //
-                /admin/account
-                <Route path="roles" element={<RolesPage />} /> // nếu bạn tạo
-                page
-                <Route path="system-config" element={<SystemConfigPage />} />
-                <Route path="system-logs" element={<SystemLogsPage />} />
-                <Route path="profile" element={<ProfilePage />} />
+                <Route index element={<DashboardPage />} /> {/* /admin */}
+                <Route path="dashboard" element={<DashboardPage />} />{" "}
+                {/* /admin/dashboard */}
+                <Route path="settings" element={<SettingsPage />} />{" "}
+                {/* /admin/settings */}
+                <Route path="account" element={<AccountPage />} />{" "}
+                {/* /admin/account */}
+                <Route path="roles" element={<RolesPage />} />{" "}
+                {/* /admin/roles */}
+                <Route
+                  path="system-config"
+                  element={<SystemConfigPage />}
+                />{" "}
+                {/* /admin/system-config */}
+                <Route path="system-logs" element={<SystemLogsPage />} />{" "}
+                {/* /admin/system-logs */}
+                <Route path="profile" element={<ProfilePage />} />{" "}
+                {/* /admin/profile */}
                 <Route
                   path="change-password"
                   element={<ChangePasswordPage />}
-                />
+                />{" "}
+                {/* /admin/change-password */}
               </Route>
             </Routes>
           </BannerProvider>

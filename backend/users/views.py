@@ -169,22 +169,18 @@ class LoginView(APIView):
 
 
 class UserProfileView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
         serializer = UserSerializer(request.user)
         return Response(serializer.data)
 
     def put(self, request):
-        serializer = UserSerializer(
-            request.user, data=request.data, partial=True
-        )
+        serializer = UserSerializer(request.user, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
-        return Response(serializer.errors, status=400)
-
-    patch = put
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -509,13 +505,11 @@ class UserMeView(APIView):
     
 class UploadAvatarView(APIView):
     permission_classes = [IsAuthenticated]
-    parser_classes = [MultiPartParser]
 
-    def post(self, request):
-        user = request.user
-        file_obj = request.FILES.get("avatar")
-        if not file_obj:
-            return Response({"detail": "Chưa chọn file"}, status=status.HTTP_400_BAD_REQUEST)
-        user.avatar = file_obj
-        user.save()
-        return Response({"avatar": user.avatar.url})
+    def post(self, request, *args, **kwargs):
+        avatar = request.FILES.get("avatar")
+        if not avatar:
+            return Response({"error": "No file uploaded"}, status=400)
+        request.user.avatar = avatar
+        request.user.save()
+        return Response({"avatar": request.user.avatar.url})

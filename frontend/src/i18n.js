@@ -62,6 +62,7 @@ const resources = {
           not_available: "Không có dữ liệu",
         },
       },
+
       //    ===== USER DETAIL MODAL =====
       detail_modal: {
         edit: "Sửa",
@@ -73,7 +74,34 @@ const resources = {
         active: "Đang hoạt động",
         inactive: "Không hoạt động",
       },
-      
+
+      dashboard: {
+        cards: {
+          total_users: "Tổng số người dùng",
+          sellers: "Người bán",
+          customers: "Khách hàng",
+          total_products: "Tổng số sản phẩm",
+          total_orders: "Tổng số đơn hàng",
+          revenue: "Doanh thu",
+        },
+        charts: {
+          revenue_by_month: "Doanh thu theo tháng",
+          orders_by_status: "Tỷ lệ đơn hàng",
+        },
+        top_products: {
+          title: "Sản phẩm bán chạy",
+          name: "Tên sản phẩm",
+          sales: "Số lượng bán",
+        },
+        top_sellers: {
+          title: "Top người bán",
+          seller: "Người bán",
+          revenue: "Doanh thu",
+        },
+        loading: "Đang tải...",
+        error_loading: "Lỗi khi tải dữ liệu",
+        no_data: "Không có dữ liệu",
+      },
 
       // ===== SELLER PAGE =====
       sellers_page: {
@@ -220,6 +248,31 @@ const resources = {
           loading: "Loading...",
         },
       },
+      dashboard: {
+        cards: {
+          total_users: "Total Users",
+          sellers: "Sellers",
+          customers: "Customers",
+          total_products: "Total Products",
+          total_orders: "Total Orders",
+          revenue: "Revenue",
+        },
+        charts: {
+          revenue_by_month: "Revenue by Month",
+          orders_by_status: "Order Ratio",
+        },
+        top_products: {
+          title: "Top Selling Products",
+          name: "Product Name",
+          sales: "Sales",
+        },
+        top_sellers: {
+          title: "Top Sellers",
+          seller: "Seller",
+          revenue: "Revenue",
+        },
+      },
+
       //   ===== USER DETAIL MODAL =====
       detail_modal: {
         edit: "Edit",

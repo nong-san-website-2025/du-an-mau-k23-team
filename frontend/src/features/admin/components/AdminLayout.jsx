@@ -1,5 +1,5 @@
 // src/layouts/AdminLayout.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
 import { Bell, User, Settings, Globe } from "lucide-react";
 import { useAuth } from "../../login_register/services/AuthContext";
@@ -7,6 +7,7 @@ import AdminSidebar from "../components/AdminSidebar";
 import "../styles/AdminLayout.css";
 import { useTranslation } from "react-i18next";
 import { Badge, Dropdown, List, Button, Menu } from "antd";
+import axios from "axios";
 
 export default function AdminLayout() {
   const { logout } = useAuth();
@@ -37,10 +38,7 @@ function TopBar({ onLogout }) {
   const { t, i18n } = useTranslation();
   const currentLangLabel = i18n.language === "en" ? "English" : "Tiếng Việt";
 
-  const notifications = [
-    { text: "Không có thông báo!" }
-    // Có thể fetch từ API nếu muốn
-  ];
+  const notifications = [{ text: "Không có thông báo!" }];
 
   return (
     <div
@@ -61,37 +59,112 @@ function TopBar({ onLogout }) {
           Icon={Globe}
           defaultLabel={currentLangLabel}
           items={[
-            { label: "Tiếng Việt", onClick: () => { i18n.changeLanguage("vi"); localStorage.setItem("i18nextLng", "vi"); } },
-            { label: "English", onClick: () => { i18n.changeLanguage("en"); localStorage.setItem("i18nextLng", "en"); } },
+            {
+              label: "Tiếng Việt",
+              onClick: () => {
+                i18n.changeLanguage("vi");
+                localStorage.setItem("i18nextLng", "vi");
+              },
+            },
+            {
+              label: "English",
+              onClick: () => {
+                i18n.changeLanguage("en");
+                localStorage.setItem("i18nextLng", "en");
+              },
+            },
           ]}
         />
         <DropdownTopBarButton
           Icon={Settings}
           items={[
-            { label: t("Trang cài đặt"), onClick: () => navigate("/admin/settings") },
-            { label: t("Quản lý tài khoản"), onClick: () => navigate("/admin/account") },
+            {
+              label: t("Trang cài đặt"),
+              onClick: () => navigate("/admin/settings"),
+            },
+            {
+              label: t("Quản lý tài khoản"),
+              onClick: () => navigate("/admin/account"),
+            },
             { label: "Phân quyền", onClick: () => navigate("/admin/roles") },
-            { label: "Cấu hình hệ thống", onClick: () => navigate("/admin/system-config") },
-            { label: "Log hệ thống", onClick: () => navigate("/admin/system-logs") },
+            {
+              label: "Cấu hình hệ thống",
+              onClick: () => navigate("/admin/system-config"),
+            },
+            {
+              label: "Log hệ thống",
+              onClick: () => navigate("/admin/system-logs"),
+            },
           ]}
         />
-        <DropdownTopBarButton
-          Icon={User}
-          items={[
-            { label: t("Thông tin"), onClick: () => navigate("/admin/profile") },
-            // { label: t("Thay đổi mật khẩu"), onClick: () => navigate("/admin/change-password") },
-            { label: t("Đăng xuất"), onClick: onLogout },
-          ]}
-        />
+        {/* Thay UserDropdown vào đây */}
+        <UserDropdown onLogout={onLogout} t={t} navigate={navigate} />
       </div>
     </div>
   );
 }
 
+/* ----------------- UserDropdown ----------------- */
+function UserDropdown({ onLogout, t, navigate }) {
+  const [avatarUrl, setAvatarUrl] = useState(null);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await axios.get("http://localhost:8000/api/me/", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.data.avatar) {
+          // nếu backend chỉ trả tên file thì ghép base url
+          const fullUrl = res.data.avatar.startsWith("http")
+            ? res.data.avatar
+            : `http://localhost:8000${res.data.avatar}`;
+          setAvatarUrl(fullUrl);
+        }
+      } catch (err) {
+        console.error("Lỗi load avatar:", err);
+      }
+    };
+    fetchProfile();
+  }, []);
+
+  const menu = (
+    <Menu
+      items={[
+        {
+          key: "profile",
+          label: t("Thông tin"),
+          onClick: () => navigate("/admin/profile"),
+        },
+        { key: "logout", label: t("Đăng xuất"), onClick: onLogout },
+      ]}
+    />
+  );
+
+  return (
+    <Dropdown overlay={menu} placement="bottomRight" trigger={["click"]}>
+      {avatarUrl ? (
+        <img
+          src={avatarUrl}
+          alt="avatar"
+          className="rounded-circle"
+          style={{
+            width: 32,
+            height: 32,
+            objectFit: "cover",
+            cursor: "pointer",
+          }}
+        />
+      ) : (
+        <Button type="text" icon={<User size={20} />} />
+      )}
+    </Dropdown>
+  );
+}
+
 /* ----------------- Dropdown TopBarButton ----------------- */
 function DropdownTopBarButton({ Icon, items, defaultLabel }) {
-  const navigate = useNavigate();
-
   const menu = (
     <Menu
       items={items.map((item) => ({
@@ -104,7 +177,7 @@ function DropdownTopBarButton({ Icon, items, defaultLabel }) {
   );
 
   return (
-    <Dropdown overlay={menu} placement="bottomRight" trigger={['click']}>
+    <Dropdown overlay={menu} placement="bottomRight" trigger={["click"]}>
       <Button type="text" icon={<Icon size={20} />} />
     </Dropdown>
   );
@@ -123,7 +196,7 @@ function NotificationDropdown({ notifications }) {
           style={{ width: 250 }}
         />
       }
-      trigger={['click']}
+      trigger={["click"]}
       open={open}
       onOpenChange={(flag) => setOpen(flag)}
       placement="bottomRight"

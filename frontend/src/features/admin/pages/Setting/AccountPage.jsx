@@ -10,7 +10,7 @@ export default function AccountPage() {
   const [loading, setLoading] = useState(false);
   const [passwordLoading, setPasswordLoading] = useState(false);
 
-  const token = localStorage.getItem("access_token") || localStorage.getItem("token");
+  const token = localStorage.getItem("token") || localStorage.getItem("token");
 
   const fetchUser = async () => {
     try {
@@ -85,7 +85,7 @@ export default function AccountPage() {
 
       <Divider />
 
-      <Card title="Đổi mật khẩu" bordered>
+      {/* <Card title="Đổi mật khẩu" bordered>
         <Form form={passwordForm} layout="vertical" onFinish={handleChangePassword}>
           <Form.Item label="Mật khẩu cũ" name="old_password" rules={[{ required: true }]}>
             <Input.Password />
@@ -117,7 +117,7 @@ export default function AccountPage() {
             </Button>
           </Form.Item>
         </Form>
-      </Card>
+      </Card> */}
     </div>
   );
 }

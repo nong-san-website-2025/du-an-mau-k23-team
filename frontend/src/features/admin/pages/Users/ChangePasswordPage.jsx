@@ -10,7 +10,7 @@ export default function ChangePasswordPage() {
   const [loading, setLoading] = useState(false);
 
   const getToken = () =>
-    localStorage.getItem("access_token") || localStorage.getItem("token") || "";
+    localStorage.getItem("token") || localStorage.getItem("token") || "";
 
   const handleChangePassword = async (values) => {
     setLoading(true);

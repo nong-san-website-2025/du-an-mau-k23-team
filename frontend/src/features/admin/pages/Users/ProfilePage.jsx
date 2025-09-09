@@ -1,6 +1,6 @@
 // src/features/admin/pages/ProfilePage.jsx
 import React, { useEffect, useState } from "react";
-import { Card, Form, Input, Button, message, Tabs, Upload, Avatar, Divider } from "antd";
+import { Card, Form, Input, Button, message, Tabs, Upload, Avatar } from "antd";
 import { UploadOutlined, UserOutlined } from "@ant-design/icons";
 import axios from "axios";
 
@@ -22,7 +22,7 @@ export default function ProfilePage() {
     const fetchUser = async () => {
       setLoadingProfile(true);
       try {
-        const res = await axios.get(`${API_BASE_URL}/user/me/`, {
+        const res = await axios.get(`${API_BASE_URL}/me/`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         setUser(res.data);
@@ -37,20 +37,18 @@ export default function ProfilePage() {
     fetchUser();
   }, [token, formProfile]);
 
-  // Update profile info
   const handleProfileUpdate = async (values) => {
-    setLoadingProfile(true);
     try {
-      const res = await axios.put(`${API_BASE_URL}/user/me/`, values, {
-        headers: { Authorization: `Bearer ${token}` },
+      const response = await axios.put(`${API_BASE_URL}/me/`, values, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
       });
-      setUser(res.data);
-      message.success("Cập nhật thông tin thành công!");
-    } catch (err) {
-      console.error(err.response?.data || err.message);
-      message.error("Cập nhật thất bại, xem console để biết chi tiết.");
-    } finally {
-      setLoadingProfile(false);
+      message.success("Cập nhật thành công!");
+      setUser(response.data);
+    } catch (error) {
+      console.error(error.response?.data);
+      message.error("Cập nhật thất bại!");
     }
   };
 
@@ -63,10 +61,11 @@ export default function ProfilePage() {
     setLoadingPassword(true);
     try {
       await axios.post(
-        `${API_BASE_URL}/user/change-password/`,
+        `${API_BASE_URL}/change-password/`,
         {
           old_password: values.old_password,
           new_password: values.new_password,
+          confirm_password: values.confirm_password,
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -80,31 +79,39 @@ export default function ProfilePage() {
     }
   };
 
-  // Upload avatar
-  const handleUpload = async (file) => {
+  // Upload avatar (customRequest)
+  const handleCustomUpload = async ({ file, onSuccess, onError }) => {
     setUploading(true);
     const formData = new FormData();
     formData.append("avatar", file);
+
     try {
-      const res = await axios.post(`${API_BASE_URL}/user/upload-avatar/`, formData, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "multipart/form-data",
-        },
-      });
+      const res = await axios.post(
+        `${API_BASE_URL}/user/upload-avatar/`,
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
       setUser((prev) => ({ ...prev, avatar: res.data.avatar }));
       message.success("Cập nhật avatar thành công!");
+      onSuccess(res.data);
     } catch (err) {
-      console.error(err.response?.data || err.message);
+      console.error("Upload error:", err.response?.data || err.message);
       message.error("Upload avatar thất bại.");
+      onError(err);
     } finally {
       setUploading(false);
     }
-    return false; // prevent auto upload
   };
 
   return (
-    <Card title="Thông tin cá nhân" style={{ maxWidth: 800, margin: "20px auto" }}>
+    <Card
+      title="Thông tin cá nhân"
+      style={{ maxWidth: 800, margin: "20px auto" }}
+    >
       <Tabs defaultActiveKey="1">
         <Tabs.TabPane tab="Thông tin cá nhân" key="1">
           <div style={{ textAlign: "center", marginBottom: 20 }}>
@@ -116,7 +123,7 @@ export default function ProfilePage() {
             <div style={{ marginTop: 10 }}>
               <Upload
                 showUploadList={false}
-                beforeUpload={handleUpload}
+                customRequest={handleCustomUpload}
                 disabled={uploading}
               >
                 <Button icon={<UploadOutlined />} loading={uploading}>
@@ -164,7 +171,11 @@ export default function ProfilePage() {
         </Tabs.TabPane>
 
         <Tabs.TabPane tab="Đổi mật khẩu" key="2">
-          <Form form={formPassword} layout="vertical" onFinish={handleChangePassword}>
+          <Form
+            form={formPassword}
+            layout="vertical"
+            onFinish={handleChangePassword}
+          >
             <Form.Item
               label="Mật khẩu cũ"
               name="old_password"
@@ -176,7 +187,9 @@ export default function ProfilePage() {
             <Form.Item
               label="Mật khẩu mới"
               name="new_password"
-              rules={[{ required: true, message: "Vui lòng nhập mật khẩu mới" }]}
+              rules={[
+                { required: true, message: "Vui lòng nhập mật khẩu mới" },
+              ]}
             >
               <Input.Password />
             </Form.Item>
@@ -184,13 +197,19 @@ export default function ProfilePage() {
             <Form.Item
               label="Xác nhận mật khẩu mới"
               name="confirm_password"
-              rules={[{ required: true, message: "Vui lòng xác nhận mật khẩu mới" }]}
+              rules={[
+                { required: true, message: "Vui lòng xác nhận mật khẩu mới" },
+              ]}
             >
               <Input.Password />
             </Form.Item>
 
             <Form.Item style={{ textAlign: "right" }}>
-              <Button type="primary" htmlType="submit" loading={loadingPassword}>
+              <Button
+                type="primary"
+                htmlType="submit"
+                loading={loadingPassword}
+              >
                 Đổi mật khẩu
               </Button>
             </Form.Item>
