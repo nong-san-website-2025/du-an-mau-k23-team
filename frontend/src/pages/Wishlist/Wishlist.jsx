@@ -73,14 +73,28 @@ const Wishlist = () => {
 
         // Build recommendations by product name + subcategory for each wishlist item
         try {
-          const searchPromises = wishlistArr.map((it) => {
+          const buildTerms = (raw) => {
+            const n = (raw || "").toLowerCase().trim()
+            const words = n.split(/\s+/).filter(w => w.length >= 3)
+            const uniq = Array.from(new Set(words))
+            const terms = []
+            if (n) terms.push(n) // full name
+            if (uniq[0]) terms.push(uniq[0])
+            if (uniq[1]) terms.push(uniq[1])
+            return terms.slice(0, 3)
+          }
+
+          const searchPromises = wishlistArr.flatMap((it) => {
             const name = it.name?.trim()
             const sub = it.subcategory_name || it.subcategory?.name || ""
-            if (!name) return Promise.resolve([])
-            return productApi
-              .searchProducts(name, sub ? { subcategory: sub } : {})
-              .then((res) => (Array.isArray(res) ? res : []))
-              .catch(() => [])
+            const terms = buildTerms(name)
+            if (terms.length === 0) return [Promise.resolve([])]
+            return terms.map((t) =>
+              productApi
+                .searchProducts(t, sub ? { subcategory: sub } : {})
+                .then((res) => (Array.isArray(res) ? res : []))
+                .catch(() => [])
+            )
           })
           const byNameGroups = await Promise.all(searchPromises)
           const merged = []
