@@ -1,5 +1,4 @@
 from rest_framework import viewsets, status
-from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.db.models import Q
 from .models import Product, Category
@@ -13,17 +12,11 @@ from reviews.serializers import ReviewSerializer
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAdminUser
-from rest_framework import viewsets, status
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import action
-from rest_framework.response import Response
 from .models import Category, Subcategory, Product
 from .serializers import CategorySerializer, SubcategorySerializer, ProductListSerializer, CategoryCreateSerializer
 from rest_framework.permissions import AllowAny
 from rest_framework import viewsets, permissions, status
-from rest_framework.decorators import action
-from django.db.models import Q
-from .serializers import ProductSerializer
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])

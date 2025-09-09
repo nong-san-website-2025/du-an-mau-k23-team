@@ -54,7 +54,7 @@ export default function SellerSidebar() {
       ],
     },
     {
-      key: "/seller-center/promotion",
+      key: "/seller-center/promotions",
       icon: <GiftOutlined />,
       label: "Khuyến mãi",
     },

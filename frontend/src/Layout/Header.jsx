@@ -264,7 +264,7 @@ export default function Header() {
           top: 0,
           zIndex: 999,
           fontFamily: "Montserrat, Arial, sans-serif",
-          background: "#f8fafc",
+          background: "#2E7D32", // Nền xanh chạy full width
           width: "100%",
         }}
       >
@@ -274,10 +274,14 @@ export default function Header() {
         {/* Main header */}
         <div
           className="border-bottom"
-          style={{ position: "relative", boxShadow: "0 2px 8px #0001", background: "#2E7D32" }}
+          style={{
+            position: "relative",
+            boxShadow: "0 2px 8px #0001",
+            background: "#2E7D32",
+          }}
         >
           <div
-            className="container d-flex align-items-center justify-content-between py-1 px-1"
+            className="container-fluid d-flex align-items-center justify-content-between py-1 px-1"
             style={{ minHeight: "60px", flexWrap: "nowrap" }}
           >
             {/* Logo */}

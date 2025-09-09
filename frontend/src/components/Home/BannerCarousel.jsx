@@ -1,20 +1,20 @@
-import { Carousel, Image } from "antd";
+import React from "react";
+import { Carousel } from "antd";
 
-export default function BannerCarousel({ banners }) {
-  if (!banners || banners.length === 0) return null;
-
+export default function BannerCarousel({ banners = [] }) {
   return (
-    <Carousel autoplay>
-      {banners.map((banner) => (
-        <div key={banner.id} className="w-full h-[400px] flex items-center justify-center">
-          <Image
-            src={banner.image}
-            alt={banner.title}
-            preview={false}
-            className="rounded-md object-cover w-full h-[400px]"
-          />
-        </div>
-      ))}
-    </Carousel>
+    <div className="w-full mb-6">
+      <Carousel autoplay>
+        {banners.map((banner) => (
+          <div key={banner.id} className="h-[300px]">
+            <img
+              src={banner.image}
+              alt={banner.title}
+              className="w-full h-full object-cover rounded-xl"
+            />
+          </div>
+        ))}
+      </Carousel>
+    </div>
   );
 }

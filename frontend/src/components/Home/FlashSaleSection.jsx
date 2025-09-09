@@ -1,19 +1,25 @@
-import { Row, Col, Card } from "antd";
-import ProductCard from "./ProductCard";
+import React from "react";
 
-export default function FlashSaleSection({ products }) {
-  if (!products || products.length === 0) return null;
-
+export default function FlashSaleSection({ products = [] }) {
   return (
-    <div className="my-6">
-      <h2 className="text-xl font-bold mb-4">🔥 Flash Sale</h2>
-      <Row gutter={[16, 16]}>
-        {products.map((product) => (
-          <Col key={product.id} xs={12} sm={8} md={6} lg={4}>
-            <ProductCard product={product} />
-          </Col>
+    <div className="mb-8">
+      <h2 className="text-lg font-bold mb-4 text-red-500">Flash Sale</h2>
+      <div className="grid grid-cols-4 gap-4">
+        {products.map((item) => (
+          <div
+            key={item.id}
+            className="bg-white p-4 rounded-lg shadow hover:shadow-xl transition cursor-pointer"
+          >
+            <img
+              src={item.image}
+              alt={item.name}
+              className="w-full h-40 object-cover rounded-md mb-2"
+            />
+            <h3 className="text-sm font-medium truncate">{item.name}</h3>
+            <p className="text-red-500 font-bold">{item.price} đ</p>
+          </div>
         ))}
-      </Row>
+      </div>
     </div>
   );
 }

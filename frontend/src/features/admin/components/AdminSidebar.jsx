@@ -29,14 +29,16 @@ const Sidebar = () => {
       <Menu
         mode="inline"
         selectedKeys={[location.pathname]}
-        onClick={({ key }) => navigate(key)}
+        onClick={({ key }) => {
+          if (typeof key === 'string' && key.startsWith('/')) navigate(key);
+        }}
         style={{ height: "100%", borderRight: 0 }}
       >
         <Menu.Item key="" icon={<HomeOutlined />}>
           <Link to="/admin/">{t("Dashboard")}</Link>
         </Menu.Item>
 
-        <Menu.SubMenu key="users" icon={<UserOutlined />} title={t("Users")}>
+        <Menu.SubMenu key="user-manager" icon={<UserOutlined />} title={t("Users")}>
           <Menu.Item key="users">
             <Link to="/admin/users">{t("User_manage")}</Link>
           </Menu.Item>
@@ -79,10 +81,10 @@ const Sidebar = () => {
           icon={<ShoppingCartOutlined />}
           title={t("Orders_shipping")}
         >
-          <Menu.Item key="order-monitor">
+          <Menu.Item key="/admin/orders">
             <Link to="/admin/orders">{t("Order_monitor")}</Link>
           </Menu.Item>
-          <Menu.Item key="shipping-partners">
+          <Menu.Item key="/admin/shipping">
             <Link to="/admin/shipping">{t("Shipping_partners")}</Link>
           </Menu.Item>
         </Menu.SubMenu>
@@ -122,36 +124,23 @@ const Sidebar = () => {
           </Menu.Item>
         </Menu.SubMenu>
 
-        <Menu.SubMenu
-          key="marketing"
-          icon={<NotificationOutlined />}
-          title="Marketing"
-        >
-          <Menu.Item key="banner">
-            <Link to="/admin/marketing/banners">{t("Banner")}</Link>
-          </Menu.Item>
-          <Menu.Item key="flash-sale">
-            <Link to="/admin/marketing/flashsale">{t("Flash_sale")}</Link>
-          </Menu.Item>
-        </Menu.SubMenu>
+          <Menu.SubMenu
+            key="marketing"
+            icon={<NotificationOutlined />}
+            title="Marketing"
+          >
+            <Menu.Item key="/admin/marketing/banners">
+              <Link to="/admin/marketing/banners">{t("Banner")}</Link>
+            </Menu.Item>
+            <Menu.Item key="flash-sale">
+              <Link to="/admin/marketing/flashsale">{t("Flash_sale")}</Link>
+            </Menu.Item>
+          </Menu.SubMenu>
 
         {/* 📑 Khiếu nại / Báo cáo */}
         <Menu.SubMenu key="complaints" icon={<WarningOutlined />} title="Khiếu nại / Báo cáo">
           <Menu.Item key="/admin/complaints/user-reports">
             <Link to="/admin/complaints/user-reports">Người dùng báo cáo</Link>
-          </Menu.Item>
-        </Menu.SubMenu>
-
-        {/* 🎁 Khuyến mãi */}
-        <Menu.SubMenu key="promotions" icon={<GiftOutlined />} title="Khuyến mãi">
-          <Menu.Item key="/admin/promotions/coupons">
-            <Link to="/admin/promotions/coupons">Mã giảm giá hệ thống</Link>
-          </Menu.Item>
-          <Menu.Item key="/admin/promotions/flashsale">
-            <Link to="/admin/promotions/flashsale">Flash Sale / Voucher</Link>
-          </Menu.Item>
-          <Menu.Item key="/admin/promotions/seller-support">
-            <Link to="/admin/promotions/seller-support">Hỗ trợ seller</Link>
           </Menu.Item>
         </Menu.SubMenu>
 
