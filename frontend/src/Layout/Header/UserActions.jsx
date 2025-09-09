@@ -1,7 +1,9 @@
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Search, Heart, ShoppingCart, User, Bell } from "lucide-react";
 import "../../styles/layouts/header/UserActions.css";
+import axiosInstance from "../../features/admin/services/axiosInstance";
+import axios from "axios";
 
 export default function UserActions({
   greenText,
@@ -33,19 +35,118 @@ export default function UserActions({
     }
     return notis;
   };
-  const notificationsData = getNotifications();
+  const [complaints, setComplaints] = useState([]);
+  const userId = userProfile?.id;
+
+  useEffect(() => {
+    let mounted = true;
+    const fetchComplaints = async () => {
+      if (!userId) return;
+      try {
+        let all = [];
+        let url = `/complaints/`;
+        while (url) {
+          const res = url.startsWith("http")
+            ? await axios.get(url, { headers: axiosInstance.defaults.headers.common })
+            : await axiosInstance.get(url);
+          let pageData = [];
+          if (Array.isArray(res.data)) {
+            pageData = res.data;
+            url = null;
+          } else if (res.data && Array.isArray(res.data.results)) {
+            pageData = res.data.results;
+            url = res.data.next || null;
+          } else {
+            pageData = [];
+            url = null;
+          }
+          all = all.concat(pageData);
+        }
+        const mine = all.filter(
+          (c) => c.user === userId || c.user_id === userId || c.user?.id === userId
+        );
+        if (mounted) setComplaints(mine);
+      } catch (e) {
+        if (mounted) setComplaints([]);
+      }
+    };
+    fetchComplaints();
+    return () => {
+      mounted = false;
+    };
+  }, [userId]);
+
+  const myNotifications = useMemo(() => {
+    return (complaints || [])
+      .filter((c) => ["resolved", "rejected"].includes((c.status || "").toLowerCase()))
+      .map((c) => {
+        const status = (c.status || "").toLowerCase();
+        const productName = c.product_name || c.product?.name || "";
+        const detailLines = [
+          `Khiếu nại sản phẩm: ${productName}.`,
+          `Lý do: ${c.reason || ""}.`,
+        ];
+        if (status === "resolved") {
+          const rtCode = (c.resolution_type || c.resolution || "").toLowerCase();
+          let vnLabel = "";
+          switch (rtCode) {
+            case "refund_full":
+              vnLabel = "Hoàn tiền toàn bộ";
+              break;
+            case "refund_partial":
+              vnLabel = "Hoàn tiền một phần";
+              break;
+            case "replace":
+              vnLabel = "Đổi sản phẩm";
+              break;
+            case "voucher":
+              vnLabel = "Tặng voucher/điểm thưởng";
+              break;
+            case "reject":
+              vnLabel = "Từ chối khiếu nại";
+              break;
+            default:
+              vnLabel = "Đã xử lý";
+          }
+          detailLines.push(`Hình thức xử lý: ${vnLabel}`);
+        } else if (status === "rejected") {
+          detailLines.push(`Hình thức xử lý: Từ chối khiếu nại`);
+        }
+
+        let thumbnail = null;
+        const media = c.media_urls || c.media || [];
+        if (Array.isArray(media) && media.length > 0) {
+          const img = media.find((url) => /\.(jpg|jpeg|png|gif)$/i.test(url));
+          thumbnail = img || media[0];
+        }
+
+        return {
+          id: c.id,
+          message:
+            status === "resolved"
+              ? "Khiếu nại của bạn đã được xử lý!"
+              : "Khiếu nại của bạn đã bị từ chối!",
+          detail: detailLines.join("\n"),
+          time: c.updated_at ? new Date(c.updated_at).toLocaleString() : new Date().toLocaleString(),
+          read: false,
+          userId,
+          thumbnail,
+        };
+      });
+  }, [complaints, userId]);
+
   // Sắp xếp theo sản phẩm, sau đó thời gian mới nhất
   const getProduct = (noti) => {
     const match =
       noti.detail && noti.detail.match(/Khiếu nại sản phẩm: (.*?)(\.|\n)/);
     return match ? match[1] : "";
   };
-  const sortedNotifications = [...notificationsData].sort((a, b) => {
+  const sortedNotifications = [...myNotifications].sort((a, b) => {
     const prodA = getProduct(a).toLowerCase();
     const prodB = getProduct(b).toLowerCase();
     if (prodA < prodB) return -1;
     if (prodA > prodB) return 1;
-    return b.id - a.id;
+    return (b.id || 0) - (a.id || 0);
   });
 
   return (
