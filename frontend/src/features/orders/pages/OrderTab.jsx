@@ -28,6 +28,61 @@ const OrderTab = ({ status }) => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Complaint UI state per product
+  const [openComplaint, setOpenComplaint] = useState({}); // { [productId]: boolean }
+  const [complaintTexts, setComplaintTexts] = useState({}); // { [productId]: string }
+  const [complaintFiles, setComplaintFiles] = useState({}); // { [productId]: File[] }
+  const [sendingByProduct, setSendingByProduct] = useState({}); // { [productId]: boolean }
+
+  const toggleComplaint = (productId) => {
+    setOpenComplaint((prev) => ({ ...prev, [productId]: !prev[productId] }));
+  };
+  const onChangeText = (productId, val) => {
+    setComplaintTexts((prev) => ({ ...prev, [productId]: val }));
+  };
+  const onChangeFiles = (productId, files) => {
+    setComplaintFiles((prev) => ({ ...prev, [productId]: Array.from(files) }));
+  };
+  const sendComplaint = async (productId) => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      message.info("Bạn cần đăng nhập để gửi khiếu nại");
+      return;
+    }
+    const reason = (complaintTexts[productId] || "").trim();
+    if (!reason) {
+      message.warning("Vui lòng nhập nội dung khiếu nại");
+      return;
+    }
+
+    try {
+      setSendingByProduct((prev) => ({ ...prev, [productId]: true }));
+      const formData = new FormData();
+      formData.append("product", productId);
+      formData.append("reason", reason);
+      (complaintFiles[productId] || []).forEach((f) => formData.append("media", f));
+
+      const res = await fetch("http://localhost:8000/api/complaints/", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+      if (!res.ok) throw new Error(`Lỗi API: ${res.status}`);
+
+      message.success("Đã gửi khiếu nại thành công!");
+      setComplaintTexts((prev) => ({ ...prev, [productId]: "" }));
+      setComplaintFiles((prev) => ({ ...prev, [productId]: [] }));
+      setOpenComplaint((prev) => ({ ...prev, [productId]: false }));
+    } catch (e) {
+      console.error(e);
+      message.error("Gửi khiếu nại thất bại!");
+    } finally {
+      setSendingByProduct((prev) => ({ ...prev, [productId]: false }));
+    }
+  };
+
   // Fetch dữ liệu từ API
   useEffect(() => {
     setLoading(true);
@@ -142,7 +197,13 @@ const OrderTab = ({ status }) => {
                         <div className="flex items-center justify-between w-full">
                           <div className="flex items-center">
                             <Image
-                              src={`http://localhost:8000/media/${item.product_image}`}
+                              src={
+                                item.product_image?.startsWith("/")
+                                  ? `http://localhost:8000${item.product_image}`
+                                  : item.product_image?.startsWith("http")
+                                  ? item.product_image
+                                  : `http://localhost:8000/media/${item.product_image || ""}`
+                              }
                               alt={item.product_name}
                               width={50}
                               height={50}
@@ -157,18 +218,101 @@ const OrderTab = ({ status }) => {
                               <Text strong>{item.product_name}</Text>
                               <br />
                               <Text type="secondary" style={{ fontSize: 13 }}>
-                                {Number(item.price).toLocaleString()}đ x{" "}
-                                {item.quantity}
+                                {Number(item.price).toLocaleString()}đ x {item.quantity}
                               </Text>
+                              {status === "completed" && (
+                                <div style={{ marginTop: 8 }}>
+                                  <button
+                                    onClick={() => toggleComplaint(item.product)}
+                                    style={{
+                                      background: "#16a34a",
+                                      color: "#fff",
+                                      border: "none",
+                                      borderRadius: 6,
+                                      padding: "4px 10px",
+                                      fontSize: 12,
+                                      cursor: "pointer",
+                                    }}
+                                  >
+                                    Khiếu nại
+                                  </button>
+                                  {openComplaint[item.product] && (
+                                    <div
+                                      style={{
+                                        background: "#f0fdf4",
+                                        border: "1px solid #bbf7d0",
+                                        borderRadius: 8,
+                                        padding: 10,
+                                        marginTop: 8,
+                                        maxWidth: 420,
+                                      }}
+                                    >
+                                      <div style={{ marginBottom: 6 }}>
+                                        <strong>Nội dung khiếu nại:</strong>
+                                        <textarea
+                                          rows={3}
+                                          value={complaintTexts[item.product] || ""}
+                                          onChange={(e) => onChangeText(item.product, e.target.value)}
+                                          placeholder="Mô tả vấn đề bạn gặp phải..."
+                                          style={{
+                                            width: "100%",
+                                            marginTop: 6,
+                                            padding: 6,
+                                            borderRadius: 6,
+                                            border: "1px solid #ddd",
+                                            resize: "vertical",
+                                          }}
+                                        />
+                                      </div>
+                                      <div style={{ marginBottom: 8 }}>
+                                        <strong>Ảnh/Video minh hoạ (tuỳ chọn):</strong>
+                                        <input
+                                          type="file"
+                                          multiple
+                                          accept="image/*,video/*"
+                                          onChange={(e) => onChangeFiles(item.product, e.target.files)}
+                                          style={{ marginTop: 6 }}
+                                        />
+                                      </div>
+                                      <div style={{ display: "flex", gap: 8 }}>
+                                        <button
+                                          onClick={() => sendComplaint(item.product)}
+                                          disabled={!!sendingByProduct[item.product]}
+                                          style={{
+                                            background: "#16a34a",
+                                            color: "#fff",
+                                            border: "none",
+                                            borderRadius: 6,
+                                            padding: "6px 12px",
+                                            cursor: "pointer",
+                                          }}
+                                        >
+                                          {sendingByProduct[item.product] ? "Đang gửi..." : "Gửi khiếu nại"}
+                                        </button>
+                                        <button
+                                          onClick={() => toggleComplaint(item.product)}
+                                          style={{
+                                            background: "#fff",
+                                            color: "#16a34a",
+                                            border: "1px solid #16a34a",
+                                            borderRadius: 6,
+                                            padding: "6px 12px",
+                                            cursor: "pointer",
+                                          }}
+                                        >
+                                          Huỷ
+                                        </button>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           </div>
 
                           {/* Thành tiền */}
                           <Text strong style={{ color: "#27ae60" }}>
-                            {(
-                              Number(item.price) * Number(item.quantity)
-                            ).toLocaleString()}
-                            đ
+                            {(Number(item.price) * Number(item.quantity)).toLocaleString()}đ
                           </Text>
                         </div>
                       </List.Item>
