@@ -52,7 +52,7 @@ const EditPromotion = () => {
     };
 
     axios
-      .put(`http://127.0.0.1:8000/api/promotions/promotions/${id}/`, payload, {
+      .put(`http://127.0.0.1:8000/api/promotions/${id}/`, payload, {
         headers: {
           "Content-Type": "application/json",
         },

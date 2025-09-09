@@ -22,7 +22,7 @@ const PromotionForm = () => {
   useEffect(() => {
     if (id) {
       axios
-        .get(`http://127.0.0.1:8000/api/promotions/promotions/${id}/`)
+        .get(`http://127.0.0.1:8000/api/promotions/${id}/`)
         .then((res) => setPromo(res.data))
         .catch(() => alert("Lấy chi tiết thất bại"));
     }
@@ -37,10 +37,10 @@ const PromotionForm = () => {
     e.preventDefault();
     try {
       if (id) {
-        await axios.put(`http://127.0.0.1:8000/api/promotions/promotions/${id}/`, promo);
+        await axios.put(`http://127.0.0.1:8000/api/promotions/${id}/`, promo);
         alert("Cập nhật thành công");
       } else {
-        await axios.post("http://127.0.0.1:8000/api/promotions/promotions/", promo);
+        await axios.post("http://127.0.0.1:8000/api/promotions/", promo);
         alert("Thêm mới thành công");
       }
       handleClose();
