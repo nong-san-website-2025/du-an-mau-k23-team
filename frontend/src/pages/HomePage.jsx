@@ -47,7 +47,7 @@ export default function HomePage() {
         }
 
         if (bannersRes.status === "fulfilled") {
-          setBanners(bannersRes.value.data || []);
+          setBanners(bannersRes.value || []); // <-- value đã là mảng banners
         } else {
           console.warn("Banners API missing/failed:", bannersRes.reason);
         }
@@ -61,7 +61,10 @@ export default function HomePage() {
         if (recommendRes.status === "fulfilled") {
           setRecommendedProducts(recommendRes.value.data || []);
         } else {
-          console.warn("Recommendations API missing/failed:", recommendRes.reason);
+          console.warn(
+            "Recommendations API missing/failed:",
+            recommendRes.reason
+          );
         }
       } catch (error) {
         console.error("Error loading homepage data:", error);
