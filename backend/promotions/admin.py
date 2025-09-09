@@ -1,9 +1,8 @@
 # promotions/admin.py
 from django.contrib import admin
-from .models import Promotion
-
-admin.site.register(Promotion)
 from .models import Voucher, FlashSale, FlashSaleItem
+
+
 
 @admin.register(Voucher)
 class VoucherAdmin(admin.ModelAdmin):

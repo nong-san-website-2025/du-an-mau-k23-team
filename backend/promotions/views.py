@@ -1,14 +1,3 @@
-from rest_framework import generics
-from .models import Promotion
-from .serializers import PromotionSerializer
-
-class PromotionListCreateAPIView(generics.ListCreateAPIView):
-    queryset = Promotion.objects.all()
-    serializer_class = PromotionSerializer
-
-class PromotionDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = Promotion.objects.all()
-    serializer_class = PromotionSerializer
 # promotions/views.py
 from django.utils import timezone
 from rest_framework.decorators import api_view, permission_classes
@@ -19,12 +8,12 @@ from rest_framework import viewsets, filters, permissions
 from django_filters.rest_framework import DjangoFilterBackend
 from .models import Voucher, FlashSale, FlashSaleItem
 from .serializers import VoucherSerializer, FlashSaleSerializer, FlashSaleItemSerializer
+from django.utils import timezone
+from rest_framework import generics
+
 
 class IsAdminOrReadOnly(permissions.BasePermission):
-    """
-    Admin (is_staff) có quyền CRUD.
-    Các user khác (seller/buyer) chỉ có thể đọc (GET) nếu authenticated.
-    """
+
     def has_permission(self, request, view):
         if request.method in permissions.SAFE_METHODS:
             return request.user and request.user.is_authenticated
@@ -32,10 +21,7 @@ class IsAdminOrReadOnly(permissions.BasePermission):
 
 
 class VoucherViewSet(viewsets.ModelViewSet):
-    """
-    API cho Voucher (mã giảm giá) - supports search, filter, ordering.
-    Non-admin users (sellers) sẽ chỉ thấy vouchers System + vouchers của chính họ.
-    """
+
     queryset = Voucher.objects.all().order_by("-created_at")
     serializer_class = VoucherSerializer
     permission_classes = [IsAdminOrReadOnly]
