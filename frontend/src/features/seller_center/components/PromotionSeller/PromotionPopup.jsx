@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Modal, Form, Input, Select, DatePicker, InputNumber, Button } from "antd";
+import { Modal, Form, Input, Select, DatePicker, InputNumber, Button, Row, Col } from "antd";
 import dayjs from "dayjs";
 import axios from "axios";
 
@@ -28,7 +28,8 @@ const PromotionPopup = ({ visible, mode, promotion, onClose, onSave }) => {
     }
   }, [visible, promotion, form]);
 
-  const handleSubmit = async (values) => {   // sửa: thêm async
+  const handleSubmit = async (values) => {
+    // sửa: thêm async
     setLoading(true);
     const payload = {
       ...values,
@@ -36,19 +37,27 @@ const PromotionPopup = ({ visible, mode, promotion, onClose, onSave }) => {
       end: values.end ? values.end.format("YYYY-MM-DD") : null,
       id: promotion?.id,
     };
-    await onSave(payload);   // sửa: thêm await
+    await onSave(payload); // sửa: thêm await
     setLoading(false);
   };
 
   return (
     <Modal
-      title={mode === "add" ? "Thêm khuyến mãi" : mode === "edit" ? "Sửa khuyến mãi" : "Xem chi tiết"}
+      title={
+        mode === "add" ? "Thêm khuyến mãi" : mode === "edit" ? "Sửa khuyến mãi" : "Xem chi tiết"
+      }
       open={visible}
       onCancel={onClose}
-      forceRender={true} // <--- thêm dòng này
+      forceRender={true}
+      width={720}
+      bodyStyle={{ padding: 16 }}
       footer={
         mode === "view"
-          ? [<Button key="close" onClick={onClose}>Đóng</Button>]
+          ? [
+              <Button key="close" onClick={onClose}>
+                Đóng
+              </Button>,
+            ]
           : [
               <Button key="cancel" onClick={onClose}>
                 Hủy
@@ -59,62 +68,73 @@ const PromotionPopup = ({ visible, mode, promotion, onClose, onSave }) => {
             ]
       }
     >
-      <Form
-        form={form}
-        layout="vertical"
-        onFinish={handleSubmit}
-      >
-        <Form.Item
-          label="Tên khuyến mãi"
-          name="name"
-          rules={[{ required: true, message: "Vui lòng nhập tên khuyến mãi" }]}
-        >
-          <Input placeholder="Tên khuyến mãi" disabled={mode === "view"} />
-        </Form.Item>
+      <Form form={form} layout="vertical" onFinish={handleSubmit} style={{ gap: 8 }}>
+        <Row gutter={[12, 8]}>
+          <Col xs={24} md={12}>
+            <Form.Item
+              label="Tên khuyến mãi"
+              name="name"
+              rules={[{ required: true, message: "Vui lòng nhập tên khuyến mãi" }]}
+            >
+              <Input placeholder="Tên khuyến mãi" disabled={mode === "view"} />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12}>
+            <Form.Item
+              label="Code"
+              name="code"
+              rules={[{ required: true, message: "Vui lòng nhập code" }]}
+            >
+              <Input placeholder="Mã khuyến mãi" disabled={mode === "view"} />
+            </Form.Item>
+          </Col>
 
-        <Form.Item
-          label="Code"
-          name="code"
-          rules={[{ required: true, message: "Vui lòng nhập code" }]}
-        >
-          <Input placeholder="Mã khuyến mãi" disabled={mode === "view"} />
-        </Form.Item>
+          <Col xs={24} md={12}>
+            <Form.Item
+              label="Loại"
+              name="type"
+              rules={[{ required: true, message: "Vui lòng chọn loại khuyến mãi" }]}
+            >
+              <Select placeholder="Chọn loại" disabled={mode === "view"}>
+                <Option value="Promotion">Giảm tiền</Option>
+                <Option value="Flash Sale">Giảm %</Option>
+                <Option value="Voucher">Freeship</Option>
+              </Select>
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12}>
+            <Form.Item label="Điều kiện" name="condition">
+              <Input placeholder="Điều kiện áp dụng" disabled={mode === "view"} />
+            </Form.Item>
+          </Col>
 
-        <Form.Item
-          label="Loại"
-          name="type"
-          rules={[{ required: true, message: "Vui lòng chọn loại khuyến mãi" }]}
-        >
-          <Select placeholder="Chọn loại" disabled={mode === "view"}>
-            <Option value="Promotion">Giảm tiền</Option>
-            <Option value="Flash Sale">Giảm %</Option>
-            <Option value="Voucher">Freeship</Option>
-          </Select>
-        </Form.Item>
+          <Col xs={24} md={12}>
+            <Form.Item label="Ngày bắt đầu" name="start">
+              <DatePicker style={{ width: "100%" }} disabled={mode === "view"} />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12}>
+            <Form.Item label="Ngày kết thúc" name="end">
+              <DatePicker style={{ width: "100%" }} disabled={mode === "view"} />
+            </Form.Item>
+          </Col>
 
-        <Form.Item label="Điều kiện" name="condition">
-          <Input placeholder="Điều kiện áp dụng" disabled={mode === "view"} />
-        </Form.Item>
-
-        <Form.Item label="Ngày bắt đầu" name="start">
-          <DatePicker style={{ width: "100%" }} disabled={mode === "view"} />
-        </Form.Item>
-
-        <Form.Item label="Ngày kết thúc" name="end">
-          <DatePicker style={{ width: "100%" }} disabled={mode === "view"} />
-        </Form.Item>
-
-        <Form.Item label="Đã sử dụng" name="used">
-          <InputNumber min={0} style={{ width: "100%" }} disabled={mode === "view"} />
-        </Form.Item>
-
-        <Form.Item label="Tổng số" name="total">
-          <InputNumber min={0} style={{ width: "100%" }} disabled={mode === "view"} />
-        </Form.Item>
-
-        <Form.Item label="Số sản phẩm" name="products">
-          <InputNumber min={0} style={{ width: "100%" }} disabled={mode === "view"} />
-        </Form.Item>
+          <Col xs={24} md={8}>
+            <Form.Item label="Đã sử dụng" name="used">
+              <InputNumber min={0} style={{ width: "100%" }} disabled={mode === "view"} />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={8}>
+            <Form.Item label="Tổng số" name="total">
+              <InputNumber min={0} style={{ width: "100%" }} disabled={mode === "view"} />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={8}>
+            <Form.Item label="Số sản phẩm" name="products">
+              <InputNumber min={0} style={{ width: "100%" }} disabled={mode === "view"} />
+            </Form.Item>
+          </Col>
+        </Row>
       </Form>
     </Modal>
   );

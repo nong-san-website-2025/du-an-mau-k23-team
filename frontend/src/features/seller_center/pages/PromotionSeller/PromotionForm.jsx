@@ -111,7 +111,7 @@ const overlayStyle = {
 
 const modalStyle = {
   backgroundColor: "#fff",
-  padding: 32,
+  padding: "24px 32px 32px 32px",
   borderRadius: 16,
   width: "700px",
   maxHeight: "85%",

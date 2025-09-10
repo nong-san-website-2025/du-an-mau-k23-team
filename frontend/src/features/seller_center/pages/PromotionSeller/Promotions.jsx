@@ -152,8 +152,8 @@ const Promotions = () => {
   });
 
   return (
-  <div style={{ maxWidth: 1200, margin: "20px auto", padding: 10, background: "#fff", borderRadius: 12, boxShadow: "0 2px 8px rgba(44,62,80,0.07)", fontSize: '0.92rem', fontFamily: 'Roboto, Arial, sans-serif', letterSpacing: 0.1 }}>
-      <div style={{ marginBottom: 10, textAlign: 'center' }}>
+  <div style={{ margin: "20px", padding: 10, background: "#fff", borderRadius: 12, boxShadow: "0 2px 8px rgba(44,62,80,0.07)", fontSize: '0.92rem', fontFamily: 'Roboto, Arial, sans-serif', letterSpacing: 0.1 }}>
+      <div style={{ marginBottom: 10, }}>
         <span style={{ fontSize: '1.6rem', fontWeight: 700, color: '#222', letterSpacing: 0.5, fontFamily: 'Roboto, Arial, sans-serif' }}>
           Quản lý khuyến mãi
         </span>
