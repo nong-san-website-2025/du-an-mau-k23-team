@@ -3,14 +3,14 @@ import React, { useState } from "react";
 import { Card, Form, Input, Button, message } from "antd";
 import axios from "axios";
 
-const API_BASE_URL = "http://localhost:8000/api";
+const API_BASE_URL = "http://localhost:8000/api/users";
 
 export default function ChangePasswordPage() {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
 
   const getToken = () =>
-    localStorage.getItem("access_token") || localStorage.getItem("token") || "";
+    localStorage.getItem("token") || localStorage.getItem("token") || "";
 
   const handleChangePassword = async (values) => {
     setLoading(true);

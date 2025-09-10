@@ -10,11 +10,11 @@ export default function AccountPage() {
   const [loading, setLoading] = useState(false);
   const [passwordLoading, setPasswordLoading] = useState(false);
 
-  const token = localStorage.getItem("access_token") || localStorage.getItem("token");
+  const token = localStorage.getItem("token") || localStorage.getItem("token");
 
   const fetchUser = async () => {
     try {
-      const res = await axios.get(`${API_BASE_URL}/user/me/`, {
+      const res = await axios.get(`${API_BASE_URL}/users/me/`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       form.setFieldsValue(res.data);
@@ -31,7 +31,7 @@ export default function AccountPage() {
   const handleUpdate = async (values) => {
     setLoading(true);
     try {
-      await axios.put(`${API_BASE_URL}/user/me/`, values, {
+      await axios.put(`${API_BASE_URL}/users/me/`, values, {
         headers: { Authorization: `Bearer ${token}` },
       });
       message.success("Cập nhật thông tin thành công!");
@@ -85,7 +85,7 @@ export default function AccountPage() {
 
       <Divider />
 
-      <Card title="Đổi mật khẩu" bordered>
+      {/* <Card title="Đổi mật khẩu" bordered>
         <Form form={passwordForm} layout="vertical" onFinish={handleChangePassword}>
           <Form.Item label="Mật khẩu cũ" name="old_password" rules={[{ required: true }]}>
             <Input.Password />
@@ -117,7 +117,7 @@ export default function AccountPage() {
             </Button>
           </Form.Item>
         </Form>
-      </Card>
+      </Card> */}
     </div>
   );
 }

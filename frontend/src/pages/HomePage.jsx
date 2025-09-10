@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Spin, Modal } from "antd";
 
 import BannerCarousel from "../components/Home/BannerCarousel";
+import CategorySection from "../components/Home/CategorySection";
 import FlashSaleSection from "../components/Home/FlashSaleSection";
 import PersonalizedSection from "../components/Home/PersonalizedSection";
 
@@ -9,6 +10,7 @@ import {
   fetchBanners,
   fetchFlashSale,
   fetchUserRecommendations,
+  fetchCategories,
 } from "../services/api/homepageApi";
 
 import "../styles/Hompage.css";
@@ -17,51 +19,53 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [banners, setBanners] = useState([]);
   const [popupAds, setPopupAds] = useState([]);
-  const [activePopup, setActivePopup] = useState(null);
   const [flashSaleProducts, setFlashSaleProducts] = useState([]);
   const [recommendedProducts, setRecommendedProducts] = useState([]);
   const [vouchers, setVouchers] = useState([]);
+  const [categories, setCategories] = useState([]); // NEW
   const [showLoginModal, setShowLoginModal] = useState(false);
 
   const username = localStorage.getItem("username") || "Khách";
   const token = localStorage.getItem("token");
 
-  // ====== Kiểm tra modal chào mừng ======
   useEffect(() => {
     const loadData = async () => {
       try {
-        const adsRes = await fetchBanners();
-        console.log("Popups:", adsRes.data.popups); // 🔹 DEBUG
-
-        setPopupAds(adsRes.data.popups || []);
-      } catch (error) {
-        console.error("Error fetching popup ads:", error);
-      }
-    };
-
-    loadData();
-  }, []);
-
-  // ====== Gọi API ======
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const [adsRes, flashSaleRes, recommendRes] = await Promise.all([
+        const results = await Promise.allSettled([
+          fetchCategories(),
           fetchBanners(),
           fetchFlashSale(),
           fetchUserRecommendations(token),
         ]);
 
-        // Banners + Popups
-        setBanners(adsRes.data.banners || []);
-        setPopupAds(adsRes.data.popups || []);
+        const [catRes, bannersRes, flashRes, recommendRes] = results;
 
-        // Flash Sale
-        setFlashSaleProducts(flashSaleRes.data || []);
+        if (catRes.status === "fulfilled") {
+          setCategories(catRes.value.data || []);
+        } else {
+          console.error("Categories failed:", catRes.reason);
+        }
 
-        // Gợi ý cá nhân hóa
-        setRecommendedProducts(recommendRes.data?.recommended_products || []);
-        setVouchers(recommendRes.data?.vouchers || []);
+        if (bannersRes.status === "fulfilled") {
+          setBanners(bannersRes.value || []); // <-- value đã là mảng banners
+        } else {
+          console.warn("Banners API missing/failed:", bannersRes.reason);
+        }
+
+        if (flashRes.status === "fulfilled") {
+          setFlashSaleProducts(flashRes.value.data || []);
+        } else {
+          console.warn("Flash sale API missing/failed:", flashRes.reason);
+        }
+
+        if (recommendRes.status === "fulfilled") {
+          setRecommendedProducts(recommendRes.value.data || []);
+        } else {
+          console.warn(
+            "Recommendations API missing/failed:",
+            recommendRes.reason
+          );
+        }
       } catch (error) {
         console.error("Error loading homepage data:", error);
       } finally {
@@ -72,13 +76,6 @@ export default function HomePage() {
     loadData();
   }, [token]);
 
-  // Khi popupAds thay đổi, mở popup đầu tiên
-  useEffect(() => {
-    if (popupAds.length > 0) {
-      setActivePopup(popupAds[0]);
-    }
-  }, [popupAds]);
-
   if (loading) {
     return (
       <div className="flex justify-center items-center h-[500px]">
@@ -88,9 +85,12 @@ export default function HomePage() {
   }
 
   return (
-    <div className="homepage-container">
+    <div className="homepage-container p-4">
       {/* Banner Carousel */}
       <BannerCarousel banners={banners} />
+
+      {/* Danh Mục Nổi Bật */}
+      <CategorySection categories={categories} />
 
       {/* Flash Sale */}
       <FlashSaleSection products={flashSaleProducts} />
@@ -102,19 +102,16 @@ export default function HomePage() {
         vouchers={vouchers}
       />
 
+      {/* Popup Modal */}
       <Modal
         key={popupAds[0]?.id}
         open={popupAds.length > 0}
         footer={null}
-        closable={true} // Bật nút X để đóng modal
+        closable={true}
         onCancel={() => setPopupAds([])}
         centered
         width="60vw"
-        style={{
-          top: 0,
-          padding: 0,
-          margin: 0,
-        }}
+        style={{ top: 0, padding: 0, margin: 0 }}
         bodyStyle={{
           padding: 0,
           margin: 0,
@@ -132,8 +129,8 @@ export default function HomePage() {
             style={{
               width: "100%",
               height: "100%",
-              objectFit: "cover", // Ảnh phủ đầy modal
-              display: "block", // Loại bỏ khoảng trắng dưới ảnh
+              objectFit: "cover",
+              display: "block",
             }}
             className="cursor-pointer"
           />

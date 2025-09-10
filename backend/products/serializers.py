@@ -19,7 +19,15 @@ class CategorySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Category
-        fields = ['id', 'name', 'key', 'icon', 'status', 'subcategories']
+        fields = ['id', 'name', 'key', 'icon', 'status', 'subcategories', 'image']
+
+    
+    def get_image_url(self, obj):
+        request = self.context.get('request')
+        if obj.image and hasattr(obj.image, 'url'):
+            # Nếu muốn trả về URL đầy đủ
+            return request.build_absolute_uri(obj.image.url) if request else obj.image.url
+        return None
 
     
 

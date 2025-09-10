@@ -1,7 +1,7 @@
 // components/UserAdmin/UserDetailModal.jsx
 import React, { useState } from "react";
 import { Modal, Descriptions, Button, Divider } from "antd";
-import { User, Mail, Phone, Shield, Activity } from "lucide-react";
+import { User, Mail, Phone, Shield } from "lucide-react";
 import UserEditForm from "./UserEditForm";
 import { useTranslation } from "react-i18next";
 
@@ -20,14 +20,20 @@ export default function UserDetailModal({ user, visible, onClose, onUserUpdated 
       centered
     >
       {isEditing ? (
-        <UserEditForm
-          editUser={user}
-          onCancel={() => setIsEditing(false)}
-          onSave={(updatedUser) => {
-            setIsEditing(false);
-            if (onUserUpdated) onUserUpdated(updatedUser);
-          }}
-        />
+        <div>
+          {/* Debug log để chắc chắn roles có load */}
+          <p style={{ fontSize: 13, color: "gray" }}>
+            👉 Đang ở chế độ chỉnh sửa user: <b>{user.username}</b>
+          </p>
+          <UserEditForm
+            editUser={user}
+            onCancel={() => setIsEditing(false)}
+            onSave={(updatedUser) => {
+              setIsEditing(false);
+              if (onUserUpdated) onUserUpdated(updatedUser);
+            }}
+          />
+        </div>
       ) : (
         <>
           <Descriptions column={1} bordered size="middle">
@@ -40,17 +46,6 @@ export default function UserDetailModal({ user, visible, onClose, onUserUpdated 
               }
             >
               {user.username}
-            </Descriptions.Item>
-
-            <Descriptions.Item
-              label={
-                <span>
-                  <User size={16} style={{ marginRight: 6 }} />
-                  {t("users_page.table.fullname")}
-                </span>
-              }
-            >
-              {user.full_name || t("not_available")}
             </Descriptions.Item>
 
             <Descriptions.Item
@@ -85,22 +80,6 @@ export default function UserDetailModal({ user, visible, onClose, onUserUpdated 
             >
               {user.role ? user.role.name : t("not_available")}
             </Descriptions.Item>
-
-            {/* Nếu muốn hiển thị status */}
-            {/* <Descriptions.Item
-              label={
-                <span>
-                  <Activity size={16} style={{ marginRight: 6 }} />
-                  {t("users_page.table.status")}
-                </span>
-              }
-            >
-              {user.status === "active"
-                ? t("active")
-                : user.status === "inactive"
-                ? t("inactive")
-                : t("not_available")}
-            </Descriptions.Item> */}
           </Descriptions>
 
           <Divider style={{ margin: "16px 0" }} />

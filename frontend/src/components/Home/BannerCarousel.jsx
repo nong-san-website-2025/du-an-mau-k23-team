@@ -1,20 +1,41 @@
-import { Carousel, Image } from "antd";
+import React, { useRef } from "react";
+import { Carousel } from "antd";
+import "../../styles/home/BannerCarousel.css";
 
-export default function BannerCarousel({ banners }) {
-  if (!banners || banners.length === 0) return null;
+export default function BannerCarousel({ banners = [] }) {
+  const carouselRef = useRef(null);
 
   return (
-    <Carousel autoplay>
-      {banners.map((banner) => (
-        <div key={banner.id} className="w-full h-[400px] flex items-center justify-center">
-          <Image
-            src={banner.image}
-            alt={banner.title}
-            preview={false}
-            className="rounded-md object-cover w-full h-[400px]"
-          />
-        </div>
-      ))}
-    </Carousel>
+    <div className="banner-carousel" style={{ position: "relative" }}>
+      <Carousel autoplay ref={carouselRef} >
+        {banners.map((banner) => (
+          <div key={banner.id} className="banner-slide">
+            <img
+              src={banner.image_url || banner.image}
+              alt={banner.title}
+              onClick={() =>
+                banner.redirect_link && window.open(banner.redirect_link, "_blank")
+              }
+            />
+          </div>
+        ))}
+      </Carousel>
+
+      {/* Nút Prev */}
+      <button
+        className="carousel-btn prev-btn"
+        onClick={() => carouselRef.current.prev()}
+      >
+        &#10094; {/* ký tự mũi tên trái */}
+      </button>
+
+      {/* Nút Next */}
+      <button
+        className="carousel-btn next-btn"
+        onClick={() => carouselRef.current.next()}
+      >
+        &#10095; {/* ký tự mũi tên phải */}
+      </button>
+    </div>
   );
 }

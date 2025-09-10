@@ -55,10 +55,10 @@ class ApiService {
 
       if (res.ok) {
         const data = await res.json();
-        localStorage.setItem("access_token", data.access);
+        localStorage.setItem("token", data.access);
         return true;
       } else {
-        localStorage.removeItem("access_token");
+        localStorage.removeItem("token");
         localStorage.removeItem("refresh_token");
         window.location.href = "/login"; // bắt login lại
         return false;

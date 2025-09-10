@@ -16,18 +16,10 @@ export const AuthProvider = ({ children }) => {
     const username = localStorage.getItem("username");
     let role = localStorage.getItem("role");
 
-    console.log("AuthProvider Debug:");
-    console.log("- Token from localStorage:", token ? "exists" : "null");
-    console.log("- Username from localStorage:", username);
-    console.log("- Role from localStorage:", role);
-
     // Fallback: nếu role là undefined hoặc null, kiểm tra is_admin/is_seller
     if (!role || role === 'undefined' || role === 'null') {
       const isAdmin = localStorage.getItem("is_admin");
       const isSeller = localStorage.getItem("is_seller");
-      
-      console.log("- is_admin from localStorage:", isAdmin);
-      console.log("- is_seller from localStorage:", isSeller);
       
       if (isAdmin === 'true' || username === 'admin') {
         role = 'admin';
@@ -65,7 +57,7 @@ export const AuthProvider = ({ children }) => {
     try {
       console.log("AuthProvider: Attempting login for username:", username);
       
-      const { data } = await api.post("/users/login/", { username, password });
+      const { data } = await api.post("users/login/", { username, password });
       
       console.log("Login response data:", data);
       

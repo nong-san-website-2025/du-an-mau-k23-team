@@ -9,7 +9,7 @@ export default function NavLinks() {
         className="btn btn-link fw-medium px-3 py-2 text-decoration-none text-dark d-none d-lg-inline-block"
         style={{ whiteSpace: "nowrap", fontSize: 14 }}
       >
-        Sản phẩm nổi bật
+        <span style={{ color: "#FFFFFF"}}>Sản phẩm nổi bật</span>
       </Link>
       <Link
         to="/store"

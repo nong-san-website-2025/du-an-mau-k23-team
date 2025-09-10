@@ -236,21 +236,47 @@ const UserReports = () => {
       message.error('Vui lòng chọn hình thức xử lý!');
       return;
     }
+
     try {
       const token = localStorage.getItem('token');
-      await fetch(`http://localhost:8000/api/complaints/${resolveComplaint.id}/`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          status: 'resolved',
-          resolution_type: resolutionType,
-          refund_amount: refundAmount || null,
-          voucher_code: voucherCode || null,
-        }),
-      });
+
+      if (resolutionType === 'refund_partial' || resolutionType === 'refund_full') {
+        if (resolutionType === 'refund_partial') {
+          const amt = Number(refundAmount);
+          if (!amt || isNaN(amt) || amt <= 0) {
+            message.error('Vui lòng nhập số tiền hoàn hợp lệ (> 0)!');
+            return;
+          }
+        }
+        // Gọi endpoint resolve để cộng tiền vào ví khi hoàn tiền
+        const payload = { resolution_type: resolutionType };
+        if (resolutionType === 'refund_partial') payload.amount = Number(refundAmount);
+
+        await fetch(`http://localhost:8000/api/complaints/${resolveComplaint.id}/resolve/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(payload),
+        });
+      } else {
+        // Các hình thức khác vẫn PATCH trạng thái/loại xử lý
+        await fetch(`http://localhost:8000/api/complaints/${resolveComplaint.id}/`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            status: 'resolved',
+            resolution_type: resolutionType,
+            refund_amount: refundAmount || null,
+            voucher_code: voucherCode || null,
+          }),
+        });
+      }
+
       message.success('Đã xử lý khiếu nại!');
       setResolveModalVisible(false);
       refreshReports();
