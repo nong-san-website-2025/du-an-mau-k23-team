@@ -117,6 +117,8 @@ class SellerPendingListAPIView(generics.ListAPIView):
 class SellerDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Seller.objects.all()
     serializer_class = SellerDetailSerializer
+    # Cho phép công khai xem chi tiết cửa hàng
+    permission_classes = [permissions.AllowAny]
 
 class SellerByStatusAPIView(generics.ListAPIView):
     serializer_class = SellerListSerializer

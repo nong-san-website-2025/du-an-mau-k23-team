@@ -25,6 +25,7 @@ class Product(models.Model):
         ("pending", "Pending"),
         ("approved", "Approved"),
         ("rejected", "Rejected"),
+        ("self_rejected", "Self Rejected"),
         ("banned", "Banned"),
     ]
 
@@ -44,8 +45,10 @@ class Product(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    # Visibility and status
+    is_hidden = models.BooleanField(default=False)  # seller ẩn khỏi storefront
     status = models.CharField(
-        max_length=10,
+        max_length=20,
         choices=STATUS_CHOICES,
         default="pending",  # khi seller tạo sản phẩm thì mặc định là pending
     )
@@ -55,8 +58,12 @@ class Product(models.Model):
     
     @property
     def discounted_price(self):
-        if self.discount > 0:
-            return self.price * (100 - self.discount) / 100
+        # Nếu có discount field trong DB (không thấy trong model, nhưng serializer dùng), xử lý an toàn
+        try:
+            if getattr(self, "discount", 0) > 0:
+                return self.price * (100 - getattr(self, "discount", 0)) / 100
+        except Exception:
+            pass
         return self.price
 
 class ProductFeature(models.Model):

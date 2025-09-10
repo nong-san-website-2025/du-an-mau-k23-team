@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Spin, Modal } from "antd";
+import { Spin, Modal } from "antd"; // TODO: nâng cấp props theo khuyến cáo: dùng styles.body thay cho bodyStyle
 
 import BannerCarousel from "../components/Home/BannerCarousel";
 import CategorySection from "../components/Home/CategorySection";
@@ -112,12 +112,14 @@ export default function HomePage() {
         centered
         width="60vw"
         style={{ top: 0, padding: 0, margin: 0 }}
-        bodyStyle={{
-          padding: 0,
-          margin: 0,
-          height: "60vh",
-          overflow: "hidden",
-          background: "transparent",
+        styles={{
+          body: {
+            padding: 0,
+            margin: 0,
+            height: "60vh",
+            overflow: "hidden",
+            background: "transparent",
+          },
         }}
         className="full-screen-modal"
       >

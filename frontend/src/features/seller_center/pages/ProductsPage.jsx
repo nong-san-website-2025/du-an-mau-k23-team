@@ -32,10 +32,10 @@ export default function ProductsPage() {
   const [editingProduct, setEditingProduct] = useState(null);
   const [categories, setCategories] = useState([]);
   const [subcategories, setSubcategories] = useState([]);
+  const [statusFilter, setStatusFilter] = useState("");
   const [form] = Form.useForm();
 
-  // state cho search & filter
-  const [statusFilter, setStatusFilter] = useState("");
+
   const [searchTerm, setSearchTerm] = useState("");
 
   const fetchProducts = async (status = "", keyword = "") => {
@@ -161,6 +161,28 @@ export default function ProductsPage() {
     }
   };
 
+  const handleToggleHide = async (product) => {
+    try {
+      await api.post(`/products/${product.id}/toggle-hide/`, {}, { headers: getAuthHeaders() });
+      message.success(product.is_hidden ? "Đã hiện sản phẩm" : "Đã ẩn sản phẩm");
+      fetchProducts(statusFilter, searchTerm);
+    } catch (err) {
+      console.error(err);
+      message.error("Không thể thay đổi trạng thái ẩn/hiện");
+    }
+  };
+
+  const handleSelfReject = async (product) => {
+    try {
+      await api.post(`/products/${product.id}/self-reject/`, {}, { headers: getAuthHeaders() });
+      message.success("Đã chuyển sản phẩm sang trạng thái tự từ chối");
+      fetchProducts(statusFilter, searchTerm);
+    } catch (err) {
+      console.error(err);
+      message.error("Không thể tự từ chối sản phẩm");
+    }
+  };
+
   return (
     <div style={{ padding: 20, background: "#fff", minHeight: "100vh" }}>
       <h2 style={{ marginBottom: 16 }}>Quản lý sản phẩm</h2>
@@ -203,6 +225,8 @@ export default function ProductsPage() {
         data={products}
         onEdit={openModal}
         onDelete={handleDelete}
+        onToggleHide={handleToggleHide}
+        onSelfReject={handleSelfReject}
       />
 
       <Modal
