@@ -20,6 +20,10 @@ class FlashSaleItemSerializer(serializers.ModelSerializer):
     seller_name = serializers.CharField(source="product.seller.store_name", read_only=True)
     campaign_name = serializers.CharField(source="flashsale.title", read_only=True)
 
+    # fix chỗ lỗi: dùng SerializerMethodField thay vì fields thật trong model
+    total_stock = serializers.SerializerMethodField()
+    remaining_stock = serializers.SerializerMethodField()
+
     class Meta:
         model = FlashSaleItem
         fields = [
@@ -52,6 +56,13 @@ class FlashSaleItemSerializer(serializers.ModelSerializer):
             return "ended"
         return "active"
 
+    def get_total_stock(self, obj):
+        # bạn có thể custom cách tính total stock ở đây
+        return obj.stock_limit if obj.stock_limit is not None else 0
+
+    def get_remaining_stock(self, obj):
+        # giả sử remaining_stock = stock_limit (chưa bán gì)
+        return obj.stock_limit if obj.stock_limit is not None else 0
 
 class FlashSaleSerializer(serializers.ModelSerializer):
     items = FlashSaleItemSerializer(many=True, read_only=True)
