@@ -182,6 +182,7 @@ function CartPage() {
 
       <div className="product-category mt-4">
         <h4>Sản phẩm trong giỏ</h4>
+        <hr />
         <Row>
           {cartItems.slice(0, 8).map((item) => {
             const prod = item.product_data || item.product || {};
