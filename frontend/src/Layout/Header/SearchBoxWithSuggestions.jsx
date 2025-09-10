@@ -12,12 +12,12 @@ export default function SearchBoxWithSuggestions({
   containerRef,
 }) {
   return (
-    <div className="position-relative me-3 d-none d-md-block" ref={containerRef} style={{ zIndex: 3000 }}>
+    <div className="position-relative me-0 d-none d-md-block" ref={containerRef} style={{ zIndex: 3000 }}>
       <input
         type="text"
         placeholder="Tìm kiếm sản phẩm hoặc bài viết..."
         className="form-control ps-3 pe-5"
-  style={{ width: 500, height: 40, fontSize: 16, fontFamily: "Roboto" }}
+  style={{ width: 700, height: 40, fontSize: 16, fontFamily: "Roboto" }}
         value={search}
         onChange={handleSearchChange}
         onFocus={() => search && setShowSuggestions(true)}

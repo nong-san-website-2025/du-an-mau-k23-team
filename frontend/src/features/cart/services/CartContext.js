@@ -31,10 +31,16 @@ export const CartProvider = ({ children }) => {
     try {
       if (isAuthenticated()) {
         const res = await API.get("cartitems/");
-        const itemsWithSelected = res.data.map(i => ({ ...i, selected: true }));
+        const itemsWithSelected = res.data.map((i) => ({
+          ...i,
+          selected: true,
+        }));
         setCartItems(itemsWithSelected);
       } else {
-        const guestItems = getGuestCart().map(i => ({ ...i, selected: true }));
+        const guestItems = getGuestCart().map((i) => ({
+          ...i,
+          selected: true,
+        }));
         setCartItems(guestItems);
       }
     } catch (err) {
@@ -72,7 +78,13 @@ export const CartProvider = ({ children }) => {
   }, []);
 
   // Add item
-  const addToCart = async (productId, quantity = 1, productInfo) => {
+  const addToCart = async (
+    productId,
+    quantity = 1,
+    productInfo,
+    onSuccess,
+    onError
+  ) => {
     if (!productId || quantity < 1) return;
     setLoading(true);
     try {
@@ -81,21 +93,30 @@ export const CartProvider = ({ children }) => {
         await fetchCart();
       } else {
         let items = getGuestCart();
-        const idx = items.findIndex(i => i.product === productId);
+        const idx = items.findIndex((i) => i.product === productId);
         if (idx >= 0) items[idx].quantity += quantity;
-        else items.push({
-          product: productId,
-          quantity,
-          product_data: { id: productInfo?.id || productId, name: productInfo?.name || "", price: productInfo?.price || 0 }
-        });
+        else
+          items.push({
+            product: productId,
+            quantity,
+            product_data: {
+              id: productInfo?.id || productId,
+              name: productInfo?.name || "",
+              price: productInfo?.price || 0,
+            },
+          });
         saveGuestCart(items);
-        setCartItems(items.map(i => ({ ...i, selected: true })));
+        setCartItems(items.map((i) => ({ ...i, selected: true })));
       }
+
+      if (onSuccess) onSuccess(); // ✅ gọi callback khi thành công
     } catch (err) {
       console.error(err);
       toast.error("Không thể thêm vào giỏ hàng");
+      if (onError) onError(err); // ✅ gọi callback khi lỗi
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   // Update quantity
@@ -110,9 +131,11 @@ export const CartProvider = ({ children }) => {
         toast.error("Không thể cập nhật số lượng");
       }
     } else {
-      let items = getGuestCart().map(i => i.product === itemId ? { ...i, quantity: newQty } : i);
+      let items = getGuestCart().map((i) =>
+        i.product === itemId ? { ...i, quantity: newQty } : i
+      );
       saveGuestCart(items);
-      setCartItems(items.map(i => ({ ...i, selected: true })));
+      setCartItems(items.map((i) => ({ ...i, selected: true })));
     }
   };
 
@@ -126,9 +149,9 @@ export const CartProvider = ({ children }) => {
         console.error(err);
       }
     } else {
-      let items = getGuestCart().filter(i => i.product !== itemId);
+      let items = getGuestCart().filter((i) => i.product !== itemId);
       saveGuestCart(items);
-      setCartItems(items.map(i => ({ ...i, selected: true })));
+      setCartItems(items.map((i) => ({ ...i, selected: true })));
     }
   };
 
@@ -144,17 +167,34 @@ export const CartProvider = ({ children }) => {
   };
 
   // Tick/untick
-  const selectAllItems = () => setCartItems(prev => prev.map(i => ({ ...i, selected: true })));
-  const deselectAllItems = () => setCartItems(prev => prev.map(i => ({ ...i, selected: false })));
-  const toggleItem = (itemId) => setCartItems(prev =>
-    prev.map(i => (i.id === itemId || i.product === itemId ? { ...i, selected: !i.selected } : i))
-  );
+  const selectAllItems = () =>
+    setCartItems((prev) => prev.map((i) => ({ ...i, selected: true })));
+  const deselectAllItems = () =>
+    setCartItems((prev) => prev.map((i) => ({ ...i, selected: false })));
+  const toggleItem = (itemId) =>
+    setCartItems((prev) =>
+      prev.map((i) =>
+        i.id === itemId || i.product === itemId
+          ? { ...i, selected: !i.selected }
+          : i
+      )
+    );
 
   return (
-    <CartContext.Provider value={{
-      cartItems, loading, addToCart, updateQuantity, removeFromCart, clearCart,
-      fetchCart, selectAllItems, deselectAllItems, toggleItem
-    }}>
+    <CartContext.Provider
+      value={{
+        cartItems,
+        loading,
+        addToCart,
+        updateQuantity,
+        removeFromCart,
+        clearCart,
+        fetchCart,
+        selectAllItems,
+        deselectAllItems,
+        toggleItem,
+      }}
+    >
       {children}
     </CartContext.Provider>
   );

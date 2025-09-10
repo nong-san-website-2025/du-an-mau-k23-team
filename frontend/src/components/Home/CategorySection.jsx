@@ -22,12 +22,12 @@ export default function CategorySection({ categories = [] }) {
                   style={{
                     width: "80px",
                     height: "80px",
-                    overflow: "hidden",
-                    borderRadius: "8px",
-                    background: "#f8f9fa",
+                    borderRadius: "50%",
+                    backgroundColor: "#f5f5f5", // Màu xanh nhạt
                     display: "flex",
                     justifyContent: "center",
                     alignItems: "center",
+                    overflow: "hidden",
                   }}
                 >
                   <img
@@ -41,15 +41,17 @@ export default function CategorySection({ categories = [] }) {
                     }}
                   />
                 </div>
+
+                {/* Tên danh mục */}
                 <div
                   className="fw-medium text-center"
                   style={{
                     maxWidth: "90px",
                     margin: "0 auto",
                     fontSize: 12,
-                    whiteSpace: "normal", // Cho phép xuống hàng
-                    wordWrap: "break-word", // Tự động xuống hàng nếu từ quá dài
-                    overflowWrap: "break-word", // Tương tự nhưng hỗ trợ chuẩn mới
+                    whiteSpace: "normal",
+                    wordWrap: "break-word",
+                    overflowWrap: "break-word",
                   }}
                 >
                   {cat.name}

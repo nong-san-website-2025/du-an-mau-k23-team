@@ -261,6 +261,7 @@ export default function Header() {
         className="shadow-sm"
         style={{
           position: "sticky",
+
           top: 0,
           zIndex: 999,
           fontFamily: "Montserrat, Arial, sans-serif",
@@ -276,8 +277,8 @@ export default function Header() {
           className="border-bottom"
           style={{
             position: "relative",
-            boxShadow: "0 2px 8px #0001",
             background: "#2E7D32",
+            padding: "0 100px",
           }}
         >
           <div
@@ -286,9 +287,10 @@ export default function Header() {
           >
             {/* Logo */}
             <Logo greenText={greenText} />
+            
 
             {/* Navigation */}
-            <nav
+            {/* <nav
               className="d-flex align-items-center flex-grow-1 ms-1"
               style={{ flexWrap: "nowrap" }}
             >
@@ -301,8 +303,7 @@ export default function Header() {
                 handleCategoryHover={handleCategoryHover}
                 setShowCategory={setShowCategory}
               />
-              {/* <NavLinks /> */}
-            </nav>
+            </nav> */}
 
             {/* Search & Actions */}
             <SearchBoxWithSuggestions
