@@ -1,3 +1,4 @@
+// src/pages/DashboardPage.jsx
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { Row, Col, Card, Statistic, Table, Typography } from "antd";
@@ -6,15 +7,19 @@ import {
   ShoppingOutlined,
   ShoppingCartOutlined,
   DollarOutlined,
+  ShopOutlined,
+  TeamOutlined,
 } from "@ant-design/icons";
-import RevenueChart from "../components/RevenueChart";
-import OrderPieChart from "../components/OrderPieChart";
+import RevenueChart from "../components/Dashboard/RevenueChart";
+import OrderPieChart from "../components/Dashboard/OrderPieChart";
+import { useTranslation } from "react-i18next";
 
 const { Title } = Typography;
 
 export default function DashboardPage() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const { t } = useTranslation();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -41,30 +46,36 @@ export default function DashboardPage() {
   if (!data) return <div>Error loading data</div>;
 
   const topProductsColumns = [
+    { title: t("dashboard.top_products.name"), dataIndex: "name", key: "name" },
+    { title: t("dashboard.top_products.sales"), dataIndex: "sales", key: "sales" },
+  ];
+
+  const topSellersColumns = [
     {
-      title: "Tên sản phẩm",
-      dataIndex: "name", // phải khớp với alias trong views.py
-      key: "name",
+      title: t("dashboard.top_sellers.seller"),
+      dataIndex: "product__seller__store_name",
+      key: "seller",
     },
     {
-      title: "Số lượng bán",
-      dataIndex: "sales",
-      key: "sales",
+      title: t("dashboard.top_sellers.revenue"),
+      dataIndex: "revenue",
+      key: "revenue",
+      render: (value) => `${value.toLocaleString()} ₫`,
     },
   ];
 
   return (
     <div style={{ padding: 24, background: "#f5f5f5", minHeight: "100vh" }}>
-      <Title level={2} style={{ marginBottom: 24 }}>
-        Dashboard
-      </Title>
+      <Row justify="space-between" align="middle" style={{ marginBottom: 24 }}>
+        <Title level={2}>{t("Dashboard")}</Title>
+      </Row>
 
       {/* Cards tổng quan */}
       <Row gutter={[16, 16]}>
         <Col xs={24} sm={12} md={6}>
           <Card>
             <Statistic
-              title="Tổng số người dùng"
+              title={t("dashboard.cards.total_users")}
               value={data.total_users}
               prefix={<UserOutlined />}
             />
@@ -73,7 +84,25 @@ export default function DashboardPage() {
         <Col xs={24} sm={12} md={6}>
           <Card>
             <Statistic
-              title="Tổng số sản phẩm"
+              title={t("dashboard.cards.sellers")}
+              value={data.total_sellers}
+              prefix={<ShopOutlined />}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} md={6}>
+          <Card>
+            <Statistic
+              title={t("dashboard.cards.customers")}
+              value={data.total_customers}
+              prefix={<TeamOutlined />}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} md={6}>
+          <Card>
+            <Statistic
+              title={t("dashboard.cards.total_products")}
               value={data.total_products}
               prefix={<ShoppingOutlined />}
             />
@@ -82,7 +111,7 @@ export default function DashboardPage() {
         <Col xs={24} sm={12} md={6}>
           <Card>
             <Statistic
-              title="Tổng số đơn hàng"
+              title={t("dashboard.cards.total_orders")}
               value={data.total_orders}
               prefix={<ShoppingCartOutlined />}
             />
@@ -91,7 +120,7 @@ export default function DashboardPage() {
         <Col xs={24} sm={12} md={6}>
           <Card>
             <Statistic
-              title="Doanh thu"
+              title={t("dashboard.cards.revenue")}
               value={data.total_revenue}
               precision={0}
               prefix={<DollarOutlined />}
@@ -104,13 +133,13 @@ export default function DashboardPage() {
       {/* Charts */}
       <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
         <Col xs={24} md={14}>
-          <Card title="Doanh thu theo tháng">
-            <RevenueChart />
+          <Card title={t("dashboard.charts.revenue_by_month")}>
+            <RevenueChart data={data.revenue_by_month} />
           </Card>
         </Col>
         <Col xs={24} md={10}>
-          <Card title="Tỷ lệ đơn hàng">
-            <OrderPieChart />
+          <Card title={t("dashboard.charts.orders_by_status")}>
+            <OrderPieChart data={data.orders_by_status} />
           </Card>
         </Col>
       </Row>
@@ -118,13 +147,28 @@ export default function DashboardPage() {
       {/* Bảng sản phẩm bán chạy */}
       <Row style={{ marginTop: 24 }}>
         <Col span={24}>
-          <Card title="Sản phẩm bán chạy">
+          <Card title={t("Top Products")}>
             <Table
               dataSource={data.top_products || []}
               columns={topProductsColumns}
               rowKey={(record) => record.name}
               pagination={false}
-              locale={{ emptyText: "Không có dữ liệu" }}
+              locale={{ emptyText: t("no_data") }}
+            />
+          </Card>
+        </Col>
+      </Row>
+
+      {/* Bảng top seller */}
+      <Row style={{ marginTop: 24 }}>
+        <Col span={24}>
+          <Card title={t("Top Sellers")}>
+            <Table
+              dataSource={data.top_sellers || []}
+              columns={topSellersColumns}
+              rowKey={(record) => record.product__seller__id}
+              pagination={false}
+              locale={{ emptyText: t("no_data") }}
             />
           </Card>
         </Col>

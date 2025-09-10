@@ -20,6 +20,15 @@ import CategoryManagementPage from "../features/admin/pages/ProductPage/Category
 import Promotions from "../features/admin/pages/Promotions/PromotionsPage.jsx";
 import FlashSale from "../features/admin/pages/Promotions/FlashSale.jsx";
 import AdvertisementList from "../features/admin/pages/MarketingAdmin/AdvertisementList.jsx";
+import SettingsPage from "../features/admin/pages/SettingsPage";
+// import StatisticsPage from "../features/admin/pages/StatisticsPage";
+import AccountPage from "../features/admin/pages/Setting/AccountPage";
+import RolesPage from "../features/admin/pages/Setting/RolesPage";
+import SystemConfigPage from "../features/admin/pages/Setting/SystemConfigPage";
+import SystemLogsPage from "../features/admin/pages/Setting/SystemLogsPage";
+import ProfilePage from "../features/admin/pages/Users/ProfilePage";
+import ChangePasswordPage from "../features/admin/pages/Users/ChangePasswordPage";
+
 
 export const adminRoutes = [
   <Route element={<AdminPrivateRoute />} key="admin-protect">
@@ -32,7 +41,6 @@ export const adminRoutes = [
       {/* Product management */}
       <Route path="products/approval" element={<ApprovalProductsPage />} />
       <Route path="products/categories" element={<CategoryManagementPage />} />
-
       <Route path="orders" element={<OrdersPage />} />
       <Route path="complaints" element={<ComplaintsPage />} />
       <Route path="vouchers" element={<VouchersPage />} />
@@ -42,16 +50,28 @@ export const adminRoutes = [
       <Route path="staff" element={<StaffPage />} />
       <Route path="reports" element={<ReportsPage />} />
       <Route path="supports" element={<SupportPage />} />
-
       {/* New pages */}
       {/* <Route path="statistics" element={<StatisticsPage />} />
       <Route path="settings" element={<SettingsPage />} /> */}
       <Route path="sellers/pending" element={<SellersPage />} />
       <Route path="promotions/" element={<Promotions />} />
       <Route path="promotions/flashsale" element={<FlashSale />} />
-
       {/* Marketing pages */}
       <Route path="marketing/banners" element={<AdvertisementList />} />
+      <Route index element={<DashboardPage />} /> {/* /admin */}
+      <Route path="dashboard" element={<DashboardPage />} />{" "}
+      {/* /admin/dashboard */}
+      <Route path="settings" element={<SettingsPage />} />{" "}
+      {/* /admin/settings */}
+      <Route path="account" element={<AccountPage />} /> {/* /admin/account */}
+      <Route path="roles" element={<RolesPage />} /> {/* /admin/roles */}
+      <Route path="system-config" element={<SystemConfigPage />} />{" "}
+      {/* /admin/system-config */}
+      <Route path="system-logs" element={<SystemLogsPage />} />{" "}
+      {/* /admin/system-logs */}
+      <Route path="profile" element={<ProfilePage />} /> {/* /admin/profile */}
+      <Route path="change-password" element={<ChangePasswordPage />} />{" "}
+      {/* /admin/change-password */}
     </Route>
-  </Route>
+  </Route>,
 ];
