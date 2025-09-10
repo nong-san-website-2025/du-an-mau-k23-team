@@ -15,6 +15,7 @@ import SystemConfigPage from "./features/admin/pages/Setting/SystemConfigPage";
 import SystemLogsPage from "./features/admin/pages/Setting/SystemLogsPage";
 import ProfilePage from "./features/admin/pages/Users/ProfilePage";
 import ChangePasswordPage from "./features/admin/pages/Users/ChangePasswordPage";
+import ProductDetailPage from "./features/products/pages/ProductDetailPage";
 
 function App() {
   return (
@@ -27,6 +28,7 @@ function App() {
               {userRoutes}
               {adminRoutes}
               {sellerRoutes}
+              <Route path="/product/:id" element={<ProductDetailPage />} />
 
               <Route path="/admin" element={<AdminLayout />}>
                 <Route index element={<DashboardPage />} /> {/* /admin */}

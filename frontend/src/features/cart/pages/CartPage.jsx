@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { Store } from "lucide-react";
 import "../styles/CartPage.css";
 import QuantityInput from "./QuantityInput";
+import { productApi } from "../../products/services/productApi";
 
 function CartPage() {
   const { cartItems } = useCart();
@@ -16,27 +17,29 @@ function CartPage() {
   // Tick all khi cartItems thay đổi
   useEffect(() => {
     if (cartItems.length > 0) {
-      setSelectedItems(cartItems.map((item) => item.id));
+      setSelectedItems(cartItems.map((item) => item.id || item.product));
     }
   }, [cartItems]);
 
-  // Load danh mục sản phẩm (ví dụ từ API hoặc tạm thời)
-  useEffect(() => {
-    // Giả lập danh mục
-    setProducts([
-      { id: 1, name: "Sản phẩm A", image: "/images/prodA.jpg" },
-      { id: 2, name: "Sản phẩm B", image: "/images/prodB.jpg" },
-      { id: 3, name: "Sản phẩm C", image: "/images/prodC.jpg" },
-      { id: 4, name: "Sản phẩm D", image: "/images/prodD.jpg" },
-    ]);
-  }, []);
+  // Load danh mục sản phẩm demo
+  // useEffect(() => {
+  //   const loadProducts = async () => {
+  //     try {
+  //       const data = await productApi.getAllProducts();
+  //       setProducts(data.slice(0, 8)); // ✅ chỉ lấy 8 sản phẩm
+  //     } catch (err) {
+  //       console.error("❌ Lỗi load sản phẩm:", err);
+  //     }
+  //   };
+  //   loadProducts();
+  // }, []);
 
   const allChecked =
     cartItems.length > 0 && selectedItems.length === cartItems.length;
 
   const handleCheckAll = (e) => {
     if (e.target.checked) {
-      setSelectedItems(cartItems.map((item) => item.id));
+      setSelectedItems(cartItems.map((item) => item.id || item.product));
     } else {
       setSelectedItems([]);
     }
@@ -51,14 +54,13 @@ function CartPage() {
   };
 
   const selectedItemsData = cartItems.filter((item) =>
-    selectedItems.includes(item.id)
+    selectedItems.includes(item.id || item.product)
   );
 
-  const selectedTotal = selectedItemsData.reduce(
-    (sum, item) =>
-      sum + (Number(item.product?.price) || 0) * (Number(item.quantity) || 0),
-    0
-  );
+  const selectedTotal = selectedItemsData.reduce((sum, item) => {
+    const prod = item.product_data || item.product || {};
+    return sum + (Number(prod.price) || 0) * (Number(item.quantity) || 0);
+  }, 0);
 
   const selectedQuantity = selectedItemsData.reduce(
     (sum, item) => sum + Number(item.quantity || 0),
@@ -94,16 +96,14 @@ function CartPage() {
               <span className="col-total">Thành tiền</span>
             </div>
             {cartItems.map((item) => {
-              const prod =
-                typeof item.product === "object"
-                  ? item.product
-                  : item.product_data || {};
+              const prod = item.product_data || item.product || {};
+              const itemId = item.id || item.product;
               return (
-                <div key={item.id} className="cart-item">
+                <div key={itemId} className="cart-item">
                   <input
                     type="checkbox"
-                    checked={selectedItems.includes(item.id)}
-                    onChange={() => handleCheckItem(item.id)}
+                    checked={selectedItems.includes(itemId)}
+                    onChange={() => handleCheckItem(itemId)}
                   />
                   <div className="item-info">
                     {prod.image ? (
@@ -122,18 +122,14 @@ function CartPage() {
                   </div>
                   <div
                     className="item-quantity"
-                    style={{
-                      color: "#000",
-                      justifyContent: "center",
-                      display: "flex",
-                    }}
+                    style={{ display: "flex", justifyContent: "center" }}
                   >
                     <QuantityInput item={item} />
                   </div>
                   <div className="item-total">
-                    {(Number(prod.price) * Number(item.quantity)).toLocaleString(
-                      "vi-VN"
-                    )}
+                    {(
+                      Number(prod.price) * Number(item.quantity)
+                    ).toLocaleString("vi-VN")}
                     ₫
                   </div>
                 </div>
@@ -184,31 +180,31 @@ function CartPage() {
         </div>
       </div>
 
-      {/* DANH MỤC SẢN PHẨM */}
       <div className="product-category mt-4">
-        <h4>Khám phá các sản phẩm khác</h4>
+        <h4>Sản phẩm trong giỏ</h4>
         <Row>
-          {products.map((prod) => (
-            <Col key={prod.id} xs={6} sm={4} md={3} className="mb-3">
-              <Card className="product-card">
-                {prod.image ? (
-                  <Card.Img variant="top" src={prod.image} />
-                ) : (
-                  <div className="no-image">No Image</div>
-                )}
-                <Card.Body>
-                  <Card.Title style={{ fontSize: "0.9rem" }}>{prod.name}</Card.Title>
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={() => navigate(`/product/${prod.id}`)}
-                  >
-                    Xem sản phẩm
-                  </Button>
-                </Card.Body>
-              </Card>
-            </Col>
-          ))}
+          {cartItems.slice(0, 8).map((item) => {
+            const prod = item.product_data || item.product || {};
+            return (
+              <Col key={prod.id} xs={6} sm={4} md={3} className="mb-3">
+                <Card
+                  className="product-card clickable-card"
+                  onClick={() => navigate(`/products/${prod.id}`)} // ✅ click card là qua
+                >
+                  {prod.image ? (
+                    <Card.Img variant="top" src={prod.image} />
+                  ) : (
+                    <div className="no-image">No Image</div>
+                  )}
+                  <Card.Body>
+                    <Card.Title style={{ fontSize: "0.9rem" }}>
+                      {prod.name || "---"}
+                    </Card.Title>
+                  </Card.Body>
+                </Card>
+              </Col>
+            );
+          })}
         </Row>
       </div>
     </div>
