@@ -22,7 +22,7 @@ export const reviewApi = {
   getMyReview: async (productId) => {
     const token = localStorage.getItem("token");
     const res = await axios.get(
-      `${API_URL}/products/${productId}/reviews/me/`,
+      `${API_URL}/reviews/products/${productId}/my-review/`,
       { headers: { Authorization: `Bearer ${token}` } }
     );
     return res.data;

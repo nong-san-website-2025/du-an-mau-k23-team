@@ -45,6 +45,7 @@ class SubcategoryViewSet(viewsets.ModelViewSet):
     permission_classes = [AllowAny]
 
 class ProductViewSet(viewsets.ModelViewSet):
+    permission_classes = [AllowAny]
     queryset = Product.objects.select_related('subcategory__category', 'seller').all()
 
     def get_serializer_class(self):
