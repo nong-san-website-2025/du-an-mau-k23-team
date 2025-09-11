@@ -6,61 +6,28 @@ import LoginForm from "./features/login_register/pages/LoginForm";
 import { userRoutes } from "./routes/UserRoutes";
 import { adminRoutes } from "./routes/AdminRoutes";
 import { sellerRoutes } from "./routes/SellerRoutes.jsx";
-import DashboardPage from "./features/admin/pages/DashboardPage";
-import SettingsPage from "./features/admin/pages/Setting/SettingsPage";
-import AccountPage from "./features/admin/pages/Setting/AccountPage";
-import AdminLayout from "./features/admin/components/AdminLayout";
-import RolesPage from "./features/admin/pages/Setting/RolesPage";
-import SystemConfigPage from "./features/admin/pages/Setting/SystemConfigPage";
-import SystemLogsPage from "./features/admin/pages/Setting/SystemLogsPage";
-import ProfilePage from "./features/admin/pages/Users/ProfilePage";
-import ChangePasswordPage from "./features/admin/pages/Users/ChangePasswordPage";
-import ProductDetailPage from "./features/products/pages/ProductDetailPage";
+
 
 function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <CartProvider>
-          <BannerProvider>
-            <Routes>
-              <Route path="/login" element={<LoginForm />} />
-              {userRoutes}
-              {adminRoutes}
-              {sellerRoutes}
-              <Route path="/product/:id" element={<ProductDetailPage />} />
-
-              <Route path="/admin" element={<AdminLayout />}>
-                <Route index element={<DashboardPage />} /> {/* /admin */}
-                <Route path="dashboard" element={<DashboardPage />} />{" "}
-                {/* /admin/dashboard */}
-                <Route path="settings" element={<SettingsPage />} />{" "}
-                {/* /admin/settings */}
-                <Route path="account" element={<AccountPage />} />{" "}
-                {/* /admin/account */}
-                <Route path="roles" element={<RolesPage />} />{" "}
-                {/* /admin/roles */}
-                <Route
-                  path="system-config"
-                  element={<SystemConfigPage />}
-                />{" "}
-                {/* /admin/system-config */}
-                <Route path="system-logs" element={<SystemLogsPage />} />{" "}
-                {/* /admin/system-logs */}
-                <Route path="profile" element={<ProfilePage />} />{" "}
-                {/* /admin/profile */}
-                <Route
-                  path="change-password"
-                  element={<ChangePasswordPage />}
-                />{" "}
-                {/* /admin/change-password */}
-              </Route>
-            </Routes>
-          </BannerProvider>
+    <div className="main-container">
+      <BrowserRouter>
+        <AuthProvider>
+          <CartProvider>
+            <BannerProvider>
+              <Routes>
+                <Route path="/login" element={<LoginForm />} />
+                {userRoutes}
+                {adminRoutes}
+                {sellerRoutes}
+              </Routes>
+            </BannerProvider>
         </CartProvider>
       </AuthProvider>
     </BrowserRouter>
+    </div>
   );
 }
+
 
 export default App;

@@ -34,7 +34,7 @@ def create_momo_payment(request):
     order = Order.objects.create(
         user=request.user,
         total_price=amount,
-        status="PENDING",
+        status="pending",
         customer_name=customer_name,
         customer_phone=customer_phone,
         address=address,
@@ -118,14 +118,14 @@ def momo_ipn(request):
         return Response({"error": "Payment không tồn tại"}, status=status.HTTP_404_NOT_FOUND)
 
     if result_code == 0:
-        payment.status = "SUCCESS"
+        payment.status = "success"
         payment.save()
-        # Đồng thời cập nhật Order
+        # Đồng thời cập nhật Order (trạng thái chuẩn: success)
         order = payment.order
-        order.status = "COMPLETED"
-        order.save()
+        order.status = "success"
+        order.save(update_fields=["status"])
     else:
-        payment.status = "FAILED"
+        payment.status = "failed"
         payment.save()
 
     return Response({"message": "IPN received"}, status=status.HTTP_200_OK)

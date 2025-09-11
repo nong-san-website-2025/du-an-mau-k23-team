@@ -36,8 +36,10 @@ class Complaint(models.Model):
         return f"{self.user} - {self.product} ({self.status})"
 
 class ComplaintMedia(models.Model):
-    complaint = models.ForeignKey(Complaint, related_name='media', on_delete=models.CASCADE)
-    file = CloudinaryField(resource_type='auto')
+    complaint = models.ForeignKey(
+        Complaint, related_name='media', on_delete=models.CASCADE
+    )
+    file = models.FileField(upload_to="complaints/")  # hoặc ImageField nếu chỉ ảnh
 
     def __str__(self):
         return str(self.file)

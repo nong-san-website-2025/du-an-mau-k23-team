@@ -16,8 +16,8 @@ from .serializers import DashboardSerializer
 @permission_classes([IsAuthenticated])
 def dashboard_data(request):
     total_users = CustomUser.objects.count()
-    total_sellers = CustomUser.objects.filter(role="seller").count()
-    total_customers = CustomUser.objects.filter(is_customer=True).count()
+    total_sellers = Seller.objects.count()
+    total_customers = CustomUser.objects.filter(role__name="customer").count()
     total_products = Product.objects.count()
     total_orders = Order.objects.count()
     total_revenue = Order.objects.aggregate(total=Sum("total_price"))["total"] or 0
@@ -25,12 +25,13 @@ def dashboard_data(request):
     # --- Top sản phẩm ---
     top_products = list(
         OrderItem.objects.values(
-            product_id=F("product__id"),
-            name=F("product__name")
-        )
-        .annotate(sales=Sum("quantity"))
-        .order_by("-sales")[:5]
+        prod_id=F("product__id"),   # Đổi từ pro_id -> prod_id
+        name=F("product__name")
     )
+    .annotate(sales=Sum("quantity"))
+    .order_by("-sales")[:5]
+)
+
 
     # --- Top seller ---
     top_sellers = list(
@@ -59,8 +60,9 @@ def dashboard_data(request):
         )
         revenue_by_month.append({"month": month, "revenue": float(revenue)})
 
-    orders_by_status = list(
-        Order.objects.values(status=F("status"))
+    # --- Orders by status ---
+    orders_by_status = (
+        Order.objects.values(sta=F("status"))
         .annotate(count=Count("id"))
         .order_by("status")
     )

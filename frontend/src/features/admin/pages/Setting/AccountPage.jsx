@@ -14,7 +14,7 @@ export default function AccountPage() {
 
   const fetchUser = async () => {
     try {
-      const res = await axios.get(`${API_BASE_URL}/user/me/`, {
+      const res = await axios.get(`${API_BASE_URL}/users/me/`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       form.setFieldsValue(res.data);
@@ -31,7 +31,7 @@ export default function AccountPage() {
   const handleUpdate = async (values) => {
     setLoading(true);
     try {
-      await axios.put(`${API_BASE_URL}/user/me/`, values, {
+      await axios.put(`${API_BASE_URL}/users/me/`, values, {
         headers: { Authorization: `Bearer ${token}` },
       });
       message.success("Cập nhật thông tin thành công!");

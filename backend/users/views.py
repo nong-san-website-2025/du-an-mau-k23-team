@@ -124,7 +124,7 @@ class GoogleLoginAPIView(APIView):
 class RegisterView(generics.CreateAPIView):
     queryset = CustomUser.objects.all()
     serializer_class = RegisterSerializer
-    permission_classes = [AllowAny]
+    permission_classes =  [AllowAny]
 
 
 class LoginView(APIView):

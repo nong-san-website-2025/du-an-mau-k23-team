@@ -1,5 +1,4 @@
 from rest_framework import viewsets, status
-from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.db.models import Q
 from .models import Product, Category
@@ -13,22 +12,19 @@ from reviews.serializers import ReviewSerializer
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAdminUser
-from rest_framework import viewsets, status
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import action
-from rest_framework.response import Response
 from .models import Category, Subcategory, Product
 from .serializers import CategorySerializer, SubcategorySerializer, ProductListSerializer, CategoryCreateSerializer
 from rest_framework.permissions import AllowAny
 from rest_framework import viewsets, permissions, status
-from rest_framework.decorators import action
-from django.db.models import Q
-from .serializers import ProductSerializer
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])  # chỉ admin được gọi
+@permission_classes([IsAuthenticated])
 def products_by_seller(request, seller_id):
-    products = Product.objects.filter(seller_id=seller_id)
+    if not request.user.is_staff:  # chỉ admin
+        return Response({"detail": "Không có quyền"}, status=403)
+
+    products = Product.objects.filter(shop__owner__seller__id=seller_id)
     serializer = ProductSerializer(products, many=True)
     return Response(serializer.data)
 
@@ -49,12 +45,28 @@ class SubcategoryViewSet(viewsets.ModelViewSet):
     permission_classes = [AllowAny]
 
 class ProductViewSet(viewsets.ModelViewSet):
+    permission_classes = [AllowAny]
     queryset = Product.objects.select_related('subcategory__category', 'seller').all()
+
+    def get_permissions(self):
+        # Public read, restricted write/actions
+        if self.action in ["list", "retrieve", "featured"]:
+            return [permissions.AllowAny()]
+        return [IsAuthenticated()]
 
     def get_serializer_class(self):
         if self.action in ['list', 'featured']:
             return ProductListSerializer
         return ProductSerializer
+
+    def destroy(self, request, *args, **kwargs):
+        product = self.get_object()
+        # Only owner can delete and only when self_rejected
+        if not hasattr(request.user, "seller") or product.seller != request.user.seller:
+            return Response({"detail": "Không có quyền"}, status=status.HTTP_403_FORBIDDEN)
+        if product.status != "self_rejected":
+            return Response({"detail": "Chỉ được xóa khi sản phẩm ở trạng thái tự từ chối"}, status=status.HTTP_400_BAD_REQUEST)
+        return super().destroy(request, *args, **kwargs)
 
     def get_queryset(self):
         queryset = Product.objects.select_related('subcategory__category', 'seller').all()
@@ -69,7 +81,7 @@ class ProductViewSet(viewsets.ModelViewSet):
             except AttributeError:
                 queryset = queryset.filter(status='approved')
         elif role == 'customer' or role is None:
-            queryset = queryset.filter(status='approved')
+            queryset = queryset.filter(status='approved', is_hidden=False)
         # admin hoặc các role khác thấy tất cả
 
         # ----- Filter theo query params -----
@@ -112,6 +124,29 @@ class ProductViewSet(viewsets.ModelViewSet):
         product.save()
         return Response({"message": "Product rejected"}, status=status.HTTP_200_OK)
 
+    # Seller tự từ chối (để có thể xóa)
+    @action(detail=True, methods=["post"], url_path="self-reject", permission_classes=[IsAuthenticated])
+    def self_reject(self, request, pk=None):
+        product = self.get_object()
+        # Chỉ chủ sở hữu mới được tự từ chối
+        if not hasattr(request.user, "seller") or product.seller != request.user.seller:
+            return Response({"detail": "Không có quyền"}, status=status.HTTP_403_FORBIDDEN)
+        product.status = "self_rejected"
+        product.save(update_fields=["status"])
+        return Response({"message": "Product self rejected"}, status=status.HTTP_200_OK)
+
+    # Ẩn/hiện sản phẩm (chỉ với sản phẩm đã duyệt)
+    @action(detail=True, methods=["post"], url_path="toggle-hide", permission_classes=[IsAuthenticated])
+    def toggle_hide(self, request, pk=None):
+        product = self.get_object()
+        if not hasattr(request.user, "seller") or product.seller != request.user.seller:
+            return Response({"detail": "Không có quyền"}, status=status.HTTP_403_FORBIDDEN)
+        if product.status != "approved":
+            return Response({"detail": "Chỉ ẩn/hiện được sản phẩm đã duyệt"}, status=status.HTTP_400_BAD_REQUEST)
+        product.is_hidden = not product.is_hidden
+        product.save(update_fields=["is_hidden"])
+        return Response({"hidden": product.is_hidden})
+
     @action(detail=True, methods=["post"])
     def ban(self, request, pk=None):
         product = self.get_object()
@@ -119,11 +154,14 @@ class ProductViewSet(viewsets.ModelViewSet):
         product.save()
         return Response({"message": "Product banned"}, status=status.HTTP_200_OK)
 
-    @action(detail=True, methods=["post"])
+    @action(detail=True, methods=["post"], permission_classes=[IsAuthenticated])
     def unban(self, request, pk=None):
         product = self.get_object()
         if product.status != "banned":
             return Response({"message": "Not banned"}, status=status.HTTP_400_BAD_REQUEST)
+        # Only owner or admin can unban
+        if not (request.user.is_staff or (hasattr(request.user, "seller") and product.seller == request.user.seller)):
+            return Response({"detail": "Không có quyền"}, status=status.HTTP_403_FORBIDDEN)
         product.status = "approved"
         product.save()
         return Response({"message": "Product unbanned"}, status=status.HTTP_200_OK)
@@ -137,9 +175,8 @@ class ProductViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def featured(self, request):
-        products = self.get_queryset().filter(
-            Q(is_best_seller=True) | Q(is_new=True) | Q(discount__gt=0)
-        )[:12]
+        # Return latest approved and visible products as "featured"
+        products = self.get_queryset().filter(status='approved', is_hidden=False).order_by('-created_at')[:12]
         serializer = ProductListSerializer(products, many=True, context={'request': request})
         return Response(serializer.data)
 

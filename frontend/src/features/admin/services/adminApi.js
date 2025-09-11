@@ -34,20 +34,33 @@ const adminApi = {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to fetch orders");
+        const text = await response.text();
+        throw new Error(`Failed to fetch orders: ${response.status} ${text}`);
       }
 
-      return await response.json();
+      const data = await response.json();
+      // Ensure shop_name/phone exist at order level (fallback from first item)
+      return (Array.isArray(data) ? data : []).map((o) => {
+        if (!o.shop_name || !o.shop_phone) {
+          const fi = (o.items || [])[0];
+          if (fi) {
+            o.shop_name = o.shop_name || fi.seller_name;
+            o.shop_phone = o.shop_phone || fi.seller_phone;
+          }
+        }
+        return o;
+      });
     } catch (error) {
       console.error("Error fetching orders:", error);
-      return [];
+      // Propagate error so UI can show message instead of silently returning []
+      throw error;
     }
   },
 
   getOrderDetail: async (orderId) => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`${API_URL}/orders/${orderId}/`, {
+      const response = await fetch(`${API_URL}/orders/${orderId}/admin-detail/`, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
@@ -55,10 +68,19 @@ const adminApi = {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to fetch order detail");
+        const text = await response.text();
+        throw new Error(`Failed to fetch order detail: ${response.status} ${text}`);
       }
 
-      return await response.json();
+      const o = await response.json();
+      if (!o.shop_name || !o.shop_phone) {
+        const fi = (o.items || [])[0];
+        if (fi) {
+          o.shop_name = o.shop_name || fi.seller_name;
+          o.shop_phone = o.shop_phone || fi.seller_phone;
+        }
+      }
+      return o;
     } catch (error) {
       console.error("Error fetching order detail:", error);
       throw error;

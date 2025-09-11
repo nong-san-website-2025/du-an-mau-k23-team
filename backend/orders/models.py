@@ -44,7 +44,7 @@ class Order(models.Model):
     is_deleted = models.BooleanField(default=False)  # Soft delete field
     created_at = models.DateTimeField(auto_now_add=True)
     deleted_at = models.DateTimeField(null=True, blank=True)  # Timestamp when deleted
-    
+
     # Managers
     objects = OrderManager()  # Default manager excludes deleted orders
     all_objects = models.Manager()  # Manager that includes all orders

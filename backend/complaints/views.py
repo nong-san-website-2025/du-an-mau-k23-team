@@ -2,9 +2,11 @@
 from rest_framework import viewsets
 from .models import Complaint, ComplaintMedia
 from .serializers import ComplaintSerializer
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.decorators import action
+from decimal import Decimal
 
 class ComplaintViewSet(viewsets.ModelViewSet):
     queryset = Complaint.objects.all().order_by('-created_at')
@@ -27,3 +29,50 @@ class ComplaintViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         # Không cần dùng nữa, đã custom create
         pass
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAdminUser])
+    def resolve(self, request, pk=None):
+        """
+        Admin resolves a complaint.
+        - resolution_type: one of ['refund_full','refund_partial','replace','voucher','reject']
+        - amount (required for refund_partial): integer/decimal string (VNĐ)
+        Credits the user's wallet on refund_*.
+        """
+        complaint = self.get_object()
+        resolution_type = request.data.get('resolution_type')
+        amount_raw = request.data.get('amount')
+
+        valid_types = {'refund_full', 'refund_partial', 'replace', 'voucher', 'reject'}
+        if resolution_type not in valid_types:
+            return Response({'error': 'Invalid resolution_type'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Default status based on resolution
+        complaint.status = 'resolved' if resolution_type != 'reject' else 'rejected'
+        complaint.resolution_type = resolution_type
+
+        wallet_balance = None
+
+        if resolution_type == 'refund_partial':
+            if amount_raw is None:
+                return Response({'error': 'amount is required for refund_partial'}, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                amount = Decimal(str(amount_raw))
+            except Exception:
+                return Response({'error': 'Invalid amount'}, status=status.HTTP_400_BAD_REQUEST)
+            if amount <= 0:
+                return Response({'error': 'Amount must be > 0'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Credit wallet
+            from wallet.models import Wallet
+            wallet, _ = Wallet.objects.get_or_create(user=complaint.user)
+            wallet.balance = (wallet.balance or Decimal('0')) + amount
+            wallet.save()
+            wallet_balance = wallet.balance
+
+        # TODO: implement refund_full logic if needed (e.g., credit full order item/payment amount)
+
+        complaint.save()
+        data = self.get_serializer(complaint).data
+        if wallet_balance is not None:
+            data['wallet_balance'] = str(wallet_balance)
+        return Response(data, status=status.HTTP_200_OK)

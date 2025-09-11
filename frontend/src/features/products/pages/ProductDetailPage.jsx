@@ -500,32 +500,34 @@ const ProductDetailPage = () => {
           </div>
 
           {/* Cam kết */}
-          <Row className="g-3">
-            <Col xs={4} className="text-center">
-              <Truck className="text-primary mb-1" />
-              <div>Giao hàng nhanh</div>
-            </Col>
-            <Col xs={4} className="text-center">
-              <ShieldCheck className="text-success mb-1" />
-              <div>Hàng chính hãng</div>
-            </Col>
-            <Col xs={4} className="text-center">
-              <RefreshCw className="text-warning mb-1" />
-              <div>Đổi trả dễ dàng</div>
-            </Col>
-          </Row>
         </Col>
       </Row>
 
       {/* Mô tả sản phẩm */}
-      <Card className="mt-5 border-0 shadow-sm p-4">
-        <h4 className="fw-bold mb-3">Mô tả sản phẩm</h4>
-        <p>{product.description}</p>
-        <div>
-          <strong>Thương hiệu:</strong> {product.brand || "Không có"}
+      <Card className="mt-5 border-0 shadow-sm p-4" style={{ borderRadius: 16, background: '#fff' }}>
+        <h4 className="fw-bold mb-3" style={{ fontSize: 22, color: '#222' }}>
+          <span style={{ verticalAlign: 'middle', marginRight: 8 }}>📝</span>Mô tả sản phẩm
+        </h4>
+        <div className="mb-3" style={{ fontSize: 16, color: '#444', lineHeight: 1.7, minHeight: 40 }}>
+          {product.description ? (
+            <span>{product.description}</span>
+          ) : (
+            <span className="text-muted fst-italic">Chưa có mô tả cho sản phẩm này.</span>
+          )}
         </div>
-        <div>
-          <strong>Vị trí:</strong> {product.location || "Không có"}
+        <div className="row" style={{ fontSize: 15 }}>
+          <div className="col-md-6 mb-1">
+            <strong>Thương hiệu:</strong>
+            <span className={(!product.brand || product.brand === 'Không có') ? 'text-muted fst-italic ms-1' : 'ms-1'}>
+              {product.brand || 'Không có'}
+            </span>
+          </div>
+          <div className="col-md-6 mb-1">
+            <strong>Vị trí:</strong>
+            <span className={(!product.location || product.location === 'Không có') ? 'text-muted fst-italic ms-1' : 'ms-1'}>
+              {product.location || 'Không có'}
+            </span>
+          </div>
         </div>
       </Card>
 
@@ -632,6 +634,23 @@ const ProductDetailPage = () => {
               <small className="text-muted">
                 {new Date(myReview.created_at).toLocaleString()}
               </small>
+
+              {/* Replies under my review */}
+              {Array.isArray(myReview.replies) && myReview.replies.length > 0 && (
+                <div className="mt-3 p-2 bg-white rounded border">
+                  <strong>Phản hồi từ cửa hàng:</strong>
+                  <ul className="mb-0 mt-2" style={{ paddingLeft: 18 }}>
+                    {myReview.replies.map((rp) => (
+                      <li key={rp.id} className="mb-1">
+                        <span>{rp.reply_text}</span>
+                        <small className="text-muted ms-2">
+                          {new Date(rp.created_at).toLocaleString()}
+                        </small>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           ) : (
             <>
@@ -684,6 +703,23 @@ const ProductDetailPage = () => {
               <small className="text-muted">
                 {new Date(r.created_at).toLocaleString()}
               </small>
+
+              {/* Replies under each review */}
+              {Array.isArray(r.replies) && r.replies.length > 0 && (
+                <div className="mt-2 p-2 bg-light rounded">
+                  <strong>Phản hồi từ cửa hàng:</strong>
+                  <ul className="mb-0 mt-2" style={{ paddingLeft: 18 }}>
+                    {r.replies.map((rp) => (
+                      <li key={rp.id} className="mb-1">
+                        <span>{rp.reply_text}</span>
+                        <small className="text-muted ms-2">
+                          {new Date(rp.created_at).toLocaleString()}
+                        </small>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           ))}
         </div>

@@ -54,11 +54,8 @@ cd du-an-mau-k23-team
     # Chạy frontend
     npm start
 
-### Chay sample_products.py de tao san pham demo
-from generate_sample_products import generate_sample_products
-generate_sample_products()
 
-## Hướng dẫn dùng tạm sqlite3
+### Hướng dẫn dùng tạm sqlite3
 ```bash
  - Vao settings.py của backend/config/settings.py đổi đoạn:
   else:
@@ -80,4 +77,11 @@ generate_sample_products()
         }
     }
 ```
+
+## Chay products ví dụ mẫu để code(Trước đó hãy tạo seller)
+```
+cd backend
+python manage.py generate_sample_products
+```
+
 

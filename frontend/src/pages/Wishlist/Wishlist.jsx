@@ -2,9 +2,13 @@
 
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
-import { Container, Row, Col, Card, Button, Form, InputGroup, Badge } from "react-bootstrap"
-import { Search, Heart, Trash2, ShoppingCart, Filter, Leaf, CheckCircle, XCircle } from "lucide-react"
+import axios from "axios"
+import { Container, Row, Col, Card, Button, Form, InputGroup, Badge, Spinner } from "react-bootstrap"
+import { Search, Heart, Trash2, ShoppingCart, Filter, Leaf, CheckCircle, XCircle, Star, Star as StarFill } from "lucide-react"
 import TopBanner from "./components/TopBanner";
+import { productApi } from "../../features/products/services/productApi";
+
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000/api"
 
 const Wishlist = () => {
   const [wishlist, setWishlist] = useState(() => {
@@ -22,6 +26,14 @@ const Wishlist = () => {
       return ""
     }
   })
+
+  // Recommended products by subcategory inferred from wishlist
+  const [recommended, setRecommended] = useState({}) // { subcategoryName: Product[] }
+  const [loadingRec, setLoadingRec] = useState(false)
+
+  // Additional recommendation list reused from UserProductPage UI
+  const [moreByUserPage, setMoreByUserPage] = useState([]) // flat list to render like UserProductPage cards
+  const [suggestLimit, setSuggestLimit] = useState(12) // number of suggestions to show initially
 
   // Lưu search vào localStorage mỗi khi thay đổi
   useEffect(() => {
@@ -45,6 +57,99 @@ const Wishlist = () => {
       return matchName && matchStatus
     })
   }
+
+  // Load recommended products based on wishlist categories/subcategories
+  useEffect(() => {
+    const loadRecommended = async () => {
+      try {
+        setLoadingRec(true)
+        const wishlistArr = Array.isArray(wishlist) ? wishlist : []
+        const wishlistIds = new Set(wishlistArr.map(p => p.id))
+
+        // infer unique subcategory names or categories from wishlist items (if available)
+        const subNames = Array.from(new Set((wishlistArr || [])
+          .map(p => p.subcategory_name || p.subcategory?.name || null)
+          .filter(Boolean)))
+
+        // Build recommendations by product name + subcategory for each wishlist item
+        try {
+          const buildTerms = (raw) => {
+            const n = (raw || "").toLowerCase().trim()
+            const words = n.split(/\s+/).filter(w => w.length >= 3)
+            const uniq = Array.from(new Set(words))
+            const terms = []
+            if (n) terms.push(n) // full name
+            if (uniq[0]) terms.push(uniq[0])
+            if (uniq[1]) terms.push(uniq[1])
+            return terms.slice(0, 3)
+          }
+
+          const searchPromises = wishlistArr.flatMap((it) => {
+            const name = it.name?.trim()
+            const sub = it.subcategory_name || it.subcategory?.name || ""
+            const terms = buildTerms(name)
+            if (terms.length === 0) return [Promise.resolve([])]
+            return terms.map((t) =>
+              productApi
+                .searchProducts(t, sub ? { subcategory: sub } : {})
+                .then((res) => (Array.isArray(res) ? res : []))
+                .catch(() => [])
+            )
+          })
+          const byNameGroups = await Promise.all(searchPromises)
+          const merged = []
+          const seen = new Set()
+          byNameGroups.flat().forEach((p) => {
+            if (!p || wishlistIds.has(p.id) || seen.has(p.id)) return
+            seen.add(p.id)
+            merged.push(p)
+          })
+
+          if (merged.length > 0) {
+            // Prefer name+subcategory based suggestions
+            setMoreByUserPage(merged)
+            setSuggestLimit(12)
+          } else {
+            // Fallback: categories with products (like UserProductPage)
+            const categoriesData = await productApi.getCategoriesWithProducts()
+            const allProducts = categoriesData.flatMap(c => c.subcategories?.flatMap(s => s.products || []) || [])
+            const similar = allProducts
+              .filter(p => !wishlistIds.has(p.id))
+              .filter(p => subNames.length === 0 || subNames.includes(p.subcategory_name))
+            setMoreByUserPage(similar)
+            setSuggestLimit(12)
+          }
+        } catch (e) {
+          setMoreByUserPage([])
+          setSuggestLimit(12)
+        }
+
+        // Original subcategory-based fetch for grouped recommendations
+        const requests = subNames.map((sub) =>
+          axios.get(`${API_URL.replace(/\/$/, "")}/products/?subcategory=${encodeURIComponent(sub)}&ordering=-created_at`)
+        )
+        const resps = await Promise.all(requests)
+        const dataBySub = {}
+        resps.forEach((r, idx) => {
+          const sub = subNames[idx]
+          let items = (r.data || [])
+          items = items.filter(p => !wishlistIds.has(p.id))
+          dataBySub[sub] = items.slice(0, 8) // top 8 per sub
+        })
+        setRecommended(dataBySub)
+      } catch (e) {
+        console.error("Load recommended failed", e)
+      } finally {
+        setLoadingRec(false)
+      }
+    }
+
+    if (wishlist && wishlist.length > 0) loadRecommended()
+    else {
+      setRecommended({})
+      setMoreByUserPage([])
+    }
+  }, [wishlist])
 
   const agriculturalStyles = {
     pageBackground: {
@@ -302,6 +407,111 @@ const Wishlist = () => {
                 </Col>
               ))}
             </Row>
+
+            {/* Recommended Section */}
+            <Row className="mt-5">
+              <Col>
+                <h3 className="fw-bold text-success mb-3">Sản Phẩm Nông Sản Đề Xuất</h3>
+                <p className="text-muted" style={{ marginTop: -6 }}>
+                  Khám phá những sản phẩm nông sản tươi ngon, chất lượng cao được tuyển chọn đặc biệt từ các vùng miền khắp Việt Nam.
+                </p>
+              </Col>
+            </Row>
+
+            {loadingRec && (
+              <div className="d-flex align-items-center gap-2 text-success">
+                <Spinner animation="border" size="sm" /> Đang tải gợi ý...
+              </div>
+            )}
+
+            {Object.keys(recommended).map((sub) => (
+              <div key={sub} className="mb-4">
+                <div className="d-flex align-items-center justify-content-between mb-2">
+                  <h5 className="fw-semibold mb-0">{sub}</h5>
+                  <Button variant="outline-success" size="sm" onClick={() => navigate(`/search?subcategory=${encodeURIComponent(sub)}`)}>
+                    Xem thêm
+                  </Button>
+                </div>
+                <Row className="g-3">
+                  {(recommended[sub] || []).map((p) => (
+                    <Col key={p.id} xl={3} lg={4} md={6} sm={6}>
+                      <Card className="h-100" style={agriculturalStyles.productCard}>
+                        <Card.Body className="p-3 text-center">
+                          <img
+                            src={p.image || "/placeholder.svg?height=300&width=300&query=agriculture"}
+                            alt={p.name}
+                            className="img-fluid mb-2"
+                            style={{ height: 200, objectFit: 'cover', borderRadius: 12 }}
+                            onClick={() => navigate(`/products/${p.id}`)}
+                          />
+                          <div className="fw-bold text-dark" style={{ minHeight: 40 }}>{p.name}</div>
+                          <div className="text-danger fw-semibold mb-2">{Number(p.price).toLocaleString()} đ</div>
+                          <Button variant="success" size="sm" onClick={() => navigate(`/products/${p.id}`)}>
+                            Xem Chi Tiết
+                          </Button>
+                        </Card.Body>
+                      </Card>
+                    </Col>
+                  ))}
+                </Row>
+              </div>
+            ))}
+
+            {moreByUserPage.length > 0 && (
+              <>
+                <Row xs={2} sm={3} md={4} lg={5} xl={6} className="g-3">
+                  {moreByUserPage.slice(0, suggestLimit).map((product) => {
+                    const imgSrc = product.image && product.image.startsWith("/")
+                      ? `${API_URL.replace(/\/api$/, "")}${product.image}`
+                      : (product.image?.startsWith("http") ? product.image : "https://via.placeholder.com/400x300?text=No+Image")
+                    return (
+                      <Col key={product.id}>
+                        <Card
+                          className="h-100 shadow-sm border-0"
+                          style={{ borderRadius: "12px", overflow: "hidden", transition: "transform 0.2s ease" }}
+                          onMouseEnter={(e) => (e.currentTarget.style.transform = "translateY(-5px)")}
+                          onMouseLeave={(e) => (e.currentTarget.style.transform = "translateY(0)")}
+                        >
+                          <div className="position-relative" style={{ height: 160, cursor: "pointer", backgroundColor: "#f8f9fa" }} onClick={() => navigate(`/products/${product.id}`)}>
+                            <Card.Img variant="top" src={imgSrc} alt={product.name} style={{ height: "100%", objectFit: "cover" }} />
+                          </div>
+                          <Card.Body className="d-flex flex-column">
+                            <Card.Title className="fs-6 fw-semibold text-truncate" title={product.name}>
+                              {product.name}
+                            </Card.Title>
+                            <div className="d-flex align-items-center mb-2">
+                              {[...Array(5)].map((_, i) => (
+                                <span key={i}>
+                                  {i < Math.floor(product.rating || 0) ? (
+                                    <StarFill size={14} className="text-warning" />
+                                  ) : (
+                                    <Star size={14} className="text-muted" />
+                                  )}
+                                </span>
+                              ))}
+                              <small className="text-muted ms-1">({product.review_count || 0})</small>
+                            </div>
+                            <div className="d-flex justify-content-between align-items-center mt-auto">
+                              <span className="fw-bold text-danger">{Math.round(product.price)?.toLocaleString("vi-VN")} VNĐ</span>
+                              <Button variant="outline-success" size="sm" onClick={() => navigate(`/products/${product.id}`)}>
+                                Xem
+                              </Button>
+                            </div>
+                          </Card.Body>
+                        </Card>
+                      </Col>
+                    )
+                  })}
+                </Row>
+                {moreByUserPage.length > suggestLimit && (
+                  <div className="text-center mt-3">
+                    <Button variant="outline-success" onClick={() => setSuggestLimit(prev => prev + 12)}>
+                      Xem thêm sản phẩm gợi ý
+                    </Button>
+                  </div>
+                )}
+              </>
+            )}
           </>
         )}
       </Container>

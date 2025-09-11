@@ -1,69 +1,37 @@
 import { useState, useEffect } from "react";
-import { Spin, Modal } from "antd";
+import { Spin, Modal } from "antd"; // TODO: nâng cấp props theo khuyến cáo: dùng styles.body thay cho bodyStyle
 
-import BannerCarousel from "../components/Home/BannerCarousel";
-import FlashSaleSection from "../components/Home/FlashSaleSection";
-import PersonalizedSection from "../components/Home/PersonalizedSection";
+import BannerSlider from "../components/home/BannerSlider";
+import CategorySection from "../components/home/CategorySection";
+import FlashSaleSection from "../components/home/FlashSaleSection";
+import PersonalizedSection from "../components/home/PersonalizedSection";
 
 import {
-  fetchBanners,
-  fetchFlashSale,
-  fetchUserRecommendations,
-} from "../services/api/homepageApi";
-
-import "../styles/Hompage.css";
+  // fetchUserRecommendations,
+  fetchCategories,
+} from "../services/api/homepageApi.js";
 
 export default function HomePage() {
   const [loading, setLoading] = useState(true);
-  const [banners, setBanners] = useState([]);
+  // const [recommendedProducts, setRecommendedProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [popupAds, setPopupAds] = useState([]);
-  const [activePopup, setActivePopup] = useState(null);
-  const [flashSaleProducts, setFlashSaleProducts] = useState([]);
-  const [recommendedProducts, setRecommendedProducts] = useState([]);
-  const [vouchers, setVouchers] = useState([]);
-  const [showLoginModal, setShowLoginModal] = useState(false);
 
   const username = localStorage.getItem("username") || "Khách";
   const token = localStorage.getItem("token");
 
-  // ====== Kiểm tra modal chào mừng ======
   useEffect(() => {
     const loadData = async () => {
       try {
-        const adsRes = await fetchBanners();
-        console.log("Popups:", adsRes.data.popups); // 🔹 DEBUG
 
-        setPopupAds(adsRes.data.popups || []);
+        // Gọi fetchCategories trước
+        const catRes = await fetchCategories();
+
+        setCategories( catRes.data || []);
+
+        // setRecommendedProducts(recommendRes.data || []);
       } catch (error) {
-        console.error("Error fetching popup ads:", error);
-      }
-    };
-
-    loadData();
-  }, []);
-
-  // ====== Gọi API ======
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const [adsRes, flashSaleRes, recommendRes] = await Promise.all([
-          fetchBanners(),
-          fetchFlashSale(),
-          fetchUserRecommendations(token),
-        ]);
-
-        // Banners + Popups
-        setBanners(adsRes.data.banners || []);
-        setPopupAds(adsRes.data.popups || []);
-
-        // Flash Sale
-        setFlashSaleProducts(flashSaleRes.data || []);
-
-        // Gợi ý cá nhân hóa
-        setRecommendedProducts(recommendRes.data?.recommended_products || []);
-        setVouchers(recommendRes.data?.vouchers || []);
-      } catch (error) {
-        console.error("Error loading homepage data:", error);
+        console.error("❌ Lỗi khi gọi API:", error);
       } finally {
         setLoading(false);
       }
@@ -72,55 +40,56 @@ export default function HomePage() {
     loadData();
   }, [token]);
 
-  // Khi popupAds thay đổi, mở popup đầu tiên
-  useEffect(() => {
-    if (popupAds.length > 0) {
-      setActivePopup(popupAds[0]);
-    }
-  }, [popupAds]);
-
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-[500px]">
+      <div
+        className="d-flex justify-content-center align-items-center"
+        style={{ height: "500px" }}
+      >
         <Spin size="large" />
       </div>
     );
   }
 
   return (
-    <div className="homepage-container">
+    <div className="container" style={{ padding: "0 20px" }}>
       {/* Banner Carousel */}
-      <BannerCarousel banners={banners} />
+      <div className="row">
+        <div className="col-12">
+          <BannerSlider />
+        </div>
+      </div>
+
+      {/* Danh Mục Nổi Bật */}
+      <CategorySection categories={categories} />
 
       {/* Flash Sale */}
-      <FlashSaleSection products={flashSaleProducts} />
+      <FlashSaleSection />
 
       {/* Personalized Section */}
       <PersonalizedSection
         username={username}
-        recommended={recommendedProducts}
-        vouchers={vouchers}
+        // recommended={recommendedProducts}
       />
 
+      {/* Popup Modal */}
       <Modal
         key={popupAds[0]?.id}
         open={popupAds.length > 0}
         footer={null}
-        closable={true} // Bật nút X để đóng modal
+        closable={true}
         onCancel={() => setPopupAds([])}
         centered
         width="60vw"
-        style={{
-          top: 0,
-          padding: 0,
-          margin: 0,
-        }}
-        bodyStyle={{
-          padding: 0,
-          margin: 0,
-          height: "60vh",
-          overflow: "hidden",
-          background: "transparent",
+        style={{ top: 0, padding: 0, margin: 0 }}
+        styles={{
+          body: {
+            padding: 0,
+            margin: 0,
+            height: "60vh",
+            overflow: "hidden",
+            background: "transparent",
+          },
         }}
         className="full-screen-modal"
       >
@@ -132,8 +101,8 @@ export default function HomePage() {
             style={{
               width: "100%",
               height: "100%",
-              objectFit: "cover", // Ảnh phủ đầy modal
-              display: "block", // Loại bỏ khoảng trắng dưới ảnh
+              objectFit: "cover",
+              display: "block",
             }}
             className="cursor-pointer"
           />

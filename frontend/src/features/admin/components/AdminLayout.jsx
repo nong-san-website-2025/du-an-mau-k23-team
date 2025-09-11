@@ -112,7 +112,7 @@ function UserDropdown({ onLogout, t, navigate }) {
     const fetchProfile = async () => {
       try {
         const token = localStorage.getItem("token");
-        const res = await axios.get("http://localhost:8000/api/me/", {
+        const res = await axios.get("http://localhost:8000/api/users/me/", {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (res.data.avatar) {

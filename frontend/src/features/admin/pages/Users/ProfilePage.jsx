@@ -4,7 +4,7 @@ import { Card, Form, Input, Button, message, Tabs, Upload, Avatar } from "antd";
 import { UploadOutlined, UserOutlined } from "@ant-design/icons";
 import axios from "axios";
 
-const API_BASE_URL = "http://localhost:8000/api";
+const API_BASE_URL = "http://localhost:8000/api/users";
 
 export default function ProfilePage() {
   const [user, setUser] = useState(null);

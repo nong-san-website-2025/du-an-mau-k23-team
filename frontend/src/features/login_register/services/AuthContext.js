@@ -10,24 +10,15 @@ export const AuthProvider = ({ children }) => {
 
   // Load user từ localStorage
   useEffect(() => {
-    console.log("AuthProvider: Loading user from localStorage...");
     
     const token = localStorage.getItem("token");
     const username = localStorage.getItem("username");
     let role = localStorage.getItem("role");
 
-    console.log("AuthProvider Debug:");
-    console.log("- Token from localStorage:", token ? "exists" : "null");
-    console.log("- Username from localStorage:", username);
-    console.log("- Role from localStorage:", role);
-
     // Fallback: nếu role là undefined hoặc null, kiểm tra is_admin/is_seller
     if (!role || role === 'undefined' || role === 'null') {
       const isAdmin = localStorage.getItem("is_admin");
       const isSeller = localStorage.getItem("is_seller");
-      
-      console.log("- is_admin from localStorage:", isAdmin);
-      console.log("- is_seller from localStorage:", isSeller);
       
       if (isAdmin === 'true' || username === 'admin') {
         role = 'admin';
@@ -40,7 +31,7 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem("role", role);
       }
       
-      console.log("- Determined role from fallback logic:", role);
+  
     }
 
     if (token && username && role) {
@@ -51,7 +42,6 @@ export const AuthProvider = ({ children }) => {
         isAuthenticated: true 
       };
       
-      console.log("✅ Setting user data:", userData);
       setUser(userData);
     } else {
       console.log("❌ Missing authentication data in localStorage");
@@ -63,9 +53,9 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (username, password) => {
     try {
-      console.log("AuthProvider: Attempting login for username:", username);
+
       
-      const { data } = await api.post("/login/", { username, password });
+      const { data } = await api.post("users/login/", { username, password });
       
       console.log("Login response data:", data);
       
@@ -90,10 +80,8 @@ export const AuthProvider = ({ children }) => {
       // Special case: nếu username là 'admin' và không có role rõ ràng, set role = admin
       if (data.username === 'admin' && userRole === 'customer') {
         userRole = 'admin';
-        console.log("⚠️ Special case: username 'admin' detected, setting role to admin");
-      }
       
-      console.log("Determined user role:", userRole);
+      }
       
       // Lưu vào localStorage
       localStorage.setItem("token", data.access);
@@ -108,7 +96,7 @@ export const AuthProvider = ({ children }) => {
         isAuthenticated: true,
       };
 
-      console.log("✅ Login successful, setting user:", userData);
+      
       setUser(userData);
 
       return { success: true, role: userRole, token: data.access };
@@ -124,7 +112,7 @@ export const AuthProvider = ({ children }) => {
       
       const { data } = await api.post("/users/register/", payload);
       
-      console.log("Register response data:", data);
+      
       return { success: true, data };
     } catch (err) {
       console.log("❌ Register failed:", err.response?.data);
@@ -175,7 +163,6 @@ export const AuthProvider = ({ children }) => {
 
   // Debug current user state
   useEffect(() => {
-    console.log("AuthProvider: Current user state changed:", user);
   }, [user]);
 
   const setRole = (newRole) => {

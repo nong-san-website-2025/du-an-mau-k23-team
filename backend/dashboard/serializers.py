@@ -2,7 +2,7 @@
 from rest_framework import serializers
 
 class TopProductSerializer(serializers.Serializer):
-    product_id = serializers.IntegerField()
+    product_id = serializers.IntegerField(source='prod_id')
     name = serializers.CharField()
     sales = serializers.IntegerField()
 
@@ -16,7 +16,7 @@ class RevenueByMonthSerializer(serializers.Serializer):
     revenue = serializers.FloatField()
 
 class OrdersByStatusSerializer(serializers.Serializer):
-    status = serializers.CharField()
+    status = serializers.CharField(source='sta')
     count = serializers.IntegerField()
 
 class DashboardSerializer(serializers.Serializer):

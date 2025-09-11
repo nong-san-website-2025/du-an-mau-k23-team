@@ -111,7 +111,13 @@ export const CartProvider = ({ children }) => {
   }, []);
 
   // Add item
-  const addToCart = async (productId, quantity = 1, productInfo) => {
+  const addToCart = async (
+    productId,
+    quantity = 1,
+    productInfo,
+    onSuccess,
+    onError
+  ) => {
     if (!productId || quantity < 1) return;
     setLoading(true);
     try {
@@ -121,9 +127,8 @@ export const CartProvider = ({ children }) => {
       } else {
         let items = getGuestCart();
         const idx = items.findIndex((i) => i.product === productId);
-        if (idx >= 0) {
-          items[idx].quantity += quantity;
-        } else {
+        if (idx >= 0) items[idx].quantity += quantity;
+        else
           items.push({
             product: productId,
             quantity,
@@ -131,18 +136,20 @@ export const CartProvider = ({ children }) => {
               id: productInfo?.id || productId,
               name: productInfo?.name || "",
               price: productInfo?.price || 0,
-              image: productInfo?.image || "",
             },
           });
-        }
         saveGuestCart(items);
         setCartItems(items.map((i) => ({ ...i, selected: true })));
       }
+
+      if (onSuccess) onSuccess(); // ✅ gọi callback khi thành công
     } catch (err) {
       console.error(err);
       toast.error("Không thể thêm vào giỏ hàng");
+      if (onError) onError(err); // ✅ gọi callback khi lỗi
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   // Update quantity

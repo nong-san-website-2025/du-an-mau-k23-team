@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { toast } from "react-toastify";
 import { useCart } from "../../cart/services/CartContext";
+import {message} from "antd";
 import {
   Carrot,
   Apple,
@@ -43,7 +44,7 @@ const iconMap = {
 const UserProductPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
-   const { addToCart, cartItems, updateQuantity } = useCart();
+  const { addToCart, cartItems, updateQuantity } = useCart();
   const categoryParam = searchParams.get("category");
   const subcategoryParam = searchParams.get("subcategory");
 
@@ -87,43 +88,45 @@ const UserProductPage = () => {
   }, [categoryParam, subcategoryParam]);
 
   const handleAddToCart = async (e, product) => {
-  e.stopPropagation();
+    e.stopPropagation();
 
-  // ✅ Kiểm tra nếu sản phẩm đã tồn tại trong giỏ thì update số lượng
-  const existingItem = cartItems.find(
-    (i) => i.product === product.id || i.product_data?.id === product.id
-  );
-  if (existingItem) {
-    await updateQuantity(existingItem.id, existingItem.quantity + 1);
-    toast.success("Đã cập nhật số lượng trong giỏ hàng!", { autoClose: 1500 });
-    return;
-  }
-
-  // ✅ Nếu chưa có thì gọi addToCart như bình thường
-  await addToCart(
-    product.id,
-    1,
-    () => toast.success("Đã thêm vào giỏ hàng!", { autoClose: 1500, position: "bottom-right" }),
-    (err) => {
-      if (err.response?.status === 401) {
-        toast.error("Vui lòng đăng nhập để thêm vào giỏ hàng", {position: "bottom-right"});
-      } else {
-        toast.error("Không thể thêm vào giỏ hàng. Vui lòng thử lại.", {position: "bottom-right"});
-      }
-    },
-    {
-      id: product.id,
-      name: product.name,
-      price: product.price,
-      image:
-        product.image && product.image.startsWith("/")
-          ? `http://localhost:8000${product.image}`
-          : product.image?.startsWith("http")
-          ? product.image
-          : "",
+    // ✅ Kiểm tra nếu sản phẩm đã tồn tại trong giỏ thì update số lượng
+    const existingItem = cartItems.find(
+      (i) => i.product === product.id || i.product_data?.id === product.id
+    );
+    if (existingItem) {
+      await updateQuantity(existingItem.id, existingItem.quantity + 1);
+      toast.success("Đã cập nhật số lượng trong giỏ hàng!", {
+        autoClose: 1500,
+      });
+      return;
     }
-  );
-};
+
+    // ✅ Nếu chưa có thì gọi addToCart như bình thường
+    await addToCart(
+      product.id,
+      1,
+      {
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        image:
+          product.image && product.image.startsWith("/")
+            ? `http://localhost:8000${product.image}`
+            : product.image?.startsWith("http")
+              ? product.image
+              : "",
+      },
+      () => toast.success("Đã thêm vào giỏ hàng!", { autoClose: 1500, position: "bottom-right" } ),
+      (err) => {
+        if (err.response?.status === 401) {
+          toast.error("Vui lòng đăng nhập để thêm vào giỏ hàng");
+        } else {
+          toast.error("Không thể thêm vào giỏ hàng. Vui lòng thử lại.");
+        }
+      }
+    );
+  };
 
   if (error) {
     return (
@@ -131,7 +134,10 @@ const UserProductPage = () => {
         <Alert variant="danger">
           <Alert.Heading>Lỗi khi tải dữ liệu</Alert.Heading>
           <p>{error}</p>
-          <Button variant="outline-danger" onClick={() => window.location.reload()}>
+          <Button
+            variant="outline-danger"
+            onClick={() => window.location.reload()}
+          >
             Thử lại
           </Button>
         </Alert>
@@ -165,7 +171,6 @@ const UserProductPage = () => {
 
   return (
     <div className="container py-4">
-
       {/* Header */}
       <div className="mb-3 d-flex flex-wrap align-items-center justify-content-between">
         <div className="d-flex align-items-center gap-2 flex-wrap">
@@ -291,7 +296,11 @@ const UserProductPage = () => {
               >
                 <div
                   className="position-relative"
-                  style={{ height: 160, cursor: "pointer", backgroundColor: "#f8f9fa" }}
+                  style={{
+                    height: 160,
+                    cursor: "pointer",
+                    backgroundColor: "#f8f9fa",
+                  }}
                   onClick={() => navigate(`/products/${product.id}`)}
                 >
                   <Card.Img
@@ -300,30 +309,43 @@ const UserProductPage = () => {
                       product.image && product.image.startsWith("/")
                         ? `http://localhost:8000${product.image}`
                         : product.image?.startsWith("http")
-                        ? product.image
-                        : "https://via.placeholder.com/400x300?text=No+Image"
+                          ? product.image
+                          : "https://via.placeholder.com/400x300?text=No+Image"
                     }
                     alt={product.name}
                     style={{ height: "100%", objectFit: "cover" }}
                   />
                   {product.is_organic && (
-                    <Badge bg="success" className="position-absolute top-0 start-0 m-2">
+                    <Badge
+                      bg="success"
+                      className="position-absolute top-0 start-0 m-2"
+                    >
                       Hữu cơ
                     </Badge>
                   )}
                   {product.is_best_seller && (
-                    <Badge bg="warning" text="dark" className="position-absolute top-0 start-50 translate-middle-x m-2">
+                    <Badge
+                      bg="warning"
+                      text="dark"
+                      className="position-absolute top-0 start-50 translate-middle-x m-2"
+                    >
                       Bán chạy
                     </Badge>
                   )}
                   {product.is_new && (
-                    <Badge bg="info" className="position-absolute top-0 end-0 m-2">
+                    <Badge
+                      bg="info"
+                      className="position-absolute top-0 end-0 m-2"
+                    >
                       Mới
                     </Badge>
                   )}
                 </div>
                 <Card.Body className="d-flex flex-column">
-                  <Card.Title className="fs-6 fw-semibold text-truncate" title={product.name}>
+                  <Card.Title
+                    className="fs-6 fw-semibold text-truncate"
+                    title={product.name}
+                  >
                     {product.name}
                   </Card.Title>
                   <div className="d-flex align-items-center mb-2">
