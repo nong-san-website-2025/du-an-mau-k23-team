@@ -120,6 +120,14 @@ export default function UserActions({
           thumbnail = img || media[0];
         }
 
+        // Ưu tiên lấy updated_at, nếu không có thì lấy created_at, nếu không có thì để chuỗi rỗng
+        let timeStr = "";
+        if (c.updated_at) {
+          timeStr = new Date(c.updated_at).toLocaleString();
+        } else if (c.created_at) {
+          timeStr = new Date(c.created_at).toLocaleString();
+        }
+
         return {
           id: c.id,
           message:
@@ -127,7 +135,7 @@ export default function UserActions({
               ? "Khiếu nại của bạn đã được xử lý!"
               : "Khiếu nại của bạn đã bị từ chối!",
           detail: detailLines.join("\n"),
-          time: c.updated_at ? new Date(c.updated_at).toLocaleString() : new Date().toLocaleString(),
+          time: timeStr,
           read: false,
           userId,
           thumbnail,

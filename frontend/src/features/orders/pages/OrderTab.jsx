@@ -43,7 +43,7 @@ const OrderTab = ({ status }) => {
   const onChangeFiles = (productId, files) => {
     setComplaintFiles((prev) => ({ ...prev, [productId]: Array.from(files) }));
   };
-  const sendComplaint = async (productId) => {
+  const sendComplaint = async (productId, unitPrice, quantity) => {
     const token = localStorage.getItem("token");
     if (!token) {
       message.info("Bạn cần đăng nhập để gửi khiếu nại");
@@ -60,6 +60,9 @@ const OrderTab = ({ status }) => {
       const formData = new FormData();
       formData.append("product", productId);
       formData.append("reason", reason);
+      // Send quantity and unit_price so backend can refund correctly
+      if (quantity != null) formData.append("quantity", String(quantity));
+      if (unitPrice != null) formData.append("unit_price", String(unitPrice));
       (complaintFiles[productId] || []).forEach((f) => formData.append("media", f));
 
       const res = await fetch("http://localhost:8000/api/complaints/", {
@@ -276,7 +279,7 @@ const OrderTab = ({ status }) => {
                                       </div>
                                       <div style={{ display: "flex", gap: 8 }}>
                                         <button
-                                          onClick={() => sendComplaint(item.product)}
+                                          onClick={() => sendComplaint(item.product, item.price, item.quantity)}
                                           disabled={!!sendingByProduct[item.product]}
                                           style={{
                                             background: "#16a34a",
