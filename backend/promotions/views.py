@@ -15,6 +15,7 @@ from .serializers import PromotionSerializer
 
 
 
+
 class IsAdminOrReadOnly(permissions.BasePermission):
 
     def has_permission(self, request, view):
@@ -110,6 +111,7 @@ def apply_voucher(request):
 class PromotionListCreateAPIView(generics.ListCreateAPIView):
     queryset = Promotion.objects.all()
     serializer_class = PromotionSerializer
+    permission_classes = [IsAuthenticated]
 
 class PromotionDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Promotion.objects.all()

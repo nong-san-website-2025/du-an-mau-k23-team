@@ -27,7 +27,17 @@ const Promotions = () => {
       const res = await axios.get("http://127.0.0.1:8000/api/promotions/", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setPromotions(res.data);
+
+      console.log("API response:", res.data);
+
+      // Nếu backend trả về {results: [...]}, lấy results
+      if (Array.isArray(res.data)) {
+        setPromotions(res.data);
+      } else if (res.data?.results) {
+        setPromotions(res.data.results);
+      } else {
+        setPromotions([]);
+      }
     } catch (err) {
       console.error("fetchPromotions error:", err.response ?? err);
       message.error("Không tải được danh sách khuyến mãi");
@@ -64,8 +74,8 @@ const Promotions = () => {
         code: "",
         type: "",
         condition: "",
-        start: null,   // sửa từ "" thành null
-        end: null,     // sửa từ "" thành null
+        start: null, // sửa từ "" thành null
+        end: null, // sửa từ "" thành null
         used: 0,
         total: 0,
         products: 0,
@@ -86,9 +96,13 @@ const Promotions = () => {
     try {
       if (popupMode === "add") {
         console.log("POST payload:", normalized);
-        const res = await axios.post("http://127.0.0.1:8000/api/promotions/", normalized, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const res = await axios.post(
+          "http://127.0.0.1:8000/api/promotions/",
+          normalized,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
         console.log("POST response:", res.data);
         await fetchPromotions();
         message.success("Thêm khuyến mãi thành công");
@@ -111,8 +125,12 @@ const Promotions = () => {
       setPopupOpen(false);
     } catch (err) {
       console.error("handleSave error:", err.response ?? err);
-      const serverMsg = err?.response?.data?.detail || err?.response?.data || "";
-      message.error((popupMode === "add" ? "Thêm thất bại: " : "Cập nhật thất bại: ") + serverMsg);
+      const serverMsg =
+        err?.response?.data?.detail || err?.response?.data || "";
+      message.error(
+        (popupMode === "add" ? "Thêm thất bại: " : "Cập nhật thất bại: ") +
+          serverMsg
+      );
     }
   };
 
@@ -123,9 +141,12 @@ const Promotions = () => {
       onOk: async () => {
         try {
           console.log("DELETE promo id:", promo.id);
-          await axios.delete(`http://127.0.0.1:8000/api/promotions/${promo.id}/`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
+          await axios.delete(
+            `http://127.0.0.1:8000/api/promotions/${promo.id}/`,
+            {
+              headers: { Authorization: `Bearer ${token}` },
+            }
+          );
           await fetchPromotions();
           message.success("Xóa thành công");
         } catch (err) {
@@ -152,14 +173,40 @@ const Promotions = () => {
   });
 
   return (
-  <div style={{ margin: "20px", padding: 10, background: "#fff", borderRadius: 12, boxShadow: "0 2px 8px rgba(44,62,80,0.07)", fontSize: '0.92rem', fontFamily: 'Roboto, Arial, sans-serif', letterSpacing: 0.1 }}>
-      <div style={{ marginBottom: 10, }}>
-        <span style={{ fontSize: '1.6rem', fontWeight: 700, color: '#222', letterSpacing: 0.5, fontFamily: 'Roboto, Arial, sans-serif' }}>
+    <div
+      style={{
+        margin: "20px",
+        padding: 10,
+        background: "#fff",
+        borderRadius: 12,
+        boxShadow: "0 2px 8px rgba(44,62,80,0.07)",
+        fontSize: "0.92rem",
+        fontFamily: "Roboto, Arial, sans-serif",
+        letterSpacing: 0.1,
+      }}
+    >
+      <div style={{ marginBottom: 10 }}>
+        <span
+          style={{
+            fontSize: "1.6rem",
+            fontWeight: 700,
+            color: "#222",
+            letterSpacing: 0.5,
+            fontFamily: "Roboto, Arial, sans-serif",
+          }}
+        >
           Quản lý khuyến mãi
         </span>
       </div>
 
-      <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 12 }}>
+      <div
+        style={{
+          display: "flex",
+          gap: 12,
+          alignItems: "center",
+          marginBottom: 12,
+        }}
+      >
         <PromotionFilters
           search={search}
           setSearch={setSearch}
@@ -168,7 +215,19 @@ const Promotions = () => {
           statusFilter={statusFilter}
           setStatusFilter={setStatusFilter}
         />
-        <Button type="primary" onClick={() => openPopup("add", null)} style={{ height: 35, borderRadius: 6, marginLeft: 8, minWidth: 130, fontSize: "1rem", width: 140, padding: 0 }}>
+        <Button
+          type="primary"
+          onClick={() => openPopup("add", null)}
+          style={{
+            height: 35,
+            borderRadius: 6,
+            marginLeft: 8,
+            minWidth: 130,
+            fontSize: "1rem",
+            width: 140,
+            padding: 0,
+          }}
+        >
           Thêm mới
         </Button>
       </div>
