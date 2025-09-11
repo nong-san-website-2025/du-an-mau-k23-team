@@ -40,8 +40,7 @@ export default function SellerSidebar() {
       icon: <AppstoreOutlined />,
       label: "Sản phẩm",
       children: [
-        { key: "/seller-center/products", label: "Danh sách" },
-        { key: "/seller-center/products/add", label: "Thêm sản phẩm" },
+        { key: "/seller-center/products", label: "Thêm sản phẩm" },
       ],
     },
     {
