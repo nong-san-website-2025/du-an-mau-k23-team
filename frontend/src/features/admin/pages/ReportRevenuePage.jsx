@@ -1,75 +1,90 @@
 // src/features/admin/pages/ReportRevenuePage.jsx
-import React, { useState } from "react";
-import { Card, Table, Button, Tag, DatePicker, Select, Space, message } from "antd";
-import { WalletOutlined, ArrowDownOutlined, ArrowUpOutlined } from "@ant-design/icons";
+import React, { useState, useEffect } from "react";
+import {
+  Card,
+  Table,
+  Button,
+  Tag,
+  DatePicker,
+  Select,
+  Space,
+  message,
+} from "antd";
+import {
+  WalletOutlined,
+  ArrowDownOutlined,
+  ArrowUpOutlined,
+  FilePdfOutlined,
+} from "@ant-design/icons";
 import dayjs from "dayjs";
-import isBetween from "dayjs/plugin/isBetween"; // ✅ thêm plugin
-
+import isBetween from "dayjs/plugin/isBetween";
 import api from "../../login_register/services/api";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable"; // ✅ import đúng
 
-dayjs.extend(isBetween); // ✅ kích hoạt plugin
+dayjs.extend(isBetween);
 
 const { RangePicker } = DatePicker;
 
 export default function ReportRevenuePage() {
-  const [data, setData] = useState([]); // transactions
+  const [data, setData] = useState([]);
   const [balance, setBalance] = useState(0);
-  const [dateRange, setDateRange] = useState([dayjs().subtract(30, "day"), dayjs()]);
-  const [flowFilter, setFlowFilter] = useState("all"); // in | out | all
-  const [typeFilter, setTypeFilter] = useState("all"); // order | refund | all
+  const [dateRange, setDateRange] = useState([
+    dayjs().subtract(30, "day"),
+    dayjs(),
+  ]);
+  const [flowFilter, setFlowFilter] = useState("all");
+  const [typeFilter, setTypeFilter] = useState("all");
 
+  // 🔹 Load dữ liệu từ API
   const loadData = async () => {
     try {
-      // Get wallet balance
-      const walletRes = await api.get("/wallet/my_wallet/");
-      setBalance(Number(walletRes.data?.balance || 0));
-
-      // Get orders as revenue source
       const isAdmin = localStorage.getItem("is_admin") === "true";
       const endpoint = isAdmin ? "/orders/admin-list/" : "/orders/";
       const ordersRes = await api.get(endpoint);
       const orders = Array.isArray(ordersRes.data) ? ordersRes.data : [];
 
-      // Transform orders to transactions
       const tx = orders.map((o) => ({
         key: o.id,
         date: dayjs(o.created_at).format("YYYY-MM-DD"),
         type: o.status === "cancelled" ? "Hoàn tiền" : "Doanh Thu Đơn Hàng",
         desc: `Đơn hàng #${o.id}`,
         orderId: `${o.id}`,
-        amount: Number(o.total_price || 0) * (o.status === "cancelled" ? -1 : 1),
-        status: o.status === "success" ? "Hoàn thành" : o.status,
+        amount:
+          Number(o.total_price || 0) * (o.status === "cancelled" ? -1 : 1),
+        status: o.status,
       }));
 
       setData(tx);
+
+      const totalBalance = tx.reduce((sum, t) => {
+        if (t.status === "success") return sum + t.amount;
+        return sum;
+      }, 0);
+
+      setBalance(totalBalance);
     } catch (err) {
       console.error(err);
       message.error("Không thể tải dữ liệu doanh thu");
     }
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const applyFilters = (list) => {
     let filtered = list;
-
-    // Date range filter
     filtered = filtered.filter((t) => {
       const d = dayjs(t.date, "YYYY-MM-DD");
-      return d.isBetween(dateRange[0], dateRange[1], null, "[]"); // ✅ dùng plugin
+      return d.isBetween(dateRange[0], dateRange[1], null, "[]");
     });
-
-    // Flow filter (in/out)
     if (flowFilter !== "all") {
       filtered = filtered.filter((t) =>
         flowFilter === "in" ? t.amount > 0 : t.amount < 0
       );
     }
-
-    // Type filter
     if (typeFilter !== "all") {
       filtered = filtered.filter((t) =>
         typeFilter === "order"
@@ -77,8 +92,40 @@ export default function ReportRevenuePage() {
           : t.type === "Hoàn tiền"
       );
     }
-
     return filtered;
+  };
+
+  // 🔹 Xuất PDF
+  const exportPDF = () => {
+    const doc = new jsPDF();
+
+    // Tiêu đề
+    doc.setFontSize(16);
+    doc.text("Báo cáo doanh thu", 14, 20);
+
+    // Số dư
+    doc.setFontSize(12);
+    doc.text(`Số dư: ${balance.toLocaleString()} đ`, 14, 30);
+
+    // Chuẩn bị dữ liệu bảng
+    const tableData = applyFilters(data).map((t) => [
+      t.date,
+      t.type,
+      t.desc,
+      t.orderId,
+      t.amount.toLocaleString() + " đ",
+      t.status,
+    ]);
+
+    // Xuất bảng bằng autoTable
+    autoTable(doc, {
+      head: [["Ngày", "Loại GD", "Mô tả", "Order ID", "Số tiền", "Trạng thái"]],
+      body: tableData,
+      startY: 40,
+    });
+
+    // Lưu file
+    doc.save("bao_cao_doanh_thu.pdf");
   };
 
   const columns = [
@@ -106,22 +153,33 @@ export default function ReportRevenuePage() {
       title: "Số Tiền",
       dataIndex: "amount",
       key: "amount",
-      render: (amount) =>
-        amount > 0 ? (
-          <span className="text-green-600 font-medium">
-            <ArrowDownOutlined /> +{amount.toLocaleString()} đ
-          </span>
+      render: (amount, record) =>
+        record.status === "success" ? (
+          amount > 0 ? (
+            <span className="text-green-600 font-medium">
+              <ArrowDownOutlined /> +{amount.toLocaleString()} đ
+            </span>
+          ) : (
+            <span className="text-red-500 font-medium">
+              <ArrowUpOutlined /> {amount.toLocaleString()} đ
+            </span>
+          )
         ) : (
-          <span className="text-red-500 font-medium">
-            <ArrowUpOutlined /> {amount.toLocaleString()} đ
-          </span>
+          <span className="text-gray-400">{amount.toLocaleString()} đ</span>
         ),
     },
     {
       title: "Trạng thái",
       dataIndex: "status",
       key: "status",
-      render: (status) => <Tag color="green">{status}</Tag>,
+      render: (status) => {
+        let color = "default";
+        if (status === "success") color = "green";
+        else if (status === "cancelled") color = "red";
+        else if (status === "pending") color = "orange";
+        else if (status === "shipping") color = "blue";
+        return <Tag color={color}>{status}</Tag>;
+      },
     },
   ];
 
@@ -131,7 +189,7 @@ export default function ReportRevenuePage() {
       <Card className="rounded-2xl shadow-md">
         <div className="flex justify-between items-center">
           <div>
-            <p className="text-gray-500">Số dư</p>
+            <p className="text-gray-500">Số dư (chỉ tính đơn hàng thành công)</p>
             <h2 className="text-2xl font-bold text-green-600">
               {balance.toLocaleString()} đ
             </h2>
@@ -166,6 +224,13 @@ export default function ReportRevenuePage() {
           />
           <Button type="primary" onClick={loadData}>
             Áp dụng
+          </Button>
+          <Button
+            type="default"
+            icon={<FilePdfOutlined />}
+            onClick={exportPDF}
+          >
+            Xuất PDF
           </Button>
         </Space>
       </Card>
