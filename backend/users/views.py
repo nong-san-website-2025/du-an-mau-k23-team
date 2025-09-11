@@ -22,6 +22,8 @@ from .serializers import AccountSerializer, ChangePasswordSerializer
 from rest_framework.parsers import MultiPartParser, FormParser
 from .serializers import ProfileSerializer
 from .serializers import CustomUserSerializer
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAdminUser
 
 
 
@@ -425,13 +427,19 @@ class UserManagementViewSet(viewsets.ModelViewSet):
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated, IsAdmin]
 
+
     def list(self, request, *args, **kwargs):
-        """Lấy danh sách người dùng"""
+        queryset = self.get_queryset()
+        print("DEBUG USERS:", list(queryset.values("id", "username", "role__name", "is_active")))
         return super().list(request, *args, **kwargs)
 
+
     def create(self, request, *args, **kwargs):
-        """Tạo người dùng mới"""
-        return super().create(request, *args, **kwargs)
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.save()
+            return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def update(self, request, *args, **kwargs):
         """Cập nhật thông tin người dùng"""
@@ -513,3 +521,38 @@ class UploadAvatarView(APIView):
         request.user.avatar = avatar
         request.user.save()
         return Response({"avatar": request.user.avatar.url})
+
+
+
+@api_view(["PATCH"])
+@permission_classes([IsAdminUser])
+def toggle_user_active(request, pk):
+    try:
+        user = CustomUser.objects.get(pk=pk)
+    except CustomUser.DoesNotExist:
+        return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    user.is_active = not user.is_active
+    user.save()
+    return Response({"id": user.id, "is_active": user.is_active})
+
+@api_view(["DELETE"])
+@permission_classes([IsAdminUser])
+def delete_user(request, pk):
+    try:
+        user = CustomUser.objects.get(pk=pk)
+    except CustomUser.DoesNotExist:
+        return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    # Kiểm tra nếu có hoạt động → không cho xóa
+    has_products = Product.objects.filter(seller__user=user).exists()
+    has_orders = Order.objects.filter(user=user).exists()
+
+    if has_products or has_orders:
+        return Response(
+            {"error": "Không thể xóa user đã có hoạt động, hãy khóa thay vì xóa."},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    user.delete()
+    return Response(status=status.HTTP_204_NO_CONTENT)

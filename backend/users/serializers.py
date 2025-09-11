@@ -49,8 +49,12 @@ class UserSerializer(serializers.ModelSerializer):
 
 
     def create(self, validated_data):
+        password = validated_data.pop("password", None)
         user = CustomUser(**validated_data)
-        user.set_password(validated_data["password"])
+        if password:
+            user.set_password(password)
+        else:
+            user.set_password("123456")  # gán default password nếu không có
         user.save()
         return user
 

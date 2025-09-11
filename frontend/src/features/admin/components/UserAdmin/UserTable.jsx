@@ -62,6 +62,31 @@ export default function UserTable({
     }),
   };
 
+  const handleToggleUser = async (user) => {
+    try {
+      const res = await axios.patch(
+        `http://localhost:8000/api/users/${user.id}/toggle-active/`,
+        {},
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        }
+      );
+
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === user.id ? { ...u, is_active: res.data.is_active } : u
+        )
+      );
+
+      message.success(
+        res.data.is_active ? "Đã mở khóa tài khoản" : "Đã khóa tài khoản"
+      );
+    } catch (err) {
+      console.error(err);
+      message.error("Không thể thay đổi trạng thái user");
+    }
+  };
+
   const handleDeleteUser = (user) => {
     if (!user?.id) return;
 
@@ -169,19 +194,20 @@ export default function UserTable({
           menu={{
             items: [
               {
-                key: "detail",
+                key: "lock",
                 label: (
-                  <span>
-                    <EyeOutlined className="me-2" />
-                    {t("Detail")}
+                  <span
+                    style={{ color: record.is_active ? "orange" : "green" }}
+                  >
+                    {record.is_active ? "Khóa tài khoản" : "Mở khóa tài khoản"}
                   </span>
                 ),
-                onClick: () => onShowDetail?.(record),
+                onClick: () => handleToggleUser(record),
               },
               {
                 key: "delete",
                 label: (
-                  <span style={{ color: "black" }}>
+                  <span style={{ color: "red" }}>
                     <DeleteOutlined className="me-2" />
                     {t("Delete")}
                   </span>

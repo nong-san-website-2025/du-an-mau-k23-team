@@ -7,6 +7,7 @@ from .views import EmployeeViewSet
 from users import views
 from .views import CurrentUserView
 from .views import UserMeView, UploadAvatarView 
+from .views import toggle_user_active
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
@@ -62,4 +63,6 @@ urlpatterns = [
 
     path("user/upload-avatar/", UploadAvatarView.as_view(), name="upload-avatar"),
     path("api/user/profile/", UserProfileView.as_view(), name="user-profile"),
+    path("<int:pk>/toggle-active/", toggle_user_active, name="toggle-user-active"),
+    
 ]
