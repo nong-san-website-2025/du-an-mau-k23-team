@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "django_filters",
     'advertisements',
+    "rest_framework_simplejwt.token_blacklist",
 
     # Local apps
     "users", "sellers", "products", "reviews",

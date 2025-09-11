@@ -93,9 +93,9 @@ export const adminRoutes = [
       <Route path="profile" element={<ProfilePage />} /> {/* /admin/profile */}
       <Route path="change-password" element={<ChangePasswordPage />} />{" "}
       {/* /admin/change-password */}
-      <Route path="report-revenue" element={<ReportRevenuePage />} />
-      <Route path="report-top-products" element={<ReportTopProductsPage />} />
-      <Route path="report-cancel-rate" element={<ReportCancelRatePage />} /> {/* ✅ route mới */}
+      <Route path="reports/revenue" element={<ReportRevenuePage />} />
+      <Route path="reports/top-products" element={<ReportTopProductsPage />} />
+      <Route path="reports/cancel-rate" element={<ReportCancelRatePage />} /> {/* ✅ route mới */}
 
       {/* Support */}
       <Route path="supports" element={<SupportPage />} />

@@ -113,13 +113,13 @@ const Sidebar = () => {
           icon={<BarChartOutlined />}
           title="Thống kê & Báo cáo"
         >
-          <Menu.Item key="report-revenue">
+          <Menu.Item key="/admin/reports/revenue">
             <Link to="/admin/reports/revenue">Doanh thu</Link>
           </Menu.Item>
-          <Menu.Item key="report-top-products">
+          <Menu.Item key="/admin/reports/top-products">
             <Link to="/admin/reports/top-products">Sản phẩm bán chạy</Link>
           </Menu.Item>
-          <Menu.Item key="report-cancel-rate">
+          <Menu.Item key="/admin/reports/cancel-rate">
             <Link to="/admin/reports/cancel-rate">Tỉ lệ huỷ/hoàn đơn</Link>
           </Menu.Item>
         </Menu.SubMenu>

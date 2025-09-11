@@ -1,4 +1,5 @@
 
+
 from django.db import migrations, models
 
 
@@ -12,6 +13,14 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='order',
             name='status',
-            field=models.CharField(choices=[('pending', 'Pending'), ('success', 'Success'), ('cancelled', 'Cancelled')], default='pending', max_length=20),
+            field=models.CharField(
+                choices=[
+                    ('pending', 'Pending'),
+                    ('success', 'Success'),
+                    ('cancelled', 'Cancelled')
+                ],
+                default='pending',
+                max_length=20,
+            ),
         ),
     ]
