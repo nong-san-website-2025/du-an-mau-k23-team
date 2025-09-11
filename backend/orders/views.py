@@ -132,13 +132,6 @@ class OrderViewSet(viewsets.ModelViewSet):
         order.save(update_fields=['status'])
         return Response({'message': 'Đã duyệt đơn, chuyển sang chờ nhận hàng', 'status': order.status})
 
-<<<<<<< HEAD
-    @action(detail=True, methods=['post'], url_path='admin-cancel')
-    def admin_cancel(self, request, pk=None):
-        """Admin hủy đơn hàng"""
-        if not request.user.is_authenticated or not getattr(request.user, 'is_admin', False):
-            return Response({'error': 'Chỉ admin mới có quyền hủy đơn'}, status=status.HTTP_403_FORBIDDEN)
-=======
     @action(detail=True, methods=['post'], url_path='seller/complete')
     def seller_complete(self, request, pk=None):
         """Seller xác nhận hoàn tất giao hàng: chuyển shipping -> success"""
@@ -149,20 +142,11 @@ class OrderViewSet(viewsets.ModelViewSet):
         if not seller:
             return Response({'error': 'Chỉ seller mới có quyền cập nhật'}, status=status.HTTP_403_FORBIDDEN)
 
->>>>>>> ChiTham
         try:
             order = Order.objects.get(pk=pk)
         except Order.DoesNotExist:
             return Response({'error': 'Không tìm thấy đơn hàng'}, status=status.HTTP_404_NOT_FOUND)
 
-<<<<<<< HEAD
-        if order.status in ['success', 'cancelled']:
-            return Response({'error': 'Không thể hủy đơn ở trạng thái hiện tại'}, status=status.HTTP_400_BAD_REQUEST)
-
-        order.status = 'cancelled'
-        order.save(update_fields=['status'])
-        return Response({'message': 'Đã hủy đơn hàng thành công', 'status': order.status})
-=======
         from products.models import Product
         seller_product_ids = set(Product.objects.filter(seller=seller).values_list('id', flat=True))
         order_product_ids = set(order.items.values_list('product_id', flat=True))
@@ -175,7 +159,6 @@ class OrderViewSet(viewsets.ModelViewSet):
         order.status = 'success'
         order.save(update_fields=['status'])
         return Response({'message': 'Đơn hàng đã giao thành công', 'status': order.status})
->>>>>>> ChiTham
 
     @action(detail=False, methods=['get'], url_path='admin-list')
     def admin_list(self, request):
