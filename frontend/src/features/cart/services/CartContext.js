@@ -53,7 +53,7 @@ export const CartProvider = ({ children }) => {
   // Load cart on mount / location change
   useEffect(() => {
     fetchCart();
-  }, [location]);
+  }, []); // chỉ chạy 1 lần khi component mount
 
   // Sync guest cart to server on login
   useEffect(() => {

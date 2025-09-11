@@ -6,9 +6,13 @@ import { QRCodeSVG } from "qrcode.react";
 import API from "../../login_register/services/api";
 import "../styles/CheckoutPage.css";
 
+
+
 const CheckoutPage = () => {
   const navigate = useNavigate();
   const { cartItems, clearCart, selectAllItems, toggleItem } = useCart();
+
+  
 
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
@@ -23,9 +27,10 @@ const CheckoutPage = () => {
   const [discount, setDiscount] = useState(0);
   const [voucherError, setVoucherError] = useState("");
 
-  useEffect(() => {
-    selectAllItems();
-  }, [selectAllItems]);
+ useEffect(() => {
+  selectAllItems();
+}, []); // chỉ chạy 1 lần khi component mount
+
 
   // Danh sách mã giảm giá mẫu
   const voucherList = [
