@@ -50,3 +50,25 @@ class Voucher(models.Model):
     code = models.CharField(max_length=50, unique=True)
     discount = models.DecimalField(max_digits=5, decimal_places=2)
     active = models.BooleanField(default=True)
+
+
+class SellerFollow(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="followed_sellers",
+    )
+    seller = models.ForeignKey(
+        Seller,
+        on_delete=models.CASCADE,
+        related_name="followers",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("user", "seller")
+        verbose_name = "Seller Follow"
+        verbose_name_plural = "Seller Follows"
+
+    def __str__(self):
+        return f"{self.user_id} -> {self.seller_id}"
