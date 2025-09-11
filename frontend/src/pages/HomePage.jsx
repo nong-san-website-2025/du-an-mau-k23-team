@@ -1,29 +1,21 @@
 import { useState, useEffect } from "react";
 import { Spin, Modal } from "antd";
 
-import BannerCarousel from "../components/Home/BannerCarousel";
-import CategorySection from "../components/Home/CategorySection";
-import FlashSaleSection from "../components/Home/FlashSaleSection";
-import PersonalizedSection from "../components/Home/PersonalizedSection";
+import BannerSlider from "../components/home/BannerSlider";
+import CategorySection from "../components/home/CategorySection";
+import FlashSaleSection from "../components/home/FlashSaleSection";
+import PersonalizedSection from "../components/home/PersonalizedSection";
 
 import {
-  fetchBanners,
-  fetchFlashSale,
-  fetchUserRecommendations,
+  // fetchUserRecommendations,
   fetchCategories,
-} from "../services/api/homepageApi";
-
-import "../styles/Hompage.css";
+} from "../services/api/homepageApi.js";
 
 export default function HomePage() {
   const [loading, setLoading] = useState(true);
-  const [banners, setBanners] = useState([]);
+  // const [recommendedProducts, setRecommendedProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [popupAds, setPopupAds] = useState([]);
-  const [flashSaleProducts, setFlashSaleProducts] = useState([]);
-  const [recommendedProducts, setRecommendedProducts] = useState([]);
-  const [vouchers, setVouchers] = useState([]);
-  const [categories, setCategories] = useState([]); // NEW
-  const [showLoginModal, setShowLoginModal] = useState(false);
 
   const username = localStorage.getItem("username") || "Khách";
   const token = localStorage.getItem("token");
@@ -31,43 +23,15 @@ export default function HomePage() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const results = await Promise.allSettled([
-          fetchCategories(),
-          fetchBanners(),
-          fetchFlashSale(),
-          fetchUserRecommendations(token),
-        ]);
 
-        const [catRes, bannersRes, flashRes, recommendRes] = results;
+        // Gọi fetchCategories trước
+        const catRes = await fetchCategories();
 
-        if (catRes.status === "fulfilled") {
-          setCategories(catRes.value.data || []);
-        } else {
-          console.error("Categories failed:", catRes.reason);
-        }
+        setCategories( catRes.data || []);
 
-        if (bannersRes.status === "fulfilled") {
-          setBanners(bannersRes.value || []); // <-- value đã là mảng banners
-        } else {
-          console.warn("Banners API missing/failed:", bannersRes.reason);
-        }
-
-        if (flashRes.status === "fulfilled") {
-          setFlashSaleProducts(flashRes.value.data || []);
-        } else {
-          console.warn("Flash sale API missing/failed:", flashRes.reason);
-        }
-
-        if (recommendRes.status === "fulfilled") {
-          setRecommendedProducts(recommendRes.value.data || []);
-        } else {
-          console.warn(
-            "Recommendations API missing/failed:",
-            recommendRes.reason
-          );
-        }
+        // setRecommendedProducts(recommendRes.data || []);
       } catch (error) {
-        console.error("Error loading homepage data:", error);
+        console.error("❌ Lỗi khi gọi API:", error);
       } finally {
         setLoading(false);
       }
@@ -78,28 +42,34 @@ export default function HomePage() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-[500px]">
+      <div
+        className="d-flex justify-content-center align-items-center"
+        style={{ height: "500px" }}
+      >
         <Spin size="large" />
       </div>
     );
   }
 
   return (
-    <div className="homepage-container p-4">
+    <div className="container" style={{ padding: "0 20px" }}>
       {/* Banner Carousel */}
-      <BannerCarousel banners={banners} />
+      <div className="row">
+        <div className="col-12">
+          <BannerSlider />
+        </div>
+      </div>
 
       {/* Danh Mục Nổi Bật */}
       <CategorySection categories={categories} />
 
       {/* Flash Sale */}
-      <FlashSaleSection products={flashSaleProducts} />
+      <FlashSaleSection />
 
       {/* Personalized Section */}
       <PersonalizedSection
         username={username}
-        recommended={recommendedProducts}
-        vouchers={vouchers}
+        // recommended={recommendedProducts}
       />
 
       {/* Popup Modal */}

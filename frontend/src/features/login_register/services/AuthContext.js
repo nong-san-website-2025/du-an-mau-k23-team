@@ -10,7 +10,6 @@ export const AuthProvider = ({ children }) => {
 
   // Load user từ localStorage
   useEffect(() => {
-    console.log("AuthProvider: Loading user from localStorage...");
     
     const token = localStorage.getItem("token");
     const username = localStorage.getItem("username");
@@ -32,7 +31,7 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem("role", role);
       }
       
-      console.log("- Determined role from fallback logic:", role);
+  
     }
 
     if (token && username && role) {
@@ -43,7 +42,6 @@ export const AuthProvider = ({ children }) => {
         isAuthenticated: true 
       };
       
-      console.log("✅ Setting user data:", userData);
       setUser(userData);
     } else {
       console.log("❌ Missing authentication data in localStorage");
@@ -55,7 +53,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (username, password) => {
     try {
-      console.log("AuthProvider: Attempting login for username:", username);
+
       
       const { data } = await api.post("users/login/", { username, password });
       
@@ -82,10 +80,8 @@ export const AuthProvider = ({ children }) => {
       // Special case: nếu username là 'admin' và không có role rõ ràng, set role = admin
       if (data.username === 'admin' && userRole === 'customer') {
         userRole = 'admin';
-        console.log("⚠️ Special case: username 'admin' detected, setting role to admin");
-      }
       
-      console.log("Determined user role:", userRole);
+      }
       
       // Lưu vào localStorage
       localStorage.setItem("token", data.access);
@@ -100,7 +96,7 @@ export const AuthProvider = ({ children }) => {
         isAuthenticated: true,
       };
 
-      console.log("✅ Login successful, setting user:", userData);
+      
       setUser(userData);
 
       return { success: true, role: userRole, token: data.access };
@@ -116,7 +112,7 @@ export const AuthProvider = ({ children }) => {
       
       const { data } = await api.post("/users/register/", payload);
       
-      console.log("Register response data:", data);
+      
       return { success: true, data };
     } catch (err) {
       console.log("❌ Register failed:", err.response?.data);
@@ -167,7 +163,6 @@ export const AuthProvider = ({ children }) => {
 
   // Debug current user state
   useEffect(() => {
-    console.log("AuthProvider: Current user state changed:", user);
   }, [user]);
 
   const setRole = (newRole) => {

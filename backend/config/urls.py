@@ -33,6 +33,7 @@ urlpatterns = [
     path("api/dashboard/", dashboard_data, name="dashboard-data"),
     path("api/dashboard/", include("dashboard.urls")),
 
+    path("api/marketing/", include("marketing.urls")),
 
 ]
 

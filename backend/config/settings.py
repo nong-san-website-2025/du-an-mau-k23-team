@@ -39,7 +39,7 @@ INSTALLED_APPS = [
     # Local apps
     "users", "sellers", "products", "reviews",
     "cart", "orders", "payments", "store",
-    "blog", "wallet", "promotions",'complaints',
+    "blog", "wallet", "promotions",'complaints', "marketing",
 
     # Cloudinary
 

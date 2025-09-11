@@ -304,6 +304,7 @@ export default function Header() {
                 setShowCategory={setShowCategory}
               />
             </nav> */}
+            
 
             {/* Search & Actions */}
             <SearchBoxWithSuggestions
