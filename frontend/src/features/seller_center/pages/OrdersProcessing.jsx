@@ -52,7 +52,21 @@ export default function OrdersProcessing() {
       title: "Hành động",
       key: "actions",
       render: (_, r) => (
-        <Button disabled>Xử lý giao hàng…</Button>
+        <Button
+          type="primary"
+          onClick={async () => {
+            try {
+              await API.post(`orders/${r.id}/seller/complete/`);
+              message.success(`Đơn #${r.id} đã xác nhận giao thành công`);
+              fetchProcessing();
+            } catch (e) {
+              console.error(e);
+              message.error(e.response?.data?.error || "Không thể xác nhận giao hàng");
+            }
+          }}
+        >
+          Đã giao thành công
+        </Button>
       )
     }
   ];
