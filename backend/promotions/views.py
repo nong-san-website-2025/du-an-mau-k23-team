@@ -10,6 +10,9 @@ from .models import Voucher, FlashSale, FlashSaleItem
 from .serializers import VoucherSerializer, FlashSaleSerializer, FlashSaleItemSerializer
 from django.utils import timezone
 from rest_framework import generics
+from .models import Promotion
+from .serializers import PromotionSerializer
+
 
 
 class IsAdminOrReadOnly(permissions.BasePermission):
@@ -103,3 +106,11 @@ def apply_voucher(request):
         "discount": float(discount),
         "final_total": float(order_total - discount)
     })
+
+class PromotionListCreateAPIView(generics.ListCreateAPIView):
+    queryset = Promotion.objects.all()
+    serializer_class = PromotionSerializer
+
+class PromotionDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Promotion.objects.all()
+    serializer_class = PromotionSerializer

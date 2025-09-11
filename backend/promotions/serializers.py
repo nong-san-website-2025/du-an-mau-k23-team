@@ -1,6 +1,6 @@
 # promotions/serializers.py
 from rest_framework import serializers
-from .models import Voucher, FlashSale, FlashSaleItem
+from .models import Voucher, FlashSale, FlashSaleItem, Promotion
 
 
 class VoucherSerializer(serializers.ModelSerializer):
@@ -71,3 +71,9 @@ class FlashSaleSerializer(serializers.ModelSerializer):
     class Meta:
         model = FlashSale
         fields = "__all__"
+
+
+class PromotionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Promotion
+        fields = ['id', 'code', 'name', 'description', 'type', 'condition', 'start', 'end', 'total', 'used', 'products']
