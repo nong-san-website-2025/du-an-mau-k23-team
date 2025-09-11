@@ -1,0 +1,48 @@
+.banner-carousel {
+  width: 100%;
+  margin-bottom: 24px; /* tương đương mb-6 */
+}
+
+.banner-slide {
+  position: relative;
+  width: 100%;
+  height: 350px; /* chiều cao bạn muốn */
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.banner-slide img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: fill; /* cover toàn bộ khung, không méo */
+}
+
+.carousel-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background-color: rgba(177, 7, 7, 0.1);
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  cursor: pointer;
+  border-radius: 25%;
+  font-size: 24px;
+  z-index: 10;
+}
+
+.prev-btn {
+  left: 10px;
+}
+
+.next-btn {
+  right: 10px;
+}
+
+.carousel-btn:hover {
+  background-color: rgba(0,0,0,0.7);
+}
+

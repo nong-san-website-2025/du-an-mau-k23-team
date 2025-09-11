@@ -18,7 +18,9 @@ import ProfilePage from "../features/users/pages/ProfilePage";
 import SellerRegisterPage from "../features/sellers/pages/SellerRegisterPage";
 import ManageStore from "../features/login_register/pages/ManageStore";
 import Wishlist from "../pages/Wishlist/Wishlist";
+import NotificationPage from "../features/users/pages/NotificationPage";
 import PaymentResultPage from "../features/cart/pages/PaymentResultPage";
+
 
 export const userRoutes = [
   <Route path="/" element={<Layout />} key="layout">
@@ -43,6 +45,7 @@ export const userRoutes = [
       <Route path="manage-products" element={<ManageStore />} />
       <Route path="register-seller" element={<SellerRegisterPage />} />
       <Route path="/payment/result" element={<PaymentResultPage />} />
+      <Route path="/payment/NotificationPage" element={<NotificationPage />} />
     </Route>
   </Route>
 ];

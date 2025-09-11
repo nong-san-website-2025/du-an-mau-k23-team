@@ -1,6 +1,9 @@
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Search, Heart, ShoppingCart, User } from "lucide-react";
+import { Search, Heart, ShoppingCart, User, Bell } from "lucide-react";
+import "../../styles/layouts/header/UserActions.css";
+import axiosInstance from "../../features/admin/services/axiosInstance";
+import axios from "axios";
 
 export default function UserActions({
   greenText,
@@ -22,26 +25,350 @@ export default function UserActions({
 }) {
   const navigate = useNavigate();
 
+  // Lấy thông báo từ localStorage và sắp xếp giống NotificationPage
+  const getNotifications = () => {
+    let notis = [];
+    try {
+      notis = JSON.parse(localStorage.getItem("notifications")) || [];
+    } catch {
+      notis = [];
+    }
+    return notis;
+  };
+  const [complaints, setComplaints] = useState([]);
+  const userId = userProfile?.id;
+
+  useEffect(() => {
+    let mounted = true;
+    const fetchComplaints = async () => {
+      if (!userId) return;
+      try {
+        let all = [];
+        let url = `/complaints/`;
+        while (url) {
+          const res = url.startsWith("http")
+            ? await axios.get(url, { headers: axiosInstance.defaults.headers.common })
+            : await axiosInstance.get(url);
+          let pageData = [];
+          if (Array.isArray(res.data)) {
+            pageData = res.data;
+            url = null;
+          } else if (res.data && Array.isArray(res.data.results)) {
+            pageData = res.data.results;
+            url = res.data.next || null;
+          } else {
+            pageData = [];
+            url = null;
+          }
+          all = all.concat(pageData);
+        }
+        const mine = all.filter(
+          (c) => c.user === userId || c.user_id === userId || c.user?.id === userId
+        );
+        if (mounted) setComplaints(mine);
+      } catch (e) {
+        if (mounted) setComplaints([]);
+      }
+    };
+    fetchComplaints();
+    return () => {
+      mounted = false;
+    };
+  }, [userId]);
+
+  const myNotifications = useMemo(() => {
+    return (complaints || [])
+      .filter((c) => ["resolved", "rejected"].includes((c.status || "").toLowerCase()))
+      .map((c) => {
+        const status = (c.status || "").toLowerCase();
+        const productName = c.product_name || c.product?.name || "";
+        const detailLines = [
+          `Khiếu nại sản phẩm: ${productName}.`,
+          `Lý do: ${c.reason || ""}.`,
+        ];
+        if (status === "resolved") {
+          const rtCode = (c.resolution_type || c.resolution || "").toLowerCase();
+          let vnLabel = "";
+          switch (rtCode) {
+            case "refund_full":
+              vnLabel = "Hoàn tiền toàn bộ";
+              break;
+            case "refund_partial":
+              vnLabel = "Hoàn tiền một phần";
+              break;
+            case "replace":
+              vnLabel = "Đổi sản phẩm";
+              break;
+            case "voucher":
+              vnLabel = "Tặng voucher/điểm thưởng";
+              break;
+            case "reject":
+              vnLabel = "Từ chối khiếu nại";
+              break;
+            default:
+              vnLabel = "Đã xử lý";
+          }
+          detailLines.push(`Hình thức xử lý: ${vnLabel}`);
+        } else if (status === "rejected") {
+          detailLines.push(`Hình thức xử lý: Từ chối khiếu nại`);
+        }
+
+        let thumbnail = null;
+        const media = c.media_urls || c.media || [];
+        if (Array.isArray(media) && media.length > 0) {
+          const img = media.find((url) => /\.(jpg|jpeg|png|gif)$/i.test(url));
+          thumbnail = img || media[0];
+        }
+
+        return {
+          id: c.id,
+          message:
+            status === "resolved"
+              ? "Khiếu nại của bạn đã được xử lý!"
+              : "Khiếu nại của bạn đã bị từ chối!",
+          detail: detailLines.join("\n"),
+          time: c.updated_at ? new Date(c.updated_at).toLocaleString() : new Date().toLocaleString(),
+          read: false,
+          userId,
+          thumbnail,
+        };
+      });
+  }, [complaints, userId]);
+
+  // Sắp xếp theo sản phẩm, sau đó thời gian mới nhất
+  const getProduct = (noti) => {
+    const match =
+      noti.detail && noti.detail.match(/Khiếu nại sản phẩm: (.*?)(\.|\n)/);
+    return match ? match[1] : "";
+  };
+  const sortedNotifications = [...myNotifications].sort((a, b) => {
+    const prodA = getProduct(a).toLowerCase();
+    const prodB = getProduct(b).toLowerCase();
+    if (prodA < prodB) return -1;
+    if (prodA > prodB) return 1;
+    return (b.id || 0) - (a.id || 0);
+  });
+
   return (
-    <div className="d-flex align-items-center ms-3" style={{ flexShrink: 0, flexWrap: "nowrap" }}>
+    <div
+      className="d-flex align-items-center ms-3"
+      style={{ flexShrink: 0, flexWrap: "nowrap" }}
+    >
       {/* Mobile search button */}
       <button className="btn btn-light rounded-circle me-2 p-2 d-md-none">
-        <Search size={22} style={greenText} />
+        <Search size={22} className="text-white" />
       </button>
 
-      <Link to="/wishlist" className="btn btn-light rounded-circle me-2 p-2 d-none d-sm-inline-block" style={{ flexShrink: 0 }}>
-        <Heart size={22} style={greenText} />
+      <Link
+        to="/wishlist"
+        className=" me-2 p-2 d-none d-sm-inline-block"
+        style={{ flexShrink: 0 }}
+      >
+        <Heart size={22} className="text-white" />
       </Link>
 
-      {/* Cart icon + dropdown */}
-      <div style={{ position: "relative" }} onMouseEnter={() => setShowCartDropdown(true)} onMouseLeave={() => setShowCartDropdown(false)}>
+      {/* Notification icon */}
+      <div
+        style={{ position: "relative", display: "inline-block" }}
+        onMouseEnter={() =>
+          setShowNotificationDropdown && setShowNotificationDropdown(true)
+        }
+        onMouseLeave={() =>
+          setShowNotificationDropdown && setShowNotificationDropdown(false)
+        }
+      >
         <button
-          className="btn btn-light rounded-circle me-2 p-2 position-relative"
-          style={{ flexShrink: 0 }}
+          className="notification-btn"
+          style={{
+            flexShrink: 0,
+            position: "relative",
+            border: "none",
+            boxShadow: "none",
+            borderRadius: "50%",
+            padding: 8,
+            cursor: "pointer",
+            transition: "background 0.2s ease",
+          }}
+          aria-label="Thông báo"
+        >
+          <Bell size={22} className="bell-icon" />
+          {sortedNotifications && sortedNotifications.length > 0 && (
+            <span
+              style={{
+                position: "absolute",
+                top: 2,
+                right: 2,
+                minWidth: 16,
+                height: 16,
+                background: "#c62828", // đỏ
+                color: "#fff",
+                borderRadius: "50%",
+                fontSize: 11,
+                fontWeight: 700,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "0 4px",
+                zIndex: 10,
+                boxShadow: "0 1px 4px #0002",
+              }}
+            >
+              {sortedNotifications.length}
+            </span>
+          )}
+        </button>
+
+        {showNotificationDropdown && (
+          <div
+            style={{
+              position: "absolute",
+              right: 0,
+              top: "110%",
+              minWidth: 340,
+              maxWidth: 400,
+              background: "#fff",
+              boxShadow: "0 4px 24px #16a34a22",
+              borderRadius: 16,
+              zIndex: 2000,
+              padding: "12px 0",
+              color: "#166534",
+              border: "1px solid #bbf7d0",
+            }}
+          >
+            <div
+              style={{
+                fontWeight: 700,
+                fontSize: 17,
+                padding: "0 18px 10px 18px",
+                color: "#16a34a",
+              }}
+            >
+              Thông báo
+            </div>
+            {!sortedNotifications || sortedNotifications.length === 0 ? (
+              <div style={{ padding: "12px 18px", color: "#6b7280" }}>
+                Không có thông báo mới
+              </div>
+            ) : (
+              <>
+                {sortedNotifications.slice(0, 3).map((noti, idx) => (
+                  <div
+                    key={noti.id || idx}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      background: noti.read ? "#f0fdf4" : "#e6f4ea",
+                      borderRadius: 10,
+                      border: "1px solid #bbf7d0",
+                      padding: "12px 16px",
+                      margin: "0 12px 10px 12px",
+                      color: "#166534",
+                      fontWeight: noti.read ? 400 : 600,
+                      boxShadow: noti.read ? "none" : "0 2px 10px #16a34a22",
+                      transition: "background 0.2s, box-shadow 0.2s",
+                      cursor: "pointer",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = "#d1fae5";
+                      e.currentTarget.style.boxShadow = noti.read
+                        ? "none"
+                        : "0 4px 16px #16a34a33";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = noti.read
+                        ? "#f0fdf4"
+                        : "#e6f4ea";
+                      e.currentTarget.style.boxShadow = noti.read
+                        ? "none"
+                        : "0 2px 10px #16a34a22";
+                    }}
+                  >
+                    {noti.thumbnail && (
+                      <img
+                        src={noti.thumbnail}
+                        alt="thumb"
+                        style={{
+                          width: 32,
+                          height: 32,
+                          objectFit: "cover",
+                          borderRadius: 6,
+                          marginRight: 10,
+                          border: "1px solid #bbf7d0",
+                          background: "#fff",
+                        }}
+                      />
+                    )}
+                    <div style={{ flex: 1 }}>
+                      <div
+                        style={{
+                          fontWeight: 600,
+                          color: "#166534",
+                          fontSize: 15,
+                        }}
+                      >
+                        {noti.title || noti.message}
+                      </div>
+                      {noti.detail && (
+                        <div
+                          style={{
+                            fontSize: 13,
+                            color: "#166534",
+                            marginTop: 2,
+                          }}
+                        >
+                          {noti.detail}
+                        </div>
+                      )}
+                      {noti.time && (
+                        <div
+                          style={{
+                            fontSize: 12,
+                            color: "#6b7280",
+                            marginTop: 4,
+                          }}
+                        >
+                          {typeof noti.time === "string"
+                            ? noti.time
+                            : noti.time && noti.time.toLocaleString
+                              ? noti.time.toLocaleString()
+                              : ""}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                <div style={{ textAlign: "center", padding: "10px 0 0 0" }}>
+                  <button
+                    className="btn btn-link"
+                    style={{ color: "#16a34a", fontWeight: 600, fontSize: 15 }}
+                    onClick={() => navigate("/payment/NotificationPage")}
+                  >
+                    Xem tất cả thông báo
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+      {/* Cart icon + dropdown */}
+      <div
+        style={{ position: "relative" }}
+        onMouseEnter={() => setShowCartDropdown(true)}
+        onMouseLeave={() => setShowCartDropdown(false)}
+      >
+        <button
+          className="me-2 p-2 position-relative cart-button"
+          style={{
+            flexShrink: 0,
+            position: "relative",
+            border: "none",
+            boxShadow: "none",
+          }}
           aria-label="Giỏ hàng"
           onClick={() => navigate("/cart")}
         >
-          <ShoppingCart size={22} style={greenText} />
+          <ShoppingCart size={22} className="cart-icon" />
           {cartCount > 0 && (
             <span
               style={{
@@ -67,6 +394,7 @@ export default function UserActions({
             </span>
           )}
         </button>
+
         {showCartDropdown && (
           <div
             style={{
@@ -82,9 +410,20 @@ export default function UserActions({
               padding: "12px 0",
             }}
           >
-            <div style={{ fontWeight: 500, fontSize: 14, padding: "0 18px 8px 18px", color: "#16a34a" }}>Sản phẩm trong giỏ hàng</div>
+            <div
+              style={{
+                fontWeight: 500,
+                fontSize: 14,
+                padding: "0 18px 8px 18px",
+                color: "#16a34a",
+              }}
+            >
+              Sản phẩm trong giỏ hàng
+            </div>
             {cartItems.length === 0 ? (
-              <div style={{ padding: "12px 18px", color: "#888" }}>Giỏ hàng trống</div>
+              <div style={{ padding: "12px 18px", color: "#888" }}>
+                Giỏ hàng trống
+              </div>
             ) : (
               <>
                 {cartItems.slice(0, 4).map((item) => (
@@ -107,7 +446,9 @@ export default function UserActions({
                     }}
                   >
                     <img
-                      src={item.product?.thumbnail || "/media/products/default.png"}
+                      src={
+                        item.product?.thumbnail || "/media/products/default.png"
+                      }
                       alt="thumb"
                       style={{
                         width: 38,
@@ -120,7 +461,15 @@ export default function UserActions({
                       }}
                     />
                     <span>{item.product?.name || "Sản phẩm"}</span>
-                    <span style={{ marginLeft: "auto", color: "#16a34a", fontWeight: 600 }}>x{item.quantity}</span>
+                    <span
+                      style={{
+                        marginLeft: "auto",
+                        color: "#16a34a",
+                        fontWeight: 600,
+                      }}
+                    >
+                      x{item.quantity}
+                    </span>
                   </div>
                 ))}
                 <div style={{ textAlign: "center", padding: "10px 0 0 0" }}>
@@ -141,21 +490,32 @@ export default function UserActions({
         )}
       </div>
 
-      {/* Profile or login */}
-      {localStorage.getItem("token") && localStorage.getItem("username") ? (
-        <div className="dropdown" style={{ position: "relative" }}>
+      {/* User profile or login button */}
+      {userProfile && userProfile.id ? (
+        <div style={{ position: "relative" }}>
           <button
             className="btn btn-light rounded-circle p-2"
-            style={{ flexShrink: 0 }}
-            id="profileDropdownBtn"
-            onClick={() => setShowProfileDropdown((v) => !v)}
-            aria-expanded={showProfileDropdown ? "true" : "false"}
+            style={{
+              flexShrink: 0,
+              position: "relative",
+              background: "transparent",
+              border: "none",
+              boxShadow: "none",
+            }}
+            aria-label="Tài khoản"
+            onClick={() => setShowProfileDropdown(!showProfileDropdown)}
           >
-            {userProfile && userProfile.avatar ? (
+            {userProfile.avatar ? (
               <img
                 src={userProfile.avatar}
                 alt="avatar"
-                style={{ width: 28, height: 28, borderRadius: "50%", objectFit: "cover", border: "2px solid #eee" }}
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: "50%",
+                  objectFit: "cover",
+                  border: "2px solid #eee",
+                }}
               />
             ) : (
               <span
@@ -194,7 +554,10 @@ export default function UserActions({
                 background: "#fff",
               }}
             >
-              <div className="d-flex flex-column align-items-center py-3 px-3 border-bottom" style={{ background: "#f0fdf4" }}>
+              <div
+                className="d-flex flex-column align-items-center py-3 px-3 border-bottom"
+                style={{ background: "#f0fdf4" }}
+              >
                 {userProfile && userProfile.avatar ? (
                   <img
                     src={userProfile.avatar}
@@ -229,7 +592,11 @@ export default function UserActions({
                   </span>
                 )}
                 <div className="mt-2 text-center">
-                  <span style={{ fontWeight: 700, fontSize: 18, color: "#16a34a" }}>{localStorage.getItem("username")}</span>
+                  <span
+                    style={{ fontWeight: 700, fontSize: 18, color: "#16a34a" }}
+                  >
+                    {localStorage.getItem("username")}
+                  </span>
                 </div>
                 <button
                   className="btn btn-outline-success btn-sm mt-2 px-3 fw-bold"
@@ -242,36 +609,63 @@ export default function UserActions({
                   Xem hồ sơ
                 </button>
               </div>
-              <Link to="/orders" className="dropdown-item" style={{ padding: "12px 18px", fontWeight: 500 }} onClick={() => setShowProfileDropdown(false)}>
+              <Link
+                to="/orders"
+                className="dropdown-item"
+                style={{ padding: "12px 18px", fontWeight: 500 }}
+                onClick={() => setShowProfileDropdown(false)}
+              >
                 Đơn hàng của tôi
               </Link>
               <Link
-                to={storeName ? "/seller-center" : sellerStatus === "active" ? "/register-seller" : "/register-seller"}
+                to={
+                  storeName
+                    ? "/seller-center"
+                    : sellerStatus === "active"
+                      ? "/register-seller"
+                      : "/register-seller"
+                }
                 className="dropdown-item text-white fw-bold d-flex justify-content-left"
                 style={{
-                  background: hoveredDropdown === "register" ? "#16a34a" : "#22C55E",
+                  background:
+                    hoveredDropdown === "register" ? "#16a34a" : "#22C55E",
                   borderRadius: 0,
                   margin: "0px 0px",
-                  boxShadow: hoveredDropdown === "register" ? "0 4px 16px #16a34a44" : "0 2px 8px #22c55e44",
+                  boxShadow:
+                    hoveredDropdown === "register"
+                      ? "0 4px 16px #16a34a44"
+                      : "0 2px 8px #22c55e44",
                   fontSize: 16,
                   padding: "12px 18px",
                   border: "none",
                   transition: "all 0.2s",
-                  filter: hoveredDropdown === "register" ? "brightness(0.95)" : "none",
+                  filter:
+                    hoveredDropdown === "register"
+                      ? "brightness(0.95)"
+                      : "none",
                 }}
                 onMouseEnter={() => setHoveredDropdown("register")}
                 onMouseLeave={() => setHoveredDropdown(null)}
                 onClick={() => setShowProfileDropdown(false)}
               >
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                <span
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 8,
+                  }}
+                >
                   {storeName
                     ? "Cửa hàng của tôi"
                     : sellerStatus === "pending"
-                    ? "Đang chờ duyệt"
-                    : "Đăng ký bán hàng"}
+                      ? "Đang chờ duyệt"
+                      : "Đăng ký bán hàng"}
                 </span>
               </Link>
-              <div className="dropdown-divider" style={{ margin: 0, borderTop: "1px solid #eee" }} />
+              <div
+                className="dropdown-divider"
+                style={{ margin: 0, borderTop: "1px solid #eee" }}
+              />
               <button
                 className="dropdown-item text-danger"
                 style={{
@@ -294,8 +688,18 @@ export default function UserActions({
           )}
         </div>
       ) : (
-        <Link to="/login" className="btn btn-light rounded-circle p-2" style={{ flexShrink: 0 }}>
-          <User size={22} style={greenText} />
+        <Link
+          to="/login"
+          className=" p-2"
+          style={{
+            flexShrink: 0,
+            position: "relative",
+            background: "transparent",
+            border: "none",
+            boxShadow: "none",
+          }}
+        >
+          <User size={22} className="text-white" />
         </Link>
       )}
     </div>

@@ -1,0 +1,73 @@
+import django.db.models.deletion
+from django.db import migrations, models
+
+
+class Migration(migrations.Migration):
+
+    initial = True
+
+    dependencies = [
+    ]
+
+    operations = [
+        migrations.CreateModel(
+            name='Promotion',
+            fields=[
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('code', models.CharField(max_length=50, unique=True)),
+                ('name', models.CharField(max_length=200)),
+                ('description', models.TextField(blank=True, null=True)),
+                ('type', models.CharField(choices=[('Promotion', 'Giảm tiền'), ('Flash Sale', 'Giảm %'), ('Voucher', 'Freeship')], max_length=50)),
+                ('condition', models.CharField(blank=True, max_length=255, null=True)),
+                ('start', models.DateTimeField()),
+                ('end', models.DateTimeField()),
+                ('total', models.PositiveIntegerField(default=0)),
+                ('used', models.PositiveIntegerField(default=0)),
+                ('products', models.PositiveIntegerField(default=0)),
+            ],
+        ),
+        migrations.CreateModel(
+            name='FlashSale',
+            fields=[
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('title', models.CharField(max_length=200)),
+                ('description', models.TextField(blank=True)),
+                ('start_at', models.DateTimeField()),
+                ('end_at', models.DateTimeField()),
+                ('active', models.BooleanField(default=True)),
+                ('created_at', models.DateTimeField(auto_now_add=True)),
+            ],
+        ),
+        migrations.CreateModel(
+            name='Voucher',
+            fields=[
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('code', models.CharField(max_length=64, unique=True)),
+                ('campaign_name', models.CharField(blank=True, max_length=200)),
+                ('title', models.CharField(blank=True, max_length=200)),
+                ('description', models.TextField(blank=True)),
+                ('scope', models.CharField(choices=[('system', 'System'), ('seller', 'Seller')], default='system', max_length=10)),
+                ('discount_percent', models.DecimalField(blank=True, decimal_places=2, max_digits=5, null=True)),
+                ('discount_amount', models.DecimalField(blank=True, decimal_places=2, max_digits=12, null=True)),
+                ('min_order_value', models.DecimalField(blank=True, decimal_places=2, max_digits=12, null=True)),
+                ('start_at', models.DateTimeField(blank=True, null=True)),
+                ('end_at', models.DateTimeField(blank=True, null=True)),
+                ('active', models.BooleanField(default=True)),
+                ('created_at', models.DateTimeField(auto_now_add=True)),
+                ('seller', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='sellers.seller')),
+            ],
+        ),
+        migrations.CreateModel(
+            name='FlashSaleItem',
+            fields=[
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('sale_price', models.DecimalField(decimal_places=2, max_digits=12)),
+                ('stock_limit', models.IntegerField(blank=True, null=True)),
+                ('flashsale', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='items', to='promotions.flashsale')),
+                ('product', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='products.product')),
+            ],
+            options={
+                'unique_together': {('flashsale', 'product')},
+            },
+        ),
+    ]

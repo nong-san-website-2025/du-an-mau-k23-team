@@ -18,6 +18,8 @@ ALLOWED_HOSTS = [
     "*"
 ]
 
+DEBUG = True
+
 # --- Installed apps
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -31,16 +33,21 @@ INSTALLED_APPS = [
     "rest_framework",
     "rest_framework_simplejwt",
     "corsheaders",
+    "django_filters",
+    'advertisements',
+    "rest_framework_simplejwt.token_blacklist",
 
     # Local apps
     "users", "sellers", "products", "reviews",
     "cart", "orders", "payments", "store",
-    "blog", "wallet",
+    "blog", "wallet", "promotions",'complaints', "marketing",
 
     # Cloudinary
 
     'cloudinary',
     'cloudinary_storage',
+
+    "dashboard",
 ]
 
 # --- Email
@@ -119,6 +126,7 @@ else:
         }
     }
 
+
 # --- Auth
 AUTH_USER_MODEL = "users.CustomUser"
 AUTHENTICATION_BACKENDS = [
@@ -132,6 +140,14 @@ REST_FRAMEWORK = {
     ),
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticatedOrReadOnly",
+    ),
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+    ],
+    "DEFAULT_FILTER_BACKENDS": (
+        "django_filters.rest_framework.DjangoFilterBackend",
+        "rest_framework.filters.OrderingFilter",
+        "rest_framework.filters.SearchFilter",
     ),
 }
 
@@ -171,6 +187,10 @@ USE_I18N = True
 USE_TZ = True
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Platform wallet owner configuration
+# Set this to a specific username to receive platform commission; fallback is the first superuser
+PLATFORM_WALLET_USERNAME = os.environ.get('PLATFORM_WALLET_USERNAME', '').strip() or None
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),  # access token sống 60 phút

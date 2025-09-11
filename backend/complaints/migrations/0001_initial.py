@@ -1,0 +1,38 @@
+
+import cloudinary.models
+import django.db.models.deletion
+from django.conf import settings
+from django.db import migrations, models
+
+
+class Migration(migrations.Migration):
+
+    initial = True
+
+    dependencies = [
+        ('products', '0012_category_status_subcategory_status'),
+        migrations.swappable_dependency(settings.AUTH_USER_MODEL),
+    ]
+
+    operations = [
+        migrations.CreateModel(
+            name='Complaint',
+            fields=[
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('reason', models.TextField()),
+                ('status', models.CharField(choices=[('pending', 'Pending'), ('resolved', 'Resolved'), ('rejected', 'Rejected')], default='pending', max_length=20)),
+                ('created_at', models.DateTimeField(auto_now_add=True)),
+                ('resolution_type', models.CharField(blank=True, choices=[('refund_full', 'Hoàn tiền toàn bộ'), ('refund_partial', 'Hoàn tiền một phần'), ('replace', 'Đổi sản phẩm'), ('voucher', 'Tặng voucher/điểm thưởng'), ('reject', 'Từ chối khiếu nại')], max_length=30, null=True)),
+                ('product', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='complaints', to='products.product')),
+                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='complaints', to=settings.AUTH_USER_MODEL)),
+            ],
+        ),
+        migrations.CreateModel(
+            name='ComplaintMedia',
+            fields=[
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('file', cloudinary.models.CloudinaryField(max_length=255)),
+                ('complaint', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='media', to='complaints.complaint')),
+            ],
+        ),
+    ]

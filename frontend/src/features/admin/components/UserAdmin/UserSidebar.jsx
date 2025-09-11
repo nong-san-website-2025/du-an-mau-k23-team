@@ -1,4 +1,7 @@
+// components/UserAdmin/UserSidebar.jsx
 import React, { useState } from "react";
+import { Select, Modal, Input } from "antd";
+import { useTranslation } from "react-i18next";
 
 export default function UserSidebar({
   roles,
@@ -6,159 +9,81 @@ export default function UserSidebar({
   setSelectedRole,
   onRoleCreated,
 }) {
+  const { t } = useTranslation();
   const [showModal, setShowModal] = useState(false);
   const [newRoleName, setNewRoleName] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleCreateClick = (e) => {
-    e.preventDefault();
-    setShowModal(true);
-  };
-
-  const handleModalClose = () => {
-    if (!loading) {
-      setShowModal(false);
-      setNewRoleName("");
-    }
-  };
-
-  const handleModalSubmit = async (e) => {
-    e.preventDefault();
-
+  const handleCreateRole = async () => {
     if (!newRoleName.trim()) {
-      alert("Vui lòng nhập tên vai trò");
+      Modal.warning({ content: t("user_sidebar.please_enter_role_name") });
       return;
     }
 
     try {
       setLoading(true);
-
-      const roleData = {
-        name: newRoleName.trim(),
-      };
-
+      const roleData = { name: newRoleName.trim() };
       const token = localStorage.getItem("token");
 
       const response = await fetch("http://localhost:8000/api/users/roles/", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify(roleData),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-      }
+      if (!response.ok) throw new Error(`HTTP error ${response.status}`);
 
-      alert("Tạo vai trò mới thành công!");
+      Modal.success({ content: t("user_sidebar.create_role_success") });
 
-      // Gọi lại hàm từ UsersPage để cập nhật UI ngay
-      if (onRoleCreated) {
-        onRoleCreated();
-      }
+      if (onRoleCreated) onRoleCreated();
 
-      // Reset và đóng modal
       setNewRoleName("");
       setShowModal(false);
     } catch (error) {
-      console.error("Error creating role:", error);
-      alert(`Có lỗi xảy ra khi tạo vai trò mới: ${error.message}`);
+      Modal.error({
+        content: t("user_sidebar.create_role_error", { error: error.message }),
+      });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="bg-white p-3 rounded shadow-sm border mb-3">
-      <h5 className="fw-bold mb-4">Người dùng</h5>
-      <div className="mb-3">
-        <div className="d-flex align-items-center justify-content-between">
-          <label className="form-label fw-bold" style={{ fontSize: "14px" }}>
-            Vai trò
-          </label>
-          <a
-            href="#"
-            onClick={handleCreateClick}
-            style={{
-              textDecoration: "none",
-              color: "#22C55E",
-              fontSize: "14px",
-              fontWeight: "500",
-            }}
-          >
-            
-          </a>
-        </div>
-        <select
-          className="form-select"
-          value={String(selectedRole)}
-          onChange={(e) => setSelectedRole(String(e.target.value))}
-        >
-          <option value="all">Tất cả vai trò</option>
-          {roles.map((role) => (
-            <option key={role.id} value={String(role.id)}>
-              {role.name}
-            </option>
-          ))}
-        </select>
-      </div>
+    <>
+      <Select
+        value={selectedRole}
+        style={{ width: "100%", height: "100%" }}
+        onChange={(value) => setSelectedRole(value)}
+      >
+        <Select.Option value="all">
+          {t("user_sidebar.all_roles")}
+        </Select.Option>
+        {roles.map((role) => (
+          <Select.Option key={role.id} value={String(role.id)}>
+            {role.name}
+          </Select.Option>
+        ))}
+      </Select>
 
-      {showModal && (
-        <div
-          className="modal fade show"
-          tabIndex="-1"
-          style={{ display: "block", background: "#0008" }}
-        >
-          <div className="modal-dialog modal-dialog-centered modal-lg">
-            <div className="modal-content">
-              <form onSubmit={handleModalSubmit}>
-                <div className="modal-header">
-                  <h5 className="modal-title">Tạo vai trò mới</h5>
-                  <button
-                    type="button"
-                    className="btn-close"
-                    onClick={handleModalClose}
-                    disabled={loading}
-                  ></button>
-                </div>
-                <div className="modal-body">
-                  <label className="form-label" style={{ fontSize: "14px" }}>
-                    Tên vai trò
-                  </label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    value={newRoleName}
-                    onChange={(e) => setNewRoleName(e.target.value)}
-                    disabled={loading}
-                    required
-                  />
-                </div>
-                <div className="modal-footer">
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    onClick={handleModalClose}
-                    disabled={loading}
-                  >
-                    Huỷ
-                  </button>
-                  <button
-                    type="submit"
-                    className="btn btn-success"
-                    disabled={loading}
-                  >
-                    {loading ? "Đang tạo..." : "Tạo mới"}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+      {/* Modal create role */}
+      <Modal
+        open={showModal}
+        title={t("user_sidebar.create_new_role")}
+        onCancel={() => setShowModal(false)}
+        onOk={handleCreateRole}
+        confirmLoading={loading}
+        okText={t("user_sidebar.create")}
+        cancelText={t("user_sidebar.cancel")}
+      >
+        <Input
+          placeholder={t("user_sidebar.role_name")}
+          value={newRoleName}
+          onChange={(e) => setNewRoleName(e.target.value)}
+        />
+      </Modal>
+    </>
   );
 }

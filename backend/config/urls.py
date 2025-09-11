@@ -3,6 +3,7 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from django.http import HttpResponse
+from dashboard.views import dashboard_data
 
 def home(request):
     return HttpResponse("Hello, world!")
@@ -15,12 +16,26 @@ urlpatterns = [
     path('api/products/', include('products.urls')),
     path('api/reviews/', include('reviews.urls')),
     path('api/orders/', include('orders.urls')),
-    path('api/payments/', include('payments.urls')),
+    path('api/payments/', include('payments.urls')),    
     path('api/', include('wallet.urls')),
     path('api/', include('cart.urls')),
     path('api/blog/', include('blog.urls')),
     path('api/store/', include('store.urls')),
     path('api/cart/', include('cart.urls')),
+
+    path('api/advertisements/', include('advertisements.urls')),
+      
+    path("api/promotions/", include("promotions.urls")),
+    path('', include('reviews.urls')),
+
+
+    path('api/complaints/', include('complaints.urls')),
+    path("api/dashboard/", dashboard_data, name="dashboard-data"),
+    path("api/dashboard/", include("dashboard.urls")),
+
+    path("api/marketing/", include("marketing.urls")),
+
 ]
+
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

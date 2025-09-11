@@ -12,6 +12,7 @@ export default function OrderTable({
   formatCurrency,
   formatDate,
   onViewDetail,
+  onCancel
 }) {
   const [expandedOrderId, setExpandedOrderId] = useState(null);
 
@@ -59,12 +60,13 @@ export default function OrderTable({
           <th>Tổng tiền</th>
           <th>Trạng thái</th>
           <th>Ngày tạo</th>
+          <th>Shop</th>
         </tr>
       </thead>
       <tbody>
         {filteredOrders.length === 0 ? (
           <tr>
-            <td colSpan="6" className="text-center py-4">
+            <td colSpan="7" className="text-center py-4">
               <i className="bi bi-inbox" style={{ fontSize: "3rem", color: "#6c757d", marginBottom: "1rem" }}></i>
               <p className="text-muted">Không có đơn hàng nào</p>
             </td>
@@ -88,6 +90,7 @@ export default function OrderTable({
                   getStatusLabel={getStatusLabel}
                   formatCurrency={formatCurrency}
                   formatDate={formatDate}
+                  onCancel={onCancel}
                 />
               )}
             </React.Fragment>

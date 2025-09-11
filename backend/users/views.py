@@ -2,7 +2,7 @@ from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.hashers import make_password
 from django.core.cache import cache
 from django.core.mail import send_mail
-from django.db.models import Sum
+from django.db.models import Sum, Count
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 
@@ -18,6 +18,12 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
+from .serializers import AccountSerializer, ChangePasswordSerializer
+from rest_framework.parsers import MultiPartParser, FormParser
+from .serializers import ProfileSerializer
+from .serializers import CustomUserSerializer
+
+
 
 import random
 
@@ -27,12 +33,13 @@ from .serializers import (
     UserSerializer,
     RegisterSerializer,
     ForgotPasswordSerializer,
-    ChangePasswordSerializer,
     AddressSerializer,
     EmployeeSerializer,
     RoleSerializer,
 )
 from .permissions import IsAdmin, IsSeller, IsNormalUser
+from products.models import Product
+from orders.models import Order
 
 
 User = get_user_model()
@@ -115,7 +122,7 @@ class GoogleLoginAPIView(APIView):
 class RegisterView(generics.CreateAPIView):
     queryset = CustomUser.objects.all()
     serializer_class = RegisterSerializer
-    permission_classes = [AllowAny]
+    permission_classes =  [AllowAny]
 
 
 class LoginView(APIView):
@@ -162,22 +169,18 @@ class LoginView(APIView):
 
 
 class UserProfileView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
         serializer = UserSerializer(request.user)
         return Response(serializer.data)
 
     def put(self, request):
-        serializer = UserSerializer(
-            request.user, data=request.data, partial=True
-        )
+        serializer = UserSerializer(request.user, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
-        return Response(serializer.errors, status=400)
-
-    patch = put
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -310,6 +313,7 @@ class RoleCreateView(APIView):
 class RoleListView(ListAPIView):
     queryset = Role.objects.all()
     serializer_class = RoleSerializer
+    permission_classes = [AllowAny]
 
 
 class RoleViewSet(viewsets.ModelViewSet):
@@ -414,3 +418,98 @@ class EmployeeViewSet(viewsets.ModelViewSet):
     queryset = CustomUser.objects.filter(role__name="employee")
     serializer_class = EmployeeSerializer
     permission_classes = [IsAuthenticated, IsAdmin]
+
+# API quản lý người dùng
+class UserManagementViewSet(viewsets.ModelViewSet):
+    queryset = CustomUser.objects.all()
+    serializer_class = UserSerializer
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+    def list(self, request, *args, **kwargs):
+        """Lấy danh sách người dùng"""
+        return super().list(request, *args, **kwargs)
+
+    def create(self, request, *args, **kwargs):
+        """Tạo người dùng mới"""
+        return super().create(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        """Cập nhật thông tin người dùng"""
+        return super().update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        """Xóa người dùng"""
+        return super().destroy(request, *args, **kwargs)
+
+# -------------------- DASHBOARD --------------------
+class DashboardAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        # Tổng số liệu cơ bản
+        total_users = CustomUser.objects.count()
+        total_products = Product.objects.count()
+        total_orders = Order.objects.count()
+
+        # Tổng doanh thu: chỉ tính các đơn hàng thành công
+        total_revenue = (
+            Order.objects.filter(status="success")
+            .aggregate(Sum("total_price"))["total_price__sum"] or 0
+        )
+
+        # Seller đang hoạt động và pending
+        active_sellers = CustomUser.objects.filter(role__name="seller", is_active=True).count()
+        pending_sellers = CustomUser.objects.filter(role__name="seller", is_active=False).count()
+
+        # Top sản phẩm bán chạy
+        top_products = (
+            Product.objects.annotate(sales=Count("order_items"))  # <- đã sửa đúng
+            .order_by("-sales")[:5]
+        )
+        top_products_data = [
+            {"name": product.name, "sales": product.sales} for product in top_products
+        ]
+
+        # Trả về dữ liệu
+        return Response({
+            "total_users": total_users,
+            "total_products": total_products,
+            "total_orders": total_orders,
+            "total_revenue": total_revenue,
+            "active_sellers": active_sellers,
+            "pending_sellers": pending_sellers,
+            "top_products": top_products_data,
+        })
+
+class CurrentUserView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        serializer = UserSerializer(request.user)
+        return Response(serializer.data)
+
+class AccountView(generics.RetrieveUpdateAPIView):
+    serializer_class = AccountSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_object(self):
+        return self.request.user
+    
+class UserMeView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        serializer = CustomUserSerializer(request.user)
+        return Response(serializer.data)
+    
+    
+class UploadAvatarView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        avatar = request.FILES.get("avatar")
+        if not avatar:
+            return Response({"error": "No file uploaded"}, status=400)
+        request.user.avatar = avatar
+        request.user.save()
+        return Response({"avatar": request.user.avatar.url})

@@ -1,77 +1,92 @@
+import React, { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
+import { Tabs } from "antd";
+import {
+  ClockCircleOutlined,
+  CarOutlined,
+  CheckCircleOutlined,
+  CloseCircleOutlined,
+} from "@ant-design/icons";
+import OrderTab from "./OrderTab";
 
-import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
-import OrderTab from './OrderTab';
+const { TabPane } = Tabs;
 
 const Orders = () => {
   const location = useLocation();
-  const [tab, setTab] = useState('pending');
+  const [activeTab, setActiveTab] = useState("pending");
 
-  // Kiểm tra URL parameter để set tab mặc định
+  // Đồng bộ trạng thái tab với URL
   useEffect(() => {
     const urlParams = new URLSearchParams(location.search);
-    const tabParam = urlParams.get('tab');
-    if (tabParam && ['pending', 'completed', 'cancelled'].includes(tabParam)) {
-      setTab(tabParam);
+    const tabParam = urlParams.get("tab");
+    if (
+      tabParam &&
+      ["pending", "shipping", "completed", "cancelled"].includes(tabParam)
+    ) {
+      setActiveTab(tabParam);
     }
   }, [location.search]);
 
   return (
-    <div style={{ maxWidth: 800, margin: '0 auto', background: '#fff', padding: 0, borderRadius: 0 }}> 
-      <div style={{ display: 'flex', gap: 0, marginBottom: 24 }}>
-        <button
-          onClick={() => setTab('pending')}
-          style={{
-            flex: 1,
-            padding: 12,
-            borderRadius: 0,
-            border: tab === 'pending' ? '2px solid #27ae60' : '1px solid #fff',
-            background: tab === 'pending' ? '#eafaf1' : '#f8f8f8',
-            color: tab === 'pending' ? '#27ae60' : '#333',
-            fontWeight: tab === 'pending' ? 'bold' : 'normal',
-            fontSize: 16,
-            cursor: 'pointer',
-            transition: 'all 0.2s',
-          }}
+    <div className="flex flex-col items-center justify-start min-h-[70vh] mt-10">
+      <div className="w-full max-w-5xl bg-white rounded-xl shadow-sm p-6">
+        <Tabs
+          activeKey={activeTab}
+          onChange={setActiveTab}
+          tabBarGutter={32}
+          tabBarStyle={{ marginBottom: 24 }}
+          size="large"
+          centered
         >
-          Chờ thanh toán
-        </button>
-        <button
-          onClick={() => setTab('completed')}
-          style={{
-            flex: 1,
-            padding: 12,
-            borderRadius: 0,
-            border: tab === 'completed' ? '2px solid #27ae60' : '1px solid #fff',
-            background: tab === 'completed' ? '#eafaf1' : '#f8f8f8',
-            color: tab === 'completed' ? '#27ae60' : '#333',
-            fontWeight: tab === 'completed' ? 'bold' : 'normal',
-            fontSize: 16,
-            cursor: 'pointer',
-            transition: 'all 0.2s',
-          }}
-        >
-          Đã thanh toán
-        </button>
-        <button
-          onClick={() => setTab('cancelled')}
-          style={{
-            flex: 1,
-            padding: 12,
-            borderRadius: 0,
-            border: tab === 'cancelled' ? '2px solid #e74c3c' : '1px solid #fff',
-            background: tab === 'cancelled' ? '#faeaea' : '#f8f8f8',
-            color: tab === 'cancelled' ? '#e74c3c' : '#333',
-            fontWeight: tab === 'cancelled' ? 'bold' : 'normal',
-            fontSize: 16,
-            cursor: 'pointer',
-            transition: 'all 0.2s',
-          }}
-        >
-          Đã huỷ
-        </button>
+          <TabPane
+            tab={
+              <span>
+                <ClockCircleOutlined />
+                Chờ xác nhận
+              </span>
+            }
+            key="pending"
+          >
+            <OrderTab status="pending" />
+          </TabPane>
+
+          <TabPane
+            tab={
+              <span>
+                <CarOutlined />
+                Chờ nhận hàng
+              </span>
+            }
+            key="shipping"
+          >
+            <OrderTab status="shipping" />
+          </TabPane>
+
+          <TabPane
+            tab={
+              <span>
+                <CheckCircleOutlined />
+                Đã thanh toán
+              </span>
+            }
+            key="completed"
+          >
+            <OrderTab status="completed" />
+          </TabPane>
+
+          <TabPane
+            tab={
+              <span>
+                <CloseCircleOutlined />
+                Đã huỷ
+              </span>
+            }
+            key="cancelled"
+          >
+            <OrderTab status="cancelled" />
+          </TabPane>
+        </Tabs>
       </div>
-      <OrderTab status={tab} />
     </div>
   );
 };

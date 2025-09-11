@@ -6,6 +6,8 @@ from .models import Order, OrderItem
 class OrderItemSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source='product.name', read_only=True)
     product_image = serializers.CharField(source='product.image', read_only=True)
+    seller_name = serializers.CharField(source='product.seller.store_name', read_only=True)
+    seller_phone = serializers.CharField(source='product.seller.phone', read_only=True)
     
     class Meta:
         model = OrderItem
@@ -49,7 +51,7 @@ class OrderCreateSerializer(serializers.ModelSerializer):
         
         # Đảm bảo trạng thái được lưu đúng
         if 'status' not in validated_data:
-            validated_data['status'] = 'completed'  # Mặc định là completed khi checkout
+            validated_data['status'] = 'pending'  # Mặc định là chờ xác nhận khi checkout
         
         try:
             # Tạo đơn hàng
@@ -112,11 +114,26 @@ class OrderCreateSerializer(serializers.ModelSerializer):
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, required=False, read_only=True)
     user_email = serializers.CharField(source='user.email', read_only=True)
+    # Shop info derived from the first item's seller (orders can include multiple sellers theoretically)
+    shop_name = serializers.SerializerMethodField()
+    shop_phone = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
         fields = "__all__"
         read_only_fields = ["user", "created_at"]
+
+    def get_shop_name(self, obj):
+        first_item = obj.items.first()
+        if first_item and first_item.product and first_item.product.seller:
+            return first_item.product.seller.store_name
+        return None
+
+    def get_shop_phone(self, obj):
+        first_item = obj.items.first()
+        if first_item and first_item.product and first_item.product.seller:
+            return first_item.product.seller.phone
+        return None
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)

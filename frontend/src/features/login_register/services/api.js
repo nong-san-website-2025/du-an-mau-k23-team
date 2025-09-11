@@ -42,7 +42,8 @@ api.interceptors.response.use(
         originalRequest.headers["Authorization"] = `Bearer ${newAccess}`;
         return api(originalRequest);
       } catch (err) {
-        localStorage.clear();
+        // Chỉ xoá các khoá xác thực, không xoá toàn bộ localStorage để tránh mất dữ liệu (vd: guest_cart)
+        ["token", "refresh", "username", "role", "is_admin", "is_seller"].forEach((k) => localStorage.removeItem(k));
         window.location.href = "/login";
         return Promise.reject(err);
       }

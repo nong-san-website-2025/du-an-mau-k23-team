@@ -7,23 +7,27 @@ import { userRoutes } from "./routes/UserRoutes";
 import { adminRoutes } from "./routes/AdminRoutes";
 import { sellerRoutes } from "./routes/SellerRoutes.jsx";
 
+
 function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <CartProvider>
-          <BannerProvider>
-            <Routes>
-              <Route path="/login" element={<LoginForm />} />
-              {userRoutes}
-              {adminRoutes}
-              {sellerRoutes}
-            </Routes>
-          </BannerProvider>
+    <div className="main-container">
+      <BrowserRouter>
+        <AuthProvider>
+          <CartProvider>
+            <BannerProvider>
+              <Routes>
+                <Route path="/login" element={<LoginForm />} />
+                {userRoutes}
+                {adminRoutes}
+                {sellerRoutes}
+              </Routes>
+            </BannerProvider>
         </CartProvider>
       </AuthProvider>
     </BrowserRouter>
+    </div>
   );
 }
+
 
 export default App;

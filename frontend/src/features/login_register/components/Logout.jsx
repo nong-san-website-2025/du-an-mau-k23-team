@@ -1,12 +1,14 @@
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../services/AuthContext";
 
 function Logout() {
   const navigate = useNavigate();
+  const { logout } = useAuth();
 
-  const handleLogout = () => {
-    localStorage.removeItem("token"); // Hoặc sessionStorage nếu bạn lưu ở đó
+  const handleLogout = async () => {
+    await logout(); // dùng logout tập trung, không clear toàn bộ localStorage
     alert("Đăng xuất thành công!");
-    navigate("/login"); 
+    navigate("/login");
   };
 
   return (

@@ -28,6 +28,7 @@ class OrderManager(models.Manager):
 class Order(models.Model):
     STATUS_CHOICES = [
         ('pending', 'Pending'),
+        ('shipping', 'Shipping'),
         ('success', 'Success'),
         ('cancelled', 'Cancelled'),
     ]
@@ -43,7 +44,7 @@ class Order(models.Model):
     is_deleted = models.BooleanField(default=False)  # Soft delete field
     created_at = models.DateTimeField(auto_now_add=True)
     deleted_at = models.DateTimeField(null=True, blank=True)  # Timestamp when deleted
-    
+
     # Managers
     objects = OrderManager()  # Default manager excludes deleted orders
     all_objects = models.Manager()  # Manager that includes all orders
@@ -65,7 +66,7 @@ class Order(models.Model):
 
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="items")
-    product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True, blank=True)
+    product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True, blank=True, related_name="order_items")
     product_image = models.URLField(max_length=500, blank=True, null=True)  # optional, for display only
     unit = models.CharField(max_length=50, blank=True, null=True)  # optional, for display only
     quantity = models.PositiveIntegerField()

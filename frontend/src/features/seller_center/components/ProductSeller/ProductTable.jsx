@@ -1,7 +1,7 @@
 import React from "react";
 import { Table, Button, Popconfirm, Tag, Space } from "antd";
 
-const ProductTable = ({ data, onEdit, onDelete }) => {
+const ProductTable = ({ data, onEdit, onDelete, onToggleHide, onSelfReject }) => {
   const columns = [
     {
       title: "ID",
@@ -70,25 +70,49 @@ const ProductTable = ({ data, onEdit, onDelete }) => {
       width: 200,
       align: "center",
       render: (_, record) => {
-        const canEdit = record.status !== "approved"; // Chỉ edit nếu chưa duyệt hoặc bị từ chối
+        const isApproved = record.status === "approved";
+        const isSelfRejected = record.status === "self_rejected";
+        const canEdit = !isApproved && !isSelfRejected; // không sửa khi đã duyệt hoặc đã tự từ chối
         return (
           <Space size="small">
+            {isApproved && (
+              <Button type="link" onClick={() => onToggleHide(record)}>
+                {record.is_hidden ? "👁️ Hiện" : "🙈 Ẩn"}
+              </Button>
+            )}
+
+            {!isSelfRejected && (
+              <Popconfirm
+                title="Bạn có chắc muốn tự từ chối sản phẩm này?"
+                okText="Xác nhận"
+                cancelText="Hủy"
+                onConfirm={() => onSelfReject(record)}
+              >
+                <Button type="link" danger>
+                  🚫 Tự từ chối
+                </Button>
+              </Popconfirm>
+            )}
+
             {canEdit && (
               <Button type="link" onClick={() => onEdit(record)}>
                 ✏️ Sửa
               </Button>
             )}
-            <Popconfirm
-              title="Bạn có chắc chắn muốn xóa sản phẩm này?"
-              okText="Xóa"
-              cancelText="Hủy"
-              okButtonProps={{ danger: true }}
-              onConfirm={() => onDelete(record.id)}
-            >
-              <Button type="link" danger>
-                🗑️ Xóa
-              </Button>
-            </Popconfirm>
+
+            {isSelfRejected && (
+              <Popconfirm
+                title="Bạn có chắc chắn muốn xóa sản phẩm này?"
+                okText="Xóa"
+                cancelText="Hủy"
+                okButtonProps={{ danger: true }}
+                onConfirm={() => onDelete(record.id)}
+              >
+                <Button type="link" danger>
+                  🗑️ Xóa
+                </Button>
+              </Popconfirm>
+            )}
           </Space>
         );
       },

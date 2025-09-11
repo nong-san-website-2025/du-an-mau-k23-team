@@ -5,10 +5,14 @@ from .views import (AddressViewSet, WalletBalanceView,
 from .views import UserPointsView
 from .views import EmployeeViewSet
 from users import views
+from .views import CurrentUserView
+from .views import UserMeView, UploadAvatarView 
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
 )
+from .views import DashboardAPIView
+
 
 
 
@@ -19,6 +23,7 @@ router.register(r'users', views.UserViewSet, basename='user')
 router.register(r'roles', views.RoleViewSet, basename='role')
 router.register(r'addresses', views.AddressViewSet, basename='address')
 router.register("employees", EmployeeViewSet, basename="employee")
+router.register(r'user-management', views.UserManagementViewSet, basename='user-management')
 
 
 urlpatterns = [
@@ -49,4 +54,13 @@ urlpatterns = [
 
     # Include router urls
     path('', include(router.urls)),
+
+    path("dashboard/", DashboardAPIView.as_view(), name="dashboard"),
+
+    # path('user/me/', CurrentUserView.as_view(), name='current-user'),
+
+    path('user/me/', UserMeView.as_view(), name='user-me'),
+
+    path("user/upload-avatar/", UploadAvatarView.as_view(), name="upload-avatar"),
+    path("api/user/profile/", UserProfileView.as_view(), name="user-profile"),
 ]
