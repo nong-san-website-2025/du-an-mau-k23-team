@@ -21,7 +21,7 @@ function App() {
                 {adminRoutes}
                 {sellerRoutes}
               </Routes>
-          </BannerProvider>
+            </BannerProvider>
         </CartProvider>
       </AuthProvider>
     </BrowserRouter>

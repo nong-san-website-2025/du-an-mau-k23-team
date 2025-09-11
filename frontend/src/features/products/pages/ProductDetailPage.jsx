@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { useCart } from "../../cart/services/CartContext";
 import { useParams, useNavigate } from "react-router-dom";
-import { AiFillStar, AiFillHeart } from 'react-icons/ai';
+import { AiFillStar, AiFillHeart } from "react-icons/ai";
 import {
   Badge,
   Button,
@@ -39,46 +39,71 @@ const ProductDetailPage = () => {
   const [error, setError] = useState(null);
   const [quantity, setQuantity] = useState(1);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [relatedProducts, setRelatedProducts] = useState([]);
   // Kiểm tra trạng thái yêu thích từ localStorage khi load trang
   useEffect(() => {
     try {
-      const list = JSON.parse(localStorage.getItem('wishlist') || '[]');
-      const fav = list.some(item => String(item.id) === String(id));
+      const list = JSON.parse(localStorage.getItem("wishlist") || "[]");
+      const fav = list.some((item) => String(item.id) === String(id));
       setIsFavorite(fav);
     } catch {
       setIsFavorite(false);
     }
   }, [id]);
 
+  useEffect(() => {
+    const loadRelated = async () => {
+      try {
+        const all = await productApi.getAllProducts();
+        const selected = all.slice(0, 6); // chọn 6 sản phẩm thật
+        setRelatedProducts(selected);
+      } catch (err) {
+        console.error("❌ Lỗi load sản phẩm liên quan:", err);
+      }
+    };
+    loadRelated();
+  }, []);
+
   // Xử lý bấm vào icon trái tim
   const handleToggleFavorite = async () => {
     try {
-      const list = JSON.parse(localStorage.getItem('wishlist') || '[]');
+      const list = JSON.parse(localStorage.getItem("wishlist") || "[]");
       if (isFavorite) {
         // Remove
-        const newList = list.filter(item => String(item.id) !== String(product.id));
-        localStorage.setItem('wishlist', JSON.stringify(newList));
+        const newList = list.filter(
+          (item) => String(item.id) !== String(product.id)
+        );
+        localStorage.setItem("wishlist", JSON.stringify(newList));
         setIsFavorite(false);
-        toast.success("Đã xóa khỏi mục yêu thích", { position: "bottom-right" });
+        toast.success("Đã xóa khỏi mục yêu thích", {
+          position: "bottom-right",
+        });
       } else {
         // Add
         const item = {
           id: product.id,
           name: product.name,
-          image: (product.image && product.image.startsWith("/") ? `http://localhost:8000${product.image}` : product.image) || "",
+          image:
+            (product.image && product.image.startsWith("/")
+              ? `http://localhost:8000${product.image}`
+              : product.image) || "",
           price: Number(product.discounted_price ?? product.price) || 0,
-          inStock: product.stock > 0
+          inStock: product.stock > 0,
         };
-        if (!list.some(p => String(p.id) === String(item.id))) {
+        if (!list.some((p) => String(p.id) === String(item.id))) {
           list.push(item);
-          localStorage.setItem('wishlist', JSON.stringify(list));
+          localStorage.setItem("wishlist", JSON.stringify(list));
         }
         setIsFavorite(true);
-        toast.success("Đã thêm vào mục yêu thích", { position: "bottom-right" });
+        toast.success("Đã thêm vào mục yêu thích", {
+          position: "bottom-right",
+        });
       }
     } catch (err) {
       console.error(err);
-      toast.error("Có lỗi xảy ra khi cập nhật mục yêu thích", { position: "bottom-right" });
+      toast.error("Có lỗi xảy ra khi cập nhật mục yêu thích", {
+        position: "bottom-right",
+      });
     }
   };
 
@@ -96,97 +121,98 @@ const ProductDetailPage = () => {
   const [showComplaintForm, setShowComplaintForm] = useState(false);
 
   // Hàm gửi khiếu nại
- // Helper fetchWithAuth: tự động thêm token + refresh nếu hết hạn
-const fetchWithAuth = async (url, options = {}) => {
-  let token = localStorage.getItem("token");
+  // Helper fetchWithAuth: tự động thêm token + refresh nếu hết hạn
+  const fetchWithAuth = async (url, options = {}) => {
+    let token = localStorage.getItem("token");
 
-  let res = await fetch(url, {
-    ...options,
-    headers: {
-      ...options.headers,
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  // Nếu token hết hạn → thử refresh
-  if (res.status === 401) {
-    const refresh = localStorage.getItem("refresh");
-    if (refresh) {
-      const refreshRes = await fetch("http://localhost:8000/api/token/refresh/", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refresh }),
-      });
-
-      if (refreshRes.ok) {
-        const data = await refreshRes.json();
-        token = data.access;
-        localStorage.setItem("token", token);
-
-        // gọi lại request gốc với token mới
-        res = await fetch(url, {
-          ...options,
-          headers: {
-            ...options.headers,
-            Authorization: `Bearer ${token}`,
-          },
-        });
-      }
-    }
-  }
-
-  return res;
-};
-
-
-// ✅ Hàm gửi khiếu nại (có file)
-const handleSendComplaint = async () => {
-  if (!user) {
-    toast.info("Bạn cần đăng nhập để gửi khiếu nại");
-    return;
-  }
-  if (!complaintText.trim()) {
-    toast.warning("Vui lòng nhập nội dung khiếu nại");
-    return;
-  }
-
-  try {
-    setSendingComplaint(true);
-
-    const formData = new FormData();
-    formData.append("user", user.id);
-    formData.append("product", id);
-    formData.append("reason", complaintText);
-    // Thêm file ảnh/video
-    for (let i = 0; i < complaintFiles.length; i++) {
-      formData.append("media", complaintFiles[i]);
-    }
-
-    const token = localStorage.getItem("token");
-    const res = await fetch("http://localhost:8000/api/complaints/", {
-      method: "POST",
+    let res = await fetch(url, {
+      ...options,
       headers: {
-        Authorization: `Bearer ${token}`
+        ...options.headers,
+        Authorization: `Bearer ${token}`,
       },
-      body: formData,
     });
 
-    if (!res.ok) {
-      throw new Error(`Lỗi API: ${res.status}`);
+    // Nếu token hết hạn → thử refresh
+    if (res.status === 401) {
+      const refresh = localStorage.getItem("refresh");
+      if (refresh) {
+        const refreshRes = await fetch(
+          "http://localhost:8000/api/token/refresh/",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ refresh }),
+          }
+        );
+
+        if (refreshRes.ok) {
+          const data = await refreshRes.json();
+          token = data.access;
+          localStorage.setItem("token", token);
+
+          // gọi lại request gốc với token mới
+          res = await fetch(url, {
+            ...options,
+            headers: {
+              ...options.headers,
+              Authorization: `Bearer ${token}`,
+            },
+          });
+        }
+      }
     }
 
-    toast.success("✅ Đã gửi khiếu nại thành công!");
-    setComplaintText("");
-    setComplaintFiles([]);
-    setShowComplaintForm(false);
-  } catch (err) {
-    toast.error("❌ Gửi khiếu nại thất bại!");
-    console.error("Complaint error:", err);
-  } finally {
-    setSendingComplaint(false);
-  }
-};
+    return res;
+  };
 
+  // ✅ Hàm gửi khiếu nại (có file)
+  const handleSendComplaint = async () => {
+    if (!user) {
+      toast.info("Bạn cần đăng nhập để gửi khiếu nại");
+      return;
+    }
+    if (!complaintText.trim()) {
+      toast.warning("Vui lòng nhập nội dung khiếu nại");
+      return;
+    }
+
+    try {
+      setSendingComplaint(true);
+
+      const formData = new FormData();
+      formData.append("user", user.id);
+      formData.append("product", id);
+      formData.append("reason", complaintText);
+      // Thêm file ảnh/video
+      for (let i = 0; i < complaintFiles.length; i++) {
+        formData.append("media", complaintFiles[i]);
+      }
+
+      const token = localStorage.getItem("token");
+      const res = await fetch("http://localhost:8000/api/complaints/", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (!res.ok) {
+        throw new Error(`Lỗi API: ${res.status}`);
+      }
+
+      toast.success("✅ Đã gửi khiếu nại thành công!");
+      setComplaintText("");
+      setComplaintFiles([]);
+      setShowComplaintForm(false);
+    } catch (err) {
+      toast.error("❌ Gửi khiếu nại thất bại!");
+      console.error("Complaint error:", err);
+    } finally {
+      setSendingComplaint(false);
+    }
+  };
 
   // Load dữ liệu sản phẩm và review
   useEffect(() => {
@@ -236,8 +262,18 @@ const handleSendComplaint = async () => {
         toast.error("Không thể thêm vào giỏ hàng. Vui lòng thử lại.", {
           position: "bottom-right",
         });
+      },
+      {
+        id: product.id,
+        name: product.name,
+        image:
+          product.image && product.image.startsWith("/")
+            ? `http://localhost:8000${product.image}`
+            : product.image,
+        price: Number(product.discounted_price ?? product.price) || 0,
       }
     );
+
     setAdding(false);
   };
 
@@ -329,8 +365,8 @@ const handleSendComplaint = async () => {
                   product.image && product.image.startsWith("/")
                     ? `http://localhost:8000${product.image}`
                     : product.image?.startsWith("http")
-                    ? product.image
-                    : "https://via.placeholder.com/500x400?text=No+Image"
+                      ? product.image
+                      : "https://via.placeholder.com/500x400?text=No+Image"
                 }
                 alt={product.name}
                 className="img-fluid rounded main-product-img"
@@ -339,10 +375,34 @@ const handleSendComplaint = async () => {
               <button
                 onClick={handleToggleFavorite}
                 className="position-absolute"
-                style={{ bottom: 15, right: 15, background: 'rgba(255,255,255,0.95)', border: 'none', borderRadius: '50%', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px #eee', cursor: 'pointer', zIndex: 2 }}
-                title={isFavorite ? "Bỏ khỏi mục yêu thích" : "Thêm vào yêu thích"}
+                style={{
+                  bottom: 15,
+                  right: 15,
+                  background: "rgba(255,255,255,0.95)",
+                  border: "none",
+                  borderRadius: "50%",
+                  width: 40,
+                  height: 40,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  boxShadow: "0 2px 8px #eee",
+                  cursor: "pointer",
+                  zIndex: 2,
+                }}
+                title={
+                  isFavorite ? "Bỏ khỏi mục yêu thích" : "Thêm vào yêu thích"
+                }
               >
-                <span style={{ color: isFavorite ? '#e53935' : '#ccc', fontSize: 22, transition: 'color 0.2s' }}>&#10084;</span>
+                <span
+                  style={{
+                    color: isFavorite ? "#e53935" : "#ccc",
+                    fontSize: 22,
+                    transition: "color 0.2s",
+                  }}
+                >
+                  &#10084;
+                </span>
               </button>
             </div>
           </Card>
@@ -350,9 +410,7 @@ const handleSendComplaint = async () => {
 
         {/* Thông tin sản phẩm */}
         <Col md={6}>
-          <h2 className="fw-bold d-flex align-items-center">
-            {product.name}
-          </h2>
+          <h2 className="fw-bold d-flex align-items-center">{product.name}</h2>
           <div className="mb-2">
             {[...Array(5)].map((_, i) => (
               <AiFillStar
@@ -366,8 +424,8 @@ const handleSendComplaint = async () => {
               />
             ))}
             <span className="ms-2 text-muted">
-              {Number(product.rating).toFixed(1)} ★ ({product.review_count}{" "}
-              đánh giá)
+              {Number(product.rating).toFixed(1)} ★ ({product.review_count} đánh
+              giá)
             </span>
           </div>
 
@@ -504,7 +562,7 @@ const handleSendComplaint = async () => {
                 className="form-control mb-2"
                 multiple
                 accept="image/*,video/*"
-                onChange={e => setComplaintFiles(Array.from(e.target.files))}
+                onChange={(e) => setComplaintFiles(Array.from(e.target.files))}
               />
               <Button
                 variant="danger"
@@ -526,9 +584,7 @@ const handleSendComplaint = async () => {
           <Row className="align-items-center">
             <Col xs={2} className="text-center">
               <img
-                src={
-                  product.store.image || "https://via.placeholder.com/80x80"
-                }
+                src={product.store.image || "https://via.placeholder.com/80x80"}
                 alt={product.store.store_name}
                 className="img-fluid rounded-circle shadow"
                 style={{ maxHeight: "60px", objectFit: "cover" }}
@@ -666,6 +722,43 @@ const handleSendComplaint = async () => {
               )}
             </div>
           ))}
+        </div>
+        {/* Sản phẩm liên quan */}
+        <div className="mt-5">
+          <h2 className="fw-bold mb-4">Sản phẩm liên quan</h2>
+          <Row>
+            {relatedProducts.map((p) => (
+              <Col key={p.id} md={2} sm={4} xs={6} className="mb-3">
+                <Card
+                  className="h-100 shadow-sm border-0"
+                  onClick={() => navigate(`/products/${p.id}`)}
+                  style={{ cursor: "pointer" }}
+                >
+                  <Card.Img
+                    variant="top"
+                    src={
+                      p.image && p.image.startsWith("/")
+                        ? `http://localhost:8000${p.image}`
+                        : p.image?.startsWith("http")
+                          ? p.image
+                          : "https://via.placeholder.com/300x200?text=No+Image"
+                    }
+                    alt={p.name}
+                    style={{ height: 150, objectFit: "contain" }}
+                  />
+                  <Card.Body>
+                    <Card.Title className="fs-6 text-truncate" title={p.name}>
+                      {p.name}
+                    </Card.Title>
+                    <Card.Text className="text-success fw-bold">
+                      {(p.discounted_price ?? p.price)?.toLocaleString("vi-VN")}{" "}
+                      đ
+                    </Card.Text>
+                  </Card.Body>
+                </Card>
+              </Col>
+            ))}
+          </Row>
         </div>
       </Card>
     </div>
