@@ -186,6 +186,10 @@ USE_TZ = True
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# Platform wallet owner configuration
+# Set this to a specific username to receive platform commission; fallback is the first superuser
+PLATFORM_WALLET_USERNAME = os.environ.get('PLATFORM_WALLET_USERNAME', '').strip() or None
+
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),  # access token sống 60 phút
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),     # refresh token sống 7 ngày
