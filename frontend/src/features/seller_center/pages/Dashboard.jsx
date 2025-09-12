@@ -185,7 +185,7 @@ export default function Dashboard() {
       const [pendingRes, processingRes, successRes, sellerProdsRes] = await Promise.all([
         API.get("orders/seller/pending/"),
         API.get("orders/seller/processing/"),
-        API.get("orders/seller/success/"),
+        API.get("orders/seller/complete/"),
         API.get("sellers/productseller/"),
       ])
 
