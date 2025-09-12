@@ -223,11 +223,13 @@ const UserReports = () => {
 
   // Mở modal xử lý khiếu nại
   const openResolveModal = (complaint) => {
-    setResolveComplaint(complaint);
-    setResolutionType("");
-    setRefundAmount("");
-    setVoucherCode("");
-    setResolveModalVisible(true);
+  setResolveComplaint(complaint);
+  setResolutionType("");
+  const unit = complaint.unit_price ?? complaint.product_price ?? "";
+  const qty = complaint.quantity ?? 1;
+  setRefundAmount(unit !== "" ? String(Number(unit) * Number(qty)) : "");
+  setVoucherCode("");
+  setResolveModalVisible(true);
   };
 
   // Xác nhận xử lý khiếu nại
@@ -297,6 +299,19 @@ const UserReports = () => {
       dataIndex: "product_name",
     },
     {
+      title: "Đơn giá (khi mua)",
+      key: "unit_price",
+      render: (_, record) => {
+        const unit = record.unit_price ?? record.product_price;
+        return unit ? Number(unit).toLocaleString('vi-VN') + ' VNĐ' : '—';
+      },
+    },
+    {
+      title: "Số lượng",
+      dataIndex: "quantity",
+      render: (qty) => (qty ?? 1),
+    },
+    {
       title: "Lý do báo cáo",
       dataIndex: "reason",
     },
@@ -355,7 +370,7 @@ const UserReports = () => {
 
   return (
     <div style={{ padding: 20 }}>
-      <h2>Người dùng báo cáo sản phẩm / seller</h2>
+      <h2>Người dùng Khiếu nại sản phẩm</h2>
 
       <Button
         icon={<ReloadOutlined />}
@@ -426,6 +441,25 @@ const UserReports = () => {
             </p>
             <p>
               <b>Sản phẩm:</b> {detailComplaint.product_name}
+            </p>
+            <p>
+              <b>Đơn giá (khi mua):</b> {
+                (detailComplaint.unit_price ?? detailComplaint.product_price) 
+                  ? Number(detailComplaint.unit_price ?? detailComplaint.product_price).toLocaleString('vi-VN') + ' VNĐ' 
+                  : 'Không có thông tin'
+              }
+            </p>
+            <p>
+              <b>Số lượng:</b> {detailComplaint.quantity ?? 1}
+            </p>
+            <p>
+              <b>Thành tiền (ước tính):</b> {
+                (() => {
+                  const unit = Number(detailComplaint.unit_price ?? detailComplaint.product_price ?? 0);
+                  const qty = Number(detailComplaint.quantity ?? 1);
+                  return (unit && qty) ? (unit * qty).toLocaleString('vi-VN') + ' VNĐ' : '—';
+                })()
+              }
             </p>
             <p>
               <b>Lý do báo cáo:</b> {detailComplaint.reason}
@@ -499,7 +533,17 @@ const UserReports = () => {
             <b>Hình thức xử lý:</b>
             <select
               value={resolutionType}
-              onChange={(e) => setResolutionType(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                setResolutionType(val);
+                if (val === "refund_full" && resolveComplaint) {
+                  const unit = resolveComplaint.unit_price ?? resolveComplaint.product_price ?? "";
+                  const qty = resolveComplaint.quantity ?? 1;
+                  setRefundAmount(unit !== "" ? String(Number(unit) * Number(qty)) : "");
+                } else if (val === "refund_partial") {
+                  setRefundAmount("");
+                }
+              }}
               style={{
                 width: "100%",
                 marginTop: 6,
@@ -511,12 +555,18 @@ const UserReports = () => {
               <option value="refund_full">Hoàn tiền toàn bộ</option>
               <option value="refund_partial">Hoàn tiền một phần</option>
               <option value="replace">Đổi sản phẩm</option>
-              <option value="voucher">Tặng voucher/điểm thưởng</option>
+
               <option value="reject">Từ chối khiếu nại</option>
             </select>
           </div>
-          {(resolutionType === "refund_partial" ||
-            resolutionType === "refund_full") && (
+          {resolutionType === "refund_full" && resolveComplaint && (
+            <div style={{ marginBottom: 8 }}>
+              <span style={{ color: '#333', fontWeight: 500 }}>
+                Giá sản phẩm: {resolveComplaint.product_price ? Number(resolveComplaint.product_price).toLocaleString('vi-VN') + ' VNĐ' : 'Không có thông tin'}
+              </span>
+            </div>
+          )}
+          {resolutionType === "refund_partial" && (
             <div style={{ marginBottom: 12 }}>
               <b>Số tiền hoàn:</b>
               <input
@@ -529,6 +579,23 @@ const UserReports = () => {
                   marginTop: 6,
                   padding: 6,
                   borderRadius: 4,
+                }}
+              />
+            </div>
+          )}
+          {resolutionType === "refund_full" && (
+            <div style={{ marginBottom: 12 }}>
+              <b>Số tiền hoàn:</b>
+              <input
+                type="number"
+                value={refundAmount}
+                disabled
+                style={{
+                  width: "100%",
+                  marginTop: 6,
+                  padding: 6,
+                  borderRadius: 4,
+                  background: "#f5f5f5",
                 }}
               />
             </div>
