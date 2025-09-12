@@ -55,7 +55,7 @@ export const CartProvider = ({ children }) => {
     fetchCart();
   }, []); // chỉ chạy 1 lần khi component mount
 
-  // Sync guest cart to server on login
+  // Sync guest cart to server on login 
   useEffect(() => {
     const token = localStorage.getItem("token");
     const guestCart = getGuestCart();
