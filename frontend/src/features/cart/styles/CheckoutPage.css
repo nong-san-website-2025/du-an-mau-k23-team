@@ -1,9 +1,9 @@
 /* CheckoutPage Styles */
 .checkout-container {
-  max-width: 800px;
+  max-width: 1100px; /* expanded for two-column */
   margin: 0 auto;
   background: #fff;
-  padding: 32px;
+  padding: 24px; /* slightly reduced to fit viewport */
   border-radius: 16px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
 }
@@ -338,6 +338,46 @@
 .loading-text {
   margin-top: 16px;
   color: #666;
+}
+
+/* Checkout compact layout + product emphasis */
+:root { --accent-green: #2E8B57; }
+.checkout-container { max-width: 1100px; padding: 20px; }
+.checkout-title { margin-bottom: 16px; font-size: 1.5rem; }
+.delivery-info-section { margin-bottom: 16px; padding: 12px; }
+.address-selection-label { font-size: 0.9rem; }
+.address-select { padding: 10px 12px; margin-bottom: 8px; font-size: 0.9em; border-width: 1.5px; }
+.customer-form-section { margin-bottom: 16px; }
+.form-input { padding: 10px 12px; margin-bottom: 10px; font-size: 0.9em; }
+.payment-section { margin-bottom: 12px; }
+.payment-label { font-weight: 600; font-size: 0.95em; }
+.payment-select { padding: 6px 10px; font-size: 0.95em; }
+
+/* Two-column layout */
+.checkout-two-col { display: grid; grid-template-columns: 30% 1fr; gap: 20px; align-items: start; }
+.left-panel { min-width: 0; }
+.right-panel { min-width: 0; }
+
+/* Responsive collapse */
+@media (max-width: 900px) {
+  .checkout-two-col { grid-template-columns: 1fr; gap: 16px; }
+}
+
+.product-list-title { font-size: 1.15rem; font-weight: 800; color: var(--accent-green); }
+.product-item { padding: 12px; margin-bottom: 12px; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.04); }
+.product-image { width: 80px; height: 80px; margin-right: 16px; }
+.product-name { font-size: 1.05rem; font-weight: 700; color: #111827; }
+.product-price { min-width: 100px; font-weight: 600; color: #374151; }
+.product-quantity { min-width: 60px; background: #eafaf0; color: #16a34a; padding: 4px 10px; border-radius: 999px; font-weight: 700; text-align: center; }
+.product-total { min-width: 140px; font-weight: 800; font-size: 1.1rem; color: #27ae60; }
+
+.total-section { font-size: 1rem; padding: 10px; }
+.total-amount { font-size: 1.25rem; }
+
+@media (max-width: 768px) { 
+  .checkout-container { max-width: 100%; padding: 16px; }
+  .product-image { width: 72px; height: 72px; }
+  .product-name { font-size: 1rem; }
 }
 
 /* Responsive Design */
