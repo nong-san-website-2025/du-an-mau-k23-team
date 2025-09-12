@@ -2,8 +2,6 @@ import React from "react";
 import { Button, Card } from "react-bootstrap";
 import {
   FaUser,
-  FaPhone,
-  FaEnvelope,
   FaMapMarkerAlt,
   FaLock,
   FaBell,
@@ -13,159 +11,77 @@ import {
   FaWallet,
 } from "react-icons/fa";
 
-const mainColor = "#2E8B57";
-const accentColor = "#F57C00";
-const sidebarBg = "#fff";
-const sidebarActive = mainColor;
-const sidebarInactive = "#eee";
-const iconColor = mainColor;
+// 🎨 Tông màu nông sản – hiện đại và nhất quán
+const colors = {
+  primary: "#4CAF50",       // Màu xanh lá chủ đạo
+  background: "#FAFAF0",     // Nền sáng tự nhiên
+  text: "#333",              // Chữ đậm dễ đọc
+  white: "#FFFFFF",
+  border: "#E0E0E0",
+};
 
-const ProfileSidebar = ({ activeTab, setActiveTab }) => (
-  <Card className="shadow border-0 p-3 mb-4" style={{ background: sidebarBg }}>
-    <div
+const navItems = [
+  { key: "profile", label: "Hồ Sơ", icon: <FaUser /> },
+  { key: "address", label: "Địa Chỉ", icon: <FaMapMarkerAlt /> },
+  { key: "password", label: "Đổi Mật Khẩu", icon: <FaLock /> },
+  { key: "notification", label: "Cài Đặt Thông Báo", icon: <FaBell /> },
+  { key: "voucher", label: "Kho Voucher", icon: <FaGift /> },
+  { key: "point", label: "Điểm Thưởng", icon: <FaStar /> },
+  { key: "special", label: "Ưu Đãi Đặc Biệt", icon: <FaSeedling /> },
+  { key: "wallet", label: "Ví", icon: <FaWallet /> },
+];
+
+const ProfileSidebar = ({ activeTab, setActiveTab }) => {
+  return (
+    <Card
+      className="shadow-sm border-0 p-4"
       style={{
-        fontWeight: 700,
-        fontSize: 18,
-        marginBottom: 18,
-        color: mainColor,
-        display: "flex",
-        alignItems: "center",
-        gap: 8,
+        backgroundColor: colors.background,
+        borderRadius: 16,
       }}
     >
-      <FaUser color={iconColor} size={22} style={{ marginRight: 4 }} /> Tài khoản của tôi
-    </div>
-    <div style={{ marginBottom: 18 }}>
-      <Button
-        className="w-100 mb-2"
+      <div
         style={{
-          fontWeight: 700,
-          borderRadius: 8,
-          background: activeTab === "profile" ? sidebarActive : sidebarInactive,
-          color: activeTab === "profile" ? "#fff" : mainColor,
-          border: "none",
+          fontWeight: "bold",
+          fontSize: 18,
+          marginBottom: 20,
+          color: colors.primary,
           display: "flex",
           alignItems: "center",
-          gap: 8,
+          gap: 10,
         }}
-        onClick={() => setActiveTab("profile")}
       >
-        <FaUser style={{ marginRight: 6 }} /> Hồ Sơ
-      </Button>
-      <Button
-        className="w-100 mb-2"
-        style={{
-          fontWeight: 700,
-          borderRadius: 8,
-          background: activeTab === "address" ? sidebarActive : sidebarInactive,
-          color: activeTab === "address" ? "#fff" : mainColor,
-          border: "none",
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-        }}
-        onClick={() => setActiveTab("address")}
-      >
-        <FaMapMarkerAlt style={{ marginRight: 6 }} /> Địa Chỉ
-      </Button>
-      <Button
-        className="w-100 mb-2"
-        style={{
-          fontWeight: 700,
-          borderRadius: 8,
-          background: activeTab === "password" ? sidebarActive : sidebarInactive,
-          color: activeTab === "password" ? "#fff" : mainColor,
-          border: "none",
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-        }}
-        onClick={() => setActiveTab("password")}
-      >
-        <FaLock style={{ marginRight: 6 }} /> Đổi Mật Khẩu
-      </Button>
-      <Button
-        className="w-100 mb-2"
-        style={{
-          fontWeight: 700,
-          borderRadius: 8,
-          background: activeTab === "notification" ? sidebarActive : sidebarInactive,
-          color: activeTab === "notification" ? "#fff" : mainColor,
-          border: "none",
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-        }}
-        onClick={() => setActiveTab("notification")}
-      >
-        <FaBell style={{ marginRight: 6 }} /> Cài Đặt Thông Báo
-      </Button>
-      <Button
-        className="w-100 mb-2"
-        style={{
-          fontWeight: 700,
-          borderRadius: 8,
-          background: activeTab === "voucher" ? accentColor : sidebarInactive,
-          color: activeTab === "voucher" ? "#fff" : accentColor,
-          border: "none",
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-        }}
-        onClick={() => setActiveTab("voucher")}
-      >
-        <FaGift style={{ marginRight: 6 }} /> Kho Voucher
-      </Button>
-      <Button
-        className="w-100 mb-2"
-        style={{
-          fontWeight: 700,
-          borderRadius: 8,
-          background: activeTab === "point" ? "#FFD700" : sidebarInactive,
-          color: activeTab === "point" ? "#fff" : "#FFD700",
-          border: "none",
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-        }}
-        onClick={() => setActiveTab("point")}
-      >
-        <FaStar style={{ marginRight: 6 }} /> Điểm Thưởng
-      </Button>
-      <Button
-        className="w-100 mb-2"
-        style={{
-          fontWeight: 700,
-          borderRadius: 8,
-          background: activeTab === "special" ? "#D32F2F" : sidebarInactive,
-          color: activeTab === "special" ? "#fff" : "#D32F2F",
-          border: "none",
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-        }}
-        onClick={() => setActiveTab("special")}
-      >
-        <FaSeedling style={{ marginRight: 6 }} /> Ưu Đãi Đặc Biệt
-      </Button>
-      <Button
-        className="w-100 mb-2"
-        style={{
-          fontWeight: 700,
-          borderRadius: 8,
-          background: activeTab === "wallet" ? "#4B0082" : sidebarInactive,
-          color: activeTab === "wallet" ? "#fff" : "#4B0082",
-          border: "none",
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-        }}
-        onClick={() => setActiveTab("wallet")}
-      >
-        <FaWallet style={{ marginRight: 6 }} /> Ví
-      </Button>
-    </div>
-  </Card>
-);
+        <FaUser size={20} /> Tài khoản của tôi
+      </div>
+
+      <div className="d-flex flex-column gap-2">
+        {navItems.map(({ key, label, icon }) => {
+          const isActive = activeTab === key;
+
+          return (
+            <Button
+              key={key}
+              variant="light"
+              onClick={() => setActiveTab(key)}
+              className="text-start d-flex align-items-center gap-3"
+              style={{
+                backgroundColor: isActive ? colors.primary : colors.white,
+                color: isActive ? colors.white : colors.text,
+                border: `1px solid ${isActive ? colors.primary : colors.border}`,
+                borderRadius: 10,
+                padding: "10px 14px",
+                fontSize: 16,
+                fontWeight: 500,
+                transition: "all 0.25s ease",
+              }}
+            >
+              <span style={{ fontSize: 18 }}>{icon}</span> {label}
+            </Button>
+          );
+        })}
+      </div>
+    </Card>
+  );
+};
 
 export default ProfileSidebar;

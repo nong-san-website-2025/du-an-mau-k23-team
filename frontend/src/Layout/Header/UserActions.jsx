@@ -612,7 +612,7 @@ export default function UserActions({
                   <span
                     style={{ fontWeight: 700, fontSize: 18, color: "#16a34a" }}
                   >
-                    {localStorage.getItem("username")}
+                    {userProfile?.username || localStorage.getItem("username")}
                   </span>
                 </div>
                 <button

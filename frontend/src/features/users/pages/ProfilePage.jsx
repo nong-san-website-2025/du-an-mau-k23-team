@@ -105,6 +105,12 @@ function ProfilePage() {
     if (tabParam) setActiveTab(tabParam);
   }, [searchParams]);
 
+  // Fetch addresses once on mount so profile has default address available
+  useEffect(() => {
+    fetchAddresses();
+  }, []);
+
+  // Also refresh when switching to the address tab
   useEffect(() => {
     if (activeTab === "address") fetchAddresses();
   }, [activeTab]);
@@ -134,15 +140,23 @@ function ProfilePage() {
     setError("");
     try {
       const formData = new FormData();
+      formData.append("username", form.username || "");
       formData.append("full_name", form.full_name || "");
       formData.append("email", form.email || "");
       formData.append("phone", form.phone || "");
-      formData.append("address", form.address || "");
       if (form.avatar instanceof File) formData.append("avatar", form.avatar);
 
-      const res = await API.put("users/me/", formData, { headers: { "Content-Type": "multipart/form-data" } });
+      // Let the HTTP client set the proper multipart boundary automatically
+      const res = await API.put("users/me/", formData);
       setEditMode(false);
       setUser(res.data);
+      setForm(res.data);
+      // Sync username globally for header and other components
+      try {
+        if (res.data?.username) localStorage.setItem("username", res.data.username);
+      } catch {}
+      // Broadcast a profile update event for live UI updates without reload
+      try { window.dispatchEvent(new CustomEvent('userProfileUpdated', { detail: res.data })); } catch {}
       toast.success("✅ Cập nhật thông tin thành công!");
     } catch {
       setError("Cập nhật thất bại. Vui lòng thử lại!");
@@ -182,10 +196,13 @@ function ProfilePage() {
   const addAddress = async () => {
     try {
       await API.post("users/addresses/", newAddress);
-      fetchAddresses();
+      await fetchAddresses();
       setShowAddressForm(false);
       setNewAddress({ recipient_name: "", phone: "", location: "" });
       toast.success("✅ Thêm địa chỉ thành công!");
+      // Nếu quay lại checkout sau khi thêm địa chỉ
+      const redirect = new URLSearchParams(window.location.search).get('redirect');
+      if (redirect === 'checkout') navigate('/checkout');
     } catch {
       toast.error("❌ Thêm địa chỉ thất bại!");
     }
@@ -212,11 +229,18 @@ function ProfilePage() {
   };
 
   const setDefaultAddress = async (id) => {
+    // Optimistic UI update: mark default locally for smooth UX
+    setAddresses(prev => prev.map(a => ({ ...a, is_default: a.id === id })));
     try {
       await API.patch(`users/addresses/${id}/set_default/`);
+      // Optional: revalidate in background to keep fresh data without blocking UI
       fetchAddresses();
       toast.success("✅ Đặt địa chỉ mặc định thành công!");
+      const redirect = new URLSearchParams(window.location.search).get('redirect');
+      if (redirect === 'checkout') navigate('/checkout');
     } catch {
+      // Revert on failure
+      fetchAddresses();
       toast.error("❌ Không thể đặt địa chỉ mặc định!");
     }
   };

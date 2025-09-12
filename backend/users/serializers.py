@@ -31,12 +31,15 @@ class UserSerializer(serializers.ModelSerializer):
         required=False,
         allow_null=True
     )
+    # Expose Django's date_joined as created_at for frontend compatibility
+    created_at = serializers.DateTimeField(source='date_joined', read_only=True)
 
     class Meta:
         model = CustomUser
         fields = [
             "id", "username", "email", "avatar",
-            "full_name", "phone", "points", "role", "role_id", "default_address", "password"
+            "full_name", "phone", "points", "role", "role_id", "default_address", "password",
+            "created_at"
         ]
 
     def get_default_address(self, obj): 
