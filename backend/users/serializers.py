@@ -3,6 +3,18 @@ from .models import CustomUser, PointHistory
 from rest_framework_simplejwt.tokens import RefreshToken
 from .models import Address
 from .models import Role
+from orders.models import Order
+from django.apps import apps
+CustomUser = apps.get_model('users', 'CustomUser')
+Role = apps.get_model('users', 'Role')
+Address = apps.get_model('users', 'Address')
+PointHistory = apps.get_model('users', 'PointHistory')
+Shop = apps.get_model('store', 'Store')
+CustomerOrder = apps.get_model('orders', 'Order')  # buyer orders
+ShopOrder = apps.get_model('orders', 'Order')
+Seller = apps.get_model('sellers', 'Seller')
+Product = apps.get_model('products', 'Product')
+
 
 
 
@@ -25,6 +37,7 @@ class UserSerializer(serializers.ModelSerializer):
     default_address = serializers.SerializerMethodField()
     role = RoleSerializer(read_only=True)
     role_id = serializers.PrimaryKeyRelatedField(
+        
         queryset=Role.objects.all(),
         source='role',
         write_only=True,
@@ -38,8 +51,7 @@ class UserSerializer(serializers.ModelSerializer):
         model = CustomUser
         fields = [
             "id", "username", "email", "avatar",
-            "full_name", "phone", "points", "role", "role_id", "default_address", "password",
-            "created_at"
+            "full_name", "phone", "points", "role", "role_id", "default_address", "password","created_at", "can_delete", "is_active"
         ]
 
     def get_default_address(self, obj): 
@@ -52,8 +64,12 @@ class UserSerializer(serializers.ModelSerializer):
 
 
     def create(self, validated_data):
+        password = validated_data.pop("password", None)
         user = CustomUser(**validated_data)
-        user.set_password(validated_data["password"])
+        if password:
+            user.set_password(password)
+        else:
+            user.set_password("123456")  # gán default password nếu không có
         user.save()
         return user
 
@@ -74,6 +90,42 @@ class UserSerializer(serializers.ModelSerializer):
         
         instance.save()
         return instance
+
+    can_delete = serializers.SerializerMethodField()
+
+    def get_can_delete(self, obj):
+        try:
+            # 1. Seller
+            if Seller.objects.filter(user=obj).exists():
+                return False
+
+            # 2. Store
+            if Shop.objects.filter(owner=obj).exists():
+                return False
+
+            # 3. Order (kể cả soft-deleted)
+            orders_count = CustomerOrder.all_objects.filter(user=obj).count()
+            print(f"[DEBUG] User {obj.id} - Orders count: {orders_count}")
+            if orders_count > 0:
+                return False
+
+            # 4. Product
+            if Product.objects.filter(seller__user=obj).exists():
+                return False
+
+            # 5. Lịch sử điểm
+            if PointHistory.objects.filter(user=obj).exists():
+                return False
+
+            # 6. Địa chỉ
+            if Address.objects.filter(user=obj).exists():
+                return False
+
+            return True
+        except Exception as e:
+            print("[DEBUG] get_can_delete error:", e)
+            return True
+
 
 class RegisterSerializer(serializers.ModelSerializer):
     password2 = serializers.CharField(write_only=True)
