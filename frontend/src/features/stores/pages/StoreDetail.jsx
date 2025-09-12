@@ -37,17 +37,16 @@ const StoreDetail = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // 1) Seller detail (public)
-        const sellerRes = await axios.get(`http://localhost:8000/api/sellers/${id}/`);
+        const authHeader = token ? { Authorization: `Bearer ${token}` } : {};
+        // 1) Seller detail (includes followers_count, is_following if authenticated)
+        const sellerRes = await axios.get(`http://localhost:8000/api/sellers/${id}/`, { headers: authHeader });
         setStore(sellerRes.data);
 
-        // Followers giả lập (nếu backend chưa cung cấp). Nếu có field followers -> dùng luôn
-        const initialFollowers = Number(sellerRes.data.followers || 0);
+        const initialFollowers = Number(sellerRes.data.followers_count || sellerRes.data.followers || 0);
         setFollowers(Number.isNaN(initialFollowers) ? 0 : initialFollowers);
-        const saved = localStorage.getItem(`followingShop_${id}`);
-        setIsFollowing(saved === "true");
+        setIsFollowing(Boolean(sellerRes.data.is_following));
 
-        // 2) Products by seller (public, filtered approved in ProductViewSet)
+        // 2) Products by seller (public)
         const productsRes = await axios.get(
           `http://localhost:8000/api/products/?seller=${id}&ordering=-created_at`
         );
@@ -60,7 +59,7 @@ const StoreDetail = () => {
     };
 
     fetchData();
-  }, [id]);
+  }, [id, token]);
 
 
 
@@ -86,11 +85,22 @@ const StoreDetail = () => {
       navigate("/login", { state: { redirectTo: `/store/${id}` } });
       return;
     }
-    // TODO: Khi có API theo dõi, gọi API tại đây
+    const headers = { Authorization: `Bearer ${token}` };
     const next = !isFollowing;
+    // Optimistic UI update
     setIsFollowing(next);
     setFollowers((c) => Math.max(0, c + (next ? 1 : -1)));
-    localStorage.setItem(`followingShop_${id}`, String(next));
+    try {
+      if (next) {
+        await axios.post(`http://localhost:8000/api/sellers/${id}/follow/`, {}, { headers });
+      } else {
+        await axios.delete(`http://localhost:8000/api/sellers/${id}/follow/`, { headers });
+      }
+    } catch (e) {
+      // rollback on error
+      setIsFollowing(!next);
+      setFollowers((c) => Math.max(0, c + (next ? -1 : 1)));
+    }
   };
 
   if (loading) {

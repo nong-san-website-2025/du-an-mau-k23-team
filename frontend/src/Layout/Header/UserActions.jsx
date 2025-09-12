@@ -175,6 +175,15 @@ export default function UserActions({
         <Heart size={22} className="text-white" />
       </Link>
 
+      <Link
+        to="/followed-stores"
+        className="me-2 p-2 d-none d-sm-inline-block"
+        style={{ flexShrink: 0 }}
+        aria-label="Cửa hàng theo dõi"
+      >
+        <span className="text-white" style={{ fontWeight: 600 }}>Theo dõi</span>
+      </Link>
+
       {/* Notification icon */}
       <div
         style={{ position: "relative", display: "inline-block" }}
