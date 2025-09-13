@@ -18,7 +18,7 @@ import ViewPromotion from "../features/seller_center/pages/PromotionSeller/ViewP
 import StoreVouchers from "../features/seller_center/pages/PromotionSeller/StoreVouchers";
 import ProductReviews from "../features/seller_center/pages/Reviews/ProductReviews";
 import CustomerSupport from "../features/seller_center/pages/Reviews/CustomerSupport";
-
+import SellerComplaintsPage from "../features/seller_center/pages/SellerComplaintsPage";
 
 export const sellerRoutes = [
   <Route element={<SellerPrivateRoute />} key="seller-protect">
@@ -39,9 +39,12 @@ export const sellerRoutes = [
       <Route path="/seller-center/reviews" element={<ProductReviews />} />
       <Route path="/seller-center/support" element={<CustomerSupport />} />
       <Route path="/seller-center/promotions" element={<PromotionList />} />
+
+  <Route path="/seller-center/complaints" element={<SellerComplaintsPage />} />
       <Route path="/seller-center/promotions/add" element={<PromotionForm />} />
       <Route path="/seller-center/promotions/edit/:id" element={<EditPromotion />} />
       <Route path="/seller-center/promotions/view/:id" element={<ViewPromotion />} />
+       <Route path="/seller-center/promotions/view/:id" element={<ViewPromotion />} />
     
       
     
