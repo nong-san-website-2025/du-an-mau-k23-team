@@ -54,32 +54,19 @@ export default function HomePage() {
   return (
     <div className="container" style={{ padding: "0 16px" }}>
       {/* Banner Carousel */}
-      <div className="row g-3" style={{ marginTop: 8, marginBottom: 12 }}>
-        <div className="col-12">
-          <BannerSlider />
-        </div>
-      </div>
+      <BannerSlider />
 
       {/* Danh Mục Nổi Bật */}
-      <section style={{ marginBottom: 16 }}>
-        <h2 className="fw-bold" style={{ fontSize: 20, color: "#2E8B57", marginBottom: 10 }}>Danh mục nổi bật</h2>
-        <CategorySection categories={categories} />
-      </section>
+      <CategorySection categories={categories} />
 
       {/* Flash Sale */}
-      <section style={{ marginBottom: 16 }}>
-        <h2 className="fw-bold" style={{ fontSize: 20, color: "#D32F2F", marginBottom: 10 }}>Flash Sale</h2>
-        <FlashSaleSection />
-      </section>
+      <FlashSaleSection />
 
       {/* Personalized Section */}
-      <section style={{ marginBottom: 24 }}>
-        <h2 className="fw-bold" style={{ fontSize: 20, color: "#F57C00", marginBottom: 10 }}>Gợi ý cho bạn</h2>
-        <PersonalizedSection
+      <PersonalizedSection
           username={username}
           // recommended={recommendedProducts}
         />
-      </section>
 
       {/* Popup Modal */}
       <Modal
