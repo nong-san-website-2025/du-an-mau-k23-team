@@ -1,79 +1,57 @@
-# promotions/serializers.py
 from rest_framework import serializers
-from .models import Voucher, FlashSale, FlashSaleItem, Promotion
+from .models import Promotion, Voucher ,FlashSale 
 
 
-class VoucherSerializer(serializers.ModelSerializer):
-    seller_name = serializers.CharField(source="seller.store_name", read_only=True)
+class PromotionListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Promotion
+        fields = ['id', 'code', 'name', 'type', 'start', 'end', 'active']
+
+
+class VoucherDetailSerializer(serializers.ModelSerializer):
+    promotion = PromotionListSerializer(read_only=True)
 
     class Meta:
         model = Voucher
-        fields = "__all__"
-
-
-class FlashSaleItemSerializer(serializers.ModelSerializer):
-    product_name = serializers.CharField(source="product.name", read_only=True)
-    original_price = serializers.DecimalField(
-        source="product.price", max_digits=12, decimal_places=2, read_only=True
-    )
-    discount_percent = serializers.SerializerMethodField()
-    status = serializers.SerializerMethodField()
-    seller_name = serializers.CharField(source="product.seller.store_name", read_only=True)
-    campaign_name = serializers.CharField(source="flashsale.title", read_only=True)
-
-    # fix chỗ lỗi: dùng SerializerMethodField thay vì fields thật trong model
-    total_stock = serializers.SerializerMethodField()
-    remaining_stock = serializers.SerializerMethodField()
-
-    class Meta:
-        model = FlashSaleItem
         fields = [
-            "id",
-            "campaign_name",
-            "product_name",
-            "original_price",
-            "sale_price",
-            "discount_percent",
-            "total_stock",
-            "remaining_stock",
-            "status",
-            "seller_name",
-            "flashsale",
-            "product",
+            'id', 'code', 'title', 'description', 'scope', 'seller',
+            'discount_percent', 'discount_amount', 'freeship_amount',
+            'min_order_value', 'max_discount_amount',
+            'start_at', 'end_at', 'active', 'promotion', 'created_by', 'created_at'
         ]
+        read_only_fields = ['created_by', 'created_at', 'promotion']
 
-    def get_discount_percent(self, obj):
-        try:
-            return round((1 - obj.sale_price / obj.product.price) * 100, 2)
-        except Exception:
-            return 0
+    def validate(self, data):
+        # ensure only 1 discount type set
+        count = 0
+        for k in ('discount_percent', 'discount_amount', 'freeship_amount'):
+            if data.get(k) is not None:
+                count += 1
+        if count == 0:
+            raise serializers.ValidationError("Phải cung cấp 1 trong các loại giảm: discount_percent, discount_amount, freeship_amount")
+        if count > 1:
+            raise serializers.ValidationError("Chỉ được tổng cộng 1 loại giảm.")
+        # normalize percent: store as number (ex: 20 means 20)
+        if data.get('discount_percent') is not None:
+            val = data['discount_percent']
+            if val < 0 or val > 100:
+                raise serializers.ValidationError("discount_percent phải trong 0 - 100.")
+        return data
 
-    def get_status(self, obj):
-        from django.utils import timezone
-        now = timezone.now()
-        if obj.flashsale.start_at > now:
-            return "upcoming"
-        elif obj.flashsale.end_at < now:
-            return "ended"
-        return "active"
+    def create(self, validated_data):
+        user = self.context['request'].user
+        validated_data['created_by'] = user if user.is_authenticated else None
+        return super().create(validated_data)
 
-    def get_total_stock(self, obj):
-        # bạn có thể custom cách tính total stock ở đây
-        return obj.stock_limit if obj.stock_limit is not None else 0
+    def update(self, instance, validated_data):
+        # prevent non-admin creating system vouchers - but permission layer should handle it
+        return super().update(instance, validated_data)
 
-    def get_remaining_stock(self, obj):
-        # giả sử remaining_stock = stock_limit (chưa bán gì)
-        return obj.stock_limit if obj.stock_limit is not None else 0
 
 class FlashSaleSerializer(serializers.ModelSerializer):
-    items = FlashSaleItemSerializer(many=True, read_only=True)
+    product_name = serializers.CharField(source="product.name", read_only=True)
+    seller_name = serializers.CharField(source="seller.store_name", read_only=True)
 
     class Meta:
         model = FlashSale
         fields = "__all__"
-
-
-class PromotionSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Promotion
-        fields = ['id', 'code', 'name', 'description', 'type', 'condition', 'start', 'end', 'total', 'used', 'products']
