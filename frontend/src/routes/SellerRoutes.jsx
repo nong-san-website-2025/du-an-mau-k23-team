@@ -2,18 +2,10 @@
 import React from "react";
 import { Route } from "react-router-dom";
 import SellerLayout from "../features/seller_center/components/SellerLayout";
-<<<<<<< HEAD
-
-import Dashboard from "../features/seller_center/pages/Dashboard.jsx";
-import ProductsPage from "../features/seller_center/pages/ProductsPage.jsx";
-
-import Finance from "../features/seller_center/pages/Finance";
-
-import SellerPrivateRoute from "../components/PrivateRoutes/SellerPrivateRoute.jsx";
-=======
 import SellerPrivateRoute from "../components/PrivateRoutes/SellerPrivateRoute";
 import Dashboard from "../features/seller_center/pages/Dashboard";
 import ProductsPage from "../features/seller_center/pages/ProductsPage";
+import Finance from "../features/seller_center/pages/Finance";
 import OrdersNew from "../features/seller_center/pages/OrdersNew";
 import OrdersProcessing from "../features/seller_center/pages/OrdersProcessing";
 import StoreInfo from "../features/seller_center/pages/StoreInfo";
@@ -23,25 +15,19 @@ import PromotionList from "../features/seller_center/pages/PromotionSeller/Promo
 import PromotionForm from "../features/seller_center/pages/PromotionSeller/PromotionForm";
 import EditPromotion from "../features/seller_center/pages/PromotionSeller/EditPromotion";
 import ViewPromotion from "../features/seller_center/pages/PromotionSeller/ViewPromotion";
-
 import StoreVouchers from "../features/seller_center/pages/PromotionSeller/StoreVouchers";
 import ProductReviews from "../features/seller_center/pages/Reviews/ProductReviews";
 import CustomerSupport from "../features/seller_center/pages/Reviews/CustomerSupport";
-
->>>>>>> b649ab7c6fdfd31ea20509cf3abff52781d5a333
 
 export const sellerRoutes = [
   <Route element={<SellerPrivateRoute />} key="seller-protect">
     <Route path="/seller-center" element={<SellerLayout />}>
       {/* index route: khi vào /seller-center thì mặc định hiển thị dashboard */}
       <Route index element={<Dashboard />} />
-<<<<<<< HEAD
-      <Route path="products" element={<ProductsPage />} />
-      <Route path="finance" element={<Finance />} />
-=======
       <Route path="dashboard" element={<Dashboard />} />
       <Route path="store/info" element={<StoreInfo />} />
       <Route path="products" element={<ProductsPage />} />
+      <Route path="finance" element={<Finance />} />
       <Route path="orders/new" element={<OrdersNew />} />
       <Route path="orders/processing" element={<OrdersProcessing />} />
       {/* <Route path="/flash-sales" element={<FlashSales />} /> */}
@@ -56,10 +42,6 @@ export const sellerRoutes = [
       <Route path="/seller-center/promotions/add" element={<PromotionForm />} />
       <Route path="/seller-center/promotions/edit/:id" element={<EditPromotion />} />
       <Route path="/seller-center/promotions/view/:id" element={<ViewPromotion />} />
-    
-      
-    
->>>>>>> b649ab7c6fdfd31ea20509cf3abff52781d5a333
     </Route>
   </Route>
 ];

@@ -1,7 +1,7 @@
 
 
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState , withdrawColumns } from "react";
 import { Card, Button, Table, Statistic, Input, DatePicker, message, Row, Col } from "antd";
 import { DownloadOutlined } from "@ant-design/icons";
 
@@ -129,13 +129,6 @@ export default function Finance() {
               rowKey="id"
               size="middle"
               style={{ background: 'white', borderRadius: 12 }}
-            />
-          </Card>
-        </Col>
-      </Row>
-    </div>
-  );
-              size="small"
             />
           </Card>
         </Col>
