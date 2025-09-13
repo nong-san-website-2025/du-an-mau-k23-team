@@ -5,12 +5,19 @@ from django.conf.urls.static import static
 from django.http import HttpResponse
 from dashboard.views import dashboard_data
 
+# ✅ import views của SimpleJWT
+from rest_framework_simplejwt.views import (
+    TokenObtainPairView,
+    TokenRefreshView,
+)
+
 def home(request):
     return HttpResponse("Hello, world!")
 
 urlpatterns = [
     path('admin/', admin.site.urls), 
     path('', home),
+
     path('api/users/', include('users.urls')),
     path('api/sellers/', include('sellers.urls')),
     path('api/products/', include('products.urls')),
@@ -24,18 +31,17 @@ urlpatterns = [
     path('api/cart/', include('cart.urls')),
 
     path('api/advertisements/', include('advertisements.urls')),
-      
     path("api/promotions/", include("promotions.urls")),
     path('', include('reviews.urls')),
-
 
     path('api/complaints/', include('complaints.urls')),
     path("api/dashboard/", dashboard_data, name="dashboard-data"),
     path("api/dashboard/", include("dashboard.urls")),
-
     path("api/marketing/", include("marketing.urls")),
 
+    # ✅ thêm endpoint login bằng JWT
+    path("api/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
+    path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
 ]
-
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

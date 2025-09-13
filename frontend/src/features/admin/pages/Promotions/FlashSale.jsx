@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { Table, Input, Tag, Select, Spin, Empty } from "antd";
+import { Table, Input, Tag, Select, Spin, Empty, message } from "antd";
+// Nếu backend chưa có API, bạn có thể comment dòng dưới
 import { getFlashSales } from "../../services/promotionServices";
 
 const { Search } = Input;
@@ -15,21 +16,70 @@ export default function FlashSalePage() {
     let mounted = true;
     const fetchData = async () => {
       setLoading(true);
-      const items = await getFlashSales();
-      if (!mounted) return;
-      setFlashSales(items || []);
-      setLoading(false);
+      try {
+        let items = [];
+        if (typeof getFlashSales === "function") {
+          items = await getFlashSales(); // gọi API nếu có
+        }
+
+        // fallback mock data nếu API chưa trả gì
+        if (!items || items.length === 0) {
+          items = [
+            {
+              id: 1,
+              flashsale_title: "Flash Sale 9/9",
+              product_name: "Áo thun nam",
+              original_price: 200000,
+              sale_price: 99000,
+              discount_percent: 50,
+              total_stock: 100,
+              remaining_stock: 20,
+              start_at: "2025-09-10T10:00:00Z",
+              end_at: "2025-09-12T23:59:59Z",
+              status: "active",
+              seller_name: "Shop ABC",
+            },
+            {
+              id: 2,
+              flashsale_title: "Flash Sale 10/10",
+              product_name: "Giày sneaker",
+              original_price: 800000,
+              sale_price: 499000,
+              discount_percent: 38,
+              total_stock: 50,
+              remaining_stock: 0,
+              start_at: "2025-10-10T00:00:00Z",
+              end_at: "2025-10-10T23:59:59Z",
+              status: "upcoming",
+              seller_name: "Shop XYZ",
+            },
+          ];
+        }
+
+        if (!mounted) return;
+        setFlashSales(items);
+      } catch (err) {
+        console.error(err);
+        message.error("Không tải được dữ liệu flash sale");
+      } finally {
+        setLoading(false);
+      }
     };
     fetchData();
-    return () => (mounted = false);
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const q = (str) => (str || "").toString().toLowerCase();
 
   const filteredData = flashSales.filter((f) => {
-    const matchStatus = statusFilter === "all" || (f.status || "unknown") === statusFilter;
+    const matchStatus =
+      statusFilter === "all" || (f.status || "unknown") === statusFilter;
     const search = q(searchText);
-    const matchSearch = q(f.flashsale_title).includes(search) || q(f.product_name).includes(search);
+    const matchSearch =
+      q(f.flashsale_title).includes(search) ||
+      q(f.product_name).includes(search);
     return matchStatus && matchSearch;
   });
 
@@ -50,9 +100,11 @@ export default function FlashSalePage() {
       dataIndex: "sale_price",
       key: "sale_price",
       render: (price) =>
-        price !== null && price !== undefined && !Number.isNaN(Number(price))
-          ? <b style={{ color: "red" }}>{Number(price).toLocaleString()}₫</b>
-          : "-",
+        price !== null && price !== undefined && !Number.isNaN(Number(price)) ? (
+          <b style={{ color: "red" }}>{Number(price).toLocaleString()}₫</b>
+        ) : (
+          "-"
+        ),
     },
     {
       title: "Giảm (%)",
@@ -65,13 +117,18 @@ export default function FlashSalePage() {
       title: "Còn lại",
       dataIndex: "remaining_stock",
       key: "remaining_stock",
-      render: (r) => (r > 0 ? <Tag color="green">{r}</Tag> : <Tag color="red">Hết</Tag>),
+      render: (r) =>
+        r > 0 ? <Tag color="green">{r}</Tag> : <Tag color="red">Hết</Tag>,
     },
     {
       title: "Thời gian",
       key: "time",
       render: (record) =>
-        record.start_at ? `${new Date(record.start_at).toLocaleString()} → ${new Date(record.end_at).toLocaleString()}` : "-",
+        record.start_at
+          ? `${new Date(record.start_at).toLocaleString()} → ${new Date(
+              record.end_at
+            ).toLocaleString()}`
+          : "-",
     },
     {
       title: "Trạng thái",
@@ -79,10 +136,14 @@ export default function FlashSalePage() {
       key: "status",
       render: (status) => {
         switch (status) {
-          case "upcoming": return <Tag color="blue">Sắp</Tag>;
-          case "active": return <Tag color="green">Đang</Tag>;
-          case "ended": return <Tag color="red">Kết thúc</Tag>;
-          default: return <Tag>Không rõ</Tag>;
+          case "upcoming":
+            return <Tag color="blue">Sắp</Tag>;
+          case "active":
+            return <Tag color="green">Đang</Tag>;
+          case "ended":
+            return <Tag color="red">Kết thúc</Tag>;
+          default:
+            return <Tag>Không rõ</Tag>;
         }
       },
     },
@@ -101,7 +162,11 @@ export default function FlashSalePage() {
           style={{ width: 300 }}
         />
 
-        <Select defaultValue="all" style={{ width: 200 }} onChange={(v) => setStatusFilter(v)}>
+        <Select
+          defaultValue="all"
+          style={{ width: 200 }}
+          onChange={(v) => setStatusFilter(v)}
+        >
           <Option value="all">Tất cả</Option>
           <Option value="upcoming">Sắp diễn ra</Option>
           <Option value="active">Đang diễn ra</Option>
@@ -114,7 +179,13 @@ export default function FlashSalePage() {
       ) : filteredData.length === 0 ? (
         <Empty description="Không có sản phẩm flash sale" />
       ) : (
-        <Table rowKey="id" columns={columns} dataSource={filteredData} pagination={{ pageSize: 6 }} bordered />
+        <Table
+          rowKey="id"
+          columns={columns}
+          dataSource={filteredData}
+          pagination={{ pageSize: 6 }}
+          bordered
+        />
       )}
     </div>
   );
