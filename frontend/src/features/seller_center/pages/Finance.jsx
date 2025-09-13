@@ -116,8 +116,12 @@ export default function Finance() {
               style={{ background: 'white', borderRadius: 12 }}
             />
           </Card>
+        </Col>
+      </Row>
+      <Row>
+        <Col span={24}>
           <Card
-            style={{ borderRadius: 16, boxShadow: '0 2px 8px #f0f1f2', border: 'none' }}
+            style={{ borderRadius: 16, boxShadow: '0 2px 8px #f0f1f2', border: 'none', marginTop: 0 }}
             bodyStyle={{ padding: 24 }}
             title={<span style={{ fontWeight: 600, fontSize: 18 }}>Lịch sử thanh toán từ sàn → người bán</span>}
           >
