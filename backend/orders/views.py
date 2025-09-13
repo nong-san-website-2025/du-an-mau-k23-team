@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from django.db.models import Q
 from django.utils import timezone
 from datetime import timedelta
-from .models import Order
+from .models import Order, Complaint
 from .serializers import OrderSerializer, OrderCreateSerializer
 from rest_framework.permissions import AllowAny, IsAuthenticated
 import logging
@@ -58,6 +58,32 @@ class OrderViewSet(viewsets.ModelViewSet):
             )
         
         return queryset.order_by('-created_at')
+
+    @action(detail=False, methods=['get'], url_path='top-products')
+    def top_products(self, request):
+        """Thống kê top sản phẩm bán chạy"""
+        from products.models import Product
+
+        top_products = (
+            OrderItem.objects
+            .values('product_id', 'product__name', 'product__image', 'product__seller__store_name')
+            .annotate(quantity_sold=Sum('quantity'), revenue=Sum('price'))
+            .order_by('-quantity_sold')[:10]
+        )
+
+        return Response(top_products)
+    
+    @action(detail=False, methods=['get'], url_path='recent')
+    def recent_orders(self, request):
+        """Lấy 10 đơn hàng gần nhất của user (hoặc admin thì lấy tất cả)"""
+        user = request.user
+        qs = Order.objects.all().order_by('-created_at')
+
+        if not getattr(user, 'is_admin', False):
+            qs = qs.filter(user=user)
+
+        serializer = OrderSerializer(qs[:10], many=True)
+        return Response(serializer.data)
 
     @action(detail=False, methods=['get'], url_path='seller/pending')
     def seller_pending(self, request):
@@ -298,3 +324,7 @@ class OrderViewSet(viewsets.ModelViewSet):
                 amount=order.total_price,
                 action=f"Cộng điểm khi thanh toán đơn hàng #{order.id}"
             )
+
+
+
+

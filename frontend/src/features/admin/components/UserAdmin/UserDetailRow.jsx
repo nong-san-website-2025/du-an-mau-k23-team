@@ -5,7 +5,12 @@ import { User, Mail, Phone, Shield } from "lucide-react";
 import UserEditForm from "./UserEditForm";
 import { useTranslation } from "react-i18next";
 
-export default function UserDetailModal({ user, visible, onClose, onUserUpdated }) {
+export default function UserDetailModal({
+  user,
+  visible,
+  onClose,
+  onUserUpdated,
+}) {
   const { t } = useTranslation();
   const [isEditing, setIsEditing] = useState(false);
 
@@ -14,7 +19,7 @@ export default function UserDetailModal({ user, visible, onClose, onUserUpdated 
       open={visible}
       onCancel={onClose}
       footer={null}
-      title={isEditing ? t("edit_user") : t("user_info")}
+      title={isEditing ? t("edit_user") : t("Chi tiết")}
       width={600}
       destroyOnClose
       centered
@@ -80,6 +85,17 @@ export default function UserDetailModal({ user, visible, onClose, onUserUpdated 
             >
               {user.role ? user.role.name : t("not_available")}
             </Descriptions.Item>
+
+            <Descriptions.Item
+              label={
+                <span>
+                  <Shield size={16} style={{ marginRight: 6 }} />
+                  {t("users_page.table.status")}
+                </span>
+              }
+            >
+              {user.is_active ? t("Đang hoạt động") : t("Đã bị khóa")}
+            </Descriptions.Item>
           </Descriptions>
 
           <Divider style={{ margin: "16px 0" }} />
@@ -90,9 +106,9 @@ export default function UserDetailModal({ user, visible, onClose, onUserUpdated 
               style={{ marginRight: 8 }}
               onClick={() => setIsEditing(true)}
             >
-              {t("edit")}
+              {t("Sửa")}
             </Button>
-            <Button onClick={onClose}>{t("close")}</Button>
+            <Button onClick={onClose}>{t("Đóng")}</Button>
           </div>
         </>
       )}

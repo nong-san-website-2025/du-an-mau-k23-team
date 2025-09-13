@@ -579,30 +579,21 @@ def delete_user(request, pk):
     try:
         user = CustomUser.objects.get(pk=pk)
     except CustomUser.DoesNotExist:
-        return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"error": "User not found"}, status=404)
 
-    # DEBUG: In ra tất cả order của user
-    from django.apps import apps
-    Order = apps.get_model('orders', 'Order')
-
-    orders = Order.objects.filter(user=user)
-    print(f"[DEBUG] Orders of user {user.id}:", orders)
-
-    # Check hoạt động
-    has_activity = (
-        Seller.objects.filter(user=user).exists()
-        or Store.objects.filter(owner=user).exists()
-        or orders.exists()  # kiểm tra order thực sự có hay không
-        or Product.objects.filter(seller__user=user).exists()
-        or PointHistory.objects.filter(user=user).exists()
-        or Address.objects.filter(user=user).exists()
-    )
-
-    if has_activity:
+    # Check đã phát sinh đơn hàng
+    if Order.all_objects.filter(user=user).exists():
         return Response(
-            {"error": "Không thể xóa user đã có hoạt động. Hãy khóa thay vì xóa."},
-            status=status.HTTP_400_BAD_REQUEST,
+            {"error": "Người dùng đã phát sinh đơn hàng, không thể xóa."},
+            status=400
+        )
+
+    # Check đã mở cửa hàng
+    if Store.objects.filter(owner=user).exists():
+        return Response(
+            {"error": "Người dùng đã đăng ký cửa hàng, không thể xóa."},
+            status=400
         )
 
     user.delete()
-    return Response(status=status.HTTP_204_NO_CONTENT)
+    return Response(status=204)
