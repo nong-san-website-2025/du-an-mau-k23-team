@@ -7,11 +7,22 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.decorators import action
 from decimal import Decimal
+from django.db.models import Q
 
 class ComplaintViewSet(viewsets.ModelViewSet):
     queryset = Complaint.objects.all().order_by('-created_at')
     serializer_class = ComplaintSerializer
     permission_classes = [IsAuthenticated]  # 👈 đảm bảo chỉ user login mới gửi complaint
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        user = getattr(self.request, "user", None)
+        if not user or user.is_anonymous:
+            return qs.none()
+        if user.is_staff or user.is_superuser:
+            return qs
+        # Customers see their own complaints; sellers see complaints for their products
+        return qs.filter(Q(user=user) | Q(product__seller__user=user))
 
     def create(self, request, *args, **kwargs):
         files = request.FILES.getlist('media')
@@ -47,15 +58,22 @@ class ComplaintViewSet(viewsets.ModelViewSet):
         # Không cần dùng nữa, đã custom create
         pass
 
-    @action(detail=True, methods=['post'], permission_classes=[IsAdminUser])
+    @action(detail=True, methods=['post'])
     def resolve(self, request, pk=None):
         """
-        Admin resolves a complaint.
+        Seller (owner of the product) or Admin resolves a complaint.
         - resolution_type: one of ['refund_full','refund_partial','replace','voucher','reject']
         - amount (required for refund_partial): integer/decimal string (VNĐ)
         Credits the user's wallet on refund_*.
         """
         complaint = self.get_object()
+
+        # Permission: allow staff OR product owner (seller)
+        user = request.user
+        is_owner = hasattr(complaint.product, 'seller') and getattr(complaint.product.seller, 'user_id', None) == user.id
+        if not (user and (user.is_staff or user.is_superuser or is_owner)):
+            return Response({'detail': 'Not allowed'}, status=status.HTTP_403_FORBIDDEN)
+
         resolution_type = request.data.get('resolution_type')
         amount_raw = request.data.get('amount')
 

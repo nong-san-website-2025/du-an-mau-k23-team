@@ -10,9 +10,9 @@ import {
   DollarOutlined,
   BarChartOutlined,
   SettingOutlined,
+  WarningOutlined, // 👉 dùng cho mục Khiếu nại
 } from "@ant-design/icons";
 import { useNavigate, useLocation } from "react-router-dom";
-import Logo from "../../../assets/logo/imagelogo.png";
 
 const { Sider } = Layout;
 
@@ -28,20 +28,21 @@ export default function SellerSidebar() {
       label: "Tổng quan",
     },
     {
+      key: "/seller-center/complaints",
+      icon: <WarningOutlined />,
+      label: "Khiếu nại",
+    },
+    {
       key: "store",
       icon: <ShopOutlined />,
       label: "Cửa hàng",
-      children: [
-        { key: "/seller-center/store/info", label: "Thông tin cửa hàng" },
-      ],
+      children: [{ key: "/seller-center/store/info", label: "Thông tin cửa hàng" }],
     },
     {
       key: "products",
       icon: <AppstoreOutlined />,
       label: "Sản phẩm",
-      children: [
-        { key: "/seller-center/products", label: "Thêm sản phẩm" },
-      ],
+      children: [{ key: "/seller-center/products", label: "Thêm sản phẩm" }],
     },
     {
       key: "orders",
@@ -85,7 +86,8 @@ export default function SellerSidebar() {
   };
 
   return (
-    <Sider width={250} className="h-screen bg-white shadow-md" >
+    <Sider width={250} className="h-screen bg-white shadow-md">
+      {/* Logo */}
       <div
         className="flex items-center justify-center gap-2 py-4 cursor-pointer"
         onClick={() => navigate("/")}
@@ -98,6 +100,7 @@ export default function SellerSidebar() {
         <span className="font-bold text-green-600 text-lg">Seller Center</span>
       </div>
 
+      {/* Menu */}
       <Menu
         mode="inline"
         selectedKeys={[location.pathname]}
