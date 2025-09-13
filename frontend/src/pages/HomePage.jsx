@@ -46,7 +46,7 @@ export default function HomePage() {
         className="d-flex justify-content-center align-items-center"
         style={{ height: "500px" }}
       >
-        <Spin size="large" />
+        <Spin size="large" className="spinning" />
       </div>
     );
   }

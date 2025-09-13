@@ -6,6 +6,8 @@ from .serializers import ProductSerializer, ProductListSerializer, CategorySeria
 from rest_framework.views import APIView
 from blog.serializers import PostSerializer
 from blog.models import Post
+from sellers.models import Seller
+from sellers.serializers import SellerSerializer
 from rest_framework import generics, permissions
 from reviews.models import Review
 from reviews.serializers import ReviewSerializer
@@ -248,16 +250,33 @@ class CategoryViewSet(viewsets.ModelViewSet):
         })
 
 
-
-    
 class SearchAPIView(APIView):
+    permission_classes = [permissions.AllowAny]
+
     def get(self, request):
-        query = request.GET.get('q', '')
-        products = Product.objects.filter(name__icontains=query)[:5]
-        posts = Post.objects.filter(title__icontains=query)[:5]
+        query = request.GET.get('q', '').strip()
+        if not query:
+            return Response({'products': [], 'posts': [], 'shops': []})
+
+        # Fuzzy search
+        products = Product.objects.filter(
+            Q(name__icontains=query) |
+            Q(description__icontains=query)
+        )[:20]
+
+        posts = Post.objects.filter(
+            Q(title__icontains=query) |
+            Q(content__icontains=query)
+        )[:10]
+
+        sellers = Seller.objects.filter(
+            Q(store_name__icontains=query)
+        )[:10]
+
         return Response({
             'products': ProductSerializer(products, many=True).data,
-            'posts': PostSerializer(posts, many=True).data
+            'posts': PostSerializer(posts, many=True).data,
+            'sellers': SellerSerializer(sellers, many=True).data
         })
     
 class ReviewListCreateView(generics.ListCreateAPIView):

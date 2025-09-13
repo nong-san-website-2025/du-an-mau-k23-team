@@ -3,7 +3,7 @@ import useUserProfile from "../features/users/services/useUserProfile";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { useCart } from "../features/cart/services/CartContext";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Carrot,
   Apple,
@@ -46,6 +46,7 @@ export default function Header() {
   const [showNotificationDropdown, setShowNotificationDropdown] =
     useState(false);
   const [showCartDropdown, setShowCartDropdown] = useState(false);
+  const navigate = useNavigate();
 
   // Notifications (kept for future use/compatibility)
   const [notifications, setNotifications] = useState([
@@ -158,6 +159,7 @@ export default function Header() {
   const handleSearchChange = async (e) => {
     const value = e.target.value;
     setSearch(value);
+    localStorage.setItem("searchValue", value); // Lưu vào localStorage
 
     if (value.trim() !== "") {
       try {
@@ -173,6 +175,23 @@ export default function Header() {
     } else {
       setSearchResults({ products: [], posts: [] });
       setShowSuggestions(false);
+    }
+  };
+
+  const handleSearchSubmit = async () => {
+    if (!search.trim()) return;
+
+    try {
+      const res = await axiosInstance.get(`/products/search/`, {
+        params: { q: search },
+      });
+      setSearchResults(res.data);
+      setShowSuggestions(false);
+
+      // Điều hướng sang trang /search?query=...
+      navigate(`/search?query=${encodeURIComponent(search)}`);
+    } catch (error) {
+      console.error("Search error:", error);
     }
   };
 
@@ -242,6 +261,13 @@ export default function Header() {
     };
   }, []);
 
+  useEffect(() => {
+    const savedSearch = localStorage.getItem("searchValue");
+    if (savedSearch) {
+      setSearch(savedSearch);
+    }
+  }, []);
+
   return (
     <>
       <ToastContainer
@@ -287,7 +313,6 @@ export default function Header() {
           >
             {/* Logo */}
             <Logo greenText={greenText} />
-            
 
             {/* Navigation */}
             {/* <nav
@@ -304,15 +329,16 @@ export default function Header() {
                 setShowCategory={setShowCategory}
               />
             </nav> */}
-            
 
             {/* Search & Actions */}
             <SearchBoxWithSuggestions
               search={search}
+              setSearch={setSearch} // ✅ Thêm prop này
               setShowSuggestions={setShowSuggestions}
               showSuggestions={showSuggestions}
               searchResults={searchResults}
               handleSearchChange={handleSearchChange}
+              handleSearchSubmit={handleSearchSubmit} // ✅ Thêm prop này
               greenText={greenText}
               containerRef={searchRef}
             />

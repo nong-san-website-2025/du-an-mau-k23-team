@@ -1,10 +1,14 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useCart } from "../services/CartContext";
 import "../styles/QuantityInput.css"; // import CSS
 
 function QuantityInput({ item }) {
   const { updateQuantity } = useCart();
   const [localQuantity, setLocalQuantity] = useState(item.quantity);
+
+  useEffect(() => {
+    setLocalQuantity(item.quantity);
+  }, [item.quantity]);
 
   const handleChange = (val) => {
     if (val < 1) return;

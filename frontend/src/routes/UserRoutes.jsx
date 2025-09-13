@@ -21,6 +21,7 @@ import Wishlist from "../pages/Wishlist/Wishlist";
 import NotificationPage from "../features/users/pages/NotificationPage";
 import PaymentResultPage from "../features/cart/pages/PaymentResultPage";
 import FollowedStores from "../pages/FollowedStores";
+import SearchResultsPage from "../pages/SearchResultPage";
 
 
 export const userRoutes = [
@@ -37,6 +38,8 @@ export const userRoutes = [
     <Route path="abouts" element={<AboutPage />} />
     <Route path="store" element={<StoreList />} />
     <Route path="store/:id" element={<StoreDetail />} />
+    <Route path="search/" element={<SearchResultsPage />} />
+
 
     {/* Private routes */}
     <Route element={<PrivateRoute />}>

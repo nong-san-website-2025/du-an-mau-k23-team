@@ -28,7 +28,7 @@ export const CartProvider = ({ children }) => {
 
   // Fetch cart
   // Trong CartContext
- // thêm nếu chưa có
+  // thêm nếu chưa có
 
   const fetchCart = async () => {
     setLoading(true);
@@ -88,7 +88,7 @@ export const CartProvider = ({ children }) => {
     fetchCart();
   }, []); // chỉ chạy 1 lần khi component mount
 
-  // Sync guest cart to server on login 
+  // Sync guest cart to server on login
   useEffect(() => {
     const token = localStorage.getItem("token");
     const guestCart = getGuestCart();
@@ -155,20 +155,19 @@ export const CartProvider = ({ children }) => {
   // Update quantity
   const updateQuantity = async (itemId, newQty) => {
     if (newQty < 1) return removeFromCart(itemId);
-    if (isAuthenticated()) {
-      try {
-        await API.patch(`cartitems/${itemId}/`, { quantity: newQty });
-        await fetchCart();
-      } catch (err) {
-        console.error(err);
-        toast.error("Không thể cập nhật số lượng");
-      }
-    } else {
-      let items = getGuestCart().map((i) =>
-        i.product === itemId ? { ...i, quantity: newQty } : i
+
+    try {
+      await API.patch(`cartitems/${itemId}/`, { quantity: newQty });
+
+      // ✅ Chỉ cập nhật đúng sản phẩm thay đổi
+      setCartItems((prevItems) =>
+        prevItems.map((item) =>
+          item.id === itemId ? { ...item, quantity: newQty } : item
+        )
       );
-      saveGuestCart(items);
-      setCartItems(items.map((i) => ({ ...i, selected: true })));
+    } catch (err) {
+      console.error(err);
+      toast.error("Không thể cập nhật số lượng");
     }
   };
 

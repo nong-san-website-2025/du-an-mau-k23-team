@@ -180,13 +180,16 @@ function CartPage() {
             </div>
             {cartItems.map((item) => {
               const prod = item.product_data || item.product || {};
-              const itemId = item.id || item.product;
+              const stableKey = item.id || item.product;
               return (
-                <div key={itemId} className="cart-item">
+                <div
+                  key={item.product_data?.id || item.product}
+                  className="cart-item"
+                >
                   <input
                     type="checkbox"
-                    checked={selectedItems.includes(itemId)}
-                    onChange={() => handleCheckItem(itemId)}
+                    checked={selectedItems.includes(stableKey)}
+                    onChange={() => handleCheckItem(stableKey)}
                   />
                   <div className="item-info">
                     {prod.image ? (
