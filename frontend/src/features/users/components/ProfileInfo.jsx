@@ -142,6 +142,54 @@ const ProfileInfo = ({
           >
             {form?.full_name || form?.username}
           </h3>
+          {/* Follow stats under name: clickable + styled */}
+          {(typeof form?.followingCount !== 'undefined' || typeof form?.followersCount !== 'undefined') && (
+            <div style={{ display: 'flex', gap: 12, marginBottom: 8 }}>
+              <button
+                type="button"
+                className="btn btn-sm"
+                onClick={() => window.dispatchEvent(new CustomEvent('openFollowingModal'))}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  background: '#F0FAF5',
+                  color: palette.green,
+                  border: `1px solid ${palette.green}22`,
+                  borderRadius: 999,
+                  padding: '6px 12px',
+                  fontWeight: 700,
+                }}
+              >
+                <span className="badge rounded-pill" style={{ background: palette.green, color: '#fff', fontWeight: 800 }}>
+                  {form?.followingCount ?? 0}
+                </span>
+                Đang theo dõi
+              </button>
+
+              <button
+                type="button"
+                className="btn btn-sm"
+                onClick={() => window.dispatchEvent(new CustomEvent('openFollowersModal'))}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  background: '#FFF7F0',
+                  color: palette.orange,
+                  border: `1px solid ${palette.orange}22`,
+                  borderRadius: 999,
+                  padding: '6px 12px',
+                  fontWeight: 700,
+                }}
+              >
+                <span className="badge rounded-pill" style={{ background: palette.orange, color: '#fff', fontWeight: 800 }}>
+                  {form?.followersCount ?? 0}
+                </span>
+                Người theo dõi
+              </button>
+            </div>
+          )}
           <div
             style={{
               color: palette.subtleText,
