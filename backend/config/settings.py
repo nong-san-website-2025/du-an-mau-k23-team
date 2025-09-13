@@ -82,7 +82,7 @@ ASGI_APPLICATION = 'config.asgi.application'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [os.path.join(BASE_DIR.parent, "frontend", "public")],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -117,12 +117,8 @@ if os.environ.get("DATABASE_URL"):
 else:
     DATABASES = {
         'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': 'ecom_db',
-            'USER': 'postgres',
-            'PASSWORD': '12345',
-            'HOST': 'localhost',
-            'PORT': '5432',
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
         }
     }
 

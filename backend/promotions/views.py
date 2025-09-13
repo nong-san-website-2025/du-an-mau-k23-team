@@ -19,31 +19,33 @@ from .serializers import PromotionSerializer
 class IsAdminOrReadOnly(permissions.BasePermission):
 
     def has_permission(self, request, view):
+        # Cho phép mọi người (kể cả chưa đăng nhập) đọc dữ liệu
         if request.method in permissions.SAFE_METHODS:
-            return request.user and request.user.is_authenticated
-        return request.user and request.user.is_staff
+            return True
+        # Chỉ admin mới được ghi
+        return bool(request.user and request.user.is_staff)
 
 
 class VoucherViewSet(viewsets.ModelViewSet):
-
     queryset = Voucher.objects.all().order_by("-created_at")
     serializer_class = VoucherSerializer
     permission_classes = [IsAdminOrReadOnly]
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ["scope", "active", "seller"]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]  # chỉ dùng search + ordering
     search_fields = ["code", "campaign_name", "title", "description"]
     ordering_fields = ["created_at", "start_at", "end_at"]
 
     def get_queryset(self):
         qs = super().get_queryset()
-        user = self.request.user
-        if user and not user.is_staff:
-            seller = getattr(user, "seller", None)
-            if seller:
-                # trả cả system vouchers và vouchers của chính seller
-                return qs.filter(Q(scope="system") | Q(seller=seller))
-            # nếu user không phải seller -> chỉ thấy system
-            return qs.filter(scope="system")
+        qp = self.request.query_params
+
+        seller = qp.get("seller")
+        if seller:
+            qs = qs.filter(seller_id=seller)
+
+        scope = qp.get("scope")
+        if scope:
+            qs = qs.filter(scope=scope)
+
         return qs
 
 
@@ -74,13 +76,22 @@ class FlashSaleItemViewSet(viewsets.ModelViewSet):
 @permission_classes([IsAuthenticated])
 def apply_voucher(request):
     """
-    Body JSON: { "code": "SALE50", "order_total": 500000 }
+    Body JSON: { "code": "SALE50", "order_total": 500000, "seller_id": 12 }
+    - Nếu voucher scope = "seller" thì chỉ áp dụng khi seller_id khớp với voucher.seller
     """
-    code = request.data.get("code")
-    order_total = request.data.get("order_total")
+    from decimal import Decimal, InvalidOperation
 
-    if not code or not order_total:
+    code = request.data.get("code")
+    order_total_raw = request.data.get("order_total")
+    seller_id = request.data.get("seller_id")
+
+    if not code or order_total_raw is None:
         return Response({"error": "Thiếu dữ liệu"}, status=400)
+
+    try:
+        order_total = Decimal(str(order_total_raw))
+    except (InvalidOperation, TypeError, ValueError):
+        return Response({"error": "order_total không hợp lệ"}, status=400)
 
     try:
         voucher = Voucher.objects.get(code=code, active=True)
@@ -92,20 +103,37 @@ def apply_voucher(request):
         return Response({"error": "Voucher chưa bắt đầu"}, status=400)
     if voucher.end_at and voucher.end_at < now:
         return Response({"error": "Voucher đã hết hạn"}, status=400)
+
+    # Ràng buộc theo cửa hàng nếu là voucher của seller
+    if voucher.scope == "seller":
+        if not seller_id:
+            return Response({"error": "Thiếu seller_id cho voucher của cửa hàng"}, status=400)
+        if str(voucher.seller_id) != str(seller_id):
+            return Response({"error": "Voucher chỉ áp dụng cho cửa hàng tương ứng"}, status=400)
+
     if voucher.min_order_value and order_total < voucher.min_order_value:
         return Response({"error": "Đơn hàng chưa đạt giá trị tối thiểu"}, status=400)
 
-    discount = 0
+    discount = Decimal("0")
     if voucher.discount_percent:
-        discount = order_total * (voucher.discount_percent / 100)
+        try:
+            discount = (order_total * (Decimal(voucher.discount_percent) / Decimal("100")))
+        except Exception:
+            discount = Decimal("0")
     elif voucher.discount_amount:
-        discount = voucher.discount_amount
+        discount = Decimal(voucher.discount_amount)
+
+    final_total = order_total - discount
+    if final_total < 0:
+        final_total = Decimal("0")
 
     return Response({
         "success": True,
         "voucher": voucher.code,
+        "scope": voucher.scope,
+        "seller_id": voucher.seller_id,
         "discount": float(discount),
-        "final_total": float(order_total - discount)
+        "final_total": float(final_total)
     })
 
 class PromotionListCreateAPIView(generics.ListCreateAPIView):

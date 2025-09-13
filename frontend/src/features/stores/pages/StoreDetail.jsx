@@ -1,307 +1,194 @@
 import React, { useEffect, useState } from "react";
-import { useParams, Link, useLocation, useNavigate } from "react-router-dom";
-import { Container, Row, Col, Card, Spinner, Badge, Button } from "react-bootstrap";
+import { useParams, useNavigate } from "react-router-dom";
+import { Row, Col, Card, Button, Badge, Spin, message } from "antd";
 import axios from "axios";
 
-// Định dạng tiền tệ VND an toàn
+const { Meta } = Card;
+
+// Format tiền VND
 const formatVND = (value) => {
   const n = Number(value);
   if (Number.isNaN(n)) return "";
   return Math.round(n).toLocaleString("vi-VN");
 };
 
-// Định dạng ngày tham gia
-const formatJoined = (iso) => {
-  try {
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return "-";
-    return `${d.getMonth() + 1}/${d.getFullYear()}`;
-  } catch {
-    return "-";
-  }
+// Format ngày
+const formatDate = (iso) => {
+  if (!iso) return "-";
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? "-" : d.toLocaleDateString("vi-VN");
 };
 
 const StoreDetail = () => {
   const { id } = useParams();
-  const location = useLocation();
   const navigate = useNavigate();
 
   const [store, setStore] = useState(null);
   const [products, setProducts] = useState([]);
+  const [vouchers, setVouchers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followers, setFollowers] = useState(0);
 
-  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  const token = localStorage.getItem("token");
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const authHeader = token ? { Authorization: `Bearer ${token}` } : {};
-        // 1) Seller detail (includes followers_count, is_following if authenticated)
-        const sellerRes = await axios.get(`http://localhost:8000/api/sellers/${id}/`, { headers: authHeader });
-        setStore(sellerRes.data);
+  const fetchStoreData = async () => {
+    try {
+      const authHeader = token ? { Authorization: `Bearer ${token}` } : {};
 
-        const initialFollowers = Number(sellerRes.data.followers_count || sellerRes.data.followers || 0);
-        setFollowers(Number.isNaN(initialFollowers) ? 0 : initialFollowers);
-        setIsFollowing(Boolean(sellerRes.data.is_following));
+      // 1) Lấy info cửa hàng
+      const storeRes = await axios.get(`http://localhost:8000/api/sellers/${id}/`, { headers: authHeader });
+      setStore(storeRes.data);
+      setFollowers(storeRes.data.followers_count || 0);
+      setIsFollowing(Boolean(storeRes.data.is_following));
 
-        // 2) Products by seller (public)
-        const productsRes = await axios.get(
-          `http://localhost:8000/api/products/?seller=${id}&ordering=-created_at`
-        );
-        setProducts(Array.isArray(productsRes.data) ? productsRes.data : productsRes.data?.results || []);
-      } catch (error) {
-        console.error("Lỗi khi tải dữ liệu cửa hàng hoặc sản phẩm:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+      // 2) Lấy sản phẩm cửa hàng
+      const productsRes = await axios.get(`http://localhost:8000/api/products/?seller=${id}`);
+      setProducts(productsRes.data.results || productsRes.data || []);
 
-    fetchData();
-  }, [id, token]);
+      // 3) Lấy voucher: cửa hàng + toàn sàn (2 call và gộp)
+      const [sellerVoucherRes, systemVoucherRes] = await Promise.all([
+        axios.get(`http://localhost:8000/api/promotions/vouchers/`, {
+          params: { active: true, seller: id, ordering: '-created_at' },
+        }),
+        axios.get(`http://localhost:8000/api/promotions/vouchers/`, {
+          params: { active: true, scope: 'system', ordering: '-created_at' },
+        }),
+      ]);
 
+      const combined = [
+        ...(sellerVoucherRes.data || []),
+        ...(systemVoucherRes.data || []),
+      ];
 
+      // Lọc theo hiệu lực thời gian, không loại trùng
+      const now = new Date();
+      const valid = (v) => (
+        (!v.start_at || new Date(v.start_at) <= now) &&
+        (!v.end_at || new Date(v.end_at) >= now) &&
+        v.active
+      );
 
-  const handleBack = () => {
-    const productId = location.state?.productId;
-    if (productId) navigate(`/products/${productId}`);
-    else navigate("/store");
-  };
+      setVouchers(combined.filter(valid));
 
-  const handleChat = () => {
-    if (!token) {
-      // Yêu cầu đăng nhập trước khi chat
-      navigate("/login", { state: { redirectTo: `/store/${id}` } });
-      return;
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
-    // Nếu có trang chat, điều hướng sang đó. Tạm thời hiển thị thông báo.
-    // navigate("/messages?with=seller_" + id);
-    alert("Tính năng nhắn tin đang được phát triển. Vui lòng thử lại sau!");
   };
 
-  const handleFollowToggle = async () => {
+  fetchStoreData();
+}, [id, token]);
+
+  const handleCopyVoucher = (v) => {
+    navigator.clipboard.writeText(v.code);
+    message.success(`Đã sao chép voucher ${v.code}`);
+  };
+
+  const handleUseVoucher = (v) => {
+    localStorage.setItem("selectedVoucher", JSON.stringify({ code: v.code, sellerId: id, savedAt: Date.now() }));
+    message.success(`Voucher ${v.code} đã chọn, áp dụng khi thanh toán`);
+  };
+
+  const handleFollow = async () => {
     if (!token) {
       navigate("/login", { state: { redirectTo: `/store/${id}` } });
       return;
     }
     const headers = { Authorization: `Bearer ${token}` };
-    const next = !isFollowing;
-    // Optimistic UI update
-    setIsFollowing(next);
-    setFollowers((c) => Math.max(0, c + (next ? 1 : -1)));
     try {
-      if (next) {
+      if (!isFollowing) {
         await axios.post(`http://localhost:8000/api/sellers/${id}/follow/`, {}, { headers });
+        setFollowers(f => f + 1);
       } else {
         await axios.delete(`http://localhost:8000/api/sellers/${id}/follow/`, { headers });
+        setFollowers(f => Math.max(0, f - 1));
       }
-    } catch (e) {
-      // rollback on error
-      setIsFollowing(!next);
-      setFollowers((c) => Math.max(0, c + (next ? -1 : 1)));
+      setIsFollowing(!isFollowing);
+    } catch (err) {
+      console.error(err);
+      message.error("Lỗi khi cập nhật trạng thái theo dõi");
     }
   };
 
   if (loading) {
     return (
-      <div className="text-center my-5">
-        <Spinner animation="border" variant="primary" />
-        <p>Đang tải dữ liệu...</p>
+      <div style={{ textAlign: "center", marginTop: 50 }}>
+        <Spin size="large" />
       </div>
     );
   }
 
-  if (!store) {
-    return <p className="text-center my-5">❌ Không tìm thấy cửa hàng.</p>;
-  }
-
-  const stats = [
-    { label: "Sản phẩm", value: products.length },
-    { label: "Đánh giá", value: store.average_rating ?? "-" }, // cần backend bổ sung nếu muốn số thật
-    { label: "Theo dõi", value: followers },
-    { label: "Tham gia", value: formatJoined(store.created_at) },
-  ];
+  if (!store) return <p style={{ textAlign: "center", marginTop: 50 }}>Cửa hàng không tồn tại</p>;
 
   return (
-    <Container className="my-4">
-      {/* Header như Shopee: cover + avatar + thông tin + nút hành động */}
-      <div
-        className="position-relative mb-4"
-        style={{
-          borderRadius: 16,
-          overflow: "hidden",
-          boxShadow: "0 8px 20px rgba(0,0,0,0.06)",
-        }}
-      >
-        {/* Cover */}
-        <div
-          style={{
-            height: 160,
-            background:
-              "linear-gradient(135deg, rgba(33,196,93,0.9), rgba(33,150,243,0.85))",
-          }}
-        />
-
-        {/* Content overlay */}
-        <div className="p-3 p-md-4" style={{ background: "#fff" }}>
-          <Row className="align-items-center">
-            <Col xs={12} md={8} className="d-flex align-items-center gap-3 gap-md-4">
-              {/* Avatar */}
-              <div
-                className="flex-shrink-0"
-                style={{
-                  marginTop: -64,
-                  width: 120,
-                  height: 120,
-                  borderRadius: "50%",
-                  border: "4px solid #fff",
-                  boxShadow: "0 6px 16px rgba(0,0,0,0.15)",
-                  overflow: "hidden",
-                  background: "#f5f5f5",
-                }}
-              >
-                <img
-                  src={store.image || "/assets/logo/imagelogo.png"}
-                  alt={store.store_name}
-                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                  onError={(e) => {
-                    e.currentTarget.src = "/assets/logo/imagelogo.png";
-                  }}
-                />
-              </div>
-
-              {/* Info */}
-              <div className="mt-2 mt-md-0">
-                <h3 className="fw-bold mb-1">{store.store_name}</h3>
-                {store.bio && (
-                  <div className="text-muted mb-2" style={{ maxWidth: 560 }}>
-                    {store.bio}
-                  </div>
-                )}
-                {/* Stats */}
-                <div className="d-flex flex-wrap align-items-center" style={{ gap: 16 }}>
-                  {stats.map((s, idx) => (
-                    <div key={idx} className="d-flex align-items-center" style={{ gap: 6 }}>
-                      <span className="text-muted" style={{ fontSize: 13 }}>{s.label}:</span>
-                      <strong style={{ fontSize: 14 }}>{String(s.value)}</strong>
-                      {idx < stats.length - 1 && (
-                        <span className="text-muted" style={{ margin: "0 6px" }}>|</span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </Col>
-
-            {/* Actions */}
-            <Col xs={12} md={4} className="mt-3 mt-md-0">
-              <div className="d-flex justify-content-start justify-content-md-end gap-2">
-                <Button variant="outline-primary" onClick={handleChat}>
-                  Nhắn tin
-                </Button>
-                <Button
-                  style={{ backgroundColor: "#ee4d2d", borderColor: "#ee4d2d" }}
-                  onClick={handleFollowToggle}
-                >
-                  {isFollowing ? "Đang theo dõi" : "Theo dõi"}
-                </Button>
-              </div>
-            </Col>
-          </Row>
-        </div>
-      </div>
-
-      {/* Thông tin liên hệ ngắn gọn */}
-      <Row className="g-3 mb-4">
-        <Col xs={12} md={4}>
-          <Card className="h-100 shadow-sm border-0" style={{ borderRadius: 14 }}>
-            <Card.Body>
-              <div className="text-muted">Địa chỉ</div>
-              <div className="fw-bold mt-1">{store.address || "Chưa cập nhật"}</div>
-            </Card.Body>
-          </Card>
-        </Col>
-        <Col xs={12} md={4}>
-          <Card className="h-100 shadow-sm border-0" style={{ borderRadius: 14 }}>
-            <Card.Body>
-              <div className="text-muted">Số điện thoại</div>
-              <div className="fw-bold mt-1">{store.phone || "Chưa cập nhật"}</div>
-            </Card.Body>
-          </Card>
-        </Col>
-        <Col xs={12} md={4}>
-          <Card className="h-100 shadow-sm border-0" style={{ borderRadius: 14 }}>
-            <Card.Body>
-              <div className="text-muted">Trạng thái</div>
-              <div className="fw-bold mt-1">
-                <Badge bg={store.status === "active" ? "success" : "secondary"}>
-                  {store.status || "unknown"}
-                </Badge>
-              </div>
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
-
-      {/* Danh sách sản phẩm */}
-      <div className="d-flex align-items-center justify-content-between mb-3">
-        <h4 className="fw-bold mb-0">Sản phẩm của cửa hàng</h4>
-        {/* Chỗ này có thể thêm filter/sort như Shopee sau */}
-      </div>
-
-      <Row>
-        {products.length > 0 ? (
-          products.map((product) => (
-            <Col key={product.id} sm={6} md={4} lg={3} className="mb-4">
-              <Link to={`/products/${product.id}`} style={{ textDecoration: "none", color: "inherit" }}>
-                <Card
-                  className="h-100 shadow-sm border-0"
-                  style={{ borderRadius: 15, overflow: "hidden", transition: "transform 0.25s ease, box-shadow 0.25s ease" }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = "translateY(-4px)";
-                    e.currentTarget.style.boxShadow = "0 10px 24px rgba(0,0,0,0.12)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = "translateY(0)";
-                    e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.06)";
-                  }}
-                >
-                  <Card.Img
-                    variant="top"
-                    src={product.image || "/assets/logo/imagelogo.png"}
-                    style={{ height: 200, objectFit: "cover" }}
-                    onError={(e) => { e.currentTarget.src = "/assets/logo/imagelogo.png"; }}
-                  />
-                  <Card.Body>
-                    <Card.Title className="fw-bold" style={{ fontSize: "1rem", minHeight: 48 }}>
-                      {product.name}
-                    </Card.Title>
-
-                    <div className="mb-2 d-flex align-items-center gap-2">
-                      <span className="text-danger fw-bold">{formatVND(product.discounted_price ?? product.price)} VNĐ</span>
-                    </div>
-
-                    <Badge bg="secondary">Còn {product.stock} {product.unit}</Badge>
-                  </Card.Body>
-                </Card>
-              </Link>
-            </Col>
-          ))
-        ) : (
+    <div style={{ padding: '0 45px', marginTop: 24 }}>
+      {/* Header */}
+      <Card style={{ marginBottom: 24 }}>
+        <Row align="middle" gutter={16}>
           <Col>
-            <p className="text-muted">Chưa có sản phẩm nào.</p>
+            <img
+              src={store.image || "/assets/logo/imagelogo.png"}
+              alt={store.store_name}
+              style={{ width: 100, height: 100, borderRadius: "50%", objectFit: "cover" }}
+            />
           </Col>
-        )}
+          <Col flex="auto">
+            <h3>{store.store_name}</h3>
+            <p>{store.bio}</p>
+            <small>Followers: {followers}</small>
+          </Col>
+          <Col>
+            <Button type={isFollowing ? "default" : "primary"} onClick={handleFollow}>
+              {isFollowing ? "Đang theo dõi" : "Theo dõi"}
+            </Button>
+          </Col>
+        </Row>
+      </Card>
+
+      {/* Vouchers */}
+      <h5>Mã Voucher</h5>
+      <Row gutter={[16, 16]}>
+        {vouchers.length > 0 ? vouchers.map(v => (
+          <Col xs={24} sm={12} md={8} key={v.code}>
+            <Card size="small">
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+            <span style={{ fontWeight: 500 }}>{v.title || "Voucher"}</span>
+            <Badge color={v.scope === "seller" ? "blue" : "gray"} text={v.scope === "seller" ? "Cửa hàng" : "Toàn sàn"} />
+            </div>
+            <p style={{ marginBottom: 4 }}>{v.description}</p>
+            {v.discount_percent && <p style={{ marginBottom: 4 }}>Giảm {v.discount_percent}%</p>}
+            {v.discount_amount && <p style={{ marginBottom: 4 }}>Giảm {formatVND(v.discount_amount)} VNĐ</p>}
+            {v.min_order_value && <p style={{ marginBottom: 4 }}>Đơn tối thiểu: {formatVND(v.min_order_value)} VNĐ</p>}
+            <p style={{ marginBottom: 4 }}>Hiệu lực: {formatDate(v.start_at)} - {formatDate(v.end_at)}</p>
+            <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
+              <Button size="small" onClick={() => handleCopyVoucher(v)}>Sao chép</Button>
+              <Button size="small" type="primary" onClick={() => handleUseVoucher(v)}>Dùng ngay</Button>
+            </div>
+          </Card>
+
+          </Col>
+        )) : <p>Chưa có voucher.</p>}
       </Row>
 
-      {/* Nút quay lại */}
-      <div className="mt-2">
-        <Button variant="link" onClick={handleBack} className="p-0">
-          ← Quay lại
-        </Button>
-      </div>
-    </Container>
+      {/* Sản phẩm */}
+      <h5>Sản phẩm</h5>
+      <Row gutter={[16, 16]}>
+        {products.length > 0 ? products.map(p => (
+          <Col xs={24} sm={12} md={6} key={p.id}>
+            <Card
+              hoverable
+              cover={<img alt={p.name} src={p.image || "/assets/logo/imagelogo.png"} style={{ height: 200, objectFit: "cover" }} />}
+            >
+              <Meta title={p.name} description={<span className="text-danger">{formatVND(p.discounted_price || p.price)} VNĐ</span>} />
+              <Badge color="gray" text={`Còn ${p.stock} ${p.unit}`} style={{ marginTop: 4 }} />
+            </Card>
+          </Col>
+        )) : <p>Chưa có sản phẩm.</p>}
+      </Row>
+    </div>
   );
 };
 
