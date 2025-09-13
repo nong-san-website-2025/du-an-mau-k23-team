@@ -71,3 +71,20 @@ class OrderItem(models.Model):
     unit = models.CharField(max_length=50, blank=True, null=True)  # optional, for display only
     quantity = models.PositiveIntegerField()
     price = models.DecimalField(max_digits=10, decimal_places=2)
+
+
+class Complaint(models.Model):
+    STATUS_CHOICES = [
+        ("pending", "Chờ xử lý"),
+        ("in_progress", "Đang giải quyết"),
+        ("resolved", "Đã xử lý"),
+    ]
+
+    order = models.ForeignKey("orders.Order", on_delete=models.CASCADE, related_name="complaints")
+    customer_name = models.CharField(max_length=255)
+    reason = models.TextField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Complaint {self.id} - Order {self.order.id}"

@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 import { Spin, Modal } from "antd"; // TODO: nâng cấp props theo khuyến cáo: dùng styles.body thay cho bodyStyle
 
-import BannerSlider from "../components/home/BannerSlider.jsx";
-import CategorySection from "../components/home/CategorySection.jsx";
-import FlashSaleSection from "../components/home/FlashSaleSection.jsx";
-import PersonalizedSection from "../components/home/PersonalizedSection.jsx";
+import BannerSlider from "../components/Home/BannerSlider.jsx";
+import CategorySection from "../components/Home/CategorySection.jsx";
+import FlashSaleSection from "../components/Home/FlashSaleSection.jsx";
+import PersonalizedSection from "../components/Home/PersonalizedSection.jsx";
 
 import {
   // fetchUserRecommendations,

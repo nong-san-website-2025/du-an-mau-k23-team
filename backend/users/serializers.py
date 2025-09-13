@@ -47,6 +47,7 @@ class UserSerializer(serializers.ModelSerializer):
     # Expose Django's date_joined as created_at for frontend compatibility
     created_at = serializers.DateTimeField(source='date_joined', read_only=True)
 
+    
     class Meta:
         model = CustomUser
         fields = [
@@ -95,30 +96,15 @@ class UserSerializer(serializers.ModelSerializer):
 
     def get_can_delete(self, obj):
         try:
-            # 1. Seller
-            if Seller.objects.filter(user=obj).exists():
+            from orders.models import Order
+            from store.models import Store
+
+            # Check đã phát sinh đơn hàng
+            if Order.all_objects.filter(user=obj).exists():
                 return False
 
-            # 2. Store
-            if Shop.objects.filter(owner=obj).exists():
-                return False
-
-            # 3. Order (kể cả soft-deleted)
-            orders_count = CustomerOrder.all_objects.filter(user=obj).count()
-            print(f"[DEBUG] User {obj.id} - Orders count: {orders_count}")
-            if orders_count > 0:
-                return False
-
-            # 4. Product
-            if Product.objects.filter(seller__user=obj).exists():
-                return False
-
-            # 5. Lịch sử điểm
-            if PointHistory.objects.filter(user=obj).exists():
-                return False
-
-            # 6. Địa chỉ
-            if Address.objects.filter(user=obj).exists():
+            # Check đã đăng ký cửa hàng
+            if Store.objects.filter(owner=obj).exists():
                 return False
 
             return True

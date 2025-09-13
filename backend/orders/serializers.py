@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Order, OrderItem
+from .models import Order, OrderItem, Complaint
 
 
 
@@ -145,3 +145,15 @@ class OrderSerializer(serializers.ModelSerializer):
             )
             representation['total_price'] = str(total)
         return representation
+    
+
+
+
+
+
+class ComplaintSerializer(serializers.ModelSerializer):
+    order_id = serializers.IntegerField(source="order.id", read_only=True)
+
+    class Meta:
+        model = Complaint
+        fields = ["id", "order_id", "customer_name", "reason", "status", "created_at"]
