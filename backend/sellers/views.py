@@ -276,3 +276,26 @@ class MyFollowedSellersAPIView(generics.ListAPIView):
         # Lấy danh sách Seller mà user đang theo dõi, sắp xếp mới nhất
         ids = SellerFollow.objects.filter(user=self.request.user).values_list("seller_id", flat=True)
         return Seller.objects.filter(id__in=list(ids)).order_by("-created_at")
+
+class MyFollowersAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """
+        Danh sách người dùng đang theo dõi shop của tôi (nếu tôi là seller).
+        Trả về mảng user rút gọn: id, username, full_name, avatar.
+        """
+        seller = getattr(request.user, "seller", None)
+        if not seller:
+            return Response([], status=200)
+        qs = SellerFollow.objects.filter(seller=seller).select_related("user").order_by("-created_at")
+        data = [
+            {
+                "id": f.user.id,
+                "username": f.user.username,
+                "full_name": getattr(f.user, "full_name", "") or f.user.username,
+                "avatar": f.user.avatar.url if getattr(f.user, "avatar", None) else None,
+            }
+            for f in qs
+        ]
+        return Response(data)

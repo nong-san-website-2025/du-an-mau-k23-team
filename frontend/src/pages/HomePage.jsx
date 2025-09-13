@@ -44,7 +44,7 @@ export default function HomePage() {
     return (
       <div
         className="d-flex justify-content-center align-items-center"
-        style={{ height: "500px" }}
+        style={{ height: "60vh" }}
       >
         <Spin size="large" className="spinning" />
       </div>
@@ -52,25 +52,34 @@ export default function HomePage() {
   }
 
   return (
-    <div className="container" style={{ padding: "0 20px" }}>
+    <div className="container" style={{ padding: "0 16px" }}>
       {/* Banner Carousel */}
-      <div className="row">
+      <div className="row g-3" style={{ marginTop: 8, marginBottom: 12 }}>
         <div className="col-12">
           <BannerSlider />
         </div>
       </div>
 
       {/* Danh Mục Nổi Bật */}
-      <CategorySection categories={categories} />
+      <section style={{ marginBottom: 16 }}>
+        <h2 className="fw-bold" style={{ fontSize: 20, color: "#2E8B57", marginBottom: 10 }}>Danh mục nổi bật</h2>
+        <CategorySection categories={categories} />
+      </section>
 
       {/* Flash Sale */}
-      <FlashSaleSection />
+      <section style={{ marginBottom: 16 }}>
+        <h2 className="fw-bold" style={{ fontSize: 20, color: "#D32F2F", marginBottom: 10 }}>Flash Sale</h2>
+        <FlashSaleSection />
+      </section>
 
       {/* Personalized Section */}
-      <PersonalizedSection
-        username={username}
-        // recommended={recommendedProducts}
-      />
+      <section style={{ marginBottom: 24 }}>
+        <h2 className="fw-bold" style={{ fontSize: 20, color: "#F57C00", marginBottom: 10 }}>Gợi ý cho bạn</h2>
+        <PersonalizedSection
+          username={username}
+          // recommended={recommendedProducts}
+        />
+      </section>
 
       {/* Popup Modal */}
       <Modal
@@ -103,6 +112,7 @@ export default function HomePage() {
               height: "100%",
               objectFit: "cover",
               display: "block",
+              borderRadius: 8,
             }}
             className="cursor-pointer"
           />

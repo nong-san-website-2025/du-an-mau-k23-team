@@ -17,10 +17,9 @@ from .serializers import PromotionSerializer
 
 
 class IsAdminOrReadOnly(permissions.BasePermission):
-
     def has_permission(self, request, view):
         if request.method in permissions.SAFE_METHODS:
-            return request.user and request.user.is_authenticated
+            return True  # Cho phép mọi người đọc công khai
         return request.user and request.user.is_staff
 
 
@@ -36,14 +35,21 @@ class VoucherViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
-        user = self.request.user
-        if user and not user.is_staff:
-            seller = getattr(user, "seller", None)
-            if seller:
-                # trả cả system vouchers và vouchers của chính seller
-                return qs.filter(Q(scope="system") | Q(seller=seller))
-            # nếu user không phải seller -> chỉ thấy system
-            return qs.filter(scope="system")
+        # Ưu tiên filter theo query param nếu có
+        seller_id = self.request.query_params.get("seller")
+        if seller_id:
+            try:
+                sid = int(seller_id)
+                qs = qs.filter(seller_id=sid)
+            except ValueError:
+                qs = qs.none()
+        # Chỉ trả về voucher đang active và trong thời gian hiệu lực (nếu có)
+        now = timezone.now()
+        qs = qs.filter(active=True).filter(
+            Q(start_at__isnull=True) | Q(start_at__lte=now)
+        ).filter(
+            Q(end_at__isnull=True) | Q(end_at__gte=now)
+        )
         return qs
 
 

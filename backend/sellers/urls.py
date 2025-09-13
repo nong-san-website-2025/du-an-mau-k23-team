@@ -43,4 +43,5 @@ urlpatterns = [
     path('<int:seller_id>/follow/', views.FollowSellerAPIView.as_view(), name='seller-follow'),
     # List my followed sellers
     path('my/following/', views.MyFollowedSellersAPIView.as_view(), name='my-followed-sellers'),
+    path('my/followers/', views.MyFollowersAPIView.as_view(), name='my-followers'),
 ] + router.urls
