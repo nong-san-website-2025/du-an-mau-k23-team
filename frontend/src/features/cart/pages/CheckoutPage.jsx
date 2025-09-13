@@ -54,6 +54,9 @@ const CheckoutPage = () => {
   const totalAfterDiscount = Math.max(total - discount, 0);
 
   // Load addresses and enforce default selection workflow
+  // Biến cục bộ để đảm bảo chỉ hiện 1 lần trong vòng đời trang
+  const addressToastShownRef = React.useRef(false);
+  const defaultAddressToastShownRef = React.useRef(false);
   useEffect(() => {
     const fetchAddresses = async () => {
       try {
@@ -62,15 +65,22 @@ const CheckoutPage = () => {
         setAddresses(list);
 
         if (list.length === 0) {
-          toast.info("Bạn chưa có địa chỉ. Vui lòng thêm địa chỉ để tiếp tục.");
-          navigate("/profile?tab=address&redirect=checkout");
+          if (!addressToastShownRef.current) {
+            toast.info("Bạn chưa có địa chỉ. Vui lòng thêm địa chỉ để tiếp tục.");
+            addressToastShownRef.current = true;
+          }
+          navigate("/profile?tab=address&redirect=checkout", { replace: true });
           return;
         }
 
+
         const def = list.find((a) => a.is_default);
         if (!def) {
-          toast.info("Vui lòng đặt một địa chỉ mặc định trước khi thanh toán.");
-          navigate("/profile?tab=address&redirect=checkout");
+          if (!defaultAddressToastShownRef.current) {
+            toast.info("Vui lòng đặt một địa chỉ mặc định trước khi thanh toán.");
+            defaultAddressToastShownRef.current = true;
+          }
+          navigate("/profile?tab=address&redirect=checkout", { replace: true });
           return;
         }
 
