@@ -1,192 +1,303 @@
-import React, { useState, useEffect } from "react";
-import { Table, Input, Tag, Select, Spin, Empty, message } from "antd";
-// Nếu backend chưa có API, bạn có thể comment dòng dưới
-import { getFlashSales } from "../../services/promotionServices";
+import React, { useEffect, useState } from "react";
+import {
+  Table,
+  Button,
+  Input,
+  Modal,
+  Form,
+  Popconfirm,
+  Select,
+  Space,
+  message,
+  Row,
+  Col,
+  DatePicker,
+} from "antd";
+import {
+  getFlashSales,
+  createFlashSale,
+  updateFlashSale,
+  deleteFlashSale,
+} from "../../services/promotionServices";
+import dayjs from "dayjs";
 
 const { Search } = Input;
-const { Option } = Select;
 
-export default function FlashSalePage() {
-  const [flashSales, setFlashSales] = useState([]); // flattened items
-  const [statusFilter, setStatusFilter] = useState("all");
+const FlashSale = () => {
+  const [flashSales, setFlashSales] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [form] = Form.useForm();
   const [searchText, setSearchText] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [filterStatus, setFilterStatus] = useState(null);
+
+  const [products, setProducts] = useState([]);
+
+  // Load Flash Sales
+  const fetchFlashSales = async () => {
+    try {
+      setLoading(true);
+      const data = await getFlashSales();
+      setFlashSales(data);
+    } catch (error) {
+      message.error("Không tải được danh sách Flash Sale");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load danh sách sản phẩm
+  const fetchProducts = async () => {
+    try {
+      const res = await fetch("http://localhost:8000/api/products/");
+      const data = await res.json();
+      setProducts(data);
+    } catch (error) {
+      message.error("Không tải được danh sách sản phẩm");
+    }
+  };
 
   useEffect(() => {
-    let mounted = true;
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        let items = [];
-        if (typeof getFlashSales === "function") {
-          items = await getFlashSales(); // gọi API nếu có
-        }
-
-        // fallback mock data nếu API chưa trả gì
-        if (!items || items.length === 0) {
-          items = [
-            {
-              id: 1,
-              flashsale_title: "Flash Sale 9/9",
-              product_name: "Áo thun nam",
-              original_price: 200000,
-              sale_price: 99000,
-              discount_percent: 50,
-              total_stock: 100,
-              remaining_stock: 20,
-              start_at: "2025-09-10T10:00:00Z",
-              end_at: "2025-09-12T23:59:59Z",
-              status: "active",
-              seller_name: "Shop ABC",
-            },
-            {
-              id: 2,
-              flashsale_title: "Flash Sale 10/10",
-              product_name: "Giày sneaker",
-              original_price: 800000,
-              sale_price: 499000,
-              discount_percent: 38,
-              total_stock: 50,
-              remaining_stock: 0,
-              start_at: "2025-10-10T00:00:00Z",
-              end_at: "2025-10-10T23:59:59Z",
-              status: "upcoming",
-              seller_name: "Shop XYZ",
-            },
-          ];
-        }
-
-        if (!mounted) return;
-        setFlashSales(items);
-      } catch (err) {
-        console.error(err);
-        message.error("Không tải được dữ liệu flash sale");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-    return () => {
-      mounted = false;
-    };
+    fetchFlashSales();
+    fetchProducts();
   }, []);
 
-  const q = (str) => (str || "").toString().toLowerCase();
-
-  const filteredData = flashSales.filter((f) => {
-    const matchStatus =
-      statusFilter === "all" || (f.status || "unknown") === statusFilter;
-    const search = q(searchText);
-    const matchSearch =
-      q(f.flashsale_title).includes(search) ||
-      q(f.product_name).includes(search);
-    return matchStatus && matchSearch;
+  const filteredData = flashSales.filter((item) => {
+    const matchSearch = item.name
+      ?.toLowerCase()
+      .includes(searchText.toLowerCase());
+    const matchStatus = filterStatus ? item.status === filterStatus : true;
+    return matchSearch && matchStatus;
   });
 
+  const handleOpenModal = (record = null) => {
+    setEditing(record);
+    if (record) {
+      form.setFieldsValue({
+        ...record,
+        start_time: dayjs(record.start_time),
+        end_time: dayjs(record.end_time),
+      });
+    } else {
+      form.resetFields();
+    }
+    setModalOpen(true);
+  };
+
+  const handleSubmit = async () => {
+    try {
+      const values = await form.validateFields();
+      const payload = {
+        name: values.name,
+        start_time: values.start_time.toISOString(),
+        end_time: values.end_time.toISOString(),
+        items: [
+          {
+            product_id: values.product_id,
+            sale_price: Number(values.sale_price),
+            quantity: Number(values.quantity),
+          },
+        ],
+      };
+
+      if (editing) {
+        await updateFlashSale(editing.id, payload);
+        message.success("Cập nhật Flash Sale thành công");
+      } else {
+        await createFlashSale(payload);
+        message.success("Thêm Flash Sale thành công");
+      }
+
+      setModalOpen(false);
+      fetchFlashSales();
+    } catch (error) {
+      message.error("Lưu Flash Sale thất bại");
+    }
+  };
+
+  const handleDelete = async (id) => {
+    try {
+      await deleteFlashSale(id);
+      message.success("Xoá Flash Sale thành công");
+      fetchFlashSales();
+    } catch (error) {
+      message.error("Xoá Flash Sale thất bại");
+    }
+  };
+
   const columns = [
-    { title: "Chiến dịch", dataIndex: "flashsale_title", key: "flashsale_title" },
-    { title: "Sản phẩm", dataIndex: "product_name", key: "product_name" },
     {
-      title: "Giá gốc",
-      dataIndex: "original_price",
-      key: "original_price",
-      render: (price) =>
-        price !== null && price !== undefined && !Number.isNaN(Number(price))
-          ? `${Number(price).toLocaleString()}₫`
-          : "-",
+      title: "Chiến dịch",
+      dataIndex: "name",
+      key: "name",
+    },
+    {
+      title: "Sản phẩm",
+      render: (record) => record.items?.map((i) => i.product?.name).join(", ") || "—",
     },
     {
       title: "Giá Flash Sale",
-      dataIndex: "sale_price",
-      key: "sale_price",
-      render: (price) =>
-        price !== null && price !== undefined && !Number.isNaN(Number(price)) ? (
-          <b style={{ color: "red" }}>{Number(price).toLocaleString()}₫</b>
-        ) : (
-          "-"
-        ),
-    },
-    {
-      title: "Giảm (%)",
-      dataIndex: "discount_percent",
-      key: "discount_percent",
-      render: (d) => (d !== null && d !== undefined ? `${d}%` : "-"),
-    },
-    { title: "Tổng SL", dataIndex: "total_stock", key: "total_stock" },
-    {
-      title: "Còn lại",
-      dataIndex: "remaining_stock",
-      key: "remaining_stock",
-      render: (r) =>
-        r > 0 ? <Tag color="green">{r}</Tag> : <Tag color="red">Hết</Tag>,
+      render: (record) =>
+        record.items?.map((i) => `${i.sale_price}₫`).join(", ") || "—",
     },
     {
       title: "Thời gian",
-      key: "time",
-      render: (record) =>
-        record.start_at
-          ? `${new Date(record.start_at).toLocaleString()} → ${new Date(
-              record.end_at
-            ).toLocaleString()}`
-          : "-",
+      render: (record) => (
+        <>
+          {dayjs(record.start_time).format("DD/MM/YYYY HH:mm")} →{" "}
+          {dayjs(record.end_time).format("DD/MM/YYYY HH:mm")}
+        </>
+      ),
     },
     {
-      title: "Trạng thái",
-      dataIndex: "status",
-      key: "status",
-      render: (status) => {
-        switch (status) {
-          case "upcoming":
-            return <Tag color="blue">Sắp</Tag>;
-          case "active":
-            return <Tag color="green">Đang</Tag>;
-          case "ended":
-            return <Tag color="red">Kết thúc</Tag>;
-          default:
-            return <Tag>Không rõ</Tag>;
-        }
-      },
+      title: "Hành động",
+      key: "actions",
+      render: (record) => (
+        <Space>
+          <Button type="link" onClick={() => handleOpenModal(record)}>
+            Sửa
+          </Button>
+          <Popconfirm
+            title="Bạn có chắc muốn xoá?"
+            onConfirm={() => handleDelete(record.id)}
+          >
+            <Button type="link" danger>
+              Xoá
+            </Button>
+          </Popconfirm>
+        </Space>
+      ),
     },
-    { title: "Người bán", dataIndex: "seller_name", key: "seller_name" },
   ];
 
   return (
-    <div style={{ padding: 20 }}>
+    <div>
       <h2>Quản lý Flash Sale</h2>
-
-      <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
+      <Space style={{ marginBottom: 16 }}>
         <Search
-          placeholder="Tìm kiếm theo chiến dịch hoặc sản phẩm..."
+          placeholder="Tìm theo tên chiến dịch..."
           onSearch={(value) => setSearchText(value)}
           allowClear
-          style={{ width: 300 }}
         />
+        <Button type="primary" onClick={() => handleOpenModal()}>
+          Thêm Flash Sale
+        </Button>
+        <Button onClick={() => fetchFlashSales()}>Làm mới</Button>
+      </Space>
 
-        <Select
-          defaultValue="all"
-          style={{ width: 200 }}
-          onChange={(v) => setStatusFilter(v)}
-        >
-          <Option value="all">Tất cả</Option>
-          <Option value="upcoming">Sắp diễn ra</Option>
-          <Option value="active">Đang diễn ra</Option>
-          <Option value="ended">Đã kết thúc</Option>
-        </Select>
-      </div>
+      <Table
+        dataSource={filteredData}
+        columns={columns}
+        rowKey="id"
+        loading={loading}
+      />
 
-      {loading ? (
-        <Spin />
-      ) : filteredData.length === 0 ? (
-        <Empty description="Không có sản phẩm flash sale" />
-      ) : (
-        <Table
-          rowKey="id"
-          columns={columns}
-          dataSource={filteredData}
-          pagination={{ pageSize: 6 }}
-          bordered
-        />
-      )}
+      <Modal
+        open={modalOpen}
+        onCancel={() => setModalOpen(false)}
+        onOk={handleSubmit}
+        title={editing ? "Sửa Flash Sale" : "Thêm Flash Sale"}
+        width={900}
+      >
+        <Form form={form} layout="horizontal" labelCol={{ span: 6 }} wrapperCol={{ span: 18 }}>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name="name"
+                label="Chiến dịch"
+                rules={[{ required: true, message: "Nhập tên chiến dịch" }]}
+              >
+                <Input />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name="product_id"
+                label="Sản phẩm"
+                rules={[{ required: true, message: "Chọn sản phẩm" }]}
+              >
+                <Select>
+                  {products.map((p) => (
+                    <Select.Option key={p.id} value={p.id}>
+                      {p.name}
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name="sale_price"
+                label="Giá Flash Sale"
+                rules={[{ required: true, message: "Nhập giá" }]}
+              >
+                <Input type="number" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name="quantity"
+                label="Số lượng"
+                rules={[{ required: true, message: "Nhập số lượng" }]}
+              >
+                <Input type="number" />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name="start_time"
+                label="Bắt đầu"
+                rules={[{ required: true, message: "Chọn thời gian bắt đầu" }]}
+              >
+                <DatePicker
+                  showTime
+                  format="DD/MM/YYYY HH:mm"
+                  style={{ width: "100%" }}
+                  disabledDate={(current) =>
+                    form.getFieldValue("end_time") &&
+                    current > form.getFieldValue("end_time")
+                  }
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name="end_time"
+                label="Kết thúc"
+                dependencies={["start_time"]}
+                rules={[
+                  { required: true, message: "Chọn thời gian kết thúc" },
+                  ({ getFieldValue }) => ({
+                    validator(_, value) {
+                      if (!value || value.isAfter(getFieldValue("start_time"))) {
+                        return Promise.resolve();
+                      }
+                      return Promise.reject(
+                        new Error("Thời gian kết thúc phải sau thời gian bắt đầu")
+                      );
+                    },
+                  }),
+                ]}
+              >
+                <DatePicker
+                  showTime
+                  format="DD/MM/YYYY HH:mm"
+                  style={{ width: "100%" }}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+        </Form>
+      </Modal>
     </div>
   );
-}
+};
+
+export default FlashSale;

@@ -1,8 +1,7 @@
 from django.db import models
 from django.conf import settings
-from products.models import Product           # ✅ import Product từ app products
-from store.models import Store as Seller      # ✅ nếu app bạn là store thì alias thành Seller luôn
-
+from products.models import Product
+from products.serializers import ProductListSerializer
 
 class Promotion(models.Model):
     TYPE_VOUCHER = "voucher"
@@ -96,26 +95,24 @@ class Voucher(models.Model):
 
 
 class FlashSale(models.Model):
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="flash_sales")
-    seller = models.ForeignKey(Seller, on_delete=models.CASCADE, related_name="flash_sales")
-
-    flashsale_title = models.CharField(max_length=255)
-    original_price = models.DecimalField(max_digits=10, decimal_places=2)
-    sale_price = models.DecimalField(max_digits=10, decimal_places=2)
-    discount_percent = models.PositiveIntegerField()
-    total_stock = models.PositiveIntegerField()
-    remaining_stock = models.PositiveIntegerField()
-    start_at = models.DateTimeField()
-    end_at = models.DateTimeField()
-
-    STATUS_CHOICES = [
-        ("upcoming", "Sắp diễn ra"),
-        ("active", "Đang diễn ra"),
-        ("ended", "Đã kết thúc"),
-    ]
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="upcoming")
-
+    name = models.CharField(max_length=255)
+    start_time = models.DateTimeField()
+    end_time = models.DateTimeField()
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.flashsale_title} - {self.product.name}"
+        return f"{self.name} ({self.start_time} - {self.end_time})"
+
+
+class FlashSaleItem(models.Model):
+    flash_sale = models.ForeignKey(FlashSale, on_delete=models.CASCADE, related_name="items")
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="flashsale_items")
+    sale_price = models.DecimalField(max_digits=10, decimal_places=2)
+    quantity = models.PositiveIntegerField(default=0)  # số lượng áp dụng khuyến mãi
+    sold = models.PositiveIntegerField(default=0)      # số đã bán trong flash sale
+
+    class Meta:
+        unique_together = ("flash_sale", "product")  # tránh trùng sản phẩm trong 1 đợt sale
+
+    def __str__(self):
+        return f"{self.product.name} - {self.sale_price} (FS: {self.flash_sale.name})"

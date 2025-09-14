@@ -1,6 +1,7 @@
 from rest_framework import serializers
-from .models import Promotion, Voucher ,FlashSale 
-
+from .models import Promotion, Voucher ,FlashSale , FlashSaleItem 
+from products.models import Product
+from products.serializers import ProductListSerializer
 
 class PromotionListSerializer(serializers.ModelSerializer):
     class Meta:
@@ -48,10 +49,39 @@ class VoucherDetailSerializer(serializers.ModelSerializer):
         return super().update(instance, validated_data)
 
 
+class FlashSaleItemSerializer(serializers.ModelSerializer):
+    product = ProductListSerializer(read_only=True)
+    product_id = serializers.PrimaryKeyRelatedField(queryset=Product.objects.all(), source="product", write_only=True)
+
+    class Meta:
+        model = FlashSaleItem
+        fields = ["id", "product", "product_id", "sale_price", "quantity", "sold"]
+
+
 class FlashSaleSerializer(serializers.ModelSerializer):
-    product_name = serializers.CharField(source="product.name", read_only=True)
-    seller_name = serializers.CharField(source="seller.store_name", read_only=True)
+    items = FlashSaleItemSerializer(many=True)
 
     class Meta:
         model = FlashSale
-        fields = "__all__"
+        fields = ["id", "name", "start_time", "end_time", "created_at", "items"]
+
+    def create(self, validated_data):
+        items_data = validated_data.pop("items", [])
+        flash_sale = FlashSale.objects.create(**validated_data)
+        for item_data in items_data:
+            FlashSaleItem.objects.create(flash_sale=flash_sale, **item_data)
+        return flash_sale
+
+    def update(self, instance, validated_data):
+        items_data = validated_data.pop("items", [])
+        instance.name = validated_data.get("name", instance.name)
+        instance.start_time = validated_data.get("start_time", instance.start_time)
+        instance.end_time = validated_data.get("end_time", instance.end_time)
+        instance.save()
+
+        # Cập nhật items
+        instance.items.all().delete()
+        for item_data in items_data:
+            FlashSaleItem.objects.create(flash_sale=instance, **item_data)
+
+        return instance

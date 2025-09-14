@@ -40,8 +40,11 @@ class VoucherViewSet(viewsets.ModelViewSet):
 def promotions_overview(request):
     """
     Trả về list flatten vouchers (dùng cho UI bảng chung).
+    Có hỗ trợ search theo code hoặc name.
     """
     user = request.user
+    search = request.query_params.get("search")  # <-- lấy query param search
+
     # get vouchers per visibility rules
     if user.is_staff:
         vouchers = Voucher.objects.all().order_by('-created_at')
@@ -51,6 +54,13 @@ def promotions_overview(request):
             vouchers = Voucher.objects.filter(Q(scope='system') | Q(seller=seller)).order_by('-created_at')
         else:
             vouchers = Voucher.objects.filter(scope='system').order_by('-created_at')
+
+    # Nếu có search thì filter
+    if search:
+        vouchers = vouchers.filter(
+            Q(title__icontains=search) | 
+            Q(code__icontains=search)
+        )
 
     data = []
     for v in vouchers:
@@ -73,19 +83,11 @@ def promotions_overview(request):
 
 
 class FlashSaleViewSet(viewsets.ModelViewSet):
-    queryset = FlashSale.objects.all().order_by("-created_at")
+    queryset = FlashSale.objects.all().prefetch_related("items__product")
     serializer_class = FlashSaleSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [permissions.IsAdminUser]  # chỉ admin quản lý
 
-    """
-    CRUD cho Flash Sale
-    - list: GET /api/promotions/flashsales/
-    - retrieve: GET /api/promotions/flashsales/{id}/
-    - create: POST /api/promotions/flashsales/
-    - update: PUT /api/promotions/flashsales/{id}/
-    - partial_update: PATCH /api/promotions/flashsales/{id}/
-    - destroy: DELETE /api/promotions/flashsales/{id}/
-    """
-    queryset = FlashSale.objects.all().order_by("-created_at")
-    serializer_class = FlashSaleSerializer
-    permission_classes = [IsAuthenticated]
+    def get_permissions(self):
+        if self.action in ["list", "retrieve"]:
+            return [permissions.AllowAny()]  # khách cũng xem được flash sale
+        return [permissions.IsAdminUser()]
