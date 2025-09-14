@@ -96,11 +96,37 @@ export default function NotificationPage() {
           thumbnail = img || media[0];
         }
 
+        // Build message: show refund amount when applicable
+        const toNumber = (v) => {
+          const n = Number(v);
+          return Number.isFinite(n) ? n : null;
+        };
+        const formatVND = (n) => `${Math.round(n).toLocaleString('vi-VN')} VNĐ`;
+        let messageText = status === "resolved" ? "Khiếu nại của bạn đã được xử lý!" : "Khiếu nại của bạn đã bị từ chối!";
+        if (status === "resolved") {
+          const rtMsgCode = (c.resolution_type || c.resolution || "").toLowerCase();
+          if (rtMsgCode === "refund_full") {
+            const unit = toNumber(c.unit_price ?? c.product_price ?? c.product?.price);
+            const qty = toNumber(c.quantity) ?? 1;
+            if (unit != null) {
+              messageText = `Bạn đã được hoàn tiền ${formatVND(unit * qty)}`;
+            }
+          } else if (rtMsgCode === "refund_partial") {
+            const pAmt = toNumber(c.refund_amount ?? c.amount);
+            if (pAmt != null) {
+              messageText = `Bạn đã được hoàn tiền ${formatVND(pAmt)}`;
+            }
+          }
+        }
+
         return {
           id: c.id,
-          message: status === "resolved" ? "Khiếu nại của bạn đã được xử lý!" : "Khiếu nại của bạn đã bị từ chối!",
+          message: messageText,
           detail: detailLines.join("\n"),
-          time: c.updated_at ? new Date(c.updated_at).toLocaleString() : new Date().toLocaleString(),
+          // Prefer backend timestamps to avoid duplicate current times
+          time: (c.updated_at || c.created_at)
+            ? new Date(c.updated_at || c.created_at).toLocaleString()
+            : "",
           read: false,
           userId,
           thumbnail,

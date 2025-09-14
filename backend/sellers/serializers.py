@@ -2,7 +2,8 @@ from rest_framework import serializers
 from .models import Seller
 from products.models import Product
 from rest_framework import serializers
-from .models import Seller, Shop, Product, Order, Voucher
+from .models import Seller, Shop, Order, Voucher, SellerFollow
+
 class ProductMiniSerializer(serializers.ModelSerializer):
     discounted_price = serializers.SerializerMethodField()
 
@@ -17,9 +18,14 @@ class SellerListSerializer(serializers.ModelSerializer):
     owner_username = serializers.CharField(source='user.username', read_only=True)
     user_email = serializers.EmailField(source="user.email", read_only=True)
     created_at = serializers.DateTimeField(format="%d/%m/%Y %H:%M", read_only=True)
+    followers_count = serializers.SerializerMethodField()
+
     class Meta:
         model = Seller
-        fields = ['id', 'store_name', 'image', 'address', 'status', 'bio', 'owner_username', 'phone', 'user_email', 'created_at', ]
+        fields = ['id', 'store_name', 'image', 'address', 'status', 'bio', 'owner_username', 'phone', 'user_email', 'created_at', 'followers_count']
+
+    def get_followers_count(self, obj):
+        return obj.followers.count()
 
 class SellerRegisterSerializer(serializers.ModelSerializer):
     class Meta:
@@ -28,6 +34,8 @@ class SellerRegisterSerializer(serializers.ModelSerializer):
 
 class SellerDetailSerializer(serializers.ModelSerializer):
     products = ProductMiniSerializer(many=True, read_only=True, source='product_set')
+    followers_count = serializers.SerializerMethodField()
+    is_following = serializers.SerializerMethodField()
 
     class Meta:
         model = Seller
@@ -39,10 +47,21 @@ class SellerDetailSerializer(serializers.ModelSerializer):
             'phone',
             'image',
             'created_at',
-            'status',      
-            'products'
+            'status',
+            'products',
+            'followers_count',
+            'is_following',
         ]
 
+    def get_followers_count(self, obj):
+        return obj.followers.count()
+
+    def get_is_following(self, obj):
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        if user and user.is_authenticated:
+            return SellerFollow.objects.filter(user=user, seller=obj).exists()
+        return False
 
 class SellerSerializer(serializers.ModelSerializer):
     user_username = serializers.CharField(source="user.username", read_only=True)
@@ -63,15 +82,12 @@ class SellerSerializer(serializers.ModelSerializer):
             validated_data.pop("user", None)
         return super().update(instance, validated_data)
 
-
-
 class ShopSerializer(serializers.ModelSerializer):
     owner_username = serializers.CharField(source="owner.username", read_only=True)
 
     class Meta:
         model = Shop
         fields = ["id", "name", "description", "owner", "owner_username", "created_at", "is_active"]
-
 
 class ProductSerializer(serializers.ModelSerializer):
     class Meta:
@@ -88,4 +104,8 @@ class VoucherSerializer(serializers.ModelSerializer):
         model = Voucher
         fields = "__all__"
 
-
+class SellerFollowSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SellerFollow
+        fields = ["id", "user", "seller", "created_at"]
+        read_only_fields = ["id", "created_at", "user"]

@@ -5,11 +5,13 @@ from django.core.mail import send_mail
 from django.db.models import Sum, Count
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
+from django.apps import apps
+from rest_framework.parsers import MultiPartParser, FormParser
 
 from rest_framework import generics, permissions, status, viewsets
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.generics import ListAPIView
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -18,16 +20,7 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
-from .serializers import AccountSerializer, ChangePasswordSerializer
-from rest_framework.parsers import MultiPartParser, FormParser
-from .serializers import ProfileSerializer
-from .serializers import CustomUserSerializer
 
-
-
-import random
-
-from payments.models import Payment
 from .models import CustomUser, Address, Role
 from .serializers import (
     UserSerializer,
@@ -36,13 +29,33 @@ from .serializers import (
     AddressSerializer,
     EmployeeSerializer,
     RoleSerializer,
+    AccountSerializer,  
+    ChangePasswordSerializer,
+    ProfileSerializer,
+    CustomUserSerializer
 )
-from .permissions import IsAdmin, IsSeller, IsNormalUser
-from products.models import Product
-from orders.models import Order
 
+
+from .permissions import IsAdmin, IsSeller, IsNormalUser
+
+# Lấy model động tránh vòng lặp import
+Product = apps.get_model('products', 'Product')
+Order = apps.get_model('orders', 'Order')
 
 User = get_user_model()
+
+from django.apps import apps
+
+# Lấy model bằng apps.get_model
+CustomUser = apps.get_model('users', 'CustomUser')
+Role = apps.get_model('users', 'Role')
+Address = apps.get_model('users', 'Address')
+PointHistory = apps.get_model('users', 'PointHistory')
+Seller = apps.get_model('sellers', 'Seller')
+Store = apps.get_model('store', 'Store')
+Product = apps.get_model('products', 'Product')
+Order = apps.get_model('orders', 'Order')
+
 
 # -------------------- WALLET --------------------
 class WalletBalanceView(APIView):
@@ -170,12 +183,15 @@ class LoginView(APIView):
 
 class UserProfileView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+    parser_classes = (MultiPartParser, FormParser)
 
     def get(self, request):
         serializer = UserSerializer(request.user)
         return Response(serializer.data)
 
     def put(self, request):
+        # Ensure multipart parsing works for avatar uploads
+        parser_classes = (MultiPartParser, FormParser)
         serializer = UserSerializer(request.user, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
@@ -200,7 +216,30 @@ class UserViewSet(viewsets.ModelViewSet):
     serializer_class = UserSerializer
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
+    
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
 
+        # --- Dùng cùng logic với serializer ---
+        has_activity = (
+            Seller.objects.filter(user=instance).exists()
+            or Store.objects.filter(owner=instance).exists()
+            or Order.all_objects.filter(user=instance).exists()
+            or Product.objects.filter(seller__user=instance).exists()
+            or PointHistory.objects.filter(user=instance).exists()
+            or Address.objects.filter(user=instance).exists()
+        )
+
+        if has_activity:
+            return Response(
+                {"detail": "Không thể xoá user này vì đã có hoạt động trong hệ thống."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        self.perform_destroy(instance)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    
+    
 
 # -------------------- PASSWORD RESET --------------------
 class ForgotPasswordView(APIView):
@@ -425,13 +464,19 @@ class UserManagementViewSet(viewsets.ModelViewSet):
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated, IsAdmin]
 
+
     def list(self, request, *args, **kwargs):
-        """Lấy danh sách người dùng"""
+        queryset = self.get_queryset()
+        print("DEBUG USERS:", list(queryset.values("id", "username", "role__name", "is_active")))
         return super().list(request, *args, **kwargs)
 
+
     def create(self, request, *args, **kwargs):
-        """Tạo người dùng mới"""
-        return super().create(request, *args, **kwargs)
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.save()
+            return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def update(self, request, *args, **kwargs):
         """Cập nhật thông tin người dùng"""
@@ -513,3 +558,51 @@ class UploadAvatarView(APIView):
         request.user.avatar = avatar
         request.user.save()
         return Response({"avatar": request.user.avatar.url})
+
+
+
+@api_view(["PATCH"])
+@permission_classes([IsAdminUser])
+def toggle_user_active(request, pk):
+    try:
+        user = CustomUser.objects.get(pk=pk)
+    except CustomUser.DoesNotExist:
+        return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    user.is_active = not user.is_active
+    user.save()
+    return Response({"id": user.id, "is_active": user.is_active})
+
+@api_view(["DELETE"])
+@permission_classes([IsAdminUser])
+def delete_user(request, pk):
+    try:
+        user = CustomUser.objects.get(pk=pk)
+    except CustomUser.DoesNotExist:
+        return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    # DEBUG: In ra tất cả order của user
+    from django.apps import apps
+    Order = apps.get_model('orders', 'Order')
+
+    orders = Order.objects.filter(user=user)
+    print(f"[DEBUG] Orders of user {user.id}:", orders)
+
+    # Check hoạt động
+    has_activity = (
+        Seller.objects.filter(user=user).exists()
+        or Store.objects.filter(owner=user).exists()
+        or orders.exists()  # kiểm tra order thực sự có hay không
+        or Product.objects.filter(seller__user=user).exists()
+        or PointHistory.objects.filter(user=user).exists()
+        or Address.objects.filter(user=user).exists()
+    )
+
+    if has_activity:
+        return Response(
+            {"error": "Không thể xóa user đã có hoạt động. Hãy khóa thay vì xóa."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    user.delete()
+    return Response(status=status.HTTP_204_NO_CONTENT)

@@ -126,7 +126,6 @@ else:
         }
     }
 
-
 # --- Auth
 AUTH_USER_MODEL = "users.CustomUser"
 AUTHENTICATION_BACKENDS = [

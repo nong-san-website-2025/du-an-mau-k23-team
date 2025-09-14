@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import API from "../../login_register/services/api";
 import { toast } from "react-toastify";
 import { useLocation } from "react-router-dom";
+import { productApi } from "../../products/services/productApi";
 
 const CartContext = createContext();
 export const useCart = () => useContext(CartContext);
@@ -26,16 +27,48 @@ export const CartProvider = ({ children }) => {
   };
 
   // Fetch cart
+  // Trong CartContext
+ // thêm nếu chưa có
+
   const fetchCart = async () => {
     setLoading(true);
     try {
       if (isAuthenticated()) {
         const res = await API.get("cartitems/");
-        const itemsWithSelected = res.data.map((i) => ({
-          ...i,
-          selected: true,
-        }));
-        setCartItems(itemsWithSelected);
+
+        // Lấy danh sách item từ server
+        const items = res.data;
+
+        // Fetch chi tiết product nếu thiếu
+        const itemsWithDetails = await Promise.all(
+          items.map(async (item) => {
+            if (item.product_data && item.product_data.name) {
+              return { ...item, selected: true };
+            } else {
+              try {
+                const prod = await productApi.getProductById(
+                  item.product || item.product_id
+                );
+                return {
+                  ...item,
+                  selected: true,
+                  product_data: {
+                    id: prod.id,
+                    name: prod.name,
+                    price: prod.price,
+                    image: prod.image,
+                    category: prod.category,
+                  },
+                };
+              } catch (err) {
+                console.warn("⚠️ Không fetch được product:", item);
+                return { ...item, selected: true };
+              }
+            }
+          })
+        );
+
+        setCartItems(itemsWithDetails);
       } else {
         const guestItems = getGuestCart().map((i) => ({
           ...i,
@@ -44,7 +77,7 @@ export const CartProvider = ({ children }) => {
         setCartItems(guestItems);
       }
     } catch (err) {
-      console.error(err);
+      console.error("❌ Lỗi khi fetch giỏ hàng:", err);
       setCartItems([]);
     }
     setLoading(false);
@@ -53,9 +86,9 @@ export const CartProvider = ({ children }) => {
   // Load cart on mount / location change
   useEffect(() => {
     fetchCart();
-  }, [location]);
+  }, []); // chỉ chạy 1 lần khi component mount
 
-  // Sync guest cart to server on login
+  // Sync guest cart to server on login 
   useEffect(() => {
     const token = localStorage.getItem("token");
     const guestCart = getGuestCart();

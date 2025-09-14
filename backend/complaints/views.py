@@ -15,12 +15,29 @@ class ComplaintViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         files = request.FILES.getlist('media')
+        # Parse quantity and unit price if provided by frontend; fallback to defaults
+        try:
+            quantity = int(request.data.get('quantity') or 1)
+        except Exception:
+            quantity = 1
+        unit_price_raw = request.data.get('unit_price')
+
         complaint = Complaint.objects.create(
             user=request.user,
             product_id=request.data['product'],
             reason=request.data['reason'],
-            # status mặc định là pending
+            quantity=quantity,
         )
+        # If unit_price not provided or invalid, fallback to current product price
+        try:
+            if unit_price_raw is not None and str(unit_price_raw) != "":
+                complaint.unit_price = Decimal(str(unit_price_raw))
+            else:
+                complaint.unit_price = complaint.product.price
+        except Exception:
+            complaint.unit_price = complaint.product.price
+        complaint.save()
+
         for f in files:
             ComplaintMedia.objects.create(complaint=complaint, file=f)
         serializer = self.get_serializer(complaint)
@@ -52,6 +69,8 @@ class ComplaintViewSet(viewsets.ModelViewSet):
 
         wallet_balance = None
 
+        from wallet.models import Wallet
+
         if resolution_type == 'refund_partial':
             if amount_raw is None:
                 return Response({'error': 'amount is required for refund_partial'}, status=status.HTTP_400_BAD_REQUEST)
@@ -63,13 +82,25 @@ class ComplaintViewSet(viewsets.ModelViewSet):
                 return Response({'error': 'Amount must be > 0'}, status=status.HTTP_400_BAD_REQUEST)
 
             # Credit wallet
-            from wallet.models import Wallet
             wallet, _ = Wallet.objects.get_or_create(user=complaint.user)
             wallet.balance = (wallet.balance or Decimal('0')) + amount
             wallet.save()
             wallet_balance = wallet.balance
 
-        # TODO: implement refund_full logic if needed (e.g., credit full order item/payment amount)
+        elif resolution_type == 'refund_full':
+            # Credit full amount = unit_price * quantity (fallback to product.price)
+            unit_price = complaint.unit_price or complaint.product.price
+            try:
+                amount = (unit_price or Decimal('0')) * Decimal(complaint.quantity or 1)
+                # Wallet uses 0 decimal places (VND). Quantize to integer VND.
+                amount = amount.quantize(Decimal('1'))
+            except Exception:
+                amount = Decimal('0')
+            if amount > 0:
+                wallet, _ = Wallet.objects.get_or_create(user=complaint.user)
+                wallet.balance = (wallet.balance or Decimal('0')) + amount
+                wallet.save()
+                wallet_balance = wallet.balance
 
         complaint.save()
         data = self.get_serializer(complaint).data
