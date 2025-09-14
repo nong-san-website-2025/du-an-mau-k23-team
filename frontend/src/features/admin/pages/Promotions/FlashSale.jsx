@@ -12,7 +12,11 @@ import {
   Row,
   Col,
   DatePicker,
+  Spin,
+  Dropdown,
+  Menu,
 } from "antd";
+import { MoreOutlined } from "@ant-design/icons";
 import {
   getFlashSales,
   createFlashSale,
@@ -30,7 +34,6 @@ const FlashSale = () => {
   const [editing, setEditing] = useState(null);
   const [form] = Form.useForm();
   const [searchText, setSearchText] = useState("");
-  const [filterStatus, setFilterStatus] = useState(null);
 
   const [products, setProducts] = useState([]);
 
@@ -63,13 +66,9 @@ const FlashSale = () => {
     fetchProducts();
   }, []);
 
-  const filteredData = flashSales.filter((item) => {
-    const matchSearch = item.name
-      ?.toLowerCase()
-      .includes(searchText.toLowerCase());
-    const matchStatus = filterStatus ? item.status === filterStatus : true;
-    return matchSearch && matchStatus;
-  });
+  const filteredData = flashSales.filter((item) =>
+    item.name?.toLowerCase().includes(searchText.toLowerCase())
+  );
 
   const handleOpenModal = (record = null) => {
     setEditing(record);
@@ -134,7 +133,8 @@ const FlashSale = () => {
     },
     {
       title: "Sản phẩm",
-      render: (record) => record.items?.map((i) => i.product?.name).join(", ") || "—",
+      render: (record) =>
+        record.items?.map((i) => i.product?.name).join(", ") || "—",
     },
     {
       title: "Giá Flash Sale",
@@ -153,45 +153,66 @@ const FlashSale = () => {
     {
       title: "Hành động",
       key: "actions",
-      render: (record) => (
-        <Space>
-          <Button type="link" onClick={() => handleOpenModal(record)}>
-            Sửa
-          </Button>
-          <Popconfirm
-            title="Bạn có chắc muốn xoá?"
-            onConfirm={() => handleDelete(record.id)}
-          >
-            <Button type="link" danger>
-              Xoá
-            </Button>
-          </Popconfirm>
-        </Space>
-      ),
+      render: (record) => {
+        const menu = (
+          <Menu>
+            <Menu.Item key="view" onClick={() => handleOpenModal(record)}>
+              Xem chi tiết
+            </Menu.Item>
+            <Menu.Item key="delete">
+              <Popconfirm
+                title="Bạn có chắc muốn xoá?"
+                onConfirm={() => handleDelete(record.id)}
+              >
+                Xoá
+              </Popconfirm>
+            </Menu.Item>
+          </Menu>
+        );
+        return (
+          <Dropdown overlay={menu} trigger={["click"]}>
+            <Button type="text" icon={<MoreOutlined />} />
+          </Dropdown>
+        );
+      },
     },
   ];
 
   return (
-    <div>
-      <h2>Quản lý Flash Sale</h2>
-      <Space style={{ marginBottom: 16 }}>
+    <div style={{ padding: 20, background: "#fff", minHeight: "100vh" }}>
+      <h2 style={{ padding: 10 }}>Quản lý Flash Sale</h2>
+
+      {/* Toolbar */}
+      <div
+        style={{
+          display: "flex",
+          gap: 16,
+          marginBottom: 16,
+          flexWrap: "wrap",
+        }}
+      >
         <Search
           placeholder="Tìm theo tên chiến dịch..."
           onSearch={(value) => setSearchText(value)}
           allowClear
+          style={{ width: 300 }}
         />
         <Button type="primary" onClick={() => handleOpenModal()}>
           Thêm Flash Sale
         </Button>
         <Button onClick={() => fetchFlashSales()}>Làm mới</Button>
-      </Space>
+      </div>
 
-      <Table
-        dataSource={filteredData}
-        columns={columns}
-        rowKey="id"
-        loading={loading}
-      />
+      {loading ? (
+        <Spin />
+      ) : (
+        <Table
+          dataSource={filteredData}
+          columns={columns}
+          rowKey="id"
+          pagination={{ pageSize: 10 }}
+        />
+      )}
 
       <Modal
         open={modalOpen}
@@ -200,7 +221,12 @@ const FlashSale = () => {
         title={editing ? "Sửa Flash Sale" : "Thêm Flash Sale"}
         width={900}
       >
-        <Form form={form} layout="horizontal" labelCol={{ span: 6 }} wrapperCol={{ span: 18 }}>
+        <Form
+          form={form}
+          layout="horizontal"
+          labelCol={{ span: 6 }}
+          wrapperCol={{ span: 18 }}
+        >
           <Row gutter={16}>
             <Col span={12}>
               <Form.Item
@@ -260,10 +286,6 @@ const FlashSale = () => {
                   showTime
                   format="DD/MM/YYYY HH:mm"
                   style={{ width: "100%" }}
-                  disabledDate={(current) =>
-                    form.getFieldValue("end_time") &&
-                    current > form.getFieldValue("end_time")
-                  }
                 />
               </Form.Item>
             </Col>
@@ -276,11 +298,16 @@ const FlashSale = () => {
                   { required: true, message: "Chọn thời gian kết thúc" },
                   ({ getFieldValue }) => ({
                     validator(_, value) {
-                      if (!value || value.isAfter(getFieldValue("start_time"))) {
+                      if (
+                        !value ||
+                        value.isAfter(getFieldValue("start_time"))
+                      ) {
                         return Promise.resolve();
                       }
                       return Promise.reject(
-                        new Error("Thời gian kết thúc phải sau thời gian bắt đầu")
+                        new Error(
+                          "Thời gian kết thúc phải sau thời gian bắt đầu"
+                        )
                       );
                     },
                   }),

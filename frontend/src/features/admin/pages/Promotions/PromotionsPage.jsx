@@ -17,6 +17,7 @@ import {
   Menu,
   Descriptions,
 } from "antd";
+import { MoreOutlined } from "@ant-design/icons";
 import {
   getPromotions,
   getVoucher,
@@ -72,7 +73,10 @@ export default function PromotionsPage() {
       console.error("Fetch promotions error:", err);
       // show status if server responded
       if (err.response) {
-        console.error("Request URL:", err.config?.url || err.request?.responseURL);
+        console.error(
+          "Request URL:",
+          err.config?.url || err.request?.responseURL
+        );
         message.error(
           `Lỗi tải dữ liệu: ${err.response.status} ${err.response.statusText}`
         );
@@ -105,15 +109,37 @@ export default function PromotionsPage() {
     try {
       const id = extractId(record.id);
       const detailData = await getVoucher(id);
-      // normalize detail mapping same as list
+
       const normalized = {
         ...detailData,
         title: detailData.title ?? detailData.name ?? "",
         description: detailData.description ?? detailData.note ?? "",
         usage_limit: detailData.usage_limit ?? detailData.usageLimit ?? null,
       };
+
       setDetail(normalized);
-      setDetailModalOpen(true);
+
+      // Đổ dữ liệu vào form
+      form.setFieldsValue({
+        code: normalized.code,
+        title: normalized.title,
+        description: normalized.description,
+        usageLimit: normalized.usage_limit,
+        voucherType: normalized.voucher_type,
+        discountType: normalized.discount_type,
+        discountValue:
+          normalized.discount_percent ??
+          normalized.discount_amount ??
+          normalized.freeship_amount,
+        minOrderValue: normalized.min_order_value,
+        dateRange:
+          normalized.start_at && normalized.end_at
+            ? [dayjs(normalized.start_at), dayjs(normalized.end_at)]
+            : null,
+      });
+
+      // Mở modal edit
+      setModalOpen(true);
     } catch (err) {
       console.error("Load detail error:", err);
       message.error("Không tải được chi tiết voucher");
@@ -213,7 +239,12 @@ export default function PromotionsPage() {
     if (values.minOrderValue || values.minOrderValue === 0)
       params.min_order_value = values.minOrderValue;
     if (values.status)
-      params.active = values.status === "active" ? true : values.status === "inactive" ? false : undefined;
+      params.active =
+        values.status === "active"
+          ? true
+          : values.status === "inactive"
+            ? false
+            : undefined;
     if (values.dateRange && values.dateRange.length === 2) {
       params.start_date = values.dateRange[0].toISOString();
       params.end_date = values.dateRange[1].toISOString();
@@ -228,6 +259,7 @@ export default function PromotionsPage() {
   };
 
   // Action menu for each row
+  // Action menu cho mỗi dòng
   const actionMenu = (record) => (
     <Menu>
       <Menu.Item key="view" onClick={() => handleViewDetail(record)}>
@@ -246,7 +278,8 @@ export default function PromotionsPage() {
       title: "Loại voucher",
       dataIndex: "voucher_type",
       key: "voucher_type",
-      render: (val) => (val === "freeship" ? <Tag>Miễn ship</Tag> : <Tag>Thường</Tag>),
+      render: (val) =>
+        val === "freeship" ? <Tag>Miễn ship</Tag> : <Tag>Thường</Tag>,
     },
     {
       title: "Loại giảm",
@@ -270,14 +303,15 @@ export default function PromotionsPage() {
       title: "Trạng thái",
       dataIndex: "active",
       key: "active",
-      render: (val) => (val ? <Tag color="green">Hoạt động</Tag> : <Tag color="red">Tắt</Tag>),
+      render: (val) =>
+        val ? <Tag color="green">Hoạt động</Tag> : <Tag color="red">Tắt</Tag>,
     },
     {
       title: "Hành động",
       key: "actions",
       render: (_, record) => (
         <Dropdown overlay={actionMenu(record)} trigger={["click"]}>
-          <Button>⋮</Button>
+          <Button icon={<MoreOutlined />} />
         </Dropdown>
       ),
     },
@@ -305,7 +339,11 @@ export default function PromotionsPage() {
     return arr;
   })();
 
-  const detailModalFooter = [<Button key="close" onClick={() => setDetailModalOpen(false)}>Đóng</Button>];
+  const detailModalFooter = [
+    <Button key="close" onClick={() => setDetailModalOpen(false)}>
+      Đóng
+    </Button>,
+  ];
 
   return (
     <div style={{ padding: 20 }}>
@@ -327,7 +365,9 @@ export default function PromotionsPage() {
             <Form.Item name="voucherType" label="Loại voucher">
               <Select placeholder="Chọn loại" style={{ width: 160 }}>
                 <Select.Option value="normal">Voucher thường</Select.Option>
-                <Select.Option value="freeship">Voucher miễn ship</Select.Option>
+                <Select.Option value="freeship">
+                  Voucher miễn ship
+                </Select.Option>
               </Select>
             </Form.Item>
           </Col>
@@ -369,11 +409,18 @@ export default function PromotionsPage() {
         <Button type="primary" onClick={handleCreate}>
           + Tạo Voucher
         </Button>
-        <Button onClick={() => fetchData(filterForm.getFieldsValue())}>Làm mới</Button>
+        <Button onClick={() => fetchData(filterForm.getFieldsValue())}>
+          Làm mới
+        </Button>
       </Space>
 
       {/* Table */}
-      <Table rowKey="id" columns={columns} dataSource={data} loading={loading} />
+      <Table
+        rowKey="id"
+        columns={columns}
+        dataSource={data}
+        loading={loading}
+      />
 
       {/* Create / Edit modal */}
       <Modal
@@ -396,7 +443,9 @@ export default function PromotionsPage() {
                   voucherType: detail.voucher_type,
                   discountType: detail.discount_type,
                   discountValue:
-                    detail.discount_percent ?? detail.discount_amount ?? detail.freeship_amount,
+                    detail.discount_percent ??
+                    detail.discount_amount ??
+                    detail.freeship_amount,
                   minOrderValue: detail.min_order_value,
                   dateRange:
                     detail.start_at && detail.end_at
@@ -408,7 +457,11 @@ export default function PromotionsPage() {
         >
           <Row gutter={16}>
             <Col span={12}>
-              <Form.Item name="code" label="Mã voucher" rules={[{ required: true }]}>
+              <Form.Item
+                name="code"
+                label="Mã voucher"
+                rules={[{ required: true }]}
+              >
                 <Input />
               </Form.Item>
             </Col>
@@ -434,15 +487,25 @@ export default function PromotionsPage() {
 
           <Row gutter={16}>
             <Col span={12}>
-              <Form.Item name="voucherType" label="Loại voucher" rules={[{ required: true }]}>
+              <Form.Item
+                name="voucherType"
+                label="Loại voucher"
+                rules={[{ required: true }]}
+              >
                 <Select>
                   <Select.Option value="normal">Voucher thường</Select.Option>
-                  <Select.Option value="freeship">Voucher miễn ship</Select.Option>
+                  <Select.Option value="freeship">
+                    Voucher miễn ship
+                  </Select.Option>
                 </Select>
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="discountType" label="Loại giảm" rules={[{ required: true }]}>
+              <Form.Item
+                name="discountType"
+                label="Loại giảm"
+                rules={[{ required: true }]}
+              >
                 <Select>
                   <Select.Option value="percent">Phần trăm</Select.Option>
                   <Select.Option value="amount">Số tiền</Select.Option>
@@ -453,7 +516,11 @@ export default function PromotionsPage() {
 
           <Row gutter={16}>
             <Col span={12}>
-              <Form.Item name="discountValue" label="Giá trị giảm" rules={[{ required: true }]}>
+              <Form.Item
+                name="discountValue"
+                label="Giá trị giảm"
+                rules={[{ required: true }]}
+              >
                 <InputNumber style={{ width: "100%" }} />
               </Form.Item>
             </Col>
@@ -487,21 +554,40 @@ export default function PromotionsPage() {
             <Descriptions.Item label="ID">{detail.id}</Descriptions.Item>
             <Descriptions.Item label="Mã">{detail.code}</Descriptions.Item>
             <Descriptions.Item label="Tên">{detail.title}</Descriptions.Item>
-            <Descriptions.Item label="Mô tả">{detail.description || "-"}</Descriptions.Item>
-            <Descriptions.Item label="Giới hạn sử dụng">{detail.usage_limit ?? "-"}</Descriptions.Item>
-            <Descriptions.Item label="Loại">{detail.voucher_type}</Descriptions.Item>
-            <Descriptions.Item label="Loại giảm">{detail.discount_type ?? "-"}</Descriptions.Item>
-            <Descriptions.Item label="Giá trị giảm">
-              {detail.discount_percent ?? detail.discount_amount ?? detail.freeship_amount ?? "-"}
+            <Descriptions.Item label="Mô tả">
+              {detail.description || "-"}
             </Descriptions.Item>
-            <Descriptions.Item label="Giá trị đơn tối thiểu">{detail.min_order_value ?? "-"}</Descriptions.Item>
+            <Descriptions.Item label="Giới hạn sử dụng">
+              {detail.usage_limit ?? "-"}
+            </Descriptions.Item>
+            <Descriptions.Item label="Loại">
+              {detail.voucher_type}
+            </Descriptions.Item>
+            <Descriptions.Item label="Loại giảm">
+              {detail.discount_type ?? "-"}
+            </Descriptions.Item>
+            <Descriptions.Item label="Giá trị giảm">
+              {detail.discount_percent ??
+                detail.discount_amount ??
+                detail.freeship_amount ??
+                "-"}
+            </Descriptions.Item>
+            <Descriptions.Item label="Giá trị đơn tối thiểu">
+              {detail.min_order_value ?? "-"}
+            </Descriptions.Item>
             <Descriptions.Item label="Bắt đầu">
-              {detail.start_at ? dayjs(detail.start_at).format("DD/MM/YYYY HH:mm") : "-"}
+              {detail.start_at
+                ? dayjs(detail.start_at).format("DD/MM/YYYY HH:mm")
+                : "-"}
             </Descriptions.Item>
             <Descriptions.Item label="Kết thúc">
-              {detail.end_at ? dayjs(detail.end_at).format("DD/MM/YYYY HH:mm") : "-"}
+              {detail.end_at
+                ? dayjs(detail.end_at).format("DD/MM/YYYY HH:mm")
+                : "-"}
             </Descriptions.Item>
-            <Descriptions.Item label="Trạng thái">{detail.active ? "Hoạt động" : "Tắt"}</Descriptions.Item>
+            <Descriptions.Item label="Trạng thái">
+              {detail.active ? "Hoạt động" : "Tắt"}
+            </Descriptions.Item>
           </Descriptions>
         ) : (
           "Đang tải..."
