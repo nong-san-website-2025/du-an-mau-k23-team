@@ -31,9 +31,11 @@ urlpatterns = [
 
     path('api/complaints/', include('complaints.urls')),
     path("api/dashboard/", dashboard_data, name="dashboard-data"),
-    path("api/dashboard/", include("dashboard.urls")),
+    # path("api/dashboard/", include("dashboard.urls")),
 
     path("api/marketing/", include("marketing.urls")),
+
+    path('api/system-logs/', include('system_logs.urls')),
 
 ]
 

@@ -9,6 +9,7 @@ from users.models import CustomUser
 from products.models import Product
 from orders.models import Order, OrderItem
 from sellers.models import Seller
+from complaints.models import Complaint
 
 from .serializers import DashboardSerializer
 
@@ -23,16 +24,25 @@ def dashboard_data(request):
     total_orders = Order.objects.count()
     total_revenue = Order.objects.aggregate(total=Sum("total_price"))["total"] or 0
 
+    # --- KPI bổ sung ---
+    today = now().date()
+    new_orders_today = Order.objects.filter(created_at__date=today).count()
+    processing_orders = Order.objects.filter(status="processing").count()
+    new_complaints = Complaint.objects.filter(created_at__date=today).count()
+    new_users_today = CustomUser.objects.filter(date_joined__date=today).count()
+
+    cancelled_orders = Order.objects.filter(status="cancelled").count()
+    cancel_rate = round((cancelled_orders / total_orders * 100), 2) if total_orders > 0 else 0
+
     # --- Top sản phẩm ---
     top_products = (
         OrderItem.objects.values(
-        prod_id=F("product__id"),   # Đổi từ pro_id -> prod_id
-        name=F("product__name")
+            prod_id=F("product__id"),
+            name=F("product__name")
+        )
+        .annotate(sales=Sum("quantity"))
+        .order_by("-sales")[:5]
     )
-    .annotate(sales=Sum("quantity"))
-    .order_by("-sales")[:5]
-)
-
 
     # --- Top seller ---
     top_sellers = (
@@ -48,9 +58,9 @@ def dashboard_data(request):
 
     # --- Doanh thu 12 tháng ---
     revenue_by_month = []
-    today = now()
+    today_dt = now()
     for i in range(11, -1, -1):
-        month_date = today - timedelta(days=30 * i)
+        month_date = today_dt - timedelta(days=30 * i)
         month = month_date.strftime("%b")
         revenue = (
             Order.objects.filter(
@@ -68,6 +78,7 @@ def dashboard_data(request):
         .order_by("status")
     )
 
+    # --- Gộp tất cả ---
     data = {
         "total_users": total_users,
         "total_sellers": total_sellers,
@@ -75,6 +86,11 @@ def dashboard_data(request):
         "total_products": total_products,
         "total_orders": total_orders,
         "total_revenue": float(total_revenue),
+        "new_orders_today": new_orders_today,
+        "processing_orders": processing_orders,
+        "new_complaints": new_complaints,
+        "new_users_today": new_users_today,
+        "cancel_rate": cancel_rate,
         "top_products": list(top_products),
         "top_sellers": list(top_sellers),
         "revenue_by_month": revenue_by_month,

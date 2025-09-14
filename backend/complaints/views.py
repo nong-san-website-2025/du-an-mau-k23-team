@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.decorators import action
 from decimal import Decimal
+from rest_framework.views import APIView
 
 class ComplaintViewSet(viewsets.ModelViewSet):
     queryset = Complaint.objects.all().order_by('-created_at')
@@ -107,3 +108,19 @@ class ComplaintViewSet(viewsets.ModelViewSet):
         if wallet_balance is not None:
             data['wallet_balance'] = str(wallet_balance)
         return Response(data, status=status.HTTP_200_OK)
+    
+    @action(detail=False, methods=['get'])
+    def recent(self, request):
+        """
+        Trả về 10 khiếu nại mới nhất
+        """
+        recent = Complaint.objects.order_by('-created_at')[:10]
+        serializer = self.get_serializer(recent, many=True)
+        return Response(serializer.data)
+    
+# class RecentComplaintsView(APIView):
+#     def get(self, request):
+#         recent = Complaint.objects.order_by('-created_at')[:10]
+#         serializer = ComplaintSerializer(recent, many=True)
+#         return Response(serializer.data)
+    
