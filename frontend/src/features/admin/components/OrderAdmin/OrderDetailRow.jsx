@@ -5,7 +5,8 @@ export default function OrderDetailRow({
   getStatusBadgeClass,
   getStatusLabel,
   formatCurrency,
-  formatDate
+  formatDate,
+  onCancel
 }) {
   return (
     <tr>
@@ -30,6 +31,22 @@ export default function OrderDetailRow({
               <div className="mb-2"><strong>Phương thức thanh toán:</strong> {order.payment_method || "N/A"}</div>
               <div className="mb-2"><strong>Tổng tiền:</strong> {formatCurrency(order.total_price)}</div>
               <div className="mb-2"><strong>Ngày tạo:</strong> {formatDate(order.created_at)}</div>
+              <div className="mb-2"><strong>Shop:</strong> {order.shop_name || 'N/A'} {order.shop_phone ? ` - ${order.shop_phone}` : ''}</div>
+              {(order.status !== 'cancelled' && order.status !== 'success') && (
+                <div className="mt-2">
+                  <span className="me-2 text-muted">Thao tác:</span>
+                  <button
+                    className="btn btn-sm btn-outline-danger"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      // Sẽ được xác nhận bằng Popconfirm ở wrapper
+                      onCancel?.(order);
+                    }}
+                  >
+                    Hủy đơn hàng
+                  </button>
+                </div>
+              )}
             </div>
           </div>
           

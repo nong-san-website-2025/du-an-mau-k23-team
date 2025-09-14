@@ -6,9 +6,9 @@ export default function Logo({ greenText }) {
     <Link
       to="/"
       className="navbar-brand d-flex align-items-center"
-      style={{ ...greenText, fontSize: 32 }}
+      style={{ ...greenText, fontSize: 70 }}
     >
-      <img src="/assets/logo/imagelogo.png" alt="Logo" style={{ height: 62, borderRadius: 12 }} />
+      <img src="/assets/logo/whitelogo1.png" alt="Logo" style={{ height: 62}} />
     </Link>
   );
 }

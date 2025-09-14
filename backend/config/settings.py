@@ -1,8 +1,7 @@
 from pathlib import Path
 import os
-# import dj_database_url
+import dj_database_url
 from datetime import timedelta
-
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -19,6 +18,8 @@ ALLOWED_HOSTS = [
     "*"
 ]
 
+DEBUG = True
+
 # --- Installed apps
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -32,16 +33,21 @@ INSTALLED_APPS = [
     "rest_framework",
     "rest_framework_simplejwt",
     "corsheaders",
+    "django_filters",
+    'advertisements',
+    "rest_framework_simplejwt.token_blacklist",
 
     # Local apps
     "users", "sellers", "products", "reviews",
     "cart", "orders", "payments", "store",
-    "blog", "wallet", "advertisements", "promotions", "complaints",
+    "blog", "wallet", "promotions",'complaints', "marketing",
 
     # Cloudinary
 
     'cloudinary',
     'cloudinary_storage',
+
+    "dashboard",
 ]
 
 # --- Email
@@ -110,15 +116,16 @@ if os.environ.get("DATABASE_URL"):
     }
 else:
     DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'ecom_db',
-        'USER': 'postgres',       # user của bạn trong pgAdmin
-        'PASSWORD': '12345',  # mật khẩu khi bạn cài PostgreSQL
-        'HOST': 'localhost',
-        'PORT': '5432',
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': 'ecom_db',
+            'USER': 'postgres',
+            'PASSWORD': '12345',
+            'HOST': 'localhost',
+            'PORT': '5432',
+        }
     }
-}
+
 
 # --- Auth
 AUTH_USER_MODEL = "users.CustomUser"
@@ -133,6 +140,14 @@ REST_FRAMEWORK = {
     ),
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticatedOrReadOnly",
+    ),
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+    ],
+    "DEFAULT_FILTER_BACKENDS": (
+        "django_filters.rest_framework.DjangoFilterBackend",
+        "rest_framework.filters.OrderingFilter",
+        "rest_framework.filters.SearchFilter",
     ),
 }
 

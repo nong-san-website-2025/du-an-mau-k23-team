@@ -66,7 +66,7 @@ class Order(models.Model):
 
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="items")
-    product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True, blank=True)
+    product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True, blank=True, related_name="order_items")
     product_image = models.URLField(max_length=500, blank=True, null=True)  # optional, for display only
     unit = models.CharField(max_length=50, blank=True, null=True)  # optional, for display only
     quantity = models.PositiveIntegerField()

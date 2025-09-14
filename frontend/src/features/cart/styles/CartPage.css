@@ -2,16 +2,64 @@
   display: flex;
   gap: 24px;
   padding: 6px 36px;
+  align-items: stretch;
 }
 
 /* LEFT 70%, RIGHT 30% */
 .cart-left { flex: 7; }
 .cart-right { flex: 3; }
 
+.cart-left, .cart-right {
+  display: flex;
+  flex-direction: column;
+}
 .cart-card, .summary-card {
   padding: 16px;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  flex: 1;
+}
+
+.summary-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between; /* ✅ căn giữa dọc */
+  height: 100%;
+}
+
+/* Product */
+
+.product-card {
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.product-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+  border: 1px solid #007bff; /* xanh dương */
+}
+
+.product-card img {
+  transition: opacity 0.2s ease;
+}
+
+.product-card:hover img {
+  opacity: 0.9;
+}
+
+.clickable-card {
+  cursor: pointer; /* hiện bàn tay */
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.clickable-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.product-category {
+  padding: 6px 36px;
 }
 
 .cart-header {

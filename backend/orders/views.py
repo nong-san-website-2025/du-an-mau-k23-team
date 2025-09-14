@@ -7,10 +7,15 @@ from datetime import timedelta
 from .models import Order
 from .serializers import OrderSerializer, OrderCreateSerializer
 from rest_framework.permissions import AllowAny, IsAuthenticated
+import logging
+from .services import complete_order, OrderProcessingError
+
+logger = logging.getLogger(__name__)
+
 
 class OrderViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
-        if self.action in ['list', 'retrieve', 'create', 'seller_pending', 'seller_processing', 'seller_approve']:
+        if self.action in ['list', 'retrieve', 'create', 'seller_pending', 'seller_processing', 'seller_success', 'seller_approve', 'seller_complete']:
             return [IsAuthenticated()]
         elif self.action in ['admin_list', 'admin_detail']:
             return [IsAuthenticated()]  # Sẽ check is_admin trong method
@@ -88,6 +93,38 @@ class OrderViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(qs, many=True)
         return Response(serializer.data)
 
+    @action(detail=False, methods=['get'], url_path='seller/complete')
+    def seller_completed_orders(self, request):
+        """
+        Lấy danh sách tất cả đơn hàng đã hoàn tất (success) của Seller hiện tại
+        """
+        user = request.user
+
+        # 1. Kiểm tra đăng nhập
+        if not user.is_authenticated:
+            return Response({'error': 'Yêu cầu đăng nhập'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        # 2. Kiểm tra user có phải seller không
+        seller = getattr(user, 'seller', None)
+        if not seller:
+            return Response({'error': 'Chỉ seller mới có quyền truy cập'}, status=status.HTTP_403_FORBIDDEN)
+
+        from products.models import Product
+        # Lấy danh sách sản phẩm của seller
+        seller_product_ids = Product.objects.filter(seller=seller).values_list('id', flat=True)
+
+        # Lọc các order chứa sản phẩm đó và status = success
+        orders = (
+            Order.objects
+            .filter(items__product_id__in=seller_product_ids, status='success')
+            .distinct()
+            .order_by('-created_at')
+        )
+
+        serializer = self.get_serializer(orders, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
     @action(detail=True, methods=['post'], url_path='seller/approve')
     def seller_approve(self, request, pk=None):
         """Seller duyệt đơn: chuyển pending -> shipping"""
@@ -116,6 +153,62 @@ class OrderViewSet(viewsets.ModelViewSet):
         order.status = 'shipping'
         order.save(update_fields=['status'])
         return Response({'message': 'Đã duyệt đơn, chuyển sang chờ nhận hàng', 'status': order.status})
+
+    @action(detail=True, methods=['post'], url_path='seller/complete')
+    def seller_complete(self, request, pk=None):
+        """
+        Seller xác nhận hoàn tất giao hàng:
+        - shipping -> success
+        - Giảm tồn kho sản phẩm trong đơn hàng
+        """
+        user = request.user
+
+        # 1. Kiểm tra đăng nhập
+        if not user.is_authenticated:
+            logger.warning("Seller chưa đăng nhập khi gọi seller_complete")
+            return Response(
+                {'error': _('Yêu cầu đăng nhập')},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+
+        # 2. Kiểm tra user có phải seller không
+        seller = getattr(user, 'seller', None)
+        if not seller:
+            logger.warning(f"User {user.id} không phải seller, bị từ chối.")
+            return Response(
+                {'error': _('Chỉ seller mới có quyền cập nhật đơn hàng.')},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # 3. Lấy order
+        try:
+            order = Order.objects.get(pk=pk)
+        except Order.DoesNotExist:
+            logger.error(f"Seller {seller.id} cố gắng hoàn tất đơn #{pk} nhưng không tìm thấy.")
+            return Response(
+                {'error': _('Không tìm thấy đơn hàng.')},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # 4. Gọi service xử lý
+        try:
+            updated_order = complete_order(order, seller)
+        except OrderProcessingError as e:
+            logger.warning(f"Hoàn tất đơn #{order.id} thất bại: {str(e)}")
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.exception(f"Lỗi không xác định khi seller {seller.id} hoàn tất đơn #{order.id}")
+            return Response(
+                {'error': _('Đã xảy ra lỗi không xác định. Vui lòng thử lại sau.')},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+        # 5. Trả về kết quả thành công
+        return Response({
+            'message': ('Đơn hàng đã giao thành công và tồn kho đã được cập nhật.'),
+            'status': updated_order.status
+        }, status=status.HTTP_200_OK)
+
 
     @action(detail=False, methods=['get'], url_path='admin-list')
     def admin_list(self, request):

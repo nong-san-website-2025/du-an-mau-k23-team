@@ -21,6 +21,8 @@ from google.auth.transport import requests as google_requests
 from .serializers import AccountSerializer, ChangePasswordSerializer
 from rest_framework.parsers import MultiPartParser, FormParser
 from .serializers import ProfileSerializer
+from .serializers import CustomUserSerializer
+
 
 
 import random
@@ -31,7 +33,6 @@ from .serializers import (
     UserSerializer,
     RegisterSerializer,
     ForgotPasswordSerializer,
-    ChangePasswordSerializer,
     AddressSerializer,
     EmployeeSerializer,
     RoleSerializer,
@@ -121,7 +122,7 @@ class GoogleLoginAPIView(APIView):
 class RegisterView(generics.CreateAPIView):
     queryset = CustomUser.objects.all()
     serializer_class = RegisterSerializer
-    permission_classes = [AllowAny]
+    permission_classes =  [AllowAny]
 
 
 class LoginView(APIView):
@@ -168,22 +169,18 @@ class LoginView(APIView):
 
 
 class UserProfileView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
         serializer = UserSerializer(request.user)
         return Response(serializer.data)
 
     def put(self, request):
-        serializer = UserSerializer(
-            request.user, data=request.data, partial=True
-        )
+        serializer = UserSerializer(request.user, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
-        return Response(serializer.errors, status=400)
-
-    patch = put
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -316,6 +313,7 @@ class RoleCreateView(APIView):
 class RoleListView(ListAPIView):
     queryset = Role.objects.all()
     serializer_class = RoleSerializer
+    permission_classes = [AllowAny]
 
 
 class RoleViewSet(viewsets.ModelViewSet):
@@ -448,19 +446,32 @@ class DashboardAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        # Tổng số liệu cơ bản
         total_users = CustomUser.objects.count()
         total_products = Product.objects.count()
         total_orders = Order.objects.count()
-        total_revenue = Order.objects.filter(status="completed").aggregate(Sum("total_price"))["total_price__sum"] or 0
-        active_sellers = CustomUser.objects.filter(is_seller=True, is_active=True).count()
-        pending_sellers = CustomUser.objects.filter(is_seller=True, is_active=False).count()
 
-        top_products = Product.objects.annotate(sales=Count("order_items")).order_by("-sales")[:5]
+        # Tổng doanh thu: chỉ tính các đơn hàng thành công
+        total_revenue = (
+            Order.objects.filter(status="success")
+            .aggregate(Sum("total_price"))["total_price__sum"] or 0
+        )
+
+        # Seller đang hoạt động và pending
+        active_sellers = CustomUser.objects.filter(role__name="seller", is_active=True).count()
+        pending_sellers = CustomUser.objects.filter(role__name="seller", is_active=False).count()
+
+        # Top sản phẩm bán chạy
+        top_products = (
+            Product.objects.annotate(sales=Count("order_items"))  # <- đã sửa đúng
+            .order_by("-sales")[:5]
+        )
         top_products_data = [
             {"name": product.name, "sales": product.sales} for product in top_products
         ]
 
-        data = {
+        # Trả về dữ liệu
+        return Response({
             "total_users": total_users,
             "total_products": total_products,
             "total_orders": total_orders,
@@ -468,9 +479,7 @@ class DashboardAPIView(APIView):
             "active_sellers": active_sellers,
             "pending_sellers": pending_sellers,
             "top_products": top_products_data,
-        }
-
-        return Response(data)
+        })
 
 class CurrentUserView(APIView):
     permission_classes = [IsAuthenticated]
@@ -496,13 +505,11 @@ class UserMeView(APIView):
     
 class UploadAvatarView(APIView):
     permission_classes = [IsAuthenticated]
-    parser_classes = [MultiPartParser]
 
-    def post(self, request):
-        user = request.user
-        file_obj = request.FILES.get("avatar")
-        if not file_obj:
-            return Response({"detail": "Chưa chọn file"}, status=status.HTTP_400_BAD_REQUEST)
-        user.avatar = file_obj
-        user.save()
-        return Response({"avatar": user.avatar.url})
+    def post(self, request, *args, **kwargs):
+        avatar = request.FILES.get("avatar")
+        if not avatar:
+            return Response({"error": "No file uploaded"}, status=400)
+        request.user.avatar = avatar
+        request.user.save()
+        return Response({"avatar": request.user.avatar.url})

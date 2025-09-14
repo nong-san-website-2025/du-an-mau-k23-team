@@ -15,6 +15,7 @@ from .views import DashboardAPIView
 
 
 
+
 # Router tự động cho ViewSet
 router = DefaultRouter()
 
@@ -56,9 +57,10 @@ urlpatterns = [
 
     path("dashboard/", DashboardAPIView.as_view(), name="dashboard"),
 
-    path('user/me/', CurrentUserView.as_view(), name='current-user'),
+    # path('user/me/', CurrentUserView.as_view(), name='current-user'),
 
     path('user/me/', UserMeView.as_view(), name='user-me'),
 
     path("user/upload-avatar/", UploadAvatarView.as_view(), name="upload-avatar"),
+    path("api/user/profile/", UserProfileView.as_view(), name="user-profile"),
 ]

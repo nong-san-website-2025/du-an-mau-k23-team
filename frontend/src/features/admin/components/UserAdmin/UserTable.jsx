@@ -63,33 +63,34 @@ export default function UserTable({
   };
 
   const handleDeleteUser = (user) => {
-  if (!user?.id) return;
+    if (!user?.id) return;
 
-  confirm({
-    title: `Bạn có chắc chắn muốn xóa người dùng "${user.username}"?`,
-    icon: <ExclamationCircleOutlined />,
-    okText: "Xóa",
-    okType: "danger",
-    cancelText: "Hủy",
-    onOk: async () => {
-      try {
-        await axios.delete(`http://localhost:8000/api/users/${user.id}/`, {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-        });
+    confirm({
+      title: `Bạn có chắc chắn muốn xóa người dùng "${user.username}"?`,
+      icon: <ExclamationCircleOutlined />,
+      okText: "Xóa",
+      okType: "danger",
+      cancelText: "Hủy",
+      onOk: async () => {
+        try {
+          await axios.delete(`http://localhost:8000/api/users/${user.id}/`, {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          });
 
-        // Cập nhật danh sách users
-        setUsers((prev) => prev.filter((u) => u.id !== user.id));
-        setCheckedIds((prev) => prev.filter((id) => id !== user.id));
+          // Cập nhật danh sách users
+          setUsers((prev) => prev.filter((u) => u.id !== user.id));
+          setCheckedIds((prev) => prev.filter((id) => id !== user.id));
 
-        message.success("Xóa người dùng thành công!");
-      } catch (err) {
-        console.error(err);
-        message.error("Xóa người dùng thất bại!");
-      }
-    },
-  });
-};
-
+          message.success("Xóa người dùng thành công!");
+        } catch (err) {
+          console.error(err);
+          message.error("Xóa người dùng thất bại!");
+        }
+      },
+    });
+  };
 
   const [showAddModal, setShowAddModal] = useState(false);
   useEffect(() => {

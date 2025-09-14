@@ -1,0 +1,12 @@
+.category-item {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  transition: all 0.25s ease-in-out;
+  background-color: #fff;
+}
+
+.category-item:hover {
+  border: 2px solid #4caf50; /* Màu xanh lá nhạt hoặc tuỳ chỉnh */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px); /* Nhấc lên nhẹ khi hover */
+}

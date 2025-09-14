@@ -14,7 +14,7 @@ export default function UserEditForm({ editUser, onCancel, onSave }) {
   const [loading, setLoading] = useState(false);
 
   const getToken = () =>
-    localStorage.getItem("access_token") || localStorage.getItem("token") || "";
+    localStorage.getItem("token") || localStorage.getItem("token") || "";
 
   // Load roles + fill data từ user
   useEffect(() => {
@@ -24,13 +24,16 @@ export default function UserEditForm({ editUser, onCancel, onSave }) {
       .get(`${API_BASE_URL}/roles/list/`, {
         headers: { Authorization: `Bearer ${token}` },
       })
-      .then((res) => setRoles(res.data || []))
+      .then((res) => {
+        console.log("Roles response (edit):", res.data);
+        setRoles(res.data || []);
+      })
       .catch((err) => console.error("❌ Lỗi load roles:", err));
 
     setFormData({
       full_name: editUser?.full_name || "",
       phone: editUser?.phone || "",
-      role_id: editUser?.role ? editUser.role.id : "",
+      role_id: editUser?.role ? String(editUser.role.id) : "",
     });
   }, [editUser]);
 
@@ -47,7 +50,7 @@ export default function UserEditForm({ editUser, onCancel, onSave }) {
       const payload = {
         full_name: formData.full_name,
         phone: formData.phone,
-        role_id: formData.role_id || null,
+        role_id: formData.role_id ? Number(formData.role_id) : null,
       };
 
       const response = await axios.patch(
@@ -116,7 +119,7 @@ export default function UserEditForm({ editUser, onCancel, onSave }) {
           >
             <option value="">-- Chọn quyền --</option>
             {roles.map((r) => (
-              <option key={r.id} value={r.id}>
+              <option key={r.id} value={String(r.id)}>
                 {r.name}
               </option>
             ))}

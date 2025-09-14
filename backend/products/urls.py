@@ -16,4 +16,5 @@ urlpatterns = [
     path("<int:product_id>/reviews/", ReviewListCreateView.as_view(), name="product-reviews"),
     path("by-seller/<int:seller_id>/", products_by_seller, name="products-by-seller"),
     path("products/bulk-approve/", views.bulk_approve_products, name="bulk-approve-products"),
+    
 ]
