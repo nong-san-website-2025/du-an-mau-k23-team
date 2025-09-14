@@ -1,4 +1,4 @@
-// src/features/admin/pages/ReportRevenuePage.jsx
+// src/features/admin/pages/reports/ReportRevenuePage.jsx
 import React, { useState, useEffect } from "react";
 import {
   Card,
@@ -18,9 +18,9 @@ import {
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 import isBetween from "dayjs/plugin/isBetween";
-import api from "../../login_register/services/api";
+import api from "../../../features/login_register/services/api";
 import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable"; // ✅ import đúng
+import autoTable from "jspdf-autotable";
 
 dayjs.extend(isBetween);
 
@@ -33,10 +33,9 @@ export default function ReportRevenuePage() {
     dayjs().subtract(30, "day"),
     dayjs(),
   ]);
-  const [flowFilter, setFlowFilter] = useState("all");
-  const [typeFilter, setTypeFilter] = useState("all");
+  const [flowFilter, setFlowFilter] = useState("all"); // "in", "out", "all"
+  const [typeFilter, setTypeFilter] = useState("all"); // "order", "refund", "all"
 
-  // 🔹 Load dữ liệu từ API
   const loadData = async () => {
     try {
       const isAdmin = localStorage.getItem("is_admin") === "true";
@@ -58,7 +57,10 @@ export default function ReportRevenuePage() {
       setData(tx);
 
       const totalBalance = tx.reduce((sum, t) => {
-        if (t.status === "success") return sum + t.amount;
+        // chỉ tính đơn thành công (status success)
+        if (t.status === "success") {
+          return sum + t.amount;
+        }
         return sum;
       }, 0);
 
@@ -76,15 +78,20 @@ export default function ReportRevenuePage() {
 
   const applyFilters = (list) => {
     let filtered = list;
-    filtered = filtered.filter((t) => {
-      const d = dayjs(t.date, "YYYY-MM-DD");
-      return d.isBetween(dateRange[0], dateRange[1], null, "[]");
-    });
+
+    if (dateRange && dateRange[0] && dateRange[1]) {
+      filtered = filtered.filter((t) => {
+        const d = dayjs(t.date, "YYYY-MM-DD");
+        return d.isBetween(dateRange[0], dateRange[1], null, "[]");
+      });
+    }
+
     if (flowFilter !== "all") {
       filtered = filtered.filter((t) =>
         flowFilter === "in" ? t.amount > 0 : t.amount < 0
       );
     }
+
     if (typeFilter !== "all") {
       filtered = filtered.filter((t) =>
         typeFilter === "order"
@@ -92,23 +99,22 @@ export default function ReportRevenuePage() {
           : t.type === "Hoàn tiền"
       );
     }
+
     return filtered;
   };
 
-  // 🔹 Xuất PDF
   const exportPDF = () => {
     const doc = new jsPDF();
 
-    // Tiêu đề
     doc.setFontSize(16);
     doc.text("Báo cáo doanh thu", 14, 20);
 
-    // Số dư
     doc.setFontSize(12);
-    doc.text(`Số dư: ${balance.toLocaleString()} đ`, 14, 30);
+    doc.text(`Số dư (chỉ đơn thành công): ${balance.toLocaleString()} đ`, 14, 30);
 
-    // Chuẩn bị dữ liệu bảng
-    const tableData = applyFilters(data).map((t) => [
+    const filtered = applyFilters(data);
+
+    const tableBody = filtered.map((t) => [
       t.date,
       t.type,
       t.desc,
@@ -117,55 +123,37 @@ export default function ReportRevenuePage() {
       t.status,
     ]);
 
-    // Xuất bảng bằng autoTable
     autoTable(doc, {
       head: [["Ngày", "Loại GD", "Mô tả", "Order ID", "Số tiền", "Trạng thái"]],
-      body: tableData,
+      body: tableBody,
       startY: 40,
     });
 
-    // Lưu file
     doc.save("bao_cao_doanh_thu.pdf");
   };
 
   const columns = [
+    { title: "Ngày", dataIndex: "date", key: "date" },
+    { title: "Loại Giao Dịch", dataIndex: "type", key: "type" },
+    { title: "Mô tả", dataIndex: "desc", key: "desc" },
+    { title: "Order ID", dataIndex: "orderId", key: "orderId" },
     {
-      title: "Ngày",
-      dataIndex: "date",
-      key: "date",
-    },
-    {
-      title: "Loại Giao Dịch",
-      dataIndex: "type",
-      key: "type",
-    },
-    {
-      title: "Mô Tả",
-      dataIndex: "desc",
-      key: "desc",
-    },
-    {
-      title: "Order ID",
-      dataIndex: "orderId",
-      key: "orderId",
-    },
-    {
-      title: "Số Tiền",
+      title: "Số tiền",
       dataIndex: "amount",
       key: "amount",
       render: (amount, record) =>
         record.status === "success" ? (
           amount > 0 ? (
-            <span className="text-green-600 font-medium">
+            <span style={{ color: "green", fontWeight: 500 }}>
               <ArrowDownOutlined /> +{amount.toLocaleString()} đ
             </span>
           ) : (
-            <span className="text-red-500 font-medium">
+            <span style={{ color: "red", fontWeight: 500 }}>
               <ArrowUpOutlined /> {amount.toLocaleString()} đ
             </span>
           )
         ) : (
-          <span className="text-gray-400">{amount.toLocaleString()} đ</span>
+          <span style={{ color: "#999" }}>{amount.toLocaleString()} đ</span>
         ),
     },
     {
@@ -183,14 +171,15 @@ export default function ReportRevenuePage() {
     },
   ];
 
-  return (
-    <div className="p-6 bg-gray-50 min-h-screen space-y-6">
-      {/* Tổng quan số dư */}
-      <Card className="rounded-2xl shadow-md">
-        <div className="flex justify-between items-center">
+        return (
+        <div
+        className="p-6 bg-gray-50 min-h-screen space-y-6"
+        style={{ fontFamily: "Roboto, sans-serif" }}>
+        <Card className="rounded-2xl shadow-md">
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
-            <p className="text-gray-500">Số dư (chỉ tính đơn hàng thành công)</p>
-            <h2 className="text-2xl font-bold text-green-600">
+            <p style={{ color: "#6b7280" }}>Số dư (chỉ tính đơn hàng thành công)</p>
+            <h2 style={{ color: "#16a34a", fontWeight: "bold", fontSize: "2rem" }}>
               {balance.toLocaleString()} đ
             </h2>
           </div>
@@ -200,15 +189,18 @@ export default function ReportRevenuePage() {
         </div>
       </Card>
 
-      {/* Bộ lọc giao dịch */}
       <Card className="rounded-2xl shadow-sm">
         <Space wrap>
-          <RangePicker value={dateRange} onChange={(v) => setDateRange(v)} />
+          <RangePicker
+            value={dateRange}
+            onChange={(v) => setDateRange(v || [])}
+            format="YYYY-MM-DD"
+          />
           <Select
             value={flowFilter}
             onChange={setFlowFilter}
             options={[
-              { value: "all", label: "Tất cả" },
+              { value: "all", label: "Tất cả tiền vào/ra" },
               { value: "in", label: "Tiền vào" },
               { value: "out", label: "Tiền ra" },
             ]}
@@ -225,22 +217,18 @@ export default function ReportRevenuePage() {
           <Button type="primary" onClick={loadData}>
             Áp dụng
           </Button>
-          <Button
-            type="default"
-            icon={<FilePdfOutlined />}
-            onClick={exportPDF}
-          >
+          <Button type="default" icon={<FilePdfOutlined />} onClick={exportPDF}>
             Xuất PDF
           </Button>
         </Space>
       </Card>
 
-      {/* Bảng giao dịch gần đây */}
       <Card title="Các giao dịch gần đây" className="rounded-2xl shadow-sm">
         <Table
           columns={columns}
           dataSource={applyFilters(data)}
           pagination={{ pageSize: 5 }}
+          rowKey="key"
         />
       </Card>
     </div>

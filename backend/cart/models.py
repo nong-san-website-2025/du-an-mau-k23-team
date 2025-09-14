@@ -3,6 +3,7 @@ from django.conf import settings
 from products.models import Product
 import uuid
 
+
 class Cart(models.Model):
     # Nếu user đăng nhập thì lưu user, nếu guest thì lưu session_key
     user = models.ForeignKey(
@@ -12,7 +13,12 @@ class Cart(models.Model):
         blank=True,
         related_name='cart'
     )
-    session_key = models.CharField(default=uuid.uuid4, max_length=100, null=True, blank=True)  # thêm để lưu guest
+    session_key = models.CharField(
+        default=uuid.uuid4,
+        max_length=100,
+        null=True,
+        blank=True
+    )  # thêm để lưu guest
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
