@@ -46,7 +46,7 @@ export const CartProvider = ({ children }) => {
               return { ...item, selected: true };
             } else {
               try {
-                const prod = await productApi.getProductById(
+                const prod = await productApi.getProduct(
                   item.product || item.product_id
                 );
                 return {
@@ -58,6 +58,7 @@ export const CartProvider = ({ children }) => {
                     price: prod.price,
                     image: prod.image,
                     category: prod.category,
+                    stock: prod.stock,
                   },
                 };
               } catch (err) {

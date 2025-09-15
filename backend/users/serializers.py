@@ -113,46 +113,63 @@ class UserSerializer(serializers.ModelSerializer):
             return True
 
 
+
 class RegisterSerializer(serializers.ModelSerializer):
     password2 = serializers.CharField(write_only=True)
-    # Hỗ trợ cả 2 cách: role (mới) hoặc is_seller (cũ)
-    role = serializers.CharField(required=False, allow_null=True, allow_blank=True)
-    is_seller = serializers.BooleanField(default=False, required=False)
+    role = serializers.PrimaryKeyRelatedField(
+        queryset=Role.objects.all(),
+        required=False,
+        allow_null=True
+    )
 
     class Meta:
         model = CustomUser
-        fields = ('username', 'email', 'password', 'password2', 'role', 'is_seller')
+        fields = ('username', 'email', 'password', 'password2', 'role', 'full_name', 'phone')
+        extra_kwargs = {
+            'password': {'write_only': True}
+        }
 
     def validate(self, data):
+        # Kiểm tra password trùng khớp
         if data['password'] != data['password2']:
-            raise serializers.ValidationError("Mật khẩu nhập lại không khớp.")
+            raise serializers.ValidationError({"password": "Mật khẩu nhập lại không khớp."})
         return data
 
     def create(self, validated_data):
-        from .models import Role as RoleModel
-        validated_data.pop('password2')
         password = validated_data.pop('password')
+        validated_data.pop('password2', None)
 
-        # Lấy role từ payload nếu có; fallback sang is_seller
-        role_str = validated_data.pop('role', None)
-        is_seller_flag = validated_data.pop('is_seller', False)
+        # Kiểm tra user pending trùng username/email
+        existing_user = CustomUser.objects.filter(
+            username=validated_data['username']
+        ).first()
+        if existing_user:
+            if existing_user.status == "pending":
+                return existing_user  # gửi lại email xác thực, không tạo user mới
+            else:
+                raise serializers.ValidationError({"username": "Tên đăng nhập đã tồn tại."})
 
+        existing_email = CustomUser.objects.filter(email=validated_data['email']).first()
+        if existing_email:
+            if existing_email.status == "pending":
+                return existing_email
+            else:
+                raise serializers.ValidationError({"email": "Email đã tồn tại."})
+
+        # Nếu frontend không gửi role → mặc định customer
+        if 'role' not in validated_data or validated_data['role'] is None:
+            customer_role, _ = Role.objects.get_or_create(name="customer")
+            validated_data['role'] = customer_role
+
+        # Tạo user pending
         user = CustomUser(**validated_data)
         user.set_password(password)
-        user.save()  # cần save trước để gán role ForeignKey
-
-        if role_str:
-            role_name = str(role_str).strip().lower()
-            role_obj, _ = RoleModel.objects.get_or_create(name=role_name)
-            user.role = role_obj
-            user.save()
-        elif is_seller_flag:
-            role_obj, _ = RoleModel.objects.get_or_create(name='seller')
-            user.role = role_obj
-            user.save()
-        # nếu không có role và không is_seller: model.save() đã gán mặc định 'customer'
-
+        user.status = "pending"
+        user.save()
         return user
+
+
+
 
 # ForgotPasswordSerializer nên được định nghĩa ngoài class RegisterSerializer
 class ForgotPasswordSerializer(serializers.Serializer):

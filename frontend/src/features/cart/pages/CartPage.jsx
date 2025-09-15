@@ -1,7 +1,7 @@
 // src/features/cart/pages/CartPage.jsx
 import React, { useState, useEffect } from "react";
 import { useCart } from "../services/CartContext";
-import { Container, Card, Button, Row, Col } from "react-bootstrap";
+import { Container, Card, Button, Row, Col, Modal } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 import { Store } from "lucide-react";
 import "../styles/CartPage.css";
@@ -9,9 +9,10 @@ import QuantityInput from "./QuantityInput";
 import { productApi } from "../../products/services/productApi";
 
 function CartPage() {
-  const { cartItems } = useCart();
+  const { cartItems, clearCart } = useCart();
   const [selectedItems, setSelectedItems] = useState([]);
   const [relatedProducts, setRelatedProducts] = useState([]);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
   const navigate = useNavigate();
   // console.log("🟢 CartPage render - cartItems:", cartItems);
   // console.log("🟢 relatedProducts state:", relatedProducts);
@@ -167,6 +168,23 @@ function CartPage() {
         {/* LEFT: Danh sách sản phẩm */}
         <div className="cart-left">
           <Card className="cart-card">
+            {/* Actions row for list */}
+            <div
+              className="cart-actions"
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                padding: "10px 12px",
+              }}
+            >
+              <Button
+                variant="outline-danger"
+                size="sm"
+                onClick={() => setShowClearConfirm(true)}
+              >
+                Xóa tất cả
+              </Button>
+            </div>
             <div className="cart-header">
               <input
                 type="checkbox"
@@ -197,12 +215,27 @@ function CartPage() {
                         src={prod.image}
                         alt={prod.name}
                         className="item-img"
+                        style={{ cursor: "pointer" }}
+                        onClick={() => navigate(`/products/${prod.id}`)}
                       />
                     ) : (
-                      <div className="no-image">No Image</div>
+                      <div
+                        className="no-image"
+                        style={{ cursor: "pointer" }}
+                        onClick={() => navigate(`/products/${prod.id}`)}
+                      >
+                        No Image
+                      </div>
                     )}
-                    <span className="item-name">{prod.name || "---"}</span>
+                    <span
+                      className="item-name"
+                      style={{ cursor: "pointer", color: "#000000ff" }}
+                      onClick={() => navigate(`/products/${prod.id}`)}
+                    >
+                      {prod.name || "---"}
+                    </span>
                   </div>
+
                   <div className="item-price">
                     {Number(prod.price)?.toLocaleString("vi-VN")}₫
                   </div>
@@ -267,6 +300,37 @@ function CartPage() {
           </Card>
         </div>
       </div>
+
+      {/* Modal xác nhận xóa tất cả */}
+      <Modal
+        show={showClearConfirm}
+        onHide={() => setShowClearConfirm(false)}
+        centered
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>Xóa tất cả sản phẩm</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          Bạn có chắc muốn xóa tất cả sản phẩm trong giỏ ?
+        </Modal.Body>
+        <Modal.Footer>
+          <Button
+            variant="secondary"
+            onClick={() => setShowClearConfirm(false)}
+          >
+            Hủy
+          </Button>
+          <Button
+            variant="danger"
+            onClick={async () => {
+              await clearCart();
+              setShowClearConfirm(false);
+            }}
+          >
+            Xóa tất cả
+          </Button>
+        </Modal.Footer>
+      </Modal>
 
       {/* SẢN PHẨM CÙNG DANH MỤC */}
       <div className="product-category mt-4">

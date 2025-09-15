@@ -7,19 +7,33 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from django.apps import apps
 from rest_framework.parsers import MultiPartParser, FormParser
+from django.conf import settings
+from django.utils.encoding import force_str
+from django.utils.http import urlsafe_base64_decode
+from .utils import token_generator, generate_reset_link
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework.exceptions import AuthenticationFailed
+from django.utils.encoding import force_bytes, force_str
 
+from django.shortcuts import get_object_or_404
 from rest_framework import generics, permissions, status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser
 from rest_framework.response import Response
 from rest_framework.views import APIView
-
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.http import urlsafe_base64_encode
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.authentication import JWTAuthentication
+from django.http import HttpResponseRedirect
 
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
+import requests
+
+
+FRONTEND_URL = "http://localhost:3000" 
 
 from .models import CustomUser, Address, Role
 from .serializers import (
@@ -35,6 +49,8 @@ from .serializers import (
     CustomUserSerializer
 )
 
+
+FRONTEND_URL = "http://localhost:3000"
 
 from .permissions import IsAdmin, IsSeller, IsNormalUser
 
@@ -56,131 +72,6 @@ Store = apps.get_model('store', 'Store')
 Product = apps.get_model('products', 'Product')
 Order = apps.get_model('orders', 'Order')
 
-
-# -------------------- WALLET --------------------
-class WalletBalanceView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        user = request.user
-        if hasattr(user, "wallet_balance"):
-            balance = user.wallet_balance
-        else:
-            balance = (
-                Payment.objects.filter(user=user, status="success")
-                .aggregate(total=Sum("amount"))["total"]
-                or 0
-            )
-        return Response({"balance": balance})
-
-
-# -------------------- GOOGLE LOGIN --------------------
-@method_decorator(csrf_exempt, name="dispatch")
-class GoogleLoginAPIView(APIView):
-    permission_classes = [AllowAny]
-
-    def post(self, request):
-        token = request.data.get("token")
-        if not token:
-            return Response(
-                {"error": "Thiếu token"}, status=status.HTTP_400_BAD_REQUEST
-            )
-
-        try:
-            CLIENT_ID = "638143772671-m6e09jr0o9smb5l1n24bhv7tpeskmvu3.apps.googleusercontent.com"
-            idinfo = id_token.verify_oauth2_token(
-                token, google_requests.Request(), CLIENT_ID
-            )
-
-            email = idinfo.get("email")
-            name = idinfo.get("name", "")
-
-            if not email:
-                return Response(
-                    {"error": "Không lấy được email từ Google"},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            user, _ = CustomUser.objects.get_or_create(
-                email=email,
-                defaults={
-                    "username": email.split("@")[0],
-                    "first_name": name,
-                    "is_active": True,
-                },
-            )
-
-            refresh = RefreshToken.for_user(user)
-            return Response(
-                {
-                    "refresh": str(refresh),
-                    "access": str(refresh.access_token),
-                    "email": email,
-                    "username": user.username,
-                    "is_admin": user.is_admin,
-                    "is_seller": user.is_seller,
-                }
-            )
-
-        except ValueError:
-            return Response(
-                {"error": "Token Google không hợp lệ"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        except Exception as e:
-            return Response({"error": str(e)}, status=500)
-
-
-# -------------------- AUTH / USER --------------------
-class RegisterView(generics.CreateAPIView):
-    queryset = CustomUser.objects.all()
-    serializer_class = RegisterSerializer
-    permission_classes =  [AllowAny]
-
-
-class LoginView(APIView):
-    permission_classes = [AllowAny]
-
-    def post(self, request):
-        username = request.data.get("username")
-        password = request.data.get("password")
-
-        if not username or not password:
-            return Response(
-                {"error": "Vui lòng cung cấp username và password."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        user = authenticate(username=username, password=password)
-        if not user:
-            return Response(
-                {"error": "Tài khoản hoặc mật khẩu không chính xác."},
-                status=status.HTTP_401_UNAUTHORIZED,
-            )
-
-        refresh = RefreshToken.for_user(user)
-
-        # Determine role consistently
-        if user.is_superuser or getattr(user, "is_admin", False) or (getattr(user, "role", None) and getattr(user.role, "name", None) == "admin"):
-            role_name = "admin"
-        elif getattr(user, "is_seller", False) or (getattr(user, "role", None) and getattr(user.role, "name", None) == "seller"):
-            role_name = "seller"
-        else:
-            role_name = "customer"
-
-        return Response(
-            {
-                "refresh": str(refresh),
-                "access": str(refresh.access_token),
-                "username": user.username,
-                "email": user.email,
-                "role": role_name,
-                "is_admin": role_name == "admin",
-                "is_seller": role_name == "seller",
-            }
-        )
-
-
 class UserProfileView(APIView):
     permission_classes = [permissions.IsAuthenticated]
     parser_classes = (MultiPartParser, FormParser)
@@ -198,17 +89,14 @@ class UserProfileView(APIView):
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+class UserListView(ListAPIView):
+    queryset = CustomUser.objects.all()
+    serializer_class = UserSerializer
 
 class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]
-
-
-class UserListView(ListAPIView):
-    queryset = CustomUser.objects.all()
-    serializer_class = UserSerializer
-
 
 @method_decorator(csrf_exempt, name="dispatch")
 class UserViewSet(viewsets.ModelViewSet):
@@ -239,106 +127,355 @@ class UserViewSet(viewsets.ModelViewSet):
         self.perform_destroy(instance)
         return Response(status=status.HTTP_204_NO_CONTENT)
     
-    
 
-# -------------------- PASSWORD RESET --------------------
-class ForgotPasswordView(APIView):
-    permission_classes = [AllowAny]
-
-    def post(self, request):
-        serializer = ForgotPasswordSerializer(data=request.data)
-        if serializer.is_valid():
-            email = serializer.validated_data["email"]
-            try:
-                user = CustomUser.objects.get(email=email)
-                code = random.randint(100000, 999999)
-
-                cache.set(f"forgot_password_code_{email}", code, timeout=300)
-                user.reset_code = code
-                user.save()
-
-                send_mail(
-                    "Mã khôi phục mật khẩu",
-                    f"Mã xác nhận của bạn là: {code}",
-                    "noreply@greenfarm.com",
-                    [email],
-                )
-                return Response({"message": "Đã gửi mã khôi phục về email!"})
-            except CustomUser.DoesNotExist:
-                return Response(
-                    {"error": "Email không tồn tại!"},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-        return Response(serializer.errors, status=400)
-
-
-class VerifyCodeAPIView(APIView):
-    permission_classes = [AllowAny]
-
-    def post(self, request):
-        email = request.data.get("email")
-        code = request.data.get("code")
-
-        if not email or not code:
-            return Response({"error": "Thiếu thông tin"}, status=400)
-
-        saved_code = cache.get(f"forgot_password_code_{email}")
-        if saved_code is None:
-            return Response({"error": "Mã đã hết hạn"}, status=400)
-        if str(saved_code) != str(code):
-            return Response({"error": "Mã xác thực không đúng"}, status=400)
-
-        cache.set(f"reset_password_allowed_{email}", True, timeout=600)
-        return Response({"message": "Xác thực thành công"})
-
-
-class ResetPasswordAPIView(APIView):
-    permission_classes = [AllowAny]
-
-    def post(self, request):
-        email = request.data.get("email")
-        new_password = request.data.get("password")
-
-        allowed = cache.get(f"reset_password_allowed_{email}")
-        if not allowed:
-            return Response(
-                {"error": "Bạn chưa xác thực mã hoặc phiên đã hết hạn."},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
-        try:
-            user = CustomUser.objects.get(email=email)
-            user.password = make_password(new_password)
-            user.save()
-        except CustomUser.DoesNotExist:
-            return Response({"error": "Tài khoản không tồn tại"}, status=404)
-
-        cache.delete(f"reset_password_allowed_{email}")
-        cache.delete(f"forgot_password_code_{email}")
-        return Response({"message": "Đặt lại mật khẩu thành công!"})
-
-
-# -------------------- PASSWORD CHANGE --------------------
-class ChangePasswordView(APIView):
+# -------------------- WALLET --------------------
+class WalletBalanceView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def post(self, request):
-        serializer = ChangePasswordSerializer(data=request.data)
-        if serializer.is_valid():
-            old_password = serializer.validated_data["old_password"]
-            new_password = serializer.validated_data["new_password"]
+    def get(self, request):
+        user = request.user
+        if hasattr(user, "wallet_balance"):
+            balance = user.wallet_balance
+        else:
+            balance = (
+                Payment.objects.filter(user=user, status="success")
+                .aggregate(total=Sum("amount"))["total"]
+                or 0
+            )
+        return Response({"balance": balance})
 
-            if not request.user.check_password(old_password):
+
+# -------------------- GOOGLE LOGIN --------------------
+@method_decorator(csrf_exempt, name="dispatch")
+
+class GoogleLoginView(APIView):
+    permission_classes = [AllowAny]
+    """
+    API xử lý đăng nhập bằng Google OAuth2
+    Nhận token từ frontend, xác thực với Google, sau đó trả về JWT.
+    """
+    def post(self, request):
+        try:
+            # 1. Lấy token từ frontend
+            token = request.data.get("token")
+            if not token:
                 return Response(
-                    {"error": "Mật khẩu hiện tại không đúng."}, status=400
+                    {"error": "Thiếu token từ frontend"},
+                    status=status.HTTP_400_BAD_REQUEST
                 )
 
-            request.user.set_password(new_password)
-            request.user.save()
-            return Response({"message": "Đổi mật khẩu thành công!"})
-        return Response(serializer.errors, status=400)
+            # 2. Xác thực token với Google
+            try:
+                idinfo = id_token.verify_oauth2_token(token, google_requests.Request())
+            except ValueError:
+                return Response(
+                    {"error": "Token không hợp lệ hoặc đã hết hạn"},
+                    status=status.HTTP_401_UNAUTHORIZED
+                )
+
+            # 3. Lấy thông tin từ Google
+            google_user_id = idinfo.get("sub")  # ID duy nhất của user trong hệ thống Google
+            email = idinfo.get("email")
+            name = idinfo.get("name")
+            picture = idinfo.get("picture", "")
+
+            if not email:
+                return Response(
+                    {"error": "Không thể xác định email từ Google"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # 4. Kiểm tra hoặc tạo user trong database
+            user, created = User.objects.get_or_create(
+                username=email,  # Username duy nhất
+                defaults={
+                    "email": email,
+                    "first_name": name
+                }
+            )
+
+            # Nếu user đã tồn tại, có thể cập nhật tên, ảnh...
+            if not created:
+                updated = False
+                if user.first_name != name:
+                    user.first_name = name
+                    updated = True
+                if updated:
+                    user.save()
+
+            # 5. Tạo JWT token cho user này
+            refresh = RefreshToken.for_user(user)
+
+            return Response({
+                "message": "Đăng nhập Google thành công",
+                "access": str(refresh.access_token),
+                "refresh": str(refresh),
+                "user": {
+                    "id": user.id,
+                    "username": user.username,
+                    "email": user.email,
+                    "first_name": user.first_name,
+                    "avatar": picture
+                }
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response(
+                {"error": f"Lỗi hệ thống: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        
+class FacebookLoginView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        access_token = request.data.get("accessToken")
+
+        if not access_token:
+            return Response({"error": "Access token không hợp lệ"}, status=400)
+
+        # 1. Gọi Facebook Graph API để lấy thông tin user
+        url = f"https://graph.facebook.com/me?fields=id,name,email&access_token={access_token}"
+        response = requests.get(url)
+        data = response.json()
+
+        if "error" in data:
+            return Response({"error": "Token Facebook không hợp lệ"}, status=400)
+
+        facebook_id = data.get("id")
+        name = data.get("name")
+        email = data.get("email", f"{facebook_id}@facebook.com")  # fallback nếu không có email
+
+        # 2. Kiểm tra user trong database
+        user, created = User.objects.get_or_create(
+            email=email,
+            defaults={
+                "username": name,
+                "password": User.objects.make_random_password(),
+            },
+        )
+
+        # 3. Tạo JWT token
+        refresh = RefreshToken.for_user(user)
+
+        return Response({
+            "message": "Đăng nhập Facebook thành công",
+            "user": {
+                "username": user.username,
+                "email": user.email,
+            },
+            "access": str(refresh.access_token),
+            "refresh": str(refresh),
+        }, status=200)
 
 
+
+# -------------------- AUTH / USER --------------------
+
+class RegisterView(generics.CreateAPIView):
+    queryset = CustomUser.objects.all()
+    serializer_class = RegisterSerializer
+    permission_classes = [AllowAny]
+
+    def create(self, request, *args, **kwargs):
+        """
+        Khi người dùng đăng ký:
+        - Tạo user mới với status="pending"
+        - Gửi email xác thực
+        - Không trả JWT token ngay
+        """
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        # Lưu user với trạng thái pending
+        user = serializer.save(status="pending")
+
+        # Gửi email xác thực
+        self.send_verification_email(user)
+
+        return Response({
+            "message": "Đăng ký thành công! Vui lòng kiểm tra email để xác thực tài khoản.",
+            "username": user.username,
+            "email": user.email
+        }, status=status.HTTP_201_CREATED)
+
+    def send_verification_email(self, user):
+        """
+        Gửi email xác thực cho người dùng.
+        """
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
+        token = default_token_generator.make_token(user)
+
+        # Gửi link tới BACKEND để xử lý xác thực, sau đó backend sẽ redirect về FRONTEND kèm token
+        verification_url = f"http://localhost:8000/api/users/verify-email/{uid}/{token}/"
+
+        subject = "Xác thực tài khoản của bạn"
+        message = (
+            f"Xin chào {user.username},\n\n"
+            f"Vui lòng nhấn vào liên kết dưới đây để xác thực tài khoản:\n{verification_url}\n\n"
+            "Nếu bạn không đăng ký tài khoản, vui lòng bỏ qua email này."
+        )
+
+        send_mail(
+            subject,
+            message,
+            settings.DEFAULT_FROM_EMAIL,
+            [user.email],
+            fail_silently=False,
+        )
+    
+
+class LoginView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        username = request.data.get("username")
+        password = request.data.get("password")
+
+        if not username or not password:
+            return Response(
+                {"detail": "Vui lòng nhập username và password"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Xác thực user
+        user = authenticate(username=username, password=password)
+        if not user:
+            return Response(
+                {"detail": "Tên đăng nhập hoặc mật khẩu không chính xác"},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+
+        # **Kiểm tra trạng thái trước khi tạo token**
+        if user.status != "active":
+            if user.status == "pending":
+                return Response(
+                    {"detail": "Tài khoản chưa được xác thực. Vui lòng kiểm tra email!"},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            elif user.status == "inactive":
+                return Response(
+                    {"detail": "Tài khoản đã bị khóa."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+        # Tạo JWT token chỉ khi status = active
+        refresh = RefreshToken.for_user(user)
+
+        return Response({
+            "username": user.username,
+            "email": user.email,
+            "role": {
+                "id": user.role.id,
+                "name": user.role.name
+            } if hasattr(user, "role") and user.role else None,
+            "access": str(refresh.access_token),
+            "refresh": str(refresh),
+        }, status=status.HTTP_200_OK)
+
+
+class PasswordResetRequestView(generics.GenericAPIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        email = request.data.get("email")
+
+        if not email:
+            return Response({"error": "Vui lòng nhập email."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return Response({"error": "Email không tồn tại trong hệ thống."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Tạo link reset
+        uidb64, token = generate_reset_link(user)
+        reset_link = f"http://localhost:3000/reset-password/{uidb64}/{token}/"
+
+        # Gửi email
+        send_mail(
+            subject="Đặt lại mật khẩu - GreenFarm",
+            message=f"Nhấn vào link sau để đặt lại mật khẩu: {reset_link}",
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[email],
+        )
+
+        return Response({"message": "Email đặt lại mật khẩu đã được gửi."}, status=status.HTTP_200_OK)
+
+class PasswordResetConfirmView(generics.GenericAPIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request, uidb64, token, *args, **kwargs):
+        password = request.data.get("password")
+
+        if not password:
+            return Response({"error": "Vui lòng nhập mật khẩu mới."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            uid = force_str(urlsafe_base64_decode(uidb64))
+            user = User.objects.get(pk=uid)
+        except (User.DoesNotExist, ValueError, TypeError):
+            return Response({"error": "Người dùng không tồn tại."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Kiểm tra token
+        if not token_generator.check_token(user, token):
+            return Response({"error": "Token không hợp lệ hoặc đã hết hạn."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Đổi mật khẩu
+        user.set_password(password)
+        user.save()
+
+        return Response({"message": "Mật khẩu đã được thay đổi thành công."}, status=status.HTTP_200_OK)
+
+
+class VerifyEmailView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, uidb64, token):
+        try:
+            # Giải mã UID
+            uid = int(urlsafe_base64_decode(uidb64).decode())
+            print("uidb64:", uidb64, "token:", token)
+            user = get_object_or_404(CustomUser, pk=uid)
+            print("User found:", user.username, user.status)
+            # Kiểm tra token
+            if default_token_generator.check_token(user, token):
+                if user.status != "active":
+                    user.status = "active"
+                    user.save()
+
+                # Tạo access + refresh token JWT
+                refresh = RefreshToken.for_user(user)
+                access_token = str(refresh.access_token)
+                refresh_token = str(refresh)
+
+                # Redirect sang frontend kèm token
+                redirect_url = f"{FRONTEND_URL}/verify-email?access={access_token}&refresh={refresh_token}&username={user.username}"
+                return HttpResponseRedirect(redirect_url)
+
+            else:
+                redirect_url = f"{FRONTEND_URL}/verify-failed"
+                return HttpResponseRedirect(redirect_url)
+
+        except Exception as e:
+            print("Lỗi xác thực email:", e)
+            redirect_url = f"{FRONTEND_URL}/verify-failed"
+            return HttpResponseRedirect(redirect_url)
+        
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    def validate(self, attrs):
+        data = super().validate(attrs)
+
+        # Chỉ cho phép login nếu status = active
+        if self.user.status != "active":
+            if self.user.status == "pending":
+                raise AuthenticationFailed("Tài khoản chưa được xác thực. Vui lòng kiểm tra email!")
+            elif self.user.status == "inactive":
+                raise AuthenticationFailed("Tài khoản đã bị khóa. Vui lòng liên hệ quản trị viên.")
+            else:
+                raise AuthenticationFailed("Tài khoản không hợp lệ.")
+
+        return data
 # -------------------- ROLE --------------------
 class RoleCreateView(APIView):
     def post(self, request):

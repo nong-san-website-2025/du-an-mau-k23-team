@@ -16,11 +16,7 @@ import {
 import { productApi } from "../features/products/services/productApi";
 import axiosInstance from "../features/admin/services/axiosInstance";
 
-// Local components
-import TopBar from "./Header/TopBar";
 import Logo from "./Header/Logo";
-import CategoryMegaMenu from "./Header/CategoryMegaMenu";
-import NavLinks from "./Header/NavLinks";
 import SearchBoxWithSuggestions from "./Header/SearchBoxWithSuggestions";
 import UserActions from "./Header/UserActions";
 
@@ -74,6 +70,7 @@ export default function Header() {
     localStorage.removeItem("token");
     localStorage.removeItem("username");
     localStorage.removeItem("role");
+    localStorage.removeItem("first_name");
     sessionStorage.clear();
     setShowProfileDropdown(false);
     window.location.replace("/login");

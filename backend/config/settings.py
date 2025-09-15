@@ -2,6 +2,9 @@ from pathlib import Path
 import os
 import dj_database_url
 from datetime import timedelta
+from dotenv import load_dotenv
+
+load_dotenv()  # Load biến môi trường từ .env nếu có
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -40,7 +43,7 @@ INSTALLED_APPS = [
     # Local apps
     "users", "sellers", "products", "reviews",
     "cart", "orders", "payments", "store",
-    "blog", "wallet", "promotions",'complaints', "marketing",
+    "blog", "wallet",'complaints', "marketing",
 
     # Cloudinary
 
@@ -55,8 +58,14 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'nmk1010111@gmail.com'
-EMAIL_HOST_PASSWORD = 'rzen rgwe ltwj oveo'
+EMAIL_HOST_USER = 'khoahuynhminh2005@gmail.com'
+EMAIL_HOST_PASSWORD = 'szqpkfjifpcyxwlq'
+
+# --- Facebook
+
+
+FACEBOOK_APP_ID = os.getenv("FACEBOOK_APP_ID")
+FACEBOOK_APP_SECRET = os.getenv("FACEBOOK_APP_SECRET")
 
 # --- Middleware
 MIDDLEWARE = [
@@ -82,7 +91,7 @@ ASGI_APPLICATION = 'config.asgi.application'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [os.path.join(BASE_DIR.parent, "frontend", "public")],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [

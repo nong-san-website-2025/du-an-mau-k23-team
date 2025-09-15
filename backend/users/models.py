@@ -25,6 +25,7 @@ class CustomUser(AbstractUser):
     STATUS_CHOICES = (
         ('active', 'Đang hoạt động'),
         ('inactive', 'Ngừng hoạt động'),
+        ('pending', "Chờ duyệt")
     )
     status = models.CharField(
         max_length=10,
