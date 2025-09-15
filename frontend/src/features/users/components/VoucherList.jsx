@@ -1,55 +1,53 @@
-import React, { useState } from "react";
-import { Card, Button, Badge, Container, Row, Col, Form } from "react-bootstrap";
-
-const sampleVouchers = [
-  {
-    id: 1,
-    code: "GIAM20K",
-    discount: "20.000₫",
-    minOrder: "100.000₫",
-    expiredAt: "2025-12-31",
-    used: false,
-    expired: false,
-  },
-  {
-    id: 2,
-    code: "GIAM50K",
-    discount: "50.000₫",
-    minOrder: "300.000₫",
-    expiredAt: "2025-08-31",
-    used: true,
-    expired: false,
-  },
-  {
-    id: 3,
-    code: "FREESHIP",
-    discount: "Miễn phí vận chuyển",
-    minOrder: "200.000₫",
-    expiredAt: "2025-06-30",
-    used: false,
-    expired: true,
-  },
-  {
-    id: 4,
-    code: "WELCOME10",
-    discount: "Giảm 10%",
-    minOrder: "Không yêu cầu",
-    expiredAt: "2025-12-31",
-    used: false,
-    expired: false,
-  },
-];
+import React, { useState, useEffect } from "react";
+import {
+  Card,
+  Button,
+  Badge,
+  Container,
+  Row,
+  Col,
+  Form,
+  Spinner,
+} from "react-bootstrap";
+import { getVouchers } from "../../admin/services/promotionServices";
 
 const VoucherList = () => {
-  const [vouchers, setVouchers] = useState(sampleVouchers);
+  const [vouchers, setVouchers] = useState([]);
   const [filter, setFilter] = useState("all");
+  const [loading, setLoading] = useState(true);
 
+  const fetchVouchers = async () => {
+    try {
+      setLoading(true);
+      const res = await getVouchers();
+      setVouchers(res);
+    } catch (err) {
+      console.error("Fetch vouchers failed:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchVouchers();
+  }, []);
+
+  // Lọc voucher theo trạng thái
   const filtered = vouchers.filter((v) => {
     if (filter === "used") return v.used;
     if (filter === "expired") return v.expired;
     if (filter === "active") return !v.used && !v.expired;
     return true;
   });
+
+  if (loading) {
+    return (
+      <div className="text-center my-5">
+        <Spinner animation="border" />
+        <div className="mt-2">Đang tải voucher...</div>
+      </div>
+    );
+  }
 
   return (
     <Container>
@@ -91,9 +89,16 @@ const VoucherList = () => {
                   )}
                 </Card.Title>
                 <Card.Text>
-                  <div>💰 Giá trị: {voucher.discount}</div>
-                  <div>🧾 Đơn tối thiểu: {voucher.minOrder}</div>
-                  <div>📅 Hạn sử dụng: {voucher.expiredAt}</div>
+                  <div>💰 Giá trị: {voucher.discount_text}</div>
+                  <div>
+                    🧾 Đơn tối thiểu:{" "}
+                    {voucher.min_order_value
+                      ? voucher.min_order_value.toLocaleString("vi-VN") + "₫"
+                      : "Không yêu cầu"}
+                  </div>
+                  <div>
+                    📅 Hạn sử dụng: {voucher.start_date} → {voucher.end_date}
+                  </div>
                 </Card.Text>
                 {!voucher.used && !voucher.expired ? (
                   <Button variant="success" size="sm">

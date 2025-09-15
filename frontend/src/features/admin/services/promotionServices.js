@@ -79,3 +79,13 @@ export const getPromotionsOverview = async () => {
   const res = await axiosClient.get(`${API_URL}/overview/`);
   return res.data;
 };
+
+
+// Áp dụng voucher
+export const applyVoucher = async (code, orderTotal) => {
+  const res = await axiosClient.post(`${API_URL}/vouchers/apply/`, {
+    code,
+    order_total: orderTotal,
+  });
+  return res.data;
+};
