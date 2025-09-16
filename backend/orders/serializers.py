@@ -81,7 +81,7 @@ class OrderCreateSerializer(serializers.ModelSerializer):
                     item_data_copy['unit'] = product.unit
                     # Đảm bảo có giá sản phẩm
                     if 'price' not in item_data_copy or not item_data_copy['price']:
-                        item_data_copy['price'] = product.price
+                        item_data_copy['price'] = float(product.price)
                 except Product.DoesNotExist:
                     print(f"Skipping item {i}: product {product_id} not found")
                     continue
@@ -94,9 +94,9 @@ class OrderCreateSerializer(serializers.ModelSerializer):
                 # Tạo OrderItem - truyền product instance thay vì ID
                 order_item = OrderItem.objects.create(
                     order=order,
-                    product=product,  # Truyền product instance
+                    product=product,
                     quantity=item_data_copy.get('quantity', 1),
-                    price=item_data_copy.get('price', 0),
+                    price=float(item_data_copy.get('price', 0)),  # <-- convert sang float
                     product_image=item_data_copy.get('product_image', ''),
                     unit=item_data_copy.get('unit', '')
                 )
@@ -138,13 +138,19 @@ class OrderSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         representation = super().to_representation(instance)
         # Tính tổng giá trị từ các items nếu không có total_price
-        if not representation.get('total_price') or representation['total_price'] == '0.00':
-            total = sum(
-                float(item.price) * int(item.quantity) 
-                for item in instance.items.all()
-            )
-            representation['total_price'] = str(total)
+        if not representation.get('total_price') or representation['total_price'] in ['0.00', 0, None]:
+            total = sum(float(item.price) * int(item.quantity) for item in instance.items.all())
+            representation['total_price'] = total  # <-- float, không phải string
+        else:
+            # Chuyển Decimal sang float nếu cần
+            representation['total_price'] = float(instance.total_price)
+        
+        # Chuyển tất cả giá OrderItem sang float
+        for item in representation.get('items', []):
+            if 'price' in item:
+                item['price'] = float(item['price'])
         return representation
+
     
 
 

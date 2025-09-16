@@ -9,6 +9,7 @@ from .serializers import OrderSerializer, OrderCreateSerializer
 from rest_framework.permissions import AllowAny, IsAuthenticated
 import logging
 from .services import complete_order, OrderProcessingError
+from websockets.utils import send_order_update
 
 logger = logging.getLogger(__name__)
 
@@ -147,6 +148,15 @@ class OrderViewSet(viewsets.ModelViewSet):
             .order_by('-created_at')
         )
 
+        # Gửi thông báo cho từng đơn
+        for order in orders:
+            send_order_update({
+                "action": "complete",
+                "id": order.id,
+                "status": order.status,
+                "message": "Đơn hàng đã giao thành công"
+            })
+
         serializer = self.get_serializer(orders, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -178,6 +188,13 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         order.status = 'shipping'
         order.save(update_fields=['status'])
+
+        send_order_update({
+        "action": "approve",
+        "id": order.id,
+        "status": order.status,
+        "message": "Seller đã duyệt đơn, chuyển sang chờ nhận hàng"
+        })
         return Response({'message': 'Đã duyệt đơn, chuyển sang chờ nhận hàng', 'status': order.status})
 
     @action(detail=True, methods=['post'], url_path='seller/complete')
@@ -324,6 +341,16 @@ class OrderViewSet(viewsets.ModelViewSet):
                 amount=order.total_price,
                 action=f"Cộng điểm khi thanh toán đơn hàng #{order.id}"
             )
+        
+        send_order_update({
+        "action": "create",
+        "id": order.id,
+        "user": order.user.username,
+        "status": order.status,
+        "total_price": order.total_price
+        })
+            
+        
 
 
 

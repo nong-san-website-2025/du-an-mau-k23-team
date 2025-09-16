@@ -43,7 +43,8 @@ INSTALLED_APPS = [
     # Local apps
     "users", "sellers", "products", "reviews",
     "cart", "orders", "payments", "store",
-    "blog", "wallet",'complaints', "marketing",
+    "blog", "wallet",'complaints', "marketing", 'channels', 'websockets',
+
 
     # Cloudinary
 
@@ -104,15 +105,23 @@ TEMPLATES = [
     },
 ]
 
-# --- Channels (nếu chưa cần Redis ở Render thì comment lại)
-CHANNEL_LAYERS = {
-    "default": {
-        "BACKEND": "channels_redis.core.RedisChannelLayer",
-        "CONFIG": {
-            "hosts": [("127.0.0.1", 6379)],
+# --- Channels
+# Use in-memory layer by default (dev). Set CHANNEL_BACKEND=redis to use Redis.
+if os.environ.get("CHANNEL_BACKEND", "").lower() == "redis":
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {
+                "hosts": [("127.0.0.1", 6379)],
+            },
         },
-    },
-}
+    }
+else:
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels.layers.InMemoryChannelLayer",
+        }
+    }
 
 # --- Database: local PostgreSQL hoặc Render
 if os.environ.get("DATABASE_URL"):

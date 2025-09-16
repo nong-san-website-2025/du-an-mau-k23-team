@@ -39,7 +39,7 @@ class Order(models.Model):
     address = models.CharField(max_length=255, null=True, blank=True, default="")
     note = models.TextField(blank=True, null=True, default="")
     payment_method = models.CharField(max_length=50, default="Thanh toán khi nhận hàng", null=True, blank=True)
-    total_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    total_price = models.FloatField(default=0)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
     is_deleted = models.BooleanField(default=False)  # Soft delete field
     created_at = models.DateTimeField(auto_now_add=True)
@@ -70,7 +70,7 @@ class OrderItem(models.Model):
     product_image = models.URLField(max_length=500, blank=True, null=True)  # optional, for display only
     unit = models.CharField(max_length=50, blank=True, null=True)  # optional, for display only
     quantity = models.PositiveIntegerField()
-    price = models.DecimalField(max_digits=10, decimal_places=2)
+    price = models.FloatField()
 
 
 class Complaint(models.Model):

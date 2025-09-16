@@ -1,12 +1,14 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { Table, Tag, Button, message } from "antd";
 import API from "../../login_register/services/api";
+import useWebSocket from "../../../services/hooks/useWebSocket.js";
 
 export default function OrdersNew() {
   const [loading, setLoading] = useState(false);
   const [orders, setOrders] = useState([]);
 
-  const fetchPending = async () => {
+  // Lấy danh sách đơn pending
+  const fetchPending = useCallback(async () => {
     setLoading(true);
     try {
       const res = await API.get("orders/seller/pending/");
@@ -17,12 +19,13 @@ export default function OrdersNew() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchPending();
-  }, []);
+  }, [fetchPending]);
 
+  // Duyệt đơn hàng
   const approve = async (orderId) => {
     try {
       await API.post(`orders/${orderId}/seller/approve/`);
@@ -34,6 +37,16 @@ export default function OrdersNew() {
     }
   };
 
+  // WebSocket lắng nghe đơn hàng realtime
+  useWebSocket("ws://localhost:8000/ws/orders/", (data) => {
+    console.log("📦 WebSocket Order Update:", data);
+
+    if (data.action === "create" || data.action === "approve") {
+      message.info(`Cập nhật đơn hàng: ${data.message || data.status}`);
+      fetchPending();
+    }
+  });
+
   const columns = [
     { title: "Mã đơn", dataIndex: "id", key: "id" },
     {
@@ -42,8 +55,8 @@ export default function OrdersNew() {
       render: (_, r) => (
         <div>
           <div><strong>{r.customer_name}</strong></div>
-          <div style={{fontSize:12, color:'#666'}}>{r.customer_phone}</div>
-          <div style={{fontSize:12, color:'#666'}}>{r.address}</div>
+          <div style={{ fontSize: 12, color: '#666' }}>{r.customer_phone}</div>
+          <div style={{ fontSize: 12, color: '#666' }}>{r.address}</div>
         </div>
       )
     },

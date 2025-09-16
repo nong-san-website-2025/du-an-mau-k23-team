@@ -1,21 +1,16 @@
+# backend/config/asgi.py
 import os
-from django.core.asgi import get_asgi_application
-from channels.routing import ProtocolTypeRouter, URLRouter
 from channels.auth import AuthMiddlewareStack
+from channels.routing import ProtocolTypeRouter, URLRouter
+from django.core.asgi import get_asgi_application
+import websockets.routing  # import module websocket routing
 
-import chat.routing  # nếu bạn có app tên chat
+# Chỉ định file settings
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
-
-# Lấy ứng dụng Django gốc
-django_asgi_app = get_asgi_application()
-
-# Ứng dụng ASGI cho cả HTTP và WebSocket
 application = ProtocolTypeRouter({
-    "http": django_asgi_app,
+    "http": get_asgi_application(),  # HTTP request
     "websocket": AuthMiddlewareStack(
-        URLRouter(
-            chat.routing.websocket_urlpatterns
-        )
+        URLRouter(websockets.routing.websocket_urlpatterns)  # WebSocket request
     ),
 })

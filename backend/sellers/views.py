@@ -186,7 +186,7 @@ class SellerMeAPIView(APIView):
         """Return current user's seller profile"""
         seller = getattr(request.user, "seller", None)
         if not seller:
-            return Response({"detail": "Không tìm thấy seller của bạn"}, status=404)
+            return 
         serializer = SellerDetailSerializer(seller)
         return Response(serializer.data)
 

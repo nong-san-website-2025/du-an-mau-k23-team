@@ -46,9 +46,8 @@ export const CartProvider = ({ children }) => {
               return { ...item, selected: true };
             } else {
               try {
-                const prod = await productApi.getProduct(
-                  item.product || item.product_id
-                );
+                const prodId = item.product?.id || item.product_id; // ✅ chỉ lấy id
+                const prod = await productApi.getProduct(prodId);
                 return {
                   ...item,
                   selected: true,

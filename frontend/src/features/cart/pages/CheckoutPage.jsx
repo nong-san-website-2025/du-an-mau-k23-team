@@ -175,7 +175,7 @@ const CheckoutPage = () => {
       const receiverAddress = manualEntry ? addressText.trim() : (selectedAddress?.location || "");
 
       const orderData = {
-        total_price: total,
+        total_price: parseFloat(total.toFixed(2)),
         status: "pending",
         customer_name: receiverName,
         customer_phone: receiverPhone,
