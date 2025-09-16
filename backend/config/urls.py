@@ -37,11 +37,16 @@ urlpatterns = [
     path('api/complaints/', include('complaints.urls')),
     path("api/dashboard/", dashboard_data, name="dashboard-data"),
     path("api/dashboard/", include("dashboard.urls")),
-    path("api/marketing/", include("marketing.urls")),
 
     # ✅ thêm endpoint login bằng JWT
     path("api/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
+    # path("api/dashboard/", include("dashboard.urls")),
+
+    path("api/marketing/", include("marketing.urls")),
+
+    path('api/system-logs/', include('system_logs.urls')),
+
 ]
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

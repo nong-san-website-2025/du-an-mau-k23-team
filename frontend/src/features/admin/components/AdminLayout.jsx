@@ -55,7 +55,7 @@ function TopBar({ onLogout }) {
       </div>
       <div className="d-flex align-items-center gap-3">
         <NotificationDropdown notifications={notifications} />
-        <DropdownTopBarButton
+        {/* <DropdownTopBarButton
           Icon={Globe}
           defaultLabel={currentLangLabel}
           items={[
@@ -74,7 +74,7 @@ function TopBar({ onLogout }) {
               },
             },
           ]}
-        />
+        /> */}
         <DropdownTopBarButton
           Icon={Settings}
           items={[

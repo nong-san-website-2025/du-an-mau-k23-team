@@ -51,6 +51,8 @@ INSTALLED_APPS = [
     'cloudinary_storage',
 
     "dashboard",
+
+    "system_logs",
 ]
 
 # --- Email
