@@ -13,6 +13,7 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView,
 )
 from .views import DashboardAPIView
+# from .views import UserManagementView
 
 
 
@@ -56,6 +57,7 @@ urlpatterns = [
     # Include router urls
     path('', include(router.urls)),
 
+    # Dashboard
     path("dashboard/", DashboardAPIView.as_view(), name="dashboard"),
 
     # path('user/me/', CurrentUserView.as_view(), name='current-user'),
@@ -65,5 +67,7 @@ urlpatterns = [
     path("user/upload-avatar/", UploadAvatarView.as_view(), name="upload-avatar"),
     path("api/user/profile/", UserProfileView.as_view(), name="user-profile"),
     path("<int:pk>/toggle-active/", toggle_user_active, name="toggle-user-active"),
+
+    # path("api/user-management/", UserManagementViewSet.as_view(), name="user-management"),
     
 ]
