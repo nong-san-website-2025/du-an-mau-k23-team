@@ -2,7 +2,7 @@
 from rest_framework import viewsets
 from .models import Complaint, ComplaintMedia
 from .serializers import ComplaintSerializer
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.decorators import action
@@ -13,7 +13,7 @@ from rest_framework.views import APIView
 class ComplaintViewSet(viewsets.ModelViewSet):
     queryset = Complaint.objects.all().order_by('-created_at')
     serializer_class = ComplaintSerializer
-    permission_classes = [IsAuthenticated]  # 👈 đảm bảo chỉ user login mới gửi complaint
+    permission_classes = [AllowAny]  # 👈 đảm bảo chỉ user login mới gửi complaint
 
     def get_queryset(self):
         qs = super().get_queryset()
