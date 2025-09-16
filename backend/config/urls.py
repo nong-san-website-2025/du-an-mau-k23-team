@@ -35,7 +35,11 @@ urlpatterns = [
 
     path("api/marketing/", include("marketing.urls")),
 
-    path('api/system-logs/', include('system_logs.urls')),
+
+    path("api/", include("system.urls")),
+
+
+    # path('api/system-logs/', include('system_logs.urls')),
 
 ]
 

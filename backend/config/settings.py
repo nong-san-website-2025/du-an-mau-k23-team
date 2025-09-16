@@ -49,7 +49,8 @@ INSTALLED_APPS = [
 
     "dashboard",
 
-    "system_logs",
+    # "system_logs",
+    "system"
 ]
 
 # --- Email

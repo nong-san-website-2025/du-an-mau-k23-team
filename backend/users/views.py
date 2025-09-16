@@ -543,10 +543,26 @@ class AccountView(generics.RetrieveUpdateAPIView):
 class UserMeView(APIView):
     permission_classes = [IsAuthenticated]
 
+    # Lấy thông tin user
     def get(self, request):
         serializer = CustomUserSerializer(request.user)
         return Response(serializer.data)
-    
+
+    # Update toàn bộ thông tin user
+    def put(self, request):
+        serializer = CustomUserSerializer(request.user, data=request.data, partial=False)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=400)
+
+    # Update một phần (ví dụ chỉ sửa email, phone,...)
+    def patch(self, request):
+        serializer = CustomUserSerializer(request.user, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=400)
     
 class UploadAvatarView(APIView):
     permission_classes = [IsAuthenticated]
