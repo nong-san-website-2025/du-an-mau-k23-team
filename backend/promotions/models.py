@@ -116,3 +116,24 @@ class FlashSaleItem(models.Model):
 
     def __str__(self):
         return f"{self.product.name} - {self.sale_price} (FS: {self.flash_sale.name})"
+
+
+class UserVoucher(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.CASCADE,
+        related_name="user_vouchers"
+    )
+    voucher = models.ForeignKey(
+        Voucher, 
+        on_delete=models.CASCADE,
+        related_name="user_vouchers"
+    )
+    is_used = models.BooleanField(default=False)
+    used_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        unique_together = ("user", "voucher")  # 1 user chỉ giữ 1 bản ghi cho 1 voucher
+
+    def __str__(self):
+        return f"{self.user.username} - {self.voucher.code} - {'used' if self.is_used else 'unused'}"

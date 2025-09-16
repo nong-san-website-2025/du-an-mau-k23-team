@@ -5,6 +5,7 @@ from django.db.models import Q
 from .models import Voucher, FlashSale
 from .serializers import VoucherDetailSerializer, FlashSaleSerializer
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from django.utils.timezone import now
 
 class IsStaffOrReadOnly(permissions.BasePermission):
     def has_permission(self, request, view):
@@ -91,3 +92,55 @@ class FlashSaleViewSet(viewsets.ModelViewSet):
         if self.action in ["list", "retrieve"]:
             return [permissions.AllowAny()]  # khách cũng xem được flash sale
         return [permissions.IsAdminUser()]
+    
+
+# này là API cho user nhận được voucher từ hệ thống ấy
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def my_vouchers(request):
+    user_vouchers = UserVoucher.objects.filter(user=request.user)
+    serializer = UserVoucherSerializer(user_vouchers, many=True)
+    return Response(serializer.data)   
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def apply_voucher(request):
+    code = request.data.get("code")
+    order_total = request.data.get("order_total")
+
+    # tìm voucher
+    try:
+        user_voucher = UserVoucher.objects.select_related("voucher").get(
+            user=request.user, voucher__code=code, is_used=False
+        )
+    except UserVoucher.DoesNotExist:
+        return Response({"error": "Voucher không hợp lệ hoặc đã dùng"}, status=400)
+
+    voucher = user_voucher.voucher
+
+    # tính toán giảm giá
+    discount = 0
+    if voucher.discount_amount:
+        discount = voucher.discount_amount
+    elif voucher.discount_percent:
+        discount = (order_total * voucher.discount_percent) / 100
+        if voucher.max_discount_amount and discount > voucher.max_discount_amount:
+            discount = voucher.max_discount_amount
+    elif voucher.freeship_amount:
+        discount = voucher.freeship_amount
+
+    new_total = order_total - discount
+    if new_total < 0:
+        new_total = 0
+
+    # mark as used
+    user_voucher.is_used = True
+    user_voucher.used_at = now()
+    user_voucher.save()
+
+    return Response({
+        "success": True,
+        "discount": discount,
+        "new_total": new_total
+    })

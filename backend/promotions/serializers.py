@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Promotion, Voucher ,FlashSale , FlashSaleItem 
+from .models import Promotion, Voucher ,FlashSale , FlashSaleItem , UserVoucher
 from products.models import Product
 from products.serializers import ProductListSerializer
 
@@ -85,3 +85,16 @@ class FlashSaleSerializer(serializers.ModelSerializer):
             FlashSaleItem.objects.create(flash_sale=instance, **item_data)
 
         return instance
+    
+
+class VoucherSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Voucher
+        fields = "__all__"
+
+class UserVoucherSerializer(serializers.ModelSerializer):
+    voucher = VoucherSerializer()
+
+    class Meta:
+        model = UserVoucher
+        fields = ["id", "voucher", "is_used", "used_at"]    
