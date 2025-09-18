@@ -12,6 +12,7 @@ import ChangePassword from "../components/ChangePassword";
 import NotificationSettings from "../components/NotificationSettings";
 import VoucherList from "../components/VoucherList";
 import Rewards from "../../points/pages/Rewards";
+import MyVoucher from "../components/MyVoucher";
 
 const mainColor = "#2E8B57";
 const accentColor = "#F57C00";
@@ -280,6 +281,7 @@ function ProfilePage() {
             {activeTab === "password" && <ChangePassword />}
             {activeTab === "notification" && <NotificationSettings />}
             {activeTab === "voucher" && <div style={{ fontSize: 16, marginBottom: 10, color: accentColor }}><VoucherList /></div>}
+            {activeTab === "myvoucher" && <div style={{ fontSize: 16, marginBottom: 10, color: accentColor }}><MyVoucher /></div>}
             {activeTab === "point" && <div style={{ fontSize: 16, marginBottom: 10, color: "#FFD700" }}><Rewards /></div>}
             {activeTab === "special" && <div style={{ fontSize: 16, marginBottom: 10, color: "#D32F2F" }}>Chức năng ưu đãi đặc biệt sẽ được bổ sung.</div>}
             {activeTab === "wallet" && <WalletTab walletBalance={walletBalance} loadingWallet={loadingWallet} rechargeAmount={rechargeAmount} setRechargeAmount={setRechargeAmount} rechargeLoading={rechargeLoading} rechargeError={rechargeError} handleRecharge={handleRecharge} />}

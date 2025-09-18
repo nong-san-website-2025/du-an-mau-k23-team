@@ -1,6 +1,18 @@
-import axiosClient from "./axiosClient";
 
+import axiosClient from "./axiosClient";
 const API_URL = "/promotions"; // axiosClient đã có baseURL
+
+// User nhận voucher từ kho (claim)
+export const claimVoucher = async (code) => {
+  const res = await axiosClient.post(`${API_URL}/vouchers/claim/`, { code });
+  return res.data;
+};
+
+// Lấy danh sách voucher đã sở hữu (túi voucher)
+export const getMyVouchers = async () => {
+  const res = await axiosClient.get(`${API_URL}/vouchers/my_vouchers/`);
+  return res.data;
+};
 
 // ====================
 // VOUCHER API
@@ -80,7 +92,6 @@ export const getPromotionsOverview = async () => {
   return res.data;
 };
 
-
 // Áp dụng voucher
 export const applyVoucher = async (code, orderTotal) => {
   const res = await axiosClient.post(`${API_URL}/vouchers/apply/`, {
@@ -89,3 +100,5 @@ export const applyVoucher = async (code, orderTotal) => {
   });
   return res.data;
 };
+
+//API để user nhận voucher từ kho voucher
