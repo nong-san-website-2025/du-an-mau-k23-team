@@ -1,94 +1,55 @@
-// LoginForm.js
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import "./../styles/LoginForm.css";
-import loginIcon from "../assets/login.png";
-import homeIcon from "../assets/homefarm.png";
-import logo from "../assets/imagelogo.png";
+import {
+  Box,
+  Paper,
+  TextField,
+  Button,
+  Typography,
+  Link,
+  CircularProgress,
+  Divider,
+} from "@mui/material";
+import {
+  FaFacebook,
+  FaGoogle,
+  FaBell,
+  FaQuestionCircle,
+  FaCog,
+} from "react-icons/fa";
 import { useCart } from "../../cart/services/CartContext";
 import { useAuth } from "../services/AuthContext";
+import ModalWrapper from "../components/ModalWrapper";
+import RegisterForm from "../components/RegisterForm";
+import ForgotPasswordForm from "../components/ForgotPasswordForm";
+import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
+import { jwtDecode } from "jwt-decode";
+import GoogleLoginButton from "../components/GoogleLoginButton";
+import FacebookLoginButton from "../components/FacebookLoginButton";
+import "../styles/FacebookLoginButton.css";
 
-const API_URL = process.env.REACT_APP_API_URL;
+const GOOGLE_CLIENT_ID =
+  "765405716910-dpln310rbdfot1qkh8gjb2hlu9rkqc4a.apps.googleusercontent.com";
 
-function LoginForm() {
+export default function LoginForm() {
+  const navigate = useNavigate();
+  const { fetchCart } = useCart();
+  const { login } = useAuth();
+
+  // State quản lý form
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const navigate = useNavigate();
-  const [showRegisterModal, setShowRegisterModal] = useState(false);
-  const [showForgotModal, setShowForgotModal] = useState(false);
-  const { fetchCart } = useCart();
-  const { login: authLogin } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [userProfile, setUserProfile] = useState(null);
 
-  // State cho Đăng ký
-  const [regUsername, setRegUsername] = useState("");
-  const [regEmail, setRegEmail] = useState("");
-  const [regPassword, setRegPassword] = useState("");
-  const [regPassword2, setRegPassword2] = useState("");
-  const [registrationRole, setRegistrationRole] = useState('customer'); // Mặc định là customer
+  // State quản lý modal
+  const [showRegister, setShowRegister] = useState(false);
+  const [showForgot, setShowForgot] = useState(false);
 
-  // State cho Quên mật khẩu
-  const [forgotEmail, setForgotEmail] = useState("");
-  const [forgotEmailError, setForgotEmailError] = useState("");
+  const { googleLogin } = useAuth();
 
-  // State cho nhập mã xác thực
-  const [verificationCode, setVerificationCode] = useState(Array(6).fill(""));
-  const [showVerifyCodeForm, setShowVerifyCodeForm] = useState(false);
-
-  // State cho cấp lại mật khẩu
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmNewPassword, setConfirmNewPassword] = useState("");
-  const [showResetPasswordForm, setShowResetPasswordForm] = useState(false);
-
-  const [countdown, setCountdown] = useState(60);
-  const [intervalId, setIntervalId] = useState(null);
-  const [passwordError, setPasswordError] = useState("");
-
-  useEffect(() => {
-    /* global google */
-    if (window.google) {
-      window.google.accounts.id.initialize({
-        client_id: "638143772671-m6e09jr0o9smb5l1n24bhv7tpeskmvu3.apps.googleusercontent.com",
-        callback: handleGoogleResponse,
-      });
-
-      window.google.accounts.id.renderButton(
-        document.getElementById("googleSignInDiv"),
-        { theme: "outline", size: "large" }
-      );
-    }
-  }, []);
-
-  const handleGoogleResponse = (response) => {
-    console.log(response.credential);
-    sendTokenToBackend(response.credential);
-  };
-
-  const sendTokenToBackend = async (token) => {
-    console.log("[DEBUG] Sending token to backend:", token);
-    try {
-      const res = await fetch(`${API_URL}/users/google-login/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        // Lưu thông tin vào localStorage
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("username", data.username);
-        localStorage.setItem("role", data.role);
-
-        // Chuyển hướng dựa trên role
-        navigateByRole(data.role);
-      } else {
-        alert(data.error || "Đăng nhập thất bại!");
-      }
-    } catch (err) {
-      alert("Lỗi kết nối!");
-    }
-  };
-
+  // Điều hướng theo vai trò
   const navigateByRole = (role) => {
     switch (role) {
       case "admin":
@@ -97,500 +58,354 @@ function LoginForm() {
       case "seller":
         navigate("/seller-center");
         break;
-      case "customer":
       default:
         navigate("/");
-        break;
     }
   };
 
+  const handleGoogleLogin = async (response) => {
+    try {
+      console.log("Google OAuth raw response:", response);
+
+      if (!response || !response.credential) {
+        throw new Error("Không nhận được Google credential token");
+      }
+
+      // Gửi token Google lên Django để xác thực
+      const res = await fetch(
+        "http://localhost:8000/api/users/auth/google-login/",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token: response.credential }),
+        }
+      );
+
+      const data = await res.json();
+      console.log("Google backend response:", data);
+
+      if (!res.ok) {
+        throw new Error(data.error || "Google login thất bại");
+      }
+
+      // Lưu dữ liệu vào AuthProvider
+      const result = await googleLogin(data);
+
+      if (result.success) {
+        await fetchCart();
+        navigate("/"); // Điều hướng về trang chủ
+      } else {
+        throw new Error(result.error || "Xử lý Google login thất bại");
+      }
+    } catch (error) {
+      console.error("Google login error:", error);
+      alert(error.message || "Có lỗi khi đăng nhập Google.");
+    }
+  };
+
+  const handleFacebookLogin = async (accessToken) => {
+    try {
+      const res = await fetch(
+        "http://localhost:8000/api/users/auth/facebook-login/",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ accessToken }),
+        }
+      );
+
+      const data = await res.json();
+      console.log("Facebook backend response:", data);
+
+      if (!res.ok) {
+        throw new Error(data.error || "Đăng nhập Facebook thất bại");
+      }
+
+      await googleLogin(data); // hoặc login(data)
+      await fetchCart();
+      navigate("/");
+    } catch (error) {
+      console.error("Facebook login error:", error);
+      alert(error.message);
+    }
+  };
+
+  // Xử lý đăng nhập
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const result = await authLogin(username, password);
-
-    if (result.success) {
-      await fetchCart();
-      navigateByRole(result.role);
-    } else {
-      setError(result.error || "Đăng nhập thất bại");
-    }
-  };
-
-  const handleRegister = async () => {
-    if (!regUsername || !regEmail || !regPassword || !regPassword2) {
-      alert("Vui lòng điền đầy đủ thông tin!");
-      return;
-    }
-
-    const passwordRegex = /^(?=.*[A-Z]).{8,}$/;
-    if (!passwordRegex.test(regPassword)) {
-      alert("Mật khẩu phải có ít nhất 8 ký tự và chứa ít nhất 1 chữ viết hoa!");
-      return;
-    }
-
-    if (regPassword !== regPassword2) {
-      alert("Mật khẩu nhập lại không khớp!");
-      return;
-    }
+    setError("");
+    setLoading(true);
 
     try {
-      const response = await fetch(`${API_URL}/users/register/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          username: regUsername,
-          email: regEmail,
-          password: regPassword,
-          password2: regPassword2,
-          role: registrationRole, // Sử dụng role thay vì is_seller, is_admin
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        alert("Đăng ký thành công!");
-        setShowRegisterModal(false);
-        
-        // Tự động đăng nhập sau khi đăng ký
-        const loginResult = await authLogin(regUsername, regPassword);
-        if (loginResult.success) {
-          navigateByRole(loginResult.role);
-        } else {
-          alert("Đăng ký thành công nhưng đăng nhập tự động thất bại!");
-        }
-        
-        // Reset form
-        resetRegistrationForm();
+      const result = await login(username, password);
+      if (result.success) {
+        await fetchCart();
+        navigateByRole(result.role);
       } else {
-        alert(
-          data && typeof data === "object"
-            ? JSON.stringify(data)
-            : data.error || "Đăng ký thất bại!"
-        );
+        setError(result.error || "Đăng nhập thất bại, vui lòng thử lại.");
       }
     } catch (err) {
-      alert("Lỗi kết nối máy chủ!");
-    }
-  };
-
-  const resetRegistrationForm = () => {
-    setRegUsername("");
-    setRegEmail("");
-    setRegPassword("");
-    setRegPassword2("");
-    setRegistrationRole('customer');
-  };
-
-  const handleForgotPassword = async () => {
-    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!forgotEmail || !emailPattern.test(forgotEmail)) {
-      setForgotEmailError("Vui lòng nhập đúng định dạng email!");
-      return;
-    }
-    setForgotEmailError("");
-    
-    try {
-      const response = await fetch(`${API_URL}/forgot-password/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: forgotEmail }),
-      });
-      const data = await response.json();
-      
-      if (response.ok) {
-        alert("Mã khôi phục đã được gửi về email!");
-        setShowVerifyCodeForm(true);
-        startCountdown();
-      } else {
-        alert(data.error || "Gửi email thất bại!");
-      }
-    } catch (err) {
-      alert("Lỗi kết nối máy chủ!");
-    }
-  };
-
-  const startCountdown = () => {
-    setCountdown(60);
-    if (intervalId) clearInterval(intervalId);
-    
-    const newInterval = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          clearInterval(newInterval);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    setIntervalId(newInterval);
-  };
-
-  const validatePasswordRealtime = (password) => {
-    const passwordRegex = /^(?=.*[A-Z]).{8,}$/;
-    if (!passwordRegex.test(password)) {
-      setPasswordError("Mật khẩu phải có ít nhất 8 ký tự và chứa ít nhất 1 chữ viết hoa!");
-    } else {
-      setPasswordError("");
-    }
-  };
-
-  const handleVerifyCode = async () => {
-    const codeString = Array.isArray(verificationCode)
-      ? verificationCode.join("")
-      : verificationCode;
-      
-    if (!codeString || codeString.length < 6) {
-      alert("Vui lòng nhập đầy đủ mã xác thực!");
-      return;
-    }
-    
-    try {
-      const response = await fetch(`${API_URL}/users/verify-code/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: forgotEmail, code: codeString }),
-      });
-      const data = await response.json();
-      
-      if (response.ok) {
-        setShowResetPasswordForm(true);
-        setShowVerifyCodeForm(false);
-      } else {
-        alert(data.error || "Mã xác thực không đúng!");
-      }
-    } catch (err) {
-      alert("Lỗi kết nối máy chủ!");
-    }
-  };
-
-  const handleResetPassword = async () => {
-    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!forgotEmail || !emailPattern.test(forgotEmail)) {
-      alert("Email không hợp lệ, vui lòng thực hiện lại quy trình quên mật khẩu!");
-      setShowResetPasswordForm(false);
-      return;
-    }
-    
-    if (!newPassword || !confirmNewPassword) {
-      alert("Vui lòng nhập đầy đủ thông tin!");
-      return;
-    }
-    
-    const passwordRegex = /^(?=.*[A-Z]).{8,}$/;
-    if (!passwordRegex.test(newPassword)) {
-      alert("Mật khẩu phải có ít nhất 8 ký tự và chứa ít nhất 1 chữ viết hoa!");
-      return;
-    }
-    
-    if (newPassword !== confirmNewPassword) {
-      alert("Mật khẩu nhập lại không khớp!");
-      return;
-    }
-    
-    try {
-      const response = await fetch(`${API_URL}/users/reset-password/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: forgotEmail,
-          password: newPassword,
-        }),
-      });
-      const data = await response.json();
-      
-      if (response.ok) {
-        alert("Đặt lại mật khẩu thành công!");
-        resetForgotPasswordFlow();
-      } else {
-        alert(data.error || "Đặt lại mật khẩu thất bại!");
-      }
-    } catch (err) {
-      alert("Lỗi kết nối máy chủ!");
-    }
-  };
-
-  const resetForgotPasswordFlow = () => {
-    setShowForgotModal(false);
-    setShowResetPasswordForm(false);
-    setForgotEmail("");
-    setVerificationCode(Array(6).fill(""));
-    setNewPassword("");
-    setConfirmNewPassword("");
-  };
-
-  const handleOtpChange = (e, index) => {
-    const value = e.target.value.replace(/[^0-9a-zA-Z]/g, "");
-    if (value.length > 1) return;
-
-    const newCode = [...verificationCode];
-    newCode[index] = value;
-    setVerificationCode(newCode);
-
-    if (value && index < 5) {
-      const nextInput = document.querySelectorAll(".otp-input")[index + 1];
-      nextInput && nextInput.focus();
-    }
-  };
-
-  const handleOtpKeyDown = (e, index) => {
-    if (e.key === "Backspace" && !verificationCode[index] && index > 0) {
-      const prevInput = document.querySelectorAll(".otp-input")[index - 1];
-      prevInput && prevInput.focus();
+      setError("Có lỗi xảy ra, vui lòng thử lại sau.");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="login-container">
-      <div className="login-page login-right">
-        <form onSubmit={handleSubmit} className="login-form">
-          <img src={logo} alt="Logo" className="login-logo" />
-          <h2>Đăng nhập</h2>
-          {error && <p style={{ color: "red" }}>{error}</p>}
-          
-          <i className="fas fa-user input-icon-user"></i>
-          <input
-            type="text"
-            placeholder="Tên đăng nhập"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            required
-          />
-          <br />
-          
-          <i className="fas fa-lock input-icon-lock"></i>
-          <input
-            type="password"
-            placeholder="Mật khẩu"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-          <br />
-          
-          <button type="submit" className="login-btn">
-            Đăng nhập
-          </button>
-          
-          <div className="extra-options">
-            <button
-              type="button"
-              className="register-btn"
-              onClick={() => setShowRegisterModal(true)}
+    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+      <div className="container-fluid vh-100 d-flex flex-column p-0">
+        {/* ========== HEADER ========== */}
+        <header
+          className="d-flex justify-content-between align-items-center px-4 p-2 shadow-sm"
+          style={{
+            backgroundColor: "#ffffff",
+            borderBottom: "1px solid #e0e0e0",
+          }}
+        >
+          {/* Bên trái: Logo + Tiêu đề */}
+          <div className="d-flex align-items-center gap-3">
+            <img
+              src="/assets/logo/defaultLogo.png"
+              alt="AgroMart"
+              style={{ width: 40, height: 40, objectFit: "cover" }}
+            />
+            <Typography
+              variant="h6"
+              sx={{ fontWeight: "bold", color: "#4caf50" }}
             >
-              Đăng ký
-            </button>
-            <span
-              className="forgot-link"
-              onClick={() => setShowForgotModal(true)}
-            >
-              Quên mật khẩu?
-            </span>
+              GreenFarm
+            </Typography>
           </div>
-        </form>
 
-        {/* Modal Đăng ký */}
-        {showRegisterModal && (
-          <div className="modal-overlay">
-            <div className="modal-content">
-              <h3>Đăng ký tài khoản</h3>
-              <input
-                type="text"
-                placeholder="Tên đăng nhập"
-                value={regUsername}
-                onChange={(e) => setRegUsername(e.target.value)}
-              />
-              <input
-                type="email"
-                placeholder="Email"
-                value={regEmail}
-                onChange={(e) => setRegEmail(e.target.value)}
-              />
-              <input
-                type="password"
-                placeholder="Mật khẩu"
-                value={regPassword}
-                onChange={(e) => {
-                  setRegPassword(e.target.value);
-                  validatePasswordRealtime(e.target.value);
+          {/* Bên phải: Các icon hỗ trợ */}
+          <div className="d-flex align-items-center gap-3">
+            <FaQuestionCircle
+              size={22}
+              style={{ cursor: "pointer", color: "#4caf50" }}
+              title="Hỗ trợ"
+            />
+          </div>
+        </header>
+
+        {/* ========== MAIN CONTENT ========== */}
+        <div
+          className="row flex-grow-1 m-0"
+          style={{ backgroundColor: "#4caf50" }}
+        >
+          {/* Bên trái: Logo + slogan */}
+          <div
+            className="col-12 col-md-7 d-flex flex-column justify-content-center align-items-center text-center text-white p-4"
+            style={{
+              backgroundImage:
+                "linear-gradient(rgba(76,175,80,0.85), rgba(76,175,80,0.85))",
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+            }}
+          >
+            <Box>
+              {/* Logo */}
+              <Box
+                component="img"
+                src="assets/logo/whitelogo1.png"
+                alt="GreenFarm Logo"
+                sx={{
+                  width: 160,
+                  height: 180,
                 }}
               />
-              {passwordError && (
-                <p className="password-error">{passwordError}</p>
-              )}
-              <input
-                type="password"
-                placeholder="Nhập lại mật khẩu"
-                value={regPassword2}
-                onChange={(e) => setRegPassword2(e.target.value)}
-              />
 
-              {/* <div style={{ margin: '10px 0' }}>
-                <label>Loại tài khoản:</label>
-                <select
-                  value={registrationRole}
-                  onChange={(e) => setRegistrationRole(e.target.value)}
-                  style={{ width: '100%', padding: '8px', margin: '5px 0' }}
-                >
-                  <option value="customer">Khách hàng</option>
-                  <option value="seller">Người bán</option>
-                </select>
-              </div> */}
+              {/* Tiêu đề */}
+              <Typography variant="h2" fontWeight="bold" sx={{ mb: 1 }}>
+                GreenFarm
+              </Typography>
 
-              <button onClick={handleRegister}>Đăng ký</button>
-              <button
-                className="close-btn"
-                onClick={() => {
-                  setShowRegisterModal(false);
-                  resetRegistrationForm();
+              {/* Slogan */}
+              <Typography
+                variant="h5"
+                sx={{
+                  maxWidth: 500,
+                  mx: "auto",
+                  mb: 4,
+                  fontStyle: "italic",
+                  fontWeight: 400,
                 }}
               >
-                Đóng
-              </button>
-            </div>
+                Nông sản chuẩn sạch, nguồn gốc minh bạch
+              </Typography>
+
+              {/* Hình minh họa rau củ */}
+              {/* <Box
+                component="img"
+                src="/assets/images/vegetables.png"
+                alt="AgroMart"
+                sx={{
+                  maxWidth: 300,
+                  width: "100%",
+                  borderRadius: 2,
+                  boxShadow: 3,
+                }}
+              /> */}
+            </Box>
           </div>
+
+          {/* Bên phải: Form đăng nhập */}
+          <div
+            className="col-12 col-md-3 d-flex justify-content-center align-items-center"
+            style={{
+              padding: "20px",
+              backgroundColor: "#4caf50",
+              width: "500px",
+            }}
+          >
+            <Paper
+              elevation={6}
+              sx={{
+                p: 4,
+                width: "600px",
+                borderRadius: 3,
+              }}
+            >
+              {/* Tiêu đề */}
+              <Typography
+                variant="h4"
+                fontWeight="normal"
+                align="center"
+                sx={{ color: "black", mb: 2 }}
+              >
+                Đăng nhập
+              </Typography>
+
+              <Typography
+                variant="body1"
+                align="center"
+                color="text.secondary"
+                mb={3}
+              >
+                Chào mừng bạn trở lại với GreenFarm
+              </Typography>
+
+              {/* Form đăng nhập */}
+              <form onSubmit={handleSubmit}>
+                <TextField
+                  label="Tên đăng nhập"
+                  variant="outlined"
+                  fullWidth
+                  margin="normal"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  autoFocus
+                  required
+                />
+
+                <TextField
+                  label="Mật khẩu"
+                  type="password"
+                  variant="outlined"
+                  fullWidth
+                  margin="normal"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+
+                {error && (
+                  <Typography color="error" variant="body2" mt={1} mb={2}>
+                    {error}
+                  </Typography>
+                )}
+
+                <Button
+                  type="submit"
+                  variant="contained"
+                  fullWidth
+                  sx={{
+                    mt: 2,
+                    py: 1.2,
+                    fontWeight: "bold",
+                    backgroundColor: "#4caf50",
+                    "&:hover": { backgroundColor: "#43a047" },
+                  }}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <CircularProgress size={24} color="inherit" />
+                  ) : (
+                    "Đăng nhập"
+                  )}
+                </Button>
+              </form>
+
+              {/* Quên mật khẩu + Đăng ký */}
+              <Box display="flex" justifyContent="space-between" mt={2}>
+                <Link
+                  component="button"
+                  variant="body2"
+                  underline="hover"
+                  onClick={() => setShowForgot(true)}
+                >
+                  Quên mật khẩu?
+                </Link>
+                <Link
+                  component="button"
+                  variant="body2"
+                  underline="hover"
+                  onClick={() => setShowRegister(true)}
+                >
+                  Đăng ký
+                </Link>
+              </Box>
+
+              {/* Divider */}
+              <Divider sx={{ my: 3 }}>Hoặc</Divider>
+
+              <div className="row g-2">
+                <div
+                  className="col-12 col-sm-6 d-flex align-items-center "
+                  style={{ justifyContent: "end", paddingRight: "20px" }}
+                >
+                  <GoogleLoginButton onSuccess={handleGoogleLogin} />
+                </div>
+                <div
+                  className="col-12 col-sm-6 d-flex align-items-center justify-content-start "
+      
+                >
+                  <div>
+                    <FacebookLoginButton onSuccess={handleFacebookLogin} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                align="center"
+                display="block"
+                mt={3}
+              >
+                © 2025 GreenFarm. Tất cả quyền được bảo lưu.
+              </Typography>
+            </Paper>
+          </div>
+        </div>
+
+        {/* Modal Đăng ký */}
+        {showRegister && (
+          <ModalWrapper title="Đăng ký" onClose={() => setShowRegister(false)}>
+            <RegisterForm onClose={() => setShowRegister(false)} />
+          </ModalWrapper>
         )}
 
         {/* Modal Quên mật khẩu */}
-        {showForgotModal && (
-          <div className="modal-overlay">
-            <div className="modal-content">
-              <h3>Quên mật khẩu</h3>
-              <input
-                type="email"
-                placeholder="Nhập email của bạn"
-                value={forgotEmail}
-                autoComplete="off"
-                onChange={(e) => {
-                  const value = e.target.value;
-                  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                  if (!value || !emailPattern.test(value)) {
-                    setForgotEmailError("Vui lòng nhập đúng định dạng email!");
-                    setForgotEmail(value);
-                  } else {
-                    setForgotEmailError("");
-                    setForgotEmail(value);
-                  }
-                }}
-                className={forgotEmailError ? "input-error" : ""}
-                inputMode="email"
-                pattern="^[^\s@]+@[^\s@]+\.[^\s@]+$"
-              />
-              {forgotEmailError && (
-                <div className="email-error">{forgotEmailError}</div>
-              )}
-              <button
-                onClick={handleForgotPassword}
-                disabled={
-                  !!forgotEmailError ||
-                  !forgotEmail ||
-                  !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(forgotEmail)
-                }
-              >
-                Gửi yêu cầu
-              </button>
-              <button
-                className="close-btn"
-                onClick={() => setShowForgotModal(false)}
-              >
-                Đóng
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Modal nhập mã xác thực */}
-        {showVerifyCodeForm && (
-          <div className="modal-overlay">
-            <div className="modal-content">
-              <h3>Nhập mã xác thực</h3>
-              <p className="countdown-text">
-                {countdown > 0
-                  ? `Vui lòng nhập mã trong ${countdown} giây`
-                  : "Bạn có thể yêu cầu gửi lại mã"}
-              </p>
-              <div className="otp-input-container">
-                {Array(6)
-                  .fill(0)
-                  .map((_, index) => (
-                    <input
-                      key={index}
-                      type="text"
-                      maxLength="1"
-                      className="otp-input"
-                      value={verificationCode[index] || ""}
-                      onChange={(e) => handleOtpChange(e, index)}
-                      onKeyDown={(e) => handleOtpKeyDown(e, index)}
-                    />
-                  ))}
-              </div>
-              <button onClick={handleVerifyCode}>Xác thực</button>
-              <button
-                className="close-btn"
-                onClick={() => setShowVerifyCodeForm(false)}
-              >
-                Đóng
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Modal đặt lại mật khẩu */}
-        {showResetPasswordForm && (
-          <div className="modal-overlay">
-            <div className="modal-content">
-              <h3>Đặt lại mật khẩu</h3>
-              <div
-                style={{
-                  marginBottom: "10px",
-                  color: "gray",
-                  fontSize: "14px",
-                }}
-              >
-                <b>Email:</b>{" "}
-                {/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(forgotEmail) ? (
-                  forgotEmail
-                ) : (
-                  <span style={{ color: "red" }}>Không có email hợp lệ!</span>
-                )}
-              </div>
-              <input
-                type="password"
-                placeholder="Mật khẩu mới"
-                value={newPassword}
-                onChange={(e) => {
-                  setNewPassword(e.target.value);
-                  validatePasswordRealtime(e.target.value);
-                }}
-              />
-              {passwordError && (
-                <p className="password-error">{passwordError}</p>
-              )}
-              <input
-                type="password"
-                placeholder="Nhập lại mật khẩu"
-                value={confirmNewPassword}
-                onChange={(e) => setConfirmNewPassword(e.target.value)}
-              />
-              <button onClick={handleResetPassword}>
-                Đặt lại mật khẩu
-              </button>
-              <button
-                className="close-btn"
-                onClick={() => setShowResetPasswordForm(false)}
-              >
-                Đóng
-              </button>
-            </div>
-          </div>
+        {showForgot && (
+          <ModalWrapper onClose={() => setShowForgot(false)}>
+            <ForgotPasswordForm
+              onClose={() => setShowForgot(false)}
+              onSuccess={(email) => console.log("Email quên mật khẩu:", email)}
+            />
+          </ModalWrapper>
         )}
       </div>
-      
-      <div className="google-login-container">
-        <div id="googleSignInDiv"></div>
-      </div>
-    </div>
+    </GoogleOAuthProvider>
   );
 }
-
-export default LoginForm;

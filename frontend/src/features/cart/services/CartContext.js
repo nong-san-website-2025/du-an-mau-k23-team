@@ -1,7 +1,12 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+} from "react";
 import API from "../../login_register/services/api";
 import { toast } from "react-toastify";
-import { useLocation } from "react-router-dom";
 import { productApi } from "../../products/services/productApi";
 
 const CartContext = createContext();
@@ -10,27 +15,27 @@ export const useCart = () => useContext(CartContext);
 export const CartProvider = ({ children }) => {
   const [cartItems, setCartItems] = useState([]);
   const [loading, setLoading] = useState(false);
-  const location = useLocation();
 
-  const isAuthenticated = () => !!localStorage.getItem("token");
+  const isAuthenticated = useCallback(
+    () => !!localStorage.getItem("token"),
+    []
+  );
 
   // Guest cart helpers
-  const getGuestCart = () => {
+  const getGuestCart = useCallback(() => {
     try {
       return JSON.parse(localStorage.getItem("guest_cart")) || [];
     } catch {
       return [];
     }
-  };
-  const saveGuestCart = (items) => {
+  }, []);
+
+  const saveGuestCart = useCallback((items) => {
     localStorage.setItem("guest_cart", JSON.stringify(items));
-  };
+  }, []);
 
   // Fetch cart
-  // Trong CartContext
- // thêm nếu chưa có
-
-  const fetchCart = async () => {
+  const fetchCart = useCallback(async () => {
     setLoading(true);
     try {
       if (isAuthenticated()) {
@@ -46,9 +51,8 @@ export const CartProvider = ({ children }) => {
               return { ...item, selected: true };
             } else {
               try {
-                const prod = await productApi.getProductById(
-                  item.product || item.product_id
-                );
+                const productId = item.product?.id || item.product_id;
+                const prod = await productApi.getProduct(productId);
                 return {
                   ...item,
                   selected: true,
@@ -58,6 +62,7 @@ export const CartProvider = ({ children }) => {
                     price: prod.price,
                     image: prod.image,
                     category: prod.category,
+                    stock: prod.stock,
                   },
                 };
               } catch (err) {
@@ -81,14 +86,14 @@ export const CartProvider = ({ children }) => {
       setCartItems([]);
     }
     setLoading(false);
-  };
+  }, [isAuthenticated, getGuestCart]);
 
   // Load cart on mount / location change
   useEffect(() => {
     fetchCart();
-  }, []); // chỉ chạy 1 lần khi component mount
+  }, [fetchCart]); // chỉ chạy 1 lần khi component mount
 
-  // Sync guest cart to server on login 
+  // Sync guest cart to server on login
   useEffect(() => {
     const token = localStorage.getItem("token");
     const guestCart = getGuestCart();
@@ -108,7 +113,7 @@ export const CartProvider = ({ children }) => {
         fetchCart();
       })();
     }
-  }, []);
+  }, [getGuestCart, fetchCart]);
 
   // Add item
   const addToCart = async (
@@ -155,20 +160,18 @@ export const CartProvider = ({ children }) => {
   // Update quantity
   const updateQuantity = async (itemId, newQty) => {
     if (newQty < 1) return removeFromCart(itemId);
-    if (isAuthenticated()) {
-      try {
-        await API.patch(`cartitems/${itemId}/`, { quantity: newQty });
-        await fetchCart();
-      } catch (err) {
-        console.error(err);
-        toast.error("Không thể cập nhật số lượng");
-      }
-    } else {
-      let items = getGuestCart().map((i) =>
-        i.product === itemId ? { ...i, quantity: newQty } : i
+
+    try {
+      await API.patch(`cartitems/${itemId}/`, { quantity: newQty });
+
+      // ✅ Chỉ cập nhật đúng sản phẩm thay đổi
+      setCartItems((prevItems) =>
+        prevItems.map((item) =>
+          item.id === itemId ? { ...item, quantity: newQty } : item
+        )
       );
-      saveGuestCart(items);
-      setCartItems(items.map((i) => ({ ...i, selected: true })));
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -199,6 +202,44 @@ export const CartProvider = ({ children }) => {
     saveGuestCart([]);
   };
 
+  // Clear only selected items
+  const clearSelectedItems = useCallback(async () => {
+    const selectedItems = cartItems.filter((item) => item.selected);
+    if (isAuthenticated()) {
+      for (const item of selectedItems) {
+        try {
+          await API.delete(`cartitems/${item.id}/`);
+        } catch (err) {
+          console.error("Error deleting cart item:", err);
+        }
+      }
+    }
+    // Update local state: remove selected items
+    setCartItems((prev) => prev.filter((item) => !item.selected));
+    // Update guest cart: remove selected items
+    const guestItems = getGuestCart();
+    const updatedGuestItems = guestItems.filter(
+      (item) =>
+        !selectedItems.some(
+          (selected) =>
+            selected.product === item.product ||
+            selected.product_id === item.product
+        )
+    );
+    saveGuestCart(updatedGuestItems);
+  }, [cartItems, isAuthenticated, getGuestCart, saveGuestCart]);
+
+  // Lắng nghe sự kiện clear-cart từ Orders page khi VNPAY success
+  useEffect(() => {
+    const handler = async () => {
+      try {
+        await clearSelectedItems(); // Chỉ xóa những item đã chọn
+      } catch (e) {}
+    };
+    window.addEventListener("clear-cart", handler);
+    return () => window.removeEventListener("clear-cart", handler);
+  }, [clearSelectedItems]);
+
   // Tick/untick
   const selectAllItems = () =>
     setCartItems((prev) => prev.map((i) => ({ ...i, selected: true })));
@@ -222,6 +263,7 @@ export const CartProvider = ({ children }) => {
         updateQuantity,
         removeFromCart,
         clearCart,
+        clearSelectedItems,
         fetchCart,
         selectAllItems,
         deselectAllItems,

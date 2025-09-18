@@ -1,217 +1,250 @@
+// src/features/admin/pages/reports/ReportTopProductsPage.jsx
 import React, { useEffect, useState } from "react";
-import { Card, Table, message, DatePicker, Select, Space } from "antd";
-import { PieChart, Pie, Cell } from "recharts";
-import { ShoppingBag, Award, Users } from "lucide-react";
-import api from "../../login_register/services/api";
+import { Card, Table, Row, Col, Statistic, message } from "antd";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+} from "recharts";
+import { ShoppingCartOutlined, UserOutlined, DollarOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
-import isBetween from "dayjs/plugin/isBetween";
+import api from "../../../features/login_register/services/api";
 
-dayjs.extend(isBetween);
+const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#AF19FF"];
 
-const { RangePicker } = DatePicker;
-
-const ReportTopProductsPage = () => {
-  const [loading, setLoading] = useState(false);
+export default function ReportTopProductsPage() {
+  const [orders, setOrders] = useState([]);
   const [topProducts, setTopProducts] = useState([]);
   const [topSuppliers, setTopSuppliers] = useState([]);
   const [customerData, setCustomerData] = useState([]);
-
-  // Filters
-  const [dateRange, setDateRange] = useState([dayjs().subtract(30, "day"), dayjs()]);
-  const [statusFilter, setStatusFilter] = useState("success"); // pending | shipping | success | cancelled | all
+  const [segmentData, setSegmentData] = useState([]);
+  const [retentionRate, setRetentionRate] = useState(0);
+  const [avgCLV, setAvgCLV] = useState(0);
 
   useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      try {
-        const isAdmin = localStorage.getItem("is_admin") === "true";
-        const endpoint = isAdmin ? "/orders/admin-list/" : "/orders/";
-        const res = await api.get(endpoint);
-        let orders = Array.isArray(res.data) ? res.data : [];
+    loadData();
+  }, []);
 
-        // Apply client-side filters: date range + status
-        orders = orders.filter((o) => {
-          const created = dayjs(o.created_at);
-          const inRange = created.isBetween(dateRange[0], dateRange[1], null, "[]");
-          const statusOk = statusFilter === "all" ? true : o.status === statusFilter;
-          return inRange && statusOk;
-        });
+  const loadData = async () => {
+    try {
+      const isAdmin = localStorage.getItem("is_admin") === "true";
+      const endpoint = isAdmin ? "/orders/admin-list/" : "/orders/";
+      const res = await api.get(endpoint);
+      const ordersData = Array.isArray(res.data) ? res.data : [];
+      setOrders(ordersData);
 
-        // Count user orders to estimate new vs returning
-        const userOrderCount = new Map();
-
-        // Aggregate product sales and revenue by productId
-        const productSalesMap = new Map(); // productName -> qty
-        const productIdRevenueMap = new Map(); // productId -> revenue
-
-        for (const o of orders) {
-          const userKey = o.user ?? o.user_email ?? `user-${o.id}`;
-          userOrderCount.set(userKey, (userOrderCount.get(userKey) || 0) + 1);
-
-          // Only count completed orders for top sales/revenue
-          if (o.status !== "success") continue;
-          const items = Array.isArray(o.items) ? o.items : [];
-          for (const it of items) {
-            const qty = Number(it.quantity || 0);
-            const price = Number(it.price || 0);
-            const pid = it.product; // product id from serializer
-            const pname = it.product_name || `SP #${pid}`;
-
-            productSalesMap.set(pname, (productSalesMap.get(pname) || 0) + qty);
-            if (pid != null)
-              productIdRevenueMap.set(
-                pid,
-                (productIdRevenueMap.get(pid) || 0) + qty * price
-              );
-          }
+      // === Xử lý Top sản phẩm ===
+      const productCount = {};
+      ordersData.forEach((o) => {
+        if (o.status === "success" && o.items) {
+          o.items.forEach((item) => {
+            if (!item.product) return;
+            const name = item.product.name;
+            const qty = item.quantity || 0;
+            productCount[name] = (productCount[name] || 0) + qty;
+          });
         }
+      });
+      const topProductsArr = Object.entries(productCount)
+        .map(([name, qty]) => ({ name, qty }))
+        .sort((a, b) => b.qty - a.qty)
+        .slice(0, 5);
+      setTopProducts(topProductsArr);
 
-        // Build Top Products list
-        const topProductsArr = Array.from(productSalesMap.entries())
-          .sort((a, b) => b[1] - a[1])
-          .slice(0, 10)
-          .map(([name, sales], idx) => ({ key: idx + 1, name, sales }));
-
-        // Fetch product details to map productId -> seller_name
-        const uniqueIds = Array.from(productIdRevenueMap.keys());
-        const detailResults = await Promise.all(
-          uniqueIds.map((id) =>
-            api
-              .get(`/products/${id}/`)
-              .then((r) => ({ id, data: r.data }))
-              .catch(() => ({ id, data: null }))
-          )
-        );
-        const sellerByProductId = new Map(
-          detailResults.map(({ id, data }) => [id, data?.seller_name || data?.store?.store_name || "—"]) 
-        );
-
-        // Aggregate revenue by seller
-        const supplierRevenueMap = new Map(); // seller -> revenue
-        for (const [pid, revenue] of productIdRevenueMap.entries()) {
-          const seller = sellerByProductId.get(pid) || "—";
-          supplierRevenueMap.set(
-            seller,
-            (supplierRevenueMap.get(seller) || 0) + revenue
-          );
+      // === Xử lý Top nhà cung cấp ===
+      const supplierCount = {};
+      ordersData.forEach((o) => {
+        if (o.status === "success" && o.items) {
+          o.items.forEach((item) => {
+            if (!item.product || !item.product.supplier) return;
+            const sup = item.product.supplier;
+            const qty = item.quantity || 0;
+            supplierCount[sup] = (supplierCount[sup] || 0) + qty;
+          });
         }
-        const topSuppliersArr = Array.from(supplierRevenueMap.entries())
-          .sort((a, b) => b[1] - a[1])
-          .slice(0, 10)
-          .map(([name, revenue], idx) => ({ key: idx + 1, name, revenue: Math.round(revenue) }));
+      });
+      const topSuppliersArr = Object.entries(supplierCount)
+        .map(([name, qty]) => ({ name, qty }))
+        .sort((a, b) => b.qty - a.qty)
+        .slice(0, 5);
+      setTopSuppliers(topSuppliersArr);
 
-        // Customer pie: new vs returning within fetched dataset
-        let newCount = 0,
-          returningCount = 0;
-        userOrderCount.forEach((cnt) => {
-          if (cnt > 1) returningCount += 1;
-          else newCount += 1;
-        });
-        const custData = [
-          { name: "Khách mới", value: newCount },
-          { name: "Khách quay lại", value: returningCount },
-        ];
+      // === Khách hàng mới vs quay lại ===
+      const userOrderCount = new Map();
+      ordersData.forEach((o) => {
+        if (o.user) {
+          userOrderCount.set(o.user, (userOrderCount.get(o.user) || 0) + 1);
+        }
+      });
+      let newCustomers = 0,
+        returningCustomers = 0;
+      userOrderCount.forEach((count) => {
+        if (count > 1) returningCustomers++;
+        else newCustomers++;
+      });
+      setCustomerData([
+        { name: "Khách mới", value: newCustomers },
+        { name: "Khách quay lại", value: returningCustomers },
+      ]);
 
-        setTopProducts(topProductsArr);
-        setTopSuppliers(topSuppliersArr);
-        setCustomerData(custData);
-      } catch (e) {
-        console.error(e);
-        message.error("Không thể tải dữ liệu báo cáo");
-      } finally {
-        setLoading(false);
-      }
-    };
+      // === Tính retention rate ===
+      const totalCustomers = userOrderCount.size;
+      const returning = returningCustomers;
+      const retention = totalCustomers > 0 ? ((returning / totalCustomers) * 100).toFixed(1) : 0;
+      setRetentionRate(retention);
 
-    load();
-  }, [dateRange, statusFilter]);
+      // === Tính CLV trung bình ===
+      const spendByUser = new Map();
+      ordersData.forEach((o) => {
+        if (o.status === "success") {
+          const key = o.user ?? o.user_email ?? `user-${o.id}`;
+          const spent = Number(o.total_price || 0);
+          spendByUser.set(key, (spendByUser.get(key) || 0) + spent);
+        }
+      });
+      const avg =
+        spendByUser.size > 0
+          ? (Array.from(spendByUser.values()).reduce((a, b) => a + b, 0) / spendByUser.size).toFixed(0)
+          : 0;
+      setAvgCLV(avg);
 
-  const COLORS = ["#00C49F", "#0088FE"];
+      // === Phân khúc khách hàng ===
+      const seg = { VIP: 0, Frequent: 0, New: 0 };
+      spendByUser.forEach((spent, userKey) => {
+        const ordersCount = userOrderCount.get(userKey) || 0;
+        if (spent >= 5000000) {
+          seg.VIP++;
+        } else if (ordersCount >= 5) {
+          seg.Frequent++;
+        } else {
+          seg.New++;
+        }
+      });
+      setSegmentData([
+        { name: "VIP", value: seg.VIP },
+        { name: "Thường xuyên", value: seg.Frequent },
+        { name: "Khách mới", value: seg.New },
+      ]);
+    } catch (err) {
+      console.error(err);
+      message.error("Không thể tải dữ liệu báo cáo");
+    }
+  };
 
   return (
-    <div className="px-4 space-y-6">
-      {/* Bộ lọc */}
-      <Card>
-        <Space wrap>
-          <RangePicker value={dateRange} onChange={setDateRange} />
-          <Select
-            value={statusFilter}
-            onChange={setStatusFilter}
-            options={[
-              { value: "all", label: "Tất cả trạng thái" },
-              { value: "pending", label: "Chờ xử lý" },
-              { value: "shipping", label: "Đang giao" },
-              { value: "success", label: "Thành công" },
-              { value: "cancelled", label: "Hủy" },
-            ]}
-          />
-        </Space>
-      </Card>
+    <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
+      <Row gutter={16}>
+        <Col span={8}>
+          <Card>
+            <Statistic
+              title="Tỷ lệ khách quay lại"
+              value={retentionRate}
+              suffix="%"
+              prefix={<UserOutlined />}
+            />
+          </Card>
+        </Col>
+        <Col span={8}>
+          <Card>
+            <Statistic
+              title="CLV trung bình"
+              value={Number(avgCLV).toLocaleString()}
+              suffix="đ"
+              prefix={<DollarOutlined />}
+            />
+          </Card>
+        </Col>
+        <Col span={8}>
+          <Card>
+            <Statistic
+              title="Tổng khách hàng"
+              value={customerData.reduce((a, b) => a + b.value, 0)}
+              prefix={<UserOutlined />}
+            />
+          </Card>
+        </Col>
+      </Row>
 
-      {/* Sản phẩm bán chạy */}
-      <Card
-        title={
-          <span className="flex items-center gap-2">
-            <ShoppingBag className="text-green-600" /> Sản phẩm bán chạy
-          </span>
-        }
-      >
-        <Table
-          columns={[
-            { title: "Sản phẩm", dataIndex: "name", key: "name" },
-            { title: "Số lượng bán", dataIndex: "sales", key: "sales" },
-          ]}
-          dataSource={topProducts}
-          loading={loading}
-          pagination={false}
-        />
-      </Card>
+      <Row gutter={16}>
+        <Col span={12}>
+          <Card title="Khách hàng mới vs quay lại">
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={customerData}
+                  dataKey="value"
+                  nameKey="name"
+                  outerRadius={100}
+                  label
+                >
+                  {customerData.map((entry, index) => (
+                    <Cell key={index} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Legend />
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          </Card>
+        </Col>
+        <Col span={12}>
+          <Card title="Phân khúc khách hàng">
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={segmentData}
+                  dataKey="value"
+                  nameKey="name"
+                  outerRadius={100}
+                  label
+                >
+                  {segmentData.map((entry, index) => (
+                    <Cell key={index} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Legend />
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          </Card>
+        </Col>
+      </Row>
 
-      {/* Top nhà cung cấp */}
-      <Card
-        title={
-          <span className="flex items-center gap-2">
-            <Award className="text-yellow-600" /> Top nhà cung cấp
-          </span>
-        }
-      >
-        <Table
-          columns={[
-            { title: "Nhà cung cấp", dataIndex: "name", key: "name" },
-            { title: "Doanh thu (VND)", dataIndex: "revenue", key: "revenue" },
-          ]}
-          dataSource={topSuppliers}
-          loading={loading}
-          pagination={false}
-        />
-      </Card>
-
-      {/* Phân tích khách hàng */}
-      <Card
-        title={
-          <span className="flex items-center gap-2">
-            <Users className="text-purple-600" /> Phân tích khách hàng
-          </span>
-        }
-      >
-        <PieChart width={400} height={300}>
-          <Pie
-            data={customerData}
-            dataKey="value"
-            nameKey="name"
-            cx="50%"
-            cy="50%"
-            outerRadius={100}
-            label
-          >
-            {customerData.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-            ))}
-          </Pie>
-        </PieChart>
-      </Card>
+      <Row gutter={16}>
+        <Col span={12}>
+          <Card title="Top sản phẩm bán chạy">
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={topProducts}>
+                <XAxis dataKey="name" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="qty" fill="#8884d8" />
+              </BarChart>
+            </ResponsiveContainer>
+          </Card>
+        </Col>
+        <Col span={12}>
+          <Card title="Top nhà cung cấp">
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={topSuppliers}>
+                <XAxis dataKey="name" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="qty" fill="#82ca9d" />
+              </BarChart>
+            </ResponsiveContainer>
+          </Card>
+        </Col>
+      </Row>
     </div>
   );
-};
-
-export default ReportTopProductsPage;
+}

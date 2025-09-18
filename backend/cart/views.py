@@ -38,7 +38,8 @@ class CartItemViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         cart = self.get_cart()
-        return CartItem.objects.filter(cart=cart)
+        return CartItem.objects.filter(cart=cart).order_by('id')  # ✅ đảm bảo thứ tự ổn định
+
 
     def get_serializer_context(self):
         context = super().get_serializer_context()

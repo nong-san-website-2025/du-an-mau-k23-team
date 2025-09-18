@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 import { Spin, Modal } from "antd"; // TODO: nâng cấp props theo khuyến cáo: dùng styles.body thay cho bodyStyle
-
-import BannerSlider from "../components/home/BannerSlider.jsx";
-import CategorySection from "../components/home/CategorySection.jsx";
-import FlashSaleSection from "../components/home/FlashSaleSection.jsx";
-import PersonalizedSection from "../components/home/PersonalizedSection.jsx";
+import BannerSlider from "../components/home/BannerSlider";
+import CategorySection from "../components/home/CategorySection";
+import FlashSaleSection from "../components/home/FlashSaleSection";
+import PersonalizedSection from "../components/home/PersonalizedSection";
+import { Helmet } from "react-helmet";
 
 import {
   // fetchUserRecommendations,
@@ -23,11 +23,10 @@ export default function HomePage() {
   useEffect(() => {
     const loadData = async () => {
       try {
-
         // Gọi fetchCategories trước
         const catRes = await fetchCategories();
 
-        setCategories( catRes.data || []);
+        setCategories(catRes.data || []);
 
         // setRecommendedProducts(recommendRes.data || []);
       } catch (error) {
@@ -44,21 +43,21 @@ export default function HomePage() {
     return (
       <div
         className="d-flex justify-content-center align-items-center"
-        style={{ height: "500px" }}
+        style={{ height: "60vh" }}
       >
-        <Spin size="large" />
+        <Spin size="large" className="spinning" />
       </div>
     );
   }
 
   return (
-    <div className="container" style={{ padding: "0 20px" }}>
+    <div className="container" style={{ padding: "0 16px" }}>
+      <Helmet>
+        <title>GreenFarm</title>
+        <meta name="description" content="Đây là trang chủ của website." />
+      </Helmet>
       {/* Banner Carousel */}
-      <div className="row">
-        <div className="col-12">
-          <BannerSlider />
-        </div>
-      </div>
+      <BannerSlider />
 
       {/* Danh Mục Nổi Bật */}
       <CategorySection categories={categories} />
@@ -103,6 +102,7 @@ export default function HomePage() {
               height: "100%",
               objectFit: "cover",
               display: "block",
+              borderRadius: 8,
             }}
             className="cursor-pointer"
           />

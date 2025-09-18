@@ -3,7 +3,7 @@ import useUserProfile from "../features/users/services/useUserProfile";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { useCart } from "../features/cart/services/CartContext";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Carrot,
   Apple,
@@ -16,13 +16,10 @@ import {
 import { productApi } from "../features/products/services/productApi";
 import axiosInstance from "../features/admin/services/axiosInstance";
 
-// Local components
-import TopBar from "./Header/TopBar";
 import Logo from "./Header/Logo";
-import CategoryMegaMenu from "./Header/CategoryMegaMenu";
-import NavLinks from "./Header/NavLinks";
 import SearchBoxWithSuggestions from "./Header/SearchBoxWithSuggestions";
 import UserActions from "./Header/UserActions";
+import TopBar from './Header/TopBar';
 
 const iconMap = {
   Carrot: Carrot,
@@ -46,6 +43,7 @@ export default function Header() {
   const [showNotificationDropdown, setShowNotificationDropdown] =
     useState(false);
   const [showCartDropdown, setShowCartDropdown] = useState(false);
+  const navigate = useNavigate();
 
   // Notifications (kept for future use/compatibility)
   const [notifications, setNotifications] = useState([
@@ -73,6 +71,7 @@ export default function Header() {
     localStorage.removeItem("token");
     localStorage.removeItem("username");
     localStorage.removeItem("role");
+    localStorage.removeItem("first_name");
     sessionStorage.clear();
     setShowProfileDropdown(false);
     window.location.replace("/login");
@@ -158,6 +157,7 @@ export default function Header() {
   const handleSearchChange = async (e) => {
     const value = e.target.value;
     setSearch(value);
+    localStorage.setItem("searchValue", value); // Lưu vào localStorage
 
     if (value.trim() !== "") {
       try {
@@ -173,6 +173,23 @@ export default function Header() {
     } else {
       setSearchResults({ products: [], posts: [] });
       setShowSuggestions(false);
+    }
+  };
+
+  const handleSearchSubmit = async () => {
+    if (!search.trim()) return;
+
+    try {
+      const res = await axiosInstance.get(`/products/search/`, {
+        params: { q: search },
+      });
+      setSearchResults(res.data);
+      setShowSuggestions(false);
+
+      // Điều hướng sang trang /search?query=...
+      navigate(`/search?query=${encodeURIComponent(search)}`);
+    } catch (error) {
+      console.error("Search error:", error);
     }
   };
 
@@ -242,6 +259,13 @@ export default function Header() {
     };
   }, []);
 
+  useEffect(() => {
+    const savedSearch = localStorage.getItem("searchValue");
+    if (savedSearch) {
+      setSearch(savedSearch);
+    }
+  }, []);
+
   return (
     <>
       <ToastContainer
@@ -261,7 +285,6 @@ export default function Header() {
         className="shadow-sm"
         style={{
           position: "sticky",
-
           top: 0,
           zIndex: 999,
           fontFamily: "Montserrat, Arial, sans-serif",
@@ -270,6 +293,7 @@ export default function Header() {
         }}
       >
         {/* Top bar */}
+        <TopBar />
         {/* <TopBar /> */}
 
         {/* Main header */}
@@ -277,8 +301,8 @@ export default function Header() {
           className="border-bottom"
           style={{
             position: "relative",
-            background: "#2E7D32",
-            padding: "0 100px",
+            background: "linear-gradient(to bottom, #2E7D32 0%, #4CAF50 100%)",
+            padding: "0 110px",
           }}
         >
           <div
@@ -287,7 +311,6 @@ export default function Header() {
           >
             {/* Logo */}
             <Logo greenText={greenText} />
-            
 
             {/* Navigation */}
             {/* <nav
@@ -304,15 +327,16 @@ export default function Header() {
                 setShowCategory={setShowCategory}
               />
             </nav> */}
-            
 
             {/* Search & Actions */}
             <SearchBoxWithSuggestions
               search={search}
+              setSearch={setSearch} // ✅ Thêm prop này
               setShowSuggestions={setShowSuggestions}
               showSuggestions={showSuggestions}
               searchResults={searchResults}
               handleSearchChange={handleSearchChange}
+              handleSearchSubmit={handleSearchSubmit} // ✅ Thêm prop này
               greenText={greenText}
               containerRef={searchRef}
             />

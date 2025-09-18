@@ -1,27 +1,25 @@
 // src/features/cart/pages/CartPage.jsx
 import React, { useState, useEffect } from "react";
 import { useCart } from "../services/CartContext";
-import { Container, Card, Button, Row, Col } from "react-bootstrap";
+import { Container, Card, Button, Row, Col, Modal } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 import { Store } from "lucide-react";
 import "../styles/CartPage.css";
 import QuantityInput from "./QuantityInput";
 import { productApi } from "../../products/services/productApi";
+import { Helmet } from "react-helmet";
 
 function CartPage() {
-  const { cartItems } = useCart();
-  const [selectedItems, setSelectedItems] = useState([]);
+
+  const { cartItems, clearCart, selectAllItems, deselectAllItems, toggleItem } = useCart();
   const [relatedProducts, setRelatedProducts] = useState([]);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+
   const navigate = useNavigate();
   // console.log("🟢 CartPage render - cartItems:", cartItems);
   // console.log("🟢 relatedProducts state:", relatedProducts);
 
-  // Tick all khi cartItems thay đổi
-  useEffect(() => {
-    if (cartItems.length > 0) {
-      setSelectedItems(cartItems.map((item) => item.id || item.product));
-    }
-  }, [cartItems]);
+  // Không cần sync nữa vì đã sử dụng trực tiếp trạng thái selected từ CartContext
   useEffect(() => {
     console.log("🛒 cartItems chi tiết:", JSON.stringify(cartItems, null, 2));
   }, [cartItems]);
@@ -118,27 +116,21 @@ function CartPage() {
   }, [cartItems]);
 
   const allChecked =
-    cartItems.length > 0 && selectedItems.length === cartItems.length;
+    cartItems.length > 0 && cartItems.every(item => item.selected);
 
   const handleCheckAll = (e) => {
     if (e.target.checked) {
-      setSelectedItems(cartItems.map((item) => item.id || item.product));
+      selectAllItems(); // Sử dụng hàm từ CartContext
     } else {
-      setSelectedItems([]);
+      deselectAllItems(); // Sử dụng hàm từ CartContext
     }
   };
 
   const handleCheckItem = (itemId) => {
-    setSelectedItems((prev) =>
-      prev.includes(itemId)
-        ? prev.filter((id) => id !== itemId)
-        : [...prev, itemId]
-    );
+    toggleItem(itemId); // Sử dụng hàm từ CartContext
   };
 
-  const selectedItemsData = cartItems.filter((item) =>
-    selectedItems.includes(item.id || item.product)
-  );
+  const selectedItemsData = cartItems.filter((item) => item.selected);
 
   const selectedTotal = selectedItemsData.reduce((sum, item) => {
     const prod = item.product_data || item.product || {};
@@ -152,9 +144,13 @@ function CartPage() {
 
   if (cartItems.length === 0) {
     return (
-      <Container className="cart-empty">
+      <Container className="cart-empty text-center my-5">
+        <Helmet>
+        <title>Giỏ hàng</title>
+        <meta name="description" content="Giỏ hàng" />
+      </Helmet>
         <h2>Giỏ hàng của bạn đang trống</h2>
-        <Button href="/productuser" className="btn-go-market">
+        <Button href="/" className="btn-go-market">
           <Store /> Đi tới chợ
         </Button>
       </Container>
@@ -163,10 +159,31 @@ function CartPage() {
 
   return (
     <div className="cart-page">
+      <Helmet>
+        <title>Giỏ hàng</title>
+        <meta name="description" content="Giỏ hàng" />
+      </Helmet>
       <div className="cart-container">
         {/* LEFT: Danh sách sản phẩm */}
         <div className="cart-left">
           <Card className="cart-card">
+            {/* Actions row for list */}
+            <div
+              className="cart-actions"
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                padding: "10px 12px",
+              }}
+            >
+              <Button
+                variant="outline-danger"
+                size="sm"
+                onClick={() => setShowClearConfirm(true)}
+              >
+                Xóa tất cả
+              </Button>
+            </div>
             <div className="cart-header">
               <input
                 type="checkbox"
@@ -180,13 +197,16 @@ function CartPage() {
             </div>
             {cartItems.map((item) => {
               const prod = item.product_data || item.product || {};
-              const itemId = item.id || item.product;
+              const stableKey = item.id || item.product;
               return (
-                <div key={itemId} className="cart-item">
+                <div
+                  key={item.product_data?.id || item.product}
+                  className="cart-item"
+                >
                   <input
                     type="checkbox"
-                    checked={selectedItems.includes(itemId)}
-                    onChange={() => handleCheckItem(itemId)}
+                    checked={item.selected || false}
+                    onChange={() => handleCheckItem(stableKey)}
                   />
                   <div className="item-info">
                     {prod.image ? (
@@ -194,12 +214,27 @@ function CartPage() {
                         src={prod.image}
                         alt={prod.name}
                         className="item-img"
+                        style={{ cursor: "pointer" }}
+                        onClick={() => navigate(`/products/${prod.id}`)}
                       />
                     ) : (
-                      <div className="no-image">No Image</div>
+                      <div
+                        className="no-image"
+                        style={{ cursor: "pointer" }}
+                        onClick={() => navigate(`/products/${prod.id}`)}
+                      >
+                        No Image
+                      </div>
                     )}
-                    <span className="item-name">{prod.name || "---"}</span>
+                    <span
+                      className="item-name"
+                      style={{ cursor: "pointer", color: "#000000ff" }}
+                      onClick={() => navigate(`/products/${prod.id}`)}
+                    >
+                      {prod.name || "---"}
+                    </span>
                   </div>
+
                   <div className="item-price">
                     {Number(prod.price)?.toLocaleString("vi-VN")}₫
                   </div>
@@ -244,19 +279,20 @@ function CartPage() {
             </div>
             <div style={{ display: "flex", gap: "10px" }}>
               <Button
-                disabled={selectedItems.length === 0}
+                disabled={selectedItemsData.length === 0}
                 className="btn-checkout"
-                onClick={() =>
-                  navigate("/checkout", { state: { items: selectedItemsData } })
-                }
+                onClick={() => {
+                  // Đảm bảo trạng thái selected đã được cập nhật
+                  navigate("/checkout");
+                }}
               >
                 Tiến hành thanh toán
               </Button>
               <Button
                 className="btn-checkout"
-                onClick={() =>
-                  navigate("/", { state: { items: selectedItemsData } })
-                }
+                onClick={() => {
+                  navigate("/", { state: { items: selectedItemsData } });
+                }}
               >
                 Tiếp tục mua hàng
               </Button>
@@ -264,6 +300,37 @@ function CartPage() {
           </Card>
         </div>
       </div>
+
+      {/* Modal xác nhận xóa tất cả */}
+      <Modal
+        show={showClearConfirm}
+        onHide={() => setShowClearConfirm(false)}
+        centered
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>Xóa tất cả sản phẩm</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          Bạn có chắc muốn xóa tất cả sản phẩm trong giỏ ?
+        </Modal.Body>
+        <Modal.Footer>
+          <Button
+            variant="secondary"
+            onClick={() => setShowClearConfirm(false)}
+          >
+            Hủy
+          </Button>
+          <Button
+            variant="danger"
+            onClick={async () => {
+              await clearCart();
+              setShowClearConfirm(false);
+            }}
+          >
+            Xóa tất cả
+          </Button>
+        </Modal.Footer>
+      </Modal>
 
       {/* SẢN PHẨM CÙNG DANH MỤC */}
       <div className="product-category mt-4">

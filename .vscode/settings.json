@@ -1,3 +1,10 @@
 {
-    "zencoder.enableRepoIndexing": true
+    "zencoder.enableRepoIndexing": true,
+    "python-envs.pythonProjects": [
+        {
+            "path": "backend/promotions/migrations/0003_flashsaleitem.py",
+            "envManager": "ms-python.python:venv",
+            "packageManager": "ms-python.python:pip"
+        }
+    ]
 }

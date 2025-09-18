@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { Card, Button, Spinner, Row, Col, Alert } from "react-bootstrap";
 import { FaWallet, FaMoneyBillWave, FaPlusCircle, FaCheckCircle } from "react-icons/fa";
 import WalletNotifications from './WalletNotifications';
-import './WalletTab.css';
+import '../styles/css/WalletTab.css';
 
 
 const mainColor = "#4B0082";

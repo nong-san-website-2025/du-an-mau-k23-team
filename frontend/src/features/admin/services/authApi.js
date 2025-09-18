@@ -12,6 +12,7 @@ function saveTokens(access, refresh) {
 function clearTokens() {
   localStorage.removeItem("token");
   localStorage.removeItem("refresh_token");
+  localStorage.removeItem("first_name");
 }
 
 export const authApi = {

@@ -6,6 +6,8 @@ from .serializers import ProductSerializer, ProductListSerializer, CategorySeria
 from rest_framework.views import APIView
 from blog.serializers import PostSerializer
 from blog.models import Post
+from sellers.models import Seller
+from sellers.serializers import SellerSerializer
 from rest_framework import generics, permissions
 from reviews.models import Review
 from reviews.serializers import ReviewSerializer
@@ -17,6 +19,10 @@ from .models import Category, Subcategory, Product
 from .serializers import CategorySerializer, SubcategorySerializer, ProductListSerializer, CategoryCreateSerializer
 from rest_framework.permissions import AllowAny
 from rest_framework import viewsets, permissions, status
+from django.utils.timezone import now, timedelta
+from django.db.models import Sum
+from orders.models import OrderItem  # giả sử bảng chi tiết đơn hàng tên là OrderItem
+
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
@@ -87,7 +93,12 @@ class ProductViewSet(viewsets.ModelViewSet):
         # ----- Filter theo query params -----
         params = self.request.query_params
         if 'category' in params:
-            queryset = queryset.filter(subcategory__category__key=params['category'])
+            category_value = params['category']
+            queryset = queryset.filter(
+                Q(subcategory__category__key=category_value) |
+                Q(category__key=category_value)  # 👈 thêm dòng này
+            )
+
         if 'subcategory' in params:
             queryset = queryset.filter(subcategory__name=params['subcategory'])
         if 'seller' in params:
@@ -248,16 +259,33 @@ class CategoryViewSet(viewsets.ModelViewSet):
         })
 
 
-
-    
 class SearchAPIView(APIView):
+    permission_classes = [permissions.AllowAny]
+
     def get(self, request):
-        query = request.GET.get('q', '')
-        products = Product.objects.filter(name__icontains=query)[:5]
-        posts = Post.objects.filter(title__icontains=query)[:5]
+        query = request.GET.get('q', '').strip()
+        if not query:
+            return Response({'products': [], 'posts': [], 'shops': []})
+
+        # Fuzzy search
+        products = Product.objects.filter(
+            Q(name__icontains=query) |
+            Q(description__icontains=query)
+        )[:20]
+
+        posts = Post.objects.filter(
+            Q(title__icontains=query) |
+            Q(content__icontains=query)
+        )[:10]
+
+        sellers = Seller.objects.filter(
+            Q(store_name__icontains=query)
+        )[:10]
+
         return Response({
             'products': ProductSerializer(products, many=True).data,
-            'posts': PostSerializer(posts, many=True).data
+            'posts': PostSerializer(posts, many=True).data,
+            'sellers': SellerSerializer(sellers, many=True).data
         })
     
 class ReviewListCreateView(generics.ListCreateAPIView):
@@ -270,3 +298,49 @@ class ReviewListCreateView(generics.ListCreateAPIView):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user, product_id=self.kwargs["product_id"])
+
+
+
+# Top-Products
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def top_products(request):
+    # Query param: range=today/week/month
+    filter_type = request.GET.get("filter", "today")
+
+    today = now().date()
+    if filter_type == "today":
+        start_date = today
+    elif filter_type == "week":
+        start_date = today - timedelta(days=7)
+    elif filter_type == "month":
+        start_date = today.replace(day=1)
+    else:
+        start_date = today
+
+    # Query top 10 sản phẩm bán chạy
+    order_items = (
+        OrderItem.objects.filter(order__created_at__date__gte=start_date)
+        .values(
+            "product", 
+            "product__name", 
+            "product__seller__user__username", 
+            "product__thumbnail"
+        )
+        .annotate(quantity_sold=Sum("quantity"), revenue=Sum("price"))
+        .order_by("-quantity_sold")[:10]
+    )
+
+    data = []
+    for item in order_items:
+        data.append({
+            "product_id": item["product"],
+            "product_name": item["product__name"],
+            "shop_name": item["product__seller__user__username"],
+            "quantity_sold": item["quantity_sold"],
+            "revenue": item["revenue"],
+            "thumbnail": request.build_absolute_uri(item["product__thumbnail"]) if item["product__thumbnail"] else None,
+        })
+
+    return Response(data)

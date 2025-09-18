@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Table, Tag, Space, Button, Modal, message } from "antd";
+import { Table, Tag, Space, Button, Modal, message, Input } from "antd";
 import { ReloadOutlined } from "@ant-design/icons";
 
 const UserReports = () => {
@@ -17,6 +17,7 @@ const UserReports = () => {
   const [resolutionType, setResolutionType] = useState("");
   const [refundAmount, setRefundAmount] = useState("");
   const [voucherCode, setVoucherCode] = useState("");
+  const [refundNote, setRefundNote] = useState("");
 
   // Hàm làm mới dữ liệu khiếu nại
   const refreshReports = async () => {
@@ -187,7 +188,7 @@ const UserReports = () => {
         detail += 'Hoàn tiền toàn bộ';
         break;
       case 'refund_partial':
-        detail += `Hoàn tiền một phần (${refundAmount}đ)`;
+        detail += `Hoàn tiền một phần (${refundAmount}đ)` + (complaint.note ? `\nGhi chú: ${complaint.note}` : "");
         break;
       case 'replace':
         detail += 'Đổi sản phẩm';
@@ -211,14 +212,16 @@ const UserReports = () => {
     const notifications = JSON.parse(localStorage.getItem('notifications') || '[]');
     notifications.unshift({
       id: Date.now(),
-      message: `Khiếu nại của bạn đã được xử lý!`,
-      detail,
-      time: new Date().toLocaleString(),
+      type: 'complaint',
+      title: 'Khiếu nại của bạn đã được xử lý!',
+      message: detail,
+      created_at: new Date().toISOString(),
       read: false,
       userId,
       thumbnail,
     });
     localStorage.setItem('notifications', JSON.stringify(notifications));
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event('notifications_updated'));
   };
 
   // Mở modal xử lý khiếu nại
@@ -253,6 +256,7 @@ const UserReports = () => {
         // Gọi endpoint resolve để cộng tiền vào ví khi hoàn tiền
         const payload = { resolution_type: resolutionType };
         if (resolutionType === 'refund_partial') payload.amount = Number(refundAmount);
+        if (refundNote) payload.note = refundNote;
 
         await fetch(`http://localhost:8000/api/complaints/${resolveComplaint.id}/resolve/`, {
           method: 'POST',
@@ -262,6 +266,8 @@ const UserReports = () => {
           },
           body: JSON.stringify(payload),
         });
+        // reset note after success
+        setRefundNote("");
       } else {
         // Các hình thức khác vẫn PATCH trạng thái/loại xử lý
         await fetch(`http://localhost:8000/api/complaints/${resolveComplaint.id}/`, {
@@ -282,8 +288,8 @@ const UserReports = () => {
       message.success('Đã xử lý khiếu nại!');
       setResolveModalVisible(false);
       refreshReports();
-      // Gửi thông báo cho user
-      await sendNotification(resolveComplaint.user, resolveComplaint);
+      // Gửi thông báo cho user (kèm ghi chú nếu có)
+      await sendNotification(resolveComplaint.user, { ...resolveComplaint, note: refundNote });
     } catch (err) {
       message.error('Lỗi khi cập nhật!');
     }

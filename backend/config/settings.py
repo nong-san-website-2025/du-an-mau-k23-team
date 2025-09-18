@@ -2,6 +2,9 @@ from pathlib import Path
 import os
 import dj_database_url
 from datetime import timedelta
+from dotenv import load_dotenv
+
+load_dotenv()  # Load biến môi trường từ .env nếu có
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -40,7 +43,7 @@ INSTALLED_APPS = [
     # Local apps
     "users", "sellers", "products", "reviews",
     "cart", "orders", "payments", "store",
-    "blog", "wallet", "promotions",'complaints', "marketing",
+    "blog", "wallet",'complaints', "marketing", "promotions",
 
     # Cloudinary
 
@@ -48,6 +51,9 @@ INSTALLED_APPS = [
     'cloudinary_storage',
 
     "dashboard",
+
+    # "system_logs",
+    "system"
 ]
 
 # --- Email
@@ -55,8 +61,14 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'nmk1010111@gmail.com'
-EMAIL_HOST_PASSWORD = 'rzen rgwe ltwj oveo'
+EMAIL_HOST_USER = 'khoahuynhminh2005@gmail.com'
+EMAIL_HOST_PASSWORD = 'szqpkfjifpcyxwlq'
+
+# --- Facebook
+
+
+FACEBOOK_APP_ID = os.getenv("FACEBOOK_APP_ID")
+FACEBOOK_APP_SECRET = os.getenv("FACEBOOK_APP_SECRET")
 
 # --- Middleware
 MIDDLEWARE = [
@@ -82,7 +94,7 @@ ASGI_APPLICATION = 'config.asgi.application'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [os.path.join(BASE_DIR.parent, "frontend", "public")],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -117,15 +129,14 @@ if os.environ.get("DATABASE_URL"):
 else:
     DATABASES = {
         'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / "db.sqlite3", 
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': 'ecom_db',
             'USER': 'postgres',
             'PASSWORD': '12345',
             'HOST': 'localhost',
             'PORT': '5432',
         }
     }
-
 # --- Auth
 AUTH_USER_MODEL = "users.CustomUser"
 AUTHENTICATION_BACKENDS = [
@@ -172,7 +183,9 @@ DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 
 # --- CORS & CSRF
 CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOW_ALL_ORIGINS = True  
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+]
 
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:3000",
@@ -200,12 +213,9 @@ SIMPLE_JWT = {
     'BLACKLIST_AFTER_ROTATION': True,
 }
 
-MOMO_CONFIG = {
-    "partnerCode": "MOMO",
-    "accessKey": "F8BBA842ECF85",
-    "secretKey": "K951B6PE1waDMi640xX08PD3vg6EkVlz",
-    "endpoint": "https://test-payment.momo.vn/v2/gateway/api/create",  # API mới
-    "redirectUrl": "http://localhost:3000/payment/result",  # frontend React
-    "ipnUrl": "http://localhost:8000/api/payments/momo/notify/",
-    "notifyUrl": "http://localhost:8000/api/payments/momo/ipn",  # backend nhận callback
+VNPAY_CONFIG = {
+    "TMN_CODE": "6EW69YA0",
+    "HASH_SECRET_KEY": "ZF17PDTYTRE7VE2M3TEZWH1YHDGBSTD8",
+    "VNPAY_URL": "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html",
+    "RETURN_URL": "http://localhost:3000/vnpay-return",
 }
