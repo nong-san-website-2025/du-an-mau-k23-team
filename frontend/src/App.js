@@ -7,6 +7,7 @@ import { userRoutes } from "./routes/UserRoutes";
 import { adminRoutes } from "./routes/AdminRoutes";
 import { sellerRoutes } from "./routes/SellerRoutes.jsx";
 import VerifyEmailPage from "./features/login_register/components/VerifyEmailPage.jsx";
+import VnpayReturn from "./pages/VnpayReturn";
 
 
 function App() {
@@ -25,6 +26,8 @@ function App() {
                 <Route path="/verify-email" element={<VerifyEmailPage />} />
                 {/* Optional legacy route (if ever linked directly from email) */}
                 <Route path="/verify-email/:uid/:token" element={<VerifyEmailPage />} />
+                {/* VNPAY return handler */}
+                <Route path="/vnpay-return" element={<VnpayReturn />} />
               </Routes>
             </BannerProvider>
         </CartProvider>

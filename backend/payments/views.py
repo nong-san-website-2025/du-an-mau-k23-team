@@ -1,4 +1,39 @@
 from django.utils import timezone
+from django.db import models
+from django.db.models import Sum
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from .models import Payment
+from products.models import Product
+from orders.models import OrderItem
+from sellers.models import Seller
+from .models_withdraw import WithdrawRequest
+from .serializers import WithdrawRequestSerializer
+from django.views.decorators.csrf import csrf_exempt
+import urllib.parse
+from django.conf import settings
+from django.http import JsonResponse
+import hashlib
+from datetime import datetime
+from .serializers import PaymentSerializer
+import random
+import logging
+from vnpay_python.vnpay import vnpay
+from django.shortcuts import redirect
+from django.contrib.auth import get_user_model
+from rest_framework import status
+from rest_framework.decorators import permission_classes
+from rest_framework.permissions import AllowAny
+from orders.serializers import OrderCreateSerializer
+from orders.models import Order, OrderItem
+from cart.models import Cart
+from django.core.cache import cache
+
+
+logger = logging.getLogger(__name__)
+
+
 def seed_finance_demo_data(request):
     """API tạm thời để seed dữ liệu demo cho seller hiện tại"""
     user = request.user
@@ -23,18 +58,6 @@ def seed_finance_demo_data(request):
     # Tạo 1 withdraw
     WithdrawRequest.objects.get_or_create(seller=seller, amount=500000, status="paid", defaults={"created_at": timezone.now()})
     return Response({"message": "Demo data seeded!"})
-from django.db import models
-from django.db.models import Sum
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from .models import Payment
-from products.models import Product
-from orders.models import OrderItem
-from sellers.models import Seller
-from .models_withdraw import WithdrawRequest
-from .serializers import WithdrawRequestSerializer
-
 
 
 
@@ -116,26 +139,7 @@ def withdraw_history(request):
     withdraws = WithdrawRequest.objects.filter(seller=seller).order_by("-created_at")
     data = WithdrawRequestSerializer(withdraws, many=True).data
     return Response({"data": data})
-import hmac
-import hashlib
-import requests
-from datetime import datetime
-from django.conf import settings
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework import status
-from orders.models import Order
 
-from .models import Payment
-from products.models import Product
-from orders.models import OrderItem
-from sellers.models import Seller
-from .serializers import PaymentSerializer
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework import status
 
 
 # API: Lấy danh sách payment và tổng doanh thu cho seller
@@ -170,121 +174,283 @@ def seller_finance(request):
     })
 
 
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def create_momo_payment(request):
-    """
-    Tạo thanh toán MoMo:
-    - Tạo Order trước
-    - Tạo Payment liên kết Order
-    - Gọi MoMo API
-    - Trả về payUrl/QR/deeplink + orderId để frontend polling
-    """
-    data = request.data
 
-    # Lấy dữ liệu từ frontend
-    amount = str(data.get("amount", 0))
-    customer_name = data.get("customer_name", "")
-    customer_phone = data.get("customer_phone", "")
-    address = data.get("address", "")
-    note = data.get("note", "")
 
-    # 1️⃣ Tạo Order
-    order = Order.objects.create(
-        user=request.user,
-        total_price=amount,
-        status="pending",
-        customer_name=customer_name,
-        customer_phone=customer_phone,
-        address=address,
-        note=note,
-        payment_method="MOMO"
-    )
-
-    # 2️⃣ Tạo momo_order_id riêng cho MoMo (requestId & orderId)
-    momo_order_id = str(int(datetime.now().timestamp() * 1000))  # timestamp ms
-    order_info = f"Thanh toán đơn hàng #{order.id}"
-
-    # 3️⃣ Tạo signature MoMo
-    raw_signature = (
-        f"accessKey={settings.MOMO_CONFIG['accessKey']}"
-        f"&amount={amount}"
-        f"&extraData="
-        f"&ipnUrl={settings.MOMO_CONFIG['notifyUrl']}"
-        f"&orderId={momo_order_id}"
-        f"&orderInfo={order_info}"
-        f"&partnerCode={settings.MOMO_CONFIG['partnerCode']}"
-        f"&redirectUrl={settings.MOMO_CONFIG['redirectUrl']}"
-        f"&requestId={momo_order_id}"
-        f"&requestType=captureWallet"
-    )
-    signature = hmac.new(
-        settings.MOMO_CONFIG['secretKey'].encode('utf-8'),
-        raw_signature.encode('utf-8'),
-        hashlib.sha256
-    ).hexdigest()
-
-    payload = {
-        "partnerCode": settings.MOMO_CONFIG["partnerCode"],
-        "accessKey": settings.MOMO_CONFIG["accessKey"],
-        "requestId": momo_order_id,
-        "amount": amount,
-        "orderId": momo_order_id,
-        "orderInfo": order_info,
-        "redirectUrl": settings.MOMO_CONFIG["redirectUrl"],
-        "ipnUrl": settings.MOMO_CONFIG["notifyUrl"],
-        "extraData": "",
-        "requestType": "captureWallet",
-        "signature": signature,
-        "lang": "vi"
-    }
-
-    # 4️⃣ Gọi MoMo API
+@api_view(["POST"])  # dùng DRF để JWT auth set request.user
+@permission_classes([AllowAny])
+@csrf_exempt
+def create_payment(request):
     try:
-        response = requests.post(settings.MOMO_CONFIG["endpoint"], json=payload, timeout=10)
-        result = response.json()
+        order_id = timezone.now().strftime("%Y%m%d%H%M%S")
+
+        # Nhận dữ liệu từ FE (DRF Request)
+        amount = int(request.data.get("amount") or 0)
+        order_data = request.data.get("order_data") or {}
+
+        if amount <= 0:
+            amount = 100000  # mặc định nếu không hợp lệ
+
+        # Lưu order_data vào session để dùng ở vnpay_return
+        # Lưu vào cache theo txn_ref để không phụ thuộc session cookie
+        if order_data is not None:
+            # Gắn thêm thông tin user và session để dùng sau khi trả về
+            if getattr(request, 'user', None) and request.user.is_authenticated:
+                try:
+                    order_data["user_id"] = request.user.id
+                except Exception:
+                    pass
+            # Lưu session_key cho khách vãng lai
+            try:
+                # Đảm bảo có sessionid (dùng cho guest cart)
+                if not request.session.session_key:
+                    request.session.create()
+                order_data["session_key"] = request.session.session_key
+            except Exception:
+                pass
+
+            cache_key = f"vnp_order:{order_id}"
+            cache.set(cache_key, order_data, timeout=60*30)  # 30 phút
+
+        vnp = vnpay()
+        vnp.requestData = {
+            'vnp_Version': '2.1.0',
+            'vnp_Command': 'pay',
+            'vnp_TmnCode': settings.VNPAY_CONFIG["TMN_CODE"],
+            'vnp_Amount': amount * 100,  # ⚠️ VNPAY yêu cầu nhân 100
+            'vnp_CurrCode': 'VND',
+            'vnp_TxnRef': order_id,
+            'vnp_OrderInfo': f"Thanh toan don hang {order_id}",
+            'vnp_OrderType': 'other',
+            'vnp_Locale': 'vn',
+            'vnp_ReturnUrl': settings.VNPAY_CONFIG["RETURN_URL"],
+            'vnp_IpAddr': request.META.get('REMOTE_ADDR', '127.0.0.1'),
+            'vnp_CreateDate': timezone.now().strftime("%Y%m%d%H%M%S"),  # chuẩn format
+        }
+
+        payment_url = vnp.get_payment_url(
+            settings.VNPAY_CONFIG["VNPAY_URL"],
+            settings.VNPAY_CONFIG["HASH_SECRET_KEY"]   # đúng tên key
+        )
+
+        logger.info(f"VNPAY Payment URL: {payment_url}")
+        print(f"[DEBUG] Payment URL gửi sang VNPAY: {payment_url}")
+        print(f"[DEBUG] VNPAY Return URL: {settings.VNPAY_CONFIG['RETURN_URL']}")
+        print(f"[DEBUG] Order data cached: {order_data}")
+
+        return JsonResponse({"payment_url": payment_url})
     except Exception as e:
-        return Response({"error": f"Lỗi gọi MoMo: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    # 5️⃣ Lưu Payment liên kết Order
-    Payment.objects.create(
-        order=order,
-        amount=amount,
-        status="PENDING",
-        momo_order_id=momo_order_id
-    )
-
-    # 6️⃣ Trả về frontend
-    return Response({
-        "payUrl": result.get("payUrl"),
-        "qrCodeUrl": result.get("qrCodeUrl"),
-        "deeplink": result.get("deeplink"),
-        "orderId": order.id
-    }, status=status.HTTP_200_OK)
+        logger.error(f"Error in create_payment: {e}", exc_info=True)
+        return JsonResponse({"error": str(e)}, status=500)
 
 
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def momo_ipn(request):
-    """MoMo gọi lại khi thanh toán xong"""
-    data = request.data
-    momo_order_id = data.get("orderId")
-    result_code = data.get("resultCode")  # 0 = thành công
+def vnpay_return(request):
+    """DEPRECATED: VNPAY return handler - redirect to frontend"""
+    # VNPAY sẽ redirect về frontend, không xử lý ở đây nữa
+    return redirect("http://localhost:3000/vnpay-return")
+    
 
-    # Cập nhật Payment dựa theo momo_order_id
-    payment = Payment.objects.filter(momo_order_id=momo_order_id).first()
-    if not payment:
-        return Response({"error": "Payment không tồn tại"}, status=status.HTTP_404_NOT_FOUND)
+def verify_vnpay_signature(request_data):
+    """Hàm verify chữ ký VNPAY"""
+    vnp_secure_hash = request_data.get("vnp_SecureHash")
+    if not vnp_secure_hash:
+        return False
 
-    if result_code == 0:
-        payment.status = "success"
-        payment.save()
-        # Đồng thời cập nhật Order (trạng thái chuẩn: success)
-        order = payment.order
-        order.status = "success"
-        order.save(update_fields=["status"])
+    input_data = {k: v for k, v in request_data.items() if k.startswith("vnp_") and k != "vnp_SecureHash"}
+    sorted_data = sorted(input_data.items())
+    query = "&".join(f"{k}={v}" for k, v in sorted_data)
+    hash_value = hashlib.sha256((settings.VNP_HASH_SECRET + query).encode("utf-8")).hexdigest().upper()
+    return hash_value == vnp_secure_hash
+
+
+@api_view(["POST"])
+@csrf_exempt
+def vnpay_return_api(request):
+    """API endpoint cho frontend gọi để xử lý VNPAY return"""
+    try:
+        # Lấy params từ request body (frontend gửi lên)
+        vnp_params = request.data if hasattr(request, 'data') else request.GET.dict()
+        
+        logger.info(f"[VNPAY_RETURN_API] Received params: {list(vnp_params.keys())}")
+        
+        vnp = vnpay()
+        vnp.responseData = vnp_params
+
+        if vnp.validate_response(settings.VNPAY_CONFIG["HASH_SECRET_KEY"]):
+            response_code = vnp_params.get('vnp_ResponseCode')
+            if response_code == '00':
+                try:
+                    # Lấy dữ liệu giỏ hàng từ cache theo TxnRef
+                    txn_ref = vnp_params.get('vnp_TxnRef')
+                    cache_key = f"vnp_order:{txn_ref}"
+                    # Idempotency lock: tránh xử lý trùng cho cùng txn_ref
+                    lock_key = f"vnp_lock:{txn_ref}"
+                    got_lock = cache.add(lock_key, True, timeout=60)  # chỉ một process giữ lock trong 60s
+                    if not got_lock:
+                        logger.warning(f"[VNPAY_RETURN_API] Duplicate call detected for txn_ref={txn_ref}; skipping")
+                        existing_payment = Payment.objects.filter(vnp_transaction_no=vnp_params.get("vnp_TransactionNo")).first()
+                        if existing_payment:
+                            return JsonResponse({"success": True, "order_id": existing_payment.order.id, "message": "Duplicate ignored"})
+                        return JsonResponse({"success": True, "message": "Duplicate ignored"})
+                    order_data = cache.get(cache_key) or {}
+                    logger.info(f"[VNPAY_RETURN_API] txn_ref={txn_ref}, order_data_keys={list(order_data.keys()) if isinstance(order_data, dict) else type(order_data)}")
+                    
+                    # Kiểm tra xem đã tạo đơn cho txn_ref này chưa
+                    existing_payment = Payment.objects.filter(vnp_transaction_no=vnp_params.get("vnp_TransactionNo")).first()
+                    if existing_payment:
+                        logger.warning(f"[VNPAY_RETURN_API] Order already exists for transaction {vnp_params.get('vnp_TransactionNo')}")
+                        return JsonResponse({"success": True, "order_id": existing_payment.order.id, "message": "Order already exists"})
+                    
+                    items = order_data.get("items", [])
+                    user_instance = None
+                    UserModel = get_user_model()
+                    user_id = order_data.get("user_id")
+                    if user_id:
+                        try:
+                            user_instance = UserModel.objects.get(pk=user_id)
+                        except UserModel.DoesNotExist:
+                            user_instance = None
+
+                    if not user_instance and (not getattr(request, "user", None) or not request.user.is_authenticated):
+                        logger.error("[VNPAY_RETURN_API] Missing user for order creation. order_data has no user_id and request.user is anonymous.")
+                        return JsonResponse({"success": False, "error": "Missing user"})
+
+                    # Tạo Order ở trạng thái pending (chờ xác nhận)
+                    order = Order.objects.create(
+                        user=user_instance or (request.user if getattr(request, "user", None) and request.user.is_authenticated else None),
+                        total_price=order_data.get("total_price") or (sum((float(i.get('price', 0)) * int(i.get('quantity', 0))) for i in items)),
+                        status="pending",
+                        customer_name=order_data.get("customer_name", ""),
+                        customer_phone=order_data.get("customer_phone", ""),
+                        address=order_data.get("address", ""),
+                        note=order_data.get("note", ""),
+                        payment_method="vnpay",
+                    )
+
+                    # Tạo các OrderItem theo giỏ hàng
+                    for it in items:
+                        try:
+                            OrderItem.objects.create(
+                                order=order,
+                                product_id=it.get("product"),
+                                quantity=int(it.get("quantity", 1)),
+                                price=float(it.get("price", 0)),
+                            )
+                        except Exception:
+                            # Nếu có item lỗi, bỏ qua item đó
+                            pass
+
+                    # Lưu payment record
+                    Payment.objects.create(
+                        order=order,
+                        amount=float(vnp_params.get("vnp_Amount", 0)) / 100,
+                        status="success",
+                        vnp_response_code=response_code,
+                        vnp_transaction_no=vnp_params.get("vnp_TransactionNo"),
+                        order_data=order_data,
+                    )
+
+                    # Xóa giỏ hàng sau khi tạo đơn thành công (chỉ những sản phẩm đã chọn)
+                    try:
+                        session_key = order_data.get("session_key")
+                        selected_product_ids = [item.get("product") for item in items if item.get("product")]
+                        
+                        if user_instance:
+                            # Xóa cart items của user đã đăng nhập (chỉ những sản phẩm đã chọn)
+                            from cart.models import Cart as CartModel, CartItem as CartItemModel
+                            cart = CartModel.objects.filter(user=user_instance).first()
+                            if cart and selected_product_ids:
+                                deleted_count = CartItemModel.objects.filter(
+                                    cart=cart, 
+                                    product_id__in=selected_product_ids
+                                ).delete()[0]
+                                logger.info(f"[VNPAY_RETURN_API] Cleared {deleted_count} selected items for user {user_instance.id}")
+                        elif session_key:
+                            # Xóa cart items của guest theo session_key (chỉ những sản phẩm đã chọn)
+                            from cart.models import Cart as CartModel, CartItem as CartItemModel
+                            cart = CartModel.objects.filter(session_key=session_key, user=None).first()
+                            if cart and selected_product_ids:
+                                deleted_count = CartItemModel.objects.filter(
+                                    cart=cart, 
+                                    product_id__in=selected_product_ids
+                                ).delete()[0]
+                                logger.info(f"[VNPAY_RETURN_API] Cleared {deleted_count} selected items for session {session_key}")
+                    except Exception as e:
+                        logger.exception(f"[VNPAY_RETURN_API] Error while clearing selected cart items: {e}")
+                        # Không chặn luồng nếu xóa giỏ hàng lỗi
+                        pass
+
+                    # Xóa cache để tránh tạo lại
+                    try:
+                        cache.delete(cache_key)
+                    except Exception:
+                        pass
+
+                    return JsonResponse({"success": True, "order_id": order.id})
+                except Exception as e:
+                    logger.exception(f"[VNPAY_RETURN_API] Error creating order: {e}")
+                    return JsonResponse({"success": False, "error": str(e)})
+            else:
+                return JsonResponse({"success": False, "error": "Payment failed"})
+        else:
+            return JsonResponse({"success": False, "error": "Invalid signature"})
+    except Exception as e:
+        logger.exception(f"[VNPAY_RETURN_API] Unexpected error: {e}")
+        return JsonResponse({"success": False, "error": str(e)})
+    finally:
+        # Release lock if held
+        try:
+            txn_ref = None
+            if 'vnp_TxnRef' in request.data:
+                txn_ref = request.data.get('vnp_TxnRef')
+            elif request.GET.get('vnp_TxnRef'):
+                txn_ref = request.GET.get('vnp_TxnRef')
+            if txn_ref:
+                cache.delete(f"vnp_lock:{txn_ref}")
+        except Exception:
+            pass
+
+
+@api_view(["GET"])
+@csrf_exempt
+def vnpay_callback(request):
+    vnp = vnpay()
+    inputData = request.GET.dict()
+    vnp.responseData = inputData
+
+    if vnp.validate_response(settings.VNPAY_CONFIG["HASH_SECRET_KEY"]):
+        txn_ref = inputData.get("vnp_TxnRef")
+        response_code = inputData.get("vnp_ResponseCode")
+        amount = int(inputData.get("vnp_Amount", 0)) / 100
+        trans_no = inputData.get("vnp_TransactionNo")
+
+        # 🔹 Lấy giỏ hàng từ session hoặc từ Payment.order_data (bạn gửi lên create_payment)
+        order_data = request.session.get("order_data")  
+
+        if response_code == "00":
+            # Tạo Order trong DB
+            order = Order.objects.create(
+                user=request.user if request.user.is_authenticated else None,
+                total_price=amount,
+                status="success",
+                customer_name=order_data.get("customer_name"),
+                customer_phone=order_data.get("customer_phone"),
+                address=order_data.get("address"),
+                note=order_data.get("note", ""),
+                payment_method="vnpay",
+            )
+
+            # Tạo Payment record
+            Payment.objects.create(
+                order=order,
+                amount=amount,
+                status="success",
+                vnp_response_code=response_code,
+                vnp_transaction_no=trans_no,
+                order_data=order_data
+            )
+
+            return JsonResponse({"RspCode": "00", "Message": "Confirm Success"})
+        else:
+            return JsonResponse({"RspCode": "01", "Message": "Payment Failed"})
     else:
-        payment.status = "failed"
-        payment.save()
-
-    return Response({"message": "IPN received"}, status=status.HTTP_200_OK)
+        return JsonResponse({"RspCode": "97", "Message": "Invalid signature"})

@@ -24,10 +24,8 @@ const navItems = [
   { key: "profile", label: "Hồ Sơ", icon: <FaUser /> },
   { key: "address", label: "Địa Chỉ", icon: <FaMapMarkerAlt /> },
   { key: "password", label: "Đổi Mật Khẩu", icon: <FaLock /> },
-  { key: "notification", label: "Cài Đặt Thông Báo", icon: <FaBell /> },
   { key: "voucher", label: "Kho Voucher", icon: <FaGift /> },
   { key: "point", label: "Điểm Thưởng", icon: <FaStar /> },
-  { key: "special", label: "Ưu Đãi Đặc Biệt", icon: <FaSeedling /> },
   { key: "wallet", label: "Ví", icon: <FaWallet /> },
 ];
 

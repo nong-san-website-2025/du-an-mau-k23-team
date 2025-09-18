@@ -182,7 +182,9 @@ DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 
 # --- CORS & CSRF
 CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOW_ALL_ORIGINS = True  
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+]
 
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:3000",
@@ -210,12 +212,9 @@ SIMPLE_JWT = {
     'BLACKLIST_AFTER_ROTATION': True,
 }
 
-MOMO_CONFIG = {
-    "partnerCode": "MOMO",
-    "accessKey": "F8BBA842ECF85",
-    "secretKey": "K951B6PE1waDMi640xX08PD3vg6EkVlz",
-    "endpoint": "https://test-payment.momo.vn/v2/gateway/api/create",  # API mới
-    "redirectUrl": "http://localhost:3000/payment/result",  # frontend React
-    "ipnUrl": "http://localhost:8000/api/payments/momo/notify/",
-    "notifyUrl": "http://localhost:8000/api/payments/momo/ipn",  # backend nhận callback
+VNPAY_CONFIG = {
+    "TMN_CODE": "6EW69YA0",
+    "HASH_SECRET_KEY": "ZF17PDTYTRE7VE2M3TEZWH1YHDGBSTD8",
+    "VNPAY_URL": "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html",
+    "RETURN_URL": "http://localhost:3000/vnpay-return",
 }

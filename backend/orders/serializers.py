@@ -3,15 +3,26 @@ from .models import Order, OrderItem, Complaint
 
 
 
+
 class OrderItemSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source='product.name', read_only=True)
-    product_image = serializers.CharField(source='product.image', read_only=True)
+    product_image = serializers.SerializerMethodField()
     seller_name = serializers.CharField(source='product.seller.store_name', read_only=True)
     seller_phone = serializers.CharField(source='product.seller.phone', read_only=True)
-    
+    seller_id = serializers.IntegerField(source='product.seller.id', read_only=True)
+
     class Meta:
         model = OrderItem
         exclude = ["order"]
+
+    def get_product_image(self, obj):
+        request = self.context.get('request')
+        if obj.product and obj.product.image:
+            if hasattr(obj.product.image, 'url'):
+                if request:
+                    return request.build_absolute_uri(obj.product.image.url)
+                return obj.product.image.url
+        return None
 
 
 
@@ -146,6 +157,13 @@ class OrderSerializer(serializers.ModelSerializer):
             representation['total_price'] = str(total)
         return representation
     
+
+class OrderItemCreateSerializer(serializers.ModelSerializer):
+    product_id = serializers.IntegerField(write_only=True)
+
+    class Meta:
+        model = OrderItem
+        fields = ['product_id', 'quantity', 'price']
 
 
 

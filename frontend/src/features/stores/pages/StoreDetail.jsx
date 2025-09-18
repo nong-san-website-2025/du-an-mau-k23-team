@@ -331,15 +331,18 @@ const StoreDetail = () => {
                       "0 4px 12px rgba(0,0,0,0.06)";
                   }}
                 >
-                  {product.image ? (
-                    <Card.Img
-                      variant="top"
-                      src={product.image}
-                      style={{ height: 200, objectFit: "cover" }}
-                    />
-                  ) : (
-                    <div style={{ height: 200, background: "#f1f3f5" }} />
-                  )}
+                  <Card.Img
+                    variant="top"
+                    src={(() => {
+                      const placeholder = "https://via.placeholder.com/300x200?text=No+Image";
+                      if (!product.image) return placeholder;
+                      if (product.image.startsWith("http")) return product.image;
+                      if (product.image.startsWith("/")) return `http://localhost:8000${product.image}`;
+                      return `http://localhost:8000/media/${product.image}`;
+                    })()}
+                    style={{ height: 200, objectFit: "cover" }}
+                    onError={e => { e.target.onerror = null; e.target.src = "https://via.placeholder.com/300x200?text=No+Image"; }}
+                  />
                   <Card.Body>
                     <Card.Title
                       className="fw-bold"

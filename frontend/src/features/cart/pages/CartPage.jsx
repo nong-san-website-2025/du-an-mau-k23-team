@@ -7,22 +7,19 @@ import { Store } from "lucide-react";
 import "../styles/CartPage.css";
 import QuantityInput from "./QuantityInput";
 import { productApi } from "../../products/services/productApi";
+import { Helmet } from "react-helmet";
 
 function CartPage() {
-  const { cartItems, clearCart } = useCart();
-  const [selectedItems, setSelectedItems] = useState([]);
+
+  const { cartItems, clearCart, selectAllItems, deselectAllItems, toggleItem } = useCart();
   const [relatedProducts, setRelatedProducts] = useState([]);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+
   const navigate = useNavigate();
   // console.log("🟢 CartPage render - cartItems:", cartItems);
   // console.log("🟢 relatedProducts state:", relatedProducts);
 
-  // Tick all khi cartItems thay đổi
-  useEffect(() => {
-    if (cartItems.length > 0) {
-      setSelectedItems(cartItems.map((item) => item.id || item.product));
-    }
-  }, [cartItems]);
+  // Không cần sync nữa vì đã sử dụng trực tiếp trạng thái selected từ CartContext
   useEffect(() => {
     console.log("🛒 cartItems chi tiết:", JSON.stringify(cartItems, null, 2));
   }, [cartItems]);
@@ -119,27 +116,21 @@ function CartPage() {
   }, [cartItems]);
 
   const allChecked =
-    cartItems.length > 0 && selectedItems.length === cartItems.length;
+    cartItems.length > 0 && cartItems.every(item => item.selected);
 
   const handleCheckAll = (e) => {
     if (e.target.checked) {
-      setSelectedItems(cartItems.map((item) => item.id || item.product));
+      selectAllItems(); // Sử dụng hàm từ CartContext
     } else {
-      setSelectedItems([]);
+      deselectAllItems(); // Sử dụng hàm từ CartContext
     }
   };
 
   const handleCheckItem = (itemId) => {
-    setSelectedItems((prev) =>
-      prev.includes(itemId)
-        ? prev.filter((id) => id !== itemId)
-        : [...prev, itemId]
-    );
+    toggleItem(itemId); // Sử dụng hàm từ CartContext
   };
 
-  const selectedItemsData = cartItems.filter((item) =>
-    selectedItems.includes(item.id || item.product)
-  );
+  const selectedItemsData = cartItems.filter((item) => item.selected);
 
   const selectedTotal = selectedItemsData.reduce((sum, item) => {
     const prod = item.product_data || item.product || {};
@@ -153,9 +144,13 @@ function CartPage() {
 
   if (cartItems.length === 0) {
     return (
-      <Container className="cart-empty">
+      <Container className="cart-empty text-center my-5">
+        <Helmet>
+        <title>Giỏ hàng</title>
+        <meta name="description" content="Giỏ hàng" />
+      </Helmet>
         <h2>Giỏ hàng của bạn đang trống</h2>
-        <Button href="/productuser" className="btn-go-market">
+        <Button href="/" className="btn-go-market">
           <Store /> Đi tới chợ
         </Button>
       </Container>
@@ -164,6 +159,10 @@ function CartPage() {
 
   return (
     <div className="cart-page">
+      <Helmet>
+        <title>Giỏ hàng</title>
+        <meta name="description" content="Giỏ hàng" />
+      </Helmet>
       <div className="cart-container">
         {/* LEFT: Danh sách sản phẩm */}
         <div className="cart-left">
@@ -206,7 +205,7 @@ function CartPage() {
                 >
                   <input
                     type="checkbox"
-                    checked={selectedItems.includes(stableKey)}
+                    checked={item.selected || false}
                     onChange={() => handleCheckItem(stableKey)}
                   />
                   <div className="item-info">
@@ -280,19 +279,20 @@ function CartPage() {
             </div>
             <div style={{ display: "flex", gap: "10px" }}>
               <Button
-                disabled={selectedItems.length === 0}
+                disabled={selectedItemsData.length === 0}
                 className="btn-checkout"
-                onClick={() =>
-                  navigate("/checkout", { state: { items: selectedItemsData } })
-                }
+                onClick={() => {
+                  // Đảm bảo trạng thái selected đã được cập nhật
+                  navigate("/checkout");
+                }}
               >
                 Tiến hành thanh toán
               </Button>
               <Button
                 className="btn-checkout"
-                onClick={() =>
-                  navigate("/", { state: { items: selectedItemsData } })
-                }
+                onClick={() => {
+                  navigate("/", { state: { items: selectedItemsData } });
+                }}
               >
                 Tiếp tục mua hàng
               </Button>

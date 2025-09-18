@@ -19,6 +19,7 @@ import axiosInstance from "../features/admin/services/axiosInstance";
 import Logo from "./Header/Logo";
 import SearchBoxWithSuggestions from "./Header/SearchBoxWithSuggestions";
 import UserActions from "./Header/UserActions";
+import TopBar from './Header/TopBar';
 
 const iconMap = {
   Carrot: Carrot,
@@ -284,7 +285,6 @@ export default function Header() {
         className="shadow-sm"
         style={{
           position: "sticky",
-
           top: 0,
           zIndex: 999,
           fontFamily: "Montserrat, Arial, sans-serif",
@@ -293,6 +293,7 @@ export default function Header() {
         }}
       >
         {/* Top bar */}
+        <TopBar />
         {/* <TopBar /> */}
 
         {/* Main header */}
@@ -300,8 +301,8 @@ export default function Header() {
           className="border-bottom"
           style={{
             position: "relative",
-            background: "#2E7D32",
-            padding: "0 100px",
+            background: "linear-gradient(to bottom, #2E7D32 0%, #4CAF50 100%)",
+            padding: "0 110px",
           }}
         >
           <div

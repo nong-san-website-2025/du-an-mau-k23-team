@@ -4,7 +4,7 @@ import BannerSlider from "../components/home/BannerSlider";
 import CategorySection from "../components/home/CategorySection";
 import FlashSaleSection from "../components/home/FlashSaleSection";
 import PersonalizedSection from "../components/home/PersonalizedSection";
-
+import { Helmet } from "react-helmet";
 
 import {
   // fetchUserRecommendations,
@@ -23,11 +23,10 @@ export default function HomePage() {
   useEffect(() => {
     const loadData = async () => {
       try {
-
         // Gọi fetchCategories trước
         const catRes = await fetchCategories();
 
-        setCategories( catRes.data || []);
+        setCategories(catRes.data || []);
 
         // setRecommendedProducts(recommendRes.data || []);
       } catch (error) {
@@ -53,6 +52,10 @@ export default function HomePage() {
 
   return (
     <div className="container" style={{ padding: "0 16px" }}>
+      <Helmet>
+        <title>GreenFarm</title>
+        <meta name="description" content="Đây là trang chủ của website." />
+      </Helmet>
       {/* Banner Carousel */}
       <BannerSlider />
 
@@ -64,9 +67,9 @@ export default function HomePage() {
 
       {/* Personalized Section */}
       <PersonalizedSection
-          username={username}
-          // recommended={recommendedProducts}
-        />
+        username={username}
+        // recommended={recommendedProducts}
+      />
 
       {/* Popup Modal */}
       <Modal

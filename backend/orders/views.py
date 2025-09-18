@@ -9,6 +9,8 @@ from .serializers import OrderSerializer, OrderCreateSerializer
 from rest_framework.permissions import AllowAny, IsAuthenticated
 import logging
 from .services import complete_order, OrderProcessingError
+from orders.models import OrderItem
+from django.db.models import Sum
 
 logger = logging.getLogger(__name__)
 

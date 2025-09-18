@@ -38,13 +38,13 @@ export const userRoutes = [
     <Route path="store/:id" element={<StoreDetail />} />
     <Route path="search/" element={<SearchResultsPage />} />
     <Route path="/reset-password/:uidb64/:token/" element={<ResetPasswordPage />} />
+    <Route path="checkout" element={<CheckoutPage />} />
 
 
     {/* Private routes */}
     <Route element={<PrivateRoute />}>
       <Route path="me" element={<UserProfile />} />
       <Route path="orders" element={<Orders />} />
-      <Route path="checkout" element={<CheckoutPage />} />
       <Route path="profile" element={<ProfilePage />} />
       <Route path="register-seller" element={<SellerRegisterPage />} />
       <Route path="/payment/result" element={<PaymentResultPage />} />

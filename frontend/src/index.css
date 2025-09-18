@@ -7,6 +7,7 @@
 .main-container {
   margin: 0 auto;
   width: 100%;
+  background-color: #e0ebeb;
 }
 /* Reset cơ bản */
 html,
@@ -15,6 +16,7 @@ body {
   margin: 0;
   padding: 0;
   overflow-x: hidden; /* tránh scroll ngang */
+  
 
   /* Font chung */
   font-family:

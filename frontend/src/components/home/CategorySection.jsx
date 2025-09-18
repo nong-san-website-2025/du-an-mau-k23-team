@@ -14,7 +14,7 @@ export default function CategorySection({ categories = [] }) {
             className="col-6 col-sm-4 col-md-3 col-lg-2 col-xl-1"
           >
             <Link
-              to={`/productuser?category=${cat.key || cat.name}`}
+              to={`/productuser?category=${encodeURIComponent(cat.name)}`}
               className="text-decoration-none text-dark"
             >
               <div className="category-item p-2" style={{ height: "150px" }}>

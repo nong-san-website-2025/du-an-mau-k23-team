@@ -1,34 +1,42 @@
 import React from "react";
 import { Phone, Mail } from "lucide-react";
+import {
+  FaFacebook,
+  FaInstagram,
+  FaInstagramSquare,
+  FaInstalod,
+  FaPhone,
+} from "react-icons/fa";
+import { PiInstagramLogoFill } from "react-icons/pi";
+import { IoIosHelpCircle } from "react-icons/io";
 
 export default function TopBar() {
-  const greenStyle = { backgroundColor: "#22C55E" };
-
   return (
-    <div style={greenStyle} className="text-white small py-0">
+    <div className="text-white small ">
       <div
-        className="container d-flex justify-content-between align-items-center px-2"
-        style={{ minHeight: "36px" }}
+        className="container d-flex justify-content-between align-items-center px-4"
+        style={{ minHeight: "30px" }}
       >
         {/* Left: Hotline */}
         <div
           className="d-flex align-items-center"
-          style={{ whiteSpace: "nowrap", fontSize: 16, fontWeight: 600 }}
+          style={{ whiteSpace: "nowrap", fontSize: 13, fontWeight: 400 }}
         >
-          <Phone size={16} className="me-1" />
           <span>
-            Hotline: <b style={{ letterSpacing: 1 }}>0328002213</b>
+            Tải ứng dụng | <FaFacebook /> <PiInstagramLogoFill size="15" />
           </span>
         </div>
 
         {/* Right: Email */}
         <div
           className="d-flex align-items-center d-none d-md-flex"
-          style={{ whiteSpace: "nowrap", fontSize: 16, fontWeight: 600 }}
+          style={{ whiteSpace: "nowrap", fontSize: 16 }}
         >
-          <Mail size={16} className="me-1" />
-          <span>
-            Email: <b style={{ letterSpacing: 1 }}>greenfarmorganicvietnam@gmail.com</b>
+          <span className="p-1 fw-light" style={{fontSize: "15px", paddingTop: 5}}>
+            <FaPhone size="12" /> Liên hệ
+          </span>
+           <span className="p-1 fw-light" style={{fontSize: "15px"}}>
+            <IoIosHelpCircle size="18" /> Hỗ trợ
           </span>
         </div>
       </div>

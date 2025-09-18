@@ -93,7 +93,12 @@ class ProductViewSet(viewsets.ModelViewSet):
         # ----- Filter theo query params -----
         params = self.request.query_params
         if 'category' in params:
-            queryset = queryset.filter(subcategory__category__key=params['category'])
+            category_value = params['category']
+            queryset = queryset.filter(
+                Q(subcategory__category__key=category_value) |
+                Q(category__key=category_value)  # 👈 thêm dòng này
+            )
+
         if 'subcategory' in params:
             queryset = queryset.filter(subcategory__name=params['subcategory'])
         if 'seller' in params:

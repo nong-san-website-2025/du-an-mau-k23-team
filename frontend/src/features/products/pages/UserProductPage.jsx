@@ -1,81 +1,103 @@
-import React, { useState, useEffect } from "react";
-import { toast } from "react-toastify";
+import React, { useState, useEffect, useMemo } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useCart } from "../../cart/services/CartContext";
-import {message} from "antd";
+import { productApi } from "../services/productApi";
 import {
-  Carrot,
-  Apple,
-  Wheat,
-  Beef,
-  Milk,
-  Coffee,
-  ChevronLeft,
-  Star,
-  Star as StarFill,
-  ShoppingCart,
-  Banana,
-  Package,
-} from "lucide-react";
-import {
-  Card,
-  Button,
   Row,
   Col,
-  Badge,
-  Form,
-  Spinner,
+  Input,
+  Select,
+  Card,
+  Button,
+  Typography,
+  Spin,
   Alert,
-} from "react-bootstrap";
-import { useSearchParams, useNavigate } from "react-router-dom";
-import { productApi } from "../services/productApi";
+  Rate,
+  Space,
+  Pagination,
+  message,
+} from "antd";
+import { ShoppingCartOutlined, AppstoreOutlined } from "@ant-design/icons";
+import "../styles/UserProductPage.css";
 
-const iconMap = {
-  Carrot: Carrot,
-  Apple: Apple,
-  Wheat: Wheat,
-  Beef: Beef,
-  Milk: Milk,
-  Coffee: Coffee,
-  Package: Package,
-  Banana: Banana,
-  Beef: Beef,
-};
+const { Title, Text } = Typography;
+const { Option } = Select;
 
 const UserProductPage = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { addToCart, cartItems, updateQuantity } = useCart();
-  const categoryParam = searchParams.get("category");
-  const subcategoryParam = searchParams.get("subcategory");
 
+  const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [selectedCategory, setSelectedCategory] = useState(null);
-  const [activeSub, setActiveSub] = useState("Tất cả");
-  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Filters
+  const [search, setSearch] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [selectedSubcategory, setSelectedSubcategory] = useState("");
+  const [selectedBrand, setSelectedBrand] = useState("");
+  const [selectedLocation, setSelectedLocation] = useState("");
+  const [priceRange, setPriceRange] = useState([0, 1000000]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 16;
+
+
+  const filteredByCategory = useMemo(() => {
+    if (!selectedCategory) return products;
+    return products.filter((p) => p.category_name === selectedCategory);
+  }, [products, selectedCategory]);
+
+  const uniqueBrands = useMemo(() => {
+    const set = new Set();
+    filteredByCategory.forEach((p) => p.brand && set.add(p.brand.trim()));
+    return Array.from(set);
+  }, [filteredByCategory]);
+
+  const uniqueLocations = useMemo(() => {
+    const set = new Set();
+    filteredByCategory.forEach((p) => p.location && set.add(p.location.trim()));
+    return Array.from(set);
+  }, [filteredByCategory]);
+
+  const subcategoriesForSelected = useMemo(() => {
+    if (!selectedCategory) return [];
+    const cat = categories.find((c) => c.name === selectedCategory);
+    return cat?.subcategories || [];
+  }, [categories, selectedCategory]);
 
   useEffect(() => {
     const loadData = async () => {
       try {
         setLoading(true);
-        setError(null);
         const categoriesData = await productApi.getCategoriesWithProducts();
         setCategories(categoriesData);
+        const allProducts = categoriesData.flatMap(
+          (cat) => cat.subcategories?.flatMap((sub) => sub.products) || []
+        );
+        setProducts(allProducts);
 
-        let categoryToSelect = categoriesData[0] || null;
-        if (categoryParam) {
-          const foundCategory = categoriesData.find(
-            (cat) => cat.name === categoryParam || cat.key === categoryParam
-          );
-          if (foundCategory) categoryToSelect = foundCategory;
-        }
-        setSelectedCategory(categoryToSelect);
-
-        if (categoryToSelect && subcategoryParam) {
-          setActiveSub(subcategoryParam);
-        } else {
-          setActiveSub("Tất cả");
+        // Prefill selected category from query param
+        const params = new URLSearchParams(location.search);
+        const categoryFromQuery = params.get("category");
+        if (categoryFromQuery) {
+          // If query is a key, map to the category name for the Select/filter logic
+          const byKey = categoriesData.find((c) => c.key === categoryFromQuery);
+          if (byKey) {
+            setSelectedCategory(byKey.name);
+          } else {
+            // Otherwise, try matching by name
+            const byNameExact = categoriesData.find((c) => c.name === categoryFromQuery);
+            if (byNameExact) {
+              setSelectedCategory(byNameExact.name);
+            } else {
+              const byNameCI = categoriesData.find(
+                (c) => c.name?.toLowerCase() === categoryFromQuery.toLowerCase()
+              );
+              if (byNameCI) setSelectedCategory(byNameCI.name);
+            }
+          }
         }
       } catch (err) {
         setError(err.message);
@@ -83,26 +105,20 @@ const UserProductPage = () => {
         setLoading(false);
       }
     };
-
     loadData();
-  }, [categoryParam, subcategoryParam]);
+  }, [location.search]);
 
   const handleAddToCart = async (e, product) => {
     e.stopPropagation();
-
-    // ✅ Kiểm tra nếu sản phẩm đã tồn tại trong giỏ thì update số lượng
     const existingItem = cartItems.find(
       (i) => i.product === product.id || i.product_data?.id === product.id
     );
     if (existingItem) {
       await updateQuantity(existingItem.id, existingItem.quantity + 1);
-      toast.success("Đã cập nhật số lượng trong giỏ hàng!", {
-        autoClose: 1500,
-      });
+      message.success("Đã cập nhật số lượng trong giỏ hàng!");
       return;
     }
 
-    // ✅ Nếu chưa có thì gọi addToCart như bình thường
     await addToCart(
       product.id,
       1,
@@ -114,273 +130,205 @@ const UserProductPage = () => {
           product.image && product.image.startsWith("/")
             ? `http://localhost:8000${product.image}`
             : product.image?.startsWith("http")
-              ? product.image
-              : "",
+            ? product.image
+            : "",
       },
-      () => toast.success("Đã thêm vào giỏ hàng!", { autoClose: 1500, position: "bottom-right" } ),
-      (err) => {
-        if (err.response?.status === 401) {
-          toast.error("Vui lòng đăng nhập để thêm vào giỏ hàng");
-        } else {
-          toast.error("Không thể thêm vào giỏ hàng. Vui lòng thử lại.");
-        }
-      }
+      () => message.success("Đã cập nhật số lượng trong giỏ hàng!"),
+      () => message.error("Không thể thêm vào giỏ hàng")
     );
   };
 
+  const filteredProducts = products.filter((p) => {
+    return (
+      (!selectedCategory || p.category_name === selectedCategory) &&
+      (!selectedSubcategory || p.subcategory_name === selectedSubcategory) &&
+      (!selectedBrand || p.brand === selectedBrand) &&
+      (!selectedLocation || p.location === selectedLocation) &&
+      p.price >= priceRange[0] &&
+      p.price <= priceRange[1] &&
+      p.name.toLowerCase().includes(search.toLowerCase())
+    );
+  });
+
+  const paginatedProducts = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return filteredProducts.slice(start, start + PAGE_SIZE);
+  }, [filteredProducts, currentPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, selectedCategory, selectedSubcategory, selectedBrand, selectedLocation, priceRange]);
+
   if (error) {
     return (
-      <div className="container py-4 text-center">
-        <Alert variant="danger">
-          <Alert.Heading>Lỗi khi tải dữ liệu</Alert.Heading>
-          <p>{error}</p>
-          <Button
-            variant="outline-danger"
-            onClick={() => window.location.reload()}
-          >
-            Thử lại
-          </Button>
-        </Alert>
+      <div style={{ textAlign: "center", marginTop: 50 }}>
+        <Alert message="Lỗi" description={error} type="error" showIcon />
       </div>
     );
   }
-
-  if (!selectedCategory || categories.length === 0) {
-    return (
-      <div className="container py-4 text-center">
-        <Alert variant="info">
-          <Alert.Heading>Chưa có dữ liệu</Alert.Heading>
-          <p>Hiện tại chưa có danh mục sản phẩm nào trong hệ thống.</p>
-        </Alert>
-      </div>
-    );
-  }
-
-  const allProducts =
-    selectedCategory?.subcategories?.flatMap((sub) => sub.products) || [];
-
-  const filteredProducts =
-    activeSub === "Tất cả"
-      ? allProducts
-      : selectedCategory?.subcategories?.find((s) => s.name === activeSub)
-          ?.products || [];
-
-  const displayedProducts = filteredProducts.filter((p) =>
-    p.name.toLowerCase().includes(search.toLowerCase())
-  );
 
   return (
-    <div className="container py-4">
-      {/* Header */}
-      <div className="mb-3 d-flex flex-wrap align-items-center justify-content-between">
-        <div className="d-flex align-items-center gap-2 flex-wrap">
-          <Badge bg="success">
-            Dữ liệu từ Backend API - {categories.length} danh mục
-          </Badge>
-          <Badge bg="info">{allProducts.length} sản phẩm</Badge>
-        </div>
-        <Form style={{ maxWidth: 260 }}>
-          <Form.Control
-            type="search"
-            placeholder="Tìm kiếm sản phẩm..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </Form>
-      </div>
-
-      {/* Tabs danh mục */}
-      <div className="d-flex flex-wrap gap-2 mb-3">
-        {categories.map((cat) => {
-          const IconComponent = iconMap[cat.icon] || Package;
-          const isSelected = cat.id === selectedCategory?.id;
-          const totalProducts =
-            cat.subcategories?.reduce(
-              (sum, s) => sum + (s.products?.length || 0),
-              0
-            ) || 0;
-
-          return (
-            <Button
-              key={cat.id}
-              variant={isSelected ? "dark" : "light"}
-              size="sm"
-              onClick={() => {
-                setSelectedCategory(cat);
-                setActiveSub("Tất cả");
-                setSearchParams({ category: cat.key || cat.name });
-                window.scrollTo({ top: 0, behavior: "smooth" });
-              }}
-            >
-              <IconComponent size={14} className="me-1" />
-              {cat.name}
-              <Badge bg="secondary" className="ms-1">
-                {totalProducts}
-              </Badge>
-            </Button>
-          );
-        })}
-      </div>
-
-      {/* Subcategory Tabs */}
-      <div className="d-flex flex-wrap gap-2 mb-3">
-        <Button
-          variant={activeSub === "Tất cả" ? "dark" : "light"}
-          size="sm"
-          onClick={() => {
-            setActiveSub("Tất cả");
-            setSearchParams({
-              category: selectedCategory?.key || selectedCategory?.name,
-            });
-          }}
-        >
-          Tất cả
-          <Badge bg="secondary" className="ms-1">
-            {allProducts.length}
-          </Badge>
-        </Button>
-        {selectedCategory?.subcategories?.map((sub) => (
-          <Button
-            key={sub.name}
-            variant={activeSub === sub.name ? "dark" : "light"}
-            size="sm"
-            onClick={() => {
-              setActiveSub(sub.name);
-              setSearchParams({
-                category: selectedCategory?.key || selectedCategory?.name,
-                subcategory: sub.name,
-              });
+    <Row gutter={[16, 16]} style={{ padding: "12px 120px" }}>
+      {/* Sidebar */}
+      <Col xs={24} md={6}>
+        <Space direction="vertical" style={{ width: "100%" }} size="middle">
+          <Title level={5}>Bộ lọc</Title>
+          <Select
+            placeholder="Danh mục" 
+            value={selectedCategory || undefined}
+            onChange={(value) => {
+              setSelectedCategory(value);
+              setSelectedSubcategory("");
             }}
+            style={{ width: "100%" }}
+            allowClear
           >
-            {sub.name}
-            <Badge bg="secondary" className="ms-1">
-              {sub.products?.length || 0}
-            </Badge>
-          </Button>
-        ))}
-      </div>
+            {categories.map((cat) => (
+              <Option key={cat.id} value={cat.name}>
+                {cat.name}
+              </Option>
+            ))}
+          </Select>
+          {selectedCategory && (
+            <Select
+              placeholder="Danh mục con"
+              value={selectedSubcategory || undefined}
+              onChange={(value) => setSelectedSubcategory(value)}
+              style={{ width: "100%" }}
+              allowClear
+            >
+              {subcategoriesForSelected.map((sub) => (
+                <Option key={sub.id} value={sub.name}>
+                  {sub.name}
+                </Option>
+              ))}
+            </Select>
+          )}
+          <Select
+            placeholder="Thương hiệu"
+            value={selectedBrand || undefined}
+            onChange={(value) => setSelectedBrand(value)}
+            style={{ width: "100%" }}
+            allowClear
+          >
+            {uniqueBrands.map((b) => (
+              <Option key={b} value={b}>
+                {b}
+              </Option>
+            ))}
+          </Select>
+          <Select
+            placeholder="Vị trí"
+            value={selectedLocation || undefined}
+            onChange={(value) => setSelectedLocation(value)}
+            style={{ width: "100%" }}
+            allowClear
+          >
+            {uniqueLocations.map((l) => (
+              <Option key={l} value={l}>
+                {l}
+              </Option>
+            ))}
+          </Select>
+          <Space>
+            <Input
+              type="number"
+              placeholder="Min"
+              value={priceRange[0]}
+              onChange={(e) => setPriceRange([Number(e.target.value), priceRange[1]])}
+            />
+            <Input
+              type="number"
+              placeholder="Max"
+              value={priceRange[1]}
+              onChange={(e) => setPriceRange([priceRange[0], Number(e.target.value)])}
+            />
+          </Space>
+        </Space>
+      </Col>
 
-      {/* Product list */}
-      {loading ? (
-        <div className="text-center py-5">
-          <Spinner animation="border" />
-          <p className="mt-2">Đang tải sản phẩm...</p>
-        </div>
-      ) : displayedProducts.length === 0 ? (
-        <div className="text-center py-5">
-          <Package size={64} className="text-muted mb-3" />
-          <h5 className="text-muted">Không có sản phẩm nào</h5>
-          <p className="text-muted">
-            {search
-              ? `Không tìm thấy sản phẩm với từ khóa "${search}"`
-              : "Danh mục này chưa có sản phẩm"}
-          </p>
-        </div>
-      ) : (
-        <Row xs={2} sm={3} md={4} lg={5} xl={6} className="g-3">
-          {displayedProducts.map((product) => (
-            <Col key={product.id}>
-              <Card
-                className="h-100 shadow-sm border-0"
-                style={{
-                  borderRadius: "12px",
-                  overflow: "hidden",
-                  transition: "transform 0.2s ease",
-                }}
-                onMouseEnter={(e) =>
-                  (e.currentTarget.style.transform = "translateY(-5px)")
-                }
-                onMouseLeave={(e) =>
-                  (e.currentTarget.style.transform = "translateY(0)")
-                }
-              >
-                <div
-                  className="position-relative"
-                  style={{
-                    height: 160,
-                    cursor: "pointer",
-                    backgroundColor: "#f8f9fa",
-                  }}
-                  onClick={() => navigate(`/products/${product.id}`)}
-                >
-                  <Card.Img
-                    variant="top"
-                    src={
-                      product.image && product.image.startsWith("/")
-                        ? `http://localhost:8000${product.image}`
-                        : product.image?.startsWith("http")
-                          ? product.image
-                          : "https://via.placeholder.com/400x300?text=No+Image"
+      {/* Product Grid */}
+      <Col xs={24} md={18}>
+        {loading ? (
+          <div style={{ textAlign: "center", paddingTop: 50 }}>
+            <Spin size="large" />
+          </div>
+        ) : filteredProducts.length === 0 ? (
+          <div style={{ textAlign: "center", paddingTop: 50, color: "#888" }}>
+            <AppstoreOutlined style={{ fontSize: 64 }} />
+            <Text>Không có sản phẩm nào</Text>
+          </div>
+        ) : (
+          <>
+            <Row gutter={[16, 16]}>
+              {paginatedProducts.map((product) => (
+                <Col key={product.id} xs={24} sm={12} md={12} lg={8} xl={6}>
+                  <Card
+                    hoverable
+                    cover={
+                      <img
+                        alt={product.name}
+                        src={
+                          product.image && product.image.startsWith("/")
+                            ? `http://localhost:8000${product.image}`
+                            : product.image?.startsWith("http")
+                            ? product.image
+                            : "https://via.placeholder.com/400x300?text=No+Image"
+                        }
+                        style={{ height: 160, objectFit: "cover" }}
+                      />
                     }
-                    alt={product.name}
-                    style={{ height: "100%", objectFit: "cover" }}
-                  />
-                  {product.is_organic && (
-                    <Badge
-                      bg="success"
-                      className="position-absolute top-0 start-0 m-2"
-                    >
-                      Hữu cơ
-                    </Badge>
-                  )}
-                  {product.is_best_seller && (
-                    <Badge
-                      bg="warning"
-                      text="dark"
-                      className="position-absolute top-0 start-50 translate-middle-x m-2"
-                    >
-                      Bán chạy
-                    </Badge>
-                  )}
-                  {product.is_new && (
-                    <Badge
-                      bg="info"
-                      className="position-absolute top-0 end-0 m-2"
-                    >
-                      Mới
-                    </Badge>
-                  )}
-                </div>
-                <Card.Body className="d-flex flex-column">
-                  <Card.Title
-                    className="fs-6 fw-semibold text-truncate"
-                    title={product.name}
+                    onClick={() => navigate(`/products/${product.id}`)}
                   >
-                    {product.name}
-                  </Card.Title>
-                  <div className="d-flex align-items-center mb-2">
-                    {[...Array(5)].map((_, i) => (
-                      <span key={i}>
-                        {i < Math.floor(product.rating || 0) ? (
-                          <StarFill size={14} className="text-warning" />
-                        ) : (
-                          <Star size={14} className="text-muted" />
-                        )}
-                      </span>
-                    ))}
-                    <small className="text-muted ms-1">
-                      ({product.review_count || 0})
-                    </small>
-                  </div>
-                  <div className="d-flex justify-content-between align-items-center mt-auto">
-                    <span className="fw-bold text-danger">
-                      {Math.round(product.price)?.toLocaleString("vi-VN")} VNĐ
-                    </span>
-                    <Button
-                      variant="outline-success"
-                      size="sm"
-                      onClick={(e) => handleAddToCart(e, product)}
-                    >
-                      <ShoppingCart size={16} />
-                    </Button>
-                  </div>
-                </Card.Body>
-              </Card>
-            </Col>
-          ))}
-        </Row>
-      )}
-    </div>
+                    <Card.Meta
+                      title={
+                        <Text strong ellipsis={{ tooltip: product.name }}>
+                          {product.name}
+                        </Text>
+                      }
+                      description={
+                        <>
+                          <Rate
+                            disabled
+                            allowHalf
+                            defaultValue={product.rating || 0}
+                            style={{ fontSize: 14 }}
+                          />
+                          <Text style={{ marginLeft: 4 }} type="secondary">
+                            ({product.review_count || 0})
+                          </Text>
+                          <div style={{ marginTop: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <Text type="danger" strong>
+                              {Math.round(product.price)?.toLocaleString("vi-VN")} VNĐ
+                            </Text>
+                            <Button
+                              className="custom-btn"
+                              shape="default"
+                              icon={<ShoppingCartOutlined />}
+                              size="small"
+                              onClick={(e) => handleAddToCart(e, product)}
+                            />
+                          </div>
+                        </>
+                      }
+                    />
+                  </Card>
+                </Col>
+              ))}
+            </Row>
+            <div style={{ display: "flex", justifyContent: "center", marginTop: 16 }}>
+              <Pagination
+                current={currentPage}
+                pageSize={PAGE_SIZE}
+                total={filteredProducts.length}
+                onChange={(page) => setCurrentPage(page)}
+                showSizeChanger={false}
+              />
+            </div>
+          </>
+        )}
+      </Col>
+    </Row>
   );
 };
 

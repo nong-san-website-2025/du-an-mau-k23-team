@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { } from "react-icons/fa";
 import { Modal } from "react-bootstrap";
 import  {FaUser, FaEdit, FaTrash, FaMapMarkerAlt, FaPhone, FaStar } from "react-icons/fa";
-import '../styles/AddressList.css';
+import '../styles/css/AddressList.css';
 
 
 const AddressList = ({ 

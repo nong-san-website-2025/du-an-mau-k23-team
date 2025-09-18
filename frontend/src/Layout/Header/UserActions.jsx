@@ -4,6 +4,7 @@
   import "../../styles/layouts/header/UserActions.css";
   import axiosInstance from "../../features/admin/services/axiosInstance";
   import axios from "axios";
+  import "../styles/css/UserActions.css"
 
   export default function UserActions({
     greenText,
@@ -394,7 +395,7 @@
                   right: 2,
                   minWidth: 18,
                   height: 18,
-                  background: "#dc2626",
+                  background: "#faad14  ",
                   color: "#fff",
                   borderRadius: "50%",
                   fontSize: 12,
@@ -464,7 +465,7 @@
                     >
                       <img
                         src={
-                          item.product?.thumbnail || "/media/products/default.png"
+                          item.product?.image || "/media/products/default.png"
                         }
                         alt="thumb"
                         style={{
@@ -498,7 +499,7 @@
                         navigate("/cart");
                       }}
                     >
-                      Xem tất cả sản phẩm
+                      Xem giỏ hàng
                     </button>
                   </div>
                 </>
@@ -639,7 +640,7 @@
                 </div>
                 <Link
                   to="/orders"
-                  className="dropdown-item"
+                  className="dropdown-item my-order"
                   style={{ padding: "12px 18px", fontWeight: 500 }}
                   onClick={() => setShowProfileDropdown(false)}
                 >
@@ -733,3 +734,4 @@
       </div>
     );
   }
+

@@ -52,35 +52,38 @@ export default function SearchBoxWithSuggestions({
       style={{ zIndex: 3000 }}
     >
       {/* Nút search */}
-      <button
-        className="btn btn-link position-absolute end-0 top-50 translate-middle-y"
-        style={{
-          right: 10,
-          color: "#16a34a",
-          backgroundColor: "#4CAF50",
-          padding: "6.5px 17px",
-          borderRadius: "0px 6px 6px 0px",
-        }}
-        onClick={handleSearchClick} // ✅ Sửa thành hàm handleSearchClick
-      >
-        <Search size={24} style={{ color: "#FFFFFF" }} />
-      </button>
+      <div>
+        <button
+          className="btn btn-link position-absolute end-0 top-50 translate-middle-y"
+          style={{
+            right: 10,
+            color: "#16a34a",
+            backgroundColor: "#4CAF50",
+            padding: "3px 16px",
+            borderRadius: "4px ",
+            margin: 1
+          }}
+          onClick={handleSearchClick} // ✅ Sửa thành hàm handleSearchClick
+        >
+          <Search size={24} style={{ color: "#FFFFFF" }} />
+        </button>
 
-      <input
-        type="text"
-        placeholder="Tìm kiếm sản phẩm hoặc bài viết..."
-        className="form-control ps-3 pe-5"
-        style={{ width: 700, height: 40, fontSize: 16, fontFamily: "Roboto" }}
-        value={search}
-        onChange={handleSearchChange}
-        onFocus={() => search && setShowSuggestions(true)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            handleSearchSubmit(); // Nhấn Enter để search
-          }
-        }}
-      />
+        <input
+          type="text"
+          placeholder="Tìm kiếm sản phẩm ..."
+          className="form-control ps-3 pe-5"
+          style={{ width: 700, height: 40, fontSize: 16, fontFamily: "Roboto" }}
+          value={search}
+          onChange={handleSearchChange}
+          onFocus={() => search && setShowSuggestions(true)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              handleSearchSubmit(); // Nhấn Enter để search
+            }
+          }}
+        />
+      </div>
 
       {/* Danh sách gợi ý */}
       {showSuggestions &&
