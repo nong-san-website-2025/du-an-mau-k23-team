@@ -16,7 +16,8 @@ import ReportTopProductsPage from "../features/admin/pages/ReportTopProductsPage
 import ReportCancelRatePage from "../features/admin/pages/ReportCancelRatePage.jsx"; // ✅ thêm import
 import SupportPage from "../features/admin/pages/SupportPage";
 import StatisticsPage from "../features/admin/pages/StatisticsPage";
-import SettingsPage from "../features/admin/pages/SettingsPage";
+import SettingsPage from "../features/admin/pages/Setting/SettingsPage";
+
 
 // Shop management
 import SellersPage from "../features/admin/pages/Sellers/SellersPage";
