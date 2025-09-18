@@ -39,9 +39,9 @@ const Sidebar = () => {
           <Menu.Item key="users-list">
             <Link to="/admin/users">Quản lý người dùng</Link>
           </Menu.Item>
-          <Menu.Item key="roles">
+          {/* <Menu.Item key="roles">
             <Link to="/admin/roles">Phân quyền & vai trò</Link>
-          </Menu.Item>
+          </Menu.Item> */}
         </Menu.SubMenu>
 
         <Menu.SubMenu

@@ -12,7 +12,12 @@ export default function SystemConfigPage() {
 
   const fetchConfig = async () => {
     try {
-      const res = await axios.get(`${API_BASE_URL}/system-config/`);
+      const token = localStorage.getItem("token");
+      const res = await axios.get(`${API_BASE_URL}/system-config/`, {
+        headers: {
+          Authorization: `Bearer ${token}`, // hoặc đổi thành Token nếu bạn dùng DRF TokenAuth
+        },
+      });
       setConfig(res.data);
       form.setFieldsValue(res.data);
     } catch (err) {
@@ -20,7 +25,9 @@ export default function SystemConfigPage() {
     }
   };
 
-  useEffect(() => { fetchConfig(); }, []);
+  useEffect(() => {
+    fetchConfig();
+  }, []);
 
   const handleSave = async (values) => {
     setLoading(true);
@@ -30,7 +37,9 @@ export default function SystemConfigPage() {
     } catch (err) {
       console.error(err);
       message.error("Cập nhật thất bại!");
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -42,11 +51,17 @@ export default function SystemConfigPage() {
         <Form.Item label="Email hỗ trợ" name="support_email">
           <Input />
         </Form.Item>
-        <Form.Item label="Bật chế độ bảo trì" name="maintenance_mode" valuePropName="checked">
+        <Form.Item
+          label="Bật chế độ bảo trì"
+          name="maintenance_mode"
+          valuePropName="checked"
+        >
           <Switch />
         </Form.Item>
         <Form.Item style={{ textAlign: "right" }}>
-          <Button type="primary" htmlType="submit" loading={loading}>Lưu thay đổi</Button>
+          <Button type="primary" htmlType="submit" loading={loading}>
+            Lưu thay đổi
+          </Button>
         </Form.Item>
       </Form>
     </Card>

@@ -4,15 +4,14 @@ import { Modal, Form, Input, Select, Button, message } from "antd";
 import axios from "axios";
 
 const { Option } = Select;
-const API_BASE_URL = process.env.REACT_APP_API_URL 
+const API_BASE_URL = process.env.REACT_APP_API_URL;
 
 export default function UserAddModal({ visible, onClose, onUserAdded }) {
   const [form] = Form.useForm();
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  const getToken = () =>
-    localStorage.getItem("token")
+  const getToken = () => localStorage.getItem("token");
 
   // Load roles từ backend
   useEffect(() => {
@@ -40,13 +39,22 @@ export default function UserAddModal({ visible, onClose, onUserAdded }) {
         role_id: values.role_id ? Number(values.role_id) : null,
       };
 
+      const API_BASE_URL = "http://localhost:8000/api"; // chỉ /api, không thêm /user-management
+
       const res = await axios.post(
-        `${API_BASE_URL}/user-management/`,
-        payload,
+        `${API_BASE_URL}/users/user-management/`,
+        {
+          username: values.username,
+          email: values.email,
+          full_name: values.full_name || "",
+          phone: values.phone || "",
+          password: values.password?.trim() || "123456",
+          role_id: Number(values.role_id),
+        },
         {
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${getToken()}`,
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
         }
       );
