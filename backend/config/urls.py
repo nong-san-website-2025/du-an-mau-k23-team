@@ -33,6 +33,7 @@ urlpatterns = [
 
     path('api/advertisements/', include('advertisements.urls')),
     path('', include('reviews.urls')),
+    path("api/promotions/", include("promotions.urls")),
 
     path('api/complaints/', include('complaints.urls')),
     path("api/dashboard/", dashboard_data, name="dashboard-data"),
