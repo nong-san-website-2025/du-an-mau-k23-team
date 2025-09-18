@@ -21,8 +21,10 @@ import isBetween from "dayjs/plugin/isBetween";
 import api from "../../../features/login_register/services/api";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import "../../../assets/font/Roboto-Regular-normal";
 
 dayjs.extend(isBetween);
+
 
 const { RangePicker } = DatePicker;
 
@@ -81,8 +83,11 @@ export default function ReportRevenuePage() {
 
     if (dateRange && dateRange[0] && dateRange[1]) {
       filtered = filtered.filter((t) => {
+        const start = dayjs(dateRange[0]).startOf("day");
+        const end = dayjs(dateRange[1]).endOf("day");
         const d = dayjs(t.date, "YYYY-MM-DD");
-        return d.isBetween(dateRange[0], dateRange[1], null, "[]");
+
+        return d.isBetween(start, end, null, "[]"); // bao gồm cả start/end
       });
     }
 
@@ -95,7 +100,7 @@ export default function ReportRevenuePage() {
     if (typeFilter !== "all") {
       filtered = filtered.filter((t) =>
         typeFilter === "order"
-          ? t.type === "Doanh Thu Đơn Hàng"
+          ? t.type === "Doanh thu đơn hàng"
           : t.type === "Hoàn tiền"
       );
     }
@@ -106,11 +111,17 @@ export default function ReportRevenuePage() {
   const exportPDF = () => {
     const doc = new jsPDF();
 
+    doc.setFont("Roboto-Regular", "normal");
+
     doc.setFontSize(16);
     doc.text("Báo cáo doanh thu", 14, 20);
 
     doc.setFontSize(12);
-    doc.text(`Số dư (chỉ đơn thành công): ${balance.toLocaleString()} đ`, 14, 30);
+    doc.text(
+      `Số dư (chỉ đơn thành công): ${balance.toLocaleString()} đ`,
+      14,
+      30
+    );
 
     const filtered = applyFilters(data);
 
@@ -124,9 +135,10 @@ export default function ReportRevenuePage() {
     ]);
 
     autoTable(doc, {
-      head: [["Ngày", "Loại GD", "Mô tả", "Order ID", "Số tiền", "Trạng thái"]],
+      head: [["Ngày", "Loại GD", "Mô tả", "Order ID", "Số tiền", "status"]],
       body: tableBody,
       startY: 40,
+      styles: { font: "Roboto-Regular" },
     });
 
     doc.save("bao_cao_doanh_thu.pdf");
@@ -171,15 +183,26 @@ export default function ReportRevenuePage() {
     },
   ];
 
-        return (
+  return (
+    <div
+      className="p-6 bg-gray-50 min-h-screen space-y-6"
+      style={{ fontFamily: "Roboto, sans-serif" }}
+    >
+      <Card className="rounded-2xl shadow-md">
         <div
-        className="p-6 bg-gray-50 min-h-screen space-y-6"
-        style={{ fontFamily: "Roboto, sans-serif" }}>
-        <Card className="rounded-2xl shadow-md">
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
           <div>
-            <p style={{ color: "#6b7280" }}>Số dư (chỉ tính đơn hàng thành công)</p>
-            <h2 style={{ color: "#16a34a", fontWeight: "bold", fontSize: "2rem" }}>
+            <p style={{ color: "#6b7280" }}>
+              Số dư (chỉ tính đơn hàng thành công)
+            </p>
+            <h2
+              style={{ color: "#16a34a", fontWeight: "bold", fontSize: "2rem" }}
+            >
               {balance.toLocaleString()} đ
             </h2>
           </div>
@@ -227,7 +250,7 @@ export default function ReportRevenuePage() {
         <Table
           columns={columns}
           dataSource={applyFilters(data)}
-          pagination={{ pageSize: 5 }}
+          pagination={{ pageSize: 10 }}
           rowKey="key"
         />
       </Card>

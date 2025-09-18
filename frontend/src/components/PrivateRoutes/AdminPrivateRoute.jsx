@@ -25,7 +25,7 @@ const AdminPrivateRoute = () => {
   }
 
   // Nếu đã đăng nhập nhưng không phải admin
-  if (user?.role !== "admin") {
+  if (user?.role?.name !== "admin") {
     return (
       <div className="container mt-5">
         <div className="alert alert-danger text-center">

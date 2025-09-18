@@ -61,7 +61,7 @@ export default function SearchBoxWithSuggestions({
             backgroundColor: "#4CAF50",
             padding: "3px 16px",
             borderRadius: "4px ",
-            margin: 1
+            margin: "1px 3px 1px 1px"
           }}
           onClick={handleSearchClick} // ✅ Sửa thành hàm handleSearchClick
         >

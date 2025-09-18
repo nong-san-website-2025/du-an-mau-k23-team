@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Table, Card, Button, Tag } from "antd";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { intcomma } from "./../../../../utils/format";
 
 export default function RecentOrders() {
   const [orders, setOrders] = useState([]);
@@ -13,9 +14,12 @@ export default function RecentOrders() {
       try {
         setLoading(true);
         const token = localStorage.getItem("token");
-        const res = await axios.get("http://127.0.0.1:8000/api/orders/recent/", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const res = await axios.get(
+          "http://127.0.0.1:8000/api/orders/recent/",
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
         setOrders(res.data);
       } catch (err) {
         console.error("Error fetching recent orders:", err);
@@ -38,9 +42,7 @@ export default function RecentOrders() {
       title: "Mã đơn",
       dataIndex: "id",
       key: "id",
-      render: (id) => (
-        <a onClick={() => navigate(`/orders/${id}`)}>#{id}</a>
-      ),
+      render: (id) => <a onClick={() => navigate(`/orders/${id}`)}>#{id}</a>,
     },
     {
       title: "Khách hàng",
@@ -56,8 +58,8 @@ export default function RecentOrders() {
       title: "Tổng tiền",
       dataIndex: "total_price",
       key: "total_price",
-      render: (val) =>
-        val ? val.toLocaleString("vi-VN", { style: "currency", currency: "VND" }) : "0 ₫",
+     render: (val) => (val ? `${intcomma(val)} ₫` : "0 ₫"),
+
     },
     {
       title: "Thanh toán",

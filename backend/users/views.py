@@ -1,19 +1,18 @@
 from django.contrib.auth import authenticate, get_user_model
-from django.contrib.auth.hashers import make_password
-from django.core.cache import cache
 from django.core.mail import send_mail
 from django.db.models import Sum, Count
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
-from django.apps import apps
+
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.conf import settings
+from django.apps import apps
 from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
 from .utils import token_generator, generate_reset_link
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework.exceptions import AuthenticationFailed
-from django.utils.encoding import force_bytes, force_str
+from django.utils.encoding import force_bytes
 
 from django.shortcuts import get_object_or_404
 from rest_framework import generics, permissions, status, viewsets
@@ -33,36 +32,25 @@ from google.auth.transport import requests as google_requests
 import requests
 
 
-FRONTEND_URL = "http://localhost:3000" 
+FRONTEND_URL = "http://localhost:3000"
 
-from .models import CustomUser, Address, Role
 from .serializers import (
     UserSerializer,
     RegisterSerializer,
-    ForgotPasswordSerializer,
     AddressSerializer,
     EmployeeSerializer,
     RoleSerializer,
-    AccountSerializer,  
-    ChangePasswordSerializer,
-    ProfileSerializer,
+    AccountSerializer,
     CustomUserSerializer
 )
 
 
-FRONTEND_URL = "http://localhost:3000"
-
 from .permissions import IsAdmin, IsSeller, IsNormalUser
 
 # Lấy model động tránh vòng lặp import
-Product = apps.get_model('products', 'Product')
-Order = apps.get_model('orders', 'Order')
-
 User = get_user_model()
 
-from django.apps import apps
-
-# Lấy model bằng apps.get_model
+# Lấy model bằng apps.get_model (tránh import vòng)
 CustomUser = apps.get_model('users', 'CustomUser')
 Role = apps.get_model('users', 'Role')
 Address = apps.get_model('users', 'Address')
@@ -71,6 +59,8 @@ Seller = apps.get_model('sellers', 'Seller')
 Store = apps.get_model('store', 'Store')
 Product = apps.get_model('products', 'Product')
 Order = apps.get_model('orders', 'Order')
+# Optional: dùng thanh toán trong WalletBalanceView
+from payments.models import Payment
 
 class UserProfileView(APIView):
     permission_classes = [permissions.IsAuthenticated]

@@ -51,8 +51,8 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
         fields = [
-            "id", "username", "email", "avatar",
-            "full_name", "phone", "points", "role", "role_id", "default_address", "password","created_at", "can_delete", "is_active"
+            "id", "username", "default_address",
+            "full_name", "points", "role", "role_id", "created_at", "can_delete", "is_active"
         ]
 
     def get_default_address(self, obj): 

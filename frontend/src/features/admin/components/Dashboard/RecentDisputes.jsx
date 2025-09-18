@@ -18,7 +18,7 @@ export default function RecentDisputes() {
       try {
         const token = localStorage.getItem("token");
         const res = await axios.get(
-          "http://127.0.0.1:8000/api/complaints/complaints/recent/",
+          "http://127.0.0.1:8000/api/complaints/recent/",
           { headers: { Authorization: `Bearer ${token}` } }
         );
         setDisputes(res.data);
