@@ -37,7 +37,6 @@ class UserSerializer(serializers.ModelSerializer):
     default_address = serializers.SerializerMethodField()
     role = RoleSerializer(read_only=True)
     role_id = serializers.PrimaryKeyRelatedField(
-        
         queryset=Role.objects.all(),
         source='role',
         write_only=True,
@@ -47,15 +46,22 @@ class UserSerializer(serializers.ModelSerializer):
     # Expose Django's date_joined as created_at for frontend compatibility
     created_at = serializers.DateTimeField(source='date_joined', read_only=True)
 
-    
+    # Write-only input for changing; masked fields for display
+    email = serializers.EmailField(write_only=True, required=False)
+    phone = serializers.CharField(write_only=True, required=False, allow_blank=True, allow_null=True)
+    email_masked = serializers.SerializerMethodField(read_only=True)
+    phone_masked = serializers.SerializerMethodField(read_only=True)
+    avatar = serializers.ImageField(required=False, allow_null=True)
+
     class Meta:
         model = CustomUser
         fields = [
             "id", "username", "default_address",
-            "full_name", "points", "role", "role_id", "created_at", "can_delete", "is_active"
+            "full_name", "points", "role", "role_id", "created_at", "can_delete", "is_active",
+            "email", "phone", "email_masked", "phone_masked", "avatar"
         ]
 
-    def get_default_address(self, obj): 
+    def get_default_address(self, obj):
         default = obj.addresses.filter(is_default=True).first()
         return default.location if default else None
 
@@ -63,6 +69,24 @@ class UserSerializer(serializers.ModelSerializer):
         histories = obj.point_histories.order_by('-date')
         return UserPointsHistorySerializer(histories, many=True).data
 
+    # Mask helpers
+    def get_email_masked(self, obj):
+        if not obj.email:
+            return None
+        try:
+            local, domain = obj.email.split('@', 1)
+            if len(local) <= 2:
+                masked_local = local[0:1] + '*' * max(0, len(local)-1)
+            else:
+                masked_local = local[:2] + '*' * (len(local)-2)
+            return f"{masked_local}@{domain}"
+        except Exception:
+            return None
+
+    def get_phone_masked(self, obj):
+        if not obj.phone:
+            return None
+        return '*' * max(0, len(obj.phone)-2) + obj.phone[-2:]
 
     def create(self, validated_data):
         password = validated_data.pop("password", None)
@@ -76,19 +100,39 @@ class UserSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         password = validated_data.pop("password", None)
-    
-    # Lấy role object nếu có
+        # Lấy role object nếu có
         role_obj = validated_data.pop("role", None)
         if role_obj is not None:
             instance.role = role_obj
 
-        # Cập nhật các trường còn lại
+        # Nếu FE gửi chuỗi mask (có '*'), bỏ qua cập nhật
+        if "email" in validated_data:
+            email_val = validated_data.get("email")
+            if email_val in ("", None) or '*' in str(email_val):
+                validated_data.pop("email", None)
+            else:
+                # Không đổi ngay: lưu pending_email để xác nhận qua link
+                instance.pending_email = email_val
+        if "phone" in validated_data:
+            phone_val = validated_data.get("phone")
+            if phone_val in ("", None) or '*' in str(phone_val):
+                validated_data.pop("phone", None)
+            else:
+                # Không đổi ngay: tạo OTP và lưu pending_phone (sẽ gửi OTP ở view)
+                instance.pending_phone = phone_val
+
+        # Chuẩn hoá các trường khác
+        for attr in list(validated_data.keys()):
+            if attr in ("email", "phone"):
+                validated_data.pop(attr, None)
+
+        # Cập nhật các trường còn lại (full_name, avatar, ...)
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
-        
+
         if password:
             instance.set_password(password)
-        
+
         instance.save()
         return instance
 

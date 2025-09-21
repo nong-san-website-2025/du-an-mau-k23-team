@@ -1,15 +1,26 @@
 import React, { useEffect, useMemo, useRef } from "react";
 import {
-  Grid,
-  Typography,
-  Avatar,
+  Row,
+  Col,
+  Form,
+  Input,
   Button,
-  TextField,
+  Avatar,
   Badge,
-  Box,
-  Paper,
-} from "@mui/material";
-import { FaUser } from "react-icons/fa";
+  Card,
+  Typography,
+  Upload,
+  message,
+} from "antd";
+import {
+  UserOutlined,
+  EditOutlined,
+  SaveOutlined,
+  CloseOutlined,
+  UploadOutlined,
+} from "@ant-design/icons";
+
+const { Title } = Typography;
 
 const ProfileInfo = ({
   form,
@@ -46,163 +57,197 @@ const ProfileInfo = ({
   );
 
   return (
-    <div className="card p-3 mt-3">
-      <h5 className="mb-3 text-success d-flex align-items-center">
-        <FaUser className="me-2" /> Hồ Sơ Của Tôi
-      </h5>
-
-      <div className="row" style={{ minHeight: "300px" }}>
+    <Card
+      title={
+        <Title level={4} className="text-dark" style={{ marginBottom: 0 }}> Thông tin cá nhân
+        </Title>
+      }
+      className=""
+      style={{ border: "none"  }}
+    >
+      <Row gutter={[16, 16]} style={{ minHeight: "300px" }}>
         {/* Left 3/5 */}
-        <div className="col-12 col-md-7">
-          <div className="row g-2">
-            <div className="col-6">
-              <label className="form-label">Tên đăng nhập</label>
-              <input
-                type="text"
-                className="form-control"
-                value={form?.username || ""}
-                disabled
-              />
-            </div>
-            <div className="col-6">
-              <label className="form-label">Họ tên</label>
-              <input
-                type="text"
-                className="form-control"
-                value={form?.full_name || ""}
-                name="full_name"
-                onChange={handleChange}
-                disabled={!editMode}
-              />
-            </div>
-            <div className="col-6">
-              <label className="form-label">Email</label>
-              <input
-                type="text"
-                className="form-control"
-                value={form?.email || ""}
-                name="email"
-                onChange={handleChange}
-                disabled={!editMode}
-              />
-            </div>
-            <div className="col-6">
-              <label className="form-label">Ngày tạo</label>
-              <input
-                type="text"
-                className="form-control"
-                value={
-                  form?.created_at
-                    ? new Date(form.created_at).toLocaleDateString("vi-VN")
-                    : "---"
-                }
-                disabled
-              />
-            </div>
-            <div className="col-6">
-              <label className="form-label">Số điện thoại</label>
-              <input
-                type="text"
-                className="form-control"
-                value={form?.phone || ""}
-                name="phone"
-                onChange={handleChange}
-                disabled={!editMode}
-              />
-            </div>
-          </div>
-        </div>
+        <Col xs={24} md={14}>
+          <Row gutter={[16, 16]}>
+            <Col xs={24} md={12}>
+              <Form.Item label="Tên đăng nhập">
+                <Input value={form?.username || ""} disabled />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12}>
+              <Form.Item label="Họ tên">
+                <Input
+                  value={form?.full_name || ""}
+                  name="full_name"
+                  onChange={handleChange}
+                  disabled={!editMode}
+                />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12}>
+              <Form.Item label="Email">
+                {editMode ? (
+                  <Input
+                    type="email"
+                    value={form?.email ?? ""}
+                    placeholder={
+                      form?.email_masked || "Nhập email mới nếu muốn thay đổi"
+                    }
+                    name="email"
+                    onChange={handleChange}
+                  />
+                ) : (
+                  <Input
+                    value={form?.email_masked || "---"}
+                    disabled
+                  />
+                )}
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12}>
+              <Form.Item label="Ngày tạo">
+                <Input
+                  value={
+                    form?.created_at
+                      ? new Date(form.created_at).toLocaleDateString("vi-VN")
+                      : "---"
+                  }
+                  disabled
+                />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12}>
+              <Form.Item label="Số điện thoại">
+                {editMode ? (
+                  <Input
+                    type="text"
+                    value={form?.phone ?? ""}
+                    placeholder={
+                      form?.phone_masked || "Nhập số điện thoại mới nếu muốn thay đổi"
+                    }
+                    name="phone"
+                    onChange={handleChange}
+                  />
+                ) : (
+                  <Input
+                    value={form?.phone_masked || "---"}
+                    disabled
+                  />
+                )}
+              </Form.Item>
+            </Col>
+          </Row>
+        </Col>
 
         {/* Right 2/5 */}
-        <div className="col-12 col-md-5 d-flex flex-column justify-content-start align-items-center">
-          <div className="position-relative">
-            <img
+        <Col
+          xs={24}
+          md={10}
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+          }}
+        >
+          <div style={{ position: "relative" }}>
+            <Avatar
               src={avatarSrc}
-              alt="avatar"
-              className="rounded-circle"
+              size={100}
               style={{
-                width: 100,
-                height: 100,
                 border: "2px solid #2E8B57",
-                objectFit: "cover",
               }}
+              icon={!avatarSrc && <UserOutlined />}
             />
             {editMode && (
-              <label
-                className="btn btn-sm btn-warning position-absolute bottom-0 start-50 translate-middle-x"
-                style={{ fontSize: 12 }}
+              <Upload
+                showUploadList={false}
+                beforeUpload={(file) => {
+                  handleChange({ target: { name: "avatar", files: [file] } });
+                  return false; // không upload tự động
+                }}
+                accept="image/*"
               >
-                Chọn ảnh
-                <input
-                  type="file"
-                  hidden
-                  onChange={handleChange}
-                  name="avatar"
-                  accept="image/*"
-                />
-              </label>
+                <Button
+                  type="primary"
+                  size="small"
+                  icon={<UploadOutlined />}
+                  style={{
+                    position: "absolute",
+                    bottom: -10,
+                    left: "50%",
+                    transform: "translateX(-50%)",
+                  }}
+                >
+                  Chọn ảnh
+                </Button>
+              </Upload>
             )}
           </div>
-          <h6 className="fw-bold mb-1">{form?.full_name || "---"}</h6>
-          <p className="mb-2">{form?.email || "---"}</p>
-          <div className="d-flex gap-2">
-            <button
-              type="button"
-              className="btn btn-outline-success btn-sm"
-              onClick={() =>
-                window.dispatchEvent(new CustomEvent("openFollowingModal"))
-              }
-            >
-              Đang theo dõi{" "}
-              <span className="badge bg-success">
-                {form?.followingCount ?? 0}
-              </span>
-            </button>
-            <button
-              type="button"
-              className="btn btn-outline-warning btn-sm"
-              onClick={() =>
-                window.dispatchEvent(new CustomEvent("openFollowersModal"))
-              }
-            >
-              Người theo dõi{" "}
-              <span className="badge bg-warning">
-                {form?.followersCount ?? 0}
-              </span>
-            </button>
+
+          <div style={{ display: "flex", gap: "8px", marginTop: "20px" }}>
+            <Badge count={form?.followingCount ?? 0 } color="green">
+              <Button
+                onClick={() =>
+                  window.dispatchEvent(new CustomEvent("openFollowingModal"))
+                }
+              >
+                Đang theo dõi
+              </Button>
+            </Badge>
+            <Badge count={form?.followersCount ?? 0} color="orange">
+              <Button
+                onClick={() =>
+                  window.dispatchEvent(new CustomEvent("openFollowersModal"))
+                }
+              >
+                Người theo dõi
+              </Button>
+            </Badge>
           </div>
+        </Col>
+      </Row>
+
+      {error && (
+        <div style={{ marginTop: "16px" }}>
+          <Card type="inner" style={{ borderColor: "red" }}>
+            <Typography.Text type="danger">{error}</Typography.Text>
+          </Card>
         </div>
-      </div>
+      )}
 
-      {error && <div className="alert alert-danger mt-3">{error}</div>}
-
-      <div className="mt-3 d-flex flex-wrap gap-2">
+      {/* Buttons */}
+      <div style={{ marginTop: "16px", display: "flex", gap: "10px", flexWrap: "wrap" }}>
         {editMode ? (
           <>
-            <button
-              className="btn btn-success"
+            <Button
+              type="primary"
+              icon={<SaveOutlined />}
               onClick={handleSave}
-              disabled={saving}
+              loading={saving}
             >
               {saving ? "Đang lưu..." : "Lưu thay đổi"}
-            </button>
-            <button
-              className="btn btn-outline-success"
+            </Button>
+            <Button
+              icon={<CloseOutlined />}
               onClick={() => {
                 setEditMode(false);
                 setForm(user);
               }}
             >
               Hủy
-            </button>
+            </Button>
           </>
         ) : (
-          <button className="btn btn-success" onClick={() => setEditMode(true)}>
+          <Button
+            type="primary"
+            icon={<EditOutlined />}
+            onClick={() => setEditMode(true)}
+          >
             Chỉnh sửa thông tin
-          </button>
+          </Button>
         )}
       </div>
-    </div>
+    </Card>
   );
 };
 

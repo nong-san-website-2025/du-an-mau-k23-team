@@ -4,8 +4,13 @@ from rest_framework.response import Response
 from django.db.models import Q
 from .models import Voucher, FlashSale
 from .serializers import VoucherDetailSerializer, FlashSaleSerializer
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
 from django.utils.timezone import now
+from rest_framework import generics
+from .serializers import FlashSaleAdminSerializer
+from .models import UserVoucher
+from .serializers import UserVoucherSerializer
+from django.utils import timezone
 
 class IsStaffOrReadOnly(permissions.BasePermission):
     def has_permission(self, request, view):
@@ -83,16 +88,17 @@ def promotions_overview(request):
     return Response(data)
 
 
-class FlashSaleViewSet(viewsets.ModelViewSet):
-    queryset = FlashSale.objects.all().prefetch_related("items__product")
+class FlashSaleListView(generics.ListCreateAPIView):
     serializer_class = FlashSaleSerializer
-    permission_classes = [permissions.IsAdminUser]  # chỉ admin quản lý
+    permission_classes = [AllowAny]
 
-    def get_permissions(self):
-        if self.action in ["list", "retrieve"]:
-            return [permissions.AllowAny()]  # khách cũng xem được flash sale
-        return [permissions.IsAdminUser()]
-    
+    def get_queryset(self):
+        now = timezone.now()
+        return FlashSale.objects.filter(
+            is_active=True,
+            start_time__lte=now,
+            end_time__gt=now
+        ).select_related('product')
 
 # này là API cho user nhận được voucher từ hệ thống ấy
 
@@ -144,3 +150,9 @@ def apply_voucher(request):
         "discount": discount,
         "new_total": new_total
     })
+
+
+class FlashSaleAdminViewSet(viewsets.ModelViewSet):
+    queryset = FlashSale.objects.all().select_related('product')
+    serializer_class = FlashSaleAdminSerializer
+    permission_classes = [IsAdminUser]  # Chỉ admin mới truy cập

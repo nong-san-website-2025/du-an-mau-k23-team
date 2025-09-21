@@ -1,103 +1,50 @@
 // src/features/cart/pages/CartPage.jsx
 import React, { useState, useEffect } from "react";
 import { useCart } from "../services/CartContext";
-import { Container, Card, Button, Row, Col, Modal } from "react-bootstrap";
-import { useNavigate } from "react-router-dom";
+import { Card, Button, Row, Col, Modal, Checkbox, Popover } from "antd";
 import { Store } from "lucide-react";
-import "../styles/CartPage.css";
-import QuantityInput from "./QuantityInput";
+import { useNavigate } from "react-router-dom";
 import { productApi } from "../../products/services/productApi";
 import { Helmet } from "react-helmet";
+import QuantityInput from "./QuantityInput";
+import "../styles/CartPage.css";
 
 function CartPage() {
-
-  const { cartItems, clearCart, selectAllItems, deselectAllItems, toggleItem } = useCart();
+  const { cartItems, clearCart, selectAllItems, deselectAllItems, toggleItem } =
+    useCart();
   const [relatedProducts, setRelatedProducts] = useState([]);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   const navigate = useNavigate();
-  // console.log("🟢 CartPage render - cartItems:", cartItems);
-  // console.log("🟢 relatedProducts state:", relatedProducts);
 
-  // Không cần sync nữa vì đã sử dụng trực tiếp trạng thái selected từ CartContext
   useEffect(() => {
-    console.log("🛒 cartItems chi tiết:", JSON.stringify(cartItems, null, 2));
+    console.log("🛒 cartItems:", JSON.stringify(cartItems, null, 2));
   }, [cartItems]);
 
   const getCategoryIdFromProduct = (product) => {
     return product?.category?.id || product?.category || null;
   };
 
-  // CartPage.jsx (chỉ sửa phần useEffect loadRelated)
-  useEffect(() => {
-    const loadRelated = async () => {
-      try {
-        if (!cartItems || cartItems.length === 0) {
-          console.log("🟡 Giỏ hàng rỗng -> bỏ qua load sản phẩm liên quan");
-          return;
-        }
-
-        const firstItem = cartItems[0];
-        const firstProd = firstItem?.product_data || firstItem?.product;
-        if (!firstProd) {
-          console.warn("⚠️ Không có dữ liệu sản phẩm trong giỏ");
-          return;
-        }
-
-        const categoryId = getCategoryIdFromProduct(firstProd);
-        if (!categoryId) {
-          console.warn(
-            "⚠️ Không tìm thấy category id cho sản phẩm:",
-            firstProd
-          );
-          return;
-        }
-
-        // Tiếp tục logic load sản phẩm liên quan ...
-      } catch (err) {
-        console.error("❌ Lỗi load sản phẩm liên quan:", err);
-      }
-    };
-
-    loadRelated();
-  }, [cartItems]);
-
-  // Thêm useEffect để lắng nghe sự thay đổi của cartItems và tải sản phẩm liên quan
+  // Load sản phẩm liên quan khi thêm sản phẩm vào giỏ
   useEffect(() => {
     const loadRelatedOnAdd = async () => {
       try {
-        if (!cartItems || cartItems.length === 0) {
-          console.log("🟡 Giỏ hàng rỗng -> bỏ qua load sản phẩm liên quan");
-          return;
-        }
+        if (!cartItems || cartItems.length === 0) return;
 
-        // Lấy sản phẩm cuối cùng được thêm vào giỏ hàng
         const lastItem = cartItems[cartItems.length - 1];
         const lastProd = lastItem?.product_data || lastItem?.product;
-        if (!lastProd) {
-          console.warn("⚠️ Không có dữ liệu sản phẩm trong giỏ");
-          return;
-        }
+        if (!lastProd) return;
 
-        // Lấy categoryId từ productApi
         const categoryId = await productApi.getCategoryIdFromProduct(lastProd);
-        if (!categoryId) {
-          console.warn("⚠️ Không tìm thấy category id cho sản phẩm:", lastProd);
-          return;
-        }
+        if (!categoryId) return;
 
-        console.log("🟢 Lọc sản phẩm cùng danh mục bằng getAllProducts()");
-
-        // Lấy toàn bộ sản phẩm
         const allProducts = await productApi.getAllProducts();
 
-        // Lọc cùng danh mục
         const related = allProducts.filter((p) => {
           const prodCatId = p.category?.id || p.category;
           return prodCatId === categoryId;
         });
 
-        // Lọc bỏ sản phẩm đã có trong giỏ
         const filtered = related.filter(
           (p) =>
             !cartItems.some(
@@ -105,7 +52,6 @@ function CartPage() {
             )
         );
 
-        console.log(`✅ Lấy được ${filtered.length} sản phẩm cùng danh mục`);
         setRelatedProducts(filtered.slice(0, 8));
       } catch (err) {
         console.error("❌ Lỗi load sản phẩm liên quan:", err);
@@ -116,18 +62,15 @@ function CartPage() {
   }, [cartItems]);
 
   const allChecked =
-    cartItems.length > 0 && cartItems.every(item => item.selected);
+    cartItems.length > 0 && cartItems.every((item) => item.selected);
 
   const handleCheckAll = (e) => {
-    if (e.target.checked) {
-      selectAllItems(); // Sử dụng hàm từ CartContext
-    } else {
-      deselectAllItems(); // Sử dụng hàm từ CartContext
-    }
+    if (e.target.checked) selectAllItems();
+    else deselectAllItems();
   };
 
   const handleCheckItem = (itemId) => {
-    toggleItem(itemId); // Sử dụng hàm từ CartContext
+    toggleItem(itemId);
   };
 
   const selectedItemsData = cartItems.filter((item) => item.selected);
@@ -142,93 +85,82 @@ function CartPage() {
     0
   );
 
+  // Popover content (Chi tiết đơn hàng)
+  const popoverContent = (
+    <div style={{ minWidth: 200 }}>
+      <div className="summary-row">
+        <span>Tạm tính:</span>
+        <span>{selectedTotal.toLocaleString("vi-VN")}₫</span>
+      </div>
+      <div className="summary-row">
+        <span>Phí vận chuyển:</span>
+        <span>Miễn phí</span>
+      </div>
+      <div className="summary-row">
+        <span>Khuyến mãi:</span>
+        <span>-0₫</span>
+      </div>
+    </div>
+  );
+
   if (cartItems.length === 0) {
     return (
-      <Container className="cart-empty text-center my-5">
+      <div className="cart-empty text-center my-5">
         <Helmet>
-        <title>Giỏ hàng</title>
-        <meta name="description" content="Giỏ hàng" />
-      </Helmet>
+          <title>Giỏ hàng</title>
+          <meta name="description" content="Giỏ hàng" />
+        </Helmet>
         <h2>Giỏ hàng của bạn đang trống</h2>
-        <Button href="/" className="btn-go-market">
-          <Store /> Đi tới chợ
+        <Button
+          type="primary"
+          icon={<Store />}
+          onClick={() => navigate("/")}
+          style={{ marginTop: 20 }}
+        >
+          Đi tới chợ
         </Button>
-      </Container>
+      </div>
     );
   }
 
   return (
-    <div className="cart-page">
+    <div className="cart-page" style={{ padding: "2px 120px" }}>
       <Helmet>
         <title>Giỏ hàng</title>
         <meta name="description" content="Giỏ hàng" />
       </Helmet>
-      <div className="cart-container">
+
+      <div className="cart-container ">
         {/* LEFT: Danh sách sản phẩm */}
         <div className="cart-left">
-          <Card className="cart-card">
-            {/* Actions row for list */}
-            <div
-              className="cart-actions"
-              style={{
-                display: "flex",
-                justifyContent: "flex-end",
-                padding: "10px 12px",
-              }}
-            >
-              <Button
-                variant="outline-danger"
-                size="sm"
-                onClick={() => setShowClearConfirm(true)}
-              >
-                Xóa tất cả
-              </Button>
-            </div>
+          <Card
+          >
             <div className="cart-header">
-              <input
-                type="checkbox"
-                checked={allChecked}
-                onChange={handleCheckAll}
-              />
+              <Checkbox checked={allChecked} onChange={handleCheckAll} />
               <span className="col-name">Sản phẩm</span>
               <span className="col-price">Đơn giá</span>
               <span className="col-quantity">Số lượng</span>
               <span className="col-total">Thành tiền</span>
             </div>
+
             {cartItems.map((item) => {
               const prod = item.product_data || item.product || {};
               const stableKey = item.id || item.product;
               return (
-                <div
-                  key={item.product_data?.id || item.product}
-                  className="cart-item"
-                >
-                  <input
-                    type="checkbox"
+                <div key={stableKey} className="cart-item">
+                  <Checkbox
                     checked={item.selected || false}
                     onChange={() => handleCheckItem(stableKey)}
                   />
                   <div className="item-info">
-                    {prod.image ? (
-                      <img
-                        src={prod.image}
-                        alt={prod.name}
-                        className="item-img"
-                        style={{ cursor: "pointer" }}
-                        onClick={() => navigate(`/products/${prod.id}`)}
-                      />
-                    ) : (
-                      <div
-                        className="no-image"
-                        style={{ cursor: "pointer" }}
-                        onClick={() => navigate(`/products/${prod.id}`)}
-                      >
-                        No Image
-                      </div>
-                    )}
+                    <img
+                      src={prod.image || "/no-image.png"}
+                      alt={prod.name}
+                      className="item-img"
+                      onClick={() => navigate(`/products/${prod.id}`)}
+                    />
                     <span
                       className="item-name"
-                      style={{ cursor: "pointer", color: "#000000ff" }}
                       onClick={() => navigate(`/products/${prod.id}`)}
                     >
                       {prod.name || "---"}
@@ -238,10 +170,7 @@ function CartPage() {
                   <div className="item-price">
                     {Number(prod.price)?.toLocaleString("vi-VN")}₫
                   </div>
-                  <div
-                    className="item-quantity"
-                    style={{ display: "flex", justifyContent: "center" }}
-                  >
+                  <div className="item-quantity " style={{ padding: "0 70px" }}>
                     <QuantityInput item={item} />
                   </div>
                   <div className="item-total">
@@ -255,113 +184,47 @@ function CartPage() {
             })}
           </Card>
         </div>
+      </div>
 
-        {/* RIGHT: Tóm tắt đơn hàng */}
-        <div className="cart-right">
-          <Card className="summary-card">
-            <h4>Tóm tắt đơn hàng</h4>
-            <div className="summary-row">
-              <span>Tổng sản phẩm:</span>
-              <span>{selectedQuantity} sản phẩm</span>
+      {/* Thanh tóm tắt đơn hàng cố định bên dưới */}
+      <div className="cart-bottom-bar">
+        <Button danger size="small" onClick={() => setShowClearConfirm(true)}>
+          Xóa tất cả
+        </Button>
+        <div className="d-flex align-items-center gap-4" >
+          <Popover content={popoverContent} placement="topLeft" >
+            <div className="total-section">
+              <span className="total-label">Tổng cộng:</span>
+              <span className="total-price">
+                {selectedTotal.toLocaleString("vi-VN")}₫
+              </span>
             </div>
-            <div className="summary-row">
-              <span>Tạm tính:</span>
-              <span>{selectedTotal.toLocaleString("vi-VN")}₫</span>
-            </div>
-            <div className="summary-row">
-              <span>Phí vận chuyển:</span>
-              <span>Miễn phí</span>
-            </div>
-            <hr />
-            <div className="summary-row total">
-              <span>Tổng cộng:</span>
-              <span>{selectedTotal.toLocaleString("vi-VN")}₫</span>
-            </div>
-            <div style={{ display: "flex", gap: "10px" }}>
-              <Button
-                disabled={selectedItemsData.length === 0}
-                className="btn-checkout"
-                onClick={() => {
-                  // Đảm bảo trạng thái selected đã được cập nhật
-                  navigate("/checkout");
-                }}
-              >
-                Tiến hành thanh toán
-              </Button>
-              <Button
-                className="btn-checkout"
-                onClick={() => {
-                  navigate("/", { state: { items: selectedItemsData } });
-                }}
-              >
-                Tiếp tục mua hàng
-              </Button>
-            </div>
-          </Card>
+          </Popover>
+          <Button
+            type="primary"
+            disabled={selectedItemsData.length === 0}
+            onClick={() => navigate("/checkout")}
+            style={{ height: 50, fontSize: "16px", fontWeight: 500 }}
+          >
+            Tiến hành thanh toán ({selectedQuantity})
+          </Button>
         </div>
       </div>
 
       {/* Modal xác nhận xóa tất cả */}
       <Modal
-        show={showClearConfirm}
-        onHide={() => setShowClearConfirm(false)}
-        centered
+        open={showClearConfirm}
+        onCancel={() => setShowClearConfirm(false)}
+        onOk={async () => {
+          await clearCart();
+          setShowClearConfirm(false);
+        }}
+        title="Xóa tất cả sản phẩm"
+        okText="Xóa tất cả"
+        cancelText="Hủy"
       >
-        <Modal.Header closeButton>
-          <Modal.Title>Xóa tất cả sản phẩm</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          Bạn có chắc muốn xóa tất cả sản phẩm trong giỏ ?
-        </Modal.Body>
-        <Modal.Footer>
-          <Button
-            variant="secondary"
-            onClick={() => setShowClearConfirm(false)}
-          >
-            Hủy
-          </Button>
-          <Button
-            variant="danger"
-            onClick={async () => {
-              await clearCart();
-              setShowClearConfirm(false);
-            }}
-          >
-            Xóa tất cả
-          </Button>
-        </Modal.Footer>
+        Bạn có chắc muốn xóa tất cả sản phẩm trong giỏ?
       </Modal>
-
-      {/* SẢN PHẨM CÙNG DANH MỤC */}
-      <div className="product-category mt-4">
-        <h4>Sản phẩm cùng danh mục</h4>
-        <Row>
-          {relatedProducts.length > 0 ? (
-            relatedProducts.map((prod) => (
-              <Col key={prod.id} xs={6} sm={4} md={3} className="mb-3">
-                <Card
-                  className="product-card"
-                  onClick={() => navigate(`/products/${prod.id}`)}
-                  style={{ cursor: "pointer" }}
-                >
-                  {prod.image ? (
-                    <Card.Img variant="top" src={prod.image} />
-                  ) : (
-                    <div className="no-image">No Image</div>
-                  )}
-                  <Card.Body>
-                    <Card.Title style={{ fontSize: "0.9rem" }}>
-                      {prod.name}
-                    </Card.Title>
-                  </Card.Body>
-                </Card>
-              </Col>
-            ))
-          ) : (
-            <p>Không có sản phẩm liên quan</p>
-          )}
-        </Row>
-      </div>
     </div>
   );
 }

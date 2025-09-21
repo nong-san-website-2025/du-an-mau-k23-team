@@ -25,7 +25,7 @@ import ApprovalSellersPage from "../features/admin/pages/ShopPage/ApprovalSeller
 import ApprovalProductsPage from "../features/admin/pages/ProductPage/ApprovalProductsPage.jsx";
 import CategoryManagementPage from "../features/admin/pages/ProductPage/CategoryManagement.jsx";
 import Promotions from "../features/admin/pages/Promotions/PromotionsPage.jsx";
-import FlashSale from "../features/admin/pages/Promotions/FlashSale.jsx";
+import FlashSale from "../features/admin/pages/Promotions/AdminFlashSalePanelPage.jsx";
 import AdvertisementList from "../features/admin/pages/MarketingAdmin/AdvertisementList.jsx";
 // import StatisticsPage from "../features/admin/pages/StatisticsPage";
 import AccountPage from "../features/admin/pages/Setting/AccountPage";

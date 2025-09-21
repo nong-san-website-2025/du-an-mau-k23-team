@@ -36,7 +36,7 @@ const ProfileSidebar = ({ activeTab, setActiveTab }) => {
       className="shadow-sm border-0 p-4"
       style={{
         backgroundColor: colors.background,
-        borderRadius: 16,
+        borderRadius: 6,
       }}
     >
       <div
@@ -67,14 +67,15 @@ const ProfileSidebar = ({ activeTab, setActiveTab }) => {
                 backgroundColor: isActive ? colors.primary : colors.white,
                 color: isActive ? colors.white : colors.text,
                 border: `1px solid ${isActive ? colors.primary : colors.border}`,
-                borderRadius: 10,
+                borderRadius: 6,
                 padding: "10px 14px",
                 fontSize: 16,
                 fontWeight: 500,
                 transition: "all 0.25s ease",
+                height: 35,
               }}
             >
-              <span style={{ fontSize: 18 }}>{icon}</span> {label}
+              <span style={{ fontSize: 14 }}>{icon}</span> {label}
             </Button>
           );
         })}

@@ -129,12 +129,8 @@ if os.environ.get("DATABASE_URL"):
 else:
     DATABASES = {
         'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': 'ecom_db',
-            'USER': 'postgres',
-            'PASSWORD': '12345',
-            'HOST': 'localhost',
-            'PORT': '5432',
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
         }
     }
 # --- Auth
@@ -207,7 +203,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 PLATFORM_WALLET_USERNAME = os.environ.get('PLATFORM_WALLET_USERNAME', '').strip() or None
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),  # access token sống 60 phút
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=180),  # access token sống 60 phút
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),     # refresh token sống 7 ngày
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,

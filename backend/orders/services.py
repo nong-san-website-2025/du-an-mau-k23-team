@@ -16,8 +16,14 @@ class OrderProcessingError(Exception):
 def reduce_stock_for_order(order):
     """
     Giảm tồn kho cho tất cả sản phẩm trong đơn hàng.
+    Idempotent: chỉ thực hiện nếu order.stock_deducted = False.
     Sử dụng SELECT ... FOR UPDATE để khóa row và tránh race condition.
     """
+    # Nếu đã trừ trước đó, bỏ qua
+    if getattr(order, 'stock_deducted', False):
+        logger.info(f"Order #{order.id} đã trừ tồn kho trước đó, bỏ qua.")
+        return
+
     logger.info(f"Bắt đầu giảm tồn kho cho Order #{order.id}")
     
     # Lock các sản phẩm liên quan để tránh race condition
@@ -47,6 +53,10 @@ def reduce_stock_for_order(order):
         product.stock = F('stock') - item.quantity
         product.save(update_fields=['stock'])
         logger.info(f"Order #{order.id} - Đã trừ {item.quantity} tồn kho cho '{product.name}'.")
+
+    # Đánh dấu đã trừ để tránh trừ lặp
+    order.stock_deducted = True
+    order.save(update_fields=['stock_deducted'])
 
     logger.info(f"Hoàn tất giảm tồn kho cho Order #{order.id}")
 

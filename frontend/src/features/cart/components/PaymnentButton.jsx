@@ -1,8 +1,10 @@
+// src/features/cart/components/PaymentButton.jsx
 import React from "react";
-import API from "../../login_register/services/api";
+import { Button } from "antd";
 import { toast } from "react-toastify";
+import { CreditCardOutlined } from "@ant-design/icons";
+import API from "../../login_register/services/api";
 
-// Nhận thêm orderData để backend tạo OrderItem khi callback
 const PaymentButton = ({ amount, orderData, disabled = false }) => {
   const handlePayment = async () => {
     try {
@@ -11,7 +13,7 @@ const PaymentButton = ({ amount, orderData, disabled = false }) => {
         order_data: orderData || {},
       });
       if (res.data.payment_url) {
-        window.location.href = res.data.payment_url; // chuyển hướng tới VNPAY
+        window.location.href = res.data.payment_url; // Chuyển hướng đến VNPAY
       } else {
         toast.error("Không tạo được link thanh toán!");
       }
@@ -22,17 +24,24 @@ const PaymentButton = ({ amount, orderData, disabled = false }) => {
   };
 
   return (
-    <button 
-      className="order-button" 
+    <Button
+      type="primary"
+      size="large"
       onClick={handlePayment}
       disabled={disabled}
-      style={{ 
-        opacity: disabled ? 0.6 : 1, 
-        cursor: disabled ? 'not-allowed' : 'pointer' 
+      style={{
+        backgroundColor: "#4caf50", // Màu xanh thương mại điện tử
+        
+        width: "100%",
+        height: "48px",
+        fontSize: "16px",
+        fontWeight: "500",
+        borderRadius: "8px",
+        opacity: disabled ? 0.6 : 1,
       }}
     >
-      Thanh toán qua VNPAY
-    </button>
+      Thanh toán
+    </Button>
   );
 };
 

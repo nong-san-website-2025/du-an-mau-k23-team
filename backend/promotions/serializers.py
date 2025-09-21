@@ -1,7 +1,6 @@
 from rest_framework import serializers
-from .models import Promotion, Voucher ,FlashSale , FlashSaleItem , UserVoucher
+from .models import Promotion, Voucher ,FlashSale, UserVoucher
 from products.models import Product
-from products.serializers import ProductListSerializer
 
 class PromotionListSerializer(serializers.ModelSerializer):
     class Meta:
@@ -49,42 +48,31 @@ class VoucherDetailSerializer(serializers.ModelSerializer):
         return super().update(instance, validated_data)
 
 
-class FlashSaleItemSerializer(serializers.ModelSerializer):
-    product = ProductListSerializer(read_only=True)
-    product_id = serializers.PrimaryKeyRelatedField(queryset=Product.objects.all(), source="product", write_only=True)
-
-    class Meta:
-        model = FlashSaleItem
-        fields = ["id", "product", "product_id", "sale_price", "quantity", "sold"]
-
-
 class FlashSaleSerializer(serializers.ModelSerializer):
-    items = FlashSaleItemSerializer(many=True)
+    product_name = serializers.CharField(source='product.name', read_only=True)
+    product_image = serializers.CharField(source='product.thumbnail_url', read_only=True)
+    remaining_time = serializers.SerializerMethodField()
+    remaining_stock = serializers.SerializerMethodField()
 
     class Meta:
         model = FlashSale
-        fields = ["id", "name", "start_time", "end_time", "created_at", "items"]
+        fields = [
+            'id', 'product_id', 'product_name', 'product_image',
+            'original_price', 'flash_price', 'stock',
+            'start_time', 'end_time', 'remaining_time', 'remaining_stock'
+        ]
 
-    def create(self, validated_data):
-        items_data = validated_data.pop("items", [])
-        flash_sale = FlashSale.objects.create(**validated_data)
-        for item_data in items_data:
-            FlashSaleItem.objects.create(flash_sale=flash_sale, **item_data)
-        return flash_sale
+    def get_product_name(self, obj):
+        return obj.product.name if obj.product else ""
 
-    def update(self, instance, validated_data):
-        items_data = validated_data.pop("items", [])
-        instance.name = validated_data.get("name", instance.name)
-        instance.start_time = validated_data.get("start_time", instance.start_time)
-        instance.end_time = validated_data.get("end_time", instance.end_time)
-        instance.save()
+    def get_product_image(self, obj):
+        return obj.product.thumbnail_url if obj.product else ""
 
-        # Cập nhật items
-        instance.items.all().delete()
-        for item_data in items_data:
-            FlashSaleItem.objects.create(flash_sale=instance, **item_data)
+    def get_remaining_time(self, obj):
+        return obj.remaining_time
 
-        return instance
+    def get_remaining_stock(self, obj):
+        return obj.remaining_stock
     
 
 class VoucherSerializer(serializers.ModelSerializer):
@@ -98,3 +86,52 @@ class UserVoucherSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserVoucher
         fields = ["id", "voucher", "is_used", "used_at"]    
+
+
+
+class FlashSaleAdminSerializer(serializers.ModelSerializer):
+    # ✅ Bắt buộc: dùng PrimaryKeyRelatedField để DRF hiểu product là ForeignKey
+    product = serializers.PrimaryKeyRelatedField(queryset=Product.objects.all())
+
+    class Meta:
+        model = FlashSale
+        fields = [
+            'id', 'product', 'flash_price', 'stock',
+            'start_time', 'end_time', 'is_active'
+        ]
+        read_only_fields = ['id']
+
+    def validate_product(self, value):
+        if not value:
+            raise serializers.ValidationError("Sản phẩm là bắt buộc.")
+        if hasattr(value, 'flash_sale'):
+            raise serializers.ValidationError("Sản phẩm này đã có Flash Sale rồi.")
+        return value
+
+    def validate_flash_price(self, value):
+        """Kiểm tra riêng lẻ giá flash"""
+        if value is not None:
+            # Không truy cập product ở đây, để validate() xử lý
+            if value <= 0:
+                raise serializers.ValidationError("Giá flash phải lớn hơn 0.")
+        return value
+
+    def validate(self, data):
+        """Kiểm tra chéo các trường"""
+        product = data.get('product')
+        flash_price = data.get('flash_price')
+        start_time = data.get('start_time')
+        end_time = data.get('end_time')
+
+        if not product:
+            # Phòng thủ thêm
+            raise serializers.ValidationError({"product": "Sản phẩm là bắt buộc."})
+
+        if flash_price is not None and product:
+            if flash_price >= product.price:
+                raise serializers.ValidationError({"flash_price": "Giá flash phải thấp hơn giá gốc."})
+
+        if start_time and end_time and start_time >= end_time:
+            raise serializers.ValidationError({"end_time": "Thời gian kết thúc phải sau thời gian bắt đầu."})
+
+        return data

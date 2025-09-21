@@ -1,5 +1,6 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.core.validators import RegexValidator
 
 
 class Role(models.Model):
@@ -11,16 +12,34 @@ class Role(models.Model):
 
 class CustomUser(AbstractUser):
 
-    role = models.ForeignKey(Role, on_delete=models.SET_NULL, null=True, blank=True)
+    phone_regex = RegexValidator(
+        regex=r'^0\d{9}$',
+        message="Số điện thoại phải bắt đầu bằng 0 và gồm đúng 10 chữ số."
+    )
 
+    role = models.ForeignKey(Role, on_delete=models.SET_NULL, null=True, blank=True)
     full_name = models.CharField(max_length=255, blank=True, null=True)
     email = models.EmailField(unique=True)
     avatar = models.ImageField(upload_to='assets/users/', blank=True, null=True)
-    phone = models.CharField(max_length=20, blank=True, null=True)
+    phone = models.CharField(
+        validators=[phone_regex],
+        max_length=10,
+        blank=True,
+        null=True,
+        unique=True
+    )
+
+    # Pending changes for secure verification flows
+    pending_email = models.EmailField(null=True, blank=True)
+    pending_phone = models.CharField(max_length=10, null=True, blank=True)
+    phone_otp = models.CharField(max_length=6, null=True, blank=True)
+    phone_otp_expires = models.DateTimeField(null=True, blank=True)
+
     last_activity = models.DateTimeField(blank=True, null=True)
     note = models.TextField(blank=True, null=True)
     tags = models.CharField(max_length=255, blank=True, null=True)
     points = models.IntegerField(default=0)
+
 
     STATUS_CHOICES = (
         ('active', 'Đang hoạt động'),

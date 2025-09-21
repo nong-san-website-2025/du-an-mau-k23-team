@@ -265,7 +265,7 @@ class SearchAPIView(APIView):
     def get(self, request):
         query = request.GET.get('q', '').strip()
         if not query:
-            return Response({'products': [], 'posts': [], 'shops': []})
+            return Response({'products': [], 'posts': [], 'sellers': []})
 
         # Fuzzy search
         products = Product.objects.filter(
@@ -283,7 +283,7 @@ class SearchAPIView(APIView):
         )[:10]
 
         return Response({
-            'products': ProductSerializer(products, many=True).data,
+            'products': ProductListSerializer(products, many=True, context={'request': request}).data,
             'posts': PostSerializer(posts, many=True).data,
             'sellers': SellerSerializer(sellers, many=True).data
         })

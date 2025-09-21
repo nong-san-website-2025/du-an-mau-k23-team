@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./features/login_register/services/AuthContext";
-import { CartProvider } from "./features/cart/services/CartContext";
+import { CartProvider } from "./features/cart/services/CartContext.js";
 import { BannerProvider } from "./features/admin/contexts/BannerContext";
 import LoginForm from "./features/login_register/pages/LoginForm";
 import { userRoutes } from "./routes/UserRoutes";

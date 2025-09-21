@@ -26,6 +26,8 @@ from django.utils.http import urlsafe_base64_encode
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.http import HttpResponseRedirect
+from django.utils import timezone
+from django.urls import reverse
 
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
@@ -72,12 +74,102 @@ class UserProfileView(APIView):
 
     def put(self, request):
         # Ensure multipart parsing works for avatar uploads
-        parser_classes = (MultiPartParser, FormParser)
         serializer = UserSerializer(request.user, data=request.data, partial=True)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        # Save to stage non-sensitive updates; email/phone are staged in pending fields
+        user = serializer.save()
+
+        # Handle pending email: send verification link
+        messages = []
+        if user.pending_email and user.pending_email != user.email:
+            try:
+                uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
+                token = default_token_generator.make_token(user)
+                # Build backend URL for email confirmation then redirect to profile
+                path = reverse('confirm-email-change', kwargs={"uidb64": uidb64, "token": token})
+                verify_link = request.build_absolute_uri(path)
+                # Send email
+                send_mail(
+                    subject="Xác nhận thay đổi email",
+                    message=f"Nhấn vào liên kết để xác nhận: {verify_link}",
+                    from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', None),
+                    recipient_list=[user.pending_email],
+                    fail_silently=True,
+                )
+                messages.append("Đã gửi email xác nhận thay đổi email.")
+            except Exception:
+                messages.append("Không thể gửi email xác nhận. Vui lòng thử lại sau.")
+
+        # Handle pending phone: generate OTP and 'send' via log/email fallback
+        if user.pending_phone and user.pending_phone != (user.phone or ""):
+            import random
+            from django.utils import timezone
+            otp = f"{random.randint(0, 999999):06d}"
+            user.phone_otp = otp
+            user.phone_otp_expires = timezone.now() + timezone.timedelta(minutes=10)
+            user.save(update_fields=["phone_otp", "phone_otp_expires"])
+            # TODO: Integrate real SMS provider here. For dev, send via email fallback if available.
+            if user.email:
+                try:
+                    send_mail(
+                        subject="Mã OTP xác nhận thay đổi số điện thoại",
+                        message=f"Mã OTP của bạn là: {otp} (hết hạn sau 10 phút)",
+                        from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', None),
+                        recipient_list=[user.email],
+                        fail_silently=True,
+                    )
+                    messages.append("Đã gửi OTP xác nhận thay đổi số điện thoại qua email.")
+                except Exception:
+                    messages.append("Không thể gửi OTP. Vui lòng thử lại sau.")
+            else:
+                messages.append("OTP đã được tạo cho số điện thoại mới.")
+
+        # Return masked data and messages
+        data = UserSerializer(user).data
+        data["messages"] = messages
+        return Response(data)
+
+class ConfirmEmailChangeView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, uidb64, token):
+        try:
+            uid = int(urlsafe_base64_decode(uidb64).decode())
+            user = get_object_or_404(CustomUser, pk=uid)
+            if default_token_generator.check_token(user, token) and user.pending_email:
+                user.email = user.pending_email
+                user.pending_email = None
+                user.save(update_fields=["email", "pending_email"])
+                # Redirect về trang profile sau khi cập nhật
+                return HttpResponseRedirect(f"{FRONTEND_URL}/profile")
+            return HttpResponseRedirect(f"{FRONTEND_URL}/profile?email_change=failed")
+        except Exception:
+            return HttpResponseRedirect(f"{FRONTEND_URL}/profile?email_change=error")
+
+
+class ConfirmPhoneChangeView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        otp = str(request.data.get("otp", "")).strip()
+        user = request.user
+        if not otp or not user.phone_otp or not user.phone_otp_expires:
+            return Response({"error": "OTP không hợp lệ."}, status=400)
+        if timezone.now() > user.phone_otp_expires:
+            return Response({"error": "OTP đã hết hạn."}, status=400)
+        if otp != user.phone_otp:
+            return Response({"error": "OTP không đúng."}, status=400)
+
+        # Apply phone change
+        user.phone = user.pending_phone
+        user.pending_phone = None
+        user.phone_otp = None
+        user.phone_otp_expires = None
+        user.save(update_fields=["phone", "pending_phone", "phone_otp", "phone_otp_expires"])
+        return Response({"message": "Số điện thoại đã được cập nhật thành công."})
+
 
 class UserListView(ListAPIView):
     queryset = CustomUser.objects.all()

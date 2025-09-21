@@ -97,7 +97,7 @@ export default function Header() {
   }, []);
 
   const greenText = {
-    color: "#22C55E",
+    color: "#4caf50",
     fontFamily: "Montserrat, Arial, sans-serif",
     fontWeight: 800,
   };
@@ -311,22 +311,6 @@ export default function Header() {
           >
             {/* Logo */}
             <Logo greenText={greenText} />
-
-            {/* Navigation */}
-            {/* <nav
-              className="d-flex align-items-center flex-grow-1 ms-1"
-              style={{ flexWrap: "nowrap" }}
-            >
-              <CategoryMegaMenu
-                categories={categories}
-                iconMap={iconMap}
-                showCategory={showCategory}
-                handleMouseEnter={handleMouseEnter}
-                handleMouseLeave={handleMouseLeave}
-                handleCategoryHover={handleCategoryHover}
-                setShowCategory={setShowCategory}
-              />
-            </nav> */}
 
             {/* Search & Actions */}
             <SearchBoxWithSuggestions

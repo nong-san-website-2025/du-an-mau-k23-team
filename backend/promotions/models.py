@@ -1,7 +1,14 @@
 from django.db import models
+
+# Create your models here.
+from django.db import models
 from django.conf import settings
 from products.models import Product
 from products.serializers import ProductListSerializer
+from django.utils import timezone
+from django.core.validators import MinValueValidator
+
+
 
 class Promotion(models.Model):
     TYPE_VOUCHER = "voucher"
@@ -95,45 +102,112 @@ class Voucher(models.Model):
 
 
 class FlashSale(models.Model):
-    name = models.CharField(max_length=255)
+    product = models.OneToOneField(
+        Product,
+        on_delete=models.CASCADE,
+        related_name='flash_sale',
+        # Không dùng null=True — FlashSale luôn phải có Product
+    )
+    original_price = models.DecimalField(max_digits=12, decimal_places=0, editable=False)
+    flash_price = models.DecimalField(max_digits=12, decimal_places=0)
+    stock = models.PositiveIntegerField(validators=[MinValueValidator(1)])
     start_time = models.DateTimeField()
     end_time = models.DateTimeField()
+    is_active = models.BooleanField(default=False, db_index=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"{self.name} ({self.start_time} - {self.end_time})"
-
-
-class FlashSaleItem(models.Model):
-    flash_sale = models.ForeignKey(FlashSale, on_delete=models.CASCADE, related_name="items")
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="flashsale_items")
-    sale_price = models.DecimalField(max_digits=10, decimal_places=2)
-    quantity = models.PositiveIntegerField(default=0)  # số lượng áp dụng khuyến mãi
-    sold = models.PositiveIntegerField(default=0)      # số đã bán trong flash sale
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        unique_together = ("flash_sale", "product")  # tránh trùng sản phẩm trong 1 đợt sale
+        ordering = ['-start_time']
+        indexes = [
+            models.Index(fields=['is_active', 'start_time', 'end_time']),
+        ]
 
     def __str__(self):
-        return f"{self.product.name} - {self.sale_price} (FS: {self.flash_sale.name})"
+        return f"Flash: {self.product.name} - {self.flash_price}"
 
+    def clean(self):
+        if self.product is None:
+            raise ValidationError({'product': 'Flash sale must have a product.'})
 
+        if self.flash_price >= self.product.price:
+            raise ValidationError({'flash_price': 'Flash price must be lower than original price.'})
+
+        if self.start_time >= self.end_time:
+            raise ValidationError({'end_time': 'End time must be after start time.'})
+
+    def save(self, *args, **kwargs):
+        # Gọi clean() trước khi save
+        self.full_clean()
+
+        # Chỉ set original_price khi tạo mới
+        if self._state.adding:
+            self.original_price = self.product.price
+
+        super().save(*args, **kwargs)
+
+    @property
+    def is_ongoing(self):
+        now = timezone.now()
+        return self.is_active and self.start_time <= now < self.end_time
+
+    @property
+    def remaining_time(self):
+        if not self.is_ongoing:
+            return 0
+        return int((self.end_time - timezone.now()).total_seconds())
+
+    @property
+    def remaining_stock(self):
+        if self.product is None:
+            return 0  # hoặc raise Exception nếu muốn
+
+        from orders.models import OrderItem
+        sold = OrderItem.objects.filter(
+            product=self.product,
+            order__status__in=['paid', 'shipped', 'delivered'],
+            created_at__gte=self.start_time,
+            created_at__lt=self.end_time
+        ).aggregate(total=Sum('quantity'))['total'] or 0
+
+        return max(0, self.stock - sold)
+    
+    @property
+    def is_ongoing(self):
+        now = timezone.now()
+        return self.is_active and self.start_time <= now < self.end_time
+    
 class UserVoucher(models.Model):
     user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, 
+        settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name="user_vouchers"
     )
     voucher = models.ForeignKey(
-        Voucher, 
+        Voucher,
         on_delete=models.CASCADE,
         related_name="user_vouchers"
     )
+    # quantity: số lượt voucher cấp cho user (ví dụ 1 hoặc 3)
+    quantity = models.PositiveIntegerField(default=1)
+    used_count = models.PositiveIntegerField(default=0)
     is_used = models.BooleanField(default=False)
     used_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
-        unique_together = ("user", "voucher")  # 1 user chỉ giữ 1 bản ghi cho 1 voucher
+        unique_together = ("user", "voucher")
+
+    def remaining_for_user(self):
+        return max(0, self.quantity - self.used_count)
+
+    def mark_used_once(self):
+        self.used_count += 1
+        if self.used_count >= self.quantity:
+            self.is_used = True
+            from django.utils.timezone import now
+            self.used_at = now()
+        self.save()
 
     def __str__(self):
-        return f"{self.user.username} - {self.voucher.code} - {'used' if self.is_used else 'unused'}"
+        return f"{self.user.username} - {self.voucher.code} - {self.used_count}/{self.quantity}"

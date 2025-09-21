@@ -10,6 +10,7 @@ import {
   // fetchUserRecommendations,
   fetchCategories,
 } from "../services/api/homepageApi.js";
+import FlashSaleList from "../components/home/FlashSaleList.jsx";
 
 export default function HomePage() {
   const [loading, setLoading] = useState(true);
@@ -63,7 +64,7 @@ export default function HomePage() {
       <CategorySection categories={categories} />
 
       {/* Flash Sale */}
-      <FlashSaleSection />
+      <FlashSaleList />
 
       {/* Personalized Section */}
       <PersonalizedSection

@@ -22,6 +22,7 @@ import NotificationSettings from "../components/NotificationSettings";
 import VoucherList from "../components/VoucherList";
 import Rewards from "../../points/pages/Rewards";
 import { Helmet } from "react-helmet";
+import { theme } from "antd";
 
 const mainColor = "#2E8B57";
 const accentColor = "#F57C00";
@@ -244,7 +245,7 @@ function ProfilePage() {
           new CustomEvent("userProfileUpdated", { detail: res.data })
         );
       } catch {}
-      toast.success("✅ Cập nhật thông tin thành công!");
+      toast.info("Email xác thực đã được gửi, vui lòng kiểm tra hộp thư!",{theme: "light", autoClose:5000 } );
     } catch {
       setError("Cập nhật thất bại. Vui lòng thử lại!");
       toast.error("❌ Cập nhật thất bại!");
@@ -383,7 +384,7 @@ function ProfilePage() {
     );
 
   return (
-    <Container className="py-0">
+    <Container className="py-3">
       <Helmet>
         <title>Tài khoản của tôi</title>
         <meta name="description" content="Giỏ hàng" />
@@ -394,7 +395,7 @@ function ProfilePage() {
         </Col>
         <Col md={9}>
           <Card
-            className="shadow border-0 p-3 mb-4"
+            className="shadow border-0 p-3 mb-3"
             style={{ background: "#fff" }}
           >
             {activeTab === "profile" && (

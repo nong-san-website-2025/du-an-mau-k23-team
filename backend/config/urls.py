@@ -6,6 +6,7 @@ from django.http import HttpResponse
 from django.views.generic import TemplateView
 from dashboard.views import dashboard_data
 
+from promotions.urls import router as promotions_router
 # ✅ import views của SimpleJWT
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
@@ -34,6 +35,7 @@ urlpatterns = [
     path('api/advertisements/', include('advertisements.urls')),
     path('', include('reviews.urls')),
     path("api/promotions/", include("promotions.urls")),
+     path("api/promotions/", include(promotions_router.urls)),
 
     path('api/complaints/', include('complaints.urls')),
     path("api/dashboard/", dashboard_data, name="dashboard-data"),
