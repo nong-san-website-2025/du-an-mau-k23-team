@@ -39,11 +39,13 @@ INSTALLED_APPS = [
     "django_filters",
     'advertisements',
     "rest_framework_simplejwt.token_blacklist",
+    'channels',
 
     # Local apps
     "users", "sellers", "products", "reviews",
     "cart", "orders", "payments", "store",
     "blog", "wallet",'complaints', "marketing", "promotions",
+    "chat",
 
     # Cloudinary
 
@@ -107,15 +109,22 @@ TEMPLATES = [
     },
 ]
 
-# --- Channels (nếu chưa cần Redis ở Render thì comment lại)
-CHANNEL_LAYERS = {
-    "default": {
-        "BACKEND": "channels_redis.core.RedisChannelLayer",
-        "CONFIG": {
-            "hosts": [("127.0.0.1", 6379)],
+# --- Channels (auto fallback to InMemory when REDIS_URL not set)
+if os.environ.get("REDIS_URL"):
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {
+                "hosts": [os.environ["REDIS_URL"]],
+            },
         },
-    },
-}
+    }
+else:
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels.layers.InMemoryChannelLayer",
+        }
+    }
 
 # --- Database: local PostgreSQL hoặc Render
 if os.environ.get("DATABASE_URL"):
