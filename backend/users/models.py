@@ -40,7 +40,6 @@ class CustomUser(AbstractUser):
     tags = models.CharField(max_length=255, blank=True, null=True)
     points = models.IntegerField(default=0)
 
-
     STATUS_CHOICES = (
         ('active', 'Đang hoạt động'),
         ('inactive', 'Ngừng hoạt động'),
@@ -75,20 +74,37 @@ class CustomUser(AbstractUser):
         return bool(self.is_superuser or (self.role and self.role.name == "admin"))
 
 
+# models.py
 class Address(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="addresses")
     recipient_name = models.CharField(max_length=100)
     phone = models.CharField(max_length=15)
-    location = models.TextField()
+    location = models.TextField()  # Địa chỉ cụ thể (số nhà, đường...)
+
+    # Cờ địa chỉ mặc định
     is_default = models.BooleanField(default=False)
 
+    # Thông tin GHN
+    district_id = models.IntegerField(
+        null=True, blank=True, help_text='GHN DistrictID (bắt buộc nếu tính phí GHN)'
+    )
+    ward_code = models.CharField(
+        max_length=20, null=True, blank=True, help_text='GHN WardCode (bắt buộc nếu tính phí GHN)'
+    )
+
+    # Mã nội bộ (tuỳ ý)
+    province_code = models.CharField(max_length=10, null=True, blank=True)
+    district_code = models.CharField(max_length=10, null=True, blank=True)
+
     def save(self, *args, **kwargs):
+        # Nếu set is_default = True -> các địa chỉ khác của user phải về False
         if self.is_default:
-            Address.objects.filter(user=self.user).update(is_default=False)
+            Address.objects.filter(user=self.user).exclude(id=self.id).update(is_default=False)
         super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.recipient_name} - {self.location}"
+
 
 
 class PointHistory(models.Model):

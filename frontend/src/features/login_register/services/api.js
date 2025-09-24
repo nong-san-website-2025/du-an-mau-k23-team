@@ -1,3 +1,4 @@
+// src/login_register/services/api.js
 import axios from "axios";
 
 const API_URL = process.env.REACT_APP_API_URL;
@@ -5,13 +6,18 @@ const API_URL = process.env.REACT_APP_API_URL;
 const api = axios.create({
   baseURL: API_URL,
   timeout: 10000,
+  headers: {
+    "Content-Type": "application/json", // ✅ THÊM DÒNG NÀY
+  },
 });
 
 // Gắn token vào header
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token");
-    if (token) config.headers["Authorization"] = `Bearer ${token}`;
+    if (token) {
+      config.headers["Authorization"] = `Bearer ${token}`;
+    }
     return config;
   },
   (error) => Promise.reject(error)
@@ -41,8 +47,9 @@ api.interceptors.response.use(
         originalRequest.headers["Authorization"] = `Bearer ${newAccess}`;
         return api(originalRequest);
       } catch (err) {
-        // Chỉ xoá các khoá xác thực, không xoá toàn bộ localStorage để tránh mất dữ liệu (vd: guest_cart)
-        ["token", "refresh", "username", "role", "is_admin", "is_seller"].forEach((k) => localStorage.removeItem(k));
+        ["token", "refresh", "username", "role", "is_admin", "is_seller"].forEach((k) =>
+          localStorage.removeItem(k)
+        );
         window.location.href = "/login";
         return Promise.reject(err);
       }

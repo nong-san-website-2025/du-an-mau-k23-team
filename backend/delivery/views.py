@@ -1,0 +1,104 @@
+# delivery/views.py
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from .services.ghn import GHNClient
+
+class CalculateShippingFeeView(APIView):
+    def post(self, request):
+
+        print("📥 Received request data:", request.data)  # Log dữ liệu nhận được
+        
+        payload = request.data.copy()  # Tạo bản sao để tránh sửa request gốc
+
+        # Validate required fields
+        required_fields = [
+            'from_district_id', 'to_district_id', 'weight',
+            'length', 'width', 'height'
+        ]
+        for field in required_fields:
+            if field not in payload or payload[field] is None:
+                return Response({
+                    'error': f'Missing required field: {field}'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Ensure numbers > 0
+        try:
+            payload['weight'] = max(int(payload['weight']), 1)
+            payload['length'] = max(int(payload['length']), 1)
+            payload['width'] = max(int(payload['width']), 1)
+            payload['height'] = max(int(payload['height']), 1)
+            payload['from_district_id'] = int(payload['from_district_id'])
+            payload['to_district_id'] = int(payload['to_district_id'])
+        except (ValueError, TypeError) as e:
+            return Response({
+                'error': f'Invalid number format: {str(e)}'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # ✅ SỬA Ở ĐÂY: Xử lý ward_code tốt hơn
+        # Xử lý to_ward_code
+        if 'to_ward_code' in payload and payload['to_ward_code'] is not None:
+            # Chuyển về string và loại bỏ khoảng trắng
+            payload['to_ward_code'] = str(payload['to_ward_code']).strip()
+            # Nếu là chuỗi rỗng thì xóa field
+            if not payload['to_ward_code']:
+                payload.pop('to_ward_code', None)
+        else:
+            payload.pop('to_ward_code', None)
+
+        # Xử lý from_ward_code  
+        if 'from_ward_code' in payload and payload['from_ward_code'] is not None:
+            payload['from_ward_code'] = str(payload['from_ward_code']).strip()
+            if not payload['from_ward_code']:
+                payload.pop('from_ward_code', None)
+        else:
+            payload.pop('from_ward_code', None)
+
+        # Optional fields - set default if needed
+        payload.setdefault('service_type_id', 2)
+        payload.setdefault('insurance_value', 0)
+
+        print("📤 Sending to GHN:", payload)  # Debug log
+
+        # Gọi GHN service
+        result = GHNClient.calculate_shipping_fee(payload)
+
+        if result['success']:
+            return Response({
+                'fee': result['fee'],
+                'detail': result['detail']
+            }, status=status.HTTP_200_OK)
+        else:
+            print("❌ GHN Error:", result)  # Debug log
+            return Response({
+                'error': result['message'],
+                'code': result.get('error_code')
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+
+class GHNProvincesView(APIView):
+    def get(self, request):
+        res = GHNClient.get_provinces()
+        if res.get('success'):
+            return Response(res, status=status.HTTP_200_OK)
+        return Response(res, status=status.HTTP_400_BAD_REQUEST)
+
+class GHNDistrictsView(APIView):
+    def get(self, request):
+        province_id = request.query_params.get('province_id')
+        if not province_id:
+            return Response({'success': False, 'message': 'Missing province_id'}, status=status.HTTP_400_BAD_REQUEST)
+        res = GHNClient.get_districts(province_id)
+        if res.get('success'):
+            return Response(res, status=status.HTTP_200_OK)
+        return Response(res, status=status.HTTP_400_BAD_REQUEST)
+
+class GHNWardsView(APIView):
+    def get(self, request):
+        district_id = request.query_params.get('district_id')
+        if not district_id:
+            return Response({'success': False, 'message': 'Missing district_id'}, status=status.HTTP_400_BAD_REQUEST)
+        res = GHNClient.get_wards(district_id)
+        if res.get('success'):
+            return Response(res, status=status.HTTP_200_OK)
+        return Response(res, status=status.HTTP_400_BAD_REQUEST)

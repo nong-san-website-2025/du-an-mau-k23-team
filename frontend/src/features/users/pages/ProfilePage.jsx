@@ -245,7 +245,10 @@ function ProfilePage() {
           new CustomEvent("userProfileUpdated", { detail: res.data })
         );
       } catch {}
-      toast.info("Email xác thực đã được gửi, vui lòng kiểm tra hộp thư!",{theme: "light", autoClose:5000 } );
+      toast.info("Email xác thực đã được gửi, vui lòng kiểm tra hộp thư!", {
+        theme: "light",
+        autoClose: 5000,
+      });
     } catch {
       setError("Cập nhật thất bại. Vui lòng thử lại!");
       toast.error("❌ Cập nhật thất bại!");
@@ -289,19 +292,16 @@ function ProfilePage() {
     }
   };
 
-  const addAddress = async () => {
+  // ✅ Sửa hàm addAddress để nhận dữ liệu từ form
+  const addAddress = async (addressData) => {
     try {
-      await API.post("users/addresses/", newAddress);
-      await fetchAddresses();
+      const response = await API.post("users/addresses/", addressData); // ✅ Dùng dữ liệu từ form
+      await fetchAddresses(); // ✅ Cập nhật lại danh sách
       setShowAddressForm(false);
       setNewAddress({ recipient_name: "", phone: "", location: "" });
       toast.success("✅ Thêm địa chỉ thành công!");
-      // Nếu quay lại checkout sau khi thêm địa chỉ
-      const redirect = new URLSearchParams(window.location.search).get(
-        "redirect"
-      );
-      if (redirect === "checkout") navigate("/checkout");
-    } catch {
+    } catch (error) {
+      console.error("Lỗi thêm địa chỉ:", error.response?.data || error.message);
       toast.error("❌ Thêm địa chỉ thất bại!");
     }
   };
@@ -319,13 +319,12 @@ function ProfilePage() {
   const deleteAddress = async (id) => {
     try {
       await API.delete(`users/addresses/${id}/`);
-      fetchAddresses();
-      toast.success("✅ Xóa địa chỉ thành công!");
+      fetchAddresses(); // ✅ Cập nhật lại danh sách
+      toast.success("Xóa địa chỉ thành công!", { theme: "light" });
     } catch {
-      toast.error("❌ Xóa địa chỉ thất bại!");
+      toast.error("Xóa địa chỉ thất bại!", { theme: "light" });
     }
   };
-
   const setDefaultAddress = async (id) => {
     // Optimistic UI update: mark default locally for smooth UX
     setAddresses((prev) =>
@@ -335,7 +334,7 @@ function ProfilePage() {
       await API.patch(`users/addresses/${id}/set_default/`);
       // Optional: revalidate in background to keep fresh data without blocking UI
       fetchAddresses();
-      toast.success("✅ Đặt địa chỉ mặc định thành công!");
+      toast.success("Đã thay đổi địa chỉ mặc đỊnh", {theme: "light"});
       const redirect = new URLSearchParams(window.location.search).get(
         "redirect"
       );
@@ -343,7 +342,7 @@ function ProfilePage() {
     } catch {
       // Revert on failure
       fetchAddresses();
-      toast.error("❌ Không thể đặt địa chỉ mặc định!");
+      toast.error("Không thể đặt địa chỉ mặc định!", {theme: "light"});
     }
   };
 
@@ -395,7 +394,7 @@ function ProfilePage() {
         </Col>
         <Col md={9}>
           <Card
-            className="shadow border-0 p-3 mb-3"
+            className="shadow border-0 p-2 mb-3"
             style={{ background: "#fff" }}
           >
             {activeTab === "profile" && (

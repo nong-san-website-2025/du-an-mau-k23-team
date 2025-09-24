@@ -218,14 +218,43 @@ class RegisterSerializer(serializers.ModelSerializer):
 # ForgotPasswordSerializer nên được định nghĩa ngoài class RegisterSerializer
 class ForgotPasswordSerializer(serializers.Serializer):
     email = serializers.EmailField()
-
+    
+# serializers.py
+from rest_framework import serializers
+from .models import Address
 
 class AddressSerializer(serializers.ModelSerializer):
+    province_code = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    district_code = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    ward_code = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+
     class Meta:
         model = Address
         fields = "__all__"
         read_only_fields = ["user"]
 
+    def validate(self, data):
+        """
+        Validate dữ liệu khi tạo địa chỉ mới
+        """
+        district_id = data.get('district_id')
+        ward_code = data.get('ward_code')
+
+        # Nếu có GHN shipping thì 2 trường này bắt buộc
+        if district_id is None or ward_code is None:
+            raise serializers.ValidationError(
+                "Cần cung cấp district_id và ward_code từ GHN khi tính phí vận chuyển."
+            )
+        return data
+
+    def create(self, validated_data):
+        """
+        Gắn user hiện tại khi tạo địa chỉ mới
+        """
+        request = self.context.get('request')
+        if request and hasattr(request, 'user'):
+            validated_data['user'] = request.user
+        return super().create(validated_data)
 
 # Serializer cho đổi mật khẩu
 class ChangePasswordSerializer(serializers.Serializer):

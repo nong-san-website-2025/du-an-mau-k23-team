@@ -8,16 +8,19 @@ import API from "../../login_register/services/api";
 
 import PaymentButton from "../components/PaymnentButton"; // VNPAY button
 import AddressSelector from "../components/AddressSelector";
-import CustomerForm from "../components/CustomerForm";
+
 import VoucherSection from "../components/VoucherSection";
 import ProductList from "../components/ProductList";
-import "../styles/CheckoutPage.css"
+import "../styles/CheckoutPage.css";
 
 const { Title, Text } = Typography;
 
 const CheckoutPage = () => {
   const navigate = useNavigate();
   const { cartItems, clearCart } = useCart();
+
+  const [shippingFee, setShippingFee] = useState(0);
+  const [shippingStatus, setShippingStatus] = useState("idle"); // Thêm dòng này
 
   const [addresses, setAddresses] = useState([]);
   const [selectedAddressId, setSelectedAddressId] = useState(null);
@@ -28,15 +31,22 @@ const CheckoutPage = () => {
   const [addressText, setAddressText] = useState("");
   const [note, setNote] = useState("");
 
+  const [geoManual, setGeoManual] = useState({
+    provinceId: undefined,
+    districtId: undefined,
+    wardCode: undefined,
+  });
+
   const [discount, setDiscount] = useState(0);
   const [payment, setPayment] = useState("Thanh toán khi nhận hàng");
   const [isLoading, setIsLoading] = useState(false);
 
   // Lấy địa chỉ đã chọn
-  const selectedAddress = useMemo(
-    () => addresses.find((a) => a.id === selectedAddressId) || null,
-    [addresses, selectedAddressId]
-  );
+  const selectedAddress = useMemo(() => {
+    const addr = addresses.find((a) => a.id === selectedAddressId) || null;
+    console.log("🔍 selectedAddress full object:", addr); // 👈 XEM TOÀN BỘ OBJECT
+    return addr;
+  }, [addresses, selectedAddressId]);
 
   // Tổng tiền gốc
   const total = useMemo(() => {
@@ -49,7 +59,87 @@ const CheckoutPage = () => {
   }, [cartItems]);
 
   // Tổng tiền sau giảm giá
-  const totalAfterDiscount = Math.max(total - discount, 0);
+  const totalAfterDiscount = Math.max(total + shippingFee - discount, 0);
+
+  useEffect(() => {
+    console.log("🚚 useEffect calculate shipping fee triggered");
+    console.log("manualEntry:", manualEntry);
+    console.log("geoManual:", geoManual);
+    console.log("selectedAddress:", selectedAddress);
+    console.log("cartItems length:", cartItems.length);
+
+    // Auto-switch to manual entry if selected address lacks GHN IDs
+    if (
+      selectedAddress &&
+      (!selectedAddress.district_id || !selectedAddress.ward_code)
+    ) {
+      setManualEntry(true);
+      toast.warn(
+        "Địa chỉ thiếu thông tin GHN. Vui lòng chọn Tỉnh/Quận/Phường thủ công."
+      );
+      return;
+    }
+
+    const fetchShippingFee = async () => {
+      // Dùng GHN DistrictID thay vì mã hành chính (district_code)
+      const to_district_id = manualEntry
+        ? geoManual.districtId
+        : selectedAddress?.district_id; // ✅ GHN DistrictID
+
+      const to_ward_code = manualEntry
+        ? geoManual.wardCode
+        : selectedAddress?.ward_code
+          ? String(selectedAddress.ward_code).trim()
+          : undefined;
+
+      console.log("📍 to_district_id:", to_district_id);
+      console.log("📍 to_ward_code:", to_ward_code);
+
+      // SỬA: Kiểm tra cả district_code và ward_code
+      if (!to_district_id || !to_ward_code) {
+        console.log("🚫 Thiếu quận/huyện hoặc phường/xã → không gọi API");
+        setShippingFee(0);
+        setShippingStatus("idle");
+        return;
+      }
+
+      setShippingFee(0);
+      setShippingStatus("loading");
+
+      const totalWeight = cartItems
+        .filter((item) => item.selected)
+        .reduce((sum, item) => sum + (item.quantity || 0) * 500, 0);
+
+      try {
+        const payload = {
+          from_district_id: 1450,
+          from_ward_code: "21007",
+          to_district_id: parseInt(to_district_id), // ✅ CHUYỂN SANG SỐ
+          to_ward_code: to_ward_code, // ✅ DÙNG GIÁ TRỊ THỰC
+          weight: totalWeight > 0 ? totalWeight : 1,
+          length: 20,
+          width: 15,
+          height: 10,
+        };
+
+        console.log("📦 Gửi payload:", payload);
+
+        const res = await API.post("delivery/fee/", payload);
+        console.log("✅ GHN Response:", res.data);
+
+        const fee = res.data?.fee || 0;
+        setShippingFee(fee);
+        setShippingStatus("success");
+      } catch (error) {
+        console.error("❌ Lỗi API GHN:", error);
+        toast.error("Không thể tính phí vận chuyển");
+        setShippingFee(0);
+        setShippingStatus("error");
+      }
+    };
+
+    fetchShippingFee();
+  }, [manualEntry, geoManual, selectedAddress, cartItems]);
 
   // Fetch danh sách địa chỉ
   useEffect(() => {
@@ -75,44 +165,46 @@ const CheckoutPage = () => {
   }, []);
 
   // Áp dụng voucher
-  const handleApplyVoucher = (voucherCode) => {
-    const voucherList = [
-      { code: "SALE10", type: "percent", value: 10 },
-      { code: "FREESHIP", type: "fixed", value: 20000 },
-    ];
-
-    const found = voucherList.find((v) => v.code === voucherCode);
-    if (!found) {
-      toast.error("Mã giảm giá không hợp lệ!");
-      return;
-    }
-
-    if (found.type === "percent")
-      setDiscount(Math.floor((total * found.value) / 100));
-    if (found.type === "fixed") setDiscount(found.value);
-
-    toast.success(`Áp dụng mã ${found.code} thành công!`);
-  };
 
   // Xử lý đặt hàng
   const handleOrder = async () => {
     if (cartItems.filter((i) => i.selected).length === 0)
       return toast.error("Giỏ hàng trống!");
 
+    const finalName = manualEntry
+      ? customerName
+      : selectedAddress?.recipient_name || "";
+    const finalPhone = manualEntry
+      ? customerPhone
+      : selectedAddress?.phone || "";
+    const finalAddress = manualEntry
+      ? addressText
+      : selectedAddress?.location || "";
+
+    // Validate tối thiểu khi nhập tay
+    if (manualEntry && (!geoManual.districtId || !geoManual.wardCode)) {
+      toast.error("Vui lòng chọn Quận/Huyện và Phường/Xã");
+      return;
+    }
+
     setIsLoading(true);
     try {
       const orderData = {
         total_price: totalAfterDiscount,
         status: "pending",
-        customer_name: manualEntry
-          ? customerName
-          : selectedAddress?.recipient_name || "",
-        customer_phone: manualEntry
-          ? customerPhone
-          : selectedAddress?.phone || "",
-        address: manualEntry ? addressText : selectedAddress?.location || "",
+        shipping_fee: shippingFee,
+        customer_name: finalName,
+        customer_phone: finalPhone,
+        address: finalAddress,
         note: note.trim(),
         payment_method: payment,
+        // Gửi thêm geo để backend có thể ghi nhận nếu cần
+        to_district_id: manualEntry
+          ? geoManual.districtId
+          : selectedAddress?.district_id,
+        to_ward_code: manualEntry
+          ? geoManual.wardCode
+          : selectedAddress?.ward_code,
         items: cartItems
           .filter((it) => it.selected)
           .map((item) => ({
@@ -133,6 +225,42 @@ const CheckoutPage = () => {
     }
   };
 
+  const handleSaveManualAddress = async () => {
+    if (!geoManual.provinceId || !geoManual.districtId || !geoManual.wardCode) {
+      toast.error("Vui lòng chọn đầy đủ Tỉnh/Quận/Phường trước khi lưu!");
+      return;
+    }
+
+    const payload = {
+      recipient_name: customerName,
+      phone: customerPhone,
+      location: addressText,
+      province_code: geoManual.provinceId,
+      district_code: geoManual.districtId,
+      district_id: geoManual.districtId, 
+      ward_code: geoManual.wardCode,
+      is_default: false, // hoặc true nếu muốn set mặc định
+    };
+
+    console.log("📤 Gửi payload lưu địa chỉ:", payload);
+
+    try {
+      const res = await API.post("users/addresses/", payload);
+
+      const savedAddress = res.data;
+      console.log("✅ Địa chỉ đã lưu:", savedAddress);
+
+      // Cập nhật danh sách địa chỉ
+      setAddresses((prev) => [...prev, savedAddress]);
+      setSelectedAddressId(savedAddress.id);
+
+      toast.success("Đã lưu địa chỉ thành công!");
+    } catch (error) {
+      console.error("❌ Lỗi khi lưu địa chỉ:", error.response?.data || error);
+      toast.error("Không thể lưu địa chỉ. Vui lòng thử lại!");
+    }
+  };
+
   return (
     <div style={{ padding: 24, maxWidth: 800, margin: "0 auto" }}>
       <Title level={2}>Thanh toán đơn hàng</Title>
@@ -142,24 +270,13 @@ const CheckoutPage = () => {
         <AddressSelector
           addresses={addresses}
           selectedAddressId={selectedAddressId}
-          onChange={setSelectedAddressId}
+          onSelect={setSelectedAddressId} 
           onManage={() => navigate("/profile?tab=address&redirect=checkout")}
           onToggleManual={() => setManualEntry(!manualEntry)}
           manualEntry={manualEntry}
         />
 
-        {manualEntry && (
-          <CustomerForm
-            customerName={customerName}
-            customerPhone={customerPhone}
-            addressText={addressText}
-            note={note}
-            setCustomerName={setCustomerName}
-            setCustomerPhone={setCustomerPhone}
-            setAddressText={setAddressText}
-            setNote={setNote}
-          />
-        )}
+
       </Card>
 
       {/* Danh sách sản phẩm */}
@@ -172,7 +289,7 @@ const CheckoutPage = () => {
 
       {/* Voucher */}
       <Card style={{ marginBottom: 24 }}>
-        <VoucherSection total={total} onApply={handleApplyVoucher} />
+        <VoucherSection total={total} />
       </Card>
 
       {/* Payment Method */}
@@ -209,6 +326,18 @@ const CheckoutPage = () => {
             <Title level={4} style={{ marginBottom: 16 }}>
               Chi tiết thanh toán
             </Title>
+
+            {/* Phí vận chuyển */}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                marginBottom: 8,
+              }}
+            >
+              <Text>Phí vận chuyển:</Text>
+              <Text>{shippingFee.toLocaleString()}đ</Text>
+            </div>
 
             {/* Tạm tính */}
             <div

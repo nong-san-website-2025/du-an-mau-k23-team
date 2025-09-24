@@ -31,6 +31,14 @@ class Order(models.Model):
         ('shipping', 'Shipping'),
         ('success', 'Success'),
         ('cancelled', 'Cancelled'),
+        ('ready_to_pick', 'Ready to pick'),
+        ('picking', 'Picking'),
+        ('delivered', 'Delivered'),
+        ('out_for_delivery', 'Out for delivery'),
+        ('delivery_failed', 'Delivery failed'),
+        ('lost', 'Lost'),
+        ('damaged', 'Damaged'),
+        ('returned', 'Returned'),
     ]
     
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="orders")
@@ -45,6 +53,8 @@ class Order(models.Model):
     is_deleted = models.BooleanField(default=False)  # Soft delete field
     created_at = models.DateTimeField(auto_now_add=True)
     deleted_at = models.DateTimeField(null=True, blank=True)  # Timestamp when deleted
+    ghn_order_code = models.CharField(max_length=64, null=True, blank=True, unique=True)
+
     
 
     # Managers

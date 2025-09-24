@@ -38,6 +38,9 @@ urlpatterns = [
      path("api/promotions/", include(promotions_router.urls)),
 
     path('api/complaints/', include('complaints.urls')),
+
+    path('api/delivery/', include('delivery.urls')),
+
     path("api/dashboard/", dashboard_data, name="dashboard-data"),
     path("api/dashboard/", include("dashboard.urls")),
 
@@ -60,7 +63,7 @@ urlpatterns = [
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
-# Catch-all for React routes: any non-API path serves index.html
-urlpatterns += [
-    re_path(r'^(?!api/).*$', TemplateView.as_view(template_name="index.html")),
-]
+# # Catch-all for React routes: any non-API path serves index.html
+# urlpatterns += [
+#     re_path(r'^(?!api/).*$', TemplateView.as_view(template_name="index.html")),
+# ]
