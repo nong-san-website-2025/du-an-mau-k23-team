@@ -11,6 +11,7 @@ import {
   BarChartOutlined,
   SettingOutlined,
   WarningOutlined, // 👉 dùng cho mục Khiếu nại
+  WechatOutlined, // 👉 dùng cho mục Tin nhắn
 } from "@ant-design/icons";
 import { useNavigate, useLocation } from "react-router-dom";
 
@@ -31,6 +32,11 @@ export default function SellerSidebar() {
       key: "/seller-center/complaints",
       icon: <WarningOutlined />,
       label: "Khiếu nại",
+    },
+    {
+      key: "/seller-center/messages",
+      icon: <WechatOutlined />,
+      label: "Tin nhắn",
     },
     {
       key: "store",

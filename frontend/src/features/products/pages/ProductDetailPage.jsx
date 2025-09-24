@@ -30,7 +30,7 @@ import { useAuth } from "../../login_register/services/AuthContext";
 const ProductDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { addToCart } = useCart();
+  const { addToCart, selectOnlyByProductId } = useCart();
   const { user, token } = useAuth();
 
   const [adding, setAdding] = useState(false);
@@ -252,6 +252,15 @@ const ProductDetailPage = () => {
     await addToCart(
       product.id,
       quantity,
+      {
+        id: product.id,
+        name: product.name,
+        image:
+          product.image && product.image.startsWith("/")
+            ? `http://localhost:8000${product.image}`
+            : product.image,
+        price: Number(product.discounted_price ?? product.price) || 0,
+      },
       () => {
         toast.success("Đã thêm vào giỏ hàng!", {
           autoClose: 1800,
@@ -262,15 +271,6 @@ const ProductDetailPage = () => {
         toast.error("Không thể thêm vào giỏ hàng. Vui lòng thử lại.", {
           position: "bottom-right",
         });
-      },
-      {
-        id: product.id,
-        name: product.name,
-        image:
-          product.image && product.image.startsWith("/")
-            ? `http://localhost:8000${product.image}`
-            : product.image,
-        price: Number(product.discounted_price ?? product.price) || 0,
       }
     );
 
@@ -489,11 +489,34 @@ const ProductDetailPage = () => {
               variant="warning"
               size="lg"
               className="px-4 shadow-sm"
-              onClick={() =>
-                toast.info("Chức năng mua ngay đang phát triển", {
-                  position: "bottom-right",
-                })
-              }
+              onClick={async () => {
+                if (!product || quantity < 1) return;
+                if (quantity > product.stock) {
+                  toast.warning("Số lượng vượt quá hàng trong kho.", {
+                    position: "bottom-right",
+                  });
+                  return;
+                }
+                // Add item to cart first, then select only this product and redirect to checkout
+                await addToCart(
+                  product.id,
+                  quantity,
+                  {
+                    id: product.id,
+                    name: product.name,
+                    image:
+                      product.image && product.image.startsWith("/")
+                        ? `http://localhost:8000${product.image}`
+                        : product.image,
+                    price: Number(product.discounted_price ?? product.price) || 0,
+                  },
+                  () => {},
+                  () => {}
+                );
+                // Mark only this product as selected for checkout
+                selectOnlyByProductId(product.id);
+                navigate("/checkout");
+              }}
             >
               Mua ngay
             </Button>

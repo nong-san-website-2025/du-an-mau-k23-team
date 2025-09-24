@@ -48,6 +48,7 @@ class CustomUser(AbstractUser):
     status = models.CharField(
         max_length=10,
         choices=STATUS_CHOICES,
+        default='active',
         blank=True,
         null=True
     )
@@ -61,6 +62,9 @@ class CustomUser(AbstractUser):
         if not self.role and not self.is_superuser:
             customer_role, _ = Role.objects.get_or_create(name="customer")
             self.role = customer_role
+        # Nếu chưa có status thì gán mặc định là "active"
+        if not self.status:
+            self.status = 'active'
         super().save(*args, **kwargs)
 
     def __str__(self):

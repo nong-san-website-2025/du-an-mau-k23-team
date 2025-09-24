@@ -234,7 +234,10 @@ const StoreDetail = () => {
                   >
                     {isFollowing ? "Đang theo dõi" : "Theo dõi"}
                   </Button>
-                  <Button variant="outline-secondary">Nhắn tin</Button>
+                  <Button variant="outline-secondary" onClick={() => {
+                    const el = document.getElementById('chat-box-anchor');
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  }}>Nhắn tin</Button>
                 </div>
               </div>
             </Col>
@@ -370,6 +373,24 @@ const StoreDetail = () => {
           </Col>
         )}
       </Row>
+
+      {/* Floating Chat – no longer occupies layout */}
+      {(() => {
+        try {
+          const ChatBox = require("../../stores/components/ChatBox.jsx").default;
+          return (
+            <ChatBox
+              sellerId={id}
+              token={token}
+              sellerName={store.store_name}
+              sellerImage={store.image}
+              userAvatar={(typeof window !== 'undefined' && localStorage.getItem('avatar')) || ''}
+            />
+          );
+        } catch (e) {
+          return null;
+        }
+      })()}
     </Container>
   );
 };

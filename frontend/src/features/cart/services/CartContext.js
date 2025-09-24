@@ -254,6 +254,19 @@ export const CartProvider = ({ children }) => {
       )
     );
 
+  // Select only one product by productId (works for both guest and server cart shapes)
+  const selectOnlyByProductId = (productId) =>
+    setCartItems((prev) =>
+      prev.map((i) => {
+        const pid =
+          i.product?.id ||
+          i.product_id ||
+          i.product_data?.id ||
+          i.product;
+        return { ...i, selected: String(pid) === String(productId) };
+      })
+    );
+
   return (
     <CartContext.Provider
       value={{
@@ -268,6 +281,7 @@ export const CartProvider = ({ children }) => {
         selectAllItems,
         deselectAllItems,
         toggleItem,
+        selectOnlyByProductId,
       }}
     >
       {children}
