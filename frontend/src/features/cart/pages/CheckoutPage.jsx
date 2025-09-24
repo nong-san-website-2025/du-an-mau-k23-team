@@ -38,6 +38,23 @@ const CheckoutPage = () => {
   });
 
   const [discount, setDiscount] = useState(0);
+
+  const handleApplyVoucher = async (code) => {
+    try {
+      const res = await API.post("/promotions/vouchers/apply/", {
+        code,
+        order_total: total,
+      });
+
+      // ✅ Lấy đúng field "discount" từ response
+      const { discount } = res.data;
+      setDiscount(discount || 0);
+      toast.success("Áp dụng voucher thành công!");
+    } catch (err) {
+      toast.error("Mã giảm giá không hợp lệ hoặc đã hết hạn!");
+      setDiscount(0);
+    }
+  };
   const [payment, setPayment] = useState("Thanh toán khi nhận hàng");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -237,7 +254,7 @@ const CheckoutPage = () => {
       location: addressText,
       province_code: geoManual.provinceId,
       district_code: geoManual.districtId,
-      district_id: geoManual.districtId, 
+      district_id: geoManual.districtId,
       ward_code: geoManual.wardCode,
       is_default: false, // hoặc true nếu muốn set mặc định
     };
@@ -270,13 +287,11 @@ const CheckoutPage = () => {
         <AddressSelector
           addresses={addresses}
           selectedAddressId={selectedAddressId}
-          onSelect={setSelectedAddressId} 
+          onSelect={setSelectedAddressId}
           onManage={() => navigate("/profile?tab=address&redirect=checkout")}
           onToggleManual={() => setManualEntry(!manualEntry)}
           manualEntry={manualEntry}
         />
-
-
       </Card>
 
       {/* Danh sách sản phẩm */}
@@ -289,7 +304,7 @@ const CheckoutPage = () => {
 
       {/* Voucher */}
       <Card style={{ marginBottom: 24 }}>
-        <VoucherSection total={total} />
+        <VoucherSection total={total} onApply={handleApplyVoucher} />
       </Card>
 
       {/* Payment Method */}
@@ -327,18 +342,6 @@ const CheckoutPage = () => {
               Chi tiết thanh toán
             </Title>
 
-            {/* Phí vận chuyển */}
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                marginBottom: 8,
-              }}
-            >
-              <Text>Phí vận chuyển:</Text>
-              <Text>{shippingFee.toLocaleString()}đ</Text>
-            </div>
-
             {/* Tạm tính */}
             <div
               style={{
@@ -349,6 +352,18 @@ const CheckoutPage = () => {
             >
               <Text>Tạm tính:</Text>
               <Text>{total.toLocaleString()}đ</Text>
+            </div>
+
+            {/* Phí vận chuyển */}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                marginBottom: 8,
+              }}
+            >
+              <Text>Phí vận chuyển:</Text>
+              <Text>{shippingFee.toLocaleString()}đ</Text>
             </div>
 
             {/* Giảm giá */}
