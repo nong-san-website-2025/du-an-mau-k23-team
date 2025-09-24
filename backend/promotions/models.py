@@ -43,11 +43,21 @@ class Voucher(models.Model):
         SYSTEM = "system", "Hệ thống"
         SELLER = "seller", "Seller"
 
+    class DistributionType(models.TextChoices):
+        CLAIM = "claim", "Kho voucher (người dùng phải nhận)"
+        DIRECT = "direct", "Push thẳng vào tài khoản user"
+
     promotion = models.OneToOneField(
         Promotion, null=True, blank=True, on_delete=models.CASCADE, related_name="voucher"
     )
 
-    code = models.CharField(max_length=50) 
+    distribution_type = models.CharField(
+        max_length=10,
+        choices=DistributionType.choices,
+        default=DistributionType.CLAIM,
+    )
+
+    code = models.CharField(max_length=50)
     title = models.CharField(max_length=200, blank=True)
     description = models.TextField(blank=True)
     scope = models.CharField(max_length=10, choices=Scope.choices, default=Scope.SYSTEM)
@@ -56,6 +66,12 @@ class Voucher(models.Model):
     discount_percent = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     discount_amount = models.DecimalField(max_digits=12, decimal_places=0, null=True, blank=True)
     freeship_amount = models.DecimalField(max_digits=12, decimal_places=0, null=True, blank=True)
+
+    # --- Quantity management ---
+    total_quantity = models.PositiveIntegerField(null=True, blank=True,
+                                                 help_text="Tổng số lượng voucher (pool). Null = không giới hạn")
+    per_user_quantity = models.PositiveIntegerField(null=True, blank=True,default=1,
+                                                    help_text="Số lượng cấp cho 1 user khi nhận / được push")
 
     min_order_value = models.DecimalField(max_digits=12, decimal_places=0, null=True, blank=True)
     max_discount_amount = models.DecimalField(max_digits=12, decimal_places=0, null=True, blank=True)
@@ -96,6 +112,16 @@ class Voucher(models.Model):
             from django.core.exceptions import ValidationError
 
             raise ValidationError("Chỉ được chọn 1 loại giảm: freeship OR percent OR amount")
+
+    def issued_count(self):
+        # tổng số lượng đã phát (sum quantity trên UserVoucher)
+        return sum([uv.quantity for uv in self.user_vouchers.all()]) if hasattr(self, 'user_vouchers') else 0
+
+    def remaining_quantity(self):
+        if self.total_quantity is None:
+            return None
+        remaining = self.total_quantity - self.issued_count()
+        return max(0, remaining)
 
     def __str__(self):
         return f"{self.code} ({self.scope})"

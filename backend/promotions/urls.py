@@ -9,6 +9,8 @@ from .views import (
     FlashSaleAdminViewSet
 )
 
+from .views import my_vouchers, apply_voucher, claim_voucher, promotions_overview
+from .views import VoucherViewSet
 
 router = DefaultRouter()
 router.register(r'vouchers', VoucherViewSet, basename='voucher')
@@ -17,7 +19,8 @@ router.register(r'flashsale-admin', FlashSaleAdminViewSet, basename='flashsale-a
 urlpatterns = [
     path('overview/', promotions_overview, name='promotions-overview'),
     path('flash-sales/', FlashSaleListView.as_view(), name='flash-sale-list'),
-    path('vouchers/my/', my_vouchers, name='my-vouchers'),
+    path('vouchers/my_vouchers/', my_vouchers, name='my-vouchers'),
+    path('vouchers/claim/', claim_voucher, name='claim-voucher'),
     path('vouchers/apply/', apply_voucher, name='apply-voucher'),
 ]
 

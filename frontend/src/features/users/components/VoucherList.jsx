@@ -10,10 +10,11 @@ import {
   Col,
   Pagination,
 } from "react-bootstrap";
-import { getVouchers } from "../../admin/services/promotionServices";
+import { getVouchers, getMyVouchers, claimVoucher } from "../../admin/services/promotionServices";
 
 const VoucherList = () => {
   const [vouchers, setVouchers] = useState([]);
+  const [myVouchers, setMyVouchers] = useState([]);
   const [filter, setFilter] = useState("all");
   const [loading, setLoading] = useState(true);
 
@@ -24,8 +25,12 @@ const VoucherList = () => {
   const fetchVouchers = async () => {
     try {
       setLoading(true);
-      const res = await getVouchers();
-      setVouchers(res);
+      const [allVouchers, myVouchersRes] = await Promise.all([
+        getVouchers(),
+        getMyVouchers(),
+      ]);
+      setVouchers(allVouchers);
+      setMyVouchers(myVouchersRes);
     } catch (err) {
       console.error("Fetch vouchers failed:", err);
     } finally {
@@ -37,11 +42,13 @@ const VoucherList = () => {
     fetchVouchers();
   }, []);
 
-  // Lọc voucher theo trạng thái
+  // Lọc voucher: chỉ hiển thị voucher dạng 'claim' mà user chưa nhận (không có trong túi)
+  const claimedVoucherIds = new Set(myVouchers.map((uv) => uv.voucher?.id));
   const filtered = vouchers.filter((v) => {
-    if (filter === "used") return v.used;
+    if (v.distribution_type !== "claim") return false;
+    if (claimedVoucherIds.has(v.id)) return false;
     if (filter === "expired") return v.expired;
-    if (filter === "active") return !v.used && !v.expired;
+    if (filter === "active") return !v.expired;
     return true;
   });
 
@@ -85,55 +92,84 @@ const VoucherList = () => {
           <p className="text-muted">Không có voucher nào phù hợp.</p>
         )}
 
-        {currentVouchers.map((voucher) => (
-          <Col xs={12} key={voucher.id} className="mb-3">
-            <Card className="shadow-sm border-0 w-100 h-100">
-              <Card.Body className="d-flex justify-content-between align-items-center">
-                {/* Thông tin voucher bên trái */}
-                <div>
-                  <Card.Title>
-                    <span className="fw-bold">{voucher.code}</span>{" "}
-                    {voucher.used && (
-                      <Badge bg="secondary" className="ms-2">
-                        Đã dùng
-                      </Badge>
-                    )}
-                    {voucher.expired && (
-                      <Badge bg="danger" className="ms-2">
-                        Hết hạn
-                      </Badge>
-                    )}
-                  </Card.Title>
-                  <Card.Text className="mb-0">
-                    <div>💰 Giá trị: {voucher.discount_text}</div>
-                    <div>
-                      🧾 Đơn tối thiểu:{" "}
-                      {voucher.min_order_value
-                        ? voucher.min_order_value.toLocaleString("vi-VN") + "₫"
-                        : "Không yêu cầu"}
-                    </div>
-                    <div>
-                      📅 Hạn sử dụng: {voucher.start_date} → {voucher.end_date}
-                    </div>
-                  </Card.Text>
-                </div>
+        {currentVouchers.map((voucher) => {
+          // Xử lý hiển thị giá trị voucher
+          let discountText = "";
+          if (voucher.freeship_amount) {
+            discountText = `Freeship ${voucher.freeship_amount.toLocaleString("vi-VN")}₫`;
+          } else if (voucher.discount_percent) {
+            discountText = `${voucher.discount_percent}%`;
+          } else if (voucher.discount_amount) {
+            discountText =
+              voucher.discount_amount.toLocaleString("vi-VN") + "₫";
+          }
 
-                {/* Nút áp dụng bên phải */}
-                <div>
-                  {!voucher.used && !voucher.expired ? (
-                    <Button variant="success" size="sm">
-                      Nhận voucher
-                    </Button>
-                  ) : (
-                    <Button variant="secondary" size="sm" disabled>
-                      Không khả dụng
-                    </Button>
-                  )}
-                </div>
-              </Card.Body>
-            </Card>
-          </Col>
-        ))}
+          return (
+            <Col xs={12} key={voucher.id} className="mb-3">
+              <Card className="shadow-sm border-0 w-100 h-100">
+                <Card.Body className="d-flex justify-content-between align-items-center">
+                  <div>
+                    <Card.Title>
+                      <span className="fw-bold">{voucher.code}</span>
+                      {voucher.used && (
+                        <Badge bg="secondary" className="ms-2">
+                          Đã dùng
+                        </Badge>
+                      )}
+                      {voucher.expired && (
+                        <Badge bg="danger" className="ms-2">
+                          Hết hạn
+                        </Badge>
+                      )}
+                    </Card.Title>
+                    <Card.Text className="mb-0">
+                      <div>
+                        💳 Loại:{" "}
+                        {voucher.discount_type === "freeship"
+                          ? "FreeShip"
+                          : "Thường"}
+                      </div>
+                      <div>💰 Giá trị: {discountText}</div>
+                      <div>
+                        🧾 Đơn tối thiểu:{" "}
+                        {voucher.min_order_value
+                          ? voucher.min_order_value.toLocaleString("vi-VN") +
+                            "₫"
+                          : "Không yêu cầu"}
+                      </div>
+                      <div>
+                        📅 Hạn sử dụng: {voucher.start_at} → {voucher.end_at}
+                      </div>
+                    </Card.Text>
+                  </div>
+
+                  <div>
+                    {!voucher.used && !voucher.expired ? (
+                      <Button
+                        variant="success"
+                        size="sm"
+                        onClick={async () => {
+                          try {
+                            await claimVoucher(voucher.code);
+                            await fetchVouchers();
+                          } catch (err) {
+                            alert("Nhận voucher thất bại!");
+                          }
+                        }}
+                      >
+                        Nhận voucher
+                      </Button>
+                    ) : (
+                      <Button variant="secondary" size="sm" disabled>
+                        Không khả dụng
+                      </Button>
+                    )}
+                  </div>
+                </Card.Body>
+              </Card>
+            </Col>
+          );
+        })}
       </Row>
 
       {/* Pagination */}
