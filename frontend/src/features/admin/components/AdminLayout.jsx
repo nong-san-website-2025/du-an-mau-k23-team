@@ -76,27 +76,31 @@ function TopBar({ onLogout }) {
           ]}
         /> */}
         <DropdownTopBarButton
-          Icon={Settings}
-          items={[
-            {
-              label: t("Trang cài đặt"),
-              onClick: () => navigate("/admin/settings"),
-            },
-            {
-              label: t("Quản lý tài khoản"),
-              onClick: () => navigate("/admin/account"),
-            },
-            { label: "Phân quyền", onClick: () => navigate("/admin/roles") },
-            {
-              label: "Cấu hình hệ thống",
-              onClick: () => navigate("/admin/system-config"),
-            },
-            {
-              label: "Log hệ thống",
-              onClick: () => navigate("/admin/system-logs"),
-            },
-          ]}
-        />
+  Icon={Settings}
+  items={[
+    {
+      label: t("Cấu hình vận chuyển"),
+      onClick: () => navigate("/admin/settings/shipping"),
+    },
+    {
+      label: t("Chính sách đổi trả & khiếu nại"),
+      onClick: () => navigate("/admin/settings/return-policy"),
+    },
+    {
+      label: t("Tự động hóa marketing"),
+      onClick: () => navigate("/admin/settings/marketing"),
+    },
+    {
+      label: t("Điểm thưởng & hạng khách hàng"),
+      onClick: () => navigate("/admin/settings/loyalty"),
+    },
+    {
+      label: t("Tùy biến giao diện"),
+      onClick: () => navigate("/admin/settings/theme"),
+    },
+  ]}
+/>
+
         {/* Thay UserDropdown vào đây */}
         <UserDropdown onLogout={onLogout} t={t} navigate={navigate} />
       </div>
