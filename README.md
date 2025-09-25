@@ -49,7 +49,7 @@ cd du-an-mau-k23-team
 ### Cài đặt frontend:
 
     cd ../frontend
-    npm install
+    npm install --legacy-peer-deps
 
     # Chạy frontend
     npm start
