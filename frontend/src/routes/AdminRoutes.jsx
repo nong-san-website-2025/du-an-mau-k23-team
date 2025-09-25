@@ -23,7 +23,7 @@ import WalletPage from "../features/admin/pages/WalletPage";
 
 // Marketing & Promotions
 import BannersPage from "../features/admin/pages/BannersPage";
-import NotificationsPage from "../features/admin/pages/NotificationsPage";
+import NotificationsPage from "../pages/NotificationsPage.jsx";
 import AdvertisementList from "../features/admin/pages/MarketingAdmin/AdvertisementList.jsx";
 
 // Reports

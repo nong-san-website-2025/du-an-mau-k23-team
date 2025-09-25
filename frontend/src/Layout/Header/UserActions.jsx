@@ -208,6 +208,7 @@ export default function UserActions({
             transition: "background 0.2s ease",
           }}
           aria-label="Thông báo"
+          onClick={() => navigate("/notifications")}
         >
           <Bell size={22} className="bell-icon" />
           {sortedNotifications && sortedNotifications.length > 0 && (

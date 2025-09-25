@@ -48,7 +48,7 @@ export const userRoutes = [
       <Route path="profile" element={<ProfilePage />} />
       <Route path="register-seller" element={<SellerRegisterPage />} />
       <Route path="/payment/result" element={<PaymentResultPage />} />
-      <Route path="/payment/NotificationPage" element={<NotificationPage />} />
+      <Route path="/notifications" element={<NotificationPage />} />
       
     </Route>
   </Route>
