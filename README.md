@@ -26,6 +26,8 @@ cd du-an-mau-k23-team
     env\Scripts\activate
     pip install -r requirements.txt
 
+    # Xoá sqlite3 trong backend/sqlite3(Nếu có)
+    
     # Migrate database (tự tạo file SQLite)
 
     python manage.py makemigrations
