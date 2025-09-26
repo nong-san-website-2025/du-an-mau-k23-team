@@ -36,136 +36,66 @@ export default function UserActions({
     }
     return notis;
   };
-  const [complaints, setComplaints] = useState([]);
+  const [unified, setUnified] = useState([]);
   const userId = userProfile?.id;
 
   useEffect(() => {
     let mounted = true;
-    const fetchComplaints = async () => {
+    let intervalId = null;
+
+    const run = async () => {
       if (!userId) return;
       try {
-        let all = [];
-        let url = `/complaints/`;
-        while (url) {
-          const res = url.startsWith("http")
-            ? await axiosInstance.get(url, {
-                headers: axiosInstance.defaults.headers.common,
-              })
-            : await axiosInstance.get(url);
-          let pageData = [];
-          if (Array.isArray(res.data)) {
-            pageData = res.data;
-            url = null;
-          } else if (res.data && Array.isArray(res.data.results)) {
-            pageData = res.data.results;
-            url = res.data.next || null;
-          } else {
-            pageData = [];
-            url = null;
-          }
-          all = all.concat(pageData);
-        }
-        const mine = all.filter(
-          (c) =>
-            c.user === userId || c.user_id === userId || c.user?.id === userId
+        const { fetchUnifiedNotifications, annotateRead } = await import(
+          "../../features/users/services/notificationService"
         );
-        if (mounted) setComplaints(mine);
+        const list = await fetchUnifiedNotifications(userId);
+        const annotated = annotateRead(list, userId);
+        if (mounted) setUnified(annotated);
       } catch (e) {
-        if (mounted) setComplaints([]);
+        if (mounted) setUnified([]);
       }
     };
-    fetchComplaints();
+
+    // Initial load
+    run();
+
+    // Polling to update without page reload
+    const POLL_MS = 2000; // 2s for faster near-instant updates without page reload
+    intervalId = setInterval(run, POLL_MS);
+
+    // Refresh when window regains focus (fast catch-up)
+    const onFocus = () => run();
+    window.addEventListener("focus", onFocus);
+
+    // Keep in sync across tabs when read-state changes
+    const onStorage = (e) => {
+      if (e?.key && String(e.key).startsWith("notif_read_")) run();
+    };
+    window.addEventListener("storage", onStorage);
+
     return () => {
       mounted = false;
+      if (intervalId) clearInterval(intervalId);
+      window.removeEventListener("focus", onFocus);
+      window.removeEventListener("storage", onStorage);
     };
   }, [userId]);
 
-  const myNotifications = useMemo(() => {
-    return (complaints || [])
-      .filter((c) =>
-        ["resolved", "rejected"].includes((c.status || "").toLowerCase())
-      )
-      .map((c) => {
-        const status = (c.status || "").toLowerCase();
-        const productName = c.product_name || c.product?.name || "";
-        const detailLines = [
-          `Khiếu nại sản phẩm: ${productName}.`,
-          `Lý do: ${c.reason || ""}.`,
-        ];
-        if (status === "resolved") {
-          const rtCode = (
-            c.resolution_type ||
-            c.resolution ||
-            ""
-          ).toLowerCase();
-          let vnLabel = "";
-          switch (rtCode) {
-            case "refund_full":
-              vnLabel = "Hoàn tiền toàn bộ";
-              break;
-            case "refund_partial":
-              vnLabel = "Hoàn tiền một phần";
-              break;
-            case "replace":
-              vnLabel = "Đổi sản phẩm";
-              break;
-            case "voucher":
-              vnLabel = "Tặng voucher/điểm thưởng";
-              break;
-            case "reject":
-              vnLabel = "Từ chối khiếu nại";
-              break;
-            default:
-              vnLabel = "Đã xử lý";
-          }
-          detailLines.push(`Hình thức xử lý: ${vnLabel}`);
-        } else if (status === "rejected") {
-          detailLines.push(`Hình thức xử lý: Từ chối khiếu nại`);
-        }
+  const sortedNotifications = useMemo(() => {
+    const arr = [...(unified || [])];
+    arr.sort((a, b) => {
+      const ta = Number.isFinite(a?.ts) ? a.ts : (a?.time ? new Date(a.time).getTime() : 0);
+      const tb = Number.isFinite(b?.ts) ? b.ts : (b?.time ? new Date(b.time).getTime() : 0);
+      if (tb !== ta) return tb - ta; // newest first by numeric timestamp
+      return String(b?.id ?? '').localeCompare(String(a?.id ?? ''));
+    });
+    return arr;
+  }, [unified]);
 
-        let thumbnail = null;
-        const media = c.media_urls || c.media || [];
-        if (Array.isArray(media) && media.length > 0) {
-          const img = media.find((url) => /\.(jpg|jpeg|png|gif)$/i.test(url));
-          thumbnail = img || media[0];
-        }
-
-        // Ưu tiên lấy updated_at, nếu không có thì lấy created_at, nếu không có thì để chuỗi rỗng
-        let timeStr = "";
-        if (c.updated_at) {
-          timeStr = new Date(c.updated_at).toLocaleString();
-        } else if (c.created_at) {
-          timeStr = new Date(c.created_at).toLocaleString();
-        }
-
-        return {
-          id: c.id,
-          message:
-            status === "resolved"
-              ? "Khiếu nại của bạn đã được xử lý!"
-              : "Khiếu nại của bạn đã bị từ chối!",
-          detail: detailLines.join("\n"),
-          time: timeStr,
-          read: false,
-          userId,
-          thumbnail,
-        };
-      });
-  }, [complaints, userId]);
-
-  // Sắp xếp theo sản phẩm, sau đó thời gian mới nhất
-  const getProduct = (noti) => {
-    const match =
-      noti.detail && noti.detail.match(/Khiếu nại sản phẩm: (.*?)(\.|\n)/);
-    return match ? match[1] : "";
-  };
-  const sortedNotifications = [...myNotifications].sort((a, b) => {
-    const prodA = getProduct(a).toLowerCase();
-    const prodB = getProduct(b).toLowerCase();
-    if (prodA < prodB) return -1;
-    if (prodA > prodB) return 1;
-    return (b.id || 0) - (a.id || 0);
-  });
+  const unreadCount = useMemo(() => {
+    return (sortedNotifications || []).filter((n) => !n.read).length;
+  }, [sortedNotifications]);
 
   return (
     <div
@@ -208,10 +138,19 @@ export default function UserActions({
             transition: "background 0.2s ease",
           }}
           aria-label="Thông báo"
-          onClick={() => navigate("/notifications")}
+          onClick={async () => {
+            try {
+              const { markAsRead } = await import(
+                "../../features/users/services/notificationService"
+              );
+              markAsRead(userId, (sortedNotifications || []).map((n) => n.id));
+              setUnified((prev) => (prev || []).map((n) => ({ ...n, read: true })));
+            } catch {}
+            navigate("/notifications");
+          }}
         >
           <Bell size={22} className="bell-icon" />
-          {sortedNotifications && sortedNotifications.length > 0 && (
+          {unreadCount > 0 && (
             <span
               style={{
                 position: "absolute",
@@ -232,7 +171,7 @@ export default function UserActions({
                 boxShadow: "0 1px 4px #0002",
               }}
             >
-              {sortedNotifications.length}
+              {unreadCount}
             </span>
           )}
         </button>
@@ -360,7 +299,16 @@ export default function UserActions({
                   <button
                     className="btn btn-link"
                     style={{ color: "#16a34a", fontWeight: 600, fontSize: 15 }}
-                    onClick={() => navigate("/payment/NotificationPage")}
+                    onClick={async () => {
+                      try {
+                        const { markAsRead } = await import(
+                          "../../features/users/services/notificationService"
+                        );
+                        markAsRead(userId, (sortedNotifications || []).map((n) => n.id));
+                        setUnified((prev) => (prev || []).map((n) => ({ ...n, read: true })));
+                      } catch {}
+                      navigate("/notifications");
+                    }}
                   >
                     Xem tất cả thông báo
                   </button>

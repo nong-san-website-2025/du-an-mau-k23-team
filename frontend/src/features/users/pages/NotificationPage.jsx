@@ -1,152 +1,45 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Bell, CheckCircle2 } from "lucide-react";
 import useUserProfile from "../services/useUserProfile";
-import axiosInstance from "../../admin/services/axiosInstance";
-import axios from "axios";
+import { fetchUnifiedNotifications, annotateRead, markAsRead } from "../services/notificationService";
 
 export default function NotificationPage() {
   const profile = useUserProfile();
-  const [complaints, setComplaints] = useState([]);
+  const [items, setItems] = useState([]);
   const userId = profile?.id;
 
-  // Fetch complaints from API and keep only current user's
+  // Fetch unified notifications (orders, wallet, complaints, vouchers)
   useEffect(() => {
     let mounted = true;
-    const fetchComplaints = async () => {
+    const run = async () => {
       if (!userId) return;
       try {
-        // Fetch all pages if paginated
-        let all = [];
-        let url = `/complaints/`;
-        while (url) {
-          const res = url.startsWith("http")
-            ? await axios.get(url, { headers: axiosInstance.defaults.headers.common })
-            : await axiosInstance.get(url);
-          let pageData = [];
-          if (Array.isArray(res.data)) {
-            pageData = res.data;
-            url = null; // not paginated
-          } else if (res.data && Array.isArray(res.data.results)) {
-            pageData = res.data.results;
-            url = res.data.next || null; // absolute next URL
-          } else {
-            pageData = [];
-            url = null;
-          }
-          all = all.concat(pageData);
-        }
-
-        const mine = all.filter(
-          (c) => c.user === userId || c.user_id === userId || c.user?.id === userId
-        );
-        if (mounted) setComplaints(mine);
+        const list = await fetchUnifiedNotifications(userId);
+        // Mark all as read when opening the page
+        markAsRead(userId, list.map((n) => n.id));
+        const annotated = annotateRead(list, userId);
+        if (mounted) setItems(annotated);
       } catch (e) {
-        if (mounted) setComplaints([]);
+        if (mounted) setItems([]);
       }
     };
-    fetchComplaints();
+    run();
     return () => {
       mounted = false;
     };
   }, [userId]);
 
-  // Derive notifications from complaints status
-  const myNotifications = useMemo(() => {
-    if (!Array.isArray(complaints)) return [];
-    return complaints
-      .filter((c) => ["resolved", "rejected"].includes((c.status || "").toLowerCase()))
-      .map((c) => {
-        const status = (c.status || "").toLowerCase();
-        const productName = c.product_name || c.product?.name || "";
-        const detailLines = [
-          `Khiếu nại sản phẩm: ${productName}.`,
-          `Lý do: ${c.reason || ""}.`,
-        ];
-        if (status === "resolved") {
-          const rtCode = (c.resolution_type || c.resolution || "").toLowerCase();
-          let vnLabel = "";
-          switch (rtCode) {
-            case "refund_full":
-              vnLabel = "Hoàn tiền toàn bộ";
-              break;
-            case "refund_partial":
-              vnLabel = "Hoàn tiền một phần";
-              break;
-            case "replace":
-              vnLabel = "Đổi sản phẩm";
-              break;
-            case "voucher":
-              vnLabel = "Tặng voucher/điểm thưởng";
-              break;
-            case "reject":
-              vnLabel = "Từ chối khiếu nại";
-              break;
-            default:
-              vnLabel = "Đã xử lý";
-          }
-          detailLines.push(`Hình thức xử lý: ${vnLabel}`);
-        } else if (status === "rejected") {
-          detailLines.push(`Hình thức xử lý: Từ chối khiếu nại`);
-        }
-
-        let thumbnail = null;
-        const media = c.media_urls || c.media || [];
-        if (Array.isArray(media) && media.length > 0) {
-          const img = media.find((url) => /\.(jpg|jpeg|png|gif)$/i.test(url));
-          thumbnail = img || media[0];
-        }
-
-        // Build message: show refund amount when applicable
-        const toNumber = (v) => {
-          const n = Number(v);
-          return Number.isFinite(n) ? n : null;
-        };
-        const formatVND = (n) => `${Math.round(n).toLocaleString('vi-VN')} VNĐ`;
-        let messageText = status === "resolved" ? "Khiếu nại của bạn đã được xử lý!" : "Khiếu nại của bạn đã bị từ chối!";
-        if (status === "resolved") {
-          const rtMsgCode = (c.resolution_type || c.resolution || "").toLowerCase();
-          if (rtMsgCode === "refund_full") {
-            const unit = toNumber(c.unit_price ?? c.product_price ?? c.product?.price);
-            const qty = toNumber(c.quantity) ?? 1;
-            if (unit != null) {
-              messageText = `Bạn đã được hoàn tiền ${formatVND(unit * qty)}`;
-            }
-          } else if (rtMsgCode === "refund_partial") {
-            const pAmt = toNumber(c.refund_amount ?? c.amount);
-            if (pAmt != null) {
-              messageText = `Bạn đã được hoàn tiền ${formatVND(pAmt)}`;
-            }
-          }
-        }
-
-        return {
-          id: c.id,
-          message: messageText,
-          detail: detailLines.join("\n"),
-          // Prefer backend timestamps to avoid duplicate current times
-          time: (c.updated_at || c.created_at)
-            ? new Date(c.updated_at || c.created_at).toLocaleString()
-            : "",
-          read: false,
-          userId,
-          thumbnail,
-        };
-      });
-  }, [complaints, userId]);
-
+  // Use unified notifications directly
   const sortedNotifications = useMemo(() => {
-    const getProduct = (noti) => {
-      const match = noti.detail && noti.detail.match(/Khiếu nại sản phẩm: (.*?)(\.|\n)/);
-      return match ? match[1] : "";
-    };
-    return [...myNotifications].sort((a, b) => {
-      const prodA = getProduct(a).toLowerCase();
-      const prodB = getProduct(b).toLowerCase();
-      if (prodA < prodB) return -1;
-      if (prodA > prodB) return 1;
-      return (b.id || 0) - (a.id || 0);
+    const arr = [...(items || [])];
+    arr.sort((a, b) => {
+      const ta = Number.isFinite(a?.ts) ? a.ts : (a?.time ? new Date(a.time).getTime() : 0);
+      const tb = Number.isFinite(b?.ts) ? b.ts : (b?.time ? new Date(b.time).getTime() : 0);
+      if (tb !== ta) return tb - ta; // newest first by numeric timestamp
+      return String(b?.id ?? '').localeCompare(String(a?.id ?? ''));
     });
-  }, [myNotifications]);
+    return arr;
+  }, [items]);
 
   return (
     <div
