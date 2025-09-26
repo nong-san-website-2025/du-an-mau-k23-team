@@ -1,7 +1,8 @@
+# views/dashboard.py
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from django.db.models import Sum, F, Count
+from rest_framework.response import Response
+from django.db.models import Sum, Count, F
 from django.utils.timezone import now
 from datetime import timedelta
 
@@ -11,7 +12,6 @@ from orders.models import Order, OrderItem
 from sellers.models import Seller
 from complaints.models import Complaint
 
-from .serializers import DashboardSerializer
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
@@ -22,12 +22,23 @@ def dashboard_data(request):
     total_customers = CustomUser.objects.filter(role__name="customer").count()
     total_products = Product.objects.count()
     total_orders = Order.objects.count()
-    total_revenue = Order.objects.aggregate(total=Sum("total_price"))["total"] or 0
+
+    # ✅ Tổng doanh thu = chỉ tính đơn thành công
+    total_revenue = (
+        Order.objects.filter(status__in=["success", "delivered"])
+        .aggregate(total=Sum("total_price"))["total"] or 0
+    )
+
+    today = now().date()
 
     # --- KPI bổ sung ---
-    today = now().date()
     new_orders_today = Order.objects.filter(created_at__date=today).count()
-    processing_orders = Order.objects.filter(status="processing").count()
+
+    # đang xử lý = pending + shipping + ready_to_pick + picking
+    processing_orders = Order.objects.filter(
+        status__in=["pending", "shipping", "ready_to_pick", "picking"]
+    ).count()
+
     new_complaints = Complaint.objects.filter(created_at__date=today).count()
     new_users_today = CustomUser.objects.filter(date_joined__date=today).count()
 
@@ -36,22 +47,15 @@ def dashboard_data(request):
 
     # --- Top sản phẩm ---
     top_products = (
-        OrderItem.objects.values(
-            prod_id=F("product__id"),
-            name=F("product__name")
-        )
+        OrderItem.objects.values(prod_id=F("product__id"), name=F("product__name"))
         .annotate(sales=Sum("quantity"))
         .order_by("-sales")[:5]
     )
 
     # --- Top seller ---
     top_sellers = (
-        OrderItem.objects
-        .filter(product__seller__isnull=False)
-        .values(
-            seller_id=F("product__seller__id"),
-            store_name=F("product__seller__store_name")
-        )
+        OrderItem.objects.filter(product__seller__isnull=False)
+        .values(seller_id=F("product__seller__id"), store_name=F("product__seller__store_name"))
         .annotate(revenue=Sum(F("quantity") * F("price")))
         .order_by("-revenue")[:5]
     )
@@ -64,8 +68,9 @@ def dashboard_data(request):
         month = month_date.strftime("%b")
         revenue = (
             Order.objects.filter(
+                status__in=["success", "delivered"],  # chỉ tính thành công
                 created_at__year=month_date.year,
-                created_at__month=month_date.month
+                created_at__month=month_date.month,
             ).aggregate(total=Sum("total_price"))["total"]
             or 0
         )
@@ -78,7 +83,6 @@ def dashboard_data(request):
         .order_by("status")
     )
 
-    # --- Gộp tất cả ---
     data = {
         "total_users": total_users,
         "total_sellers": total_sellers,
@@ -97,5 +101,4 @@ def dashboard_data(request):
         "orders_by_status": list(orders_by_status),
     }
 
-    serializer = DashboardSerializer(data)
-    return Response(serializer.data)
+    return Response(data)

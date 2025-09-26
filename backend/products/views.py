@@ -326,7 +326,7 @@ def top_products(request):
             "product", 
             "product__name", 
             "product__seller__user__username", 
-            "product__thumbnail"
+            "product__image"
         )
         .annotate(quantity_sold=Sum("quantity"), revenue=Sum("price"))
         .order_by("-quantity_sold")[:10]
@@ -340,7 +340,7 @@ def top_products(request):
             "shop_name": item["product__seller__user__username"],
             "quantity_sold": item["quantity_sold"],
             "revenue": item["revenue"],
-            "thumbnail": request.build_absolute_uri(item["product__thumbnail"]) if item["product__thumbnail"] else None,
+                "thumbnail": request.build_absolute_uri(item["product__image"]) if item["product__image"] else None,
         })
 
     return Response(data)
