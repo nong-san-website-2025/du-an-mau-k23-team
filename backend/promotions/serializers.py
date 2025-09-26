@@ -1,6 +1,7 @@
 from rest_framework import serializers
-from .models import Promotion, Voucher ,FlashSale, UserVoucher
+from .models import Promotion, Voucher, FlashSale, UserVoucher
 from products.models import Product
+
 
 class PromotionListSerializer(serializers.ModelSerializer):
     class Meta:
@@ -18,9 +19,11 @@ class VoucherDetailSerializer(serializers.ModelSerializer):
             'id', 'code', 'title', 'description', 'scope', 'seller',
             'discount_percent', 'discount_amount', 'freeship_amount',
             'min_order_value', 'max_discount_amount',
-            'start_at', 'end_at', 'active', 'promotion', 'created_by', 'created_at',
+            'start_at', 'end_at', 'active', 'promotion',
+            'created_by', 'created_at',
             # new distribution / quantity fields
-            'distribution_type', 'total_quantity', 'per_user_quantity','discount_type',
+            'distribution_type', 'total_quantity', 'per_user_quantity',
+            'discount_type',
         ]
         read_only_fields = ['created_by', 'created_at', 'promotion']
 
@@ -31,6 +34,7 @@ class VoucherDetailSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Phải cung cấp 1 trong các loại giảm: discount_percent, discount_amount, freeship_amount")
         if count > 1:
             raise serializers.ValidationError("Chỉ được tổng cộng 1 loại giảm.")
+
         if data.get('discount_percent') is not None:
             val = data['discount_percent']
             if val < 0 or val > 100:
@@ -41,16 +45,34 @@ class VoucherDetailSerializer(serializers.ModelSerializer):
         if dist_type == Voucher.DistributionType.CLAIM:
             if data.get('per_user_quantity') is None:
                 data['per_user_quantity'] = 1
+
         return data
 
     def create(self, validated_data):
         user = self.context['request'].user
         validated_data['created_by'] = user if user.is_authenticated else None
         voucher = super().create(validated_data)
-        # note: distribution to users handled in view perform_create (so we don't import User here)
+        # phân phối user_voucher (nếu direct) xử lý trong view
         return voucher
 
     def update(self, instance, validated_data):
+        """
+        Update voucher gốc. 
+        Không xoá/reset UserVoucher đã phát.
+        """
+
+        # Không cho đổi distribution_type sau khi đã tạo
+        if 'distribution_type' in validated_data and validated_data['distribution_type'] != instance.distribution_type:
+            raise serializers.ValidationError("Không thể đổi kiểu phân phối sau khi đã tạo.")
+
+        # Nếu chỉnh sửa total_quantity thì phải >= số lượng đã phát
+        if 'total_quantity' in validated_data:
+            issued = instance.issued_count()
+            if validated_data['total_quantity'] < issued:
+                raise serializers.ValidationError(
+                    f"total_quantity không được nhỏ hơn số đã phát ({issued})."
+                )
+
         return super().update(instance, validated_data)
 
 
@@ -79,24 +101,24 @@ class FlashSaleSerializer(serializers.ModelSerializer):
 
     def get_remaining_stock(self, obj):
         return obj.remaining_stock
-    
+
 
 class VoucherSerializer(serializers.ModelSerializer):
     class Meta:
         model = Voucher
         fields = "__all__"
 
+
 class UserVoucherSerializer(serializers.ModelSerializer):
     voucher = VoucherDetailSerializer(read_only=True)
 
     class Meta:
         model = UserVoucher
-        fields = ["id", "voucher", "is_used", "used_at"]    
-
+        fields = ["id", "voucher", "is_used", "used_at"]
 
 
 class FlashSaleAdminSerializer(serializers.ModelSerializer):
-    # ✅ Bắt buộc: dùng PrimaryKeyRelatedField để DRF hiểu product là ForeignKey
+    # ✅ DRF hiểu product là ForeignKey
     product = serializers.PrimaryKeyRelatedField(queryset=Product.objects.all())
 
     class Meta:
@@ -115,22 +137,17 @@ class FlashSaleAdminSerializer(serializers.ModelSerializer):
         return value
 
     def validate_flash_price(self, value):
-        """Kiểm tra riêng lẻ giá flash"""
-        if value is not None:
-            # Không truy cập product ở đây, để validate() xử lý
-            if value <= 0:
-                raise serializers.ValidationError("Giá flash phải lớn hơn 0.")
+        if value is not None and value <= 0:
+            raise serializers.ValidationError("Giá flash phải lớn hơn 0.")
         return value
 
     def validate(self, data):
-        """Kiểm tra chéo các trường"""
         product = data.get('product')
         flash_price = data.get('flash_price')
         start_time = data.get('start_time')
         end_time = data.get('end_time')
 
         if not product:
-            # Phòng thủ thêm
             raise serializers.ValidationError({"product": "Sản phẩm là bắt buộc."})
 
         if flash_price is not None and product:

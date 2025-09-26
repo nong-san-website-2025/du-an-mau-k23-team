@@ -10,7 +10,12 @@ import {
   Col,
   Pagination,
 } from "react-bootstrap";
-import { getVouchers, getMyVouchers, claimVoucher } from "../../admin/services/promotionServices";
+import { toast } from "react-toastify";
+import {
+  getVouchers,
+  getMyVouchers,
+  claimVoucher,
+} from "../../admin/services/promotionServices";
 
 const VoucherList = () => {
   const [vouchers, setVouchers] = useState([]);
@@ -47,8 +52,8 @@ const VoucherList = () => {
   const filtered = vouchers.filter((v) => {
     if (v.distribution_type !== "claim") return false;
     if (claimedVoucherIds.has(v.id)) return false;
-    if (filter === "expired") return v.expired;
-    if (filter === "active") return !v.expired;
+    if (filter === "normal") return v.discount_type !== "freeship";
+    if (filter === "freeship") return v.discount_type === "freeship";
     return true;
   });
 
@@ -69,7 +74,15 @@ const VoucherList = () => {
 
   return (
     <Container>
-      <h5 className="mb-3" style={{ color: "#F57C00" }}>
+      <h5
+        className="mb-3"
+        style={{
+          color: "#F57C00",
+          fontWeight: 700,
+          fontSize: 24,
+          letterSpacing: 1,
+        }}
+      >
         🎁 Kho Voucher
       </h5>
 
@@ -78,72 +91,111 @@ const VoucherList = () => {
         value={filter}
         onChange={(e) => {
           setFilter(e.target.value);
-          setCurrentPage(1); // reset về trang 1 khi đổi filter
+          setCurrentPage(1);
         }}
         style={{ maxWidth: "300px" }}
       >
         <option value="all">Tất cả</option>
-        <option value="active">Voucher Thường</option>
-        <option value="used">Voucher FreeShip</option>
+        <option value="normal">Voucher Thường</option>
+        <option value="freeship">Voucher FreeShip</option>
       </Form.Select>
 
-      <Row>
+      <Row xs={1} md={2} className="g-4">
         {currentVouchers.length === 0 && (
-          <p className="text-muted">Không có voucher nào phù hợp.</p>
+          <Col xs={12}>
+            <p className="text-muted">Không có voucher nào phù hợp.</p>
+          </Col>
         )}
 
         {currentVouchers.map((voucher) => {
-          // Xử lý hiển thị giá trị voucher
+          // Xử lý hiển thị giá trị voucher và style
           let discountText = "";
-          if (voucher.freeship_amount) {
+          let color = "#fff";
+          let borderColor = "#388E3C";
+          let icon = "";
+          if (voucher.discount_type === "freeship" && voucher.freeship_amount) {
             discountText = `Freeship ${voucher.freeship_amount.toLocaleString("vi-VN")}₫`;
-          } else if (voucher.discount_percent) {
+            color = "#E3F2FD";
+            borderColor = "#1976D2";
+            icon = "🚚";
+          } else if (
+            voucher.discount_type === "percent" &&
+            voucher.discount_percent
+          ) {
             discountText = `${voucher.discount_percent}%`;
-          } else if (voucher.discount_amount) {
+            color = "#FFF3E0";
+            borderColor = "#F57C00";
+            icon = "🔥";
+          } else if (
+            voucher.discount_type === "amount" &&
+            voucher.discount_amount
+          ) {
             discountText =
               voucher.discount_amount.toLocaleString("vi-VN") + "₫";
+            color = "#E8F5E9";
+            borderColor = "#388E3C";
+            icon = "💸";
           }
 
           return (
-            <Col xs={12} key={voucher.id} className="mb-3">
-              <Card className="shadow-sm border-0 w-100 h-100">
-                <Card.Body className="d-flex justify-content-between align-items-center">
-                  <div>
-                    <Card.Title>
-                      <span className="fw-bold">{voucher.code}</span>
-                      {voucher.used && (
-                        <Badge bg="secondary" className="ms-2">
-                          Đã dùng
-                        </Badge>
-                      )}
-                      {voucher.expired && (
-                        <Badge bg="danger" className="ms-2">
-                          Hết hạn
-                        </Badge>
-                      )}
-                    </Card.Title>
-                    <Card.Text className="mb-0">
-                      <div>
-                        💳 Loại:{" "}
-                        {voucher.discount_type === "freeship"
-                          ? "FreeShip"
-                          : "Thường"}
+            <Col key={voucher.id}>
+              <Card
+                className="shadow-sm border-0 h-100"
+                style={{
+                  background: color,
+                  borderLeft: `8px solid ${borderColor}`,
+                  borderRadius: 16,
+                  minHeight: 170,
+                  position: "relative",
+                  overflow: "hidden",
+                }}
+              >
+                <Card.Body className="d-flex flex-column justify-content-between h-100">
+                  <div className="d-flex align-items-center mb-2">
+                    <span style={{ fontSize: 32, marginRight: 12 }}>
+                      {icon}
+                    </span>
+                    <div>
+                      <Card.Title
+                        style={{
+                          fontWeight: 700,
+                          fontSize: 22,
+                          color: borderColor,
+                        }}
+                      >
+                        {voucher.code}
+                        {voucher.used && (
+                          <Badge bg="secondary" className="ms-2">
+                            Đã dùng
+                          </Badge>
+                        )}
+                        {voucher.expired && (
+                          <Badge bg="danger" className="ms-2">
+                            Hết hạn
+                          </Badge>
+                        )}
+                      </Card.Title>
+                      <div style={{ fontSize: 15, color: "#555" }}>
+                        {voucher.name || voucher.title}
                       </div>
-                      <div>💰 Giá trị: {discountText}</div>
-                      <div>
-                        🧾 Đơn tối thiểu:{" "}
-                        {voucher.min_order_value
-                          ? voucher.min_order_value.toLocaleString("vi-VN") +
-                            "₫"
-                          : "Không yêu cầu"}
-                      </div>
-                      <div>
-                        📅 Hạn sử dụng: {voucher.start_at} → {voucher.end_at}
-                      </div>
-                    </Card.Text>
+                    </div>
                   </div>
-
-                  <div>
+                  <Card.Text className="mb-0" style={{ fontSize: 15 }}>
+                    <div>
+                      💰 <b>Giá trị:</b> {discountText || "—"}
+                    </div>
+                    <div>
+                      🧾 <b>Đơn tối thiểu:</b>{" "}
+                      {voucher.min_order_value
+                        ? voucher.min_order_value.toLocaleString("vi-VN") + "₫"
+                        : "Không yêu cầu"}
+                    </div>
+                    <div>
+                      📅 <b>Hạn sử dụng:</b> {voucher.start_at} →{" "}
+                      {voucher.end_at}
+                    </div>
+                  </Card.Text>
+                  <div className="mt-2">
                     {!voucher.used && !voucher.expired ? (
                       <Button
                         variant="success"
@@ -152,15 +204,22 @@ const VoucherList = () => {
                           try {
                             await claimVoucher(voucher.code);
                             await fetchVouchers();
+                            toast.success("🎉 Nhận voucher thành công!");
                           } catch (err) {
-                            alert("Nhận voucher thất bại!");
+                            toast.error("❌ Nhận voucher thất bại!");
                           }
                         }}
+                        style={{ minWidth: 120, fontWeight: 600 }}
                       >
                         Nhận voucher
                       </Button>
                     ) : (
-                      <Button variant="secondary" size="sm" disabled>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        disabled
+                        style={{ minWidth: 120 }}
+                      >
                         Không khả dụng
                       </Button>
                     )}

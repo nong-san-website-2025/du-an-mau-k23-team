@@ -4,8 +4,16 @@ const API_URL = "/promotions"; // axiosClient đã có baseURL
 
 // User nhận voucher từ kho (claim)
 export const claimVoucher = async (code) => {
-  const res = await axiosClient.post(`${API_URL}/vouchers/claim/`, { code });
-  return res.data;
+  try {
+    const res = await axiosClient.post(
+      `${API_URL}/vouchers/claim/`,  // ✅ thêm dấu /
+      { code }                       // ✅ payload đúng key
+    );
+    return res.data;
+  } catch (error) {
+    console.error("Claim voucher error:", error.response?.data || error.message);
+    throw error;
+  }
 };
 
 // Lấy danh sách voucher đã sở hữu (túi voucher)
@@ -93,12 +101,14 @@ export const getPromotionsOverview = async () => {
 };
 
 // Áp dụng voucher
+// Áp dụng voucher
 export const applyVoucher = async (code, orderTotal) => {
-  const res = await axiosClient.post(`${API_URL}/vouchers/apply/`, {
-    code,
+  const res = await axiosClient.post(`/promotions/vouchers/apply/`, {
+    code: code,        // ✅ phải là "code", không phải "voucher_code"
     order_total: orderTotal,
   });
   return res.data;
 };
+
 
 //API để user nhận voucher từ kho voucher
