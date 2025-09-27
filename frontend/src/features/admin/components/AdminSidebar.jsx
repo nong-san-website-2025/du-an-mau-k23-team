@@ -32,7 +32,7 @@ const Sidebar = () => {
         style={{ height: "100%", borderRight: 0 }}
       >
         <Menu.Item key="dashboard" icon={<HomeOutlined />}>
-          <Link to="/admin/">Dashboard</Link>
+          <Link to="/admin/">Tổng quan</Link>
         </Menu.Item>
 
         <Menu.SubMenu key="users" icon={<UserOutlined />} title="Người dùng">
@@ -50,10 +50,10 @@ const Sidebar = () => {
           title="Cửa hàng"
         >
           <Menu.Item key="/admin/sellers/business">
-            <Link to="/admin/sellers/business">Cửa hàng hoạt động/khóa</Link>
+            <Link to="/admin/sellers/business">Quản lý cửa hàng</Link>
           </Menu.Item>
           <Menu.Item key="/admin/sellers/approval">
-            <Link to="/admin/sellers/approval">Duyệt cửa hàng đăng ký</Link>
+            <Link to="/admin/sellers/approval">Duyệt cửa hàng</Link>
           </Menu.Item>
         </Menu.SubMenu>
 

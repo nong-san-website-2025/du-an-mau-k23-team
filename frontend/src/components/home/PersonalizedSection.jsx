@@ -1,3 +1,4 @@
+// components/PersonalizedSection.jsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { productApi } from "../../features/products/services/productApi.js";
@@ -9,14 +10,13 @@ const PersonalizedSection = () => {
   const [loading, setLoading] = useState(true);
 
   const handleViewAll = () => {
-    navigate("/products"); // Điều hướng tới trang tất cả sản phẩm
+    navigate("/products");
   };
 
-  // Fetch dữ liệu khi component mount
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const data = await productApi.getAllProducts(); // hoặc getFeaturedProducts()
+        const data = await productApi.getAllProducts();
         setProducts(data || []);
       } catch (error) {
         console.error("❌ Lỗi tải sản phẩm gợi ý:", error.message);
@@ -28,97 +28,92 @@ const PersonalizedSection = () => {
     fetchProducts();
   }, []);
 
-  // Chỉ lấy đúng 18 sản phẩm (3 hàng, mỗi hàng 6 sản phẩm)
   const displayedProducts = products.slice(0, 18);
 
   return (
-    <div className="bg-white p-0 rounded-3 shadow-sm mt-1 w-100">
-      <h2 className="fs-4 fw-bold mb-4">Gợi ý cho bạn</h2>
+    <div className="bg-white px-4 py-3 rounded-3 shadow-sm mt-1 w-100">
+      <h2 className="fs-5 fw-bold mb-3">Gợi ý cho bạn</h2>
 
       <div className="row g-3">
         {loading
           ? Array.from({ length: 18 }).map((_, index) => (
               <div key={index} className="col-6 col-md-3 col-lg-2">
                 <div
-                  className="bg-light rounded-3 placeholder-glow"
-                  style={{ height: "160px" }}
+                  className="rounded-3 placeholder-glow"
+                  style={{ height: "220px" }}
                 >
                   <span className="placeholder w-100 h-100 rounded-3 d-block"></span>
                 </div>
               </div>
             ))
-          : displayedProducts.map((product, index) => (
-              <div key={index} className="col-6 col-md-3 col-lg-2">
+          : displayedProducts.map((product) => (
+              <div key={product.id} className="col-6 col-md-3 col-lg-2">
                 <div
-                  className="product-card d-flex flex-column align-items-center cursor-pointer p-2 h-100 border bg-white"
-                  style={{ transition: "all 0.2s", cursor: "pointer" }}
+                  className="position-relative rounded-3 overflow-hidden shadow-sm"
+                  style={{
+                    height: "220px",
+                    cursor: "pointer",
+                    transition: "transform 0.2s, box-shadow 0.2s",
+                  }}
                   onClick={() => navigate(`/products/${product.id}`)}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.boxShadow =
-                      "0 0.5rem 1rem rgba(0,0,0,0.15)";
-                    
+                    e.currentTarget.style.transform = "translateY(-4px)";
+                    e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.12)";
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.boxShadow = "none";
+                    e.currentTarget.style.transform = "none";
+                    e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.1)";
                   }}
                 >
-                  {/* Ảnh sản phẩm */}
-                  <div
-                    className="w-100 bg-light rounded-3 overflow-hidden d-flex align-items-center justify-content-center"
-                    style={{ height: "100px" }}
-                  >
-                    <img
-                      src={product.image}
-                      alt={product.name}
-                      className="img-fluid h-100 w-100"
-                      style={{ objectFit: "cover" }}
-                    />
-                  </div>
+                  {/* Ảnh sản phẩm - full */}
+                  <img
+                    src={product.image || "https://via.placeholder.com/300x300?text=No+Image"}
+                    alt={product.name}
+                    className="w-100 h-100"
+                    style={{ objectFit: "cover" }}
+                  />
 
-                  {/* Tên và giá */}
-                  <div className="mt-2 text-center w-100">
-                    <p
-                      className="text-truncate fw-medium mb-1"
-                      title={product.name}
-                      style={{ fontSize: "0.9rem" }}
-                    >
-                      {product.name}
-                    </p>
-                    {product?.price !== undefined && (
-                      <p
-                        className="text-danger mb-0"
-                        style={{ fontSize: "0.85rem" }}
-                      >
-                        {product.price.toLocaleString()} đ
-                      </p>
-                    )}
+                  {/* Overlay: Giá & Số đã bán */}
+                  <div className="position-absolute bottom-0 start-0 end-0 d-flex justify-content-between px-2 py-1">
+                    {/* Giá - góc dưới trái */}
+                    <div className="bg-white bg-opacity-90 rounded px-1">
+                      <span className="text-danger fw-bold" style={{ fontSize: "0.85rem" }}>
+                        {product.price?.toLocaleString()}đ
+                      </span>
+                    </div>
+
+                    {/* Số đã bán - góc dưới phải */}
+                    <div className="bg-black bg-opacity-50 text-white rounded px-1">
+                      <span style={{ fontSize: "0.75rem" }}>
+                        {product.sold_count || 0} đã bán
+                      </span>
+                    </div>
                   </div>
+                </div>
+
+                {/* Tên sản phẩm - bên dưới card */}
+                <div className="mt-2">
+                  <p
+                    className="text-truncate mb-0 fw-medium"
+                    title={product.name}
+                    style={{ fontSize: "0.9rem", lineHeight: 1.3 }}
+                  >
+                    {product.name}
+                  </p>
                 </div>
               </div>
             ))}
       </div>
 
-      {/* Nút xem tất cả nằm riêng bên dưới */}
       {!loading && products.length > 18 && (
-        <div className="mt-3">
-          <div
-            className="d-flex justify-content-center align-items-center border rounded-3 bg-light fw-bold"
-            style={{
-              height: "50px",
-              cursor: "pointer",
-              transition: "all 0.2s",
-              color: "grey",
-            }}
+        <div className="mt-3 text-center">
+          <button
+            className="btn btn-outline-secondary btn-sm px-4 py-2 fw-medium"
             onClick={handleViewAll}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = "#e9ecef";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = "#f8f9fa";
-            }}
+            style={{ borderRadius: "8px" }}
           >
             Xem thêm
-          </div>
+          </button>
         </div>
       )}
     </div>

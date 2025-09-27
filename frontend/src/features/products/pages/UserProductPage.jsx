@@ -168,7 +168,7 @@ const UserProductPage = () => {
   }
 
   return (
-    <Row gutter={[16, 16]} style={{ padding: "12px 120px" }}>
+    <Row gutter={[16, 16]} style={{ padding: "12px 190px" }}>
       {/* Sidebar */}
       <Col xs={24} md={6}>
         <Space direction="vertical" style={{ width: "100%" }} size="middle">

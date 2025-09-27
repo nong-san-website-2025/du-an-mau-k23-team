@@ -28,7 +28,7 @@ export const userRoutes = [
     <Route index element={<HomePage />} />
     <Route path="blog" element={<BlogHome />} />
     <Route path="blog/:slug" element={<BlogDetail />} />
-    <Route path="productuser" element={<UserProductPage />} />
+    <Route path="products" element={<UserProductPage />} />
     <Route path="products/:id" element={<ProductDetailPage />} />
     <Route path="cart" element={<CartPage />} />
     <Route path="featured" element={<FeaturedProductsPage />} />

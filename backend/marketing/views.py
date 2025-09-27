@@ -22,7 +22,7 @@ class BannerViewSet(viewsets.ModelViewSet):
 class FlashSaleViewSet(viewsets.ModelViewSet):
     queryset = FlashSale.objects.all()
     serializer_class = FlashSaleSerializer
-    permission_classes = [IsMarketingAdmin]
+    permission_classes = [AllowAny]
 
 
 class VoucherViewSet(viewsets.ModelViewSet):

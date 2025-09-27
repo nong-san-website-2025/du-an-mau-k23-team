@@ -46,27 +46,6 @@ export default function Header() {
   const navigate = useNavigate();
 
   // Notifications (kept for future use/compatibility)
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      title: "Đơn hàng #1234 đã được xác nhận",
-      detail: "Chi tiết đơn hàng #1234...",
-      thumbnail: "/media/cart_items/order-confirmed.png",
-    },
-    {
-      id: 2,
-      title: "Bạn nhận được voucher mới",
-      detail: "Bạn vừa nhận được voucher giảm giá 10%...",
-      thumbnail: "/media/cart_items/voucher.png",
-    },
-    {
-      id: 3,
-      title: "Cập nhật chính sách vận chuyển",
-      detail: "Chính sách vận chuyển mới áp dụng từ 8/8...",
-      thumbnail: "/media/cart_items/policy-update.png",
-    },
-  ]);
-
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("username");
@@ -101,35 +80,6 @@ export default function Header() {
     fontFamily: "Montserrat, Arial, sans-serif",
     fontWeight: 800,
   };
-
-  const urlCategory =
-    decodeURIComponent(
-      new URLSearchParams(location.search).get("category") || ""
-    ) ||
-    (categories[0] && categories[0].name);
-
-  const handleCategoryHover = (cat) => setHoveredCategory(cat.name);
-  const handleMouseEnter = () => {
-    if (leaveTimeout) {
-      clearTimeout(leaveTimeout);
-      setLeaveTimeout(null);
-    }
-    setShowCategory(true);
-  };
-  const handleMouseLeave = () => {
-    const timeout = setTimeout(() => {
-      setShowCategory(false);
-      setHoveredCategory(null);
-    }, 100);
-    setLeaveTimeout(timeout);
-  };
-  useEffect(() => {
-    return () => {
-      if (leaveTimeout) {
-        clearTimeout(leaveTimeout);
-      }
-    };
-  }, [leaveTimeout]);
 
   // Search feature
   const [search, setSearch] = useState("");
@@ -302,7 +252,7 @@ export default function Header() {
           style={{
             position: "relative",
             background: "linear-gradient(to bottom, #2E7D32 0%, #4CAF50 100%)",
-            padding: "0 110px",
+            padding: "0 180px",
           }}
         >
           <div
@@ -335,7 +285,6 @@ export default function Header() {
               showProfileDropdown={showProfileDropdown}
               setShowProfileDropdown={setShowProfileDropdown}
               handleLogout={handleLogout}
-              notifications={notifications}
               showNotificationDropdown={showNotificationDropdown}
               setShowNotificationDropdown={setShowNotificationDropdown}
               hoveredDropdown={hoveredDropdown}

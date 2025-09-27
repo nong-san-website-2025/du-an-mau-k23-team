@@ -12,31 +12,51 @@ const FlashSaleModal = ({ visible, onCancel, onSuccess, record }) => {
   React.useEffect(() => {
     if (visible) {
       if (record) {
-        // Edit mode
+        // record là flash sale đầy đủ: { id, start_time, ..., flashsale_products: [...] }
+        const productIds = record.flashsale_products.map((p) => p.product);
+        const flashItems = {};
+        record.flashsale_products.forEach((p) => {
+          flashItems[p.product] = {
+            flash_price: p.flash_price,
+            stock: p.stock,
+          };
+        });
+
         form.setFieldsValue({
-          product: record.product.id,
-          flash_price: record.flash_price,
-          stock: record.stock,
+          products: productIds,
+          flash_items: flashItems,
           is_active: record.is_active,
-          time_range: [moment(record.start_time), moment(record.end_time)],
+          time_range: [
+            record.start_time ? moment(record.start_time).local() : null,
+            record.end_time ? moment(record.end_time).local() : null,
+          ],
         });
       } else {
         form.resetFields();
       }
     }
   }, [visible, record, form]);
-
   const handleOk = async () => {
     try {
       const values = await form.validateFields();
       const [start_time, end_time] = values.time_range;
 
+      // ✅ Build flashsale_products
+      const flashsale_products = values.products.map((productId) => {
+        return {
+          product: productId,
+          flash_price: Number(
+            values.flash_items?.[productId]?.flash_price || 0
+          ),
+          stock: Number(values.flash_items?.[productId]?.stock || 0),
+        };
+      });
+
+      // Gửi payload đầy đủ cho backend
       const payload = {
-        product: values.product,
-        flash_price: Number(values.flash_price), // ← chuyển sang số
-        stock: Number(values.stock),
-        start_time: start_time.format("YYYY-MM-DDTHH:mm"),
-        end_time: end_time.format("YYYY-MM-DDTHH:mm"),
+        flashsale_products,
+        start_time: start_time.toDate().toISOString(),
+        end_time: end_time.toDate().toISOString(),
         is_active: values.is_active,
       };
 
@@ -69,9 +89,16 @@ const FlashSaleModal = ({ visible, onCancel, onSuccess, record }) => {
       onCancel={onCancel}
       onOk={handleOk}
       confirmLoading={loading}
-      width={800}
+      width={1200}
       okText={record ? "Cập nhật" : "Tạo"}
       cancelText="Hủy"
+      style={{ top: '60px' }}
+      // 👇 Thêm bodyStyle để kiểm soát cuộn
+      bodyStyle={{
+        maxHeight: "70vh", // Giới hạn chiều cao body
+        overflowY: "auto", // Cho phép cuộn dọc
+        paddingRight: "12px", // Đảm bảo thanh cuộn không che nội dung
+      }}
     >
       <FlashSaleForm form={form} isEdit={!!record} />
     </Modal>

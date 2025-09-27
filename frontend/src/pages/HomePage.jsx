@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { Spin, Modal } from "antd"; // TODO: nâng cấp props theo khuyến cáo: dùng styles.body thay cho bodyStyle
 import BannerSlider from "../components/home/BannerSlider";
 import CategorySection from "../components/home/CategorySection";
-import FlashSaleSection from "../components/home/FlashSaleSection";
 import PersonalizedSection from "../components/home/PersonalizedSection";
 import { Helmet } from "react-helmet";
 

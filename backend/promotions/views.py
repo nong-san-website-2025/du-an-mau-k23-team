@@ -162,7 +162,7 @@ def promotions_overview(request):
     return Response(data)
 
 
-class FlashSaleListView(generics.ListCreateAPIView):
+class FlashSaleListView(generics.ListAPIView):
     serializer_class = FlashSaleSerializer
     permission_classes = [AllowAny]
 
@@ -172,7 +172,7 @@ class FlashSaleListView(generics.ListCreateAPIView):
             is_active=True,
             start_time__lte=now,
             end_time__gt=now
-        ).select_related('product')
+        ).prefetch_related('flashsale_products__product')
 
 
 @api_view(["GET"])
@@ -253,6 +253,6 @@ def apply_voucher(request):
 
 
 class FlashSaleAdminViewSet(viewsets.ModelViewSet):
-    queryset = FlashSale.objects.all().select_related('product')
+    queryset = FlashSale.objects.all().prefetch_related('products')  # ✅ Sửa ở đây
     serializer_class = FlashSaleAdminSerializer
     permission_classes = [IsAdminUser]  # Chỉ admin mới truy cập

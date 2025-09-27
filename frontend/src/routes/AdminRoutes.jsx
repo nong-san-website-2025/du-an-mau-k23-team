@@ -22,7 +22,6 @@ import VouchersPage from "../features/admin/pages/VouchersPage";
 import WalletPage from "../features/admin/pages/WalletPage";
 
 // Marketing & Promotions
-import BannersPage from "../features/admin/pages/BannersPage";
 import NotificationsPage from "../pages/NotificationsPage.jsx";
 import AdvertisementList from "../features/admin/pages/MarketingAdmin/AdvertisementList.jsx";
 
@@ -43,7 +42,7 @@ import ApprovalSellersPage from "../features/admin/pages/ShopPage/ApprovalSeller
 import ApprovalProductsPage from "../features/admin/pages/ProductPage/ApprovalProductsPage.jsx";
 import CategoryManagementPage from "../features/admin/pages/ProductPage/CategoryManagement.jsx";
 import Promotions from "../features/admin/pages/Promotions/PromotionsPage.jsx";
-import FlashSale from "../features/admin/pages/Promotions/AdminFlashSalePanelPage.jsx";
+import FlashSale from "../features/admin/pages/Promotions/FlashSalePage.jsx";
 
 // ✅ Settings (5 chức năng mới)
 import ShippingSettingsPage from "../features/admin/pages/Setting/ShippingSettingsPage";
@@ -77,7 +76,6 @@ export const adminRoutes = [
       <Route path="wallet" element={<WalletPage />} />
 
       {/* Marketing & Promotions */}
-      <Route path="banners" element={<BannersPage />} />
       <Route path="notifications" element={<NotificationsPage />} />
       <Route path="promotions" element={<Promotions />} />
       <Route path="promotions/flashsale" element={<FlashSale />} />

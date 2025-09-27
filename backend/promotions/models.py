@@ -7,7 +7,8 @@ from products.models import Product
 from products.serializers import ProductListSerializer
 from django.utils import timezone
 from django.core.validators import MinValueValidator
-
+from django.db.models import Sum
+from django.core.exceptions import ValidationError
 
 
 class Promotion(models.Model):
@@ -125,22 +126,14 @@ class Voucher(models.Model):
 
     def __str__(self):
         return f"{self.code} ({self.scope})"
-
-
 class FlashSale(models.Model):
-    product = models.OneToOneField(
+    products = models.ManyToManyField(
         Product,
-        on_delete=models.CASCADE,
-        related_name='flash_sale',
-        # Không dùng null=True — FlashSale luôn phải có Product
+        related_name='flash_sales'
     )
-    original_price = models.DecimalField(max_digits=12, decimal_places=0, editable=False)
-    flash_price = models.DecimalField(max_digits=12, decimal_places=0)
-    stock = models.PositiveIntegerField(validators=[MinValueValidator(1)])
     start_time = models.DateTimeField()
     end_time = models.DateTimeField()
     is_active = models.BooleanField(default=False, db_index=True)
-
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -151,26 +144,15 @@ class FlashSale(models.Model):
         ]
 
     def __str__(self):
-        return f"Flash: {self.product.name} - {self.flash_price}"
+        return f"Flash: {self.id} ({self.start_time} → {self.end_time})"
 
     def clean(self):
-        if self.product is None:
-            raise ValidationError({'product': 'Flash sale must have a product.'})
-
-        if self.flash_price >= self.product.price:
-            raise ValidationError({'flash_price': 'Flash price must be lower than original price.'})
-
+        # Chỉ validate thời gian
         if self.start_time >= self.end_time:
             raise ValidationError({'end_time': 'End time must be after start time.'})
 
     def save(self, *args, **kwargs):
-        # Gọi clean() trước khi save
         self.full_clean()
-
-        # Chỉ set original_price khi tạo mới
-        if self._state.adding:
-            self.original_price = self.product.price
-
         super().save(*args, **kwargs)
 
     @property
@@ -183,26 +165,42 @@ class FlashSale(models.Model):
         if not self.is_ongoing:
             return 0
         return int((self.end_time - timezone.now()).total_seconds())
+    
+class FlashSaleProduct(models.Model):
+    """Bảng trung gian: mỗi sản phẩm trong 1 Flash Sale"""
+    flashsale = models.ForeignKey(FlashSale, on_delete=models.CASCADE, related_name='flashsale_products')
+    product = models.ForeignKey('products.Product', on_delete=models.CASCADE)
+    flash_price = models.DecimalField(max_digits=12, decimal_places=0, validators=[MinValueValidator(1)])
+    stock = models.PositiveIntegerField(validators=[MinValueValidator(1)])
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('flashsale', 'product')  # Một sản phẩm chỉ được có 1 record trong 1 FlashSale
+
+    def __str__(self):
+        return f"{self.product.name} - {self.flash_price}"
+
+    def clean(self):
+        """Kiểm tra giá flash hợp lệ"""
+        if self.flash_price >= self.product.price:
+            raise ValidationError({'flash_price': 'Flash price phải thấp hơn giá gốc.'})
 
     @property
     def remaining_stock(self):
-        if self.product is None:
-            return 0  # hoặc raise Exception nếu muốn
-
+        """Tính tồn kho còn lại của sản phẩm này trong Flash Sale"""
         from orders.models import OrderItem
+
         sold = OrderItem.objects.filter(
             product=self.product,
-            order__status__in=['paid', 'shipped', 'delivered'],
-            created_at__gte=self.start_time,
-            created_at__lt=self.end_time
+            order__status__in=['paid', 'shipped', 'delivered', 'success'],
+            created_at__gte=self.flashsale.start_time,
+            created_at__lt=self.flashsale.end_time
         ).aggregate(total=Sum('quantity'))['total'] or 0
 
         return max(0, self.stock - sold)
-    
-    @property
-    def is_ongoing(self):
-        now = timezone.now()
-        return self.is_active and self.start_time <= now < self.end_time
+
     
 class UserVoucher(models.Model):
     user = models.ForeignKey(

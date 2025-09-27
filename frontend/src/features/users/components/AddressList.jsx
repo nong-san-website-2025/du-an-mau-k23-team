@@ -7,13 +7,12 @@ import AddressCard from "../components/Address/AddressCard";
 import AddressAddForm from "../components/Address/AddressAddForm";
 import AddressDeleteModal from "../components/Address/AddressDeleteModal.jsx";
 import { formatLocationName } from "../../../utils/formatLocationName.js";
-import api from "../../login_register/services/api.js";
 
 const { Text, Title } = Typography;
 
 const AddressList = ({
   addresses = [],
-  addAddress,
+  addAddress,        
   deleteAddress,
   setDefaultAddress,
 }) => {
@@ -29,24 +28,9 @@ const AddressList = ({
     setShowDeleteModal(true);
   };
 
-  const handleAddAddress = async (addressData) => {
-    try {
-      const response = await api.post(
-        "/users/addresses/",
-        JSON.stringify(addressData),
-        {
-          headers: { "Content-Type": "application/json" },
-        }
-      );
-      addAddress(response.data);
-      setShowAddForm(false);
-    } catch (error) {
-      console.error("Lỗi chi tiết:", error.response?.data || error.message);
-      Modal.error({
-        title: "Lỗi khi thêm địa chỉ",
-        content: JSON.stringify(error.response?.data, null, 2),
-      });
-    }
+  const handleAddAddress = (addressData) => {
+    addAddress(addressData); 
+    setShowAddForm(false);
   };
 
   return (

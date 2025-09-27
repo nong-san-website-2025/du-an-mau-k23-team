@@ -95,15 +95,15 @@ export default function SellerSidebar() {
     <Sider width={250} className="h-screen bg-white shadow-md">
       {/* Logo */}
       <div
-        className="flex items-center justify-center gap-2 py-4 cursor-pointer"
+        className="flex items-center justify-center gap-3 py-2 cursor-pointer"
         onClick={() => navigate("/")}
       >
         <img
-          src="/assets/logo/imagelogo.png" // 👉 thay bằng logo thật của bạn
+          src="/assets/logo/defaultLogo.png" // 👉 thay bằng logo thật của bạn
           alt="Logo"
-          style={{ height: "36px", marginLeft: "10px" }}
+          style={{ height: "60px", width: "50px", paddingBottom:16 }}
         />
-        <span className="font-bold text-green-600 text-lg">Seller Center</span>
+        <span className="" style={{ fontSize: "24px", fontWeight: "bold", paddingTop: 10}}>Trang người bán</span>
       </div>
 
       {/* Menu */}

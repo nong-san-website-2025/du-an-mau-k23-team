@@ -19,7 +19,7 @@ export default function CategoryMegaMenu({
       <button
         className="btn btn-link fw-bold text-dark px-2 py-2"
         style={{ fontSize: 18, textDecoration: "none" }}
-        onClick={() => navigate("/productuser")}
+        onClick={() => navigate("/products")}
       >
         <span style={{ fontSize: 18, color: "#FFFFFF" }}>Danh mục sản phẩm</span>
       </button>
@@ -52,7 +52,7 @@ export default function CategoryMegaMenu({
                     }}
                     onMouseEnter={() => handleCategoryHover(cat)}
                     onClick={() => {
-                      navigate(`/productuser?category=${encodeURIComponent(cat.key || cat.name)}`);
+                      navigate(`/products?category=${encodeURIComponent(cat.key || cat.name)}`);
                       setShowCategory(false);
                     }}
                   >
@@ -85,7 +85,7 @@ export default function CategoryMegaMenu({
                             onClick={(e) => {
                               e.stopPropagation();
                               navigate(
-                                `/productuser?category=${encodeURIComponent(cat.key || cat.name)}&subcategory=${encodeURIComponent(
+                                `/products?category=${encodeURIComponent(cat.key || cat.name)}&subcategory=${encodeURIComponent(
                                   sub.name
                                 )}`
                               );
