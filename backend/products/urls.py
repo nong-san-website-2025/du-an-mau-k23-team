@@ -11,11 +11,11 @@ router.register("", ProductViewSet, basename='products')
 
 # URL patterns
 urlpatterns = [
+    path('top-products/', top_products, name='top-products'),
     path("search/", SearchAPIView.as_view(), name="search"),  # API tìm kiếm
     path("", include(router.urls)),  # Các API của Product & Category
     path("<int:product_id>/reviews/", ReviewListCreateView.as_view(), name="product-reviews"),
     path("by-seller/<int:seller_id>/", products_by_seller, name="products-by-seller"),
     path("products/bulk-approve/", views.bulk_approve_products, name="bulk-approve-products"),
-    path('top-products/', top_products, name='top-products'),
     
 ]

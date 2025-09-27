@@ -23,14 +23,18 @@ export default function DashboardPage() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const { t } = useTranslation();
+  const [debugOrders, setDebugOrders] = useState([]);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const token = localStorage.getItem("token");
-        const response = await axios.get("http://127.0.0.1:8000/api/dashboard/", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const response = await axios.get(
+          "http://127.0.0.1:8000/api/dashboard/",
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
         console.log("✅ Dashboard API response:", response.data);
         setData(response.data);
       } catch (err) {
@@ -39,6 +43,7 @@ export default function DashboardPage() {
         setLoading(false);
       }
     };
+
     fetchData();
   }, []);
 
@@ -63,7 +68,7 @@ export default function DashboardPage() {
       title: "Đơn hàng đang xử lý",
       value: `${data.processing_orders || 0} đơn`,
       color: "geekblue",
-      icon: <SyncOutlined spin />,
+      icon: <SyncOutlined />,
     },
     {
       title: "Khiếu nại mới",
@@ -142,9 +147,7 @@ export default function DashboardPage() {
       {/* Top selling products */}
       <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
         <Col xs={24}>
-          <Card title="">
-            <TopSellingProducts data={data.top_products || []} />
-          </Card>
+          <TopSellingProducts />
         </Col>
       </Row>
 

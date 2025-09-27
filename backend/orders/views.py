@@ -11,6 +11,12 @@ import logging
 from .services import complete_order, OrderProcessingError
 from orders.models import OrderItem
 from django.db.models import Sum
+from django.utils.timezone import now, timedelta
+
+
+
+from rest_framework.decorators import api_view, permission_classes
+
 
 logger = logging.getLogger(__name__)
 
@@ -61,19 +67,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         
         return queryset.order_by('-created_at')
 
-    @action(detail=False, methods=['get'], url_path='top-products')
-    def top_products(self, request):
-        """Thống kê top sản phẩm bán chạy"""
-        from products.models import Product
-
-        top_products = (
-            OrderItem.objects
-            .values('product_id', 'product__name', 'product__image', 'product__seller__store_name')
-            .annotate(quantity_sold=Sum('quantity'), revenue=Sum('price'))
-            .order_by('-quantity_sold')[:10]
-        )
-
-        return Response(top_products)
+    
     
     @action(detail=False, methods=['get'], url_path='recent')
     def recent_orders(self, request):
@@ -328,5 +322,33 @@ class OrderViewSet(viewsets.ModelViewSet):
             )
 
 
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def top_products(request):
+    filter_type = request.query_params.get("filter", "month")  # mặc định = tháng
+    today = now().date()
 
+    if filter_type == "today":
+        start_date = today
+    elif filter_type == "week":
+        start_date = today - timedelta(days=today.weekday())  # đầu tuần (thứ 2)
+    else:  # month
+        start_date = today.replace(day=1)
 
+    items = (
+        OrderItem.objects
+        .filter(order__created_at__date__gte=start_date)
+        .values(
+            product_id=F("product__id"),
+            product_name=F("product__name"),
+            shop_name=F("product__shop__name"),
+            thumbnail=F("product__thumbnail"),
+        )
+        .annotate(
+            quantity_sold=Sum("quantity"),
+            revenue=Sum(F("quantity") * F("price"))
+            )
+        .order_by("-quantity_sold")[:10]
+    )
+
+    return Response(list(items))

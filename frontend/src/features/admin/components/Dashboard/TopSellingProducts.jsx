@@ -8,69 +8,36 @@ const { Option } = Select;
 
 export default function TopSellingProducts() {
   const [data, setData] = useState([]);
-  const [filter, setFilter] = useState("today");
+  const [filter, setFilter] = useState("today"); // giữ filter, sau này backend support
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Mock data theo filter
-    const mockData = {
-      today: [
-        {
-          product_id: 1,
-          product_name: "Xoài Cát Chu",
-          shop_name: "Shop A",
-          quantity_sold: 120,
-          revenue: 3600000,
-          thumbnail: "https://via.placeholder.com/60?text=Xoai",
-        },
-        {
-          product_id: 2,
-          product_name: "Gạo ST25",
-          shop_name: "Shop B",
-          quantity_sold: 95,
-          revenue: 2850000,
-          thumbnail: "https://via.placeholder.com/60?text=Gao",
-        },
-      ],
-      week: [
-        {
-          product_id: 3,
-          product_name: "Cà phê rang xay",
-          shop_name: "Shop C",
-          quantity_sold: 800,
-          revenue: 24000000,
-          thumbnail: "https://via.placeholder.com/60?text=CaPhe",
-        },
-      ],
-      month: [
-        {
-          product_id: 1,
-          product_name: "Xoài Cát Chu",
-          shop_name: "Shop A",
-          quantity_sold: 1200,
-          revenue: 36000000,
-          thumbnail: "https://via.placeholder.com/60?text=Xoai",
-        },
-        {
-          product_id: 2,
-          product_name: "Gạo ST25",
-          shop_name: "Shop B",
-          quantity_sold: 950,
-          revenue: 28500000,
-          thumbnail: "https://via.placeholder.com/60?text=Gao",
-        },
-        {
-          product_id: 3,
-          product_name: "Cà phê rang xay",
-          shop_name: "Shop C",
-          quantity_sold: 800,
-          revenue: 24000000,
-          thumbnail: "https://via.placeholder.com/60?text=CaPhe",
-        },
-      ],
+    const fetchTopProducts = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await axios.get("http://127.0.0.1:8000/api/products/top-products/", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        // Chuẩn hóa dữ liệu từ backend
+        const normalized = res.data.map((item) => ({
+          product_id: item.product_id,
+          product_name: item["product__name"],
+          shop_name: item["product__seller__store_name"],
+          quantity_sold: item.quantity_sold,
+          revenue: item.revenue,
+          thumbnail: item["product__image"],
+        }));
+
+        setData(normalized);
+        console.log("✅ Top Products:", normalized);
+      } catch (err) {
+        console.error("❌ Lỗi fetch top-products:", err.response || err);
+        setData([]);
+      }
     };
 
-    setData(mockData[filter] || []);
+    fetchTopProducts();
   }, [filter]);
 
   const columns = [
@@ -108,7 +75,7 @@ export default function TopSellingProducts() {
       title: "Doanh thu",
       dataIndex: "revenue",
       key: "revenue",
-      render: (val) => val.toLocaleString() + " ₫",
+      render: (val) => (val ? val.toLocaleString() + " ₫" : "0 ₫"),
       sorter: (a, b) => a.revenue - b.revenue,
     },
   ];
