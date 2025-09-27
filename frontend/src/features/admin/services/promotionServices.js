@@ -95,10 +95,12 @@ export const deleteFlashSale = async (id) => {
 // ====================
 
 // Tổng quan khuyến mãi (voucher + flash sale)
-export const getPromotionsOverview = async () => {
-  const res = await axiosClient.get(`${API_URL}/overview/`);
+export const getPromotionsOverview = async (params = {}) => {
+  const res = await axiosClient.get(`${API_URL}/overview/`, { params });
   return res.data;
 };
+
+
 
 // Áp dụng voucher
 // Áp dụng voucher
@@ -112,3 +114,12 @@ export const applyVoucher = async (code, orderTotal) => {
 
 
 //API để user nhận voucher từ kho voucher
+
+// Consume voucher (đánh dấu đã dùng khi order thành công)
+export const consumeVoucher = async (code, orderTotal) => {
+  const res = await axiosClient.post(`/promotions/vouchers/consume/`, {
+    code: code,
+    order_total: orderTotal,
+  });
+  return res.data; // { success: true, discount: ..., ... }
+};

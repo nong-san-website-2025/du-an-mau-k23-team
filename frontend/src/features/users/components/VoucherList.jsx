@@ -191,8 +191,16 @@ const VoucherList = () => {
                         : "Không yêu cầu"}
                     </div>
                     <div>
-                      📅 <b>Hạn sử dụng:</b> {voucher.start_at} →{" "}
-                      {voucher.end_at}
+                      📅 <b>Hạn sử dụng:</b>{" "}
+                      {new Date(voucher.start_at).toLocaleDateString("vi-VN")} →{" "}
+                      {new Date(voucher.end_at).toLocaleDateString("vi-VN")}
+                    </div>
+
+                    <div>
+                      🎟️ <b>Số lượng:</b>{" "}
+                      {voucher.quantity
+                        ? voucher.quantity.toLocaleString("vi-VN")
+                        : "Không giới hạn"}
                     </div>
                   </Card.Text>
                   <div className="mt-2">

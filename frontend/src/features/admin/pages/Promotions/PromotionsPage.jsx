@@ -207,24 +207,19 @@ export default function PromotionsPage() {
   const handleFilter = () => {
     const values = filterForm.getFieldsValue();
     const params = {};
-    if (values.search) {
-      params.search = values.search;
-      params.name = values.search;
+
+    if (values.search) params.search = values.search;
+
+    if (values.voucherType === "normal") {
+      params.voucher_type = "normal"; // lọc theo loại voucher
+    } else if (values.voucherType === "freeship") {
+      params.discount_type = "freeship"; // lọc theo loại giảm
     }
-    if (values.voucherType) params.voucher_type = values.voucherType;
-    if (values.minOrderValue || values.minOrderValue === 0)
-      params.min_order_value = values.minOrderValue;
-    if (values.status)
-      params.active =
-        values.status === "active"
-          ? true
-          : values.status === "inactive"
-            ? false
-            : undefined;
-    if (values.dateRange?.length === 2) {
-      params.start_date = values.dateRange[0].toISOString();
-      params.end_date = values.dateRange[1].toISOString();
+
+    if (values.status) {
+      params.active = values.status === "active";
     }
+
     fetchData(params);
   };
 
@@ -339,12 +334,6 @@ export default function PromotionsPage() {
           </Col>
 
           <Col>
-            <Form.Item name="minOrderValue" label="Giá trị đơn tối thiểu">
-              <InputNumber placeholder=">= ..." style={{ width: 160 }} />
-            </Form.Item>
-          </Col>
-
-          <Col>
             <Form.Item name="status" label="Trạng thái">
               <Select placeholder="Chọn" style={{ width: 140 }}>
                 <Select.Option value="active">Hoạt động</Select.Option>
@@ -354,17 +343,13 @@ export default function PromotionsPage() {
           </Col>
 
           <Col>
-            <Form.Item name="dateRange" label="Thời gian áp dụng">
-              <RangePicker />
-            </Form.Item>
-          </Col>
-
-          <Col>
             <Space>
-              <Button type="primary" onClick={handleFilter}>
+              <Button type="primary" htmlType="button" onClick={handleFilter}>
                 Lọc
               </Button>
-              <Button onClick={handleClearFilter}>Xóa lọc</Button>
+              <Button htmlType="button" onClick={handleClearFilter}>
+                Xóa lọc
+              </Button>
             </Space>
           </Col>
         </Row>

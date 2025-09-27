@@ -1,6 +1,14 @@
-
 import React, { useState, useEffect } from "react";
-import { Card, Badge, Container, Spinner, Row, Col, Tabs, Tab } from "react-bootstrap";
+import {
+  Card,
+  Badge,
+  Container,
+  Spinner,
+  Row,
+  Col,
+  Tabs,
+  Tab,
+} from "react-bootstrap";
 import { getMyVouchers } from "../../admin/services/promotionServices";
 
 const MyVoucher = () => {
@@ -47,7 +55,15 @@ const MyVoucher = () => {
 
   return (
     <Container>
-      <h5 className="mb-3" style={{ color: "#388E3C", fontWeight: 700, fontSize: 24, letterSpacing: 1 }}>
+      <h5
+        className="mb-3"
+        style={{
+          color: "#388E3C",
+          fontWeight: 700,
+          fontSize: 24,
+          letterSpacing: 1,
+        }}
+      >
         🎁 Mã giảm giá của tôi
       </h5>
 
@@ -112,9 +128,17 @@ const MyVoucher = () => {
               >
                 <Card.Body className="d-flex flex-column justify-content-between h-100">
                   <div className="d-flex align-items-center mb-2">
-                    <span style={{ fontSize: 32, marginRight: 12 }}>{icon}</span>
+                    <span style={{ fontSize: 32, marginRight: 12 }}>
+                      {icon}
+                    </span>
                     <div>
-                      <Card.Title style={{ fontWeight: 700, fontSize: 22, color: borderColor }}>
+                      <Card.Title
+                        style={{
+                          fontWeight: 700,
+                          fontSize: 22,
+                          color: borderColor,
+                        }}
+                      >
                         {v.code}
                         {uv.is_used && (
                           <Badge bg="secondary" className="ms-2">
@@ -127,19 +151,33 @@ const MyVoucher = () => {
                           </Badge>
                         )}
                       </Card.Title>
-                      <div style={{ fontSize: 15, color: "#555" }}>{v.name || v.title}</div>
+                      <div style={{ fontSize: 15, color: "#555" }}>
+                        {v.name || v.title}
+                      </div>
                     </div>
                   </div>
                   <Card.Text className="mb-0" style={{ fontSize: 15 }}>
-                    <div>💰 <b>Giá trị:</b> {discountText || "—"}</div>
                     <div>
-                      🧾 <b>Đơn tối thiểu:</b> {v.min_order_value ? Number(v.min_order_value).toLocaleString("vi-VN") + "₫" : "Không yêu cầu"}
+                      💰 <b>Giá trị:</b> {discountText || "—"}
                     </div>
                     <div>
-                      📅 <b>Hạn sử dụng:</b> {new Date(v.start_at).toLocaleDateString("vi-VN")} → {new Date(v.end_at).toLocaleDateString("vi-VN")}
+                      🧾 <b>Đơn tối thiểu:</b>{" "}
+                      {v.min_order_value
+                        ? Number(v.min_order_value).toLocaleString("vi-VN") +
+                          "₫"
+                        : "Không yêu cầu"}
                     </div>
                     <div>
-                      🎟️ <b>Số lượng:</b> {uv.quantity && uv.used_count !== undefined ? (uv.quantity - uv.used_count) : "—"}/{uv.quantity || "—"}
+                      📅 <b>Hạn sử dụng:</b>{" "}
+                      {new Date(v.start_at).toLocaleDateString("vi-VN")} →{" "}
+                      {new Date(v.end_at).toLocaleDateString("vi-VN")}
+                    </div>
+
+                    <div>
+                      🎟️ <b>Số lượng:</b>{" "}
+                      {uv.quantity
+                        ? `${uv.quantity - (uv.used_count || 0)}/${uv.quantity}`
+                        : "Không giới hạn"}
                     </div>
                   </Card.Text>
                 </Card.Body>

@@ -55,3 +55,63 @@ def create_order_item_for_flash_sale(user, product_id, quantity, order):
     )
 
     return order_item
+
+def apply_voucher(voucher: Voucher, subtotal: int, shipping_fee: int):
+    """Tính số tiền giảm dựa trên loại voucher"""
+    discount = 0
+
+    if voucher.discount_amount:
+        discount = voucher.discount_amount
+    elif voucher.discount_percent:
+        discount = subtotal * voucher.discount_percent // 100
+        if voucher.max_discount_amount:
+            discount = min(discount, voucher.max_discount_amount)
+    elif voucher.freeship_amount:
+        discount = min(shipping_fee, voucher.freeship_amount)
+
+    # Không cho giảm vượt quá tổng đơn
+    discount = min(discount, subtotal + shipping_fee)
+    return discount
+
+
+def preview_voucher(user, code, subtotal, shipping_fee):
+    """Xem thử áp dụng voucher vào đơn hàng (không mark used)."""
+    try:
+        user_voucher = UserVoucher.objects.select_related("voucher").get(
+            user=user, voucher__code=code, is_used=False
+        )
+    except UserVoucher.DoesNotExist:
+        raise ValidationError("Voucher không tồn tại hoặc đã dùng.")
+
+    voucher = user_voucher.voucher
+
+    # Check thời gian hiệu lực
+    now = timezone.now()
+    if voucher.start_at and now < voucher.start_at:
+        raise ValidationError("Voucher chưa đến thời gian sử dụng.")
+    if voucher.end_at and now > voucher.end_at:
+        raise ValidationError("Voucher đã hết hạn.")
+
+    # Check điều kiện đơn tối thiểu
+    if subtotal < voucher.min_order_value:
+        raise ValidationError("Đơn hàng chưa đạt giá trị tối thiểu.")
+
+    discount = apply_voucher(voucher, subtotal, shipping_fee)
+
+    return {
+        "voucher_code": voucher.code,
+        "discount": discount,
+        "total": subtotal + shipping_fee - discount
+    }
+
+
+def mark_voucher_used(user, code):
+    """Chỉ gọi khi đơn hàng được thanh toán thành công."""
+    try:
+        user_voucher = UserVoucher.objects.get(user=user, voucher__code=code, is_used=False)
+    except UserVoucher.DoesNotExist:
+        return
+
+    user_voucher.is_used = True
+    user_voucher.used_at = timezone.now()
+    user_voucher.save()
