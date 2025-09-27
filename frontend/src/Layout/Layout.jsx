@@ -3,6 +3,8 @@ import { Outlet } from "react-router-dom";
 import Header from "./Header";
 import Footer from "./Footer";
 
+import GlobalChat from "../features/stores/components/GlobalChat.jsx";
+
 export default function Layout() {
   return (
     <>
@@ -11,6 +13,8 @@ export default function Layout() {
         <Outlet />
       </main>
       <Footer />
+      {/* Global chat bubble persists across routes */}
+      <GlobalChat />
     </>
   );
 }

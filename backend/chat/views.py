@@ -1,6 +1,7 @@
 from rest_framework import generics, permissions
 from rest_framework.response import Response
 from rest_framework.exceptions import PermissionDenied
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.shortcuts import get_object_or_404
 
 from .models import Conversation, Message
@@ -36,6 +37,7 @@ class ConversationListCreateView(generics.ListCreateAPIView):
 class MessageListCreateView(generics.ListCreateAPIView):
     serializer_class = MessageSerializer
     permission_classes = [permissions.IsAuthenticated]
+    parser_classes = (MultiPartParser, FormParser, JSONParser)
 
     def get_queryset(self):
         conversation_id = self.kwargs["conversation_id"]
@@ -66,6 +68,7 @@ class MessageListCreateView(generics.ListCreateAPIView):
                     "conversation": conv.id,
                     "sender": user.id,
                     "content": msg.content,
+                    "image": getattr(msg.image, 'url', None),
                     "is_read": msg.is_read,
                     "created_at": msg.created_at.isoformat(),
                 },

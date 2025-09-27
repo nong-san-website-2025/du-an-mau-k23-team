@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useMemo } from "react";
+import useUserProfile from "../../users/services/useUserProfile";
 
 // Realtime chat box synced with seller-center via conversation-based WebSocket
 // Flow:
@@ -8,16 +9,68 @@ import React, { useEffect, useRef, useState, useMemo } from "react";
 // Improvements:
 // - Bubble UI (left/right like Zalo/Messenger)
 // - Reliable send: prefer WS, fallback to REST when WS not ready
-export default function ChatBox({ sellerId, token, userAvatar, sellerImage, sellerName }) {
+export default function ChatBox({ sellerId, token, userAvatar, sellerImage, sellerName, inline = false }) {
   const [conversationId, setConversationId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [wsReady, setWsReady] = useState(false);
   const wsRef = useRef(null);
   const listRef = useRef(null);
-  const [open, setOpen] = useState(false);
+  // Persist open state per seller; auto-open if previously activated
+  const storageKeys = useMemo(() => ({
+    always: `chat:always:${sellerId}`,
+    open: `chat:open:${sellerId}`,
+  }), [sellerId]);
+
+  const getInitialOpen = () => {
+    try {
+      return (
+        localStorage.getItem(storageKeys.always) === '1' ||
+        localStorage.getItem(storageKeys.open) === '1'
+      );
+    } catch (e) { return false; }
+  };
+  const [open, setOpen] = useState(getInitialOpen);
+
+  // Persist when toggled; mark as always after first open
+  useEffect(() => {
+    try {
+      localStorage.setItem(storageKeys.open, open ? '1' : '0');
+      if (open) {
+        localStorage.setItem(storageKeys.always, '1');
+        // Remember last seller globally for site-wide chat persistence
+        localStorage.setItem('chat:lastSellerId', String(sellerId));
+      }
+    } catch (e) {}
+  }, [open, storageKeys, sellerId]);
+
+  // Listen for global open request (e.g., from StoreDetail "Nhắn tin" button)
+  useEffect(() => {
+    const handler = (e) => {
+      const targetId = e?.detail?.sellerId;
+      if (String(targetId) === String(sellerId)) {
+        setOpen(true);
+        try {
+          localStorage.setItem(storageKeys.always, '1');
+          localStorage.setItem(storageKeys.open, '1');
+        } catch (err) {}
+      }
+    };
+    window.addEventListener('chat:open', handler);
+    return () => window.removeEventListener('chat:open', handler);
+  }, [sellerId, storageKeys]);
 
   const API_BASE_URL = "http://localhost:8000/api";
+  // Normalize media URL to absolute (backend returns relative paths)
+  const apiOrigin = useMemo(() => {
+    try { return new URL(API_BASE_URL).origin; } catch { return ""; }
+  }, []);
+  const toAbsolute = (src) => {
+    if (!src || typeof src !== "string") return null;
+    if (src.startsWith("http://") || src.startsWith("https://") || src.startsWith("data:")) return src;
+    if (src.startsWith("/")) return `${apiOrigin}${src}`;
+    return `${apiOrigin}/${src}`;
+  };
 
   // Decode JWT to get current user id (SimpleJWT uses `user_id` claim)
   const currentUserId = useMemo(() => {
@@ -29,6 +82,18 @@ export default function ChatBox({ sellerId, token, userAvatar, sellerImage, sell
       return null;
     }
   }, [token]);
+
+  // Get current user profile for name and avatar rendering
+  const profile = useUserProfile();
+  const displayName = useMemo(() => {
+    if (!profile) return undefined;
+    if (profile.full_name && profile.full_name.trim()) return profile.full_name.trim();
+    return profile.username;
+  }, [profile]);
+  const displayAvatar = useMemo(() => {
+    if (!profile) return undefined;
+    return profile.avatar || (typeof window !== 'undefined' ? localStorage.getItem('avatar') || undefined : undefined);
+  }, [profile]);
 
   // 1) Ensure conversation + 2) load history
   useEffect(() => {
@@ -102,17 +167,32 @@ export default function ChatBox({ sellerId, token, userAvatar, sellerImage, sell
     });
   };
 
-  const sendViaREST = async (text) => {
+  const fileInputRef = useRef(null);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+
+  const sendViaREST = async (text, file) => {
     if (!conversationId) return false;
     try {
-      const res = await fetch(`${API_BASE_URL}/chat/conversations/${conversationId}/messages/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ content: text }),
-      });
+      let res;
+      if (file) {
+        const form = new FormData();
+        form.append("content", text);
+        form.append("image", file);
+        res = await fetch(`${API_BASE_URL}/chat/conversations/${conversationId}/messages/`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+          body: form,
+        });
+      } else {
+        res = await fetch(`${API_BASE_URL}/chat/conversations/${conversationId}/messages/`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ content: text }),
+        });
+      }
       if (!res.ok) throw new Error(`REST send failed (${res.status})`);
       const data = await res.json();
-      // If WS isn't open, append locally; otherwise, WS broadcast will arrive
       if (!(wsRef.current && wsRef.current.readyState === WebSocket.OPEN)) {
         addUnique(data);
       }
@@ -125,10 +205,11 @@ export default function ChatBox({ sellerId, token, userAvatar, sellerImage, sell
 
   const sendMessage = async () => {
     const text = input.trim();
-    if (!text) return;
+    const file = selectedFile || fileInputRef.current?.files?.[0] || null;
+    if (!text && !file) return;
 
-    // Try WS first
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+    // If only text and WS is ready, send via WS
+    if (!file && wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       try {
         wsRef.current.send(JSON.stringify({ type: "message", content: text }));
         setInput("");
@@ -138,9 +219,14 @@ export default function ChatBox({ sellerId, token, userAvatar, sellerImage, sell
       }
     }
 
-    // Fallback to REST when WS not ready
-    const ok = await sendViaREST(text);
-    if (ok) setInput("");
+    setUploading(!!file);
+    const ok = await sendViaREST(text, file);
+    if (ok) {
+      setInput("");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      setSelectedFile(null);
+    }
+    setUploading(false);
   };
 
   if (!token) {
@@ -177,46 +263,48 @@ export default function ChatBox({ sellerId, token, userAvatar, sellerImage, sell
 
   return (
     <div>
-      {/* Floating toggle bubble at bottom-right */}
-      <button
-        onClick={() => setOpen((v) => !v)}
-        aria-label="Toggle chat"
-        style={{
-          position: "fixed",
-          right: 20,
-          bottom: 20,
-          width: 56,
-          height: 56,
-          borderRadius: "50%",
-          border: "none",
-          background: "#1677ff",
-          color: "#fff",
-          boxShadow: "0 6px 18px rgba(0,0,0,0.2)",
-          cursor: "pointer",
-          zIndex: 1000,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontSize: 22,
-        }}
-      >
-        {open ? "×" : "💬"}
-      </button>
-
-      {/* Chat panel */}
-      {open && (
-        <div
+      {/* Floating toggle bubble at bottom-right (hidden in inline mode) */}
+      {!inline && (
+        <button
+          onClick={() => setOpen((v) => !v)}
+          aria-label="Toggle chat"
           style={{
             position: "fixed",
             right: 20,
-            bottom: 84,
+            bottom: 20,
+            width: 56,
+            height: 56,
+            borderRadius: "50%",
+            border: "none",
+            background: "#1677ff",
+            color: "#fff",
+            boxShadow: "0 6px 18px rgba(0,0,0,0.2)",
+            cursor: "pointer",
+            zIndex: 1000,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: 22,
+          }}
+        >
+          {open ? "×" : "💬"}
+        </button>
+      )}
+
+      {/* Chat panel */}
+      {(inline || open) && (
+        <div
+          style={{
+            position: inline ? "relative" : "fixed",
+            right: inline ? undefined : 20,
+            bottom: inline ? undefined : 84,
             width: 360,
             maxWidth: "90vw",
             border: "1px solid #ddd",
             borderRadius: 12,
             overflow: "hidden",
             background: "#fff",
-            boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
+            boxShadow: inline ? "none" : "0 8px 24px rgba(0,0,0,0.18)",
             zIndex: 1000,
           }}
         >
@@ -244,12 +332,21 @@ export default function ChatBox({ sellerId, token, userAvatar, sellerImage, sell
                       ) : null}
                     </div>
                   )}
-                  <div style={bubble(mine)}>{m.content}</div>
+                  <div style={bubble(mine)}>
+                    {m.content && <div style={{ marginBottom: m.image ? 8 : 0 }}>{m.content}</div>}
+                    {m.image && (
+                      <div>
+                        <img src={toAbsolute(m.image)} alt="attachment" style={{ maxWidth: 260, borderRadius: 8, display: 'block' }} />
+                      </div>
+                    )}
+                  </div>
                   {mine && (
-                    <div style={avatarBox}>
-                      {userAvatar ? (
-                        <img src={userAvatar} alt="me" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                      ) : null}
+                    <div style={avatarBox} title={displayName || "Tôi"}>
+                      {displayAvatar ? (
+                        <img src={displayAvatar} alt={displayName || "me"} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      ) : (
+                        <span style={{ fontWeight: 700 }}>{(displayName || "T").charAt(0).toUpperCase()}</span>
+                      )}
                     </div>
                   )}
                 </div>
@@ -257,7 +354,7 @@ export default function ChatBox({ sellerId, token, userAvatar, sellerImage, sell
             })}
           </div>
 
-          <div style={{ display: "flex", gap: 8, padding: 10, borderTop: "1px solid #eee", background: "#fafafa" }}>
+          <div style={{ display: "flex", gap: 8, padding: 10, borderTop: "1px solid #eee", background: "#fafafa", alignItems: "center" }}>
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -265,10 +362,27 @@ export default function ChatBox({ sellerId, token, userAvatar, sellerImage, sell
               onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
               style={{ flex: 1, padding: 8, border: "1px solid #ddd", borderRadius: 18 }}
             />
-            <button onClick={sendMessage} disabled={!input.trim()} style={{ padding: "8px 12px", borderRadius: 18, border: "none", background: "#1677ff", color: "white" }}>
-              Gửi
+            <input type="file" accept="image/*" ref={fileInputRef} onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} style={{ display: "none" }} />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current && fileInputRef.current.click()}
+              title="Chọn hình ảnh"
+              aria-label="Chọn hình ảnh"
+              style={{ width: 36, height: 36, borderRadius: "50%", border: "1px solid #ddd", background: "#fff", cursor: "pointer" }}
+            >
+              🖼️
+            </button>
+            <button onClick={sendMessage} disabled={uploading || (!input.trim() && !selectedFile)} style={{ padding: "8px 12px", borderRadius: 18, border: "none", background: "#1677ff", color: "white" }}>
+              {uploading ? 'Đang gửi...' : 'Gửi'}
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Optional: small label under bubble to show current user name (only when not inline) */}
+      {!inline && displayName && (
+        <div style={{ position: "fixed", right: 20, bottom: 82, fontSize: 11, color: "#666" }}>
+          Đang nhắn: <strong>{displayName}</strong>
         </div>
       )}
     </div>

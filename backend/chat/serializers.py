@@ -4,9 +4,11 @@ from .models import Conversation, Message
 
 class MessageSerializer(serializers.ModelSerializer):
     sender_avatar = serializers.ImageField(source="sender.avatar", read_only=True)
+    image = serializers.ImageField(required=False, allow_null=True)
+
     class Meta:
         model = Message
-        fields = ["id", "conversation", "sender", "content", "is_read", "created_at", "sender_avatar"]
+        fields = ["id", "conversation", "sender", "content", "image", "is_read", "created_at", "sender_avatar"]
         # conversation & sender are set in the view (perform_create), so keep them read-only for clients
         read_only_fields = ["id", "is_read", "created_at", "conversation", "sender"]
 

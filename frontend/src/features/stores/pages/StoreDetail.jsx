@@ -227,36 +227,6 @@ const StoreDetail = () => {
 
               <div className="d-flex flex-column align-items-start gap-2">
                 <h3 className="fw-bold mb-1">{store.store_name}</h3>
-                <div className="d-flex gap-2">
-                  <Button
-                    variant={isFollowing ? "primary" : "outline-primary"}
-                    onClick={handleFollow}
-                  >
-                    {isFollowing ? "Đang theo dõi" : "Theo dõi"}
-                  </Button>
-                  <Button variant="outline-secondary" onClick={() => {
-                    const el = document.getElementById('chat-box-anchor');
-                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                  }}>Nhắn tin</Button>
-                </div>
-              </div>
-            </Col>
-
-            <Col xs={12} md={7} className="mt-3 mt-md-0">
-              <div className="d-flex flex-column gap-2">
-                <div>
-                  <span className="fw-bold me-1">{followingCount}</span> Đang
-                  theo dõi
-                </div>
-                <div>
-                  <span className="fw-bold me-1">{followers}</span> Người theo
-                  dõi
-                </div>
-                <div>
-                  Đánh giá:{" "}
-                  <span className="fw-bold">{ratingStats.avg.toFixed(1)}</span>{" "}
-                  (<span className="fw-bold">{ratingStats.total}</span>)
-                </div>
                 {store.bio && (
                   <div className="text-muted" style={{ maxWidth: 560 }}>
                     {store.bio}

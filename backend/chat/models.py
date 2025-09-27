@@ -21,7 +21,10 @@ class Conversation(models.Model):
 class Message(models.Model):
     conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE, related_name="messages")
     sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="sent_messages")
-    content = models.TextField()
+    # Allow empty text when sending image-only messages
+    content = models.TextField(blank=True, default="")
+    # Optional image attachment
+    image = models.ImageField(upload_to="chat_images/", null=True, blank=True)
     is_read = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
