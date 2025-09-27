@@ -227,13 +227,61 @@ const StoreDetail = () => {
 
               <div className="d-flex flex-column align-items-start gap-2">
                 <h3 className="fw-bold mb-1">{store.store_name}</h3>
+                <div className="d-flex gap-2">
+                  <Button
+                    variant={isFollowing ? "primary" : "outline-primary"}
+                    onClick={handleFollow}
+                  >
+                    {isFollowing ? "Đang theo dõi" : "Theo dõi"}
+                  </Button>
+                  <Button variant="outline-secondary" onClick={() => {
+                    try {
+                      // Save as last seller for global chat persistence
+                      localStorage.setItem('chat:lastSellerId', String(id));
+                      if (store?.store_name) localStorage.setItem('chat:lastSellerName', store.store_name);
+                      if (store?.image) localStorage.setItem('chat:lastSellerImage', store.image);
+                      window.dispatchEvent(new CustomEvent('chat:open', { detail: { sellerId: id } }));
+                    } catch (e) {}
+                  }}>Nhắn tin</Button>
+                </div>
+              </div>
+            </Col>
+
+            <Col xs={12} md={7} className="mt-3 mt-md-0">
+              <div className="d-flex flex-column gap-2">
+                <div>
+                  <span className="fw-bold me-1">{followingCount}</span> Đang
+                  theo dõi
+                </div>
+                <div>
+                  <span className="fw-bold me-1">{followers}</span> Người theo
+                  dõi
+                </div>
+                <div>
+                  Đánh giá:{" "}
+                  <span className="fw-bold">{ratingStats.avg.toFixed(1)}</span>{" "}
+                  (<span className="fw-bold">{ratingStats.total}</span>)
+                </div>
                 {store.bio && (
-                  <div className="text-muted" style={{ maxWidth: 560 }}>
+                  <div className="text-muted mb-2" style={{ maxWidth: 560 }}>
                     {store.bio}
                   </div>
                 )}
+                {/* Stats */}
+                {/* <div className="d-flex flex-wrap align-items-center" style={{ gap: 16 }}>
+                  {stats.map((s, idx) => (
+                    <div key={idx} className="d-flex align-items-center" style={{ gap: 6 }}>
+                      <span className="text-muted" style={{ fontSize: 13 }}>{s.label}:</span>
+                      <strong style={{ fontSize: 14 }}>{String(s.value)}</strong>
+                      {idx < stats.length - 1 && (
+                        <span className="text-muted" style={{ margin: "0 6px" }}>|</span>
+                      )}
+                    </div>
+                  ))}
+                </div> */}
               </div>
             </Col>
+
           </Row>
         </Card.Body>
       </Card>
