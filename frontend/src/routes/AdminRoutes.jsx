@@ -23,14 +23,21 @@ import WalletPage from "../features/admin/pages/WalletPage";
 
 // Marketing & Promotions
 import BannersPage from "../features/admin/pages/BannersPage";
-import NotificationsPage from "../pages/NotificationsPage.jsx";
+import NotificationsPage from "../features/admin/pages/NotificationsPage.jsx"; // ✅ fix path
 import AdvertisementList from "../features/admin/pages/MarketingAdmin/AdvertisementList.jsx";
 
 // Reports
 import ReportsPage from "../features/admin/pages/ReportsPage";
-import ReportRevenuePage from "../features/admin/pages/ReportRevenuePage";  
-import ReportTopProductsPage from "../features/admin/pages/ReportTopProductsPage.jsx";
-import ReportCancelRatePage from "../features/admin/pages/ReportCancelRatePage.jsx";
+import ReportRevenuePage from "../features/admin/pages/ReportRevenuePage";
+import ReportProductsPage from "../features/admin/pages/ReportProductsPage";  
+import ReportCancelRatePage from "../features/admin/pages/ReportCancelRatePage";
+import ReportCustomersPage from "../features/admin/pages/ReportCustomersPage";
+import ReportAgriculturePage from "../features/admin/pages/ReportAgriculturePage";
+import ReportOrdersPage from "../features/admin/pages/ReportOrdersPage";
+
+
+
+
 
 // Support & Statistics
 import SupportPage from "../features/admin/pages/SupportPage";
@@ -38,7 +45,7 @@ import StatisticsPage from "../features/admin/pages/StatisticsPage";
 
 // Shop management
 import SellersPage from "../features/admin/pages/Sellers/SellersPage";
-import ActiveLockedSellersPage from "../features/admin/pages/ShopPage/ActiveLockedSellersPage.jsx.jsx";
+import ActiveLockedSellersPage from "../features/admin/pages/ShopPage/ActiveLockedSellersPage.jsx"; // ✅ bỏ .jsx thừa
 import ApprovalSellersPage from "../features/admin/pages/ShopPage/ApprovalSellersPage.jsx";
 import ApprovalProductsPage from "../features/admin/pages/ProductPage/ApprovalProductsPage.jsx";
 import CategoryManagementPage from "../features/admin/pages/ProductPage/CategoryManagement.jsx";
@@ -87,8 +94,12 @@ export const adminRoutes = [
       {/* Reports */}
       <Route path="reports" element={<ReportsPage />} />
       <Route path="reports/revenue" element={<ReportRevenuePage />} />
-      <Route path="reports/top-products" element={<ReportTopProductsPage />} />
+      <Route path="reports/products" element={<ReportProductsPage />} />
       <Route path="reports/cancel-rate" element={<ReportCancelRatePage />} />
+      <Route path="reports/customers" element={<ReportCustomersPage />} />
+      <Route path="reports/agriculture" element={<ReportAgriculturePage />} />
+      <Route path="reports/orders" element={<ReportOrdersPage />} />   {/* ✅ thêm */}
+
 
       {/* Support & Statistics */}
       <Route path="supports" element={<SupportPage />} />

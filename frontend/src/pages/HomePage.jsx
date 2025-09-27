@@ -1,20 +1,19 @@
 import { useState, useEffect } from "react";
-import { Spin, Modal } from "antd"; // TODO: nâng cấp props theo khuyến cáo: dùng styles.body thay cho bodyStyle
-import BannerSlider from "../components/home/BannerSlider";
-import CategorySection from "../components/home/CategorySection";
-import FlashSaleSection from "../components/home/FlashSaleSection";
-import PersonalizedSection from "../components/home/PersonalizedSection";
+import { Spin, Modal } from "antd";
 import { Helmet } from "react-helmet";
 
-import {
-  // fetchUserRecommendations,
-  fetchCategories,
-} from "../services/api/homepageApi.js";
-import FlashSaleList from "../components/home/FlashSaleList.jsx";
+// Import components (chú ý: Home viết hoa)
+import BannerSlider from "../components/Home/BannerSlider";
+import CategorySection from "../components/Home/CategorySection";
+import FlashSaleSection from "../components/Home/FlashSaleSection";
+import PersonalizedSection from "../components/Home/PersonalizedSection";
+import FlashSaleList from "../components/Home/FlashSaleList";
+
+// Import API
+import { fetchCategories } from "../services/api/homepageApi.js";
 
 export default function HomePage() {
   const [loading, setLoading] = useState(true);
-  // const [recommendedProducts, setRecommendedProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [popupAds, setPopupAds] = useState([]);
 
@@ -24,12 +23,8 @@ export default function HomePage() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        // Gọi fetchCategories trước
         const catRes = await fetchCategories();
-
         setCategories(catRes.data || []);
-
-        // setRecommendedProducts(recommendRes.data || []);
       } catch (error) {
         console.error("❌ Lỗi khi gọi API:", error);
       } finally {
@@ -57,6 +52,7 @@ export default function HomePage() {
         <title>GreenFarm</title>
         <meta name="description" content="Đây là trang chủ của website." />
       </Helmet>
+
       {/* Banner Carousel */}
       <BannerSlider />
 
@@ -64,20 +60,18 @@ export default function HomePage() {
       <CategorySection categories={categories} />
 
       {/* Flash Sale */}
+      <FlashSaleSection />
       <FlashSaleList />
 
       {/* Personalized Section */}
-      <PersonalizedSection
-        username={username}
-        // recommended={recommendedProducts}
-      />
+      <PersonalizedSection username={username} />
 
       {/* Popup Modal */}
       <Modal
         key={popupAds[0]?.id}
         open={popupAds.length > 0}
         footer={null}
-        closable={true}
+        closable
         onCancel={() => setPopupAds([])}
         centered
         width="60vw"
@@ -104,8 +98,8 @@ export default function HomePage() {
               objectFit: "cover",
               display: "block",
               borderRadius: 8,
+              cursor: "pointer",
             }}
-            className="cursor-pointer"
           />
         )}
       </Modal>
