@@ -25,7 +25,13 @@ function computeFullRefundAmount(rec) {
 
 // Helpers for media preview
 function isImageUrl(url) {
-  return /(\.jpg|\.jpeg|\.png|\.gif|\.webp)$/i.test(url || "");
+  if (!url) return false;
+  // Nếu có đuôi ảnh phổ biến thì là ảnh
+  if (/\.(jpg|jpeg|png|gif|webp)$/i.test(url)) return true;
+  // Nếu có đuôi video phổ biến thì là video
+  if (/\.(mp4|mov|avi|wmv|webm)$/i.test(url)) return false;
+  // Nếu không có đuôi, thử đoán: nếu không phải video thì là ảnh
+  return true;
 }
 
 // Simple local notification helper using localStorage
@@ -478,7 +484,7 @@ export default function SellerComplaintsPage() {
                       {isImageUrl(url) ? (
                         <img src={url} alt={`evidence-${idx}`} style={{ width: 160, height: 120, objectFit: 'cover' }} />
                       ) : (
-                        <video src={url} controls style={{ width: 220 }} />
+                        <video src={url} controls style={{ width: 220, height: 120, background: '#000' }} />
                       )}
                     </div>
                   ))}

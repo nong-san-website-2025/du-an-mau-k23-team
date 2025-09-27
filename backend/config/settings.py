@@ -1,3 +1,6 @@
+# --- File upload limits (tăng giới hạn để upload video)
+DATA_UPLOAD_MAX_MEMORY_SIZE = 104857600  # 100MB
+FILE_UPLOAD_MAX_MEMORY_SIZE = 104857600  # 100MB
 from pathlib import Path
 import os
 import dj_database_url
@@ -166,7 +169,8 @@ CLOUDINARY_STORAGE = {
     'API_SECRET': os.getenv("CLOUDINARY_API_SECRET", "t-BweAUOngVkY6GBvMNpc1IYJdg"),
 }
 
-DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+## Nếu muốn lưu file về local, hãy comment hoặc xóa dòng dưới:
+# DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 
 # --- CORS & CSRF
 CORS_ALLOW_CREDENTIALS = True
