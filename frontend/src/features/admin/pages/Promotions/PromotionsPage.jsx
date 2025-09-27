@@ -26,6 +26,7 @@ import {
   deleteVoucher,
 } from "../../services/promotionServices";
 import dayjs from "dayjs";
+import { getCategories } from "../../services/products";
 
 const { RangePicker } = DatePicker;
 
@@ -37,7 +38,12 @@ export default function PromotionsPage() {
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [form] = Form.useForm();
   const [filterForm] = Form.useForm();
+  const [categories, setCategories] = useState([]);
+  const [allCategorySelected, setAllCategorySelected] = useState(false);
 
+  useEffect(() => {
+    getCategories().then((res) => setCategories(res));
+  }, []);
   // --- Fetch list with optional filters ---
   const fetchData = async (filters = {}) => {
     setLoading(true);
@@ -419,6 +425,42 @@ export default function PromotionsPage() {
                 <InputNumber style={{ width: "100%" }} />
               </Form.Item>
             </Col>
+          </Row>
+
+          <Row>
+            <Form.Item
+              name="categories"
+              label="Áp dụng cho danh mục"
+              rules={[
+                {
+                  required: true,
+                  message: "Chọn ít nhất 1 danh mục hoặc Tất cả",
+                },
+              ]}
+            >
+              <Select
+                mode="multiple"
+                allowClear
+                placeholder="Chọn danh mục áp dụng"
+                value={allCategorySelected ? ["all"] : undefined}
+                onChange={(vals) => {
+                  if (vals.includes("all")) {
+                    setAllCategorySelected(true);
+                    form.setFieldsValue({ categories: ["all"] });
+                  } else {
+                    setAllCategorySelected(false);
+                    form.setFieldsValue({ categories: vals });
+                  }
+                }}
+              >
+                <Select.Option value="all">Tất cả danh mục</Select.Option>
+                {categories.map((cat) => (
+                  <Select.Option key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
           </Row>
 
           <Row gutter={16}>

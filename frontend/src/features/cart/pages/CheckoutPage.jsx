@@ -13,6 +13,9 @@ import VoucherSection from "../components/VoucherSection";
 import ProductList from "../components/ProductList";
 import "../styles/CheckoutPage.css";
 
+import { applyVoucher } from "../../admin/services/promotionServices";
+import { message } from "antd";
+
 const { Title, Text } = Typography;
 
 const CheckoutPage = () => {
@@ -30,33 +33,44 @@ const CheckoutPage = () => {
   const [customerPhone, setCustomerPhone] = useState("");
   const [addressText, setAddressText] = useState("");
   const [note, setNote] = useState("");
+  const [voucherCode, setVoucherCode] = useState("");
+
 
   const [geoManual, setGeoManual] = useState({
     provinceId: undefined,
     districtId: undefined,
     wardCode: undefined,
   });
+  
+  const orderTotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
   const [discount, setDiscount] = useState(0);
 
-  const handleApplyVoucher = async (code) => {
-    try {
-      const res = await API.post("/promotions/vouchers/apply/", {
-        code,
-        order_total: total,
-      });
-
-      // ✅ Lấy đúng field "discount" từ response
-      const { discount } = res.data;
-      setDiscount(discount || 0);
-      toast.success("Áp dụng voucher thành công!");
-    } catch (err) {
-      toast.error("Mã giảm giá không hợp lệ hoặc đã hết hạn!");
-      setDiscount(0);
-    }
-  };
   const [payment, setPayment] = useState("Thanh toán khi nhận hàng");
   const [isLoading, setIsLoading] = useState(false);
+
+
+const handleApplyVoucher = async (code) => {
+  if (!code) {
+    setDiscount(0);
+    setVoucherCode("");
+    return;
+  }
+  try {
+    const res = await applyVoucher(code, total); // Axios gọi API
+
+    console.log("Voucher API response:", res.data); // log đúng data
+
+    setDiscount(res.data?.discount_amount || 0); // ✅ lấy từ res.data
+    setVoucherCode(code);
+  } catch (err) {
+    console.error("Apply voucher error:", err.response?.data || err.message);
+    setDiscount(0);
+    setVoucherCode("");
+  }
+};
+
+
 
   // Lấy địa chỉ đã chọn
   const selectedAddress = useMemo(() => {

@@ -1,5 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import ChatBox from "./ChatBox.jsx";
+import { MessageSquare } from "lucide-react";
+import { AiOutlineMessage } from "react-icons/ai";
+
 
 // Global persistent chat bubble at bottom-right
 // - Always visible toggle button
@@ -89,12 +92,12 @@ export default function GlobalChat() {
   const bubbleBtnStyle = {
     position: "fixed",
     right: 20,
-    bottom: 20,
-    width: 56,
-    height: 56,
-    borderRadius: "50%",
+    bottom: 10,
+    width: 80,
+    height: 46,
+    borderRadius: 4,
     border: "none",
-    background: "#1677ff",
+    background: "#45A049",
     color: "#fff",
     boxShadow: "0 6px 18px rgba(0,0,0,0.2)",
     cursor: "pointer",
@@ -149,7 +152,7 @@ export default function GlobalChat() {
         style={bubbleBtnStyle}
         title={open ? "Đóng chat" : "Mở chat"}
       >
-        {open ? "×" : "💬"}
+        {open ? "×" : <AiOutlineMessage size={24} />}
       </button>
 
       {/* Chat panel with sidebar + inline ChatBox */}

@@ -187,7 +187,7 @@ function CartPage() {
       </div>
 
       {/* Thanh tóm tắt đơn hàng cố định bên dưới */}
-      <div className="cart-bottom-bar">
+      <div className="cart-bottom-bar " style={{ padding: "15px 120px"}}>
         <Button danger size="small" onClick={() => setShowClearConfirm(true)}>
           Xóa tất cả
         </Button>
