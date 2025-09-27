@@ -15,18 +15,21 @@ export default function TopSellingProducts() {
     const fetchTopProducts = async () => {
       try {
         const token = localStorage.getItem("token");
-        const res = await axios.get("http://127.0.0.1:8000/api/products/top-products/", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const res = await axios.get(
+          "http://127.0.0.1:8000/api/products/top-products/",
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
 
         // Chuẩn hóa dữ liệu từ backend
         const normalized = res.data.map((item) => ({
           product_id: item.product_id,
-          product_name: item["product__name"],
-          shop_name: item["product__seller__store_name"],
+          product_name: item.product_name,
+          shop_name: item.shop_name,
           quantity_sold: item.quantity_sold,
           revenue: item.revenue,
-          thumbnail: item["product__image"],
+          thumbnail: item.thumbnail,
         }));
 
         setData(normalized);

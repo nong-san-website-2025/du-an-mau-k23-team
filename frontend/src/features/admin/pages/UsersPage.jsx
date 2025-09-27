@@ -68,7 +68,7 @@ export default function UsersPage() {
   return (
     <AdminPageLayout>
       <div className="container-fluid py-3 px-3">
-        <h2 className="mb-4">{t("users_page.title") || "Quản lý người dùng"}</h2>
+        <h2 className="mb-4">{t("Quản lý người dùng") || "Quản lý người dùng"}</h2>
         {/* ===================== Toolbar ===================== */}
         <div className="row g-2 mb-3 align-items-center">
           <div className="col-12 col-md-4 col-lg-3" style={{ height: 40 }}>
@@ -90,7 +90,7 @@ export default function UsersPage() {
             <input
               type="text"
               className="form-control"
-              placeholder={t("users_page.search_placeholder")}
+              placeholder={t("Tìm kiếm người dùng...")}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               style={{ minHeight: 40   }}
@@ -103,7 +103,7 @@ export default function UsersPage() {
               style={{ backgroundColor: "#0c0febff", fontWeight: 600 }}
               onClick={() => setTriggerAddUser(true)}
             >
-              + {t("users_page.add_user")}
+              + {t("Thêm người dùng")}
             </button>
           </div>
         </div>

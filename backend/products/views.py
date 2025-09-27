@@ -306,7 +306,6 @@ class ReviewListCreateView(generics.ListCreateAPIView):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def top_products(request):
-    # Query param: range=today/week/month
     filter_type = request.GET.get("filter", "today")
 
     today = now().date()
@@ -319,13 +318,12 @@ def top_products(request):
     else:
         start_date = today
 
-    # Query top 10 sản phẩm bán chạy
     order_items = (
         OrderItem.objects.filter(order__created_at__date__gte=start_date)
         .values(
-            "product", 
-            "product__name", 
-            "product__seller__user__username", 
+            "product",
+            "product__name",
+            "product__seller__store_name",   # lấy tên shop
             "product__image"
         )
         .annotate(quantity_sold=Sum("quantity"), revenue=Sum("price"))
@@ -337,10 +335,10 @@ def top_products(request):
         data.append({
             "product_id": item["product"],
             "product_name": item["product__name"],
-            "shop_name": item["product__seller__user__username"],
+            "shop_name": item["product__seller__store_name"],  # ✅ tên shop
             "quantity_sold": item["quantity_sold"],
             "revenue": item["revenue"],
-                "thumbnail": request.build_absolute_uri(item["product__image"]) if item["product__image"] else None,
+            "thumbnail": request.build_absolute_uri(item["product__image"]) if item["product__image"] else None,  # ✅ ảnh đầy đủ URL
         })
 
     return Response(data)

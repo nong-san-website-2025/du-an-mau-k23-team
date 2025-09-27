@@ -25,9 +25,7 @@ export default function RecentDisputes() {
       } catch (err) {
         console.error("Fetch disputes error:", err.response || err);
         setError(
-          err.response?.data?.detail ||
-          err.message ||
-          "Lỗi khi tải dữ liệu"
+          err.response?.data?.detail || err.message || "Lỗi khi tải dữ liệu"
         );
         setDisputes([]);
       } finally {
@@ -37,6 +35,7 @@ export default function RecentDisputes() {
     fetchDisputes();
   }, []);
 
+  const formatOrderId = (id) => `DH${id.toString().padStart(3, "0")}`;
   const statusColors = {
     pending: "red",
     in_progress: "gold",
@@ -56,16 +55,26 @@ export default function RecentDisputes() {
       key: "id",
       render: (id) => <span>#{id}</span>,
     },
-{
+    {
+      title: "Sản phẩm", // <-- thêm cột sản phẩm
+      dataIndex: "product_name",
+      key: "product_name",
+      render: (val) => val || <i>Không rõ</i>,
+    },
+
+    {
       title: "Đơn hàng",
       dataIndex: "order_id",
       key: "order_id",
-      render: (val) => `#${val}`,
+      render: (orderId) => (
+        <a href={`/orders/${orderId}`}>{formatOrderId(orderId)}</a>
+      ),
     },
+
     {
       title: "Người khiếu nại",
-      dataIndex: "customer_name",
-      key: "customer_name",
+      dataIndex: "complainant_name", // 👈 đổi lại cho đúng với JSON
+      key: "complainant_name",
     },
     {
       title: "Lý do",
@@ -82,6 +91,13 @@ export default function RecentDisputes() {
           {statusLabels[status] || status}
         </Tag>
       ),
+    },
+    {
+      title: "Ngày tạo",
+      dataIndex: "created_at",
+      key: "created_at",
+      render: (val) =>
+        val ? new Date(val).toLocaleString("vi-VN") : <i>Không rõ</i>,
     },
   ];
 
@@ -131,7 +147,7 @@ export default function RecentDisputes() {
               <b>Đơn hàng:</b> #{selectedDispute.order_id}
             </p>
             <p>
-              <b>Người khiếu nại:</b> {selectedDispute.customer_name}
+              <b>Người khiếu nại:</b> {selectedDispute.complaint_name}
             </p>
             <p>
               <b>Sản phẩm:</b> {selectedDispute.product_name}
