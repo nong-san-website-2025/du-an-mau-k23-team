@@ -70,5 +70,7 @@ Nó sẽ tạo ra mẫu customer, selle
 ```
 
 ## Cài đặt App
-
+    cd app
+    npm start(Chạy xong nó sẽ hiển thị 1 cái QR)
+    - Mở app Expo trên điện thoại, quét cái mã này, nó sẽ hiển thị giao diện App ra
 
