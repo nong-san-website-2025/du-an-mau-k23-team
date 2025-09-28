@@ -35,41 +35,41 @@ const CheckoutPage = () => {
   const [note, setNote] = useState("");
   const [voucherCode, setVoucherCode] = useState("");
 
-
   const [geoManual, setGeoManual] = useState({
     provinceId: undefined,
     districtId: undefined,
     wardCode: undefined,
   });
-  
-  const orderTotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+  const orderTotal = cartItems.reduce(
+    (sum, item) => sum + item.price * item.quantity,
+    0
+  );
 
   const [discount, setDiscount] = useState(0);
 
   const [payment, setPayment] = useState("Thanh toán khi nhận hàng");
   const [isLoading, setIsLoading] = useState(false);
 
-
-const handleApplyVoucher = async (code) => {
+  const handleApplyVoucher = async (code) => {
   if (!code) {
     setDiscount(0);
     setVoucherCode("");
     return;
   }
   try {
-    const res = await applyVoucher(code, total); // Axios gọi API
+    const res = await applyVoucher(code, total); // gọi API apply_voucher
+    console.log("Voucher API response:", res);
 
-    console.log("Voucher API response:", res.data); // log đúng data
-
-    setDiscount(res.data?.discount_amount || 0); // ✅ lấy từ res.data
+    setDiscount(res?.discount || 0);   // 👈 lấy đúng key discount
     setVoucherCode(code);
   } catch (err) {
     console.error("Apply voucher error:", err.response?.data || err.message);
     setDiscount(0);
     setVoucherCode("");
+    message.error("Mã voucher không hợp lệ hoặc đã hết hạn!");
   }
 };
-
 
 
   // Lấy địa chỉ đã chọn
@@ -229,7 +229,7 @@ const handleApplyVoucher = async (code) => {
         address: finalAddress,
         note: note.trim(),
         payment_method: payment,
-        // Gửi thêm geo để backend có thể ghi nhận nếu cần
+        voucher_code: voucherCode || null, // 👈 THÊM DÒNG NÀY
         to_district_id: manualEntry
           ? geoManual.districtId
           : selectedAddress?.district_id,

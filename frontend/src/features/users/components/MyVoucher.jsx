@@ -235,7 +235,7 @@ const MyVoucher = () => {
                             Hết hạn
                           </Badge>
                         )}
-                      </div>
+                        </div>
                       
                       <div className="d-flex align-items-center flex-wrap gap-2">
                         <span 
