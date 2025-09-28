@@ -80,10 +80,12 @@ cd du-an-mau-k23-team
     }
 ```
 
-## Chay products ví dụ mẫu để code(Trước đó hãy tạo seller)
+## Chay products ví dụ mẫu để code
 ```
 cd backend
 - python manage.py seed_all
+Nó sẽ tạo ra mẫu customer, selle
+- Vd: customer1, customer2, seller1, seller2 với cùng 1 mật khẩu là "123456"
 ```
 
 
