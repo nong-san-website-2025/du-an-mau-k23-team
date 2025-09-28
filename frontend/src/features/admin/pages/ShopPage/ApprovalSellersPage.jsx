@@ -86,25 +86,25 @@ const ApprovalSellersPage = () => {
 
   return (
     <div style={{ padding: 20, background: "#fff", minHeight: "100vh" }}>
-      <h2 style={{ padding: 10 }}>{t("approval_sellers.title")}</h2>
+      <h2 style={{ padding: 10 }}>{t("Duyệt cửa hàng đăng ký")}</h2>
 
       <div style={{ display: "flex", gap: 16, marginBottom: 16 }}>
         <Input
-          placeholder={t("approval_sellers.search_placeholder")}
+          placeholder={t("Tìm kiếm theo tên cửa hàng hoặc email...")}
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           style={{ width: 300 }}
         />
         <Select
-          placeholder={t("approval_sellers.filter_status")}
+          placeholder={t("Lọc trạng thái")}
           value={statusFilter}
           onChange={(value) => setStatusFilter(value)}
           style={{ width: 200 }}
           allowClear
         >
-          <Option value="pending">{t("approval_sellers.pending")}</Option>
-          <Option value="approved">{t("approval_sellers.approved_status")}</Option>
-          <Option value="rejected">{t("approval_sellers.rejected_status")}</Option>
+          <Option value="pending">{t("Chờ duyệt")}</Option>
+          <Option value="approved">{t("Đã được phê duyệt")}</Option>
+          <Option value="rejected">{t("Từ chối phê duyệt")}</Option>
         </Select>
       </div>
 
@@ -122,7 +122,7 @@ const ApprovalSellersPage = () => {
       {selectedSeller && (
         <Modal
           open={modalVisible}
-          title={t("approval_sellers.detail_title", { name: selectedSeller.store_name })}
+          title={t("Chi tiết cửa hàng", { name: selectedSeller.store_name })}
           onCancel={() => setModalVisible(false)}
           footer={null}
           width={800}
@@ -155,7 +155,7 @@ const ApprovalSellersPage = () => {
                     fontStyle: "italic",
                   }}
                 >
-                  {t("approval_sellers.no_image")}
+                  {t("Không hình ảnh")}
                 </div>
               )}
             </div>
@@ -163,26 +163,26 @@ const ApprovalSellersPage = () => {
             <div style={{ flex: "1 1 400px" }}>
               <Descriptions column={1} bordered size="middle" labelStyle={{ width: 150, fontWeight: 500 }} contentStyle={{ fontWeight: 400 }}>
                 <Descriptions.Item label="ID">{selectedSeller.id}</Descriptions.Item>
-                <Descriptions.Item label={t("approval_sellers.store_name")}>
+                <Descriptions.Item label={t("Tên cửa hàng")}>
                   {selectedSeller.store_name}
                 </Descriptions.Item>
-                <Descriptions.Item label={t("approval_sellers.owner")}>
+                <Descriptions.Item label={t("Chủ sở hữu")}>
                   {selectedSeller.owner_username}
                 </Descriptions.Item>
                 <Descriptions.Item label="Email">{selectedSeller.user_email}</Descriptions.Item>
-                <Descriptions.Item label={t("approval_sellers.phone")}>
+                <Descriptions.Item label={t("Số điện thoại")}>
                   {selectedSeller.phone}
                 </Descriptions.Item>
-                <Descriptions.Item label={t("approval_sellers.address")}>
+                <Descriptions.Item label={t("Địa chỉ")}>
                   {selectedSeller.address}
                 </Descriptions.Item>
-                <Descriptions.Item label={t("approval_sellers.status")}>
+                <Descriptions.Item label={t("Trạng thái")}>
                   {selectedSeller.status.toUpperCase()}
                 </Descriptions.Item>
-                <Descriptions.Item label={t("approval_sellers.created_at")}>
+                <Descriptions.Item label={t("Ngày tạo")}>
                   {selectedSeller.created_at}
                 </Descriptions.Item>
-                <Descriptions.Item label={t("approval_sellers.bio")}>
+                <Descriptions.Item label={t("Tiểu sử")}>
                   {selectedSeller.bio || "-"}
                 </Descriptions.Item>
               </Descriptions>

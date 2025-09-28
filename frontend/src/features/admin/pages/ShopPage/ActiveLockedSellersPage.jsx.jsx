@@ -76,12 +76,12 @@ const ActiveLockedSellersPage = () => {
 
   return (
     <div style={{ padding: 20, background: "#fff", minHeight: "100vh" }}>
-      <h2 style={{ padding: 10 }}>{t("sellers_active_locked.title")}</h2>
+      <h2 style={{ padding: 10 }}>{t("Cửa hàng hoạt động / khóa")}</h2>
 
       {/* Toolbar tìm kiếm */}
       <div style={{ display: "flex", gap: 16, marginBottom: 16 }}>
         <Input
-          placeholder={t("sellers_active_locked.search_placeholder")}
+          placeholder={t("Tìm kiếm theo tên cửa hàng hoặc email...")}
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           style={{ width: 300 }}
@@ -101,7 +101,7 @@ const ActiveLockedSellersPage = () => {
       {selectedSeller && (
         <Modal
           open={modalVisible}
-          title={t("sellers_active_locked.detail_title", {
+          title={t("Chi tiết cửa hàng hoạt động / khóa", {
             name: selectedSeller.store_name,
           })}
           onCancel={() => setModalVisible(false)}
@@ -137,7 +137,7 @@ const ActiveLockedSellersPage = () => {
                     fontStyle: "italic",
                   }}
                 >
-                  {t("sellers_active_locked.no_image")}
+                  {t("Không hình ảnh")}
                 </div>
               )}
             </div>
@@ -154,28 +154,28 @@ const ActiveLockedSellersPage = () => {
                 <Descriptions.Item label="ID">
                   {selectedSeller.id}
                 </Descriptions.Item>
-                <Descriptions.Item label={t("sellers_active_locked.store_name")}>
+                <Descriptions.Item label={t("Tên cửa hàng")}>
                   {selectedSeller.store_name}
                 </Descriptions.Item>
-                <Descriptions.Item label={t("sellers_active_locked.owner")}>
+                <Descriptions.Item label={t("Chủ sở hữu")}>
                   {selectedSeller.owner_username}
                 </Descriptions.Item>
                 <Descriptions.Item label="Email">
                   {selectedSeller.user_email}
                 </Descriptions.Item>
-                <Descriptions.Item label={t("sellers_active_locked.phone")}>
+                <Descriptions.Item label={t("Số điện thoại")}>
                   {selectedSeller.phone}
                 </Descriptions.Item>
-                <Descriptions.Item label={t("sellers_active_locked.address")}>
+                <Descriptions.Item label={t("Địa chỉ")}>
                   {selectedSeller.address}
                 </Descriptions.Item>
-                <Descriptions.Item label={t("sellers_active_locked.status")}>
+                <Descriptions.Item label={t("Trạng thái")}>
                   {selectedSeller.status.toUpperCase()}
                 </Descriptions.Item>
-                <Descriptions.Item label={t("sellers_active_locked.created_at")}>
+                <Descriptions.Item label={t("Ngày tạo")}>
                   {selectedSeller.created_at}
                 </Descriptions.Item>
-                <Descriptions.Item label={t("sellers_active_locked.bio")}>
+                <Descriptions.Item label={t("Tiểu sử")}>
                   {selectedSeller.bio || "-"}
                 </Descriptions.Item>
               </Descriptions>

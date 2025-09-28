@@ -82,10 +82,10 @@ const Sidebar = () => {
           title="Đơn hàng & Vận chuyển"
         >
           <Menu.Item key="/admin/orders">
-            <Link to="/admin/orders">{("Order_monitor")}</Link>
+            <Link to="/admin/orders">{("Quản lý đơn hàng")}</Link>
           </Menu.Item>
           <Menu.Item key="/admin/shipping">
-            <Link to="/admin/shipping">{("Shipping_partners")}</Link>
+            <Link to="/admin/shipping">{("Đối tác vận chuyển")}</Link>
           </Menu.Item>
         </Menu.SubMenu>
 

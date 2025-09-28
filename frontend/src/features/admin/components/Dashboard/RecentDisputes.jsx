@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Table, Card, Tag, Modal, Button, Spin, Alert } from "antd";
+import { Table, Card, Tag, Modal, Button, Spin, Alert, Image } from "antd";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 
@@ -123,6 +123,7 @@ export default function RecentDisputes() {
           pagination={false}
           onRow={(record) => ({
             onClick: () => setSelectedDispute(record),
+            style: { cursor: "pointer" },
           })}
           locale={{ emptyText: "Không có khiếu nại mới" }}
         />
@@ -130,7 +131,7 @@ export default function RecentDisputes() {
 
       <Modal
         open={!!selectedDispute}
-        title={`Chi tiết khiếu nại #${selectedDispute?.id}`}
+        title={`Chi tiết khiếu nại`}
         onCancel={() => setSelectedDispute(null)}
         footer={[
           <Button key="close" onClick={() => setSelectedDispute(null)}>
@@ -147,7 +148,7 @@ export default function RecentDisputes() {
               <b>Đơn hàng:</b> #{selectedDispute.order_id}
             </p>
             <p>
-              <b>Người khiếu nại:</b> {selectedDispute.complaint_name}
+              <b>Người khiếu nại:</b> {selectedDispute.complainant_name}
             </p>
             <p>
               <b>Sản phẩm:</b> {selectedDispute.product_name}
@@ -165,6 +166,24 @@ export default function RecentDisputes() {
               <b>Ngày tạo:</b>{" "}
               {new Date(selectedDispute.created_at).toLocaleString("vi-VN")}
             </p>
+
+            {/* Thêm hình ảnh khách hàng gửi */}
+            <p>
+              <b>Hình ảnh:</b>
+            </p>
+            {selectedDispute.media_urls &&
+            selectedDispute.media_urls.length > 0 ? (
+              selectedDispute.media_urls.map((url, idx) => (
+                <Image
+                  key={idx}
+                  src={url}
+                  width={120}
+                  style={{ marginRight: 10, marginBottom: 10, borderRadius: 6 }}
+                />
+              ))
+            ) : (
+              <i>Không có hình ảnh</i>
+            )}
           </div>
         )}
       </Modal>

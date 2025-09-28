@@ -91,26 +91,36 @@ export default function DashboardPage() {
   ];
 
   // ✅ Chuẩn hóa dữ liệu PieChart
+  // ✅ Chuẩn hóa dữ liệu PieChart → [{status, count}]
   let ordersPieData = [];
+
   if (Array.isArray(data.orders_by_status)) {
-    ordersPieData = data.orders_by_status.map((item) => ({
-      name: item.status,
-      value: item.count,
-    }));
+    // Backend trả array
+    ordersPieData = Array.isArray(data.orders_by_status)
+      ? data.orders_by_status
+      : [];
+  } else if (
+    typeof data.orders_by_status === "object" &&
+    data.orders_by_status !== null
+  ) {
+    // Backend trả object
+    ordersPieData = Object.entries(data.orders_by_status).map(
+      ([key, value]) => ({
+        status: key,
+        count: value ?? 0,
+      })
+    );
   } else {
-    ordersPieData = [
-      { name: "Chờ xác nhận", value: data.orders_by_status?.pending || 0 },
-      { name: "Đang giao", value: data.orders_by_status?.shipping || 0 },
-      { name: "Hoàn thành", value: data.orders_by_status?.completed || 0 },
-      { name: "Đã hủy", value: data.orders_by_status?.cancelled || 0 },
-      { name: "Hoàn trả", value: data.orders_by_status?.returned || 0 },
-    ];
+    // fallback an toàn
+    ordersPieData = [];
   }
+
+  console.table(ordersPieData); // 🚀 debug xem đầu vào
 
   return (
     <div style={{ padding: 24, background: "#f5f5f5", minHeight: "100vh" }}>
       <Row justify="space-between" align="middle" style={{ marginBottom: 24 }}>
-        <Title level={2}>{t("Dashboard")}</Title>
+        <Title level={2}>{t("Tổng quan")}</Title>
       </Row>
 
       {/* KPI Cards */}
@@ -133,12 +143,12 @@ export default function DashboardPage() {
       {/* Charts */}
       <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
         <Col xs={24} md={14}>
-          <Card title={t("dashboard.charts.revenue_by_month")}>
+          <Card title={t("Biểu đồ doanh thu theo tháng")}>
             <RevenueChart data={data.revenue_by_month || []} />
           </Card>
         </Col>
         <Col xs={24} md={10}>
-          <Card title={t("dashboard.charts.orders_by_status")}>
+          <Card title={t("Tỷ lệ trạng thái đơn hàng")}>
             <OrderPieChart data={ordersPieData} />
           </Card>
         </Col>
