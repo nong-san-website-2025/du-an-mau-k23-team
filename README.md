@@ -83,12 +83,7 @@ cd du-an-mau-k23-team
 ## Chay products ví dụ mẫu để code(Trước đó hãy tạo seller)
 ```
 cd backend
-- Chạy mẫu user
-python manage.py seed_users
-- Chạy mẫu seller
-python manage.py seed_sellers
-- Chạy mẫu products
-python manage.py generate_sample_products
+- python manage.py seed_all
 ```
 
 
