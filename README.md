@@ -1,25 +1,6 @@
 # 🌾 Dự án Website Sàn Thương Mại Nông Sản
 
-## Nếu dùng Git Desktop
-    - Nhấn vào File/Clone repository từ GitHub
-    - Qua URL
-    - Nhập link: https://github.com/nong-san-website-2025/du-an-mau-k23-team.git
-    - Chọn folder muốn lưu trữ project(Lâu dài)
-    - Click Clone
-    - Chọn nhánh của mình
-    - Mở viusual rồi code thôi ae
-    - Chuyển qua bước 2 luôn
-
-## 📥 Bước 1: Clone source về
-
-```bash
-git https://github.com/nong-san-website-2025/du-an-mau-k23-team.git
-cd du-an-mau-k23-team
-
-```
-## 📦 Bước 2: Cài đặt các gói phụ thuộc cho cả frontend và backend
-
-### Cài đặt backend:
+## Cài đặt backend:
     cd backend
     python -m venv env
     # Windows: 
