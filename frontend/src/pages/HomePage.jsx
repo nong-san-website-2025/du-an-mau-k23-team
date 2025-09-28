@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-<<<<<<< HEAD
 import { Spin, Modal } from "antd"; // TODO: nâng cấp props theo khuyến cáo: dùng styles.body thay cho bodyStyle
 import BannerSlider from "../components/home/BannerSlider";
 import CategorySection from "../components/home/CategorySection";
@@ -12,21 +11,6 @@ import {
 } from "../services/api/homepageApi.js";
 import FlashSaleList from "../components/home/FlashSaleList.jsx";
 import { getBannersByPosition } from "../features/admin/services/marketingApi.js";
-=======
-import { Spin, Modal } from "antd";
-import { Helmet } from "react-helmet";
-
-// Import components (chú ý: Home viết hoa)
-import BannerSlider from "../components/Home/BannerSlider";
-import CategorySection from "../components/Home/CategorySection";
-import FlashSaleSection from "../components/Home/FlashSaleSection";
-import PersonalizedSection from "../components/Home/PersonalizedSection";
-import FlashSaleList from "../components/Home/FlashSaleList";
-
-// Import API
-import { fetchCategories } from "../services/api/homepageApi.js";
-
->>>>>>> origin/TungDuong
 export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState([]);
@@ -37,7 +21,6 @@ export default function HomePage() {
   useEffect(() => {
     const loadData = async () => {
       try {
-<<<<<<< HEAD
         // Gọi song song
         const [catRes, modalRes] = await Promise.all([
           fetchCategories(),
@@ -59,10 +42,6 @@ export default function HomePage() {
         });
 
         setPopupAds(activeModals);
-=======
-        const catRes = await fetchCategories();
-        setCategories(catRes.data || []);
->>>>>>> origin/TungDuong
       } catch (error) {
         console.error("❌ Lỗi khi gọi API:", error);
       } finally {
@@ -97,8 +76,6 @@ export default function HomePage() {
       {/* Danh Mục Nổi Bật */}
       <CategorySection categories={categories} />
 
-      {/* Flash Sale */}
-      <FlashSaleSection />
       <FlashSaleList />
 
       {/* Personalized Section */}

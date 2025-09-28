@@ -22,13 +22,7 @@ import VouchersPage from "../features/admin/pages/VouchersPage";
 import WalletPage from "../features/admin/pages/WalletPage";
 
 // Marketing & Promotions
-<<<<<<< HEAD
 import NotificationsPage from "../pages/NotificationsPage.jsx";
-=======
-import BannersPage from "../features/admin/pages/BannersPage";
-import NotificationsPage from "../features/admin/pages/NotificationsPage.jsx"; // ✅ fix path
-import AdvertisementList from "../features/admin/pages/MarketingAdmin/AdvertisementList.jsx";
->>>>>>> origin/TungDuong
 
 // Reports
 import ReportsPage from "../features/admin/pages/ReportsPage";
