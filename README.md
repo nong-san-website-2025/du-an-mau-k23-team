@@ -29,7 +29,7 @@
     # Chạy server backend
     python manage.py runserver
     
-### Cài đặt frontend:
+## Cài đặt frontend:
 
     cd ../frontend
     npm install --legacy-peer-deps
@@ -68,5 +68,7 @@ cd backend
 Nó sẽ tạo ra mẫu customer, selle
 - Vd: customer1, customer2, seller1, seller2 với cùng 1 mật khẩu là "123456"
 ```
+
+## Cài đặt App
 
 
