@@ -31,7 +31,7 @@
     
 ## Cài đặt frontend:
 
-    - [Giới thiệu](#giới-thiệu)
+ - [Giới thiệu](#giới-thiệu)
 
     cd ../frontend
     npm install --legacy-peer-deps
