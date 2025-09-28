@@ -1,35 +1,36 @@
 # 🌾 Dự án Website Sàn Thương Mại Nông Sản
 
-## Cài đặt backend:
-    cd backend
-    python -m venv env
-    # Windows: 
-    env\Scripts\activate
-    pip install -r requirements.txt
+⚙️## Cài đặt backend:
 
-    # Xoá sqlite3 trong backend/sqlite3(Nếu có)
+        cd backend
+        python -m venv env
+        # Windows: 
+        env\Scripts\activate
+        pip install -r requirements.txt
     
-    # Migrate database (tự tạo file SQLite)
-
-    python manage.py makemigrations
+        # Xoá sqlite3 trong backend/sqlite3(Nếu có)
+        
+        # Migrate database (tự tạo file SQLite)
     
-    python manage.py migrate
-
-    #Tao superuser
-
-    python manage.py createsuperuser
+        python manage.py makemigrations
+        
+        python manage.py migrate
     
-    Vd: - username: admin
-        - email: admin@gmail.com
-        - password: 123
-        - xac thuc pass: 123
-        - Nhan Y roi Enter
+        #Tao superuser
     
-
-    # Chạy server backend
-    python manage.py runserver
+        python manage.py createsuperuser
+        
+        Vd: - username: admin
+            - email: admin@gmail.com
+            - password: 123
+            - xac thuc pass: 123
+            - Nhan Y roi Enter
+        
     
-## Cài đặt frontend:
+        # Chạy server backend
+        python manage.py runserver
+    
+🖥️## Cài đặt frontend:
 
     cd ../frontend
     npm install --legacy-peer-deps
@@ -69,7 +70,8 @@ Nó sẽ tạo ra mẫu customer, selle
 - Vd: customer1, customer2, seller1, seller2 với cùng 1 mật khẩu là "123456"
 ```
 
-## Cài đặt App
+📱## Cài đặt App
+
     cd app
     npm start(Chạy xong nó sẽ hiển thị 1 cái QR)
     - Mở app Expo trên điện thoại, quét cái mã này, nó sẽ hiển thị giao diện App ra
