@@ -43,7 +43,7 @@ class ComplaintMedia(models.Model):
     complaint = models.ForeignKey(
         Complaint, related_name='media', on_delete=models.CASCADE
     )
-    file = models.FileField(upload_to="complaints/")  # hoặc ImageField nếu chỉ ảnh
+    file = models.FileField(upload_to="complaints/")  # Lưu file về local
 
     def __str__(self):
         return str(self.file)

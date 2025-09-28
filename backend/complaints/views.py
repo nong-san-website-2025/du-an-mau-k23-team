@@ -27,6 +27,13 @@ class ComplaintViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         files = request.FILES.getlist('media')
+        product_id = request.data.get('product')
+        reason = request.data.get('reason')
+        if not product_id:
+            return Response({'error': 'Thiếu product'}, status=status.HTTP_400_BAD_REQUEST)
+        if not reason:
+            return Response({'error': 'Thiếu lý do khiếu nại'}, status=status.HTTP_400_BAD_REQUEST)
+
         # Parse quantity and unit price if provided by frontend; fallback to defaults
         try:
             quantity = int(request.data.get('quantity') or 1)
@@ -34,26 +41,29 @@ class ComplaintViewSet(viewsets.ModelViewSet):
             quantity = 1
         unit_price_raw = request.data.get('unit_price')
 
-        complaint = Complaint.objects.create(
-            user=request.user,
-            product_id=request.data['product'],
-            reason=request.data['reason'],
-            quantity=quantity,
-        )
-        # If unit_price not provided or invalid, fallback to current product price
         try:
-            if unit_price_raw is not None and str(unit_price_raw) != "":
-                complaint.unit_price = Decimal(str(unit_price_raw))
-            else:
+            complaint = Complaint.objects.create(
+                user=request.user,
+                product_id=product_id,
+                reason=reason,
+                quantity=quantity,
+            )
+            # If unit_price not provided or invalid, fallback to current product price
+            try:
+                if unit_price_raw is not None and str(unit_price_raw) != "":
+                    complaint.unit_price = Decimal(str(unit_price_raw))
+                else:
+                    complaint.unit_price = complaint.product.price
+            except Exception:
                 complaint.unit_price = complaint.product.price
-        except Exception:
-            complaint.unit_price = complaint.product.price
-        complaint.save()
+            complaint.save()
 
-        for f in files:
-            ComplaintMedia.objects.create(complaint=complaint, file=f)
-        serializer = self.get_serializer(complaint)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+            for f in files:
+                ComplaintMedia.objects.create(complaint=complaint, file=f)
+            serializer = self.get_serializer(complaint)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({'error': f'Lỗi khi tạo khiếu nại: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
 
     def perform_create(self, serializer):
         # Không cần dùng nữa, đã custom create
