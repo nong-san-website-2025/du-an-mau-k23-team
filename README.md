@@ -1,6 +1,6 @@
 # 🌾 Dự án Website Sàn Thương Mại Nông Sản
 
-⚙️## Cài đặt backend:
+##⚙️ Cài đặt backend:
 
         cd backend
         python -m venv env
@@ -30,7 +30,8 @@
         # Chạy server backend
         python manage.py runserver
     
-🖥️Cài đặt frontend:
+##🖥️Cài đặt frontend:
+
     cd ../frontend
     npm install --legacy-peer-deps
     # Chạy frontend
