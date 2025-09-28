@@ -31,8 +31,6 @@
     
 ## Cài đặt frontend:
 
- - [Giới thiệu](#giới-thiệu)
-
     cd ../frontend
     npm install --legacy-peer-deps
 
@@ -75,4 +73,5 @@ Nó sẽ tạo ra mẫu customer, selle
     cd app
     npm start(Chạy xong nó sẽ hiển thị 1 cái QR)
     - Mở app Expo trên điện thoại, quét cái mã này, nó sẽ hiển thị giao diện App ra
+    - Khi làm việc với app thì chỉ cần chạy backend với app thôi, ko cần chạy frontend nữa
 
