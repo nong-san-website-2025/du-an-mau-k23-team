@@ -30,11 +30,9 @@
         # Chạy server backend
         python manage.py runserver
     
-🖥️## Cài đặt frontend:
-
+🖥️Cài đặt frontend:
     cd ../frontend
     npm install --legacy-peer-deps
-
     # Chạy frontend
     npm start
 
