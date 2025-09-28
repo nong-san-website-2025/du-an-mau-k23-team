@@ -46,7 +46,7 @@ export default function UserDetailModal({
               label={
                 <span>
                   <User size={16} style={{ marginRight: 6 }} />
-                  {t("users_page.table.username")}
+                  {t("Tên người dùng")}
                 </span>
               }
             >
@@ -57,7 +57,7 @@ export default function UserDetailModal({
               label={
                 <span>
                   <Mail size={16} style={{ marginRight: 6 }} />
-                  {t("users_page.table.email")}
+                  {t("Email")}
                 </span>
               }
             >
@@ -68,7 +68,7 @@ export default function UserDetailModal({
               label={
                 <span>
                   <Phone size={16} style={{ marginRight: 6 }} />
-                  {t("users_page.table.phone")}
+                  {t("Số điện thoại")}
                 </span>
               }
             >
@@ -79,7 +79,7 @@ export default function UserDetailModal({
               label={
                 <span>
                   <Shield size={16} style={{ marginRight: 6 }} />
-                  {t("users_page.table.role")}
+                  {t("Vai trò")}
                 </span>
               }
             >
@@ -90,7 +90,7 @@ export default function UserDetailModal({
               label={
                 <span>
                   <Shield size={16} style={{ marginRight: 6 }} />
-                  {t("users_page.table.status")}
+                  {t("Trạng thái")}
                 </span>
               }
             >

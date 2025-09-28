@@ -135,6 +135,18 @@ class ComplaintViewSet(viewsets.ModelViewSet):
         recent = Complaint.objects.order_by('-created_at')[:10]
         serializer = self.get_serializer(recent, many=True)
         return Response(serializer.data)
+
+
+    @action(detail=False, methods=['get'])
+    def orders_with_complaints(self, request):
+        """
+        Trả về danh sách các đơn hàng có ít nhất 1 sản phẩm bị khiếu nại
+        """
+        orders = Order.objects.filter(
+            items__product__complaint__isnull=False
+        ).distinct()
+        serializer = OrderWithComplaintSerializer(orders, many=True)
+        return Response(serializer.data)
     
 # class RecentComplaintsView(APIView):
 #     def get(self, request):

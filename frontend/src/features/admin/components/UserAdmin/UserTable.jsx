@@ -142,7 +142,7 @@ export default function UserTable({
       align: "center",
     },
     {
-      title: t("users_page.table.username"),
+      title: t("Tên người dùng"),
       dataIndex: "username",
       key: "username",
       width: 200,
@@ -157,7 +157,7 @@ export default function UserTable({
       ),
     },
     {
-      title: t("users_page.table.role"),
+      title: t("Vai trò"),
       key: "role",
       dataIndex: ["role", "name"],
       width: 120,
@@ -173,14 +173,14 @@ export default function UserTable({
       },
     },
     {
-      title: t("users_page.table.email"),
+      title: t("Email"),
       dataIndex: "email",
       key: "email",
       width: 200,
       sorter: (a, b) => (a.email || "").localeCompare(b.email || ""),
     },
     {
-      title: t("users_page.table.phone"),
+      title: t("Số điện thoại"),
       dataIndex: "phone",
       key: "phone",
       width: 140,
