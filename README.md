@@ -1,6 +1,6 @@
 # 🌾 Dự án Website Sàn Thương Mại Nông Sản
 
-##⚙️ Cài đặt backend:
+## ⚙️ Cài đặt backend:
 
         cd backend
         python -m venv env
@@ -30,7 +30,7 @@
         # Chạy server backend
         python manage.py runserver
     
-##🖥️Cài đặt frontend:
+## 🖥️Cài đặt frontend:
 
     cd ../frontend
     npm install --legacy-peer-deps
@@ -69,7 +69,7 @@ Nó sẽ tạo ra mẫu customer, selle
 - Vd: customer1, customer2, seller1, seller2 với cùng 1 mật khẩu là "123456"
 ```
 
-📱## Cài đặt App
+## 📱 Cài đặt App
 
     cd app
     npm start(Chạy xong nó sẽ hiển thị 1 cái QR)
