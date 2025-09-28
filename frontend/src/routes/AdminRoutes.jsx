@@ -23,7 +23,6 @@ import WalletPage from "../features/admin/pages/WalletPage";
 
 // Marketing & Promotions
 import NotificationsPage from "../pages/NotificationsPage.jsx";
-import AdvertisementList from "../features/admin/pages/MarketingAdmin/AdvertisementList.jsx";
 
 // Reports
 import ReportsPage from "../features/admin/pages/ReportsPage";
@@ -50,6 +49,7 @@ import ReturnPolicyPage from "../features/admin/pages/Setting/ReturnPolicyPage";
 import MarketingAutomationPage from "../features/admin/pages/Setting/MarketingAutomationPage";
 import LoyaltySettingsPage from "../features/admin/pages/Setting/LoyaltySettingsPage";
 import ThemeSettingsPage from "../features/admin/pages/Setting/ThemeSettingsPage";
+import MarketingAdminPage from './../features/admin/pages/MarketingAdmin/AdminMarketingPage';
 
 export const adminRoutes = [
   <Route element={<AdminPrivateRoute />} key="admin-protect">
@@ -79,7 +79,7 @@ export const adminRoutes = [
       <Route path="notifications" element={<NotificationsPage />} />
       <Route path="promotions" element={<Promotions />} />
       <Route path="promotions/flashsale" element={<FlashSale />} />
-      <Route path="marketing/banners" element={<AdvertisementList />} />
+      <Route path="marketing/banners" element={<MarketingAdminPage />} />
       <Route path="promotions/coupons" element={<Coupons />} />
 
       {/* Reports */}

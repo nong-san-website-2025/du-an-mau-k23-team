@@ -12,6 +12,7 @@ class Banner(models.Model):
         ("carousel", "Carousel"),
         ("side", "Sidebar"),
         ("mobile", "Mobile only"),
+        ("modal", "Modal popup"),
     ]
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     title = models.CharField(max_length=200, blank=True)
@@ -42,71 +43,3 @@ class Banner(models.Model):
         if self.end_at and now > self.end_at:
             return False
         return True
-
-
-class FlashSale(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    name = models.CharField(max_length=200)
-    start_at = models.DateTimeField()
-    end_at = models.DateTimeField()
-    is_active = models.BooleanField(default=False)
-    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
-    products = models.ManyToManyField("products.Product", through="FlashSaleItem")
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return self.name
-
-
-class FlashSaleItem(models.Model):
-    flashsale = models.ForeignKey(
-        FlashSale, on_delete=models.CASCADE, related_name="items"
-    )
-    product = models.ForeignKey(
-        "products.Product", on_delete=models.CASCADE, related_name="marketing_flashsale_items"
-    )
-    discounted_price = models.DecimalField(max_digits=12, decimal_places=2)
-    limited_stock = models.IntegerField(null=True, blank=True)
-    sold = models.IntegerField(default=0)
-
-    class Meta:
-        unique_together = ("flashsale", "product")
-
-    def __str__(self):
-        return f"{self.flashsale.name} - {self.product.name}"
-
-
-
-class Voucher(models.Model):
-    CODE_TYPE = [("single", "single-code"), ("bulk", "bulk")]
-    DISCOUNT_TYPE = [("percent", "%"), ("amount", "Amount")]
-
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    code = models.CharField(max_length=50, unique=True)
-    name = models.CharField(max_length=200)
-    discount_type = models.CharField(max_length=20, choices=DISCOUNT_TYPE)
-    value = models.DecimalField(max_digits=10, decimal_places=2)
-    min_order_value = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    start_at = models.DateTimeField()
-    end_at = models.DateTimeField()
-    usage_limit = models.IntegerField(null=True, blank=True)
-    per_user_limit = models.IntegerField(default=1)
-    used_count = models.IntegerField(default=0)
-    is_active = models.BooleanField(default=True)
-    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"{self.code} - {self.name}"
-
-
-class VoucherUsage(models.Model):
-    voucher = models.ForeignKey(Voucher, on_delete=models.CASCADE)
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    count = models.IntegerField(default=0)
-
-    class Meta:
-        unique_together = ("voucher", "user")
-
-    def __str__(self):
-        return f"{self.user.username} - {self.voucher.code} ({self.count})"

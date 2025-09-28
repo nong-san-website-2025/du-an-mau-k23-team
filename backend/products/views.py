@@ -4,8 +4,6 @@ from django.db.models import Q
 from .models import Product, Category
 from .serializers import ProductSerializer, ProductListSerializer, CategorySerializer, SubcategorySerializer
 from rest_framework.views import APIView
-from blog.serializers import PostSerializer
-from blog.models import Post
 from sellers.models import Seller
 from sellers.serializers import SellerSerializer
 from rest_framework import generics, permissions
@@ -22,6 +20,8 @@ from rest_framework import viewsets, permissions, status
 from django.utils.timezone import now, timedelta
 from django.db.models import Sum
 from orders.models import OrderItem  # giả sử bảng chi tiết đơn hàng tên là OrderItem
+from django.db.models.functions import Concat
+from django.contrib.postgres.search import TrigramSimilarity
 
 
 @api_view(["GET"])
@@ -265,26 +265,20 @@ class SearchAPIView(APIView):
     def get(self, request):
         query = request.GET.get('q', '').strip()
         if not query:
-            return Response({'products': [], 'posts': [], 'sellers': []})
+            return Response({'products': [], 'sellers': [   ]})
 
-        # Fuzzy search
+        # Chỉ dùng tìm kiếm chính xác
         products = Product.objects.filter(
             Q(name__icontains=query) |
             Q(description__icontains=query)
-        )[:20]
-
-        posts = Post.objects.filter(
-            Q(title__icontains=query) |
-            Q(content__icontains=query)
-        )[:10]
+        ).distinct()[:20]
 
         sellers = Seller.objects.filter(
             Q(store_name__icontains=query)
-        )[:10]
+        ).distinct()[:10]
 
         return Response({
             'products': ProductListSerializer(products, many=True, context={'request': request}).data,
-            'posts': PostSerializer(posts, many=True).data,
             'sellers': SellerSerializer(sellers, many=True).data
         })
     

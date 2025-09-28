@@ -10,7 +10,7 @@ import {
   fetchCategories,
 } from "../services/api/homepageApi.js";
 import FlashSaleList from "../components/home/FlashSaleList.jsx";
-
+import { getBannersByPosition } from "../features/admin/services/marketingApi.js";
 export default function HomePage() {
   const [loading, setLoading] = useState(true);
   // const [recommendedProducts, setRecommendedProducts] = useState([]);
@@ -18,17 +18,31 @@ export default function HomePage() {
   const [popupAds, setPopupAds] = useState([]);
 
   const username = localStorage.getItem("username") || "Khách";
-  const token = localStorage.getItem("token");
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        // Gọi fetchCategories trước
-        const catRes = await fetchCategories();
+        // Gọi song song
+        const [catRes, modalRes] = await Promise.all([
+          fetchCategories(),
+          getBannersByPosition("modal"),
+        ]);
 
         setCategories(catRes.data || []);
 
-        // setRecommendedProducts(recommendRes.data || []);
+        // Lọc banner modal đang active và trong thời gian hợp lệ
+        const activeModals = (modalRes.data || []).filter((banner) => {
+          const now = new Date();
+          const start = banner.start_at
+            ? new Date(banner.start_at)
+            : new Date(0);
+          const end = banner.end_at
+            ? new Date(banner.end_at)
+            : new Date("2100-01-01");
+          return banner.is_active && now >= start && now <= end;
+        });
+
+        setPopupAds(activeModals);
       } catch (error) {
         console.error("❌ Lỗi khi gọi API:", error);
       } finally {
@@ -37,7 +51,7 @@ export default function HomePage() {
     };
 
     loadData();
-  }, [token]);
+  }, []);
 
   if (loading) {
     return (

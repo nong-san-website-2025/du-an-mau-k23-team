@@ -46,8 +46,7 @@ INSTALLED_APPS = [
 
     # Local apps
     "users", "sellers", "products", "reviews",
-    "cart", "orders", "payments", "store",
-    "blog", "wallet",'complaints', "marketing", "promotions", "delivery", "chat", 'config',
+    "cart", "orders", "payments", "store", "wallet",'complaints', "marketing", "promotions", "delivery", "chat", 'config',
 
     # Cloudinary
 

@@ -1,14 +1,7 @@
+// ChatBox.jsx (đã cải thiện giao diện)
 import React, { useEffect, useRef, useState, useMemo } from "react";
 import useUserProfile from "../../users/services/useUserProfile";
 
-// Realtime chat box synced with seller-center via conversation-based WebSocket
-// Flow:
-// 1) Ensure conversation exists via POST /api/chat/conversations/ { seller: sellerId }
-// 2) Load history via GET /api/chat/conversations/<id>/messages/
-// 3) Open WS: ws://localhost:8000/ws/chat/conv/<conversation_id>/?token=<JWT>
-// Improvements:
-// - Bubble UI (left/right like Zalo/Messenger)
-// - Reliable send: prefer WS, fallback to REST when WS not ready
 export default function ChatBox({ sellerId, token, userAvatar, sellerImage, sellerName, inline = false }) {
   const [conversationId, setConversationId] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -16,7 +9,7 @@ export default function ChatBox({ sellerId, token, userAvatar, sellerImage, sell
   const [wsReady, setWsReady] = useState(false);
   const wsRef = useRef(null);
   const listRef = useRef(null);
-  // Persist open state per seller; auto-open if previously activated
+
   const storageKeys = useMemo(() => ({
     always: `chat:always:${sellerId}`,
     open: `chat:open:${sellerId}`,
@@ -32,19 +25,16 @@ export default function ChatBox({ sellerId, token, userAvatar, sellerImage, sell
   };
   const [open, setOpen] = useState(getInitialOpen);
 
-  // Persist when toggled; mark as always after first open
   useEffect(() => {
     try {
       localStorage.setItem(storageKeys.open, open ? '1' : '0');
       if (open) {
         localStorage.setItem(storageKeys.always, '1');
-        // Remember last seller globally for site-wide chat persistence
         localStorage.setItem('chat:lastSellerId', String(sellerId));
       }
     } catch (e) {}
   }, [open, storageKeys, sellerId]);
 
-  // Listen for global open request (e.g., from StoreDetail "Nhắn tin" button)
   useEffect(() => {
     const handler = (e) => {
       const targetId = e?.detail?.sellerId;
@@ -61,7 +51,6 @@ export default function ChatBox({ sellerId, token, userAvatar, sellerImage, sell
   }, [sellerId, storageKeys]);
 
   const API_BASE_URL = "http://localhost:8000/api";
-  // Normalize media URL to absolute (backend returns relative paths)
   const apiOrigin = useMemo(() => {
     try { return new URL(API_BASE_URL).origin; } catch { return ""; }
   }, []);
@@ -72,7 +61,6 @@ export default function ChatBox({ sellerId, token, userAvatar, sellerImage, sell
     return `${apiOrigin}/${src}`;
   };
 
-  // Decode JWT to get current user id (SimpleJWT uses `user_id` claim)
   const currentUserId = useMemo(() => {
     try {
       if (!token) return null;
@@ -83,7 +71,6 @@ export default function ChatBox({ sellerId, token, userAvatar, sellerImage, sell
     }
   }, [token]);
 
-  // Get current user profile for name and avatar rendering
   const profile = useUserProfile();
   const displayName = useMemo(() => {
     if (!profile) return undefined;
@@ -95,13 +82,11 @@ export default function ChatBox({ sellerId, token, userAvatar, sellerImage, sell
     return profile.avatar || (typeof window !== 'undefined' ? localStorage.getItem('avatar') || undefined : undefined);
   }, [profile]);
 
-  // 1) Ensure conversation + 2) load history
   useEffect(() => {
     let cancelled = false;
     const ensureConversationAndHistory = async () => {
       if (!sellerId || !token) return;
       try {
-        // Ensure conversation
         const convRes = await fetch(`${API_BASE_URL}/chat/conversations/`, {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -112,7 +97,6 @@ export default function ChatBox({ sellerId, token, userAvatar, sellerImage, sell
         if (cancelled) return;
         setConversationId(conv.id);
 
-        // Load messages
         const msgRes = await fetch(`${API_BASE_URL}/chat/conversations/${conv.id}/messages/`, {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -127,7 +111,6 @@ export default function ChatBox({ sellerId, token, userAvatar, sellerImage, sell
     return () => { cancelled = true; };
   }, [sellerId, token]);
 
-  // 3) Open WebSocket for the conversation
   useEffect(() => {
     if (!conversationId || !token) return;
     const url = `ws://localhost:8000/ws/chat/conv/${conversationId}/?token=${encodeURIComponent(token)}`;
@@ -151,14 +134,12 @@ export default function ChatBox({ sellerId, token, userAvatar, sellerImage, sell
     return () => ws.close();
   }, [conversationId, token]);
 
-  // Auto-scroll on new messages
   useEffect(() => {
     if (listRef.current) {
       listRef.current.scrollTop = listRef.current.scrollHeight;
     }
   }, [messages]);
 
-  // Add message if not already present
   const addUnique = (msg) => {
     setMessages((prev) => {
       if (!msg?.id) return [...prev, msg];
@@ -208,7 +189,6 @@ export default function ChatBox({ sellerId, token, userAvatar, sellerImage, sell
     const file = selectedFile || fileInputRef.current?.files?.[0] || null;
     if (!text && !file) return;
 
-    // If only text and WS is ready, send via WS
     if (!file && wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       try {
         wsRef.current.send(JSON.stringify({ type: "message", content: text }));
@@ -233,94 +213,125 @@ export default function ChatBox({ sellerId, token, userAvatar, sellerImage, sell
     return null;
   }
 
-  // Bubble styles
+  // Cải thiện giao diện
   const bubbleContainer = (mine) => ({
     display: "flex",
     justifyContent: mine ? "flex-end" : "flex-start",
-    marginBottom: 10,
-    gap: 8,
+    marginBottom: 12,
+    gap: 10,
     alignItems: "flex-end",
   });
+  
   const bubble = (mine) => ({
-    background: mine ? "#1677ff" : "#f5f5f5",
+    background: mine ? "#1677ff" : "#f0f2f5",
     color: mine ? "#fff" : "#000",
-    padding: "8px 12px",
-    borderRadius: 16,
-    borderTopRightRadius: mine ? 4 : 16,
-    borderTopLeftRadius: mine ? 16 : 4,
-    maxWidth: 300,
+    padding: "10px 14px",
+    borderRadius: 18,
+    borderTopRightRadius: mine ? 4 : 18,
+    borderTopLeftRadius: mine ? 18 : 4,
+    maxWidth: "80%",
     whiteSpace: "pre-wrap",
     wordBreak: "break-word",
+    boxShadow: "0 1px 2px rgba(0,0,0,0.1)",
   });
+  
   const avatarBox = {
-    width: 28,
-    height: 28,
+    width: 36,
+    height: 36,
     borderRadius: "50%",
     overflow: "hidden",
     background: "#eee",
     flexShrink: 0,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: 14,
+    fontWeight: 600,
   };
 
   return (
     <div>
-      {/* Floating toggle bubble at bottom-right (hidden in inline mode) */}
-      {!inline && (
-        <button
-          onClick={() => setOpen((v) => !v)}
-          aria-label="Toggle chat"
-          style={{
-            position: "fixed",
-            right: 20,
-            bottom: 20,
-            width: 56,
-            height: 56,
-            borderRadius: "50%",
-            border: "none",
-            background: "#1677ff",
-            color: "#fff",
-            boxShadow: "0 6px 18px rgba(0,0,0,0.2)",
-            cursor: "pointer",
-            zIndex: 1000,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: 22,
-          }}
-        >
-          {open ? "×" : "💬"}
-        </button>
-      )}
-
-      {/* Chat panel */}
       {(inline || open) && (
         <div
           style={{
             position: inline ? "relative" : "fixed",
             right: inline ? undefined : 20,
             bottom: inline ? undefined : 84,
-            width: 360,
+            width: 380,
             maxWidth: "90vw",
-            border: "1px solid #ddd",
-            borderRadius: 12,
+            border: "1px solid #e0e0e0",
+            borderRadius: 16,
             overflow: "hidden",
             background: "#fff",
-            boxShadow: inline ? "none" : "0 8px 24px rgba(0,0,0,0.18)",
+            boxShadow: inline ? "none" : "0 10px 30px rgba(0,0,0,0.15)",
             zIndex: 1000,
+            display: "flex",
+            flexDirection: "column",
+            height: 480,
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: 10, background: "#fafafa", borderBottom: "1px solid #eee" }}>
-            <div style={{ width: 36, height: 36, borderRadius: "50%", overflow: "hidden", background: "#eee", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              {sellerImage ? (
-                <img src={sellerImage} alt={sellerName} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-              ) : (
-                <span style={{ fontWeight: 700 }}>{(sellerName || "S").charAt(0).toUpperCase()}</span>
-              )}
+          {/* Header với nút đóng */}
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+            padding: "12px 16px",
+            background: "#f8f9fa",
+            borderBottom: "1px solid #e9ecef",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ 
+                width: 40, 
+                height: 40, 
+                borderRadius: "50%", 
+                overflow: "hidden", 
+                background: "#eee",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center"
+              }}>
+                {sellerImage ? (
+                  <img src={sellerImage} alt={sellerName} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                ) : (
+                  <span style={{ fontWeight: 700, color: "#666" }}>{(sellerName || "S").charAt(0).toUpperCase()}</span>
+                )}
+              </div>
+              <strong style={{ color: "#333", fontSize: 15 }}>{sellerName || `Cửa hàng #${sellerId}`}</strong>
             </div>
-            <strong>{sellerName || `Cửa hàng #${sellerId}`}</strong>
-            {!wsReady && <span style={{ marginLeft: "auto", fontSize: 12, color: "#999" }}>Đang kết nối...</span>}
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              {!wsReady}
+              <button 
+                onClick={() => setOpen(false)}
+                style={{
+                  width: 30,
+                  height: 30,
+                  borderRadius: "50%",
+                  border: "none",
+                  background: "#e9ecef",
+                  color: "#666",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 16,
+                }}
+              >
+                ×
+              </button>
+            </div>
           </div>
 
-          <div ref={listRef} style={{ height: 320, overflowY: "auto", padding: 10, background: "white" }}>
+          {/* Messages container */}
+          <div ref={listRef} style={{ 
+            flex: 1, 
+            overflowY: "auto", 
+            padding: 16,
+            background: "#f0f2f5",
+            display: "flex",
+            flexDirection: "column",
+            gap: 12
+          }}>
             {messages.map((m) => {
               const mine = currentUserId && m.sender === currentUserId;
               return (
@@ -329,14 +340,25 @@ export default function ChatBox({ sellerId, token, userAvatar, sellerImage, sell
                     <div style={avatarBox}>
                       {sellerImage ? (
                         <img src={sellerImage} alt={sellerName} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                      ) : null}
+                      ) : (
+                        <span>{(sellerName || "S").charAt(0).toUpperCase()}</span>
+                      )}
                     </div>
                   )}
                   <div style={bubble(mine)}>
                     {m.content && <div style={{ marginBottom: m.image ? 8 : 0 }}>{m.content}</div>}
                     {m.image && (
                       <div>
-                        <img src={toAbsolute(m.image)} alt="attachment" style={{ maxWidth: 260, borderRadius: 8, display: 'block' }} />
+                        <img 
+                          src={toAbsolute(m.image)} 
+                          alt="attachment" 
+                          style={{ 
+                            maxWidth: 200, 
+                            borderRadius: 8, 
+                            display: 'block',
+                            border: "1px solid #ddd"
+                          }} 
+                        />
                       </div>
                     )}
                   </div>
@@ -345,7 +367,7 @@ export default function ChatBox({ sellerId, token, userAvatar, sellerImage, sell
                       {displayAvatar ? (
                         <img src={displayAvatar} alt={displayName || "me"} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                       ) : (
-                        <span style={{ fontWeight: 700 }}>{(displayName || "T").charAt(0).toUpperCase()}</span>
+                        <span>{(displayName || "T").charAt(0).toUpperCase()}</span>
                       )}
                     </div>
                   )}
@@ -354,35 +376,73 @@ export default function ChatBox({ sellerId, token, userAvatar, sellerImage, sell
             })}
           </div>
 
-          <div style={{ display: "flex", gap: 8, padding: 10, borderTop: "1px solid #eee", background: "#fafafa", alignItems: "center" }}>
+          {/* Input area */}
+          <div style={{ 
+            display: "flex", 
+            gap: 10, 
+            padding: 12, 
+            borderTop: "1px solid #e9ecef", 
+            background: "#f8f9fa",
+            alignItems: "center"
+          }}>
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Nhập tin nhắn..."
               onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
-              style={{ flex: 1, padding: 8, border: "1px solid #ddd", borderRadius: 18 }}
+              style={{ 
+                flex: 1, 
+                padding: "10px 14px", 
+                border: "1px solid #ddd", 
+                borderRadius: 20,
+                fontSize: 14,
+                background: "#fff"
+              }}
             />
-            <input type="file" accept="image/*" ref={fileInputRef} onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} style={{ display: "none" }} />
+            <input 
+              type="file" 
+              accept="image/*" 
+              ref={fileInputRef} 
+              onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} 
+              style={{ display: "none" }} 
+            />
             <button
               type="button"
               onClick={() => fileInputRef.current && fileInputRef.current.click()}
               title="Chọn hình ảnh"
               aria-label="Chọn hình ảnh"
-              style={{ width: 36, height: 36, borderRadius: "50%", border: "1px solid #ddd", background: "#fff", cursor: "pointer" }}
+              style={{ 
+                width: 40, 
+                height: 40, 
+                borderRadius: "50%", 
+                border: "1px solid #ddd", 
+                background: "#fff", 
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 18
+              }}
             >
-              🖼️
+              📷
             </button>
-            <button onClick={sendMessage} disabled={uploading || (!input.trim() && !selectedFile)} style={{ padding: "8px 12px", borderRadius: 18, border: "none", background: "#1677ff", color: "white" }}>
+            <button 
+              onClick={sendMessage} 
+              disabled={uploading || (!input.trim() && !selectedFile)} 
+              style={{ 
+                padding: "10px 16px", 
+                borderRadius: 20, 
+                border: "none", 
+                background: "#1677ff", 
+                color: "white",
+                fontWeight: 500,
+                cursor: "pointer",
+                fontSize: 14
+              }}
+            >
               {uploading ? 'Đang gửi...' : 'Gửi'}
             </button>
           </div>
-        </div>
-      )}
-
-      {/* Optional: small label under bubble to show current user name (only when not inline) */}
-      {!inline && displayName && (
-        <div style={{ position: "fixed", right: 20, bottom: 82, fontSize: 11, color: "#666" }}>
-          Đang nhắn: <strong>{displayName}</strong>
         </div>
       )}
     </div>

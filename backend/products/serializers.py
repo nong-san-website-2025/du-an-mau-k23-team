@@ -1,6 +1,5 @@
 from rest_framework import serializers
 from .models import Product, Category, Subcategory
-from blog.models import Post
 from sellers.serializers import SellerListSerializer
 from django.db.models import Sum
 from orders.models import OrderItem
@@ -128,11 +127,6 @@ class ProductListSerializer(serializers.ModelSerializer):
             order__status__in=['paid', 'shipped', 'delivered', 'success']
         ).aggregate(total=Sum('quantity'))['total'] or 0
 
-
-class PostSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Post
-        fields = ['id', 'title']
 
 
 class SubcategoryCreateSerializer(serializers.ModelSerializer):

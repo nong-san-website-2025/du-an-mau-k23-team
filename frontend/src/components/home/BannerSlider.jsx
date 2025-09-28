@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import Slider from "react-slick";
-import { getBanners } from "../../features/admin/services/marketingApi.js";
+import { getBannersByPosition } from "../../features/admin/services/marketingApi.js";
 import { LeftOutlined, RightOutlined } from "@ant-design/icons";
 
 export default function BannerSlider() {
@@ -8,25 +8,32 @@ export default function BannerSlider() {
   const sliderRef = React.useRef(null);
 
   useEffect(() => {
-    getBanners()
-      .then((res) => setBanners(res.data || []))
-      .catch((err) => console.error("Lỗi khi tải banner:", err));
+    getBannersByPosition("carousel")
+      .then((res) => {
+        const activeBanners = res.data.filter((b) => b.is_active);
+        setBanners(activeBanners);
+      })
+      .catch((err) => console.error("Lỗi khi tải banner carousel:", err));
   }, []);
 
   const settings = {
-    dots: false, // ❌ Tắt dots
-    infinite: true,
+    dots: false,
+    infinite: banners.length > 1, // chỉ infinite nếu có >1 banner
     speed: 500,
-    autoplay: true,
+    autoplay: banners.length > 1, // chỉ autoplay nếu có >1
     autoplaySpeed: 3000,
     slidesToShow: 1,
     slidesToScroll: 1,
-    arrows: false, // ❌ Tắt arrow mặc định
+    arrows: false,
   };
+
+  // ✅ Chỉ hiển thị slider và nút nếu có banner
+  if (banners.length === 0) {
+    return null; // hoặc return <div></div> nếu muốn giữ khoảng trống
+  }
 
   return (
     <div className="position-relative mb-4">
-      {/* Slider */}
       <Slider ref={sliderRef} {...settings}>
         {banners.map((banner) => (
           <div
@@ -35,13 +42,13 @@ export default function BannerSlider() {
           >
             <img
               src={banner.image}
-              alt={banner.title}
-              onClick={() => window.open(banner.redirect_link, "_blank")}
+              alt={banner.title || "Banner"}
+              onClick={() => banner.click_url && window.open(banner.click_url, "_blank")}
               className="rounded shadow"
               style={{
                 width: "100%",
                 height: "400px",
-                objectFit: "",
+                objectFit: "cover",
                 cursor: "pointer",
               }}
             />
@@ -49,23 +56,26 @@ export default function BannerSlider() {
         ))}
       </Slider>
 
-      {/* Nút Back */}
-      <button
-        className="btn btn-light position-absolute top-50 start-0 translate-middle-y shadow"
-        style={{ zIndex: 10 }}
-        onClick={() => sliderRef.current.slickPrev()}
-      >
-        <LeftOutlined />
-      </button>
+      {/* Chỉ hiện nút nếu có nhiều hơn 1 banner */}
+      {banners.length > 1 && (
+        <>
+          <button
+            className="btn btn-light position-absolute top-50 start-0 translate-middle-y shadow"
+            style={{ zIndex: 10 }}
+            onClick={() => sliderRef.current?.slickPrev()}
+          >
+            <LeftOutlined />
+          </button>
 
-      {/* Nút Next */}
-      <button
-        className="btn btn-light position-absolute top-50 end-0 translate-middle-y shadow"
-        style={{ zIndex: 10 }}
-        onClick={() => sliderRef.current.slickNext()}
-      >
-        <RightOutlined />
-      </button>
+          <button
+            className="btn btn-light position-absolute top-50 end-0 translate-middle-y shadow"
+            style={{ zIndex: 10 }}
+            onClick={() => sliderRef.current?.slickNext()}
+          >
+            <RightOutlined />
+          </button>
+        </>
+      )}
     </div>
   );
 }
