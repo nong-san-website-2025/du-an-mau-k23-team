@@ -1,16 +1,35 @@
-import React, { useState } from "react";
-import { Layout, Avatar, Dropdown, Badge } from "antd";
+import React, { useState, useEffect } from "react";
+import { Layout, Avatar, Dropdown, Badge, Spin } from "antd";
 import { UserOutlined, BellOutlined } from "@ant-design/icons";
+import sellerService from "../services/api/sellerService"
 
 const { Header } = Layout;
 
 export default function SellerTopbar() {
-  // Mock dữ liệu thông báo
   const [notifications, setNotifications] = useState([
     { id: 1, message: "Có đơn hàng mới", isRead: false },
     { id: 2, message: "Khách hủy đơn #1234", isRead: false },
     { id: 3, message: "Hệ thống bảo trì lúc 23h", isRead: true },
   ]);
+
+  // State lưu thông tin seller
+  const [seller, setSeller] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchSeller = async () => {
+      try {
+        const data = await sellerService.getMe();
+        setSeller(data);
+      } catch (error) {
+        console.error("Lỗi khi lấy thông tin seller:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSeller();
+  }, []);
 
   // Menu user
   const menuItems = [
@@ -55,27 +74,41 @@ export default function SellerTopbar() {
         display: "flex",
         justifyContent: "flex-end",
         alignItems: "center",
-        gap: "20px", // tạo khoảng cách giữa chuông và avatar
+        gap: "20px",
       }}
     >
-      {/* Chuông thông báo */}
-      <Dropdown overlay={notificationMenu} trigger={["click"]} placement="bottomRight">
-        <Badge count={notifications.filter((n) => !n.isRead).length}>
-          <BellOutlined style={{ fontSize: "20px", cursor: "pointer" }} />
-        </Badge>
-      </Dropdown>
+      {/* Loading state */}
+      {loading ? (
+        <Spin size="small" />
+      ) : (
+        <>
+          {/* Chuông thông báo */}
+          <Dropdown overlay={notificationMenu} trigger={["click"]} placement="bottomRight">
+            <Badge count={notifications.filter((n) => !n.isRead).length}>
+              <BellOutlined style={{ fontSize: "20px", cursor: "pointer" }} />
+            </Badge>
+          </Dropdown>
 
-      {/* Avatar user */}
-      <Dropdown
-        menu={{
-          items: menuItems,
-          onClick: onMenuClick,
-        }}
-        placement="bottomRight"
-        arrow
-      >
-        <Avatar size="large" icon={<UserOutlined />} style={{ cursor: "pointer" }} />
-      </Dropdown>
+          {/* Avatar user + Tên seller */}
+          <Dropdown
+            menu={{
+              items: menuItems,
+              onClick: onMenuClick,
+            }}
+            placement="bottomRight"
+            arrow
+          >
+            <div style={{ display: "flex", alignItems: "center", cursor: "pointer", gap: "8px" }}>
+              <Avatar
+                size="large"
+                src={seller?.avatar || null}
+                icon={!seller?.avatar && <UserOutlined />}
+              />
+              <span style={{ fontWeight: "500" }}>{seller?.store_name || "Người bán"}</span>
+            </div>
+          </Dropdown>
+        </>
+      )}
     </Header>
   );
 }

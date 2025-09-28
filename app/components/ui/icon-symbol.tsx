@@ -1,11 +1,12 @@
 // Fallback for using MaterialIcons on Android and web.
 
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { SymbolWeight, SymbolViewProps } from 'expo-symbols';
 import { ComponentProps } from 'react';
 import { OpaqueColorValue, type StyleProp, type TextStyle } from 'react-native';
 
-type IconMapping = Record<SymbolViewProps['name'], ComponentProps<typeof MaterialIcons>['name']>;
+type IconMapping = Record<SymbolViewProps['name'], ComponentProps<typeof FontAwesome>['name']>;
+
 type IconSymbolName = keyof typeof MAPPING;
 
 /**
@@ -14,11 +15,16 @@ type IconSymbolName = keyof typeof MAPPING;
  * - see SF Symbols in the [SF Symbols](https://developer.apple.com/sf-symbols/) app.
  */
 const MAPPING = {
-  'house.fill': 'home',
-  'paperplane.fill': 'send',
-  'chevron.left.forwardslash.chevron.right': 'code',
-  'chevron.right': 'chevron-right',
+  'house.fill': 'home',           // Trang chủ
+  'paperplane.fill': 'paper-plane', // Khám phá
+  'cabinet.fill': 'th-list',        // Trang thị
+  'person' : 'user',               // Tạo tài khoản
+  'bell': 'bell',                  // Thống báo
+  'chevron.left.forwardslash.chevron.right': 'code', // Mã nguồn
+  'chevron.right': 'chevron-right', // Điều hướng
+  
 } as IconMapping;
+
 
 /**
  * An icon component that uses native SF Symbols on iOS, and Material Icons on Android and web.
@@ -37,5 +43,6 @@ export function IconSymbol({
   style?: StyleProp<TextStyle>;
   weight?: SymbolWeight;
 }) {
-  return <MaterialIcons color={color} size={size} name={MAPPING[name]} style={style} />;
+  return <FontAwesome color={color} size={size} name={MAPPING[name]} style={style} />;
+
 }
