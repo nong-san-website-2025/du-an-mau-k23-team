@@ -18,6 +18,7 @@ from rest_framework.decorators import api_view, permission_classes
 from promotions.models import Voucher, UserVoucher
 from users.models import PointHistory
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -265,16 +266,22 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         # tích điểm
         points_earned = (order.total_price // 1000) * 10
+        # Tích điểm dựa trên tất cả orders đã tạo
+        created_orders = getattr(serializer, '_created_orders', [order])
+        total_amount = sum(o.total_price for o in created_orders)
+        points_earned = (total_amount // 1000) * 10
         if points_earned > 0:
             user = self.request.user
             user.points += points_earned
             user.save()
+            # Lưu lịch sử tích điểm với order đầu tiên
+            from users.models import PointHistory
             PointHistory.objects.create(
                 user=user,
                 order_id=str(order.id),
                 points=points_earned,
-                amount=order.total_price,
-                action=f"Cộng điểm khi thanh toán đơn #{order.id}"
+                amount=total_amount,
+                action=f"Cộng điểm khi thanh toán đơn hàng #{order.id}" + (f" và {len(created_orders)-1} đơn khác" if len(created_orders) > 1 else "")
             )
 
 
