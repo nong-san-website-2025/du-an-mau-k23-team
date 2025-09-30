@@ -19,7 +19,7 @@ import axiosInstance from "../features/admin/services/axiosInstance";
 import Logo from "./Header/Logo";
 import SearchBoxWithSuggestions from "./Header/SearchBoxWithSuggestions";
 import UserActions from "./Header/UserActions";
-import TopBar from './Header/TopBar';
+import TopBar from "./Header/TopBar";
 
 const iconMap = {
   Carrot: Carrot,
@@ -31,12 +31,12 @@ const iconMap = {
   Package: Package,
 };
 
-export default function Header() {
+export default function Header({ shouldFetchProfile = true }) {
+  const userProfile = useUserProfile(shouldFetchProfile);
   // Cart & user
   const [hoveredDropdown, setHoveredDropdown] = useState(null);
   const { cartItems } = useCart();
   const cartCount = cartItems.length;
-  const userProfile = useUserProfile();
 
   // Dropdown visibility
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
@@ -148,6 +148,7 @@ export default function Header() {
   const [sellerStatus, setSellerStatus] = useState(null); // "pending" | "approved" | "rejected" | null
 
   useEffect(() => {
+    if (!shouldFetchProfile) return;
     const token = localStorage.getItem("token");
     if (!token) return;
 
@@ -207,7 +208,7 @@ export default function Header() {
     return () => {
       if (intervalId) clearInterval(intervalId);
     };
-  }, []);
+  }, [shouldFetchProfile]);
 
   useEffect(() => {
     const savedSearch = localStorage.getItem("searchValue");

@@ -133,8 +133,7 @@ function CartPage() {
       <div className="cart-container ">
         {/* LEFT: Danh sách sản phẩm */}
         <div className="cart-left">
-          <Card
-          >
+          <Card>
             <div className="cart-header">
               <Checkbox checked={allChecked} onChange={handleCheckAll} />
               <span className="col-name">Sản phẩm</span>
@@ -146,6 +145,7 @@ function CartPage() {
             {cartItems.map((item) => {
               const prod = item.product_data || item.product || {};
               const stableKey = item.id || item.product;
+              const itemId = item.id || item.product_data?.id || item.product;
               return (
                 <div key={stableKey} className="cart-item">
                   <Checkbox
@@ -171,7 +171,7 @@ function CartPage() {
                     {Number(prod.price)?.toLocaleString("vi-VN")}₫
                   </div>
                   <div className="item-quantity " style={{ padding: "0 70px" }}>
-                    <QuantityInput item={item} />
+                    <QuantityInput item={item} itemId={itemId} />
                   </div>
                   <div className="item-total">
                     {(
@@ -187,12 +187,12 @@ function CartPage() {
       </div>
 
       {/* Thanh tóm tắt đơn hàng cố định bên dưới */}
-      <div className="cart-bottom-bar " style={{ padding: "15px 190px"}}>
+      <div className="cart-bottom-bar " style={{ padding: "15px 190px" }}>
         <Button danger size="small" onClick={() => setShowClearConfirm(true)}>
           Xóa tất cả
         </Button>
-        <div className="d-flex align-items-center gap-4" >
-          <Popover content={popoverContent} placement="topLeft" >
+        <div className="d-flex align-items-center gap-4">
+          <Popover content={popoverContent} placement="topLeft">
             <div className="total-section">
               <span className="total-label">Tổng cộng:</span>
               <span className="total-price">

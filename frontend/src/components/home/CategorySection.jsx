@@ -36,8 +36,8 @@ export default function CategorySection({ categories = [] }) {
                     alt={cat.name}
                     className="img-fluid"
                     style={{
-                      maxWidth: "60%",
-                      maxHeight: "60%",
+                      maxWidth: "80%",
+                      maxHeight: "80%",
                       objectFit: "contain",
                     }}
                   />

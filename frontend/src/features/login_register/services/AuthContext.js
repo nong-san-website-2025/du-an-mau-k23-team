@@ -37,6 +37,7 @@ export const AuthProvider = ({ children }) => {
     fetchUser();
   }, []);
 
+  // Trong hàm login
   const login = async (username, password) => {
     try {
       const { data } = await api.post("users/login/", { username, password });
@@ -44,7 +45,6 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem("token", data.access);
       if (data.refresh) localStorage.setItem("refresh", data.refresh);
 
-      // Lấy role chính xác từ backend
       const meRes = await api.get("/users/me/");
       setUser({
         ...meRes.data,
@@ -52,9 +52,11 @@ export const AuthProvider = ({ children }) => {
         token: data.access,
       });
 
+      // 👇 GỬI SỰ KIỆN ĐĂNG NHẬP THÀNH CÔNG
+      window.dispatchEvent(new CustomEvent("user-logged-in"));
+
       return { success: true, role: meRes.data.role, token: data.access };
     } catch (err) {
-      console.log("❌ Login failed:", err.response?.data);
       return {
         success: false,
         error: err.response?.data?.detail || "Login failed",
@@ -62,18 +64,21 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Trong hàm loginWithToken (dùng cho OAuth callback, VNPAY, v.v.)
   const loginWithToken = async (accessToken, refreshToken = null) => {
     try {
       localStorage.setItem("token", accessToken);
       if (refreshToken) localStorage.setItem("refresh", refreshToken);
 
-      // Lấy user info và role từ backend
       const meRes = await api.get("/users/me/");
       setUser({
         ...meRes.data,
         isAuthenticated: true,
         token: accessToken,
       });
+
+      // 👇 GỬI SỰ KIỆN
+      window.dispatchEvent(new CustomEvent("user-logged-in"));
     } catch (err) {
       console.error("loginWithToken error:", err);
       setUser(null);
@@ -145,6 +150,8 @@ export const AuthProvider = ({ children }) => {
           isAuthenticated: true,
           token: googleResponse.access,
         });
+
+        window.dispatchEvent(new CustomEvent("user-logged-in"));
 
         return { success: true, user: meRes.data };
       } catch (err) {

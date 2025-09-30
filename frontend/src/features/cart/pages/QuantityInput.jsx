@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useCart } from "../services/CartContext";
 import { Modal, Button } from "react-bootstrap";
-import "../styles/QuantityInput.css"; // import CSS
+import "../styles/QuantityInput.css";
 
 function QuantityInput({ item }) {
   const { updateQuantity, removeFromCart } = useCart();
@@ -12,7 +12,7 @@ function QuantityInput({ item }) {
     item?.product_data?.stock || item?.product?.stock || null
   );
 
-  // Ensure we have stock info; fetch if missing (works for both guest/server carts)
+  // Fetch stock if missing
   useEffect(() => {
     const prodId =
       item?.product_data?.id || item?.product?.id || item?.product || item?.product_id;
@@ -36,21 +36,25 @@ function QuantityInput({ item }) {
       return;
     }
 
-    // Enforce stock upper bound if known
+    // Enforce stock limit
     if (maxStock != null && val > maxStock) {
       setLocalQuantity(maxStock);
       setShowStockNotice(true);
-      if (item.id) updateQuantity(item.id, maxStock); // only server items have id
+      // ✅ Gọi updateQuantity cho cả guest và user
+      const itemId = item.id || item.product_data?.id || item.product;
+      updateQuantity(itemId, maxStock);
       return;
     }
 
     setLocalQuantity(val);
-    if (item.id) updateQuantity(item.id, val); // avoid guest issue
+    // ✅ Gọi updateQuantity cho cả guest và user
+    const itemId = item.id || item.product_data?.id || item.product;
+    updateQuantity(itemId, val);
   };
 
   const handleConfirmRemove = async () => {
     try {
-      const stableId = item.id || item.product; // server expects id; guest expects product id
+      const stableId = item.id || item.product_data?.id || item.product; // ✅ Đúng
       await removeFromCart(stableId);
     } finally {
       setShowConfirm(false);
@@ -81,7 +85,7 @@ function QuantityInput({ item }) {
         +
       </button>
 
-      {/* Confirm remove when going below 1 */}
+      {/* Confirm remove modal */}
       <Modal show={showConfirm} onHide={() => setShowConfirm(false)} centered>
         <Modal.Header closeButton>
           <Modal.Title>Xóa sản phẩm</Modal.Title>
@@ -99,7 +103,7 @@ function QuantityInput({ item }) {
         </Modal.Footer>
       </Modal>
 
-      {/* Notice when exceeding stock */}
+      {/* Stock notice modal */}
       <Modal
         show={showStockNotice}
         onHide={() => setShowStockNotice(false)}

@@ -27,9 +27,8 @@ export default function BannerSlider() {
     arrows: false,
   };
 
-  // ✅ Chỉ hiển thị slider và nút nếu có banner
   if (banners.length === 0) {
-    return null; // hoặc return <div></div> nếu muốn giữ khoảng trống
+    return null; 
   }
 
   return (
@@ -44,7 +43,7 @@ export default function BannerSlider() {
               src={banner.image}
               alt={banner.title || "Banner"}
               onClick={() => banner.click_url && window.open(banner.click_url, "_blank")}
-              className="rounded shadow"
+              className="shadow"
               style={{
                 width: "100%",
                 height: "400px",

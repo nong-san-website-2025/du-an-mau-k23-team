@@ -11,6 +11,7 @@ import {
   Space,
   Input,
   Breadcrumb,
+  message,
 } from "antd";
 import ProductImage from "../components/ProductImage";
 import ProductInfo from "../components/ProductInfo";
@@ -27,7 +28,8 @@ const { TextArea } = Input;
 const ProductDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { addToCart, selectOnlyByProductId } = useCart();
+  const { addToCart, updateQuantity, cartItems, selectOnlyByProductId } =
+    useCart();
   const { user } = useAuth();
 
   const [categoryName, setCategoryName] = useState("Danh mục");
@@ -174,8 +176,9 @@ const ProductDetailPage = () => {
     loadData();
   }, [id, user]);
 
-  // Thêm vào giỏ
+
   const handleAddToCart = async () => {
+    // 👈 không cần (e, product) vì product đã có trong scope
     if (!product || quantity > product.stock) {
       toast.warning("Số lượng vượt quá hàng trong kho.", {
         position: "bottom-right",
@@ -183,32 +186,48 @@ const ProductDetailPage = () => {
       return;
     }
 
+    // Helper: lấy product ID từ cart item
+    const getProductId = (item) => {
+      return (
+        item.product_data?.id ||
+        (item.product?.id !== undefined ? item.product.id : item.product)
+      );
+    };
+
+    const existingItem = cartItems.find(
+      (item) => String(getProductId(item)) === String(product.id)
+    );
+
+    if (existingItem) {
+      await updateQuantity(product.id, existingItem.quantity + quantity); // 👈 cộng thêm quantity hiện tại
+      message.success("Đã cập nhật số lượng trong giỏ hàng!");
+      return;
+    }
+
     setAdding(true);
     await addToCart(
       product.id,
-      quantity,
+      quantity, // 👈 dùng quantity thay vì 1
       {
         id: product.id,
         name: product.name,
+        price: Number(product.discounted_price ?? product.price) || 0,
         image:
           product.image && product.image.startsWith("/")
             ? `http://localhost:8000${product.image}`
-            : product.image,
-        price: Number(product.discounted_price ?? product.price) || 0,
+            : product.image?.startsWith("http")
+              ? product.image
+              : "",
       },
       () => {
-        toast.success("Đã thêm vào giỏ hàng!", {
-          autoClose: 1800,
-          position: "bottom-right",
-        });
+        message.success("Đã thêm sản phẩm vào giỏ hàng!");
+        setAdding(false);
       },
       () => {
-        toast.error("Không thể thêm vào giỏ hàng. Vui lòng thử lại.", {
-          position: "bottom-right",
-        });
+        message.error("Không thể thêm vào giỏ hàng");
+        setAdding(false);
       }
     );
-    setAdding(false);
   };
 
   // Gửi đánh giá

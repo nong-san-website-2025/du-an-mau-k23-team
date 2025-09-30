@@ -1,6 +1,6 @@
 .category-item {
   border: 1px solid #ddd;
-  border-radius: 8px;
+  border-radius: 0px;
   transition: all 0.25s ease-in-out;
   background-color: #fff;
 }

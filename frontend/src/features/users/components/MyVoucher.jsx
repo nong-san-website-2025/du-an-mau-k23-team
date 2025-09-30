@@ -1,5 +1,16 @@
 import React, { useState, useEffect } from "react";
-import { Card, Badge, Container, Spinner, Tabs, Tab, Modal, Table, Button, Pagination } from "react-bootstrap";
+import {
+  Card,
+  Badge,
+  Container,
+  Spinner,
+  Tabs,
+  Tab,
+  Modal,
+  Table,
+  Button,
+  Pagination,
+} from "react-bootstrap";
 import { getMyVouchers } from "../../admin/services/promotionServices";
 
 const MyVoucher = () => {
@@ -12,6 +23,12 @@ const MyVoucher = () => {
   const vouchersPerPage = 10;
 
   const fetchData = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setLoading(false);
+      return; // 👈 DỪNG NGAY nếu chưa login
+    }
+    
     try {
       setLoading(true);
       const res = await getMyVouchers();
@@ -47,7 +64,7 @@ const MyVoucher = () => {
 
   const handlePageChange = (pageNumber) => {
     setCurrentPage(pageNumber);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const getVoucherStyle = (voucher) => {
@@ -56,28 +73,31 @@ const MyVoucher = () => {
         bgColor: "#e6f7ff",
         borderColor: "#91d5ff",
         icon: "🚚",
-        color: "#1890ff"
+        color: "#1890ff",
       };
-    } else if (voucher.discount_type === "percent" && voucher.discount_percent) {
+    } else if (
+      voucher.discount_type === "percent" &&
+      voucher.discount_percent
+    ) {
       return {
         bgColor: "#fffbe6",
         borderColor: "#ffe58f",
         icon: "🔥",
-        color: "#fa8c16"
+        color: "#fa8c16",
       };
     } else if (voucher.discount_type === "amount" && voucher.discount_amount) {
       return {
         bgColor: "#f6ffed",
         borderColor: "#b7eb8f",
         icon: "💸",
-        color: "#52c41a"
+        color: "#52c41a",
       };
     }
     return {
       bgColor: "#f5f5f5",
       borderColor: "#d9d9d9",
       icon: "🏷️",
-      color: "#595959"
+      color: "#595959",
     };
   };
 
@@ -98,13 +118,13 @@ const MyVoucher = () => {
   return (
     <Container className="py-1">
       <div className="mb-1">
-        <h5 
+        <h5
           className="mb-3"
-          style={{ 
-            color: "#1890ff", 
-            fontWeight: 600, 
+          style={{
+            color: "#1890ff",
+            fontWeight: 600,
             fontSize: "1.3rem",
-            letterSpacing: "0.5px"
+            letterSpacing: "0.5px",
           }}
         >
           🎁 Voucher của tôi
@@ -118,57 +138,81 @@ const MyVoucher = () => {
           setCurrentPage(1);
         }}
         className="mb-4"
-        style={{ 
-          background: "#fff", 
+        style={{
+          background: "#fff",
           borderRadius: "8px",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
+          boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
         }}
       >
-        <Tab 
-          eventKey="unused" 
+        <Tab
+          eventKey="unused"
           title={
-            <span style={{ 
-              color: tab === "unused" ? "#1890ff" : "#8c8c8c",
-              fontWeight: tab === "unused" ? 600 : 500
-            }}>
-              Chưa sử dụng ({userVouchers.filter(uv => uv?.voucher && !uv.is_used && new Date(uv?.voucher.end_at) >= now).length})
+            <span
+              style={{
+                color: tab === "unused" ? "#1890ff" : "#8c8c8c",
+                fontWeight: tab === "unused" ? 600 : 500,
+              }}
+            >
+              Chưa sử dụng (
+              {
+                userVouchers.filter(
+                  (uv) =>
+                    uv?.voucher &&
+                    !uv.is_used &&
+                    new Date(uv?.voucher.end_at) >= now
+                ).length
+              }
+              )
             </span>
-          } 
+          }
         />
-        <Tab 
-          eventKey="used" 
+        <Tab
+          eventKey="used"
           title={
-            <span style={{ 
-              color: tab === "used" ? "#1890ff" : "#8c8c8c",
-              fontWeight: tab === "used" ? 600 : 500
-            }}>
-              Đã sử dụng ({userVouchers.filter(uv => uv.is_used).length})
+            <span
+              style={{
+                color: tab === "used" ? "#1890ff" : "#8c8c8c",
+                fontWeight: tab === "used" ? 600 : 500,
+              }}
+            >
+              Đã sử dụng ({userVouchers.filter((uv) => uv.is_used).length})
             </span>
-          } 
+          }
         />
-        <Tab 
-          eventKey="expired" 
+        <Tab
+          eventKey="expired"
           title={
-            <span style={{ 
-              color: tab === "expired" ? "#1890ff" : "#8c8c8c",
-              fontWeight: tab === "expired" ? 600 : 500
-            }}>
-              Hết hạn ({userVouchers.filter(uv => uv?.voucher && new Date(uv?.voucher.end_at) < now).length})
+            <span
+              style={{
+                color: tab === "expired" ? "#1890ff" : "#8c8c8c",
+                fontWeight: tab === "expired" ? 600 : 500,
+              }}
+            >
+              Hết hạn (
+              {
+                userVouchers.filter(
+                  (uv) => uv?.voucher && new Date(uv?.voucher.end_at) < now
+                ).length
+              }
+              )
             </span>
-          } 
+          }
         />
       </Tabs>
 
       <div className="d-flex justify-content-between align-items-center mb-2">
         <span className="text-muted small">
-          Hiển thị: {Math.min(indexOfLast, filteredVouchers.length)} / {filteredVouchers.length} voucher
+          Hiển thị: {Math.min(indexOfLast, filteredVouchers.length)} /{" "}
+          {filteredVouchers.length} voucher
         </span>
       </div>
 
       <div className="voucher-list">
         {currentVouchers.length === 0 ? (
           <div className="text-center py-3">
-            <div className="mb-3" style={{ fontSize: "2rem" }}>📭</div>
+            <div className="mb-3" style={{ fontSize: "2rem" }}>
+              📭
+            </div>
             <p className="text-muted mb-0">Không có voucher nào phù hợp</p>
           </div>
         ) : (
@@ -193,7 +237,7 @@ const MyVoucher = () => {
               >
                 <Card.Body className="d-flex align-items-center justify-content-between px-3">
                   <div className="d-flex align-items-center flex-grow-1">
-                    <div 
+                    <div
                       className="d-flex align-items-center justify-content-center me-2"
                       style={{
                         width: "40px",
@@ -201,62 +245,61 @@ const MyVoucher = () => {
                         borderRadius: "8px",
                         backgroundColor: style.borderColor,
                         color: "#fff",
-                        fontSize: "1rem"
+                        fontSize: "1rem",
                       }}
                     >
                       {style.icon}
                     </div>
-                    
+
                     <div className="flex-grow-1">
                       <div className="d-flex align-items-center mb-1">
-                        <strong 
+                        <strong
                           className="me-2"
-                          style={{ 
+                          style={{
                             color: style.color,
                             fontSize: "1rem",
-                            fontWeight: 600
+                            fontWeight: 600,
                           }}
                         >
                           {v.code}
                         </strong>
                         {uv.is_used && (
-                          <Badge 
-                            bg="secondary" 
-                            style={{ fontSize: "0.7rem" }}
-                          >
+                          <Badge bg="secondary" style={{ fontSize: "0.7rem" }}>
                             Đã dùng
                           </Badge>
                         )}
                         {isExpired && (
-                          <Badge 
-                            bg="danger" 
-                            style={{ fontSize: "0.7rem" }}
-                          >
+                          <Badge bg="danger" style={{ fontSize: "0.7rem" }}>
                             Hết hạn
                           </Badge>
                         )}
-                        </div>
-                      
+                      </div>
+
                       <div className="d-flex align-items-center flex-wrap gap-2">
-                        <span 
+                        <span
                           className="small"
                           style={{ color: style.color, fontWeight: 500 }}
                         >
-                          {v.discount_type === "freeship" && v.freeship_amount 
+                          {v.discount_type === "freeship" && v.freeship_amount
                             ? `Freeship ${Number(v.freeship_amount).toLocaleString("vi-VN")}₫`
-                            : v.discount_type === "percent" && v.discount_percent
-                            ? `${v.discount_percent}%`
-                            : v.discount_type === "amount" && v.discount_amount
-                            ? `${Number(v.discount_amount).toLocaleString("vi-VN")}₫`
-                            : "—"}
+                            : v.discount_type === "percent" &&
+                                v.discount_percent
+                              ? `${v.discount_percent}%`
+                              : v.discount_type === "amount" &&
+                                  v.discount_amount
+                                ? `${Number(v.discount_amount).toLocaleString("vi-VN")}₫`
+                                : "—"}
                         </span>
-                        
+
                         <small className="text-muted">
-                          Đơn tối thiểu: {v.min_order_value 
-                            ? Number(v.min_order_value).toLocaleString("vi-VN") + "₫" 
+                          Đơn tối thiểu:{" "}
+                          {v.min_order_value
+                            ? Number(v.min_order_value).toLocaleString(
+                                "vi-VN"
+                              ) + "₫"
                             : "Không yêu cầu"}
                         </small>
-                        
+
                         <small className="text-muted">
                           Hết hạn: {endDate.toLocaleDateString("vi-VN")}
                         </small>
@@ -272,7 +315,7 @@ const MyVoucher = () => {
                       style={{
                         borderRadius: "6px",
                         fontSize: "0.8rem",
-                        padding: "4px 12px"
+                        padding: "4px 12px",
                       }}
                     >
                       Chi tiết
@@ -289,13 +332,13 @@ const MyVoucher = () => {
       {totalPages > 1 && (
         <div className="d-flex justify-content-center mt-4">
           <Pagination className="mb-0">
-            <Pagination.Prev 
+            <Pagination.Prev
               onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
               disabled={currentPage === 1}
-              style={{ 
+              style={{
                 border: "1px solid #d9d9d9",
                 borderRadius: "6px",
-                margin: "0 2px"
+                margin: "0 2px",
               }}
             />
             {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
@@ -309,16 +352,16 @@ const MyVoucher = () => {
               } else {
                 page = currentPage - 2 + i;
               }
-              
+
               return (
                 <Pagination.Item
                   key={page}
                   active={page === currentPage}
                   onClick={() => handlePageChange(page)}
-                  style={{ 
+                  style={{
                     border: "1px solid #d9d9d9",
                     borderRadius: "6px",
-                    margin: "0 2px"
+                    margin: "0 2px",
                   }}
                 >
                   {page}
@@ -330,23 +373,25 @@ const MyVoucher = () => {
                 <Pagination.Ellipsis style={{ margin: "0 2px" }} />
                 <Pagination.Item
                   onClick={() => handlePageChange(totalPages)}
-                  style={{ 
+                  style={{
                     border: "1px solid #d9d9d9",
                     borderRadius: "6px",
-                    margin: "0 2px"
+                    margin: "0 2px",
                   }}
                 >
                   {totalPages}
                 </Pagination.Item>
               </>
             )}
-            <Pagination.Next 
-              onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
+            <Pagination.Next
+              onClick={() =>
+                handlePageChange(Math.min(totalPages, currentPage + 1))
+              }
               disabled={currentPage === totalPages}
-              style={{ 
+              style={{
                 border: "1px solid #d9d9d9",
                 borderRadius: "6px",
-                margin: "0 2px"
+                margin: "0 2px",
               }}
             />
           </Pagination>
@@ -354,8 +399,8 @@ const MyVoucher = () => {
       )}
 
       {/* Modal chi tiết voucher */}
-      <Modal 
-        show={showDetailModal} 
+      <Modal
+        show={showDetailModal}
         onHide={() => setShowDetailModal(false)}
         size="lg"
       >
@@ -369,69 +414,112 @@ const MyVoucher = () => {
             <Table bordered responsive>
               <tbody>
                 <tr>
-                  <td><strong>Mã voucher:</strong></td>
+                  <td>
+                    <strong>Mã voucher:</strong>
+                  </td>
                   <td>{selectedVoucher.voucher.code}</td>
                 </tr>
                 <tr>
-                  <td><strong>Tên:</strong></td>
-                  <td>{selectedVoucher.voucher.name || selectedVoucher.voucher.title}</td>
-                </tr>
-                <tr>
-                  <td><strong>Loại:</strong></td>
                   <td>
-                    {selectedVoucher.voucher.discount_type === "freeship" ? "Freeship" :
-                     selectedVoucher.voucher.discount_type === "percent" ? "Phần trăm" :
-                     selectedVoucher.voucher.discount_type === "amount" ? "Số tiền" : "Không xác định"}
+                    <strong>Tên:</strong>
+                  </td>
+                  <td>
+                    {selectedVoucher.voucher.name ||
+                      selectedVoucher.voucher.title}
                   </td>
                 </tr>
                 <tr>
-                  <td><strong>Giá trị:</strong></td>
                   <td>
-                    {selectedVoucher.voucher.discount_type === "freeship" && selectedVoucher.voucher.freeship_amount 
+                    <strong>Loại:</strong>
+                  </td>
+                  <td>
+                    {selectedVoucher.voucher.discount_type === "freeship"
+                      ? "Freeship"
+                      : selectedVoucher.voucher.discount_type === "percent"
+                        ? "Phần trăm"
+                        : selectedVoucher.voucher.discount_type === "amount"
+                          ? "Số tiền"
+                          : "Không xác định"}
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>Giá trị:</strong>
+                  </td>
+                  <td>
+                    {selectedVoucher.voucher.discount_type === "freeship" &&
+                    selectedVoucher.voucher.freeship_amount
                       ? `Freeship ${Number(selectedVoucher.voucher.freeship_amount).toLocaleString("vi-VN")}₫`
-                      : selectedVoucher.voucher.discount_type === "percent" && selectedVoucher.voucher.discount_percent
-                      ? `${selectedVoucher.voucher.discount_percent}%`
-                      : selectedVoucher.voucher.discount_type === "amount" && selectedVoucher.voucher.discount_amount
-                      ? `${Number(selectedVoucher.voucher.discount_amount).toLocaleString("vi-VN")}₫`
-                      : "—"}
+                      : selectedVoucher.voucher.discount_type === "percent" &&
+                          selectedVoucher.voucher.discount_percent
+                        ? `${selectedVoucher.voucher.discount_percent}%`
+                        : selectedVoucher.voucher.discount_type === "amount" &&
+                            selectedVoucher.voucher.discount_amount
+                          ? `${Number(selectedVoucher.voucher.discount_amount).toLocaleString("vi-VN")}₫`
+                          : "—"}
                   </td>
                 </tr>
                 <tr>
-                  <td><strong>Đơn tối thiểu:</strong></td>
                   <td>
-                    {selectedVoucher.voucher.min_order_value 
-                      ? Number(selectedVoucher.voucher.min_order_value).toLocaleString("vi-VN") + "₫" 
+                    <strong>Đơn tối thiểu:</strong>
+                  </td>
+                  <td>
+                    {selectedVoucher.voucher.min_order_value
+                      ? Number(
+                          selectedVoucher.voucher.min_order_value
+                        ).toLocaleString("vi-VN") + "₫"
                       : "Không yêu cầu"}
                   </td>
                 </tr>
                 <tr>
-                  <td><strong>Hạn sử dụng:</strong></td>
                   <td>
-                    {new Date(selectedVoucher.voucher.start_at).toLocaleDateString("vi-VN")} →{" "}
-                    {new Date(selectedVoucher.voucher.end_at).toLocaleDateString("vi-VN")}
+                    <strong>Hạn sử dụng:</strong>
+                  </td>
+                  <td>
+                    {new Date(
+                      selectedVoucher.voucher.start_at
+                    ).toLocaleDateString("vi-VN")}{" "}
+                    →{" "}
+                    {new Date(
+                      selectedVoucher.voucher.end_at
+                    ).toLocaleDateString("vi-VN")}
                   </td>
                 </tr>
                 <tr>
-                  <td><strong>Số lượng:</strong></td>
                   <td>
-                    {selectedVoucher.quantity && selectedVoucher.used_count !== undefined 
-                      ? (selectedVoucher.quantity - selectedVoucher.used_count) + "/" + selectedVoucher.quantity
+                    <strong>Số lượng:</strong>
+                  </td>
+                  <td>
+                    {selectedVoucher.quantity &&
+                    selectedVoucher.used_count !== undefined
+                      ? selectedVoucher.quantity -
+                        selectedVoucher.used_count +
+                        "/" +
+                        selectedVoucher.quantity
                       : "—" + "/" + (selectedVoucher.quantity || "—")}
                   </td>
                 </tr>
                 <tr>
-                  <td><strong>Trạng thái sử dụng:</strong></td>
                   <td>
-                    <Badge bg={selectedVoucher.is_used ? "secondary" : "success"}>
+                    <strong>Trạng thái sử dụng:</strong>
+                  </td>
+                  <td>
+                    <Badge
+                      bg={selectedVoucher.is_used ? "secondary" : "success"}
+                    >
                       {selectedVoucher.is_used ? "Đã sử dụng" : "Chưa sử dụng"}
                     </Badge>
                   </td>
                 </tr>
                 <tr>
-                  <td><strong>Ngày nhận:</strong></td>
                   <td>
-                    {selectedVoucher.created_at 
-                      ? new Date(selectedVoucher.created_at).toLocaleDateString("vi-VN")
+                    <strong>Ngày nhận:</strong>
+                  </td>
+                  <td>
+                    {selectedVoucher.created_at
+                      ? new Date(selectedVoucher.created_at).toLocaleDateString(
+                          "vi-VN"
+                        )
                       : "Không có thông tin"}
                   </td>
                 </tr>
@@ -440,10 +528,7 @@ const MyVoucher = () => {
           )}
         </Modal.Body>
         <Modal.Footer>
-          <Button 
-            variant="secondary" 
-            onClick={() => setShowDetailModal(false)}
-          >
+          <Button variant="secondary" onClick={() => setShowDetailModal(false)}>
             Đóng
           </Button>
         </Modal.Footer>
@@ -452,4 +537,4 @@ const MyVoucher = () => {
   );
 };
 
-export default MyVoucher; 
+export default MyVoucher;

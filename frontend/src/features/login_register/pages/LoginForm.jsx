@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   Box,
   Paper,
@@ -35,13 +35,13 @@ export default function LoginForm() {
   const navigate = useNavigate();
   const { fetchCart } = useCart();
   const { login } = useAuth();
+  const location = useLocation();
 
   // State quản lý form
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [userProfile, setUserProfile] = useState(null);
 
   // State quản lý modal
   const [showRegister, setShowRegister] = useState(false);
@@ -93,7 +93,15 @@ export default function LoginForm() {
 
       if (result.success) {
         await fetchCart();
-        navigate("/"); // Điều hướng về trang chủ
+
+        const params = new URLSearchParams(location.search);
+        const redirectPath = params.get("redirect");
+
+        if (redirectPath) {
+          navigate(redirectPath);
+        } else {
+          navigate("/"); // hoặc navigateByRole nếu Google trả về role
+        }
       } else {
         throw new Error(result.error || "Xử lý Google login thất bại");
       }
@@ -121,9 +129,17 @@ export default function LoginForm() {
         throw new Error(data.error || "Đăng nhập Facebook thất bại");
       }
 
-      await googleLogin(data); // hoặc login(data)
+      await googleLogin(data);
       await fetchCart();
-      navigate("/");
+
+      const params = new URLSearchParams(location.search);
+      const redirectPath = params.get("redirect");
+
+      if (redirectPath) {
+        navigate(redirectPath);
+      } else {
+        navigate("/"); // hoặc navigateByRole
+      }
     } catch (error) {
       console.error("Facebook login error:", error);
       alert(error.message);
@@ -140,7 +156,16 @@ export default function LoginForm() {
       const result = await login(username, password);
       if (result.success) {
         await fetchCart();
-        navigateByRole(result.role);
+
+        // 👇 Lấy redirect từ URL
+        const params = new URLSearchParams(location.search);
+        const redirectPath = params.get("redirect");
+
+        if (redirectPath) {
+          navigate(redirectPath); // Chuyển đến trang yêu cầu
+        } else {
+          navigateByRole(result.role); // Điều hướng theo vai trò
+        }
       } else {
         setError(result.error || "Đăng nhập thất bại, vui lòng thử lại.");
       }
@@ -163,19 +188,33 @@ export default function LoginForm() {
           }}
         >
           {/* Bên trái: Logo + Tiêu đề */}
-          <div className="d-flex align-items-center gap-3">
+
+          <Link
+            to="/"
+            style={{
+              textDecoration: "none",
+              display: "flex",
+              alignItems: "center",
+              gap: "12px",
+            }}
+          >
             <img
               src="/assets/logo/defaultLogo.png"
-              alt="AgroMart"
-              style={{ width: 40, height: 40, objectFit: "cover" }}
+              alt="GreenFarm"
+              style={{
+                width: 40,
+                height: 40,
+                objectFit: "cover",
+                cursor: "pointer",
+              }}
             />
             <Typography
               variant="h6"
-              sx={{ fontWeight: "bold", color: "#4caf50" }}
+              sx={{ fontWeight: "bold", color: "#4caf50", cursor: "pointer" }}
             >
               GreenFarm
             </Typography>
-          </div>
+          </Link>
 
           {/* Bên phải: Các icon hỗ trợ */}
           <div className="d-flex align-items-center gap-3">
@@ -365,10 +404,7 @@ export default function LoginForm() {
                 >
                   <GoogleLoginButton onSuccess={handleGoogleLogin} />
                 </div>
-                <div
-                  className="col-12 col-sm-6 d-flex align-items-center justify-content-start "
-      
-                >
+                <div className="col-12 col-sm-6 d-flex align-items-center justify-content-start ">
                   <div>
                     <FacebookLoginButton onSuccess={handleFacebookLogin} />
                   </div>

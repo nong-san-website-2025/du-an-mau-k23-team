@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { productApi } from "../../features/products/services/productApi.js";
 import "../../styles/home/PersonalizedSections.css";
+import { intcomma } from './../../utils/format';
 
 const PersonalizedSection = () => {
   const navigate = useNavigate();
@@ -47,7 +48,7 @@ const PersonalizedSection = () => {
               </div>
             ))
           : displayedProducts.map((product) => (
-              <div key={product.id} className="col-6 col-md-3 col-lg-2">
+              <div key={product.id} className="col-6 col-md-3 col-lg-2 product-card">
                 <div
                   className="position-relative rounded-3 overflow-hidden shadow-sm"
                   style={{
@@ -70,7 +71,7 @@ const PersonalizedSection = () => {
                     src={product.image || "https://via.placeholder.com/300x300?text=No+Image"}
                     alt={product.name}
                     className="w-100 h-100"
-                    style={{ objectFit: "cover" }}
+                    style={{ objectFit: "contain" }}
                   />
 
                   {/* Overlay: Giá & Số đã bán */}
@@ -78,7 +79,7 @@ const PersonalizedSection = () => {
                     {/* Giá - góc dưới trái */}
                     <div className="bg-white bg-opacity-90 rounded px-1">
                       <span className="text-danger fw-bold" style={{ fontSize: "0.85rem" }}>
-                        {product.price?.toLocaleString()}đ
+                        {intcomma(product.price)}đ 
                       </span>
                     </div>
 

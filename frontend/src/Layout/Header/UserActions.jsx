@@ -2,9 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Search, Heart, ShoppingCart, User, Bell } from "lucide-react";
 import "../../styles/layouts/header/UserActions.css";
-import axiosInstance from "../../features/admin/services/axiosInstance";
 import { Avatar, Button, Dropdown, Menu } from "antd";
-import { ShoppingCartOutlined } from "@ant-design/icons";
 
 export default function UserActions({
   greenText,
@@ -25,6 +23,8 @@ export default function UserActions({
   sellerStatus,
 }) {
   const navigate = useNavigate();
+
+  const isUserLoggedIn = !!localStorage.getItem("token");
 
   // Lấy thông báo từ localStorage và sắp xếp giống NotificationPage
   const getNotifications = () => {
@@ -85,10 +85,18 @@ export default function UserActions({
   const sortedNotifications = useMemo(() => {
     const arr = [...(unified || [])];
     arr.sort((a, b) => {
-      const ta = Number.isFinite(a?.ts) ? a.ts : (a?.time ? new Date(a.time).getTime() : 0);
-      const tb = Number.isFinite(b?.ts) ? b.ts : (b?.time ? new Date(b.time).getTime() : 0);
+      const ta = Number.isFinite(a?.ts)
+        ? a.ts
+        : a?.time
+          ? new Date(a.time).getTime()
+          : 0;
+      const tb = Number.isFinite(b?.ts)
+        ? b.ts
+        : b?.time
+          ? new Date(b.time).getTime()
+          : 0;
       if (tb !== ta) return tb - ta; // newest first by numeric timestamp
-      return String(b?.id ?? '').localeCompare(String(a?.id ?? ''));
+      return String(b?.id ?? "").localeCompare(String(a?.id ?? ""));
     });
     return arr;
   }, [unified]);
@@ -143,8 +151,13 @@ export default function UserActions({
               const { markAsRead } = await import(
                 "../../features/users/services/notificationService"
               );
-              markAsRead(userId, (sortedNotifications || []).map((n) => n.id));
-              setUnified((prev) => (prev || []).map((n) => ({ ...n, read: true })));
+              markAsRead(
+                userId,
+                (sortedNotifications || []).map((n) => n.id)
+              );
+              setUnified((prev) =>
+                (prev || []).map((n) => ({ ...n, read: true }))
+              );
             } catch {}
             navigate("/notifications");
           }}
@@ -304,8 +317,13 @@ export default function UserActions({
                         const { markAsRead } = await import(
                           "../../features/users/services/notificationService"
                         );
-                        markAsRead(userId, (sortedNotifications || []).map((n) => n.id));
-                        setUnified((prev) => (prev || []).map((n) => ({ ...n, read: true })));
+                        markAsRead(
+                          userId,
+                          (sortedNotifications || []).map((n) => n.id)
+                        );
+                        setUnified((prev) =>
+                          (prev || []).map((n) => ({ ...n, read: true }))
+                        );
                       } catch {}
                       navigate("/notifications");
                     }}
@@ -456,7 +474,7 @@ export default function UserActions({
       </div>
 
       {/* User profile or login button */}
-      {userProfile && userProfile.id ? (
+      {isUserLoggedIn ? (
         <Dropdown
           overlay={
             <Menu
@@ -474,9 +492,9 @@ export default function UserActions({
                 style={{ padding: 12, background: "#f0fdf4" }}
               >
                 <div style={{ textAlign: "center" }}>
-                  {userProfile.avatar ? (
+                  {userProfile?.avatar ? (
                     <Avatar
-                      src={userProfile.avatar}
+                      src={userProfile?.avatar}
                       size={48}
                       style={{
                         border: "2px solid #22C55E",
@@ -524,7 +542,9 @@ export default function UserActions({
 
               {/* Đơn hàng */}
               <Menu.Item key="orders">
-                <Link style={{textDecoration: 'none'}} to="/orders">Đơn hàng của tôi</Link>
+                <Link style={{ textDecoration: "none" }} to="/orders">
+                  Đơn hàng của tôi
+                </Link>
               </Menu.Item>
 
               {/* Cửa hàng */}
@@ -541,7 +561,7 @@ export default function UserActions({
               >
                 <Link
                   to={storeName ? "/seller-center" : "/register-seller"}
-                  style={{ color: "#fff", textDecoration: "none"  }}
+                  style={{ color: "#fff", textDecoration: "none" }}
                 >
                   {storeName
                     ? "Cửa hàng của tôi"
@@ -583,18 +603,22 @@ export default function UserActions({
               padding: 0,
             }}
           >
-            {userProfile.avatar ? (
+            {userProfile?.avatar ? (
               <Avatar
-                src={userProfile.avatar}
+                src={userProfile?.avatar}
                 size={32}
                 style={{ border: "2px solid #eee" }}
               />
             ) : (
+              // Trong phần hiển thị avatar
               <Avatar
                 style={{ backgroundColor: "#16a34a", fontWeight: "bold" }}
                 size={32}
               >
-                {localStorage.getItem("username")?.[0]?.toUpperCase() || ""}
+                {localStorage.getItem("username")?.[0]?.toUpperCase() ||
+                  localStorage.getItem("first_name")?.[0]?.toUpperCase() ||
+                  "U"}{" "}
+                {/* 👈 Fallback cuối cùng */}
               </Avatar>
             )}
           </Button>
@@ -609,7 +633,7 @@ export default function UserActions({
             background: "transparent",
             border: "none",
             boxShadow: "none",
-            textDecoration:"none"
+            textDecoration: "none",
           }}
         >
           <User size={22} className="text-white" />

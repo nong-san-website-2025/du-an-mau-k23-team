@@ -71,6 +71,12 @@ function ProfilePage() {
   /** -------------------- API Calls -------------------- **/
 
   const fetchProfile = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setUser(null);
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       const res = await API.get("users/me/");
@@ -104,6 +110,8 @@ function ProfilePage() {
   };
 
   const fetchAddresses = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
     try {
       const res = await API.get("users/addresses/");
       setAddresses(res.data);
@@ -154,6 +162,13 @@ function ProfilePage() {
   /** -------------------- Lifecycle -------------------- **/
 
   useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setLoading(false);
+      setUser(null);
+      return;
+    }
+
     fetchProfile();
     const tabParam = searchParams.get("tab");
     if (tabParam) setActiveTab(tabParam);
@@ -161,6 +176,9 @@ function ProfilePage() {
 
   // Fetch addresses once on mount so profile has default address available
   useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
     fetchAddresses();
   }, []);
 
@@ -170,14 +188,15 @@ function ProfilePage() {
   }, [activeTab]);
 
   useEffect(() => {
-    if (activeTab === "wallet") {
-      setLoadingWallet(true);
-      refreshWalletBalance().finally(() => setLoadingWallet(false));
+    const token = localStorage.getItem("token");
+    if (!token || activeTab !== "wallet") return;
 
-      const interval = setInterval(checkWalletNotifications, 30000);
-      checkWalletNotifications();
-      return () => clearInterval(interval);
-    }
+    setLoadingWallet(true);
+    refreshWalletBalance().finally(() => setLoadingWallet(false));
+
+    const interval = setInterval(checkWalletNotifications, 30000);
+    checkWalletNotifications();
+    return () => clearInterval(interval);
   }, [activeTab]);
 
   // Open modals via events from child component buttons
@@ -335,7 +354,7 @@ function ProfilePage() {
       await API.patch(`users/addresses/${id}/set_default/`);
       // Optional: revalidate in background to keep fresh data without blocking UI
       fetchAddresses();
-      toast.success("Đã thay đổi địa chỉ mặc đỊnh", {theme: "light"});
+      toast.success("Đã thay đổi địa chỉ mặc đỊnh", { theme: "light" });
       const redirect = new URLSearchParams(window.location.search).get(
         "redirect"
       );
@@ -343,7 +362,7 @@ function ProfilePage() {
     } catch {
       // Revert on failure
       fetchAddresses();
-      toast.error("Không thể đặt địa chỉ mặc định!", {theme: "light"});
+      toast.error("Không thể đặt địa chỉ mặc định!", { theme: "light" });
     }
   };
 
@@ -531,11 +550,41 @@ function ProfilePage() {
             )}
             {activeTab === "password" && <ChangePassword />}
             {activeTab === "notification" && <NotificationSettings />}
-            {activeTab === "voucher" && <div style={{ fontSize: 16, marginBottom: 10, color: accentColor }}><VoucherList /></div>}
-            {activeTab === "myvoucher" && <div style={{ fontSize: 16, marginBottom: 10, color: accentColor }}><MyVoucher /></div>}
-            {activeTab === "point" && <div style={{ fontSize: 16, marginBottom: 10, color: "#FFD700" }}><Rewards /></div>}
-            {activeTab === "special" && <div style={{ fontSize: 16, marginBottom: 10, color: "#D32F2F" }}>Chức năng ưu đãi đặc biệt sẽ được bổ sung.</div>}
-            {activeTab === "wallet" && <WalletTab walletBalance={walletBalance} loadingWallet={loadingWallet} rechargeAmount={rechargeAmount} setRechargeAmount={setRechargeAmount} rechargeLoading={rechargeLoading} rechargeError={rechargeError} handleRecharge={handleRecharge} />}
+            {activeTab === "voucher" && (
+              <div
+                style={{ fontSize: 16, marginBottom: 10, color: accentColor }}
+              >
+                <VoucherList />
+              </div>
+            )}
+            {activeTab === "myvoucher" && (
+              <div
+                style={{ fontSize: 16, marginBottom: 10, color: accentColor }}
+              >
+                <MyVoucher />
+              </div>
+            )}
+            {activeTab === "point" && (
+              <div style={{ fontSize: 16, marginBottom: 10, color: "#FFD700" }}>
+                <Rewards />
+              </div>
+            )}
+            {activeTab === "special" && (
+              <div style={{ fontSize: 16, marginBottom: 10, color: "#D32F2F" }}>
+                Chức năng ưu đãi đặc biệt sẽ được bổ sung.
+              </div>
+            )}
+            {activeTab === "wallet" && (
+              <WalletTab
+                walletBalance={walletBalance}
+                loadingWallet={loadingWallet}
+                rechargeAmount={rechargeAmount}
+                setRechargeAmount={setRechargeAmount}
+                rechargeLoading={rechargeLoading}
+                rechargeError={rechargeError}
+                handleRecharge={handleRecharge}
+              />
+            )}
           </Card>
         </Col>
       </Row>

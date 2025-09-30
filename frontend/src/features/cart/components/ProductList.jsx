@@ -1,17 +1,22 @@
 // src/features/cart/components/ProductList.jsx
 import React from "react";
 import { Typography, Button, Empty } from "antd";
+import { useNavigate } from "react-router-dom";
 
 const { Text } = Typography;
 
 const ProductList = ({ cartItems, onEditCart }) => {
   const selectedItems = cartItems.filter((item) => item.selected);
 
+  const navigate = useNavigate();
+
   if (selectedItems.length === 0) {
     return (
       <div style={{ textAlign: "center", padding: 20 }}>
         <Empty
-          description={<Text type="danger">Không có sản phẩm nào được chọn</Text>}
+          description={
+            <Text type="danger">Không có sản phẩm nào được chọn</Text>
+          }
         />
         <Button type="primary" style={{ marginTop: 10 }} onClick={onEditCart}>
           Quay lại giỏ hàng
@@ -58,13 +63,19 @@ const ProductList = ({ cartItems, onEditCart }) => {
 
         {/* Product rows */}
         {selectedItems.map((item) => {
-          const product = item.product || {};
-          const price = product.price || 0;
-          const total = price * item.quantity;
+          // ✅ SỬA DÒNG NÀY: ƯU TIÊN product_data (dành cho guest)
+          const product =
+            item.product_data ||
+            (typeof item.product === "object" ? item.product : {}) ||
+            {};
+
+          // ✅ Xử lý price là chuỗi (guest) hoặc số (server)
+          const price = parseFloat(product.price) || 0;
+          const total = price * (item.quantity || 0);
 
           return (
             <div
-              key={product.id}
+              key={product.id || item.product}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -82,13 +93,19 @@ const ProductList = ({ cartItems, onEditCart }) => {
                     height: 50,
                     objectFit: "cover",
                     borderRadius: 4,
+                    cursor: "pointer",
                   }}
+                  onClick={() => navigate(`/products/${product.id}`)}
+
                 />
               </div>
 
               {/* Tên sản phẩm */}
-              <div style={{ flex: 2, paddingLeft: 10 }}>
-                <Text strong>{product.name || `SP #${product.id}`}</Text>
+              <div style={{ flex: 2, paddingLeft: 10, cursor: "pointer" }}  onClick={() => navigate(`/products/${product.id}`)}>
+                <Text strong>
+                  {product.name || `SP #${product.id || item.product}`}
+                </Text>
+                
               </div>
 
               {/* Đơn giá */}
@@ -102,7 +119,14 @@ const ProductList = ({ cartItems, onEditCart }) => {
               </div>
 
               {/* Thành tiền */}
-              <div style={{ flex: 1, textAlign: "right", color: "#2e7d32", fontWeight: "bold" }}>
+              <div
+                style={{
+                  flex: 1,
+                  textAlign: "right",
+                  color: "#2e7d32",
+                  fontWeight: "bold",
+                }}
+              >
                 {total.toLocaleString()}đ
               </div>
             </div>

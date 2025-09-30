@@ -43,7 +43,6 @@ const UserProductPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const PAGE_SIZE = 16;
 
-
   const filteredByCategory = useMemo(() => {
     if (!selectedCategory) return products;
     return products.filter((p) => p.category_name === selectedCategory);
@@ -88,7 +87,9 @@ const UserProductPage = () => {
             setSelectedCategory(byKey.name);
           } else {
             // Otherwise, try matching by name
-            const byNameExact = categoriesData.find((c) => c.name === categoryFromQuery);
+            const byNameExact = categoriesData.find(
+              (c) => c.name === categoryFromQuery
+            );
             if (byNameExact) {
               setSelectedCategory(byNameExact.name);
             } else {
@@ -110,11 +111,22 @@ const UserProductPage = () => {
 
   const handleAddToCart = async (e, product) => {
     e.stopPropagation();
+
+    // Helper: lấy product ID từ cart item
+    const getProductId = (item) => {
+      return (
+        item.product_data?.id ||
+        (item.product?.id !== undefined ? item.product.id : item.product)
+      );
+    };
+
     const existingItem = cartItems.find(
-      (i) => i.product === product.id || i.product_data?.id === product.id
+      (item) => String(getProductId(item)) === String(product.id)
     );
+
     if (existingItem) {
-      await updateQuantity(existingItem.id, existingItem.quantity + 1);
+      // ✅ LUÔN truyền product.id (productId), KHÔNG phải existingItem.id
+      await updateQuantity(product.id, existingItem.quantity + 1);
       message.success("Đã cập nhật số lượng trong giỏ hàng!");
       return;
     }
@@ -130,10 +142,10 @@ const UserProductPage = () => {
           product.image && product.image.startsWith("/")
             ? `http://localhost:8000${product.image}`
             : product.image?.startsWith("http")
-            ? product.image
-            : "",
+              ? product.image
+              : "",
       },
-      () => message.success("Đã cập nhật số lượng trong giỏ hàng!"),
+      () => message.success("Đã thêm sản phẩm vào giỏ hàng!"), // ✅ sửa lại message
       () => message.error("Không thể thêm vào giỏ hàng")
     );
   };
@@ -157,7 +169,14 @@ const UserProductPage = () => {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, selectedCategory, selectedSubcategory, selectedBrand, selectedLocation, priceRange]);
+  }, [
+    search,
+    selectedCategory,
+    selectedSubcategory,
+    selectedBrand,
+    selectedLocation,
+    priceRange,
+  ]);
 
   if (error) {
     return (
@@ -174,7 +193,7 @@ const UserProductPage = () => {
         <Space direction="vertical" style={{ width: "100%" }} size="middle">
           <Title level={5}>Bộ lọc</Title>
           <Select
-            placeholder="Danh mục" 
+            placeholder="Danh mục"
             value={selectedCategory || undefined}
             onChange={(value) => {
               setSelectedCategory(value);
@@ -235,13 +254,17 @@ const UserProductPage = () => {
               type="number"
               placeholder="Min"
               value={priceRange[0]}
-              onChange={(e) => setPriceRange([Number(e.target.value), priceRange[1]])}
+              onChange={(e) =>
+                setPriceRange([Number(e.target.value), priceRange[1]])
+              }
             />
             <Input
               type="number"
               placeholder="Max"
               value={priceRange[1]}
-              onChange={(e) => setPriceRange([priceRange[0], Number(e.target.value)])}
+              onChange={(e) =>
+                setPriceRange([priceRange[0], Number(e.target.value)])
+              }
             />
           </Space>
         </Space>
@@ -272,8 +295,8 @@ const UserProductPage = () => {
                           product.image && product.image.startsWith("/")
                             ? `http://localhost:8000${product.image}`
                             : product.image?.startsWith("http")
-                            ? product.image
-                            : "https://via.placeholder.com/400x300?text=No+Image"
+                              ? product.image
+                              : "https://via.placeholder.com/400x300?text=No+Image"
                         }
                         style={{ height: 160, objectFit: "cover" }}
                       />
@@ -297,9 +320,19 @@ const UserProductPage = () => {
                           <Text style={{ marginLeft: 4 }} type="secondary">
                             ({product.review_count || 0})
                           </Text>
-                          <div style={{ marginTop: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <div
+                            style={{
+                              marginTop: 8,
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                            }}
+                          >
                             <Text type="danger" strong>
-                              {Math.round(product.price)?.toLocaleString("vi-VN")} VNĐ
+                              {Math.round(product.price)?.toLocaleString(
+                                "vi-VN"
+                              )}{" "}
+                              VNĐ
                             </Text>
                             <Button
                               className="custom-btn"
@@ -316,7 +349,13 @@ const UserProductPage = () => {
                 </Col>
               ))}
             </Row>
-            <div style={{ display: "flex", justifyContent: "center", marginTop: 16 }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                marginTop: 16,
+              }}
+            >
               <Pagination
                 current={currentPage}
                 pageSize={PAGE_SIZE}

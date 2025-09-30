@@ -41,36 +41,35 @@ const CheckoutPage = () => {
     wardCode: undefined,
   });
 
-  const orderTotal = cartItems.reduce(
-    (sum, item) => sum + item.price * item.quantity,
-    0
-  );
-
   const [discount, setDiscount] = useState(0);
 
   const [payment, setPayment] = useState("Thanh toán khi nhận hàng");
   const [isLoading, setIsLoading] = useState(false);
 
   const handleApplyVoucher = async (code) => {
-  if (!code) {
-    setDiscount(0);
-    setVoucherCode("");
-    return;
-  }
-  try {
-    const res = await applyVoucher(code, total); // gọi API apply_voucher
-    console.log("Voucher API response:", res);
+    const token = localStorage.getItem("token");
+    if (!token) {
+      return;
+    }
 
-    setDiscount(res?.discount || 0);   // 👈 lấy đúng key discount
-    setVoucherCode(code);
-  } catch (err) {
-    console.error("Apply voucher error:", err.response?.data || err.message);
-    setDiscount(0);
-    setVoucherCode("");
-    message.error("Mã voucher không hợp lệ hoặc đã hết hạn!");
-  }
-};
+    if (!code) {
+      setDiscount(0);
+      setVoucherCode("");
+      return;
+    }
+    try {
+      const res = await applyVoucher(code, total); // gọi API apply_voucher
+      console.log("Voucher API response:", res);
 
+      setDiscount(res?.discount || 0); // 👈 lấy đúng key discount
+      setVoucherCode(code);
+    } catch (err) {
+      console.error("Apply voucher error:", err.response?.data || err.message);
+      setDiscount(0);
+      setVoucherCode("");
+      message.error("Mã voucher không hợp lệ hoặc đã hết hạn!");
+    }
+  };
 
   // Lấy địa chỉ đã chọn
   const selectedAddress = useMemo(() => {
@@ -79,26 +78,19 @@ const CheckoutPage = () => {
     return addr;
   }, [addresses, selectedAddressId]);
 
-  // Tổng tiền gốc
   const total = useMemo(() => {
     return cartItems
       .filter((item) => item.selected)
-      .reduce(
-        (sum, item) => sum + (item.product?.price || 0) * (item.quantity || 0),
-        0
-      );
+      .reduce((sum, item) => {
+        const product = item.product_data || item.product || {};
+        const price = parseFloat(product.price) || 0;
+        return sum + price * (parseInt(item.quantity) || 0);
+      }, 0);
   }, [cartItems]);
-
   // Tổng tiền sau giảm giá
   const totalAfterDiscount = Math.max(total + shippingFee - discount, 0);
 
   useEffect(() => {
-    console.log("🚚 useEffect calculate shipping fee triggered");
-    console.log("manualEntry:", manualEntry);
-    console.log("geoManual:", geoManual);
-    console.log("selectedAddress:", selectedAddress);
-    console.log("cartItems length:", cartItems.length);
-
     // Auto-switch to manual entry if selected address lacks GHN IDs
     if (
       selectedAddress &&
@@ -123,9 +115,6 @@ const CheckoutPage = () => {
           ? String(selectedAddress.ward_code).trim()
           : undefined;
 
-      console.log("📍 to_district_id:", to_district_id);
-      console.log("📍 to_ward_code:", to_ward_code);
-
       // SỬA: Kiểm tra cả district_code và ward_code
       if (!to_district_id || !to_ward_code) {
         console.log("🚫 Thiếu quận/huyện hoặc phường/xã → không gọi API");
@@ -139,7 +128,7 @@ const CheckoutPage = () => {
 
       const totalWeight = cartItems
         .filter((item) => item.selected)
-        .reduce((sum, item) => sum + (item.quantity || 0) * 500, 0);
+        .reduce((sum, item) => sum + (parseInt(item.quantity) || 0) * 500, 0);
 
       try {
         const payload = {
@@ -173,14 +162,17 @@ const CheckoutPage = () => {
   }, [manualEntry, geoManual, selectedAddress, cartItems]);
 
   // Fetch danh sách địa chỉ
+  // Fetch danh sách địa chỉ (chỉ khi đã đăng nhập)
   useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) return; // 👈 DỪNG nếu chưa đăng nhập
+
     const fetchAddresses = async () => {
       try {
         const res = await API.get("users/addresses/");
         const list = res.data || [];
         setAddresses(list);
 
-        // Nếu có địa chỉ mặc định -> set
         const def = list.find((a) => a.is_default);
         if (def) {
           setSelectedAddressId(def.id);
@@ -199,6 +191,21 @@ const CheckoutPage = () => {
 
   // Xử lý đặt hàng
   const handleOrder = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      // Hiển thị toast
+      toast.info("Vui lòng đăng nhập để tiếp tục đặt hàng!", {
+        position: "bottom-right",
+        autoClose: 3000, // 3 giây
+      });
+
+      // Sau 3s, chuyển đến trang login và lưu redirect
+      setTimeout(() => {
+        navigate("/login?redirect=/checkout");
+      }, 3500);
+
+      return;
+    }
     if (cartItems.filter((i) => i.selected).length === 0)
       return toast.error("Giỏ hàng trống!");
 
@@ -238,11 +245,14 @@ const CheckoutPage = () => {
           : selectedAddress?.ward_code,
         items: cartItems
           .filter((it) => it.selected)
-          .map((item) => ({
-            product: item.product?.id || item.product,
-            quantity: parseInt(item.quantity),
-            price: parseFloat(item.product?.price),
-          })),
+          .map((item) => {
+            const product = item.product_data || item.product || {};
+            return {
+              product: product.id || item.product, // ID sản phẩm
+              quantity: parseInt(item.quantity) || 1,
+              price: parseFloat(product.price) || 0,
+            };
+          }),
       };
 
       await API.post("orders/", orderData);
@@ -257,6 +267,10 @@ const CheckoutPage = () => {
   };
 
   const handleSaveManualAddress = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      return;
+    }
     if (!geoManual.provinceId || !geoManual.districtId || !geoManual.wardCode) {
       toast.error("Vui lòng chọn đầy đủ Tỉnh/Quận/Phường trước khi lưu!");
       return;
@@ -273,13 +287,10 @@ const CheckoutPage = () => {
       is_default: false, // hoặc true nếu muốn set mặc định
     };
 
-    console.log("📤 Gửi payload lưu địa chỉ:", payload);
-
     try {
       const res = await API.post("users/addresses/", payload);
 
       const savedAddress = res.data;
-      console.log("✅ Địa chỉ đã lưu:", savedAddress);
 
       // Cập nhật danh sách địa chỉ
       setAddresses((prev) => [...prev, savedAddress]);
@@ -293,11 +304,18 @@ const CheckoutPage = () => {
   };
 
   return (
-    <div style={{ padding: 24, maxWidth: 800, margin: "0 auto" }}>
+    <div style={{ padding: 24, maxWidth: "100%", margin: "0 190px" }}>
       <Title level={2}>Thanh toán đơn hàng</Title>
+      {/* Danh sách sản phẩm */}
+      <Card style={{ marginBottom: 24, borderRadius: 4 }}>
+        <ProductList
+          cartItems={cartItems}
+          onEditCart={() => navigate("/cart")}
+        />
+      </Card>
 
       {/* Address + Form */}
-      <Card style={{ marginBottom: 24 }}>
+      <Card style={{ marginBottom: 24, borderRadius: 4 }}>
         <AddressSelector
           addresses={addresses}
           selectedAddressId={selectedAddressId}
@@ -308,21 +326,19 @@ const CheckoutPage = () => {
         />
       </Card>
 
-      {/* Danh sách sản phẩm */}
-      <Card style={{ marginBottom: 24 }}>
-        <ProductList
-          cartItems={cartItems}
-          onEditCart={() => navigate("/cart")}
-        />
-      </Card>
-
       {/* Voucher */}
-      <Card style={{ marginBottom: 24 }}>
-        <VoucherSection total={total} onApply={handleApplyVoucher} />
+      <Card style={{ marginBottom: 24, borderRadius: 4 }}>
+        {!localStorage.getItem("token") ? (
+          <div style={{ padding: "12px", color: "#faad14" }}>
+            💡 Đăng nhập để sử dụng voucher giảm giá!
+          </div>
+        ) : (
+          <VoucherSection total={total} onApply={handleApplyVoucher} />
+        )}
       </Card>
 
       {/* Payment Method */}
-      <Card style={{ marginBottom: 24 }}>
+      <Card style={{ marginBottom: 24, borderRadius: 4 }}>
         <Text strong>Phương thức thanh toán:</Text>
         <Select
           style={{ width: "100%", marginTop: 8 }}
@@ -340,7 +356,6 @@ const CheckoutPage = () => {
       </Card>
 
       {/* Total + Button */}
-      {/* Total + Button */}
       <Card>
         <div
           style={{
@@ -348,6 +363,7 @@ const CheckoutPage = () => {
             justifyContent: "space-between",
             alignItems: "stretch", // giữ chiều cao hai bên bằng nhau
             gap: 24,
+            borderRadius: 4,
           }}
         >
           {/* Bên trái: Chi tiết thanh toán */}

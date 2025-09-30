@@ -48,6 +48,16 @@ export default function SearchResultsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const PAGE_SIZE = 16;
 
+  const getProductIdFromCartItem = (item) => {
+    // Ưu tiên product_data.id (nếu có)
+    if (item.product_data?.id != null) return item.product_data.id;
+    // Nếu product là object
+    if (item.product?.id != null) return item.product.id;
+    // Nếu product là số nguyên hoặc chuỗi
+    if (item.product != null) return item.product;
+    return null;
+  };
+
   // Load categories + products + search
   useEffect(() => {
     const fetchData = async () => {
@@ -147,15 +157,22 @@ export default function SearchResultsPage() {
 
   const handleAddToCart = async (e, product) => {
     e.stopPropagation();
+
     const existingItem = cartItems.find(
-      (i) => i.product === product.id || i.product_data?.id === product.id
+      (item) => String(getProductIdFromCartItem(item)) === String(product.id)
     );
+
     if (existingItem) {
-      await updateQuantity(existingItem.id, existingItem.quantity + 1);
+      // 👉 Cập nhật số lượng
+      await updateQuantity(
+        existingItem.id || existingItem.product,
+        existingItem.quantity + 1
+      );
       message.success("Đã cập nhật số lượng trong giỏ hàng!");
       return;
     }
 
+    // 👉 Thêm mới
     await addToCart(
       product.id,
       1,
@@ -163,11 +180,10 @@ export default function SearchResultsPage() {
         id: product.id,
         name: product.name,
         price: product.price,
-        image:
-          product.image && product.image.startsWith("/")
+        image: product.image?.startsWith("http")
+          ? product.image
+          : product.image?.startsWith("/")
             ? `http://localhost:8000${product.image}`
-            : product.image?.startsWith("http")
-            ? product.image
             : "",
       },
       () => message.success("Đã thêm sản phẩm vào giỏ hàng!"),
@@ -282,7 +298,9 @@ export default function SearchResultsPage() {
             </Title>
             <Row gutter={[16, 16]} className="mb-4">
               {sellers.length === 0 ? (
-                <Text type="secondary">Không tìm thấy cửa hàng nào phù hợp.</Text>
+                <Text type="secondary">
+                  Không tìm thấy cửa hàng nào phù hợp.
+                </Text>
               ) : (
                 sellers.map((seller) => (
                   <Col xs={24} sm={12} md={8} lg={6} key={seller.id}>
@@ -321,14 +339,7 @@ export default function SearchResultsPage() {
               <>
                 <Row gutter={[16, 16]}>
                   {paginatedProducts.map((product) => (
-                    <Col
-                      key={product.id}
-                      xs={24}
-                      sm={12}
-                      md={12}
-                      lg={8}
-                      xl={6}
-                    >
+                    <Col key={product.id} xs={24} sm={12} md={12} lg={8} xl={6}>
                       <Card
                         hoverable
                         cover={
@@ -338,8 +349,8 @@ export default function SearchResultsPage() {
                               product.image && product.image.startsWith("/")
                                 ? `http://localhost:8000${product.image}`
                                 : product.image?.startsWith("http")
-                                ? product.image
-                                : "https://via.placeholder.com/400x300?text=No+Image"
+                                  ? product.image
+                                  : "https://via.placeholder.com/400x300?text=No+Image"
                             }
                             style={{ height: 160, objectFit: "cover" }}
                           />
