@@ -7,7 +7,6 @@ import { adminRoutes } from "./routes/AdminRoutes";
 import { sellerRoutes } from "./routes/SellerRoutes.jsx";
 import VerifyEmailPage from "./features/login_register/components/VerifyEmailPage.jsx";
 import VnpayReturn from "./pages/VnpayReturn";
-import ShippingEstimator from "./pages/ShippingEsimator.jsx";
 
 
 function App() {

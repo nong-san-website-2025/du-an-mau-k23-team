@@ -17,7 +17,6 @@ import {
   WalletOutlined,
   LoadingOutlined,
 } from "@ant-design/icons";
-import WalletNotifications from "./WalletNotifications";
 
 const { Title, Text } = Typography;
 
@@ -116,9 +115,6 @@ export default function WalletTab({
           </Col>
         </Row>
       </Card>
-
-      {/* Thông báo các yêu cầu đang chờ xử lý */}
-      <WalletNotifications />
 
       {/* Nạp tiền */}
       <Title

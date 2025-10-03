@@ -1,14 +1,27 @@
-// FlashSaleList.jsx
 import React, { useEffect, useState } from 'react';
 import FlashSaleItem from './FlashSaleItem';
 import api from '../../features/login_register/services/api';
 import { Carousel } from 'antd';
-import '../../styles/home/FlashSaleList.css';
 import CountdownTimer from './CountdownTimer';
+import '../../styles/home/FlashSaleList.css';
+
+const FlashSaleItemSkeleton = () => (
+  <div
+    className="flash-sale-item-skeleton"
+    style={{
+      width: '100%',
+      height: '200px',
+      borderRadius: 8,
+      background: 'linear-gradient(90deg, #e0e0e0 25%, #f0f0f0 50%, #e0e0e0 75%)',
+      backgroundSize: '200% 100%',
+      animation: 'shimmer 1.5s infinite',
+    }}
+  />
+);
 
 const FlashSaleList = () => {
   const [flashItems, setFlashItems] = useState([]);
-  const [globalCountdown, setGlobalCountdown] = useState(null);
+  const [endTime, setEndTime] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -16,29 +29,30 @@ const FlashSaleList = () => {
       try {
         const res = await api.get('/promotions/flash-sales/');
         const sales = res.data || [];
-
-        if (sales.length === 0) {
+        if (!sales.length) {
           setFlashItems([]);
-          setGlobalCountdown(null);
+          setEndTime(null);
           return;
         }
 
         const currentFlash = sales[0];
-        const items = (currentFlash.flashsale_products || []).map(product => ({
-          ...product,
+        const items = (currentFlash.flashsale_products || []).map(p => ({
+          ...p,
           flash_sale_id: currentFlash.id,
         }));
 
-        setFlashItems(items);
+        setFlashItems(prev => {
+          const prevIds = prev.map(i => i.product_id).join(',');
+          const newIds = items.map(i => i.product_id).join(',');
+          if (prevIds === newIds) return prev;
+          return items;
+        });
 
-        const endTime = new Date(currentFlash.end_time);
-        const now = new Date();
-        const remainingSecs = Math.max(0, Math.floor((endTime - now) / 1000));
-        setGlobalCountdown(remainingSecs);
+        setEndTime(currentFlash.end_time);
       } catch (err) {
-        console.error("Failed to load flash sales", err);
+        console.error('Failed to load flash sales', err);
         setFlashItems([]);
-        setGlobalCountdown(null);
+        setEndTime(null);
       } finally {
         setLoading(false);
       }
@@ -49,67 +63,62 @@ const FlashSaleList = () => {
     return () => clearInterval(interval);
   }, []);
 
-  useEffect(() => {
-    if (globalCountdown === null || globalCountdown <= 0) return;
-    const timer = setInterval(() => {
-      setGlobalCountdown(prev => (prev > 0 ? prev - 1 : 0));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [globalCountdown]);
-
-  if (loading) return (
-    <div className="flash-sale-section py-5 bg-light">
-      <div className="container text-center">
-        <div className="spinner-border text-warning" role="status">
-          <span className="visually-hidden">Loading...</span>
-        </div>
-      </div>
-    </div>
-  );
-
-  if (flashItems.length === 0) return null;
+  const slidesToShow = Math.min(6, flashItems.length);
 
   return (
     <div className="flash-sale-section py-3">
       <div className="container">
-        {/* Tiêu đề + Countdown */}
+        {/* Header */}
         <div className="flash-sale-header d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 p-3 rounded-3 bg-white shadow-sm">
           <h2 className="mb-2 mb-md-0 text-primary fw-bold">
             ⚡ ĐẠI HẠ GIÁ — GIẢM SỐC TRONG VÀI GIỜ
           </h2>
-          <div className="mt-2 mt-md-0">
-            {globalCountdown !== null && (
+          {endTime && (
+            <div className="mt-2 mt-md-0">
               <div className="d-flex align-items-center">
                 <span className="me-2 text-muted fw-medium">Kết thúc sau:</span>
-                <CountdownTimer timeLeft={globalCountdown} />
+                <CountdownTimer endTime={endTime} />
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
         {/* Carousel */}
-        <Carousel
-          dots
-          arrows
-          infinite
-          slidesToShow={6}
-          slidesToScroll={1}
-          responsive={[
-            { breakpoint: 1200, settings: { slidesToShow: 3 } },
-            { breakpoint: 992, settings: { slidesToShow: 2 } },
-            { breakpoint: 576, settings: { slidesToShow: 1 } },
-          ]}
-          className="flash-sale-carousel"
-        >
-          {flashItems.map(item => (
-            <div key={`${item.flash_sale_id}-${item.product_id}`} className="px-0">
-              <FlashSaleItem flash={item} />
-            </div>
-          ))}
-        </Carousel>
+        {loading ? (
+          <Carousel dots slidesToShow={6} slidesToScroll={1} arrows>
+            {Array.from({ length: 6 }).map((_, idx) => (
+              <FlashSaleItemSkeleton key={idx} />
+            ))}
+          </Carousel>
+        ) : flashItems.length > 0 ? (
+          <Carousel
+            dots
+            arrows={flashItems.length > slidesToShow}
+            infinite={flashItems.length > slidesToShow}
+            slidesToShow={slidesToShow}
+            slidesToScroll={1}
+            responsive={[
+              { breakpoint: 1200, settings: { slidesToShow: Math.min(3, flashItems.length), arrows: flashItems.length > 3 } },
+              { breakpoint: 992, settings: { slidesToShow: Math.min(2, flashItems.length), arrows: flashItems.length > 2 } },
+              { breakpoint: 576, settings: { slidesToShow: 1, arrows: flashItems.length > 1 } },
+            ]}
+          >
+            {flashItems.map(item => (
+              <div key={`${item.flash_sale_id}-${item.product_id}`} className="px-1">
+                <FlashSaleItem flash={item} />
+              </div>
+            ))}
+          </Carousel>
+        ) : (
+          <p className="text-center text-muted">Không có flash sale hiện tại</p>
+        )}
       </div>
 
       <style jsx>{`
+        @keyframes shimmer {
+          0% { background-position: -200% 0; }
+          100% { background-position: 200% 0; }
+        }
         .flash-sale-section {
           background: linear-gradient(135deg, #f9f7f0 0%, #fff 100%);
         }
@@ -117,11 +126,8 @@ const FlashSaleList = () => {
           border: 1px solid #e0e0e0;
           background: white;
         }
-        .flash-sale-carousel .slick-slide {
-          padding: 0 8px;
-        }
-        .flash-sale-carousel .slick-list {
-          margin: 0 -8px;
+        .flash-sale-item-skeleton {
+          display: block;
         }
       `}</style>
     </div>

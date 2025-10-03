@@ -1,7 +1,23 @@
 // components/CountdownTimer.jsx
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 
-const CountdownTimer = ({ timeLeft }) => {
+const CountdownTimer = ({ endTime }) => {
+  const calculateTimeLeft = () => {
+    if (!endTime) return 0;
+    const diff = Math.floor((new Date(endTime) - new Date()) / 1000);
+    return Math.max(0, diff);
+  };
+
+  const [timeLeft, setTimeLeft] = useState(calculateTimeLeft());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTimeLeft(calculateTimeLeft());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [endTime]);
+
   const formatTime = (seconds) => {
     if (seconds <= 0) return { h: '00', m: '00', s: '00' };
     const h = Math.floor(seconds / 3600).toString().padStart(2, '0');
@@ -24,17 +40,14 @@ const CountdownTimer = ({ timeLeft }) => {
     <div className="flash-countdown d-flex align-items-center">
       <div className="flash-countdown-unit">
         <div className="flash-countdown-value">{h}</div>
-
       </div>
       <div className="flash-countdown-separator">:</div>
       <div className="flash-countdown-unit">
         <div className="flash-countdown-value">{m}</div>
-
       </div>
       <div className="flash-countdown-separator">:</div>
       <div className="flash-countdown-unit">
         <div className="flash-countdown-value">{s}</div>
-
       </div>
 
       <style jsx>{`
@@ -58,12 +71,6 @@ const CountdownTimer = ({ timeLeft }) => {
           padding: 4px 0;
           border-radius: 4px;
           box-shadow: inset 0 -2px 0 rgba(0,0,0,0.1);
-        }
-        .flash-countdown-label {
-          font-size: 0.7rem;
-          color: #5d4037;
-          margin-top: 2px;
-          text-transform: uppercase;
         }
         .flash-countdown-separator {
           font-size: 1.4rem;

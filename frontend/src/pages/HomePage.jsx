@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { Spin, Modal } from "antd"; // TODO: nâng cấp props theo khuyến cáo: dùng styles.body thay cho bodyStyle
 import BannerSlider from "../components/home/BannerSlider.jsx";
 import CategorySection from "../components/home/CategorySection.jsx";
@@ -71,7 +71,47 @@ export default function HomePage() {
       </Helmet>
 
       {/* Banner Carousel */}
-      <BannerSlider />
+      <div className="d-flex gap-0 mt-3 ">
+        {/* Bên trái: Carousel lớn */}
+        <div style={{ flex: 7 }}>
+          <BannerSlider />
+        </div>
+
+        {/* Bên phải: 2 banner nhỏ */}
+        <div
+          style={{
+            flex: 3,
+            display: "flex",
+            flexDirection: "column",
+            gap: "0px",
+          }}
+        >
+          <img
+            src=""
+            alt=""
+            style={{
+              width: "100%",
+              height: "150px",
+              objectFit: "cover",
+              borderRadius: 8,
+              cursor: "pointer",
+            }}
+            onClick={() => window.open("#", "_blank")}
+          />
+          <img
+            src=""
+            alt=""
+            style={{
+              width: "100%",
+              height: "150px",
+              objectFit: "cover",
+              borderRadius: 8,
+              cursor: "pointer",
+            }}
+            onClick={() => window.open("#", "_blank")}
+          />
+        </div>
+      </div>
 
       {/* Danh Mục Nổi Bật */}
       <CategorySection categories={categories} />
@@ -79,45 +119,53 @@ export default function HomePage() {
       <FlashSaleList />
 
       {/* Personalized Section */}
-      <PersonalizedSection username={username} />
+      <Suspense fallback={<Spin />}>
+        <PersonalizedSection username={username} />
+      </Suspense>
 
       {/* Popup Modal */}
-      <Modal
-        key={popupAds[0]?.id}
-        open={popupAds.length > 0}
-        footer={null}
-        closable
-        onCancel={() => setPopupAds([])}
-        centered
-        width="60vw"
-        style={{ top: 0, padding: 0, margin: 0 }}
-        styles={{
-          body: {
-            padding: 0,
-            margin: 0,
-            height: "60vh",
-            overflow: "hidden",
-            background: "transparent",
-          },
-        }}
-        className="full-screen-modal"
-      >
-        {popupAds.length > 0 && popupAds[0].image && (
-          <img
-            src={popupAds[0].image}
-            alt={popupAds[0].title}
-            onClick={() => window.open(popupAds[0].redirect_link, "_blank")}
-            style={{
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              display: "block",
-              borderRadius: 8,
-              cursor: "pointer",
-            }}
-          />
-        )}
-      </Modal>
+      {popupAds.length > 0 && (
+        <Modal
+          key={popupAds[0]?.id}
+          open={true} // modal chỉ render khi có banner active
+          footer={null}
+          closable
+          onCancel={() => setPopupAds([])}
+          centered
+          width="60vw"
+          style={{ top: 0, padding: 0, margin: 0 }}
+          styles={{
+            body: {
+              padding: 0,
+              margin: 0,
+              height: "60vh",
+              overflow: "hidden",
+              background: "transparent",
+            },
+          }}
+          className="full-screen-modal"
+        >
+          {popupAds[0]?.image && (
+            <img
+              src={popupAds[0].image}
+              alt={popupAds[0].title || "Popup Banner"}
+              loading="lazy" // <-- lazy load ảnh
+              onClick={() =>
+                popupAds[0].redirect_link &&
+                window.open(popupAds[0].redirect_link, "_blank")
+              }
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                display: "block",
+                borderRadius: 8,
+                cursor: "pointer",
+              }}
+            />
+          )}
+        </Modal>
+      )}
     </div>
   );
 }

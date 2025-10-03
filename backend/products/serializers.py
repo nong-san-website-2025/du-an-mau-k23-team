@@ -39,10 +39,9 @@ class ProductSerializer(serializers.ModelSerializer):
     discounted_price = serializers.ReadOnlyField()
     image = serializers.ImageField()
     store = SellerListSerializer(source='seller', read_only=True)
-    seller = serializers.PrimaryKeyRelatedField(read_only=True)   
-    sold_count = serializers.SerializerMethodField()  
-    
-
+    seller = serializers.PrimaryKeyRelatedField(read_only=True)
+    sold_count = serializers.SerializerMethodField()
+    discount_percent = serializers.IntegerField(read_only=False, required=False)  # ✅ thêm field này
 
     class Meta:
         model = Product
@@ -50,9 +49,10 @@ class ProductSerializer(serializers.ModelSerializer):
             'id', 'name', 'description', 'price', 'discounted_price', 'unit',
             'stock', 'image', 'rating', 'review_count', 'location', 'brand',
             'subcategory', 'seller_name', 'created_at', 'updated_at',
-            'category', 'store', 'status', 'seller', 'seller_name','sold_count'
+            'category', 'store', 'status', 'seller', 'sold_count', 'discount_percent'
         ]
         read_only_fields = ["status", "seller"]
+
 
     def get_image(self, obj):
         request = self.context.get('request')
@@ -95,6 +95,8 @@ class ProductListSerializer(serializers.ModelSerializer):
     seller = serializers.PrimaryKeyRelatedField(read_only=True) 
     seller_name = serializers.SerializerMethodField()  # ✅ dùng SerializerMethodField
     sold_count = serializers.SerializerMethodField()
+    discount_percent = serializers.IntegerField(required=False)  # hoặc ReadOnlyField nếu chỉ đọc
+
 
 
     class Meta:
@@ -103,7 +105,7 @@ class ProductListSerializer(serializers.ModelSerializer):
             'id', 'name', 'price', 'unit', 'image', 
             'rating', 'review_count',
             'location', 'brand', 'category_name', 'subcategory_name', 
-            'category_id', 'subcategory', 'description', 'stock', 'status', 'created_at', 'updated_at', 'seller', 'seller_name', 'sold_count'
+            'category_id', 'subcategory', 'description', 'stock', 'status', 'created_at', 'updated_at', 'seller', 'seller_name', 'sold_count', 'discount_percent'
         ]
         read_only_fields = ["id", "created_at", "updated_at", "seller"]
 

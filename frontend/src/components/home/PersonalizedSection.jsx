@@ -1,106 +1,127 @@
-// components/PersonalizedSection.jsx
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useInView } from "react-intersection-observer";
 import { productApi } from "../../features/products/services/productApi.js";
 import "../../styles/home/PersonalizedSections.css";
-import { intcomma } from './../../utils/format';
+import { intcomma } from "./../../utils/format";
 
-const PersonalizedSection = () => {
+const PersonalizedSection = ({ username }) => {
   const navigate = useNavigate();
   const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
 
-  const handleViewAll = () => {
-    navigate("/products");
-  };
+  // useInView hook
+  const { ref, inView } = useInView({
+    triggerOnce: true, // chỉ trigger 1 lần
+    rootMargin: "0px 0px 200px 0px",
+  });
 
   useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const data = await productApi.getAllProducts();
-        setProducts(data || []);
-      } catch (error) {
-        console.error("❌ Lỗi tải sản phẩm gợi ý:", error.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProducts();
-  }, []);
+    if (inView && !hasLoaded) {
+      const fetchProducts = async () => {
+        setLoading(true);
+        try {
+          const data = await productApi.getAllProducts();
+          setProducts(data || []);
+          setHasLoaded(true);
+        } catch (error) {
+          console.error("❌ Lỗi tải sản phẩm gợi ý:", error.message);
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchProducts();
+    }
+  }, [inView, hasLoaded]);
 
   const displayedProducts = products.slice(0, 18);
 
   return (
-    <div className="bg-white px-4 py-3 rounded-3 shadow-sm mt-1 w-100">
+    <div ref={ref} className="bg-white px-4 py-3 shadow-sm mt-1 w-100">
       <h2 className="fs-5 fw-bold mb-3">Gợi ý cho bạn</h2>
 
       <div className="row g-3">
         {loading
           ? Array.from({ length: 18 }).map((_, index) => (
               <div key={index} className="col-6 col-md-3 col-lg-2">
-                <div
-                  className="rounded-3 placeholder-glow"
-                  style={{ height: "220px" }}
-                >
+                <div className="placeholder-glow" style={{ height: "220px" }}>
                   <span className="placeholder w-100 h-100 rounded-3 d-block"></span>
                 </div>
               </div>
             ))
           : displayedProducts.map((product) => (
-              <div key={product.id} className="col-6 col-md-3 col-lg-2 product-card">
+              <div key={product.id} className="col-6 col-md-3 col-lg-2 ">
                 <div
-                  className="position-relative rounded-3 overflow-hidden shadow-sm"
+                  className="position-relative overflow-hidden shadow-sm product-card"
                   style={{
-                    height: "220px",
                     cursor: "pointer",
+                    height: "240px",
                     transition: "transform 0.2s, box-shadow 0.2s",
                   }}
                   onClick={() => navigate(`/products/${product.id}`)}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.transform = "translateY(-4px)";
-                    e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.12)";
+                    e.currentTarget.style.boxShadow =
+                      "0 4px 12px rgba(0,0,0,0.12)";
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.transform = "none";
-                    e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.1)";
+                    e.currentTarget.style.boxShadow =
+                      "0 1px 3px rgba(0,0,0,0.1)";
                   }}
                 >
-                  {/* Ảnh sản phẩm - full */}
                   <img
-                    src={product.image || "https://via.placeholder.com/300x300?text=No+Image"}
+                    src={product.image || ""}
                     alt={product.name}
-                    className="w-100 h-100"
-                    style={{ objectFit: "contain" }}
+                    className="w-100 h-100 product-img"
+                    style={{ objectFit: "cover" }}
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.style.display = "none";
+
+                      const parent = e.target.parentNode;
+                      parent.style.position = "relative";
+
+                      const noImageDiv = document.createElement("div");
+                      noImageDiv.innerText = "No image";
+                      noImageDiv.style.position = "absolute";
+                      noImageDiv.style.top = "0";
+                      noImageDiv.style.left = "0";
+                      noImageDiv.style.width = "100%";
+                      noImageDiv.style.height = "100%";
+                      noImageDiv.style.display = "flex";
+                      noImageDiv.style.alignItems = "center";
+                      noImageDiv.style.justifyContent = "center";
+                      noImageDiv.style.backgroundColor =
+                        "linear-gradient(90deg, #e0e0e0 25%, #f0f0f0 50%, #e0e0e0 75%)"; // xanh nhạt
+                      noImageDiv.style.color = "#9d9d9dff"; // chữ xanh đậm nổi bật
+                      noImageDiv.style.fontWeight = "bold";
+                      noImageDiv.style.fontSize = "16px";
+                      noImageDiv.style.borderRadius = "8px";
+
+                      parent.appendChild(noImageDiv);
+                    }}
                   />
 
-                  {/* Overlay: Giá & Số đã bán */}
-                  <div className="position-absolute bottom-0 start-0 end-0 d-flex justify-content-between px-2 py-1">
-                    {/* Giá - góc dưới trái */}
-                    <div className="bg-white bg-opacity-90 rounded px-1">
-                      <span className="text-danger fw-bold" style={{ fontSize: "0.85rem" }}>
-                        {intcomma(product.price)}đ 
-                      </span>
+                  {/* Tag giảm giá */}
+                  {product.discount_percent > 0 && (
+                    <div className="discount-tag">
+                      -{product.discount_percent}%
                     </div>
+                  )}
 
-                    {/* Số đã bán - góc dưới phải */}
-                    <div className="bg-black bg-opacity-50 text-white rounded px-1">
-                      <span style={{ fontSize: "0.75rem" }}>
+                  <div className="overlay">
+                    <p className="product-name" title={product.name}>
+                      {product.name}
+                    </p>
+                    <div className="overlay-bottom">
+                      <span className="price">{intcomma(product.price)}đ</span>
+                      <span className="sold">
                         {product.sold_count || 0} đã bán
                       </span>
                     </div>
                   </div>
-                </div>
-
-                {/* Tên sản phẩm - bên dưới card */}
-                <div className="mt-2">
-                  <p
-                    className="text-truncate mb-0 fw-medium"
-                    title={product.name}
-                    style={{ fontSize: "0.9rem", lineHeight: 1.3 }}
-                  >
-                    {product.name}
-                  </p>
                 </div>
               </div>
             ))}
@@ -110,7 +131,7 @@ const PersonalizedSection = () => {
         <div className="mt-3 text-center">
           <button
             className="btn btn-outline-secondary btn-sm px-4 py-2 fw-medium"
-            onClick={handleViewAll}
+            onClick={() => navigate("/products")}
             style={{ borderRadius: "8px" }}
           >
             Xem thêm

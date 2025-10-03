@@ -214,7 +214,10 @@ class FlashSaleListView(generics.ListCreateAPIView):
             is_active=True,
             start_time__lte=now_t,
             end_time__gt=now_t
-        ).select_related('product')
+        ).prefetch_related(
+            'flashsale_products__product'
+        )
+
 
 
 # -------------------------
