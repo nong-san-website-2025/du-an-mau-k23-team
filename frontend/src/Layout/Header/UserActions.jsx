@@ -522,10 +522,7 @@ export default function UserActions({
                       color: "#16a34a",
                     }}
                   >
-                    {userProfile?.full_name ||
-                      localStorage.getItem("first_name") ||
-                      userProfile?.username ||
-                      localStorage.getItem("username")}
+                    {userProfile?.full_name || "___"}
                   </div>
                   <Button
                     type="default"

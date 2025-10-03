@@ -7,6 +7,10 @@
 import axiosInstance from "../../admin/services/axiosInstance";
 import API from "../../login_register/services/api";
 
+// Cache for notifications to prevent continuous fetching
+const notificationCache = new Map();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes in milliseconds
+
 // Helpers
 const safeToDateString = (v) => {
   try {
@@ -207,33 +211,33 @@ async function fetchOrderNotifications() {
 }
 
 // Wallet top-up -> notifications
-async function fetchWalletNotifications() {
-  try {
-    const res = await API.get("/wallet/my-topup-requests/");
-    const list = Array.isArray(res.data) ? res.data : [];
-    return list
-      .filter((r) => ["approved", "rejected"].includes((r.status || "").toLowerCase()))
-      .map((r) => {
-        const status = (r.status || "").toLowerCase();
-        const approved = status === "approved";
-        return {
-          id: `wallet-${r.id}`,
-          type: "wallet",
-          message: approved
-            ? `Yêu cầu nạp ${formatVND(r.amount)} đã được duyệt`
-            : `Yêu cầu nạp ${formatVND(r.amount)} đã bị từ chối`,
-          detail: approved ? "Số dư ví đã được cộng." : "Vui lòng kiểm tra lại thông tin hoặc liên hệ hỗ trợ.",
-          time: safeToDateString(r.processed_at || r.updated_at || r.created_at),
-          ts: (() => { try { const t = new Date(r.processed_at || r.updated_at || r.created_at).getTime(); return Number.isFinite(t) ? t : 0; } catch { return 0; } })(),
-          read: false,
-          userId: r.user || undefined,
-          thumbnail: null,
-        };
-      });
-  } catch {
-    return [];
-  }
-}
+// async function fetchWalletNotifications() {
+//   try {
+//     const res = await API.get("/wallet/my-topup-requests/");
+//     const list = Array.isArray(res.data) ? res.data : [];
+//     return list
+//       .filter((r) => ["approved", "rejected"].includes((r.status || "").toLowerCase()))
+//       .map((r) => {
+//         const status = (r.status || "").toLowerCase();
+//         const approved = status === "approved";
+//         return {
+//           id: `wallet-${r.id}`,
+//           type: "wallet",
+//           message: approved
+//             ? `Yêu cầu nạp ${formatVND(r.amount)} đã được duyệt`
+//             : `Yêu cầu nạp ${formatVND(r.amount)} đã bị từ chối`,
+//           detail: approved ? "Số dư ví đã được cộng." : "Vui lòng kiểm tra lại thông tin hoặc liên hệ hỗ trợ.",
+//           time: safeToDateString(r.processed_at || r.updated_at || r.created_at),
+//           ts: (() => { try { const t = new Date(r.processed_at || r.updated_at || r.created_at).getTime(); return Number.isFinite(t) ? t : 0; } catch { return 0; } })(),
+//           read: false,
+//           userId: r.user || undefined,
+//           thumbnail: null,
+//         };
+//       });
+//   } catch {
+//     return [];
+//   }
+// }
 
 // Vouchers -> notifications (claimed, and expiring within 3 days)
 async function fetchVoucherNotifications() {
@@ -329,22 +333,42 @@ async function fetchReviewReplyNotifications(userId) {
 }
 
 export async function fetchUnifiedNotifications(userId) {
+  const cacheKey = `notifications_${userId || 'guest'}`;
+  const now = Date.now();
+
+  // Check cache
+  if (notificationCache.has(cacheKey)) {
+    const cached = notificationCache.get(cacheKey);
+    if (now - cached.timestamp < CACHE_TTL) {
+      return cached.data;
+    }
+  }
+
+  // Fetch fresh data
   const [complaint, orders, wallet, vouchers, reviewReplies] = await Promise.all([
     fetchComplaintNotifications(userId),
     fetchOrderNotifications(),
-    fetchWalletNotifications(),
+    // fetchWalletNotifications(),
     fetchVoucherNotifications(),
     fetchReviewReplyNotifications(userId),
   ]);
 
   const all = [...complaint, ...orders, ...wallet, ...vouchers, ...reviewReplies];
   // Sort by numeric timestamp desc; fallback to parsed time; then id
-  return all.sort((a, b) => {
+  const sortedNotifications = all.sort((a, b) => {
     const ta = Number.isFinite(a?.ts) ? a.ts : (a?.time ? new Date(a.time).getTime() : 0);
     const tb = Number.isFinite(b?.ts) ? b.ts : (b?.time ? new Date(b.time).getTime() : 0);
     if (tb !== ta) return tb - ta;
     return String(b?.id ?? '').localeCompare(String(a?.id ?? ''));
   });
+
+  // Cache the result
+  notificationCache.set(cacheKey, {
+    data: sortedNotifications,
+    timestamp: now,
+  });
+
+  return sortedNotifications;
 }
 
 export default {

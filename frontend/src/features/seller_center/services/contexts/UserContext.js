@@ -16,6 +16,7 @@ export function UserProvider({ children }) {
     const newUser = {
       ...userData,
       isAuthenticated: true,
+      full_name: userData.full_name,
       is_seller: userData.role === "seller",
       is_admin: userData.role === "admin",
     };

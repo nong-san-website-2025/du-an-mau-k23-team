@@ -14,7 +14,8 @@ import useSellerStatus from "../services/hooks/useSellerStatus";
 import useSearch from "../services/hooks/useSearch";
 
 export default function Header({ shouldFetchProfile = true }) {
-  const userProfile = useUserProfile(shouldFetchProfile);
+  const userProfile = useUserProfile();
+
   const { cartItems } = useCart();
   const cartCount = cartItems.length;
   const navigate = useNavigate();
@@ -31,11 +32,18 @@ export default function Header({ shouldFetchProfile = true }) {
   } = useSearch();
 
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
-  const [showNotificationDropdown, setShowNotificationDropdown] = useState(false);
+  const [showNotificationDropdown, setShowNotificationDropdown] =
+    useState(false);
   const [showCartDropdown, setShowCartDropdown] = useState(false);
   const [hoveredDropdown, setHoveredDropdown] = useState(null);
 
-  const greenText = { color: "#4caf50", fontFamily: "Montserrat, Arial, sans-serif", fontWeight: 800 };
+  const greenText = {
+    color: "#4caf50",
+    fontFamily: "Montserrat, Arial, sans-serif",
+    fontWeight: 800,
+  };
+
+  console.log("👤 userProfile trong Header:", userProfile);
 
   const handleLogout = () => {
     localStorage.clear();
@@ -51,10 +59,29 @@ export default function Header({ shouldFetchProfile = true }) {
   return (
     <>
       <ToastContainer position="top-right" autoClose={2000} theme="colored" />
-      <header className="shadow-sm" style={{ position: "sticky", top: 0, zIndex: 999, fontFamily: "Montserrat, Arial, sans-serif", background: "#2E7D32", width: "100%" }}>
+      <header
+        className="shadow-sm"
+        style={{
+          position: "sticky",
+          top: 0,
+          zIndex: 999,
+          fontFamily: "Montserrat, Arial, sans-serif",
+          background: "#2E7D32",
+          width: "100%",
+        }}
+      >
         <TopBar />
-        <div className="border-bottom" style={{ background: "linear-gradient(to bottom, #2E7D32 0%, #4CAF50 100%)", padding: "0 120px" }}>
-          <div className="container-fluid d-flex align-items-center justify-content-between py-1 px-1" style={{ minHeight: "60px", flexWrap: "nowrap" }}>
+        <div
+          className="border-bottom"
+          style={{
+            background: "linear-gradient(to bottom, #2E7D32 0%, #4CAF50 100%)",
+            padding: "0 120px",
+          }}
+        >
+          <div
+            className="container-fluid d-flex align-items-center justify-content-between py-1 px-1"
+            style={{ minHeight: "60px", flexWrap: "nowrap" }}
+          >
             <Logo greenText={greenText} />
             <SearchBoxWithSuggestions
               search={search}
