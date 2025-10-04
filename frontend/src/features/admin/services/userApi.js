@@ -29,9 +29,12 @@ async function fetchWithAuth(url, options = {}) {
       res = await fetch(url, options);
     } else {
       // Refresh thất bại => logout
-      localStorage.removeItem("access_token");
-      localStorage.removeItem("refresh_token");
-      window.location.href = "/login";
+  localStorage.removeItem("access_token");
+  localStorage.removeItem("refresh_token");
+  localStorage.removeItem("username");
+  localStorage.removeItem("role");
+  localStorage.removeItem("first_name");
+  window.location.href = "/login";
       throw new Error("Phiên đăng nhập hết hạn, vui lòng đăng nhập lại");
     }
   }

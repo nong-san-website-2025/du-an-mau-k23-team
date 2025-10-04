@@ -9,6 +9,7 @@ import {
 import axios from "axios";
 import UserAddModal from "./UserAddModal";
 import { useTranslation } from "react-i18next";
+import { exportUsersToExcel, exportUsersToPDF } from "./Utils/exportUtils";
 
 import { ExclamationCircleOutlined } from "@ant-design/icons";
 
@@ -60,6 +61,33 @@ export default function UserTable({
     getCheckboxProps: (record) => ({
       disabled: record?.role?.name?.toLowerCase() === "admin",
     }),
+  };
+  const handleToggleUser = async (user) => {
+    console.log("Trạng thái hiện tại:", user.is_active);
+    try {
+      const res = await axios.patch(
+        `http://localhost:8000/api/users/${user.id}/toggle-active/`,
+        {},
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        }
+      );
+
+      console.log("Trạng thái sau khi toggle:", res.data.is_active);
+
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === user.id ? { ...u, is_active: res.data.is_active } : u
+        )
+      );
+
+      message.success(
+        res.data.is_active ? "Đã mở khóa tài khoản" : "Đã khóa tài khoản"
+      );
+    } catch (err) {
+      console.error(err);
+      message.error("Không thể thay đổi trạng thái user");
+    }
   };
 
   const handleDeleteUser = (user) => {
@@ -114,7 +142,7 @@ export default function UserTable({
       align: "center",
     },
     {
-      title: t("users_page.table.username"),
+      title: t("Tên người dùng"),
       dataIndex: "username",
       key: "username",
       width: 200,
@@ -129,7 +157,7 @@ export default function UserTable({
       ),
     },
     {
-      title: t("users_page.table.role"),
+      title: t("Vai trò"),
       key: "role",
       dataIndex: ["role", "name"],
       width: 120,
@@ -145,48 +173,89 @@ export default function UserTable({
       },
     },
     {
-      title: t("users_page.table.email"),
+      title: t("Email"),
       dataIndex: "email",
       key: "email",
       width: 200,
       sorter: (a, b) => (a.email || "").localeCompare(b.email || ""),
     },
     {
-      title: t("users_page.table.phone"),
+      title: t("Số điện thoại"),
       dataIndex: "phone",
       key: "phone",
       width: 140,
       sorter: (a, b) => (a.phone || "").localeCompare(b.phone || ""),
       render: (phone) => phone || t("no_phone"),
     },
+
     {
-      title: t("users_page.table.actions"),
-      key: "actions",
-      width: 100,
+      title: "Trạng thái",
+      key: "status",
+      width: 120,
+      align: "center",
+      render: (_, record) => (
+        <span
+          className={`badge ${record.is_active ? "bg-success" : "bg-danger"}`}
+        >
+          {record.is_active ? "Đang hoạt động" : "Đang khóa"}
+        </span>
+      ),
+    },
+    {
+      title: t("Hành động / Chi tiết"),
+      key: "actions_detail",
+      width: 140,
       align: "center",
       render: (_, record) => (
         <Dropdown
           menu={{
             items: [
               {
-                key: "detail",
+                key: "toggle",
                 label: (
-                  <span>
-                    <EyeOutlined className="me-2" />
-                    {t("Detail")}
+                  <span
+                    style={{
+                      color: record.is_active ? "orange" : "green",
+                      fontWeight: 500,
+                    }}
+                  >
+                    {record.is_active ? "Khóa tài khoản" : "Mở khóa tài khoản"}
                   </span>
                 ),
-                onClick: () => onShowDetail?.(record),
+                onClick: () => handleToggleUser(record),
               },
               {
                 key: "delete",
                 label: (
-                  <span style={{ color: "black" }}>
+                  <span
+                    style={{
+                      color: record.can_delete ? "red" : "gray",
+                      cursor: record.can_delete ? "pointer" : "not-allowed",
+                      opacity: record.can_delete ? 1 : 0.5,
+                    }}
+                  >
                     <DeleteOutlined className="me-2" />
                     {t("Delete")}
                   </span>
                 ),
-                onClick: () => handleDeleteUser(record),
+                disabled: !record.can_delete,
+                onClick: () => record.can_delete && handleDeleteUser(record),
+              },
+              {
+                key: "detail",
+                label: (
+                  <span
+                    style={{
+                      color: "blue",
+                      fontWeight: 500,
+                      cursor: "pointer",
+                    }}
+                    onClick={() => onShowDetail(record)}
+                  >
+                    <EyeOutlined className="me-2" />
+                    {t("Chi tiết")}
+                  </span>
+                ),
               },
             ],
           }}
@@ -200,6 +269,12 @@ export default function UserTable({
 
   return (
     <>
+      <div style={{ marginBottom: 16, display: "flex", gap: 8 }}>
+        <Button type="primary" onClick={() => exportUsersToExcel(users)}>
+          Xuất Excel
+        </Button>
+        <Button onClick={() => exportUsersToPDF(users)}>Xuất PDF</Button>
+      </div>
       <Table
         columns={columns}
         dataSource={filteredUsers}

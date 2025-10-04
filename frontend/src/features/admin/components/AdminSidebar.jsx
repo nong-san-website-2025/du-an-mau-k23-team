@@ -32,16 +32,16 @@ const Sidebar = () => {
         style={{ height: "100%", borderRight: 0 }}
       >
         <Menu.Item key="dashboard" icon={<HomeOutlined />}>
-          <Link to="/admin/">Dashboard</Link>
+          <Link to="/admin/">Tổng quan</Link>
         </Menu.Item>
 
         <Menu.SubMenu key="users" icon={<UserOutlined />} title="Người dùng">
           <Menu.Item key="users-list">
             <Link to="/admin/users">Quản lý người dùng</Link>
           </Menu.Item>
-          <Menu.Item key="roles">
+          {/* <Menu.Item key="roles">
             <Link to="/admin/roles">Phân quyền & vai trò</Link>
-          </Menu.Item>
+          </Menu.Item> */}
         </Menu.SubMenu>
 
         <Menu.SubMenu
@@ -50,10 +50,10 @@ const Sidebar = () => {
           title="Cửa hàng"
         >
           <Menu.Item key="/admin/sellers/business">
-            <Link to="/admin/sellers/business">Cửa hàng hoạt động/khóa</Link>
+            <Link to="/admin/sellers/business">Quản lý cửa hàng</Link>
           </Menu.Item>
           <Menu.Item key="/admin/sellers/approval">
-            <Link to="/admin/sellers/approval">Duyệt cửa hàng đăng ký</Link>
+            <Link to="/admin/sellers/approval">Duyệt cửa hàng</Link>
           </Menu.Item>
         </Menu.SubMenu>
 
@@ -82,10 +82,10 @@ const Sidebar = () => {
           title="Đơn hàng & Vận chuyển"
         >
           <Menu.Item key="/admin/orders">
-            <Link to="/admin/orders">{("Order_monitor")}</Link>
+            <Link to="/admin/orders">{("Quản lý đơn hàng")}</Link>
           </Menu.Item>
           <Menu.Item key="/admin/shipping">
-            <Link to="/admin/shipping">{("Shipping_partners")}</Link>
+            <Link to="/admin/shipping">{("Đối tác vận chuyển")}</Link>
           </Menu.Item>
         </Menu.SubMenu>
 
@@ -109,20 +109,27 @@ const Sidebar = () => {
         </Menu.SubMenu>
 
         <Menu.SubMenu
-          key="reports"
-          icon={<BarChartOutlined />}
-          title="Thống kê & Báo cáo"
-        >
-          <Menu.Item key="/admin/reports/revenue">
-            <Link to="/admin/reports/revenue">Doanh thu</Link>
-          </Menu.Item>
-          <Menu.Item key="/admin/reports/top-products">
-            <Link to="/admin/reports/top-products">Sản phẩm bán chạy</Link>
-          </Menu.Item>
-          <Menu.Item key="/admin/reports/cancel-rate">
-            <Link to="/admin/reports/cancel-rate">Tỉ lệ huỷ/hoàn đơn</Link>
-          </Menu.Item>
-        </Menu.SubMenu>
+              key="reports"
+              icon={<BarChartOutlined />}
+              title="Thống kê & Báo cáo"
+            >
+              <Menu.Item key="/admin/reports/revenue">
+                <Link to="/admin/reports/revenue">Doanh thu</Link>
+              </Menu.Item>
+              <Menu.Item key="/admin/reports/products">
+                <Link to="/admin/reports/products">Sản phẩm</Link>
+              </Menu.Item>
+              <Menu.Item key="/admin/reports/orders">
+                <Link to="/admin/reports/orders">Đơn hàng</Link>
+              </Menu.Item>
+              <Menu.Item key="/admin/reports/customers">
+                <Link to="/admin/reports/customers">Khách hàng</Link>
+              </Menu.Item>
+              <Menu.Item key="/admin/reports/agriculture">
+                <Link to="/admin/reports/agriculture">Nông sản</Link>
+              </Menu.Item>
+            </Menu.SubMenu>
+
 
           <Menu.SubMenu
             key="marketing"

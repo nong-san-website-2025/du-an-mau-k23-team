@@ -1,5 +1,10 @@
+// services/marketingService.js
 import API from "../../login_register/services/api.js";
 
-export const getBanners = () => API.get("/marketing/admin/banners/");
-export const getFlashSales = () => API.get("/marketing/flash-sales/");
-export const getVouchers = () => API.get("/marketing/vouchers/");
+// Banner
+export const getBanners = () => API.get("/marketing/banners/");
+
+// Flash Sale
+
+export const getBannersByPosition = (position) => 
+  API.get(`/marketing/banners/?position=${position}`);

@@ -1,0 +1,27 @@
+.product-card {
+  border-radius: 4px;
+  overflow: hidden;
+  transition: all 0.2s ease;
+  border: 0;
+  border: 1px solid #e0e0e0; /* sáng, không chói */
+}
+
+.product-card:hover {
+  transform: translateY(-5px);
+  border: 1px solid #4caf50 !important;
+  box-shadow: 0 0.5rem 1rem #00000026 !important;
+}
+
+.custom-btn {
+  background-color: #fff ; /* màu hover tùy chỉnh */
+  color: #4caf50;
+  border: 1px solid #4caf50 ;
+  width: 40px !important;
+  transition: all 0.6s ease;
+}
+
+.custom-btn:hover {
+  background-color: #4caf50 !important;
+  color: #fff !important;
+  border: none !important;
+}

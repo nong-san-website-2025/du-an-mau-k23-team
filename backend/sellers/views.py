@@ -8,14 +8,15 @@ from rest_framework import generics
 from .models import Seller
 from .serializers import SellerListSerializer, SellerDetailSerializer, SellerRegisterSerializer
 from rest_framework import viewsets, permissions
-from .models import Seller, Shop, Product, Order, Voucher
-from .serializers import SellerSerializer,  ShopSerializer, ProductSerializer, OrderSerializer, VoucherSerializer
+from .models import Seller, Shop, Product, Order, Voucher, SellerFollow
+from .serializers import SellerSerializer,  ShopSerializer, ProductSerializer, OrderSerializer, VoucherSerializer, SellerFollowSerializer
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.decorators import api_view
 from django.contrib.auth.models import User
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import action
+from django.shortcuts import get_object_or_404
 
 @api_view(["GET"])
 def search_sellers(request):
@@ -24,6 +25,7 @@ def search_sellers(request):
     sellers = Seller.objects.filter(store_name__icontains=q)[:20]
     serializer = SellerSerializer(sellers, many=True)
     return Response(serializer.data)
+
 class SellerRejectAPIView(APIView):
     def post(self, request, pk):
         try:
@@ -41,8 +43,6 @@ class SellerRejectAPIView(APIView):
         return Response(
             {"detail": "Seller rejected."}, status=drf_status.HTTP_200_OK
         )
-
-
 
 class SellerApproveAPIView(APIView):
     def post(self, request, pk):
@@ -90,8 +90,6 @@ class SellerLockAPIView(APIView):
         seller.save()
         return Response({"status": seller.status})
 
-
-
 class SellerListAPIView(generics.ListAPIView):
     serializer_class = SellerListSerializer
 
@@ -138,6 +136,7 @@ def available_users(request):
     # Chỉ lấy những user chưa có seller
     users = User.objects.exclude(id__in=existing_sellers).values("id", "username", "email")
     return Response(users)
+
 class SellerViewSet(viewsets.ModelViewSet):
     serializer_class = SellerSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -157,8 +156,7 @@ class SellerViewSet(viewsets.ModelViewSet):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
-    
+
 class SellerProductsAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -230,7 +228,6 @@ class ProductViewSet(viewsets.ModelViewSet):
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
-
 class SellerActivateAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -255,3 +252,50 @@ class SellerActivateAPIView(APIView):
             return Response({"detail": "Role 'seller' chưa tồn tại"}, status=400)
 
         return Response({"detail": "Cửa hàng đã được mở và hoạt động", "role": "seller"}, status=200)
+
+class FollowSellerAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, seller_id):
+        seller = get_object_or_404(Seller, pk=seller_id)
+        obj, created = SellerFollow.objects.get_or_create(user=request.user, seller=seller)
+        if created:
+            return Response({"detail": "Đã theo dõi"}, status=201)
+        return Response({"detail": "Đã theo dõi trước đó"}, status=200)
+
+    def delete(self, request, seller_id):
+        seller = get_object_or_404(Seller, pk=seller_id)
+        SellerFollow.objects.filter(user=request.user, seller=seller).delete()
+        return Response({"detail": "Đã hủy theo dõi"}, status=200)
+
+class MyFollowedSellersAPIView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = SellerListSerializer
+
+    def get_queryset(self):
+        # Lấy danh sách Seller mà user đang theo dõi, sắp xếp mới nhất
+        ids = SellerFollow.objects.filter(user=self.request.user).values_list("seller_id", flat=True)
+        return Seller.objects.filter(id__in=list(ids)).order_by("-created_at")
+
+class MyFollowersAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """
+        Danh sách người dùng đang theo dõi shop của tôi (nếu tôi là seller).
+        Trả về mảng user rút gọn: id, username, full_name, avatar.
+        """
+        seller = getattr(request.user, "seller", None)
+        if not seller:
+            return Response([], status=200)
+        qs = SellerFollow.objects.filter(seller=seller).select_related("user").order_by("-created_at")
+        data = [
+            {
+                "id": f.user.id,
+                "username": f.user.username,
+                "full_name": getattr(f.user, "full_name", "") or f.user.username,
+                "avatar": f.user.avatar.url if getattr(f.user, "avatar", None) else None,
+            }
+            for f in qs
+        ]
+        return Response(data)

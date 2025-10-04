@@ -1,309 +1,611 @@
 import React, { useEffect, useState } from "react";
-import dayjs from "dayjs";
-
 import {
   Table,
-  Input,
   Button,
   Modal,
   Form,
-  DatePicker,
+  Input,
   InputNumber,
   Select,
-  Tag,
+  DatePicker,
   Space,
-  Popconfirm,
+  Tag,
   message,
+  Row,
+  Col,
+  Dropdown,
+  Menu,
+  Descriptions,
 } from "antd";
+import { MoreOutlined } from "@ant-design/icons";
 import {
-  getPromotions,
-  createPromotion,
-  updatePromotion,
-  deletePromotion,
+  getPromotionsOverview,
+  getVoucher,
+  createVoucher,
+  updateVoucher,
+  deleteVoucher,
 } from "../../services/promotionServices";
-import { EditOutlined, DeleteOutlined } from "@ant-design/icons";
+import dayjs from "dayjs";
+import { getCategories } from "../../services/products";
 
 const { RangePicker } = DatePicker;
 
-const PromotionsPage = () => {
-  const [vouchers, setVouchers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [showModal, setShowModal] = useState(false);
-  const [editingVoucher, setEditingVoucher] = useState(null);
-
+export default function PromotionsPage() {
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [detail, setDetail] = useState(null);
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [form] = Form.useForm();
+  const [filterForm] = Form.useForm();
+  const [categories, setCategories] = useState([]);
+  const [allCategorySelected, setAllCategorySelected] = useState(false);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const data = await getPromotions();
-        setVouchers(data);
-      } catch (err) {
-        setError("Không thể tải dữ liệu khuyến mãi");
-      }
+    getCategories().then((res) => setCategories(res));
+  }, []);
+  // --- Fetch list with optional filters ---
+  const fetchData = async (filters = {}) => {
+    setLoading(true);
+    try {
+      const res = await getPromotionsOverview(filters);
+
+      const mapped = Array.isArray(res)
+        ? res.map((item) => ({
+            ...item,
+            title: item.title ?? item.name ?? "",
+            name: item.name ?? item.title ?? "",
+            start: item.start_at ?? item.start ?? item.start_date ?? null,
+            end: item.end_at ?? item.end ?? item.end_date ?? null,
+            description: item.description ?? item.note ?? "",
+            usage_limit: item.usage_limit ?? item.usageLimit ?? null,
+          }))
+        : [];
+
+      setData(mapped);
+    } catch (err) {
+      console.error("Fetch promotions error:", err);
+      message.error("Không thể tải danh sách khuyến mãi");
+    } finally {
       setLoading(false);
-    };
+    }
+  };
+
+  useEffect(() => {
     fetchData();
   }, []);
 
-  const handleCreateOrUpdate = async () => {
+  // --- Helpers ---
+  const extractId = (rawId) => {
+    if (!rawId) return rawId;
+    if (typeof rawId === "string" && rawId.includes("-")) {
+      const parts = rawId.split("-");
+      const last = parts[parts.length - 1];
+      return /^\d+$/.test(last) ? last : rawId;
+    }
+    return rawId;
+  };
+
+  // --- View detail ---
+  const handleViewDetail = async (record) => {
+    try {
+      const id = extractId(record.id);
+      const detailData = await getVoucher(id);
+
+      const normalized = {
+        ...detailData,
+        title: detailData.title ?? detailData.name ?? "",
+        description: detailData.description ?? detailData.note ?? "",
+        usage_limit: detailData.usage_limit ?? detailData.usageLimit ?? null,
+      };
+
+      setDetail(normalized);
+
+      form.setFieldsValue({
+        code: normalized.code,
+        title: normalized.title,
+        description: normalized.description,
+        usageLimit: normalized.usage_limit,
+        voucherType: normalized.voucher_type,
+        discountType: normalized.discount_type,
+        discountValue:
+          normalized.discount_percent ??
+          normalized.discount_amount ??
+          normalized.freeship_amount,
+        minOrderValue: normalized.min_order_value,
+        dateRange:
+          normalized.start_at && normalized.end_at
+            ? [dayjs(normalized.start_at), dayjs(normalized.end_at)]
+            : null,
+      });
+
+      setModalOpen(true);
+    } catch (err) {
+      console.error("Load detail error:", err);
+      message.error("Không tải được chi tiết voucher");
+    }
+  };
+
+  // --- Delete ---
+  const handleDelete = (record) => {
+    const id = extractId(record.id);
+    Modal.confirm({
+      title: "Xác nhận xóa",
+      content: "Bạn có chắc muốn xóa voucher này?",
+      okText: "Xóa",
+      okType: "danger",
+      cancelText: "Hủy",
+      onOk: async () => {
+        try {
+          await deleteVoucher(id);
+          message.success("Đã xóa voucher");
+          fetchData(filterForm.getFieldsValue());
+        } catch (err) {
+          console.error("Delete error:", err);
+          message.error("Không xóa được voucher");
+        }
+      },
+    });
+  };
+
+  // --- Create ---
+  const handleCreate = () => {
+    form.resetFields();
+    setDetail(null);
+    setModalOpen(true);
+  };
+
+  // --- Submit create/update ---
+  const handleSubmit = async () => {
     try {
       const values = await form.validateFields();
       const payload = {
         code: values.code,
-        campaign_name: values.campaign_name,
         title: values.title,
         description: values.description,
-        discount_percent: values.discount_percent,
-        min_order_value: values.min_order_value,
-        start_at: values.dateRange[0].toISOString(),
-        end_at: values.dateRange[1].toISOString(),
-        scope: values.scope,
+        usage_limit: values.usageLimit,
+        voucher_type: values.voucherType,
+        discount_percent:
+          values.voucherType === "normal" && values.discountType === "percent"
+            ? values.discountValue
+            : null,
+        discount_amount:
+          values.voucherType === "normal" && values.discountType === "amount"
+            ? values.discountValue
+            : null,
+        freeship_amount:
+          values.voucherType === "freeship" ? values.discountValue : null,
+        min_order_value: values.minOrderValue,
+        start_at: values.dateRange ? values.dateRange[0].toISOString() : null,
+        end_at: values.dateRange ? values.dateRange[1].toISOString() : null,
+        active: true,
+        distribution_type: values.distributionType,
+        total_quantity:
+          values.distributionType === "claim" ? values.totalQuantity : null,
+        per_user_quantity:
+          values.distributionType === "direct" ? values.perUserQuantity : 1,
       };
 
-      if (editingVoucher) {
-        const res = await updatePromotion(editingVoucher.id, payload);
-        setVouchers(
-          vouchers.map((v) => (v.id === editingVoucher.id ? res : v))
-        );
-        message.success("Cập nhật thành công");
+      if (detail) {
+        const id = extractId(detail.id);
+        await updateVoucher(id, payload);
+        message.success("Cập nhật voucher thành công");
       } else {
-        const res = await createPromotion(payload);
-        setVouchers([...vouchers, res]);
-        message.success("Tạo mới thành công");
+        await createVoucher(payload);
+        message.success("Tạo voucher thành công");
       }
 
-      setShowModal(false);
-      setEditingVoucher(null);
-      form.resetFields();
+      setModalOpen(false);
+      fetchData();
     } catch (err) {
-      console.error(
-        "Lỗi tạo/cập nhật khuyến mãi:",
-        err.response?.data || err.message
-      );
+      console.error("Save error:", err.response?.data ?? err);
+      message.error("Có lỗi khi lưu voucher");
     }
   };
 
-  const handleEdit = (voucher) => {
-    setEditingVoucher(voucher);
-    setShowModal(true);
-    form.setFieldsValue({
-      code: voucher.code,
-      campaign_name: voucher.campaign_name,
-      title: voucher.title,
-      description: voucher.description,
-      discount_percent: voucher.discount_percent,
-      min_order_value: voucher.min_order_value,
-      dateRange: [
-        voucher.start_at ? dayjs(voucher.start_at) : null,
-        voucher.end_at ? dayjs(voucher.end_at) : null,
-      ],
-      scope: voucher.scope,
-    });
-  };
+  // --- Filters ---
+  const handleFilter = () => {
+    const values = filterForm.getFieldsValue();
+    const params = {};
 
-  const handleDelete = async (id) => {
-    try {
-      await deletePromotion(id);
-      setVouchers(vouchers.filter((v) => v.id !== id));
-      message.success("Xóa thành công");
-    } catch (err) {
-      console.error("Lỗi xóa khuyến mãi:", err);
-      message.error("Không thể xóa khuyến mãi");
+    if (values.search) params.search = values.search;
+
+    if (values.voucherType === "normal") {
+      params.voucher_type = "normal"; // lọc theo loại voucher
+    } else if (values.voucherType === "freeship") {
+      params.discount_type = "freeship"; // lọc theo loại giảm
     }
+
+    if (values.status) {
+      params.active = values.status === "active";
+    }
+
+    fetchData(params);
   };
 
-  const filteredVouchers = vouchers.filter(
-    (v) =>
-      v.campaign_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      v.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      v.code?.toLowerCase().includes(searchTerm.toLowerCase())
+  const handleClearFilter = () => {
+    filterForm.resetFields();
+    fetchData();
+  };
+
+  // --- Table ---
+  const actionMenu = (record) => (
+    <Menu>
+      <Menu.Item key="view" onClick={() => handleViewDetail(record)}>
+        👁 Xem chi tiết
+      </Menu.Item>
+      <Menu.Item key="delete" danger onClick={() => handleDelete(record)}>
+        🗑 Xóa
+      </Menu.Item>
+    </Menu>
   );
 
   const columns = [
-    { title: "Mã KM", dataIndex: "code", key: "code" },
-    { title: "Tên chương trình", dataIndex: "campaign_name", key: "campaign_name" },
-    { title: "Tên khuyến mãi", dataIndex: "title", key: "title" },
-    { title: "Mô tả", dataIndex: "description", key: "description" },
+    { title: "Mã", dataIndex: "code", key: "code" },
+    { title: "Tên", dataIndex: "title", key: "title" },
     {
-      title: "% KM",
-      dataIndex: "discount_percent",
-      key: "discount_percent",
-      render: (val) => (val ? `${val}%` : "-"),
-    },
-    {
-      title: "Điều kiện",
-      dataIndex: "min_order_value",
-      key: "min_order_value",
+      title: "Loại voucher",
+      dataIndex: "voucher_type",
+      key: "voucher_type",
       render: (val) =>
-        val ? `Đơn tối thiểu ${val.toLocaleString("vi-VN")}` : "-",
+        val === "freeship" ? <Tag>Miễn ship</Tag> : <Tag>Thường</Tag>,
     },
     {
-      title: "Thời gian",
-      key: "time",
-      render: (_, v) =>
-        `${new Date(v.start_at).toLocaleDateString()} → ${new Date(
-          v.end_at
-        ).toLocaleDateString()}`,
+      title: "Loại giảm",
+      dataIndex: "discount_type",
+      key: "discount_type",
+      render: (val) => (val ? <Tag>{val}</Tag> : "-"),
+    },
+    {
+      title: "Bắt đầu",
+      dataIndex: "start",
+      key: "start",
+      render: (val) => (val ? dayjs(val).format("DD/MM/YYYY") : "-"),
+    },
+    {
+      title: "Kết thúc",
+      dataIndex: "end",
+      key: "end",
+      render: (val) => (val ? dayjs(val).format("DD/MM/YYYY") : "-"),
     },
     {
       title: "Trạng thái",
-      key: "status",
-      render: (_, v) => {
-        const now = new Date();
-        const end = new Date(v.end_at);
-        const isExpired = end < now;
-        return isExpired ? (
-          <Tag color="red">Hết hạn</Tag>
-        ) : (
-          <Tag color="green">Đang áp dụng</Tag>
-        );
-      },
-    },
-    {
-      title: "Kênh áp dụng",
-      dataIndex: "scope",
-      key: "scope",
-      render: (val) => (val === "system" ? "Hệ thống" : "Seller"),
-    },
-    {
-      title: "Người tạo",
-      dataIndex: "seller_name",
-      key: "seller_name",
-      render: (val) => val || "Admin Hệ Thống",
+      dataIndex: "active",
+      key: "active",
+      render: (val) =>
+        val ? <Tag color="green">Hoạt động</Tag> : <Tag color="red">Tắt</Tag>,
     },
     {
       title: "Hành động",
       key: "actions",
-      render: (_, v) => (
-        <Space>
-          <Button icon={<EditOutlined />} onClick={() => handleEdit(v)} />
-          <Popconfirm
-            title="Bạn có chắc muốn xóa?"
-            onConfirm={() => handleDelete(v.id)}
-          >
-            <Button danger icon={<DeleteOutlined />} />
-          </Popconfirm>
-        </Space>
+      render: (_, record) => (
+        <Dropdown overlay={actionMenu(record)} trigger={["click"]}>
+          <Button icon={<MoreOutlined />} />
+        </Dropdown>
       ),
     },
   ];
 
-  return (
-    <div style={{ padding: 16 }}>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          marginBottom: 16,
-        }}
-      >
-        <Input.Search
-          placeholder="Tìm theo mã, tên chương trình hoặc tên khuyến mãi..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          style={{ width: 300 }}
-        />
-        <Button type="primary" onClick={() => setShowModal(true)}>
-          + Tạo khuyến mãi
-        </Button>
-      </div>
+  const editModalFooter = [
+    <Button key="cancel" onClick={() => setModalOpen(false)}>
+      Hủy
+    </Button>,
+    detail && (
+      <Button danger key="delete" onClick={() => handleDelete(detail)}>
+        Xóa
+      </Button>
+    ),
+    <Button type="primary" key="save" onClick={handleSubmit}>
+      Lưu
+    </Button>,
+  ];
 
+  const detailModalFooter = [
+    <Button key="close" onClick={() => setDetailModalOpen(false)}>
+      Đóng
+    </Button>,
+  ];
+
+  return (
+    <div style={{ padding: 20 }}>
+      {/* Filter */}
+      <Form form={filterForm} layout="inline" style={{ marginBottom: 16 }}>
+        <Row gutter={16} align="middle" style={{ width: "100%" }}>
+          <Col>
+            <Form.Item name="search" label="Tìm kiếm">
+              <Input.Search
+                placeholder="Tìm theo tên voucher"
+                allowClear
+                onSearch={handleFilter}
+                style={{ width: 220 }}
+              />
+            </Form.Item>
+          </Col>
+
+          <Col>
+            <Form.Item name="voucherType" label="Loại voucher">
+              <Select placeholder="Chọn loại" style={{ width: 160 }}>
+                <Select.Option value="normal">Voucher thường</Select.Option>
+                <Select.Option value="freeship">
+                  Voucher miễn ship
+                </Select.Option>
+              </Select>
+            </Form.Item>
+          </Col>
+
+          <Col>
+            <Form.Item name="status" label="Trạng thái">
+              <Select placeholder="Chọn" style={{ width: 140 }}>
+                <Select.Option value="active">Hoạt động</Select.Option>
+                <Select.Option value="inactive">Tắt</Select.Option>
+              </Select>
+            </Form.Item>
+          </Col>
+
+          <Col>
+            <Space>
+              <Button type="primary" htmlType="button" onClick={handleFilter}>
+                Lọc
+              </Button>
+              <Button htmlType="button" onClick={handleClearFilter}>
+                Xóa lọc
+              </Button>
+            </Space>
+          </Col>
+        </Row>
+      </Form>
+
+      {/* Actions */}
+      <Space style={{ marginBottom: 16 }}>
+        <Button type="primary" onClick={handleCreate}>
+          + Tạo Voucher
+        </Button>
+        <Button onClick={() => fetchData(filterForm.getFieldsValue())}>
+          Làm mới
+        </Button>
+      </Space>
+
+      {/* Table */}
       <Table
-        columns={columns}
-        dataSource={filteredVouchers}
-        loading={loading}
         rowKey="id"
-        bordered
+        columns={columns}
+        dataSource={data}
+        loading={loading}
       />
 
+      {/* Create / Edit modal */}
       <Modal
-        title={editingVoucher ? "✏️ Sửa khuyến mãi" : "+ Thêm khuyến mãi mới"}
-        open={showModal}
-        onCancel={() => {
-          setShowModal(false);
-          setEditingVoucher(null);
-          form.resetFields();
-        }}
-        onOk={handleCreateOrUpdate}
-        okText="Lưu"
-        cancelText="Hủy"
+        title={detail ? "Chi tiết Voucher" : "Tạo Voucher"}
+        open={modalOpen}
+        onCancel={() => setModalOpen(false)}
+        footer={editModalFooter}
+        width={700}
       >
-        <Form layout="vertical" form={form}>
-          <Form.Item
-            label="Mã khuyến mãi"
-            name="code"
-            rules={[{ required: true, message: "Vui lòng nhập mã khuyến mãi" }]}
-          >
-            <Input placeholder="Ví dụ: SALE50" />
-          </Form.Item>
+        <Form form={form} layout="vertical">
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name="code"
+                label="Mã voucher"
+                rules={[{ required: true }]}
+              >
+                <Input />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="title" label="Tên voucher">
+                <Input />
+              </Form.Item>
+            </Col>
+          </Row>
 
-          <Form.Item
-            label="Tên chương trình"
-            name="campaign_name"
-            rules={[{ required: true, message: "Vui lòng nhập tên chương trình" }]}
-          >
-            <Input placeholder="Nhập tên chương trình" />
-          </Form.Item>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="description" label="Mô tả">
+                <Input.TextArea rows={2} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="usageLimit" label="Giới hạn sử dụng">
+                <InputNumber style={{ width: "100%" }} />
+              </Form.Item>
+            </Col>
+          </Row>
 
-          <Form.Item
-            label="Tên khuyến mãi"
-            name="title"
-            rules={[{ required: true, message: "Vui lòng nhập tên khuyến mãi" }]}
-          >
-            <Input placeholder="Ví dụ: Giảm 10% cho đơn từ 200k" />
-          </Form.Item>
+          <Row>
+            <Form.Item
+              name="categories"
+              label="Áp dụng cho danh mục"
+              rules={[
+                {
+                  required: true,
+                  message: "Chọn ít nhất 1 danh mục hoặc Tất cả",
+                },
+              ]}
+            >
+              <Select
+                mode="multiple"
+                allowClear
+                placeholder="Chọn danh mục áp dụng"
+                value={allCategorySelected ? ["all"] : undefined}
+                onChange={(vals) => {
+                  if (vals.includes("all")) {
+                    setAllCategorySelected(true);
+                    form.setFieldsValue({ categories: ["all"] });
+                  } else {
+                    setAllCategorySelected(false);
+                    form.setFieldsValue({ categories: vals });
+                  }
+                }}
+              >
+                <Select.Option value="all">Tất cả danh mục</Select.Option>
+                {categories.map((cat) => (
+                  <Select.Option key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </Row>
 
-          <Form.Item label="Mô tả" name="description">
-            <Input.TextArea rows={3} placeholder="Nhập mô tả chi tiết" />
-          </Form.Item>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name="distributionType"
+                label="Phân phối"
+                rules={[{ required: true, message: "Chọn nơi phân phối" }]}
+              >
+                <Select placeholder="Chọn nơi phân phối">
+                  <Select.Option value="claim">Kho voucher</Select.Option>
+                  <Select.Option value="direct">
+                    Push vào tài khoản
+                  </Select.Option>
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                noStyle
+                shouldUpdate={(prev, curr) =>
+                  prev.distributionType !== curr.distributionType
+                }
+              >
+                {({ getFieldValue }) =>
+                  getFieldValue("distributionType") === "claim" ? (
+                    <Form.Item
+                      name="totalQuantity"
+                      label="Số lượng tổng"
+                      rules={[
+                        { required: true, message: "Nhập số lượng tổng" },
+                      ]}
+                    >
+                      <InputNumber style={{ width: "100%" }} />
+                    </Form.Item>
+                  ) : (
+                    <Form.Item
+                      name="perUserQuantity"
+                      label="Số lượng mỗi user"
+                      initialValue={1}
+                      rules={[
+                        { required: true, message: "Nhập số lượng mỗi user" },
+                      ]}
+                    >
+                      <InputNumber min={1} style={{ width: "100%" }} />
+                    </Form.Item>
+                  )
+                }
+              </Form.Item>
+            </Col>
+          </Row>
 
-          <Form.Item label="% Khuyến mãi" name="discount_percent">
-            <InputNumber
-              style={{ width: "100%" }}
-              min={1}
-              max={100}
-              parser={(value) => value.replace("%", "")}
-              formatter={(value) => `${value}%`}
-            />
-          </Form.Item>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name="voucherType"
+                label="Loại voucher"
+                rules={[{ required: true }]}
+              >
+                <Select>
+                  <Select.Option value="normal">Voucher thường</Select.Option>
+                  <Select.Option value="freeship">
+                    Voucher miễn ship
+                  </Select.Option>
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name="discountType"
+                label="Loại giảm"
+                rules={[{ required: true }]}
+              >
+                <Select>
+                  <Select.Option value="percent">Phần trăm</Select.Option>
+                  <Select.Option value="amount">Số tiền</Select.Option>
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
 
-          <Form.Item label="Đơn hàng tối thiểu" name="min_order_value">
-            <InputNumber
-              style={{ width: "100%" }}
-              min={0}
-              step={1000}
-              parser={(value) => value.replace(/\./g, "")}
-              formatter={(value) =>
-                value.replace(/\B(?=(\d{3})+(?!\d))/g, ".")
-              }
-            />
-          </Form.Item>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name="discountValue"
+                label="Giá trị giảm"
+                rules={[{ required: true }]}
+              >
+                <InputNumber style={{ width: "100%" }} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="minOrderValue" label="Giá trị đơn tối thiểu">
+                <InputNumber style={{ width: "100%" }} />
+              </Form.Item>
+            </Col>
+          </Row>
 
-          <Form.Item
-            label="Thời gian áp dụng"
-            name="dateRange"
-            rules={[{ required: true, message: "Vui lòng chọn thời gian" }]}
-          >
-            <RangePicker
-              showTime
-              format="DD/MM/YYYY HH:mm"
-              style={{ width: "100%" }}
-            />
-          </Form.Item>
-
-          <Form.Item label="Kênh áp dụng" name="scope" initialValue="system">
-            <Select>
-              <Select.Option value="system">Hệ thống</Select.Option>
-              <Select.Option value="seller">Seller</Select.Option>
-            </Select>
-          </Form.Item>
+          <Row gutter={16}>
+            <Col span={24}>
+              <Form.Item name="dateRange" label="Thời gian áp dụng">
+                <RangePicker style={{ width: "100%" }} />
+              </Form.Item>
+            </Col>
+          </Row>
         </Form>
+      </Modal>
+
+      {/* Detail (read-only) modal */}
+      <Modal
+        title={`Chi tiết voucher: ${detail?.title ?? ""}`}
+        open={detailModalOpen}
+        onCancel={() => setDetailModalOpen(false)}
+        footer={detailModalFooter}
+        width={700}
+      >
+        {detail ? (
+          <Descriptions bordered column={1}>
+            <Descriptions.Item label="ID">{detail.id}</Descriptions.Item>
+            <Descriptions.Item label="Mã">{detail.code}</Descriptions.Item>
+            <Descriptions.Item label="Tên">{detail.title}</Descriptions.Item>
+            <Descriptions.Item label="Mô tả">
+              {detail.description || "-"}
+            </Descriptions.Item>
+            <Descriptions.Item label="Giới hạn sử dụng">
+              {detail.usage_limit ?? "-"}
+            </Descriptions.Item>
+            <Descriptions.Item label="Loại">
+              {detail.voucher_type}
+            </Descriptions.Item>
+            <Descriptions.Item label="Loại giảm">
+              {detail.discount_type ?? "-"}
+            </Descriptions.Item>
+            <Descriptions.Item label="Giá trị giảm">
+              {detail.discount_percent ??
+                detail.discount_amount ??
+                detail.freeship_amount ??
+                "-"}
+            </Descriptions.Item>
+            <Descriptions.Item label="Giá trị đơn tối thiểu">
+              {detail.min_order_value ?? "-"}
+            </Descriptions.Item>
+            <Descriptions.Item label="Bắt đầu">
+              {detail.start_at
+                ? dayjs(detail.start_at).format("DD/MM/YYYY HH:mm")
+                : "-"}
+            </Descriptions.Item>
+            <Descriptions.Item label="Kết thúc">
+              {detail.end_at
+                ? dayjs(detail.end_at).format("DD/MM/YYYY HH:mm")
+                : "-"}
+            </Descriptions.Item>
+            <Descriptions.Item label="Trạng thái">
+              {detail.active ? "Hoạt động" : "Tắt"}
+            </Descriptions.Item>
+          </Descriptions>
+        ) : (
+          "Đang tải..."
+        )}
       </Modal>
     </div>
   );
-};
-
-export default PromotionsPage;
+}

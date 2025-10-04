@@ -39,4 +39,9 @@ urlpatterns = [
     path('productseller/', SellerProductsAPIView.as_view()),
     path("search/", views.search_sellers, name="search-sellers"),
     path('activate/', SellerActivateAPIView.as_view(), name='seller-activate'),
+    # Follow/unfollow a seller
+    path('<int:seller_id>/follow/', views.FollowSellerAPIView.as_view(), name='seller-follow'),
+    # List my followed sellers
+    path('my/following/', views.MyFollowedSellersAPIView.as_view(), name='my-followed-sellers'),
+    path('my/followers/', views.MyFollowersAPIView.as_view(), name='my-followers'),
 ] + router.urls

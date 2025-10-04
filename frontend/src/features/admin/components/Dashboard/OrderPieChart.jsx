@@ -1,38 +1,58 @@
 import React from "react";
-import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
 
-const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042"];
+// Map màu cố định cho từng trạng thái
+const STATUS_COLORS = {
+  pending: "#FFBB28",       
+  processing: "#000000ff",    
+  shipping: "#0088FE",     
+  ready_to_pick: "#AA46BE", 
+  picking: "#FF8042",
+  success: "#4CAF50",       
+  delivered: "#1E90FF",     
+  cancelled: "#FF0000",     
+  refunded: "#8B4513",      
+};
 
 export default function OrderPieChart({ data = [] }) {
-  // Nếu backend chưa có data -> fake
-  const chartData =
-    data && data.length > 0
-      ? data
-      : [
-          { status: "Đang xử lý", value: 20 },
-          { status: "Hoàn tất", value: 45 },
-          { status: "Đã hủy", value: 10 },
-          { status: "Hoàn tiền", value: 5 },
-        ];
+  const chartData = data.map((item) => ({
+    name: item.sta,   // giữ nguyên sta từ backend
+    value: item.count,
+  }));
+
+  console.log("📊 OrderPieChart data:", chartData);
 
   return (
-    <ResponsiveContainer width="100%" height={300}>
+    <ResponsiveContainer width="100%" height={320}>
       <PieChart>
         <Pie
           data={chartData}
           dataKey="value"
-          nameKey="status"
+          nameKey="name"
           cx="50%"
           cy="50%"
+          innerRadius={60}
           outerRadius={100}
-          fill="#8884d8"
-          label
+          label={({ name, value }) => `${name}: ${value}`}
         >
           {chartData.map((entry, index) => (
-            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+            <Cell
+              key={`cell-${index}`}
+              fill={STATUS_COLORS[entry.name] || "#999"} // fallback xám nhạt
+            />
           ))}
         </Pie>
-        <Tooltip />
+        <Tooltip
+          formatter={(value, name) => [`${value} đơn`, name]}
+          labelFormatter={(label) => `${label}`}
+        />
         <Legend />
       </PieChart>
     </ResponsiveContainer>

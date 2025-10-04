@@ -1,218 +1,254 @@
-import React from "react";
-import { Button, Image } from "react-bootstrap";
-import { FaUser, FaEnvelope, FaPhone, FaMapMarkerAlt, FaSeedling } from "react-icons/fa";
+import React, { useEffect, useMemo, useRef } from "react";
+import {
+  Row,
+  Col,
+  Form,
+  Input,
+  Button,
+  Avatar,
+  Badge,
+  Card,
+  Typography,
+  Upload,
+  message,
+} from "antd";
+import {
+  UserOutlined,
+  EditOutlined,
+  SaveOutlined,
+  CloseOutlined,
+  UploadOutlined,
+} from "@ant-design/icons";
 
-const mainColor = "#2E8B57";
-const accentColor = "#F57C00";
-const iconColor = mainColor;
+const { Title } = Typography;
 
-const ProfileInfo = ({ form, editMode, setEditMode, handleChange, handleSave, saving, error, user, setForm, addresses }) => (
-  <>
-    <div
-      style={{
-        fontWeight: 700,
-        fontSize: 22,
-        marginBottom: 18,
-        color: mainColor,
-        display: "flex",
-        alignItems: "center",
-        gap: 8,
-      }}
+const ProfileInfo = ({
+  form,
+  editMode,
+  setEditMode,
+  handleChange,
+  handleSave,
+  saving,
+  error,
+  user,
+  setForm,
+  addresses = [],
+}) => {
+  const objectUrlRef = useRef(null);
+
+  const avatarSrc = useMemo(() => {
+    if (form?.avatar instanceof File) {
+      const url = URL.createObjectURL(form.avatar);
+      objectUrlRef.current = url;
+      return url;
+    }
+    return form?.avatar || "/default-avatar.png";
+  }, [form?.avatar]);
+
+  useEffect(() => {
+    return () => {
+      if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
+    };
+  }, [avatarSrc]);
+
+  const defaultAddress = useMemo(
+    () => addresses.find((addr) => addr.is_default)?.location || "---",
+    [addresses]
+  );
+
+  return (
+    <Card
+      title={
+        <Title level={4} className="text-dark" style={{ marginBottom: 0 }}> Thông tin cá nhân
+        </Title>
+      }
+      className=""
+      style={{ border: "none"  }}
     >
-      <FaUser color={iconColor} size={24} style={{ marginRight: 4 }} /> Hồ Sơ Của Tôi
-    </div>
-    <div className="d-flex align-items-center mb-4">
-      <div style={{ position: "relative", marginRight: 32 }}>
-        <Image
-          src={form.avatar || "/default-avatar.png"}
-          roundedCircle
-          width={120}
-          height={120}
-          style={{
-            objectFit: "cover",
-            border: `3px solid ${mainColor}`,
-            background: "#f5f5f5",
-          }}
-        />
-        {editMode && (
-          <label
-            htmlFor="avatar-upload"
-            style={{
-              position: "absolute",
-              bottom: -10,
-              left: "50%",
-              transform: "translateX(-50%)",
-              background: accentColor,
-              color: "#fff",
-              padding: "4px 12px",
-              borderRadius: 16,
-              cursor: "pointer",
-              fontWeight: 600,
-              fontSize: 14,
-              boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-            }}
-          >
-            Chọn Ảnh
-            <input
-              id="avatar-upload"
-              type="file"
-              name="avatar"
-              accept="image/*"
-              onChange={handleChange}
-              style={{ display: "none" }}
-            />
-          </label>
-        )}
-      </div>
-      <div>
-        <h3
-          style={{
-            color: mainColor,
-            fontWeight: 800,
-            marginBottom: 4,
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-          }}
-        >
-          {form.full_name || form.username}
-        </h3>
-        <span
-          style={{
-            color: "#888",
-            fontSize: 15,
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-          }}
-        >
-          <FaEnvelope color={iconColor} size={15} style={{ marginRight: 2 }} /> {form.email}
-        </span>
-      </div>
-    </div>
-    <form onSubmit={handleSave}>
-      <div style={{ fontSize: 16, marginBottom: 10, display: "flex", alignItems: "center", gap: 8 }}>
-        <FaUser color={iconColor} size={16} style={{ marginRight: 2 }} /> <b>Tên đăng nhập:</b> {form.username}
-      </div>
-      <div style={{ fontSize: 16, marginBottom: 10, display: "flex", alignItems: "center", gap: 8 }}>
-        <FaUser color={iconColor} size={16} style={{ marginRight: 2 }} /> <b>Họ tên:</b>{" "}
-        {editMode ? (
-          <input
-            name="full_name"
-            value={form.full_name || ""}
-            onChange={handleChange}
-            style={{
-              marginLeft: 8,
-              padding: 6,
-              border: `1px solid ${mainColor}`,
-              borderRadius: 8,
-              minWidth: 200,
-            }}
-          />
-        ) : (
-          form.full_name || "---"
-        )}
-      </div>
-      <div style={{ fontSize: 16, marginBottom: 10, display: "flex", alignItems: "center", gap: 8 }}>
-        <FaEnvelope color={iconColor} size={16} style={{ marginRight: 2 }} /> <b>Email:</b>{" "}
-        {editMode ? (
-          <input
-            name="email"
-            value={form.email || ""}
-            onChange={handleChange}
-            style={{
-              marginLeft: 8,
-              padding: 6,
-              border: `1px solid ${mainColor}`,
-              borderRadius: 8,
-              minWidth: 200,
-            }}
-          />
-        ) : (
-          form.email
-        )}
-      </div>
-      <div style={{ fontSize: 16, marginBottom: 10, display: "flex", alignItems: "center", gap: 8 }}>
-        <FaPhone color={iconColor} size={16} style={{ marginRight: 2 }} /> <b>Số điện thoại:</b>{" "}
-        {editMode ? (
-          <input
-            name="phone"
-            value={form.phone || ""}
-            onChange={handleChange}
-            style={{
-              marginLeft: 8,
-              padding: 6,
-              border: `1px solid ${mainColor}`,
-              borderRadius: 8,
-              minWidth: 200,
-            }}
-          />
-        ) : (
-          form.phone || "---"
-        )}
-      </div>
-      <div style={{ fontSize: 16, marginBottom: 10, display: "flex", alignItems: "center", gap: 8 }}>
-        <FaMapMarkerAlt color={iconColor} size={16} style={{ marginRight: 2 }} /> <b>Địa chỉ mặc định:</b>{" "}
-        {addresses.find((addr) => addr.is_default)?.location || "---"}
+      <Row gutter={[16, 16]} style={{ minHeight: "300px" }}>
+        {/* Left 3/5 */}
+        <Col xs={24} md={14}>
+          <Row gutter={[16, 16]}>
+            <Col xs={24} md={12}>
+              <Form.Item label="Tên đăng nhập">
+                <Input value={form?.username || ""} disabled />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12}>
+              <Form.Item label="Họ tên">
+                <Input
+                  value={form?.full_name || ""}
+                  name="full_name"
+                  onChange={handleChange}
+                  disabled={!editMode}
+                />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12}>
+              <Form.Item label="Email">
+                {editMode ? (
+                  <Input
+                    type="email"
+                    value={form?.email ?? ""}
+                    placeholder={
+                      form?.email_masked || "Nhập email mới nếu muốn thay đổi"
+                    }
+                    name="email"
+                    onChange={handleChange}
+                  />
+                ) : (
+                  <Input
+                    value={form?.email_masked || "---"}
+                    disabled
+                  />
+                )}
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12}>
+              <Form.Item label="Ngày tạo">
+                <Input
+                  value={
+                    form?.created_at
+                      ? new Date(form.created_at).toLocaleDateString("vi-VN")
+                      : "---"
+                  }
+                  disabled
+                />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12}>
+              <Form.Item label="Số điện thoại">
+                {editMode ? (
+                  <Input
+                    type="text"
+                    value={form?.phone ?? ""}
+                    placeholder={
+                      form?.phone_masked || "Nhập số điện thoại mới nếu muốn thay đổi"
+                    }
+                    name="phone"
+                    onChange={handleChange}
+                  />
+                ) : (
+                  <Input
+                    value={form?.phone_masked || "---"}
+                    disabled
+                  />
+                )}
+              </Form.Item>
+            </Col>
+          </Row>
+        </Col>
 
-      </div>
-      <div style={{ fontSize: 16, marginBottom: 10, display: "flex", alignItems: "center", gap: 8 }}>
-        <FaSeedling color={iconColor} size={16} style={{ marginRight: 2 }} /> <b>Ngày tạo tài khoản:</b>{" "}
-        {form.created_at ? new Date(form.created_at).toLocaleDateString() : "---"}
-      </div>
-      {error && (
-        <div style={{ color: "red", marginBottom: 10 }}>{error}</div>
-      )}
-      {editMode ? (
-        <>
-          <Button
-            type="submit"
-            disabled={saving}
-            style={{
-              fontWeight: 700,
-              minWidth: 140,
-              borderRadius: 8,
-              background: mainColor,
-              color: "#fff",
-              border: "none",
-            }}
-          >
-            {saving ? "Đang lưu..." : "Lưu thay đổi"}
-          </Button>
-          <Button
-            style={{
-              marginLeft: 12,
-              fontWeight: 700,
-              borderRadius: 8,
-              background: "#eee",
-              color: mainColor,
-              border: `1px solid ${mainColor}`,
-            }}
-            onClick={() => {
-              setEditMode(false);
-              setForm(user);
-            }}
-          >
-            Hủy
-          </Button>
-        </>
-      ) : (
-        <Button
+        {/* Right 2/5 */}
+        <Col
+          xs={24}
+          md={10}
           style={{
-            marginTop: 18,
-            fontWeight: 700,
-            borderRadius: 8,
-            background: mainColor,
-            color: "#fff",
-            border: "none",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
           }}
-          onClick={() => setEditMode(true)}
         >
-          Chỉnh sửa thông tin
-        </Button>
+          <div style={{ position: "relative" }}>
+            <Avatar
+              src={avatarSrc}
+              size={100}
+              style={{
+                border: "2px solid #2E8B57",
+              }}
+              icon={!avatarSrc && <UserOutlined />}
+            />
+            {editMode && (
+              <Upload
+                showUploadList={false}
+                beforeUpload={(file) => {
+                  handleChange({ target: { name: "avatar", files: [file] } });
+                  return false; // không upload tự động
+                }}
+                accept="image/*"
+              >
+                <Button
+                  type="primary"
+                  size="small"
+                  icon={<UploadOutlined />}
+                  style={{
+                    position: "absolute",
+                    bottom: -10,
+                    left: "50%",
+                    transform: "translateX(-50%)",
+                  }}
+                >
+                  Chọn ảnh
+                </Button>
+              </Upload>
+            )}
+          </div>
+
+          <div style={{ display: "flex", gap: "8px", marginTop: "20px" }}>
+            <Badge count={form?.followingCount ?? 0 } color="green">
+              <Button
+                onClick={() =>
+                  window.dispatchEvent(new CustomEvent("openFollowingModal"))
+                }
+              >
+                Đang theo dõi
+              </Button>
+            </Badge>
+            <Badge count={form?.followersCount ?? 0} color="orange">
+              <Button
+                onClick={() =>
+                  window.dispatchEvent(new CustomEvent("openFollowersModal"))
+                }
+              >
+                Người theo dõi
+              </Button>
+            </Badge>
+          </div>
+        </Col>
+      </Row>
+
+      {error && (
+        <div style={{ marginTop: "16px" }}>
+          <Card type="inner" style={{ borderColor: "red" }}>
+            <Typography.Text type="danger">{error}</Typography.Text>
+          </Card>
+        </div>
       )}
-    </form>
-  </>
-);
+
+      {/* Buttons */}
+      <div style={{ marginTop: "16px", display: "flex", gap: "10px", flexWrap: "wrap" }}>
+        {editMode ? (
+          <>
+            <Button
+              type="primary"
+              icon={<SaveOutlined />}
+              onClick={handleSave}
+              loading={saving}
+            >
+              {saving ? "Đang lưu..." : "Lưu thay đổi"}
+            </Button>
+            <Button
+              icon={<CloseOutlined />}
+              onClick={() => {
+                setEditMode(false);
+                setForm(user);
+              }}
+            >
+              Hủy
+            </Button>
+          </>
+        ) : (
+          <Button
+            type="primary"
+            icon={<EditOutlined />}
+            onClick={() => setEditMode(true)}
+          >
+            Chỉnh sửa thông tin
+          </Button>
+        )}
+      </div>
+    </Card>
+  );
+};
 
 export default ProfileInfo;

@@ -2,8 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Search, Heart, ShoppingCart, User, Bell } from "lucide-react";
 import "../../styles/layouts/header/UserActions.css";
-import axiosInstance from "../../features/admin/services/axiosInstance";
-import axios from "axios";
+import { Avatar, Button, Dropdown, Menu } from "antd";
 
 export default function UserActions({
   greenText,
@@ -25,6 +24,8 @@ export default function UserActions({
 }) {
   const navigate = useNavigate();
 
+  const isUserLoggedIn = !!localStorage.getItem("token");
+
   // Lấy thông báo từ localStorage và sắp xếp giống NotificationPage
   const getNotifications = () => {
     let notis = [];
@@ -35,119 +36,74 @@ export default function UserActions({
     }
     return notis;
   };
-  const [complaints, setComplaints] = useState([]);
+  const [unified, setUnified] = useState([]);
   const userId = userProfile?.id;
 
   useEffect(() => {
     let mounted = true;
-    const fetchComplaints = async () => {
+    let intervalId = null;
+
+    const run = async () => {
       if (!userId) return;
       try {
-        let all = [];
-        let url = `/complaints/`;
-        while (url) {
-          const res = url.startsWith("http")
-            ? await axios.get(url, { headers: axiosInstance.defaults.headers.common })
-            : await axiosInstance.get(url);
-          let pageData = [];
-          if (Array.isArray(res.data)) {
-            pageData = res.data;
-            url = null;
-          } else if (res.data && Array.isArray(res.data.results)) {
-            pageData = res.data.results;
-            url = res.data.next || null;
-          } else {
-            pageData = [];
-            url = null;
-          }
-          all = all.concat(pageData);
-        }
-        const mine = all.filter(
-          (c) => c.user === userId || c.user_id === userId || c.user?.id === userId
+        const { fetchUnifiedNotifications, annotateRead } = await import(
+          "../../features/users/services/notificationService"
         );
-        if (mounted) setComplaints(mine);
+        const list = await fetchUnifiedNotifications(userId);
+        const annotated = annotateRead(list, userId);
+        if (mounted) setUnified(annotated);
       } catch (e) {
-        if (mounted) setComplaints([]);
+        if (mounted) setUnified([]);
       }
     };
-    fetchComplaints();
+
+    // Initial load
+    run();
+
+    // Polling to update without page reload
+    const POLL_MS = 2000; // 2s for faster near-instant updates without page reload
+    intervalId = setInterval(run, POLL_MS);
+
+    // Refresh when window regains focus (fast catch-up)
+    const onFocus = () => run();
+    window.addEventListener("focus", onFocus);
+
+    // Keep in sync across tabs when read-state changes
+    const onStorage = (e) => {
+      if (e?.key && String(e.key).startsWith("notif_read_")) run();
+    };
+    window.addEventListener("storage", onStorage);
+
     return () => {
       mounted = false;
+      if (intervalId) clearInterval(intervalId);
+      window.removeEventListener("focus", onFocus);
+      window.removeEventListener("storage", onStorage);
     };
   }, [userId]);
 
-  const myNotifications = useMemo(() => {
-    return (complaints || [])
-      .filter((c) => ["resolved", "rejected"].includes((c.status || "").toLowerCase()))
-      .map((c) => {
-        const status = (c.status || "").toLowerCase();
-        const productName = c.product_name || c.product?.name || "";
-        const detailLines = [
-          `Khiếu nại sản phẩm: ${productName}.`,
-          `Lý do: ${c.reason || ""}.`,
-        ];
-        if (status === "resolved") {
-          const rtCode = (c.resolution_type || c.resolution || "").toLowerCase();
-          let vnLabel = "";
-          switch (rtCode) {
-            case "refund_full":
-              vnLabel = "Hoàn tiền toàn bộ";
-              break;
-            case "refund_partial":
-              vnLabel = "Hoàn tiền một phần";
-              break;
-            case "replace":
-              vnLabel = "Đổi sản phẩm";
-              break;
-            case "voucher":
-              vnLabel = "Tặng voucher/điểm thưởng";
-              break;
-            case "reject":
-              vnLabel = "Từ chối khiếu nại";
-              break;
-            default:
-              vnLabel = "Đã xử lý";
-          }
-          detailLines.push(`Hình thức xử lý: ${vnLabel}`);
-        } else if (status === "rejected") {
-          detailLines.push(`Hình thức xử lý: Từ chối khiếu nại`);
-        }
+  const sortedNotifications = useMemo(() => {
+    const arr = [...(unified || [])];
+    arr.sort((a, b) => {
+      const ta = Number.isFinite(a?.ts)
+        ? a.ts
+        : a?.time
+          ? new Date(a.time).getTime()
+          : 0;
+      const tb = Number.isFinite(b?.ts)
+        ? b.ts
+        : b?.time
+          ? new Date(b.time).getTime()
+          : 0;
+      if (tb !== ta) return tb - ta; // newest first by numeric timestamp
+      return String(b?.id ?? "").localeCompare(String(a?.id ?? ""));
+    });
+    return arr;
+  }, [unified]);
 
-        let thumbnail = null;
-        const media = c.media_urls || c.media || [];
-        if (Array.isArray(media) && media.length > 0) {
-          const img = media.find((url) => /\.(jpg|jpeg|png|gif)$/i.test(url));
-          thumbnail = img || media[0];
-        }
-
-        return {
-          id: c.id,
-          message:
-            status === "resolved"
-              ? "Khiếu nại của bạn đã được xử lý!"
-              : "Khiếu nại của bạn đã bị từ chối!",
-          detail: detailLines.join("\n"),
-          time: c.updated_at ? new Date(c.updated_at).toLocaleString() : new Date().toLocaleString(),
-          read: false,
-          userId,
-          thumbnail,
-        };
-      });
-  }, [complaints, userId]);
-
-  // Sắp xếp theo sản phẩm, sau đó thời gian mới nhất
-  const getProduct = (noti) => {
-    const match =
-      noti.detail && noti.detail.match(/Khiếu nại sản phẩm: (.*?)(\.|\n)/);
-    return match ? match[1] : "";
-  };
-  const sortedNotifications = [...myNotifications].sort((a, b) => {
-    const prodA = getProduct(a).toLowerCase();
-    const prodB = getProduct(b).toLowerCase();
-    if (prodA < prodB) return -1;
-    if (prodA > prodB) return 1;
-    return (b.id || 0) - (a.id || 0);
-  });
+  const unreadCount = useMemo(() => {
+    return (sortedNotifications || []).filter((n) => !n.read).length;
+  }, [sortedNotifications]);
 
   return (
     <div
@@ -190,9 +146,24 @@ export default function UserActions({
             transition: "background 0.2s ease",
           }}
           aria-label="Thông báo"
+          onClick={async () => {
+            try {
+              const { markAsRead } = await import(
+                "../../features/users/services/notificationService"
+              );
+              markAsRead(
+                userId,
+                (sortedNotifications || []).map((n) => n.id)
+              );
+              setUnified((prev) =>
+                (prev || []).map((n) => ({ ...n, read: true }))
+              );
+            } catch {}
+            navigate("/notifications");
+          }}
         >
           <Bell size={22} className="bell-icon" />
-          {sortedNotifications && sortedNotifications.length > 0 && (
+          {unreadCount > 0 && (
             <span
               style={{
                 position: "absolute",
@@ -213,7 +184,7 @@ export default function UserActions({
                 boxShadow: "0 1px 4px #0002",
               }}
             >
-              {sortedNotifications.length}
+              {unreadCount}
             </span>
           )}
         </button>
@@ -341,7 +312,21 @@ export default function UserActions({
                   <button
                     className="btn btn-link"
                     style={{ color: "#16a34a", fontWeight: 600, fontSize: 15 }}
-                    onClick={() => navigate("/payment/NotificationPage")}
+                    onClick={async () => {
+                      try {
+                        const { markAsRead } = await import(
+                          "../../features/users/services/notificationService"
+                        );
+                        markAsRead(
+                          userId,
+                          (sortedNotifications || []).map((n) => n.id)
+                        );
+                        setUnified((prev) =>
+                          (prev || []).map((n) => ({ ...n, read: true }))
+                        );
+                      } catch {}
+                      navigate("/notifications");
+                    }}
                   >
                     Xem tất cả thông báo
                   </button>
@@ -377,7 +362,7 @@ export default function UserActions({
                 right: 2,
                 minWidth: 18,
                 height: 18,
-                background: "#dc2626",
+                background: "#faad14  ",
                 color: "#fff",
                 borderRadius: "50%",
                 fontSize: 12,
@@ -446,9 +431,7 @@ export default function UserActions({
                     }}
                   >
                     <img
-                      src={
-                        item.product?.thumbnail || "/media/products/default.png"
-                      }
+                      src={item.product?.image || "/media/products/default.png"}
                       alt="thumb"
                       style={{
                         width: 38,
@@ -481,7 +464,7 @@ export default function UserActions({
                       navigate("/cart");
                     }}
                   >
-                    Xem tất cả sản phẩm
+                    Xem giỏ hàng
                   </button>
                 </div>
               </>
@@ -491,212 +474,160 @@ export default function UserActions({
       </div>
 
       {/* User profile or login button */}
-      {userProfile && userProfile.id ? (
-        <div style={{ position: "relative" }}>
-          <button
-            className="btn btn-light rounded-circle p-2"
-            style={{
-              flexShrink: 0,
-              position: "relative",
-              background: "transparent",
-              border: "none",
-              boxShadow: "none",
-            }}
-            aria-label="Tài khoản"
-            onClick={() => setShowProfileDropdown(!showProfileDropdown)}
-          >
-            {userProfile.avatar ? (
-              <img
-                src={userProfile.avatar}
-                alt="avatar"
-                style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: "50%",
-                  objectFit: "cover",
-                  border: "2px solid #eee",
-                }}
-              />
-            ) : (
-              <span
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  width: 28,
-                  height: 28,
-                  borderRadius: "50%",
-                  background: "#16a34a",
-                  color: "#fff",
-                  fontWeight: 700,
-                  fontSize: 18,
-                  textTransform: "uppercase",
-                }}
-              >
-                {localStorage.getItem("username")[0]}
-              </span>
-            )}
-          </button>
-
-          {showProfileDropdown && (
-            <div
-              id="profileDropdownMenu"
-              className="dropdown-menu show p-0"
+      {isUserLoggedIn ? (
+        <Dropdown
+          overlay={
+            <Menu
               style={{
-                position: "absolute",
-                right: 0,
-                top: "110%",
-                minWidth: 220,
-                boxShadow: "0 4px 16px #0002",
-                borderRadius: 12,
-                zIndex: 2000,
+                borderRadius: 6,
                 overflow: "hidden",
-                background: "#fff",
+                minWidth: 220,
+                boxShadow: "0 4px 16px rgba(0,0,0,0.1)",
               }}
             >
-              <div
-                className="d-flex flex-column align-items-center py-3 px-3 border-bottom"
-                style={{ background: "#f0fdf4" }}
+              {/* Header thông tin người dùng */}
+              <Menu.Item
+                key="profile-header"
+                disabled
+                style={{ padding: 12, background: "#f0fdf4" }}
               >
-                {userProfile && userProfile.avatar ? (
-                  <img
-                    src={userProfile.avatar}
-                    alt="avatar"
+                <div style={{ textAlign: "center" }}>
+                  {userProfile?.avatar ? (
+                    <Avatar
+                      src={userProfile?.avatar}
+                      size={48}
+                      style={{
+                        border: "2px solid #22C55E",
+                        boxShadow: "0 2px 8px #22c55e22",
+                      }}
+                    />
+                  ) : (
+                    <Avatar
+                      size={48}
+                      style={{
+                        backgroundColor: "#22C55E",
+                        boxShadow: "0 2px 8px #22c55e22",
+                        fontWeight: "bold",
+                      }}
+                    >
+                      {localStorage.getItem("username")?.[0]?.toUpperCase() ||
+                        ""}
+                    </Avatar>
+                  )}
+                  <div
                     style={{
-                      width: 48,
-                      height: 48,
-                      borderRadius: "50%",
-                      objectFit: "cover",
-                      border: "2px solid #22C55E",
-                      boxShadow: "0 2px 8px #22c55e22",
-                    }}
-                  />
-                ) : (
-                  <span
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      width: 48,
-                      height: 48,
-                      borderRadius: "50%",
-                      background: "#22C55E",
-                      color: "#fff",
+                      marginTop: 8,
                       fontWeight: 700,
-                      fontSize: 24,
-                      textTransform: "uppercase",
-                      boxShadow: "0 2px 8px #22c55e22",
+                      fontSize: 18,
+                      color: "#16a34a",
                     }}
                   >
-                    {localStorage.getItem("username")[0]}
-                  </span>
-                )}
-                <div className="mt-2 text-center">
-                  <span
-                    style={{ fontWeight: 700, fontSize: 18, color: "#16a34a" }}
+                    {userProfile?.full_name || "___"}
+                  </div>
+                  <Button
+                    type="default"
+                    size="small"
+                    style={{ marginTop: 8, borderRadius: 4, fontSize: 15 }}
+                    onClick={() => navigate("/profile")}
                   >
-                    {localStorage.getItem("username")}
-                  </span>
+                    Xem hồ sơ
+                  </Button>
                 </div>
-                <button
-                  className="btn btn-outline-success btn-sm mt-2 px-3 fw-bold"
-                  style={{ borderRadius: 6, fontSize: 15 }}
-                  onClick={() => {
-                    setShowProfileDropdown(false);
-                    navigate("/profile");
-                  }}
-                >
-                  Xem hồ sơ
-                </button>
-              </div>
-              <Link
-                to="/orders"
-                className="dropdown-item"
-                style={{ padding: "12px 18px", fontWeight: 500 }}
-                onClick={() => setShowProfileDropdown(false)}
-              >
-                Đơn hàng của tôi
-              </Link>
-              <Link
-                to={
-                  storeName
-                    ? "/seller-center"
-                    : sellerStatus === "active"
-                      ? "/register-seller"
-                      : "/register-seller"
-                }
-                className="dropdown-item text-white fw-bold d-flex justify-content-left"
+              </Menu.Item>
+
+              <Menu.Divider />
+
+              {/* Đơn hàng */}
+              <Menu.Item key="orders">
+                <Link style={{ textDecoration: "none" }} to="/orders">
+                  Đơn hàng của tôi
+                </Link>
+              </Menu.Item>
+
+              {/* Cửa hàng */}
+              <Menu.Item
+                key="seller"
                 style={{
                   background:
                     hoveredDropdown === "register" ? "#16a34a" : "#22C55E",
-                  borderRadius: 0,
-                  margin: "0px 0px",
-                  boxShadow:
-                    hoveredDropdown === "register"
-                      ? "0 4px 16px #16a34a44"
-                      : "0 2px 8px #22c55e44",
-                  fontSize: 16,
-                  padding: "12px 18px",
-                  border: "none",
-                  transition: "all 0.2s",
-                  filter:
-                    hoveredDropdown === "register"
-                      ? "brightness(0.95)"
-                      : "none",
+                  color: "#fff",
+                  transition: "0.2s",
                 }}
                 onMouseEnter={() => setHoveredDropdown("register")}
                 onMouseLeave={() => setHoveredDropdown(null)}
-                onClick={() => setShowProfileDropdown(false)}
               >
-                <span
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 8,
-                  }}
+                <Link
+                  to={storeName ? "/seller-center" : "/register-seller"}
+                  style={{ color: "#fff", textDecoration: "none" }}
                 >
                   {storeName
                     ? "Cửa hàng của tôi"
                     : sellerStatus === "pending"
                       ? "Đang chờ duyệt"
                       : "Đăng ký bán hàng"}
-                </span>
-              </Link>
-              <div
-                className="dropdown-divider"
-                style={{ margin: 0, borderTop: "1px solid #eee" }}
-              />
-              <button
-                className="dropdown-item text-danger"
+                </Link>
+              </Menu.Item>
+
+              <Menu.Divider />
+
+              {/* Đăng xuất */}
+              <Menu.Item
+                key="logout"
                 style={{
-                  padding: "12px 18px",
-                  fontWeight: 500,
-                  background: hoveredDropdown === "logout" ? "#fee2e2" : "none",
                   color: hoveredDropdown === "logout" ? "#b91c1c" : "#dc2626",
-                  border: "none",
-                  width: "100%",
-                  textAlign: "left",
-                  transition: "all 0.2s",
+                  background:
+                    hoveredDropdown === "logout" ? "#fee2e2" : "transparent",
+                  transition: "0.2s",
                 }}
                 onMouseEnter={() => setHoveredDropdown("logout")}
                 onMouseLeave={() => setHoveredDropdown(null)}
                 onClick={handleLogout}
               >
                 Đăng xuất
-              </button>
-            </div>
-          )}
-        </div>
+              </Menu.Item>
+            </Menu>
+          }
+          trigger={["click"]}
+          placement="bottomRight"
+        >
+          <Button
+            type="text"
+            shape="circle"
+            style={{
+              background: "transparent",
+              border: "none",
+              boxShadow: "none",
+              padding: 0,
+            }}
+          >
+            {userProfile?.avatar ? (
+              <Avatar
+                src={userProfile?.avatar}
+                size={32}
+                style={{ border: "2px solid #eee" }}
+              />
+            ) : (
+              // Trong phần hiển thị avatar
+              <Avatar
+                style={{ backgroundColor: "#16a34a", fontWeight: "bold" }}
+                size={32}
+              >
+                
+              </Avatar>
+            )}
+          </Button>
+        </Dropdown>
       ) : (
         <Link
           to="/login"
-          className=" p-2"
+          className="p-2"
           style={{
             flexShrink: 0,
             position: "relative",
             background: "transparent",
             border: "none",
             boxShadow: "none",
+            textDecoration: "none",
           }}
         >
           <User size={22} className="text-white" />

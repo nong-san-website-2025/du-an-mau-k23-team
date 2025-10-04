@@ -1,9 +1,17 @@
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import path, include, re_path
 from django.conf import settings
 from django.conf.urls.static import static
 from django.http import HttpResponse
+from django.views.generic import TemplateView
 from dashboard.views import dashboard_data
+
+from promotions.urls import router as promotions_router
+# ✅ import views của SimpleJWT
+from rest_framework_simplejwt.views import (
+    TokenObtainPairView,
+    TokenRefreshView,
+)
 
 def home(request):
     return HttpResponse("Hello, world!")
@@ -11,6 +19,7 @@ def home(request):
 urlpatterns = [
     path('admin/', admin.site.urls), 
     path('', home),
+
     path('api/users/', include('users.urls')),
     path('api/sellers/', include('sellers.urls')),
     path('api/products/', include('products.urls')),
@@ -19,23 +28,30 @@ urlpatterns = [
     path('api/payments/', include('payments.urls')),    
     path('api/', include('wallet.urls')),
     path('api/', include('cart.urls')),
-    path('api/blog/', include('blog.urls')),
     path('api/store/', include('store.urls')),
     path('api/cart/', include('cart.urls')),
-
-    path('api/advertisements/', include('advertisements.urls')),
-      
-    path("api/promotions/", include("promotions.urls")),
     path('', include('reviews.urls')),
-
+    path("api/promotions/", include("promotions.urls")),
+     path("api/promotions/", include(promotions_router.urls)),
 
     path('api/complaints/', include('complaints.urls')),
+
+    path('api/delivery/', include('delivery.urls')),
+
     path("api/dashboard/", dashboard_data, name="dashboard-data"),
     path("api/dashboard/", include("dashboard.urls")),
 
-    path("api/marketing/", include("marketing.urls")),
+    # ✅ thêm endpoint login bằng JWT
+    path("api/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
+    path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
+    # path("api/dashboard/", include("dashboard.urls")),
 
+    path("api/marketing/", include("marketing.urls")),
+    path("api/chat/", include("chat.urls")),
+
+
+    path("api/", include("system.urls")),
 ]
 
-
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+

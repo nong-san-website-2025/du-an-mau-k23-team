@@ -31,6 +31,14 @@ class Order(models.Model):
         ('shipping', 'Shipping'),
         ('success', 'Success'),
         ('cancelled', 'Cancelled'),
+        ('ready_to_pick', 'Ready to pick'),
+        ('picking', 'Picking'),
+        ('delivered', 'Delivered'),
+        ('out_for_delivery', 'Out for delivery'),
+        ('delivery_failed', 'Delivery failed'),
+        ('lost', 'Lost'),
+        ('damaged', 'Damaged'),
+        ('returned', 'Returned'),
     ]
     
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="orders")
@@ -41,9 +49,13 @@ class Order(models.Model):
     payment_method = models.CharField(max_length=50, default="Thanh toán khi nhận hàng", null=True, blank=True)
     total_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
+    stock_deducted = models.BooleanField(default=False)  # Đánh dấu đã trừ tồn kho để tránh trừ lặp lại
     is_deleted = models.BooleanField(default=False)  # Soft delete field
     created_at = models.DateTimeField(auto_now_add=True)
     deleted_at = models.DateTimeField(null=True, blank=True)  # Timestamp when deleted
+    ghn_order_code = models.CharField(max_length=64, null=True, blank=True, unique=True)
+
+    
 
     # Managers
     objects = OrderManager()  # Default manager excludes deleted orders
@@ -71,3 +83,21 @@ class OrderItem(models.Model):
     unit = models.CharField(max_length=50, blank=True, null=True)  # optional, for display only
     quantity = models.PositiveIntegerField()
     price = models.DecimalField(max_digits=10, decimal_places=2)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
+class Complaint(models.Model):
+    STATUS_CHOICES = [
+        ("pending", "Chờ xử lý"),
+        ("in_progress", "Đang giải quyết"),
+        ("resolved", "Đã xử lý"),
+    ]
+
+    order = models.ForeignKey("orders.Order", on_delete=models.CASCADE, related_name="complaints")
+    customer_name = models.CharField(max_length=255)
+    reason = models.TextField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Complaint {self.id} - Order {self.order.id}"

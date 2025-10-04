@@ -5,12 +5,32 @@ import API from "../../login_register/services/api";
 export default function OrdersNew() {
   const [loading, setLoading] = useState(false);
   const [orders, setOrders] = useState([]);
+  const [sellerProductIds, setSellerProductIds] = useState(new Set());
 
-  const fetchPending = async () => {
+  const fetchSellerProducts = async () => {
+    try {
+      const res = await API.get("sellers/productseller/");
+      const products = res.data.results || res.data || [];
+      const ids = new Set(products.map(p => p.id));
+      setSellerProductIds(ids);
+      return ids;
+    } catch (e) {
+      console.error(e);
+      message.error("Không thể tải sản phẩm của shop");
+      return new Set();
+    }
+  };
+
+  const fetchPending = async (productIds = sellerProductIds) => {
     setLoading(true);
     try {
       const res = await API.get("orders/seller/pending/");
-      setOrders(res.data || []);
+      const allOrders = res.data || [];
+      // Lọc chỉ đơn hàng có ít nhất một sản phẩm thuộc shop
+      const filteredOrders = allOrders.filter(order =>
+        (order.items || []).some(item => productIds.has(item.product))
+      );
+      setOrders(filteredOrders);
     } catch (e) {
       console.error(e);
       message.error("Không thể tải đơn mới");
@@ -20,17 +40,39 @@ export default function OrdersNew() {
   };
 
   useEffect(() => {
-    fetchPending();
+    const loadData = async () => {
+      const productIds = await fetchSellerProducts();
+      fetchPending(productIds);
+    };
+    loadData();
   }, []);
 
   const approve = async (orderId) => {
     try {
       await API.post(`orders/${orderId}/seller/approve/`);
       message.success("Đã duyệt đơn, chuyển sang Chờ nhận hàng");
-      fetchPending();
+      fetchPending(sellerProductIds);
     } catch (e) {
       console.error(e);
       message.error(e?.response?.data?.error || "Duyệt đơn thất bại");
+    }
+  };
+
+  const approveAll = async () => {
+    if (orders.length === 0) {
+      message.warning("Không có đơn hàng nào để duyệt");
+      return;
+    }
+    try {
+      setLoading(true);
+      const approvePromises = orders.map(order => API.post(`orders/${order.id}/seller/approve/`));
+      await Promise.all(approvePromises);
+      message.success(`Đã duyệt ${orders.length} đơn hàng thành công`);
+      fetchPending(sellerProductIds);
+    } catch (e) {
+      console.error(e);
+      message.error(e?.response?.data?.error || "Duyệt tất cả đơn thất bại");
+      setLoading(false);
     }
   };
 
@@ -70,7 +112,14 @@ export default function OrdersNew() {
 
   return (
     <div>
-      <h2 className="mb-4 text-2xl font-bold">Đơn mới cần xác nhận</h2>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-2xl font-bold">Đơn mới cần xác nhận</h2>
+        {orders.length > 0 && (
+          <Button type="primary" onClick={approveAll} loading={loading}>
+            Duyệt tất cả ({orders.length} đơn)
+          </Button>
+        )}
+      </div>
       <Table
         rowKey="id"
         loading={loading}

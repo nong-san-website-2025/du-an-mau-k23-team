@@ -3,6 +3,18 @@ from .models import CustomUser, PointHistory
 from rest_framework_simplejwt.tokens import RefreshToken
 from .models import Address
 from .models import Role
+from orders.models import Order
+from django.apps import apps
+CustomUser = apps.get_model('users', 'CustomUser')
+Role = apps.get_model('users', 'Role')
+Address = apps.get_model('users', 'Address')
+PointHistory = apps.get_model('users', 'PointHistory')
+Shop = apps.get_model('store', 'Store')
+CustomerOrder = apps.get_model('orders', 'Order')  # buyer orders
+ShopOrder = apps.get_model('orders', 'Order')
+Seller = apps.get_model('sellers', 'Seller')
+Product = apps.get_model('products', 'Product')
+
 
 
 
@@ -31,15 +43,25 @@ class UserSerializer(serializers.ModelSerializer):
         required=False,
         allow_null=True
     )
+    # Expose Django's date_joined as created_at for frontend compatibility
+    created_at = serializers.DateTimeField(source='date_joined', read_only=True)
+
+    # Write-only input for changing; masked fields for display
+    email = serializers.EmailField(write_only=True, required=False)
+    phone = serializers.CharField(write_only=True, required=False, allow_blank=True, allow_null=True)
+    email_masked = serializers.SerializerMethodField(read_only=True)
+    phone_masked = serializers.SerializerMethodField(read_only=True)
+    avatar = serializers.ImageField(required=False, allow_null=True)
 
     class Meta:
         model = CustomUser
         fields = [
-            "id", "username", "email", "avatar",
-            "full_name", "phone", "points", "role", "role_id", "default_address", "password"
+            "id", "username", "default_address",
+            "full_name", "points", "role", "role_id", "created_at", "can_delete", "is_active",
+            "email", "phone", "email_masked", "phone_masked", "avatar"
         ]
 
-    def get_default_address(self, obj): 
+    def get_default_address(self, obj):
         default = obj.addresses.filter(is_default=True).first()
         return default.location if default else None
 
@@ -47,83 +69,192 @@ class UserSerializer(serializers.ModelSerializer):
         histories = obj.point_histories.order_by('-date')
         return UserPointsHistorySerializer(histories, many=True).data
 
+    # Mask helpers
+    def get_email_masked(self, obj):
+        if not obj.email:
+            return None
+        try:
+            local, domain = obj.email.split('@', 1)
+            if len(local) <= 2:
+                masked_local = local[0:1] + '*' * max(0, len(local)-1)
+            else:
+                masked_local = local[:2] + '*' * (len(local)-2)
+            return f"{masked_local}@{domain}"
+        except Exception:
+            return None
+
+    def get_phone_masked(self, obj):
+        if not obj.phone:
+            return None
+        return '*' * max(0, len(obj.phone)-2) + obj.phone[-2:]
 
     def create(self, validated_data):
+        password = validated_data.pop("password", None)
         user = CustomUser(**validated_data)
-        user.set_password(validated_data["password"])
+        if password:
+            user.set_password(password)
+        else:
+            user.set_password("123456")  # gán default password nếu không có
         user.save()
         return user
 
     def update(self, instance, validated_data):
         password = validated_data.pop("password", None)
-    
-    # Lấy role object nếu có
+        # Lấy role object nếu có
         role_obj = validated_data.pop("role", None)
         if role_obj is not None:
             instance.role = role_obj
 
-        # Cập nhật các trường còn lại
+        # Nếu FE gửi chuỗi mask (có '*'), bỏ qua cập nhật
+        if "email" in validated_data:
+            email_val = validated_data.get("email")
+            if email_val in ("", None) or '*' in str(email_val):
+                validated_data.pop("email", None)
+            else:
+                # Không đổi ngay: lưu pending_email để xác nhận qua link
+                instance.pending_email = email_val
+        if "phone" in validated_data:
+            phone_val = validated_data.get("phone")
+            if phone_val in ("", None) or '*' in str(phone_val):
+                validated_data.pop("phone", None)
+            else:
+                # Không đổi ngay: tạo OTP và lưu pending_phone (sẽ gửi OTP ở view)
+                instance.pending_phone = phone_val
+
+        # Chuẩn hoá các trường khác
+        for attr in list(validated_data.keys()):
+            if attr in ("email", "phone"):
+                validated_data.pop(attr, None)
+
+        # Cập nhật các trường còn lại (full_name, avatar, ...)
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
-        
+
         if password:
             instance.set_password(password)
-        
+
         instance.save()
         return instance
 
+    can_delete = serializers.SerializerMethodField()
+
+    def get_can_delete(self, obj):
+        try:
+            from orders.models import Order
+            from store.models import Store
+
+            # Check đã phát sinh đơn hàng
+            if Order.all_objects.filter(user=obj).exists():
+                return False
+
+            # Check đã đăng ký cửa hàng
+            if Store.objects.filter(owner=obj).exists():
+                return False
+
+            return True
+        except Exception as e:
+            print("[DEBUG] get_can_delete error:", e)
+            return True
+
+
+
 class RegisterSerializer(serializers.ModelSerializer):
     password2 = serializers.CharField(write_only=True)
-    # Hỗ trợ cả 2 cách: role (mới) hoặc is_seller (cũ)
-    role = serializers.CharField(required=False, allow_null=True, allow_blank=True)
-    is_seller = serializers.BooleanField(default=False, required=False)
+    role = serializers.PrimaryKeyRelatedField(
+        queryset=Role.objects.all(),
+        required=False,
+        allow_null=True
+    )
 
     class Meta:
         model = CustomUser
-        fields = ('username', 'email', 'password', 'password2', 'role', 'is_seller')
+        fields = ('username', 'email', 'password', 'password2', 'role', 'full_name', 'phone')
+        extra_kwargs = {
+            'password': {'write_only': True}
+        }
 
     def validate(self, data):
+        # Kiểm tra password trùng khớp
         if data['password'] != data['password2']:
-            raise serializers.ValidationError("Mật khẩu nhập lại không khớp.")
+            raise serializers.ValidationError({"password": "Mật khẩu nhập lại không khớp."})
         return data
 
     def create(self, validated_data):
-        from .models import Role as RoleModel
-        validated_data.pop('password2')
         password = validated_data.pop('password')
+        validated_data.pop('password2', None)
 
-        # Lấy role từ payload nếu có; fallback sang is_seller
-        role_str = validated_data.pop('role', None)
-        is_seller_flag = validated_data.pop('is_seller', False)
+        # Kiểm tra user pending trùng username/email
+        existing_user = CustomUser.objects.filter(
+            username=validated_data['username']
+        ).first()
+        if existing_user:
+            if existing_user.status == "pending":
+                return existing_user  # gửi lại email xác thực, không tạo user mới
+            else:
+                raise serializers.ValidationError({"username": "Tên đăng nhập đã tồn tại."})
 
+        existing_email = CustomUser.objects.filter(email=validated_data['email']).first()
+        if existing_email:
+            if existing_email.status == "pending":
+                return existing_email
+            else:
+                raise serializers.ValidationError({"email": "Email đã tồn tại."})
+
+        # Nếu frontend không gửi role → mặc định customer
+        if 'role' not in validated_data or validated_data['role'] is None:
+            customer_role, _ = Role.objects.get_or_create(name="customer")
+            validated_data['role'] = customer_role
+
+        # Tạo user pending
         user = CustomUser(**validated_data)
         user.set_password(password)
-        user.save()  # cần save trước để gán role ForeignKey
-
-        if role_str:
-            role_name = str(role_str).strip().lower()
-            role_obj, _ = RoleModel.objects.get_or_create(name=role_name)
-            user.role = role_obj
-            user.save()
-        elif is_seller_flag:
-            role_obj, _ = RoleModel.objects.get_or_create(name='seller')
-            user.role = role_obj
-            user.save()
-        # nếu không có role và không is_seller: model.save() đã gán mặc định 'customer'
-
+        user.status = "pending"
+        user.save()
         return user
+
+
+
 
 # ForgotPasswordSerializer nên được định nghĩa ngoài class RegisterSerializer
 class ForgotPasswordSerializer(serializers.Serializer):
     email = serializers.EmailField()
-
+    
+# serializers.py
+from rest_framework import serializers
+from .models import Address
 
 class AddressSerializer(serializers.ModelSerializer):
+    province_code = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    district_code = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    ward_code = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+
     class Meta:
         model = Address
         fields = "__all__"
         read_only_fields = ["user"]
 
+    def validate(self, data):
+        """
+        Validate dữ liệu khi tạo địa chỉ mới
+        """
+        district_id = data.get('district_id')
+        ward_code = data.get('ward_code')
+
+        # Nếu có GHN shipping thì 2 trường này bắt buộc
+        if district_id is None or ward_code is None:
+            raise serializers.ValidationError(
+                "Cần cung cấp district_id và ward_code từ GHN khi tính phí vận chuyển."
+            )
+        return data
+
+    def create(self, validated_data):
+        """
+        Gắn user hiện tại khi tạo địa chỉ mới
+        """
+        request = self.context.get('request')
+        if request and hasattr(request, 'user'):
+            validated_data['user'] = request.user
+        return super().create(validated_data)
 
 # Serializer cho đổi mật khẩu
 class ChangePasswordSerializer(serializers.Serializer):

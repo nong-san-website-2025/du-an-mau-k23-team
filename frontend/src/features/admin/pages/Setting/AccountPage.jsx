@@ -15,11 +15,15 @@ export default function AccountPage() {
   const fetchUser = async () => {
     try {
       const res = await axios.get(`${API_BASE_URL}/users/me/`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
       });
+
       form.setFieldsValue(res.data);
     } catch (err) {
-      console.error(err);
+      console.error(err.response?.data || err.message);
       message.error("Không thể load thông tin người dùng.");
     }
   };
@@ -53,7 +57,9 @@ export default function AccountPage() {
       passwordForm.resetFields();
     } catch (err) {
       console.error(err);
-      message.error(err.response?.data?.old_password?.[0] || "Đổi mật khẩu thất bại.");
+      message.error(
+        err.response?.data?.old_password?.[0] || "Đổi mật khẩu thất bại."
+      );
     } finally {
       setPasswordLoading(false);
     }
@@ -63,10 +69,18 @@ export default function AccountPage() {
     <div style={{ maxWidth: 700, margin: "20px auto" }}>
       <Card title="Thông tin tài khoản" bordered>
         <Form form={form} layout="vertical" onFinish={handleUpdate}>
-          <Form.Item label="Tên đăng nhập" name="username" rules={[{ required: true }]}>
+          <Form.Item
+            label="Tên đăng nhập"
+            name="username"
+            rules={[{ required: true }]}
+          >
             <Input />
           </Form.Item>
-          <Form.Item label="Email" name="email" rules={[{ required: true, type: "email" }]}>
+          <Form.Item
+            label="Email"
+            name="email"
+            rules={[{ required: true, type: "email" }]}
+          >
             <Input />
           </Form.Item>
           <Form.Item label="Họ và tên" name="full_name">

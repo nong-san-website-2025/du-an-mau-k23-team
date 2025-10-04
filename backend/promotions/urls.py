@@ -1,17 +1,28 @@
-# promotions/urls.py
-from django.urls import path
 from django.urls import path
 from rest_framework.routers import DefaultRouter
-from .views import VoucherViewSet, FlashSaleViewSet, FlashSaleItemViewSet, apply_voucher, PromotionListCreateAPIView, PromotionDetailAPIView
+from .views import (
+    FlashSaleListView,
+    my_vouchers,
+    apply_voucher,
+    VoucherViewSet,
+    promotions_overview,
+    FlashSaleAdminViewSet
+)
+
+from .views import my_vouchers, apply_voucher, claim_voucher, promotions_overview
+from .views import VoucherViewSet
 
 router = DefaultRouter()
-router.register(r"vouchers", VoucherViewSet, basename="vouchers")
-router.register(r"flashsales", FlashSaleViewSet, basename="flashsales")
-router.register(r"flashsale-items", FlashSaleItemViewSet, basename="flashsale-items")
-
+router.register(r'vouchers', VoucherViewSet, basename='voucher')
+router.register(r'flashsale-admin', FlashSaleAdminViewSet, basename='flashsale-admin')
 
 urlpatterns = [
-    path('', PromotionListCreateAPIView.as_view(), name='promotion-list'),
-    path('<int:pk>/', PromotionDetailAPIView.as_view(), name='promotion-detail'),
-    path("apply-voucher/", apply_voucher, name="apply-voucher"),
-] + router.urls
+    path('overview/', promotions_overview, name='promotions-overview'),
+    path('flash-sales/', FlashSaleListView.as_view(), name='flash-sale-list'),
+    path('vouchers/my_vouchers/', my_vouchers, name='my-vouchers'),
+    path('vouchers/claim/', claim_voucher, name='claim-voucher'),
+    path('vouchers/apply/', apply_voucher, name='apply-voucher'),
+]
+
+# Export router để project-level include
+__all__ = ['urlpatterns', 'router']

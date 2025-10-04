@@ -10,9 +10,10 @@ import {
   DollarOutlined,
   BarChartOutlined,
   SettingOutlined,
+  WarningOutlined, // 👉 dùng cho mục Khiếu nại
+  WechatOutlined, // 👉 dùng cho mục Tin nhắn
 } from "@ant-design/icons";
 import { useNavigate, useLocation } from "react-router-dom";
-import Logo from "../../../assets/logo/imagelogo.png";
 
 const { Sider } = Layout;
 
@@ -28,20 +29,26 @@ export default function SellerSidebar() {
       label: "Tổng quan",
     },
     {
+      key: "/seller-center/complaints",
+      icon: <WarningOutlined />,
+      label: "Khiếu nại",
+    },
+    {
+      key: "/seller-center/messages",
+      icon: <WechatOutlined />,
+      label: "Tin nhắn",
+    },
+    {
       key: "store",
       icon: <ShopOutlined />,
       label: "Cửa hàng",
-      children: [
-        { key: "/seller-center/store/info", label: "Thông tin cửa hàng" },
-      ],
+      children: [{ key: "/seller-center/store/info", label: "Thông tin cửa hàng" }],
     },
     {
       key: "products",
       icon: <AppstoreOutlined />,
       label: "Sản phẩm",
-      children: [
-        { key: "/seller-center/products", label: "Thêm sản phẩm" },
-      ],
+      children: [{ key: "/seller-center/products", label: "Thêm sản phẩm" }],
     },
     {
       key: "orders",
@@ -85,19 +92,21 @@ export default function SellerSidebar() {
   };
 
   return (
-    <Sider width={250} className="h-screen bg-white shadow-md" >
+    <Sider width={250} className="h-screen bg-white shadow-md">
+      {/* Logo */}
       <div
-        className="flex items-center justify-center gap-2 py-4 cursor-pointer"
+        className="flex items-center justify-center gap-3 py-2 cursor-pointer"
         onClick={() => navigate("/")}
       >
         <img
-          src="/assets/logo/imagelogo.png" // 👉 thay bằng logo thật của bạn
+          src="/assets/logo/defaultLogo.png" // 👉 thay bằng logo thật của bạn
           alt="Logo"
-          style={{ height: "36px", marginLeft: "10px" }}
+          style={{ height: "60px", width: "50px", paddingBottom:16 }}
         />
-        <span className="font-bold text-green-600 text-lg">Seller Center</span>
+        <span className="" style={{ fontSize: "24px", fontWeight: "bold", paddingTop: 10}}>Trang người bán</span>
       </div>
 
+      {/* Menu */}
       <Menu
         mode="inline"
         selectedKeys={[location.pathname]}

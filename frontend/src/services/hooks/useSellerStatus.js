@@ -1,11 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import axiosInstance from "../../features/admin/services/axiosInstance";
 
 export default function useSellerStatus() {
   const [storeName, setStoreName] = useState("");
   const [sellerStatus, setSellerStatus] = useState(null);
+  const hasFetched = useRef(false); // <--- ref kiểm soát fetch
 
   useEffect(() => {
+    if (hasFetched.current) return; // đã fetch thì không fetch lại
+    hasFetched.current = true;
+
     const token = localStorage.getItem("token");
     if (!token) return;
 
@@ -14,13 +18,10 @@ export default function useSellerStatus() {
     const fetchSellerStatus = async () => {
       try {
         let seller = null;
-
-        // Try endpoint /sellers/me/
         try {
           const resMe = await axiosInstance.get(`/sellers/me/`);
           seller = resMe.data;
         } catch {
-          // Fallback: filter by username
           const res = await axiosInstance.get(`/sellers/`);
           const username = localStorage.getItem("username");
           seller = res.data.find(
@@ -33,7 +34,7 @@ export default function useSellerStatus() {
         if (!seller) {
           setSellerStatus(null);
           setStoreName("");
-          return;
+          return false;
         }
 
         const status = (seller.status || "").toLowerCase();
@@ -44,26 +45,36 @@ export default function useSellerStatus() {
         if (approvedStatuses.includes(status)) {
           setStoreName(seller.store_name || "");
           setSellerStatus("approved");
+          return true;
         } else if (status === "active") {
           setStoreName(seller.store_name || "");
           setSellerStatus("active");
+          return true;
         } else if (pendingStatuses.includes(status)) {
           setSellerStatus("pending");
           setStoreName("");
+          return false;
         } else if (rejectedStatuses.includes(status)) {
           setSellerStatus("rejected");
           setStoreName("");
+          return false;
         } else {
           setSellerStatus(null);
           setStoreName("");
+          return false;
         }
       } catch {
         setSellerStatus(null);
+        return false;
       }
     };
 
-    fetchSellerStatus();
-    intervalId = setInterval(fetchSellerStatus, 10000);
+    fetchSellerStatus().then((shouldInterval) => {
+      // Tạm thời disable interval để tránh fetch liên tục
+      // if (shouldInterval) {
+      //   intervalId = setInterval(fetchSellerStatus, 10000);
+      // }
+    });
 
     return () => clearInterval(intervalId);
   }, []);

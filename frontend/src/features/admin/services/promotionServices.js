@@ -1,112 +1,125 @@
-// src/services/promotionServices.js
-import axios from "axios";
 
-const API_URL = "http://localhost:8000/api/promotions/vouchers/";
+import axiosClient from "./axiosClient";
+const API_URL = "/promotions"; // axiosClient đã có baseURL
 
-// 🔑 Tạo sẵn axios instance, mọi request đều tự động có token
-const api = axios.create({
-  baseURL: "http://localhost:8000/api/",
-});
-
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token"); // hoặc sessionStorage
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+// User nhận voucher từ kho (claim)
+export const claimVoucher = async (code) => {
+  try {
+    const res = await axiosClient.post(
+      `${API_URL}/vouchers/claim/`,  // ✅ thêm dấu /
+      { code }                       // ✅ payload đúng key
+    );
+    return res.data;
+  } catch (error) {
+    console.error("Claim voucher error:", error.response?.data || error.message);
+    throw error;
   }
-  return config;
-});
+};
 
-// ================== SERVICES ==================
+// Lấy danh sách voucher đã sở hữu (túi voucher)
+export const getMyVouchers = async () => {
+  const res = await axiosClient.get(`${API_URL}/vouchers/my_vouchers/`);
+  return res.data;
+};
 
-// Lấy vouchers (dùng trong PromotionsPage)
+// ====================
+// VOUCHER API
+// ====================
+
+// Lấy danh sách voucher
 export const getVouchers = async () => {
-  try {
-    const res = await api.get("promotions/vouchers/");
-    if (res.data && res.data.results && Array.isArray(res.data.results)) {
-      return res.data.results;
-    }
-    return res.data;
-  } catch (err) {
-    console.error(
-      "Error fetching vouchers:",
-      err.response?.data || err.message || err
-    );
-    return [];
-  }
+  const res = await axiosClient.get(`${API_URL}/vouchers/`);
+  return res.data;
 };
 
-// Lấy flashsales
+// Lấy chi tiết 1 voucher
+export const getVoucher = async (id) => {
+  const res = await axiosClient.get(`${API_URL}/vouchers/${id}/`);
+  return res.data;
+};
+
+// Tạo voucher mới
+export const createVoucher = async (data) => {
+  const res = await axiosClient.post(`${API_URL}/vouchers/`, data);
+  return res.data;
+};
+
+// Cập nhật voucher
+export const updateVoucher = async (id, data) => {
+  const res = await axiosClient.put(`${API_URL}/vouchers/${id}/`, data);
+  return res.data;
+};
+
+// Xóa voucher
+export const deleteVoucher = async (id) => {
+  const res = await axiosClient.delete(`${API_URL}/vouchers/${id}/`);
+  return res.data;
+};
+
+// ====================
+// FLASH SALE API
+// ====================
+
+// Lấy danh sách flash sale
 export const getFlashSales = async () => {
-  try {
-    const res = await api.get("promotions/flashsales/");
-    let data = res.data;
-    if (data && data.results && Array.isArray(data.results))
-      data = data.results;
-
-    if (Array.isArray(data) && data.length > 0 && data[0].items !== undefined) {
-      return data.flatMap((fs) =>
-        (fs.items || []).map((it) => ({
-          ...it,
-          flashsale_title: fs.title,
-          start_at: fs.start_at,
-          end_at: fs.end_at,
-        }))
-      );
-    }
-    return data;
-  } catch (err) {
-    console.error(
-      "Error fetching flash sales:",
-      err.response?.data || err.message || err
-    );
-    return [];
-  }
+  const res = await axiosClient.get(`${API_URL}/flashsales/`);
+  return res.data;
 };
 
-// Lấy danh sách promotions
-export const getPromotions = async () => {
-  try {
-    const res = await api.get("promotions/vouchers/");
-    return res.data;
-  } catch (err) {
-    console.error(
-      "Error fetching promotions:",
-      err.response?.data || err.message
-    );
-    return [];
-  }
+// Lấy chi tiết 1 flash sale
+export const getFlashSale = async (id) => {
+  const res = await axiosClient.get(`${API_URL}/flashsales/${id}/`);
+  return res.data;
 };
 
-// Tạo mới promotion
-export const createPromotion = async (data) => {
-  try {
-    const payload = {
-      ...data,
-      scope: "system", // fix cứng hệ thống
-    };
-    const res = await api.post("promotions/vouchers/", payload, {
-      headers: { "Content-Type": "application/json" },
-    });
-    return res.data;
-  } catch (err) {
-    console.error(
-      "Error creating promotion:",
-      err.response?.data || err.message
-    );
-    throw err;
-  }
+// Tạo flash sale mới
+export const createFlashSale = async (data) => {
+  const res = await axiosClient.post(`${API_URL}/flashsales/`, data);
+  return res.data;
 };
 
-// ✅ Update promotion
-export const updatePromotion = async (id, payload) => {
-  const res = await api.put(`promotions/vouchers/${id}/`, payload, {
-    headers: { "Content-Type": "application/json" },
+// Cập nhật flash sale
+export const updateFlashSale = async (id, data) => {
+  const res = await axiosClient.put(`${API_URL}/flashsales/${id}/`, data);
+  return res.data;
+};
+
+// Xóa flash sale
+export const deleteFlashSale = async (id) => {
+  const res = await axiosClient.delete(`${API_URL}/flashsales/${id}/`);
+  return res.data;
+};
+
+// ====================
+// OVERVIEW
+// ====================
+
+// Tổng quan khuyến mãi (voucher + flash sale)
+export const getPromotionsOverview = async (params = {}) => {
+  const res = await axiosClient.get(`${API_URL}/overview/`, { params });
+  return res.data;
+};
+
+
+
+// Áp dụng voucher
+// Áp dụng voucher
+export const applyVoucher = async (code, orderTotal) => {
+  const res = await axiosClient.post(`/promotions/vouchers/apply/`, {
+    code: code,        // ✅ phải là "code", không phải "voucher_code"
+    order_total: orderTotal,
   });
   return res.data;
 };
 
-// ✅ Delete promotion
-export const deletePromotion = async (id) => {
-  await api.delete(`promotions/vouchers/${id}/`);
-  return true;
+
+//API để user nhận voucher từ kho voucher
+
+// Consume voucher (đánh dấu đã dùng khi order thành công)
+export const consumeVoucher = async (code, orderTotal) => {
+  const res = await axiosClient.post(`/promotions/vouchers/consume/`, {
+    code: code,
+    order_total: orderTotal,
+  });
+  return res.data; // { success: true, discount: ..., ... }
 };

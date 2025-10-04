@@ -296,7 +296,7 @@ export default function AboutPage() {
             Hãy cùng chúng tôi xây dựng một tương lai nơi thực phẩm sạch là điều hiển nhiên.
           </p>
           <Button
-            href="/productuser"
+            href="/products"
             variant="light"
             size="lg"
             className="about-btn fw-bold text-success"

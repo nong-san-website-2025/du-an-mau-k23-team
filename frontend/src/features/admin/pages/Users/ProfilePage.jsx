@@ -39,11 +39,20 @@ export default function ProfilePage() {
 
   const handleProfileUpdate = async (values) => {
     try {
-      const response = await axios.put(`${API_BASE_URL}/me/`, values, {
+      const formData = new FormData();
+      Object.entries(values).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          formData.append(key, value);
+        }
+      });
+
+      const response = await axios.put(`${API_BASE_URL}/me/`, formData, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
+          "Content-Type": "multipart/form-data",
         },
       });
+
       message.success("Cập nhật thành công!");
       setUser(response.data);
     } catch (error) {
@@ -51,7 +60,6 @@ export default function ProfilePage() {
       message.error("Cập nhật thất bại!");
     }
   };
-
   // Change password
   const handleChangePassword = async (values) => {
     if (values.new_password !== values.confirm_password) {

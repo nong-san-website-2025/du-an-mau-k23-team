@@ -50,6 +50,7 @@ def update_wallet_on_success(sender, instance: Order, created, **kwargs):
     Handle wallet movements on status transitions:
     - not-success -> success: +10% to admin, +90% to sellers
     - success -> cancelled: -10% from admin, -90% from sellers (rollback)
+    Đồng thời đảm bảo trừ tồn kho khi chuyển sang success (idempotent).
     """
     try:
         old_status = getattr(instance, "_old_status", None)
@@ -58,6 +59,15 @@ def update_wallet_on_success(sender, instance: Order, created, **kwargs):
         # Nothing to do if status unchanged or initial create without transition
         if old_status == new_status:
             return
+
+        # Khi chuyển sang success: trừ tồn kho (nếu chưa trừ)
+        if new_status == 'success' and old_status != 'success':
+            try:
+                from .services import reduce_stock_for_order
+                reduce_stock_for_order(instance)
+            except Exception:
+                # Không chặn luồng ví nếu lỗi trừ tồn kho, nên chỉ log nếu cần
+                pass
 
         # Helper to compute seller amounts (90% of each item total)
         from collections import defaultdict

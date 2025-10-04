@@ -1,0 +1,40 @@
+/* Padding carousel để arrow không che card */
+.flash-sale-section .ant-carousel {
+  padding: 0 10px; /* khoảng trống 2 bên cho arrow */
+  overflow: visible; /* cho phép arrow scale ra ngoài */
+}
+
+/* Arrow mặc định với box-shadow */
+.ant-carousel .slick-prev,
+.ant-carousel .slick-next {
+  width: 50px;
+  height: 50px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  top: 40%;
+  z-index: 10;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+  transition: transform 0.2s, box-shadow 0.2s;
+  transform-origin: center; /* fix scale lệch vị trí */
+}
+
+/* Di chuyển ra ngoài card */
+.ant-carousel .slick-prev { left: -55px; }
+.ant-carousel .slick-next { right: -55px; }
+
+/* Hover arrow: scale + shadow */
+.ant-carousel .slick-prev:hover,
+.ant-carousel .slick-next:hover {
+  transform: scale(1.2); /* phóng to 20% */
+  box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+}
+
+/* Arrow icon mặc định */
+.ant-carousel .slick-prev:before,
+.ant-carousel .slick-next:before {
+  color: #333;
+  font-size: 24px;
+}

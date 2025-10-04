@@ -59,7 +59,7 @@ export default function UserSidebar({
         onChange={(value) => setSelectedRole(value)}
       >
         <Select.Option value="all">
-          {t("user_sidebar.all_roles")}
+          {t("Tất cả vai trò")}
         </Select.Option>
         {roles.map((role) => (
           <Select.Option key={role.id} value={String(role.id)}>
@@ -71,7 +71,7 @@ export default function UserSidebar({
       {/* Modal create role */}
       <Modal
         open={showModal}
-        title={t("user_sidebar.create_new_role")}
+        title={t("Tạo vai trò mới")}
         onCancel={() => setShowModal(false)}
         onOk={handleCreateRole}
         confirmLoading={loading}

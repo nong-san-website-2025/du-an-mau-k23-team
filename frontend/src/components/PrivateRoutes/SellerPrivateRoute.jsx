@@ -24,7 +24,7 @@ const SellerPrivateRoute = () => {
   }
 
   // Chuẩn hóa role và hỗ trợ fallback cho format cũ (is_seller)
-  const normalizedRole = String(user?.role || "").trim().toLowerCase();
+  const normalizedRole = String(user?.role?.name || "").trim().toLowerCase();
   const isSellerFlag = localStorage.getItem("is_seller") === "true";
 
   if (!(normalizedRole === "seller" || isSellerFlag)) {

@@ -1,7 +1,17 @@
+# --- File upload limits (tăng giới hạn để upload video)
+DATA_UPLOAD_MAX_MEMORY_SIZE = 104857600  # 100MB
+FILE_UPLOAD_MAX_MEMORY_SIZE = 104857600  # 100MB
 from pathlib import Path
 import os
 import dj_database_url
 from datetime import timedelta
+from dotenv import load_dotenv
+
+load_dotenv()  # Load biến môi trường từ .env nếu có
+
+# settings.py
+USE_TZ = True  # Django dùng timezone chuẩn UTC, nên giữ nguyên True
+TIME_ZONE = "Asia/Ho_Chi_Minh"  # Múi giờ Việt Nam
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -34,13 +44,12 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt",
     "corsheaders",
     "django_filters",
-    'advertisements',
     "rest_framework_simplejwt.token_blacklist",
+    'channels',
 
     # Local apps
     "users", "sellers", "products", "reviews",
-    "cart", "orders", "payments", "store",
-    "blog", "wallet", "promotions",'complaints', "marketing",
+    "cart", "orders", "payments", "store", "wallet",'complaints', "marketing", "promotions", "delivery", "chat", 'config',
 
     # Cloudinary
 
@@ -48,6 +57,9 @@ INSTALLED_APPS = [
     'cloudinary_storage',
 
     "dashboard",
+
+    # "system_logs",
+    "system"
 ]
 
 # --- Email
@@ -55,8 +67,14 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'nmk1010111@gmail.com'
-EMAIL_HOST_PASSWORD = 'rzen rgwe ltwj oveo'
+EMAIL_HOST_USER = 'khoahuynhminh2005@gmail.com'
+EMAIL_HOST_PASSWORD = 'szqpkfjifpcyxwlq'
+
+# --- Facebook
+
+
+FACEBOOK_APP_ID = os.getenv("FACEBOOK_APP_ID")
+FACEBOOK_APP_SECRET = os.getenv("FACEBOOK_APP_SECRET")
 
 # --- Middleware
 MIDDLEWARE = [
@@ -82,7 +100,7 @@ ASGI_APPLICATION = 'config.asgi.application'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [os.path.join(BASE_DIR.parent, "frontend", "public")],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -95,15 +113,22 @@ TEMPLATES = [
     },
 ]
 
-# --- Channels (nếu chưa cần Redis ở Render thì comment lại)
-CHANNEL_LAYERS = {
-    "default": {
-        "BACKEND": "channels_redis.core.RedisChannelLayer",
-        "CONFIG": {
-            "hosts": [("127.0.0.1", 6379)],
+# --- Channels (auto fallback to InMemory when REDIS_URL not set)
+if os.environ.get("REDIS_URL"):
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {
+                "hosts": [os.environ["REDIS_URL"]],
+            },
         },
-    },
-}
+    }
+else:
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels.layers.InMemoryChannelLayer",
+        }
+    }
 
 # --- Database: local PostgreSQL hoặc Render
 if os.environ.get("DATABASE_URL"):
@@ -117,16 +142,10 @@ if os.environ.get("DATABASE_URL"):
 else:
     DATABASES = {
         'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': 'ecom_db',
-            'USER': 'postgres',
-            'PASSWORD': '12345',
-            'HOST': 'localhost',
-            'PORT': '5432',
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
         }
     }
-
-
 # --- Auth
 AUTH_USER_MODEL = "users.CustomUser"
 AUTHENTICATION_BACKENDS = [
@@ -149,6 +168,8 @@ REST_FRAMEWORK = {
         "rest_framework.filters.OrderingFilter",
         "rest_framework.filters.SearchFilter",
     ),
+    "DEFAULT_PERMISSION_CLASSES": (
+        "rest_framework.permissions.IsAuthenticated", ),
 }
 
 # --- Static & Media
@@ -167,11 +188,14 @@ CLOUDINARY_STORAGE = {
     'API_SECRET': os.getenv("CLOUDINARY_API_SECRET", "t-BweAUOngVkY6GBvMNpc1IYJdg"),
 }
 
-DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+## Nếu muốn lưu file về local, hãy comment hoặc xóa dòng dưới:
+# DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 
 # --- CORS & CSRF
 CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOW_ALL_ORIGINS = True  
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+]
 
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:3000",
@@ -193,18 +217,15 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 PLATFORM_WALLET_USERNAME = os.environ.get('PLATFORM_WALLET_USERNAME', '').strip() or None
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),  # access token sống 60 phút
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=180),  # access token sống 60 phút
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),     # refresh token sống 7 ngày
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
 }
 
-MOMO_CONFIG = {
-    "partnerCode": "MOMO",
-    "accessKey": "F8BBA842ECF85",
-    "secretKey": "K951B6PE1waDMi640xX08PD3vg6EkVlz",
-    "endpoint": "https://test-payment.momo.vn/v2/gateway/api/create",  # API mới
-    "redirectUrl": "http://localhost:3000/payment/result",  # frontend React
-    "ipnUrl": "http://localhost:8000/api/payments/momo/notify/",
-    "notifyUrl": "http://localhost:8000/api/payments/momo/ipn",  # backend nhận callback
+VNPAY_CONFIG = {
+    "TMN_CODE": "6EW69YA0",
+    "HASH_SECRET_KEY": "ZF17PDTYTRE7VE2M3TEZWH1YHDGBSTD8",
+    "VNPAY_URL": "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html",
+    "RETURN_URL": "http://localhost:3000/vnpay-return",
 }

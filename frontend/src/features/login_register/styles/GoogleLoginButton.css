@@ -1,0 +1,19 @@
+#google-login-btn {
+  display: flex !important;
+  justify-content: center;
+  align-items: center;
+  width: 50px;    /* chỉ rộng vừa logo */
+  height: 50px;   /* vuông */
+  padding: 0 !important;
+  border: none !important;
+  background: transparent !important;
+}
+
+#google-login-btn span {
+  display: none; /* ẩn chữ */
+}
+
+#google-login-btn svg {
+  width: 100%;    /* logo full nút */
+  height: 100%;
+}

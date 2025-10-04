@@ -1,19 +1,33 @@
-import { CircleDollarSign } from "lucide-react";
-import React, { useState } from "react";
-import { Card, Button, Spinner, Row, Col, Alert } from "react-bootstrap";
-import { FaWallet, FaMoneyBillWave, FaPlusCircle, FaCheckCircle } from "react-icons/fa";
-import WalletNotifications from './WalletNotifications';
-import './WalletTab.css';
+import React from "react";
+import {
+  Card,
+  Button,
+  Spin,
+  Row,
+  Col,
+  Alert,
+  Typography,
+  InputNumber,
+  Space,
+  Tag,
+} from "antd";
+import {
+  DollarCircleOutlined,
+  PlusCircleOutlined,
+  WalletOutlined,
+  LoadingOutlined,
+} from "@ant-design/icons";
 
+const { Title, Text } = Typography;
 
-const mainColor = "#4B0082";
+const mainColor = "#166534"; // Tím Indigo
 
-// Hàm format tiền với dấu phẩy ngăn cách
-function formatMoney(amount) {
+// Hàm format tiền
+const formatMoney = (amount) => {
   const num = parseFloat(amount);
   if (isNaN(num)) return "0";
   return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-}
+};
 
 export default function WalletTab({
   walletBalance,
@@ -26,16 +40,21 @@ export default function WalletTab({
 }) {
   return (
     <Card
-      className="shadow border-0 p-4"
-      style={{ background: "#f8f9fa", borderRadius: 18 }}
+      bordered={false}
+      style={{
+        borderRadius: 18,
+        background: "#f9f9f9",
+        padding: 12,
+        boxShadow: "0 2px 10px rgba(75,0,130,0.08)",
+      }}
     >
       {/* Header */}
-      <Row className="align-items-center mb-4">
-        <Col xs="auto">
+      <Row align="middle" gutter={16} style={{ marginBottom: 24 }}>
+        <Col>
           <div
             style={{
               background: mainColor,
-              borderRadius: 32,
+              borderRadius: "50%",
               width: 64,
               height: 64,
               display: "flex",
@@ -43,155 +62,151 @@ export default function WalletTab({
               justifyContent: "center",
             }}
           >
-            <CircleDollarSign size={36} style={{ color: "#fff" }} />
+            <DollarCircleOutlined style={{ fontSize: 32, color: "#fff" }} />
           </div>
         </Col>
         <Col>
-          <div style={{ fontWeight: 700, fontSize: 22, color: mainColor }}>
+          <Title level={4} style={{ margin: 0, color: mainColor }}>
             GFarmPay
-          </div>
+          </Title>
+          <Text type="secondary">Quản lý ví điện tử của bạn</Text>
         </Col>
       </Row>
 
       {/* Số dư ví */}
       <Card
-        className="mb-4"
         style={{
+          borderRadius: 6 ,
+          marginBottom: 12,
           background: "#fff",
-          borderRadius: 14,
-          border: "none",
-          boxShadow: "0 2px 8px rgba(75,0,130,0.07)",
+          border: `1px solid ${mainColor}20`,
         }}
       >
-        <Card.Body className="d-flex align-items-center justify-content-between">
-          <div
-            style={{
-              fontSize: 18,
-              fontWeight: 600,
-              color: mainColor,
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-            }}
-          >
-            <FaMoneyBillWave size={24} style={{ marginRight: 6 }} />
-            Số dư:
-            <span
-              style={{
-                color: "#388e3c",
-                fontSize: 24,
-                fontWeight: 800,
-                marginLeft: 8,
-              }}
-            >
+        <Row align="middle" justify="space-between">
+          <Col>
+            <Space size="large">
+              
+              <Text strong style={{ fontSize: 18, color: "#1C1C1C" }}>
+                Số dư:
+              </Text>
               {loadingWallet ? (
-                <Spinner
-                  animation="border"
-                  size="sm"
-                  style={{ color: mainColor }}
+                <Spin
+                  indicator={<LoadingOutlined style={{ fontSize: 20 }} spin />}
                 />
-              ) : walletBalance !== null ? (
-                `${formatMoney(walletBalance)} ₫`
-
               ) : (
-                "---"
+                <Text
+                  style={{
+                    fontSize: 24,
+                    fontWeight: 500,
+                    color: "#1C1C1C",
+                  }}
+                >
+                  {walletBalance !== null
+                    ? `${formatMoney(walletBalance)} ₫`
+                    : "---"}
+                </Text>
               )}
-            </span>
-          </div>
-        </Card.Body>
+            </Space>
+          </Col>
+          <Col>
+            <Tag color="green" style={{ fontSize: 14 }}>
+              Hoạt động
+            </Tag>
+          </Col>
+        </Row>
       </Card>
 
-      {/* Thông báo yêu cầu đang chờ */}
-      <WalletNotifications />
-
       {/* Nạp tiền */}
-      <div style={{ fontWeight: 600, color: mainColor, marginBottom: 10 }}>
+      <Title
+        level={5}
+        style={{ color: "#1C1C1C", marginBottom: 16, marginTop: 16 }}
+      >
         Nạp tiền vào ví
-      </div>
-      <Row className="align-items-center g-2 mb-2">
+      </Title>
+
+      <Row gutter={[16, 16]}>
         {/* Mệnh giá nhanh */}
-        <Col xs={12} md={5} className="d-flex flex-wrap gap-2">
-          {[100000, 200000, 500000].map((value) => {
-            const isSelected = parseInt(rechargeAmount) === value;
-            return (
-              <Button
-                key={value}
-                style={{
-                  border: `1.5px solid ${mainColor}`,
-                  borderRadius: 10,
-                  fontWeight: 600,
-                  flex: "1 1 auto",
-                  minWidth: 100,
-                  background: isSelected ? mainColor : "transparent",
-                  color: isSelected ? "#fff" : mainColor,
-                }}
-                onClick={() => setRechargeAmount(value)}
-                disabled={rechargeLoading}
-              >
-                {formatMoney(value)} ₫
-              </Button>
-            );
-          })}
+        <Col xs={24} md={10}>
+          <Space wrap size="small">
+            {[100000, 200000, 500000].map((value) => {
+              const isSelected = parseInt(rechargeAmount) === value;
+              return (
+                <Button
+                  key={value}
+                  type={isSelected ? "primary" : "default"}
+                  onClick={() => setRechargeAmount(value)}
+                  style={{
+                    borderColor: isSelected ? mainColor  : "#ccc" ,
+                    color: isSelected ? "#fff" : "#1C1C1C",
+                    background: isSelected ? mainColor : "#fff",
+                    fontWeight: 600,
+                    minWidth: 100,
+                    borderRadius: 8,
+                  }}
+                  disabled={rechargeLoading}
+                >
+                  {formatMoney(value)} ₫
+                </Button>
+              );
+            })}
+          </Space>
         </Col>
 
         {/* Nhập số tiền & nút nạp */}
-        <Col xs={12} md={7} className="d-flex gap-2">
-          <input
-            type="number"
-            className="form-control"
-            placeholder="Nhập số tiền muốn nạp"
-            value={rechargeAmount}
-            onChange={(e) => setRechargeAmount(e.target.value)}
-            min={10000}
-            max={300000000}
-            disabled={rechargeLoading}
-            style={{
-              border: `1.5px solid ${mainColor}`,
-              borderRadius: 10,
-              fontWeight: 600,
-            }}
-          />
-          <Button
-            style={{
-              background: rechargeLoading ? "#6c757d" : mainColor,
-              border: "none",
-              borderRadius: 10,
-              fontWeight: 700,
-              minWidth: 120,
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-            }}
-            onClick={handleRecharge}
-            disabled={rechargeLoading}
-          >
-            {rechargeLoading ? (
-              <>
-                <Spinner animation="border" size="sm" />
-                Đang gửi...
-              </>
-            ) : (
-              <>
-                <FaPlusCircle /> Nạp tiền
-              </>
-            )}
-
-          </Button>
+        <Col xs={24} md={14}>
+          <Row gutter={12}>
+            <Col flex="auto">
+              <InputNumber
+                style={{
+                  width: "100%",
+                  borderRadius: 8,
+                  border: `1.5px solid ${mainColor}`,
+                  fontWeight: 600,
+                }}
+                min={10000}
+                max={300000000}
+                placeholder="Nhập số tiền muốn nạp"
+                value={rechargeAmount}
+                onChange={(value) => setRechargeAmount(value)}
+                disabled={rechargeLoading}
+                formatter={(value) =>
+                  `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+                }
+              />
+            </Col>
+            <Col>
+              <Button
+                type="primary"
+                icon={<PlusCircleOutlined />}
+                onClick={handleRecharge}
+                loading={rechargeLoading}
+                style={{
+                  background: mainColor,
+                  borderColor: mainColor,
+                  fontWeight: 500,
+                  borderRadius: 8,
+                }}
+              >
+                Nạp tiền
+              </Button>
+            </Col>
+          </Row>
         </Col>
       </Row>
 
       {/* Thông báo lỗi */}
       {rechargeError && (
-        <Alert variant="danger" className="mt-3 mb-2" style={{ borderRadius: 10 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span>⚠️</span>
-            <span>{rechargeError}</span>
-          </div>
-        </Alert>
+        <Alert
+          message="Lỗi nạp tiền"
+          description={rechargeError}
+          type="error"
+          showIcon
+          style={{ marginTop: 16, borderRadius: 8 }}
+        />
       )}
 
-      <div style={{ color: "#888", fontSize: 13, marginTop: 8 }}>
-        💡 Số tiền nạp tối thiểu 10.000 ₫, tối đa 300.000.000 ₫/lần.
+      <div style={{ color: "#888", fontSize: 13, marginTop: 12 }}>
+        💡 Số tiền nạp tối thiểu <b>10.000 ₫</b>, tối đa <b>300.000.000 ₫</b>/lần.
       </div>
     </Card>
   );

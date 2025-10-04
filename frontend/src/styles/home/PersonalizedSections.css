@@ -1,0 +1,58 @@
+.product-card .discount-tag {
+  position: absolute;
+  top: 0px;
+  right: 0px;
+  background: linear-gradient(45deg, #66bb6a, #388e3c);
+  color: #f0f4c3; /* vàng nhạt */ 
+  font-size: 0.7rem;
+  font-weight: bold;
+  padding: 2px 6px;
+  border-radius: 0px;
+  z-index: 10; /* chắc chắn nằm trên overlay */
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+/* Overlay hiện khi hover */
+
+.product-card .overlay {
+  position: absolute;
+  bottom: 0; /* overlay từ dưới lên */
+  left: 0;
+  width: 100%;
+  padding: 0.5rem;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  box-sizing: border-box;
+  z-index: 5; /* dưới tag giảm giá */
+}
+
+.product-card .overlay .product-name {
+  font-size: 0.85rem;
+  font-weight: 500;
+  margin: 0 0 0.25rem 0;
+  line-height: 1.2;
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.7);
+}
+
+.product-card .overlay .overlay-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.75rem;
+}
+
+.product-card .overlay .overlay-bottom .price {
+  background: rgba(255, 255, 255, 0.8);
+  color: #d32f2f;
+  padding: 0 0.25rem;
+  border-radius: 3px;
+  font-weight: bold;
+}
+
+.product-card .overlay .overlay-bottom .sold {
+  background: rgba(0, 0, 0, 0.5);
+  padding: 0 0.25rem;
+  border-radius: 3px;
+}

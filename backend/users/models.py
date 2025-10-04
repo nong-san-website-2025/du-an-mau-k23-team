@@ -1,5 +1,6 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.core.validators import RegexValidator
 
 
 class Role(models.Model):
@@ -11,12 +12,29 @@ class Role(models.Model):
 
 class CustomUser(AbstractUser):
 
-    role = models.ForeignKey(Role, on_delete=models.SET_NULL, null=True, blank=True)
+    phone_regex = RegexValidator(
+        regex=r'^0\d{9}$',
+        message="Số điện thoại phải bắt đầu bằng 0 và gồm đúng 10 chữ số."
+    )
 
+    role = models.ForeignKey(Role, on_delete=models.SET_NULL, null=True, blank=True)
     full_name = models.CharField(max_length=255, blank=True, null=True)
     email = models.EmailField(unique=True)
     avatar = models.ImageField(upload_to='assets/users/', blank=True, null=True)
-    phone = models.CharField(max_length=20, blank=True, null=True)
+    phone = models.CharField(
+        validators=[phone_regex],
+        max_length=10,
+        blank=True,
+        null=True,
+        unique=True
+    )
+
+    # Pending changes for secure verification flows
+    pending_email = models.EmailField(null=True, blank=True)
+    pending_phone = models.CharField(max_length=10, null=True, blank=True)
+    phone_otp = models.CharField(max_length=6, null=True, blank=True)
+    phone_otp_expires = models.DateTimeField(null=True, blank=True)
+
     last_activity = models.DateTimeField(blank=True, null=True)
     note = models.TextField(blank=True, null=True)
     tags = models.CharField(max_length=255, blank=True, null=True)
@@ -25,10 +43,12 @@ class CustomUser(AbstractUser):
     STATUS_CHOICES = (
         ('active', 'Đang hoạt động'),
         ('inactive', 'Ngừng hoạt động'),
+        ('pending', "Chờ duyệt")
     )
     status = models.CharField(
         max_length=10,
         choices=STATUS_CHOICES,
+        default='active',
         blank=True,
         null=True
     )
@@ -42,6 +62,9 @@ class CustomUser(AbstractUser):
         if not self.role and not self.is_superuser:
             customer_role, _ = Role.objects.get_or_create(name="customer")
             self.role = customer_role
+        # Nếu chưa có status thì gán mặc định là "active"
+        if not self.status:
+            self.status = 'active'
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -55,20 +78,37 @@ class CustomUser(AbstractUser):
         return bool(self.is_superuser or (self.role and self.role.name == "admin"))
 
 
+# models.py
 class Address(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="addresses")
     recipient_name = models.CharField(max_length=100)
     phone = models.CharField(max_length=15)
-    location = models.TextField()
+    location = models.TextField()  # Địa chỉ cụ thể (số nhà, đường...)
+
+    # Cờ địa chỉ mặc định
     is_default = models.BooleanField(default=False)
 
+    # Thông tin GHN
+    district_id = models.IntegerField(
+        null=True, blank=True, help_text='GHN DistrictID (bắt buộc nếu tính phí GHN)'
+    )
+    ward_code = models.CharField(
+        max_length=20, null=True, blank=True, help_text='GHN WardCode (bắt buộc nếu tính phí GHN)'
+    )
+
+    # Mã nội bộ (tuỳ ý)
+    province_code = models.CharField(max_length=10, null=True, blank=True)
+    district_code = models.CharField(max_length=10, null=True, blank=True)
+
     def save(self, *args, **kwargs):
+        # Nếu set is_default = True -> các địa chỉ khác của user phải về False
         if self.is_default:
-            Address.objects.filter(user=self.user).update(is_default=False)
+            Address.objects.filter(user=self.user).exclude(id=self.id).update(is_default=False)
         super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.recipient_name} - {self.location}"
+
 
 
 class PointHistory(models.Model):

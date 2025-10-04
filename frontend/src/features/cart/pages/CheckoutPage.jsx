@@ -1,301 +1,490 @@
-import React, { useState, useEffect } from "react";
+// src/features/cart/pages/CheckoutPage.jsx
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "../services/CartContext";
 import { toast } from "react-toastify";
-import { QRCodeSVG } from "qrcode.react";
+import { Card, Typography, Button, Select } from "antd";
 import API from "../../login_register/services/api";
+
+import PaymentButton from "../components/PaymnentButton"; // VNPAY button
+import AddressSelector from "../components/AddressSelector";
+
+import VoucherSection from "../components/VoucherSection";
+import ProductList from "../components/ProductList";
 import "../styles/CheckoutPage.css";
 
+import { applyVoucher } from "../../admin/services/promotionServices";
+import { message } from "antd";
 
+const { Title, Text } = Typography;
 
 const CheckoutPage = () => {
   const navigate = useNavigate();
-  const { cartItems, clearCart, selectAllItems, toggleItem } = useCart();
+  const { cartItems, clearCart } = useCart();
 
-  
+  const [shippingFee, setShippingFee] = useState(0);
+  const [shippingStatus, setShippingStatus] = useState("idle"); // Thêm dòng này
+
+  const [addresses, setAddresses] = useState([]);
+  const [selectedAddressId, setSelectedAddressId] = useState(null);
+  const [manualEntry, setManualEntry] = useState(false);
 
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
-  const [address, setAddress] = useState("");
+  const [addressText, setAddressText] = useState("");
   const [note, setNote] = useState("");
+  const [voucherCode, setVoucherCode] = useState("");
+
+  const [geoManual, setGeoManual] = useState({
+    provinceId: undefined,
+    districtId: undefined,
+    wardCode: undefined,
+  });
+
+  const [discount, setDiscount] = useState(0);
+
   const [payment, setPayment] = useState("Thanh toán khi nhận hàng");
   const [isLoading, setIsLoading] = useState(false);
 
-  const [showQR, setShowQR] = useState(false);
-  const [qrScanned, setQrScanned] = useState(false); // Người dùng đã quét QR chưa
-  const [voucher, setVoucher] = useState("");
-  const [discount, setDiscount] = useState(0);
-  const [voucherError, setVoucherError] = useState("");
-
- useEffect(() => {
-  selectAllItems();
-}, []); // chỉ chạy 1 lần khi component mount
-
-
-  // Danh sách mã giảm giá mẫu
-  const voucherList = [
-    { code: "SALE10", type: "percent", value: 10, desc: "Giảm 10% tổng đơn" },
-    { code: "FREESHIP", type: "fixed", value: 20000, desc: "Giảm 20.000đ" },
-    {
-      code: "GREENFARM50",
-      type: "fixed",
-      value: 50000,
-      desc: "Giảm 50.000đ cho đơn từ 500k",
-      minOrder: 500000,
-    },
-  ];
-
-  const total = cartItems
-    .filter((item) => item.selected) // chỉ tính item đã tick
-    .reduce(
-      (sum, item) =>
-        sum + (Number(item.product?.price) || 0) * (Number(item.quantity) || 0),
-      0
-    );
-
-  // Áp dụng mã giảm giá
-  const handleApplyVoucher = () => {
-    setVoucherError("");
-    setDiscount(0);
-    if (!voucher.trim()) return;
-    const found = voucherList.find(
-      (v) => v.code === voucher.trim().toUpperCase()
-    );
-    if (!found) {
-      setVoucherError("Mã giảm giá không hợp lệ!");
+  const handleApplyVoucher = async (code) => {
+    const token = localStorage.getItem("token");
+    if (!token) {
       return;
     }
-    if (found.minOrder && total < found.minOrder) {
-      setVoucherError(
-        `Đơn tối thiểu ${found.minOrder.toLocaleString()}đ mới dùng mã này!"`
+
+    if (!code) {
+      setDiscount(0);
+      setVoucherCode("");
+      return;
+    }
+    try {
+      const res = await applyVoucher(code, total); // gọi API apply_voucher
+      console.log("Voucher API response:", res);
+
+      setDiscount(res?.discount || 0); // 👈 lấy đúng key discount
+      setVoucherCode(code);
+    } catch (err) {
+      console.error("Apply voucher error:", err.response?.data || err.message);
+      setDiscount(0);
+      setVoucherCode("");
+      message.error("Mã voucher không hợp lệ hoặc đã hết hạn!");
+    }
+  };
+
+  // Lấy địa chỉ đã chọn
+  const selectedAddress = useMemo(() => {
+    const addr = addresses.find((a) => a.id === selectedAddressId) || null;
+    console.log("🔍 selectedAddress full object:", addr); // 👈 XEM TOÀN BỘ OBJECT
+    return addr;
+  }, [addresses, selectedAddressId]);
+
+  const total = useMemo(() => {
+    return cartItems
+      .filter((item) => item.selected)
+      .reduce((sum, item) => {
+        const product = item.product_data || item.product || {};
+        const price = parseFloat(product.price) || 0;
+        return sum + price * (parseInt(item.quantity) || 0);
+      }, 0);
+  }, [cartItems]);
+  // Tổng tiền sau giảm giá
+  const totalAfterDiscount = Math.max(total + shippingFee - discount, 0);
+
+  useEffect(() => {
+    // Auto-switch to manual entry if selected address lacks GHN IDs
+    if (
+      selectedAddress &&
+      (!selectedAddress.district_id || !selectedAddress.ward_code)
+    ) {
+      setManualEntry(true);
+      toast.warn(
+        "Địa chỉ thiếu thông tin GHN. Vui lòng chọn Tỉnh/Quận/Phường thủ công."
       );
       return;
     }
-    if (found.type === "percent") {
-      setDiscount(Math.floor((total * found.value) / 100));
-    } else if (found.type === "fixed") {
-      setDiscount(found.value);
-    }
-    toast.success(`Áp dụng mã ${found.code} thành công!`);
-  };
 
-  const totalAfterDiscount = Math.max(total - discount, 0);
+    const fetchShippingFee = async () => {
+      // Dùng GHN DistrictID thay vì mã hành chính (district_code)
+      const to_district_id = manualEntry
+        ? geoManual.districtId
+        : selectedAddress?.district_id; // ✅ GHN DistrictID
 
-  // Khi nhấn Xác nhận đặt hàng
-  const handleOrder = () => {
-    if (!customerName.trim() || !customerPhone.trim() || !address.trim()) {
-      toast.error("Vui lòng nhập đầy đủ thông tin");
+      const to_ward_code = manualEntry
+        ? geoManual.wardCode
+        : selectedAddress?.ward_code
+          ? String(selectedAddress.ward_code).trim()
+          : undefined;
+
+      // SỬA: Kiểm tra cả district_code và ward_code
+      if (!to_district_id || !to_ward_code) {
+        console.log("🚫 Thiếu quận/huyện hoặc phường/xã → không gọi API");
+        setShippingFee(0);
+        setShippingStatus("idle");
+        return;
+      }
+
+      setShippingFee(0);
+      setShippingStatus("loading");
+
+      const totalWeight = cartItems
+        .filter((item) => item.selected)
+        .reduce((sum, item) => sum + (parseInt(item.quantity) || 0) * 500, 0);
+
+      try {
+        const payload = {
+          from_district_id: 1450,
+          from_ward_code: "21007",
+          to_district_id: parseInt(to_district_id), // ✅ CHUYỂN SANG SỐ
+          to_ward_code: to_ward_code, // ✅ DÙNG GIÁ TRỊ THỰC
+          weight: totalWeight > 0 ? totalWeight : 1,
+          length: 20,
+          width: 15,
+          height: 10,
+        };
+
+        console.log("📦 Gửi payload:", payload);
+
+        const res = await API.post("delivery/fee/", payload);
+        console.log("✅ GHN Response:", res.data);
+
+        const fee = res.data?.fee || 0;
+        setShippingFee(fee);
+        setShippingStatus("success");
+      } catch (error) {
+        console.error("❌ Lỗi API GHN:", error);
+        toast.error("Không thể tính phí vận chuyển");
+        setShippingFee(0);
+        setShippingStatus("error");
+      }
+    };
+
+    fetchShippingFee();
+  }, [manualEntry, geoManual, selectedAddress, cartItems]);
+
+  // Fetch danh sách địa chỉ
+  // Fetch danh sách địa chỉ (chỉ khi đã đăng nhập)
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) return; // 👈 DỪNG nếu chưa đăng nhập
+
+    const fetchAddresses = async () => {
+      try {
+        const res = await API.get("users/addresses/");
+        const list = res.data || [];
+        setAddresses(list);
+
+        const def = list.find((a) => a.is_default);
+        if (def) {
+          setSelectedAddressId(def.id);
+          setCustomerName(def.recipient_name || "");
+          setCustomerPhone(def.phone || "");
+          setAddressText(def.location || "");
+        }
+      } catch (err) {
+        toast.error("Không thể tải địa chỉ");
+      }
+    };
+    fetchAddresses();
+  }, []);
+
+  // Áp dụng voucher
+
+  // Xử lý đặt hàng
+  const handleOrder = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      // Hiển thị toast
+      toast.info("Vui lòng đăng nhập để tiếp tục đặt hàng!", {
+        position: "bottom-right",
+        autoClose: 3000, // 3 giây
+      });
+
+      // Sau 3s, chuyển đến trang login và lưu redirect
+      setTimeout(() => {
+        navigate("/login?redirect=/checkout");
+      }, 3500);
+
       return;
     }
-    if (cartItems.length === 0) {
-      toast.error("Giỏ hàng của bạn đang trống");
+    if (cartItems.filter((i) => i.selected).length === 0)
+      return toast.error("Giỏ hàng trống!");
+
+    const finalName = manualEntry
+      ? customerName
+      : selectedAddress?.recipient_name || "";
+    const finalPhone = manualEntry
+      ? customerPhone
+      : selectedAddress?.phone || "";
+    const finalAddress = manualEntry
+      ? addressText
+      : selectedAddress?.location || "";
+
+    // Validate tối thiểu khi nhập tay
+    if (manualEntry && (!geoManual.districtId || !geoManual.wardCode)) {
+      toast.error("Vui lòng chọn Quận/Huyện và Phường/Xã");
       return;
     }
 
-    if (payment === "Ví điện tử") {
-      // Hiện QR code
-      setShowQR(true);
-      setQrScanned(false);
-      return;
-    }
-
-    // COD hoặc chuyển khoản
-    completeOrder();
-  };
-
-  // Khi người dùng nhấn “quét QR”
-  const handleQrScan = () => {
-    setQrScanned(true);
-  };
-
-  // Khi người dùng nhấn Xác nhận thanh toán sau khi quét QR
-  const handleQRConfirm = async () => {
-    await completeOrder();
-  };
-
-  const completeOrder = async () => {
     setIsLoading(true);
     try {
-      // Gửi đơn hàng thật tới backend
       const orderData = {
-        total_price: total,
-        status: "pending", // chờ xác nhận
-        customer_name: customerName.trim(),
-        customer_phone: customerPhone.trim(),
-        address: address.trim(),
+        total_price: totalAfterDiscount,
+        status: "pending",
+        shipping_fee: shippingFee,
+        customer_name: finalName,
+        customer_phone: finalPhone,
+        address: finalAddress,
         note: note.trim(),
         payment_method: payment,
-        items: cartItems.map((item) => ({
-          product: item.product?.id || item.product, // gửi ID sản phẩm
-          quantity: parseInt(item.quantity) || 1,
-          price: parseFloat(item.product?.price) || 0,
-        })),
+        voucher_code: voucherCode || null, // 👈 THÊM DÒNG NÀY
+        to_district_id: manualEntry
+          ? geoManual.districtId
+          : selectedAddress?.district_id,
+        to_ward_code: manualEntry
+          ? geoManual.wardCode
+          : selectedAddress?.ward_code,
+        items: cartItems
+          .filter((it) => it.selected)
+          .map((item) => {
+            const product = item.product_data || item.product || {};
+            return {
+              product: product.id || item.product, // ID sản phẩm
+              quantity: parseInt(item.quantity) || 1,
+              price: parseFloat(product.price) || 0,
+            };
+          }),
       };
 
-      const res = await API.post("orders/", orderData);
-
+      await API.post("orders/", orderData);
       await clearCart();
       toast.success("Đặt hàng thành công!");
-      // Điều hướng sang trang đơn hàng - tab chờ xác nhận
       navigate("/orders?tab=pending");
-    } catch (error) {
-      console.error(error);
-      const message =
-        error?.response?.data?.error || "Đặt hàng thất bại! Vui lòng thử lại.";
-      toast.error(message);
+    } catch (err) {
+      toast.error("Đặt hàng thất bại!");
     } finally {
       setIsLoading(false);
-      setShowQR(false);
-      setQrScanned(false);
+    }
+  };
+
+  const handleSaveManualAddress = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      return;
+    }
+    if (!geoManual.provinceId || !geoManual.districtId || !geoManual.wardCode) {
+      toast.error("Vui lòng chọn đầy đủ Tỉnh/Quận/Phường trước khi lưu!");
+      return;
+    }
+
+    const payload = {
+      recipient_name: customerName,
+      phone: customerPhone,
+      location: addressText,
+      province_code: geoManual.provinceId,
+      district_code: geoManual.districtId,
+      district_id: geoManual.districtId,
+      ward_code: geoManual.wardCode,
+      is_default: false, // hoặc true nếu muốn set mặc định
+    };
+
+    try {
+      const res = await API.post("users/addresses/", payload);
+
+      const savedAddress = res.data;
+
+      // Cập nhật danh sách địa chỉ
+      setAddresses((prev) => [...prev, savedAddress]);
+      setSelectedAddressId(savedAddress.id);
+
+      toast.success("Đã lưu địa chỉ thành công!");
+    } catch (error) {
+      console.error("❌ Lỗi khi lưu địa chỉ:", error.response?.data || error);
+      toast.error("Không thể lưu địa chỉ. Vui lòng thử lại!");
     }
   };
 
   return (
-    <div className="checkout-container">
-      <h2 className="checkout-title">Thanh toán đơn hàng</h2>
-
-      <input
-        type="text"
-        placeholder="Họ và tên"
-        value={customerName}
-        onChange={(e) => setCustomerName(e.target.value)}
-      />
-      <input
-        type="tel"
-        placeholder="Số điện thoại"
-        value={customerPhone}
-        onChange={(e) => setCustomerPhone(e.target.value)}
-      />
-      <input
-        type="text"
-        placeholder="Địa chỉ nhận hàng"
-        value={address}
-        onChange={(e) => setAddress(e.target.value)}
-      />
-      <input
-        type="text"
-        placeholder="Ghi chú (tùy chọn)"
-        value={note}
-        onChange={(e) => setNote(e.target.value)}
-      />
-
-      {/* Voucher section */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          marginBottom: 8,
-        }}
-      >
-        <input
-          type="text"
-          placeholder="Nhập mã giảm giá/vocher"
-          value={voucher}
-          onChange={(e) => setVoucher(e.target.value)}
-          style={{
-            flex: 1,
-            padding: 6,
-            borderRadius: 4,
-            border: "1px solid #ccc",
-          }}
+    <div style={{ padding: 24, maxWidth: "100%", margin: "0 190px" }}>
+      <Title level={2}>Thanh toán đơn hàng</Title>
+      {/* Danh sách sản phẩm */}
+      <Card style={{ marginBottom: 24, borderRadius: 4 }}>
+        <ProductList
+          cartItems={cartItems}
+          onEditCart={() => navigate("/cart")}
         />
-        <button
-          onClick={handleApplyVoucher}
+      </Card>
+
+      {/* Address + Form */}
+      <Card style={{ marginBottom: 24, borderRadius: 4 }}>
+        <AddressSelector
+          addresses={addresses}
+          selectedAddressId={selectedAddressId}
+          onSelect={setSelectedAddressId}
+          onManage={() => navigate("/profile?tab=address&redirect=checkout")}
+          onToggleManual={() => setManualEntry(!manualEntry)}
+          manualEntry={manualEntry}
+        />
+      </Card>
+
+      {/* Voucher */}
+      <Card style={{ marginBottom: 24, borderRadius: 4 }}>
+        {!localStorage.getItem("token") ? (
+          <div style={{ padding: "12px", color: "#faad14" }}>
+            💡 Đăng nhập để sử dụng voucher giảm giá!
+          </div>
+        ) : (
+          <VoucherSection total={total} onApply={handleApplyVoucher} />
+        )}
+      </Card>
+
+      {/* Payment Method */}
+      <Card style={{ marginBottom: 24, borderRadius: 4 }}>
+        <Text strong>Phương thức thanh toán:</Text>
+        <Select
+          style={{ width: "100%", marginTop: 8 }}
+          value={payment}
+          onChange={(value) => setPayment(value)}
+        >
+          <Select.Option value="Thanh toán khi nhận hàng">
+            Thanh toán khi nhận hàng
+          </Select.Option>
+          <Select.Option value="Chuyển khoản ngân hàng">
+            Chuyển khoản ngân hàng
+          </Select.Option>
+          <Select.Option value="Ví điện tử">Ví điện tử</Select.Option>
+        </Select>
+      </Card>
+
+      {/* Total + Button */}
+      <Card>
+        <div
           style={{
-            padding: "7px 16px",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "stretch", // giữ chiều cao hai bên bằng nhau
+            gap: 24,
             borderRadius: 4,
-            background: "#f39c12",
-            color: "#fff",
-            fontWeight: "bold",
-            border: "none",
-            cursor: "pointer",
           }}
         >
-          Áp dụng
-        </button>
-      </div>
-      {voucherError && (
-        <div style={{ color: "red", marginBottom: 8 }}>{voucherError}</div>
-      )}
-      {discount > 0 && (
-        <div style={{ color: "#27ae60", marginBottom: 8 }}>
-          Đã giảm: -{discount.toLocaleString()}đ
-        </div>
-      )}
+          {/* Bên trái: Chi tiết thanh toán */}
+          <div style={{ flex: 1 }}>
+            <Title level={4} style={{ marginBottom: 16 }}>
+              Chi tiết thanh toán
+            </Title>
 
-      <div style={{ marginBottom: 16 }}>
-        <strong>Tổng thanh toán:</strong> {totalAfterDiscount.toLocaleString()}đ
-      </div>
-
-      {/* QR code Section */}
-      {showQR && (
-        <div style={{ textAlign: "center", marginBottom: 16 }}>
-          <p>
-            Quét QR để thanh toán số tiền:{" "}
-            <strong>{totalAfterDiscount.toLocaleString()}đ</strong>
-          </p>
-          <QRCodeSVG
-            value={`mock_payment_amount:${totalAfterDiscount}`}
-            size={180}
-          />
-          {!qrScanned ? (
-            <button
-              onClick={handleQrScan}
+            {/* Tạm tính */}
+            <div
               style={{
-                marginTop: 12,
-                padding: "8px 16px",
-                borderRadius: 8,
-                background: "#3498db",
-                color: "#fff",
-                fontWeight: "bold",
-                border: "none",
-                cursor: "pointer",
+                display: "flex",
+                justifyContent: "space-between",
+                marginBottom: 8,
               }}
             >
-              Tôi đã quét QR
-            </button>
-          ) : (
-            <button
-              onClick={handleQRConfirm}
+              <Text>Tạm tính:</Text>
+              <Text>{total.toLocaleString()}đ</Text>
+            </div>
+
+            {/* Phí vận chuyển */}
+            <div
               style={{
-                marginTop: 12,
-                padding: "8px 16px",
-                borderRadius: 8,
-                background: "#27ae60",
-                color: "#fff",
-                fontWeight: "bold",
-                border: "none",
-                cursor: "pointer",
+                display: "flex",
+                justifyContent: "space-between",
+                marginBottom: 8,
               }}
             >
-              Xác nhận thanh toán
-            </button>
-          )}
-        </div>
-      )}
+              <Text>Phí vận chuyển:</Text>
+              <Text>{shippingFee.toLocaleString()}đ</Text>
+            </div>
 
-      {/* Nút xác nhận cho COD/Chuyển khoản */}
-      {!showQR && (
-        <button
-          style={{
-            width: "100%",
-            padding: 12,
-            background: isLoading ? "#95a5a6" : "#27ae60",
-            color: "#fff",
-            fontWeight: "bold",
-            border: "none",
-            borderRadius: 8,
-            fontSize: 18,
-            cursor: isLoading ? "not-allowed" : "pointer",
-            opacity: isLoading ? 0.7 : 1,
-          }}
-          onClick={handleOrder}
-          disabled={isLoading}
-        >
-          {isLoading ? "Đang xử lý..." : "Xác nhận đặt hàng"}
-        </button>
-      )}
+            {/* Giảm giá */}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                marginBottom: 8,
+              }}
+            >
+              <Text>Giảm giá:</Text>
+              <Text type="danger">- {discount.toLocaleString()}đ</Text>
+            </div>
+
+            {/* Tổng thanh toán */}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                fontWeight: "bold",
+                fontSize: 16,
+                paddingTop: 8,
+                borderTop: "1px solid #f0f0f0",
+              }}
+            >
+              <Text strong>Tổng thanh toán:</Text>
+              <Text strong style={{ color: "#1890ff" }}>
+                {totalAfterDiscount.toLocaleString()}đ
+              </Text>
+            </div>
+          </div>
+
+          {/* Bên phải: Nút thanh toán */}
+          <div
+            style={{
+              minWidth: 220,
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              paddingTop: 30, // căn giữa theo chiều dọc
+            }}
+          >
+            {payment === "Ví điện tử" ? (
+              <PaymentButton
+                className="custom-pay-btn"
+                title={"Thanh toán qua ví điện tử"}
+                amount={totalAfterDiscount}
+                orderData={{
+                  total_price: totalAfterDiscount,
+                  customer_name: manualEntry
+                    ? customerName
+                    : selectedAddress?.recipient_name || "",
+                  customer_phone: manualEntry
+                    ? customerPhone
+                    : selectedAddress?.phone || "",
+                  address: manualEntry
+                    ? addressText
+                    : selectedAddress?.location || "",
+                  note,
+                  items: cartItems
+                    .filter((it) => it.selected)
+                    .map((item) => ({
+                      product: item.product?.id || item.product,
+                      quantity: parseInt(item.quantity),
+                      price: parseFloat(item.product?.price),
+                    })),
+                }}
+                disabled={cartItems.filter((i) => i.selected).length === 0}
+              />
+            ) : (
+              <Button
+                type="primary"
+                size="large"
+                style={{
+                  width: "100%",
+                  height: "48px",
+                  fontSize: "16px",
+                  borderRadius: "8px",
+                  backgroundColor: "#4caf50",
+                }}
+                className="custom-pay-btn"
+                loading={isLoading}
+                onClick={handleOrder}
+                disabled={cartItems.filter((i) => i.selected).length === 0}
+              >
+                Xác nhận đặt hàng
+              </Button>
+            )}
+          </div>
+        </div>
+      </Card>
     </div>
   );
 };

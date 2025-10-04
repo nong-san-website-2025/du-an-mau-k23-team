@@ -1,182 +1,195 @@
-// src/features/admin/pages/ReportRevenuePage.jsx
-import React, { useState } from "react";
-import { Card, Table, Button, Tag, DatePicker, Select, Space, message } from "antd";
-import { WalletOutlined, ArrowDownOutlined, ArrowUpOutlined } from "@ant-design/icons";
+// src/features/admin/pages/reports/ReportRevenuePage.jsx
+import React, { useState, useEffect } from "react";
+import {
+  Card,
+  DatePicker,
+  Select,
+  Space,
+  Statistic,
+  Row,
+  Col,
+  message,
+} from "antd";
+import {
+  WalletOutlined,
+  ShoppingCartOutlined,
+  CheckCircleOutlined,
+  ClockCircleOutlined,
+  CloseCircleOutlined,
+} from "@ant-design/icons";
 import dayjs from "dayjs";
-import isBetween from "dayjs/plugin/isBetween"; // ✅ thêm plugin
-
-import api from "../../login_register/services/api";
-
-dayjs.extend(isBetween); // ✅ kích hoạt plugin
+import api from "../../../features/login_register/services/api";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
 
 const { RangePicker } = DatePicker;
 
 export default function ReportRevenuePage() {
-  const [data, setData] = useState([]); // transactions
-  const [balance, setBalance] = useState(0);
-  const [dateRange, setDateRange] = useState([dayjs().subtract(30, "day"), dayjs()]);
-  const [flowFilter, setFlowFilter] = useState("all"); // in | out | all
-  const [typeFilter, setTypeFilter] = useState("all"); // order | refund | all
+  const [orders, setOrders] = useState([]);
+  const [dateRange, setDateRange] = useState([
+    dayjs().subtract(30, "day"),
+    dayjs(),
+  ]);
+  const [filterType, setFilterType] = useState("day"); // "day", "month", "year"
+  const [stats, setStats] = useState({
+    totalRevenue: 0,
+    successOrders: 0,
+    pendingOrders: 0,
+    cancelledOrders: 0,
+  });
+  const [chartData, setChartData] = useState([]);
 
   const loadData = async () => {
     try {
-      // Get wallet balance
-      const walletRes = await api.get("/wallet/my_wallet/");
-      setBalance(Number(walletRes.data?.balance || 0));
-
-      // Get orders as revenue source
       const isAdmin = localStorage.getItem("is_admin") === "true";
       const endpoint = isAdmin ? "/orders/admin-list/" : "/orders/";
-      const ordersRes = await api.get(endpoint);
-      const orders = Array.isArray(ordersRes.data) ? ordersRes.data : [];
-
-      // Transform orders to transactions
-      const tx = orders.map((o) => ({
-        key: o.id,
-        date: dayjs(o.created_at).format("YYYY-MM-DD"),
-        type: o.status === "cancelled" ? "Hoàn tiền" : "Doanh Thu Đơn Hàng",
-        desc: `Đơn hàng #${o.id}`,
-        orderId: `${o.id}`,
-        amount: Number(o.total_price || 0) * (o.status === "cancelled" ? -1 : 1),
-        status: o.status === "success" ? "Hoàn thành" : o.status,
-      }));
-
-      setData(tx);
+      const res = await api.get(endpoint);
+      const data = Array.isArray(res.data) ? res.data : [];
+      setOrders(data);
+      processStats(data);
     } catch (err) {
       console.error(err);
-      message.error("Không thể tải dữ liệu doanh thu");
+      message.error("Không thể tải dữ liệu thống kê");
     }
   };
 
-  React.useEffect(() => {
-    loadData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const applyFilters = (list) => {
-    let filtered = list;
-
-    // Date range filter
-    filtered = filtered.filter((t) => {
-      const d = dayjs(t.date, "YYYY-MM-DD");
-      return d.isBetween(dateRange[0], dateRange[1], null, "[]"); // ✅ dùng plugin
+  const processStats = (data) => {
+    // lọc theo range
+    let filtered = data.filter((o) => {
+      const d = dayjs(o.created_at);
+      return d.isAfter(dateRange[0].startOf("day")) && d.isBefore(dateRange[1].endOf("day"));
     });
 
-    // Flow filter (in/out)
-    if (flowFilter !== "all") {
-      filtered = filtered.filter((t) =>
-        flowFilter === "in" ? t.amount > 0 : t.amount < 0
-      );
-    }
+    const successOrders = filtered.filter((o) => o.status === "success");
+    const pendingOrders = filtered.filter((o) => o.status === "pending" || o.status === "shipping");
+    const cancelledOrders = filtered.filter((o) => o.status === "cancelled");
 
-    // Type filter
-    if (typeFilter !== "all") {
-      filtered = filtered.filter((t) =>
-        typeFilter === "order"
-          ? t.type === "Doanh Thu Đơn Hàng"
-          : t.type === "Hoàn tiền"
-      );
-    }
+    const totalRevenue = successOrders.reduce((sum, o) => sum + Number(o.total_price || 0), 0);
 
-    return filtered;
+    // Gom nhóm dữ liệu cho biểu đồ
+    const grouped = {};
+    filtered.forEach((o) => {
+      let key;
+      if (filterType === "day") key = dayjs(o.created_at).format("YYYY-MM-DD");
+      if (filterType === "month") key = dayjs(o.created_at).format("YYYY-MM");
+      if (filterType === "year") key = dayjs(o.created_at).format("YYYY");
+      if (!grouped[key]) grouped[key] = 0;
+      if (o.status === "success") grouped[key] += Number(o.total_price || 0);
+    });
+
+    const chartArr = Object.keys(grouped)
+      .sort()
+      .map((k) => ({
+        time: k,
+        revenue: grouped[k],
+      }));
+
+    setStats({
+      totalRevenue,
+      successOrders: successOrders.length,
+      pendingOrders: pendingOrders.length,
+      cancelledOrders: cancelledOrders.length,
+    });
+    setChartData(chartArr);
   };
 
-  const columns = [
-    {
-      title: "Ngày",
-      dataIndex: "date",
-      key: "date",
-    },
-    {
-      title: "Loại Giao Dịch",
-      dataIndex: "type",
-      key: "type",
-    },
-    {
-      title: "Mô Tả",
-      dataIndex: "desc",
-      key: "desc",
-    },
-    {
-      title: "Order ID",
-      dataIndex: "orderId",
-      key: "orderId",
-    },
-    {
-      title: "Số Tiền",
-      dataIndex: "amount",
-      key: "amount",
-      render: (amount) =>
-        amount > 0 ? (
-          <span className="text-green-600 font-medium">
-            <ArrowDownOutlined /> +{amount.toLocaleString()} đ
-          </span>
-        ) : (
-          <span className="text-red-500 font-medium">
-            <ArrowUpOutlined /> {amount.toLocaleString()} đ
-          </span>
-        ),
-    },
-    {
-      title: "Trạng thái",
-      dataIndex: "status",
-      key: "status",
-      render: (status) => <Tag color="green">{status}</Tag>,
-    },
-  ];
+  useEffect(() => {
+    loadData();
+    // eslint-disable-next-line
+  }, []);
+
+  useEffect(() => {
+    processStats(orders);
+    // eslint-disable-next-line
+  }, [dateRange, filterType]);
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen space-y-6">
-      {/* Tổng quan số dư */}
+      {/* Bộ lọc */}
       <Card className="rounded-2xl shadow-md">
-        <div className="flex justify-between items-center">
-          <div>
-            <p className="text-gray-500">Số dư</p>
-            <h2 className="text-2xl font-bold text-green-600">
-              {balance.toLocaleString()} đ
-            </h2>
-          </div>
-          <Button type="primary" size="large" icon={<WalletOutlined />}>
-            Yêu Cầu Thanh Toán
-          </Button>
-        </div>
-      </Card>
-
-      {/* Bộ lọc giao dịch */}
-      <Card className="rounded-2xl shadow-sm">
         <Space wrap>
-          <RangePicker value={dateRange} onChange={(v) => setDateRange(v)} />
-          <Select
-            value={flowFilter}
-            onChange={setFlowFilter}
-            options={[
-              { value: "all", label: "Tất cả" },
-              { value: "in", label: "Tiền vào" },
-              { value: "out", label: "Tiền ra" },
-            ]}
+          <RangePicker
+            value={dateRange}
+            onChange={(v) => setDateRange(v || [])}
+            format="YYYY-MM-DD"
           />
           <Select
-            value={typeFilter}
-            onChange={setTypeFilter}
+            value={filterType}
+            onChange={setFilterType}
             options={[
-              { value: "all", label: "Tất cả loại" },
-              { value: "order", label: "Doanh Thu Đơn Hàng" },
-              { value: "refund", label: "Hoàn tiền" },
+              { value: "day", label: "Theo ngày" },
+              { value: "month", label: "Theo tháng" },
+              { value: "year", label: "Theo năm" },
             ]}
           />
-          <Button type="primary" onClick={loadData}>
-            Áp dụng
-          </Button>
         </Space>
       </Card>
 
-      {/* Bảng giao dịch gần đây */}
-      <Card title="Các giao dịch gần đây" className="rounded-2xl shadow-sm">
-        <Table
-          columns={columns}
-          dataSource={applyFilters(data)}
-          pagination={{ pageSize: 5 }}
-        />
+      {/* Thống kê nhanh */}
+      <Row gutter={16}>
+        <Col span={6}>
+          <Card>
+            <Statistic
+              title="Tổng doanh thu"
+              value={stats.totalRevenue}
+              suffix="đ"
+              prefix={<WalletOutlined />}
+            />
+          </Card>
+        </Col>
+        <Col span={6}>
+          <Card>
+            <Statistic
+              title="Đơn hàng hoàn tất"
+              value={stats.successOrders}
+              prefix={<CheckCircleOutlined style={{ color: "green" }} />}
+            />
+          </Card>
+        </Col>
+        <Col span={6}>
+          <Card>
+            <Statistic
+              title="Đơn hàng đang xử lý"
+              value={stats.pendingOrders}
+              prefix={<ClockCircleOutlined style={{ color: "orange" }} />}
+            />
+          </Card>
+        </Col>
+        <Col span={6}>
+          <Card>
+            <Statistic
+              title="Đơn hàng bị hủy"
+              value={stats.cancelledOrders}
+              prefix={<CloseCircleOutlined style={{ color: "red" }} />}
+            />
+          </Card>
+        </Col>
+      </Row>
+
+      {/* Biểu đồ */}
+      <Card title="Xu hướng doanh thu">
+        <ResponsiveContainer width="100%" height={400}>
+          <LineChart data={chartData}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="time" />
+            <YAxis />
+            <Tooltip formatter={(value) => `${value.toLocaleString()} đ`} />
+            <Line
+              type="monotone"
+              dataKey="revenue"
+              stroke="#16a34a"
+              strokeWidth={3}
+              dot={{ r: 4 }}
+            />
+          </LineChart>
+        </ResponsiveContainer>
       </Card>
     </div>
   );

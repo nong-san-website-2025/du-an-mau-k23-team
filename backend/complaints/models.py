@@ -20,17 +20,21 @@ class Complaint(models.Model):
         related_name="complaints"
     )
     reason = models.TextField()
+    # Store quantity and unit price at the time of complaint for accurate refunds
+    quantity = models.PositiveIntegerField(default=1)
+    unit_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     created_at = models.DateTimeField(auto_now_add=True)
+
     RESOLUTION_CHOICES = (
-    ('refund_full', 'Hoàn tiền toàn bộ'),
-    ('refund_partial', 'Hoàn tiền một phần'),
-    ('replace', 'Đổi sản phẩm'),
-    ('voucher', 'Tặng voucher/điểm thưởng'),
-    ('reject', 'Từ chối khiếu nại'),
+        ('refund_full', 'Hoàn tiền toàn bộ'),
+        ('refund_partial', 'Hoàn tiền một phần'),
+        ('replace', 'Đổi sản phẩm'),
+        ('voucher', 'Tặng voucher/điểm thưởng'),
+        ('reject', 'Từ chối khiếu nại'),
     )
     resolution_type = models.CharField(max_length=30, choices=RESOLUTION_CHOICES, null=True, blank=True)
-
 
     def __str__(self):
         return f"{self.user} - {self.product} ({self.status})"
@@ -39,7 +43,7 @@ class ComplaintMedia(models.Model):
     complaint = models.ForeignKey(
         Complaint, related_name='media', on_delete=models.CASCADE
     )
-    file = models.FileField(upload_to="complaints/")  # hoặc ImageField nếu chỉ ảnh
+    file = models.FileField(upload_to="complaints/")  # Lưu file về local
 
     def __str__(self):
         return str(self.file)
