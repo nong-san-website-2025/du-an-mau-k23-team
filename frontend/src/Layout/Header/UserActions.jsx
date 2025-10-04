@@ -612,10 +612,7 @@ export default function UserActions({
                 style={{ backgroundColor: "#16a34a", fontWeight: "bold" }}
                 size={32}
               >
-                {localStorage.getItem("username")?.[0]?.toUpperCase() ||
-                  localStorage.getItem("first_name")?.[0]?.toUpperCase() ||
-                  "U"}{" "}
-                {/* 👈 Fallback cuối cùng */}
+                
               </Avatar>
             )}
           </Button>
