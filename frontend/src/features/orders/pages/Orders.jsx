@@ -17,7 +17,7 @@ const Orders = () => {
     const tabParam = urlParams.get("tab");
     if (
       tabParam &&
-      ["pending", "shipping", "completed", "cancelled"].includes(tabParam)
+      ["pending", "shipping", "delivery", "completed", "cancelled"].includes(tabParam)
     ) {
       setActiveTab(tabParam);
     }
@@ -66,8 +66,12 @@ const Orders = () => {
             <OrderTab status="pending" />
           </TabPane>
 
-          <TabPane tab={<span>Chờ nhận hàng</span>} key="shipping">
+          <TabPane tab={<span>Chờ lấy hàng</span>} key="shipping">
             <OrderTab status="shipping" />
+          </TabPane>
+
+          <TabPane tab={<span>Chờ giao hàng</span>} key="delivery">
+            <OrderTab status="delivery" />
           </TabPane>
 
           <TabPane tab={<span>Đã nhận hàng</span>} key="completed">

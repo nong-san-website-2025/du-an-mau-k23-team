@@ -9,6 +9,8 @@ import {
   Divider,
   Image,
   Space,
+  Button,
+  Popconfirm,
   message,
 } from "antd";
 import API from "../../login_register/services/api";
@@ -19,14 +21,18 @@ const { Text } = Typography;
 // Map trạng thái đơn hàng -> label + màu
 const statusMap = {
   pending: { label: "Chờ xác nhận", color: "gold" },
-  shipping: { label: "Chờ nhận hàng", color: "blue" },
+  shipping: { label: "Chờ lấy hàng", color: "blue" },
+  delivery: { label: "Chờ giao hàng", color: "purple" },
   success: { label: "Đã thanh toán", color: "green" },
   cancelled: { label: "Đã huỷ", color: "red" },
 };
 
+const cancellableStatuses = new Set(["pending", "shipping"]);
+
 const OrderTab = ({ status }) => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [cancelingOrderIds, setCancelingOrderIds] = useState(new Set());
 
   // Complaint UI state per product
   const [openComplaint, setOpenComplaint] = useState({}); // { [productId]: boolean }
@@ -83,6 +89,30 @@ const OrderTab = ({ status }) => {
       message.error("Gửi khiếu nại thất bại!");
     } finally {
       setSendingByProduct((prev) => ({ ...prev, [productId]: false }));
+    }
+  };
+
+  const handleCancelOrder = async (orderId) => {
+    setCancelingOrderIds((prev) => {
+      const next = new Set(prev);
+      next.add(orderId);
+      return next;
+    });
+
+    try {
+      await API.post(`orders/${orderId}/cancel/`);
+      message.success(`Đơn #${orderId} đã được huỷ`);
+      setOrders((prev) => prev.filter((order) => order.id !== orderId));
+    } catch (error) {
+      console.error(error);
+      const apiMessage = error?.response?.data?.error || "Hủy đơn thất bại";
+      message.error(apiMessage);
+    } finally {
+      setCancelingOrderIds((prev) => {
+        const next = new Set(prev);
+        next.delete(orderId);
+        return next;
+      });
     }
   };
 
@@ -144,14 +174,34 @@ const OrderTab = ({ status }) => {
                     </Tag>
                   </Space>
 
-                  {/* Tổng tiền + Ngày đặt */}
-                  <Space size="large">
-                    <Text strong style={{ color: "#27ae60" }}>
-                      {Number(order.total_price).toLocaleString()}đ
-                    </Text>
-                    <Text type="secondary" style={{ fontSize: 12 }}>
-                      {new Date(order.created_at).toLocaleString("vi-VN")}
-                    </Text>
+                  <Space size="middle">
+                    {cancellableStatuses.has(order.status) && (
+                      <Popconfirm
+                        title="Xác nhận hủy đơn"
+                        description={`Bạn có chắc muốn hủy đơn #${order.id}?`}
+                        okText="Hủy đơn"
+                        cancelText="Đóng"
+                        onConfirm={() => handleCancelOrder(order.id)}
+                      >
+                        <Button
+                          danger
+                          type="primary"
+                          loading={cancelingOrderIds.has(order.id)}
+                        >
+                          Huỷ đơn
+                        </Button>
+                      </Popconfirm>
+                    )}
+
+                    {/* Tổng tiền + Ngày đặt */}
+                    <Space size="large">
+                      <Text strong style={{ color: "#27ae60" }}>
+                        {Number(order.total_price).toLocaleString()}đ
+                      </Text>
+                      <Text type="secondary" style={{ fontSize: 12 }}>
+                        {new Date(order.created_at).toLocaleString("vi-VN")}
+                      </Text>
+                    </Space>
                   </Space>
                 </div>
               }

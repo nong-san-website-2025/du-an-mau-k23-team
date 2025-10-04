@@ -172,7 +172,7 @@ async function fetchOrderNotifications() {
         const status = (o.status || "").toLowerCase();
         const map = {
           pending: "Chờ xác nhận",
-          shipping: "Chờ nhận hàng",
+          shipping: "Chờ lấy hàng",
           success: "Đã thanh toán",
           completed: "Đã nhận hàng",
           delivered: "Đã giao hàng",

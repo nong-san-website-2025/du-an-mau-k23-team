@@ -67,7 +67,7 @@ def complete_order(order, seller):
     Seller xác nhận hoàn tất đơn hàng:
     - Kiểm tra quyền seller với sản phẩm
     - Giảm tồn kho
-    - Cập nhật trạng thái đơn hàng -> success
+    - Cập nhật trạng thái đơn hàng -> delivery (chờ khách xác nhận)
     """
     logger.info(f"Seller {seller.id} bắt đầu hoàn tất Order #{order.id}")
 
@@ -91,9 +91,9 @@ def complete_order(order, seller):
     # 3. Giảm tồn kho (chỉ trừ một lần duy nhất)
     reduce_stock_for_order(order)
 
-    # 4. Cập nhật trạng thái đơn hàng
-    order.status = 'success'
+    # 4. Cập nhật trạng thái đơn hàng sang 'delivery'
+    order.status = 'delivery'
     order.save(update_fields=['status'])
 
-    logger.info(f"Seller {seller.id} đã hoàn tất Order #{order.id}. Trạng thái -> success")
+    logger.info(f"Seller {seller.id} đã xác nhận giao Order #{order.id}. Trạng thái -> delivery")
     return order
