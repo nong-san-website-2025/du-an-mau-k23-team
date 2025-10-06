@@ -1,15 +1,15 @@
 import { useState, useEffect, Suspense } from "react";
 import { Spin, Modal } from "antd"; // TODO: nâng cấp props theo khuyến cáo: dùng styles.body thay cho bodyStyle
-import BannerSlider from "../components/home/BannerSlider.jsx";
-import CategorySection from "../components/home/CategorySection.jsx";
-import PersonalizedSection from "../components/home/PersonalizedSection.jsx";
+import BannerSlider from "../components/Home/BannerSlider.jsx";
+import CategorySection from "../components/Home/CategorySection.jsx";
+import PersonalizedSection from "../components/Home/PersonalizedSection.jsx";
 import { Helmet } from "react-helmet";
 
 import {
   // fetchUserRecommendations,
   fetchCategories,
 } from "../services/api/homepageApi.js";
-import FlashSaleList from "../components/home/FlashSaleList.jsx";
+import FlashSaleList from "../components/Home/FlashSaleList.jsx";
 import { getBannersByPosition } from "../features/admin/services/marketingApi.js";
 export default function HomePage() {
   const [loading, setLoading] = useState(true);

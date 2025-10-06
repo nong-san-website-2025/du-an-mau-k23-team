@@ -29,6 +29,11 @@ class Product(models.Model):
         ("banned", "Banned"),
     ]
 
+    AVAILABILITY_CHOICES = [
+        ("available", "Có sẵn"),
+        ("coming_soon", "Sắp có"),
+    ]
+
     seller = models.ForeignKey("sellers.Seller", on_delete=models.CASCADE, related_name="products")
     subcategory = models.ForeignKey(Subcategory, on_delete=models.CASCADE, related_name='products', null=True, blank=True)
     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='products', null=True, blank=True)
@@ -47,25 +52,43 @@ class Product(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     # Visibility and status
-    is_hidden = models.BooleanField(default=False)  # seller ẩn khỏi storefront
-    status = models.CharField(
+    is_hidden = models.BooleanField(default=False)
+    status = models.CharField(  # trạng thái kiểm duyệt (admin)
         max_length=20,
         choices=STATUS_CHOICES,
-        default="pending",  # khi seller tạo sản phẩm thì mặc định là pending
+        default="pending",
     )
-    
+
+    availability_status = models.CharField(  # trạng thái seller chọn
+        max_length=20,
+        choices=AVAILABILITY_CHOICES,
+        default="available",
+    )
+
+    season_start = models.DateField(null=True, blank=True)
+    season_end = models.DateField(null=True, blank=True)
+    estimated_quantity = models.PositiveIntegerField(null=True, blank=True)
+
     def __str__(self):
         return self.name
-    
+
     @property
     def discounted_price(self):
-        # Nếu có discount field trong DB (không thấy trong model, nhưng serializer dùng), xử lý an toàn
         try:
             if getattr(self, "discount", 0) > 0:
                 return self.price * (100 - getattr(self, "discount", 0)) / 100
         except Exception:
             pass
         return self.price
+
+    @property
+    def preordered_quantity(self):
+        """
+        Tính tổng số lượng khách đã đặt trước cho sản phẩm này
+        (áp dụng với trạng thái coming_soon).
+        """
+        return sum(item.quantity for item in self.order_items.all())
+
 
 class ProductFeature(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="features")
