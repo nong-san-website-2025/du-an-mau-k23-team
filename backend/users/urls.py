@@ -6,7 +6,7 @@ from .views import UserPointsView
 from .views import EmployeeViewSet
 from users import views
 from .views import CurrentUserView
-from .views import UserMeView, UploadAvatarView 
+from .views import UserMeView, UploadAvatarView
 from .views import toggle_user_active
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
@@ -15,6 +15,7 @@ from rest_framework_simplejwt.views import (
 from .views import DashboardAPIView
 from django.views.decorators.csrf import csrf_exempt
 from .views import PasswordResetRequestView, PasswordResetConfirmView, FacebookLoginView, VerifyEmailView
+from .views import NotificationSSEView, TriggerNotificationView
 # from .views import UserManagementView
 
 
@@ -27,6 +28,7 @@ router.register(r'roles', views.RoleViewSet, basename='role')
 router.register(r'addresses', views.AddressViewSet, basename='address')
 router.register(r"employees", EmployeeViewSet, basename="employee")
 router.register(r'user-management', views.UserManagementViewSet, basename='user-management')
+router.register(r'notifications', views.NotificationViewSet, basename='notification')
 
 
 urlpatterns = [
@@ -70,6 +72,10 @@ urlpatterns = [
     path("user/upload-avatar/", UploadAvatarView.as_view(), name="upload-avatar"),
     path("api/user/profile/", UserProfileView.as_view(), name="user-profile"),
     path("<int:pk>/toggle-active/", toggle_user_active, name="toggle-user-active"),
+
+    # SSE for notifications
+    path("notifications/sse/", NotificationSSEView.as_view(), name="notification-sse"),
+    path("notifications/trigger/", TriggerNotificationView.as_view(), name="notification-trigger"),
 
     # path("api/user-management/", UserManagementViewSet.as_view(), name="user-management"),
     

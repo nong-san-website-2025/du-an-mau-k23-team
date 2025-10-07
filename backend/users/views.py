@@ -32,9 +32,26 @@ from django.urls import reverse
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 import requests
+from django.http import StreamingHttpResponse
+import json
+from queue import Queue
+from threading import Lock
 
 
 FRONTEND_URL = "http://localhost:3000"
+
+# SSE globals
+user_queues = {}
+queue_lock = Lock()
+
+def send_notification_to_user(user_id, data):
+    with queue_lock:
+        if user_id in user_queues:
+            for q in user_queues[user_id][:]:  # copy to avoid modification during iteration
+                try:
+                    q.put_nowait(data)
+                except:
+                    user_queues[user_id].remove(q)
 
 from .serializers import (
     UserSerializer,
@@ -808,6 +825,68 @@ def toggle_user_active(request, pk):
     user.save()
     return Response({"id": user.id, "is_active": user.is_active})
 
+class NotificationSSEView(APIView):
+    permission_classes = [AllowAny]  # We'll authenticate manually via token
+
+    def get(self, request):
+        # Authenticate via token in query string (EventSource doesn't support headers)
+        token = request.GET.get('token')
+        if not token:
+            return Response({"error": "Token required"}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        try:
+            # Verify JWT token
+            jwt_auth = JWTAuthentication()
+            validated_token = jwt_auth.get_validated_token(token)
+            user = jwt_auth.get_user(validated_token)
+        except Exception as e:
+            return Response({"error": "Invalid token"}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        q = Queue()
+        with queue_lock:
+            if user.id not in user_queues:
+                user_queues[user.id] = []
+            user_queues[user.id].append(q)
+
+        def event_stream():
+            try:
+                while True:
+                    try:
+                        data = q.get(timeout=30)  # wait up to 30s
+                        yield f"data: {json.dumps(data)}\n\n"
+                    except:
+                        # timeout, send ping to keep connection
+                        yield f"data: {json.dumps({'type': 'ping'})}\n\n"
+            finally:
+                with queue_lock:
+                    if user.id in user_queues and q in user_queues[user.id]:
+                        user_queues[user.id].remove(q)
+
+        response = StreamingHttpResponse(event_stream(), content_type='text/event-stream')
+        response['Cache-Control'] = 'no-cache'
+        response['X-Accel-Buffering'] = 'no'
+        return response
+
+
+class TriggerNotificationView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        user_id = request.data.get('user_id')
+        notification = request.data.get('notification', {})
+        
+        if not user_id:
+            return Response({"error": "user_id required"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Send notification to user via SSE
+        send_notification_to_user(user_id, {
+            'type': 'notification',
+            'data': notification
+        })
+        
+        return Response({"status": "sent"}, status=status.HTTP_200_OK)
+
+
 @api_view(["DELETE"])
 @permission_classes([IsAdminUser])
 def delete_user(request, pk):
@@ -832,3 +911,47 @@ def delete_user(request, pk):
 
     user.delete()
     return Response(status=204)
+
+
+# -------------------- NOTIFICATIONS --------------------
+class NotificationViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for user notifications
+    """
+    serializer_class = None  # Will be set dynamically
+    permission_classes = [IsAuthenticated]
+    
+    def get_serializer_class(self):
+        from .serializers import NotificationSerializer
+        return NotificationSerializer
+    
+    def get_queryset(self):
+        """Return notifications for current user only"""
+        Notification = apps.get_model('users', 'Notification')
+        return Notification.objects.filter(user=self.request.user).order_by('-created_at')
+    
+    @action(detail=False, methods=['post'])
+    def mark_all_read(self, request):
+        """Mark all notifications as read"""
+        Notification = apps.get_model('users', 'Notification')
+        updated = Notification.objects.filter(user=request.user, is_read=False).update(
+            is_read=True,
+            read_at=timezone.now()
+        )
+        return Response({'marked_read': updated}, status=status.HTTP_200_OK)
+    
+    @action(detail=True, methods=['post'])
+    def mark_read(self, request, pk=None):
+        """Mark a single notification as read"""
+        notification = self.get_object()
+        notification.is_read = True
+        notification.read_at = timezone.now()
+        notification.save()
+        return Response({'status': 'marked_read'}, status=status.HTTP_200_OK)
+    
+    @action(detail=False, methods=['get'])
+    def unread_count(self, request):
+        """Get count of unread notifications"""
+        Notification = apps.get_model('users', 'Notification')
+        count = Notification.objects.filter(user=request.user, is_read=False).count()
+        return Response({'unread_count': count}, status=status.HTTP_200_OK)

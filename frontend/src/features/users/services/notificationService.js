@@ -40,12 +40,38 @@ export function getReadIds(userId) {
     return new Set();
   }
 }
-export function markAsRead(userId, ids) {
+export async function markAsRead(userId, ids) {
   try {
+    // Mark in localStorage for immediate UI update
     const set = getReadIds(userId);
     (ids || []).forEach((id) => id && set.add(String(id)));
     localStorage.setItem(READ_KEY(userId), JSON.stringify([...set]));
-  } catch {}
+    // Notify same-window listeners that read state changed
+    try {
+      window.dispatchEvent(new Event('notif_read_changed'));
+    } catch (e) {
+      // ignore in non-browser environments
+    }
+    
+    // Mark in backend database
+    // Extract database notification IDs (format: "db-123" -> 123)
+    const dbIds = (ids || [])
+      .filter(id => String(id).startsWith('db-'))
+      .map(id => String(id).replace('db-', ''));
+    
+    if (dbIds.length > 0) {
+      // Mark each notification as read in backend
+      await Promise.all(
+        dbIds.map(id => 
+          API.post(`/users/notifications/${id}/mark_read/`).catch(err => {
+            console.error(`Failed to mark notification ${id} as read:`, err);
+          })
+        )
+      );
+    }
+  } catch (error) {
+    console.error('Failed to mark notifications as read:', error);
+  }
 }
 export function annotateRead(list, userId) {
   const set = getReadIds(userId);
@@ -160,54 +186,64 @@ async function fetchComplaintNotifications(userId) {
   }
 }
 
-// Orders -> notifications (based on current status)
-async function fetchOrderNotifications() {
+// Fetch notifications from database (NEW - replaces old order/review fetching)
+async function fetchDatabaseNotifications() {
   try {
-    // Try to fetch recent orders; frontend API auto-scopes to current user
-    const res = await API.get("orders/?ordering=-created_at");
-    const orders = Array.isArray(res.data?.results) ? res.data.results : Array.isArray(res.data) ? res.data : [];
-    return orders
-      .filter((o) => ["pending", "shipping", "success", "completed", "cancelled", "delivered", "out_for_delivery"].includes((o.status || "").toLowerCase()))
-      .map((o) => {
-        const status = (o.status || "").toLowerCase();
-        const map = {
-          pending: "Chờ xác nhận",
-          shipping: "Chờ nhận hàng",
-          success: "Đã thanh toán",
-          completed: "Đã nhận hàng",
-          delivered: "Đã giao hàng",
-          out_for_delivery: "Đang giao",
-          cancelled: "Đã huỷ",
-        };
-        const label = map[status] || status;
-        const firstItem = (o.items || [])[0] || {};
-        const message = `Đơn hàng #${o.id} chuyển sang trạng thái: ${label}`;
-        const detail = [
-          `Tổng tiền: ${formatVND(o.total_price)}`,
-        ]
-          .filter(Boolean)
-          .join("\n");
-        let thumbnail = null;
-        if (firstItem.product_image) {
-          thumbnail = firstItem.product_image.startsWith("http")
-            ? firstItem.product_image
-            : `http://localhost:8000${firstItem.product_image.startsWith("/") ? "" : "/media/"}${firstItem.product_image}`;
-        }
-        return {
-          id: `order-${o.id}-${status}`,
-          type: "order",
-          message,
-          detail,
-          time: safeToDateString(o.updated_at || o.created_at),
-          ts: (() => { try { const t = new Date(o.updated_at || o.created_at).getTime(); return Number.isFinite(t) ? t : 0; } catch { return 0; } })(),
-          read: false,
-          userId: o.user || undefined,
-          thumbnail,
-        };
-      });
-  } catch {
+    console.log('[NotificationService] Fetching from /users/notifications/...');
+    const res = await API.get("/users/notifications/");
+    console.log('[NotificationService] Response:', res.data);
+    const notifications = Array.isArray(res.data?.results) ? res.data.results : Array.isArray(res.data) ? res.data : [];
+    console.log('[NotificationService] Parsed notifications:', notifications.length);
+    
+    const mapped = notifications.map((n) => {
+      const metadata = n.metadata || {};
+      let thumbnail = null;
+      
+      // Try to get thumbnail from metadata
+      if (metadata.product_image) {
+        thumbnail = metadata.product_image.startsWith("http")
+          ? metadata.product_image
+          : `http://localhost:8000${metadata.product_image.startsWith("/") ? "" : "/media/"}${metadata.product_image}`;
+      }
+      
+      return {
+        id: `db-${n.id}`,
+        type: n.type,
+        title: n.title,
+        message: n.message,
+        detail: n.detail,
+        time: safeToDateString(n.created_at),
+        ts: (() => { 
+          try { 
+            const t = new Date(n.created_at).getTime(); 
+            return Number.isFinite(t) ? t : 0; 
+          } catch { 
+            return 0; 
+          } 
+        })(),
+        read: n.is_read,
+        userId: undefined,
+        thumbnail,
+        metadata: metadata,
+      };
+    });
+    
+    console.log('[NotificationService] Mapped notifications:', mapped);
+    return mapped;
+  } catch (error) {
+    console.error("[NotificationService] Failed to fetch database notifications:", error);
+    if (error.response) {
+      console.error("[NotificationService] Error response:", error.response.status, error.response.data);
+    }
     return [];
   }
+}
+
+// Orders -> notifications (based on current status) - DEPRECATED, kept for backward compatibility
+async function fetchOrderNotifications() {
+  // This function is now deprecated - notifications come from database
+  // Kept for backward compatibility only
+  return [];
 }
 
 // Wallet top-up -> notifications
@@ -315,6 +351,9 @@ async function fetchReviewReplyNotifications(userId) {
     return mine.map((rp) => {
       const createdAt = rp.created_at;
       const storeName = reviewToStore[rp.review] || "cửa hàng";
+      // try to infer replier name from common fields
+      const replier = rp.user_name || rp.user?.username || rp.user?.full_name || rp.user?.email || rp.replier_name || rp.author || (rp.user && typeof rp.user === 'string' ? rp.user : null) || "người bán";
+      const productName = rp.product_name || rp.product?.name || null;
       return {
         id: `review-reply-${rp.id}`,
         type: "review_reply",
@@ -325,6 +364,12 @@ async function fetchReviewReplyNotifications(userId) {
         read: false,
         userId,
         thumbnail: null,
+        metadata: {
+          shop_name: storeName,
+          reply_text: rp.reply_text || "",
+          replier_name: replier,
+          product_name: productName,
+        },
       };
     });
   } catch {
@@ -332,28 +377,51 @@ async function fetchReviewReplyNotifications(userId) {
   }
 }
 
-export async function fetchUnifiedNotifications(userId) {
+export async function fetchUnifiedNotifications(userId, force = false) {
+  console.log('[fetchUnifiedNotifications] Called with userId:', userId, 'force:', force);
   const cacheKey = `notifications_${userId || 'guest'}`;
   const now = Date.now();
 
-  // Check cache
-  if (notificationCache.has(cacheKey)) {
+  // Check cache unless forced
+  if (!force && notificationCache.has(cacheKey)) {
     const cached = notificationCache.get(cacheKey);
     if (now - cached.timestamp < CACHE_TTL) {
+      console.log('[fetchUnifiedNotifications] Returning cached data:', cached.data.length, 'items');
       return cached.data;
     }
   }
 
-  // Fetch fresh data
-  const [complaint, orders, wallet, vouchers, reviewReplies] = await Promise.all([
+  // Fetch fresh data - now primarily from database
+  console.log('[fetchUnifiedNotifications] Fetching fresh data...');
+  const [dbNotifications, reviewReplies, complaint, vouchers] = await Promise.all([
+    fetchDatabaseNotifications(), // Fetch database notifications (may include generic review replies)
+    fetchReviewReplyNotifications(userId), // Fetch only replies to this user's reviews
     fetchComplaintNotifications(userId),
-    fetchOrderNotifications(),
-    // fetchWalletNotifications(),
     fetchVoucherNotifications(),
-    fetchReviewReplyNotifications(userId),
   ]);
 
-  const all = [...complaint, ...orders, ...wallet, ...vouchers, ...reviewReplies];
+  console.log('[fetchUnifiedNotifications] Fetched:', {
+    dbNotifications: dbNotifications.length,
+    complaint: complaint.length,
+    vouchers: vouchers.length
+  });
+
+  // Remove generic db-sourced review_reply items only when we will replace them with
+  // per-user replies fetched by fetchReviewReplyNotifications(userId).
+  // If userId is not provided (or reviewReplies fetch failed/empty) we should keep
+  // dbNotifications of type 'review_reply' so shop replies stored in DB still surface
+  // in the unified list and increment the unread badge.
+  const dbFiltered = (dbNotifications || []).filter((n) => {
+    const t = (n.type || '').toLowerCase();
+    if (t !== 'review_reply') return true;
+    // If we have a userId and will include fetchReviewReplyNotifications, prefer to
+    // remove generic db items to avoid duplicates. If userId is falsy, keep the db item.
+    return !userId;
+  });
+
+  // Combine all notifications (use reviewReplies from fetchReviewReplyNotifications)
+  const all = [...dbFiltered, ...(reviewReplies || []), ...complaint, ...vouchers];
+  
   // Sort by numeric timestamp desc; fallback to parsed time; then id
   const sortedNotifications = all.sort((a, b) => {
     const ta = Number.isFinite(a?.ts) ? a.ts : (a?.time ? new Date(a.time).getTime() : 0);
@@ -361,6 +429,8 @@ export async function fetchUnifiedNotifications(userId) {
     if (tb !== ta) return tb - ta;
     return String(b?.id ?? '').localeCompare(String(a?.id ?? ''));
   });
+
+  console.log('[fetchUnifiedNotifications] Total sorted notifications:', sortedNotifications.length);
 
   // Cache the result
   notificationCache.set(cacheKey, {
@@ -371,6 +441,53 @@ export async function fetchUnifiedNotifications(userId) {
   return sortedNotifications;
 }
 
+// Lightweight function to fetch only unread count (for header icon)
+export async function fetchUnreadCount() {
+  try {
+    const res = await API.get("/users/notifications/unread_count/");
+    return res.data?.unread_count || 0;
+  } catch (error) {
+    console.error("[NotificationService] Failed to fetch unread count:", error);
+    return 0;
+  }
+}
+
+// Mark all notifications as read
+export async function markAllAsRead(userId) {
+  try {
+    // Persist client-side read state so UI remembers reads across reloads
+    try {
+      const cacheKey = `notifications_${userId || 'guest'}`;
+      const cached = notificationCache.get(cacheKey);
+      const ids = (cached && Array.isArray(cached.data) ? cached.data : [])
+        .map((n) => String(n.id)).filter(Boolean);
+      // Merge into existing read set
+      const set = getReadIds(userId);
+      ids.forEach((id) => set.add(String(id)));
+      localStorage.setItem(READ_KEY(userId), JSON.stringify([...set]));
+      // Invalidate cache so future fetches will be fresh (and backend read flags will be used)
+      notificationCache.delete(cacheKey);
+      // Notify same-window listeners that read state changed
+      try {
+        window.dispatchEvent(new Event('notif_read_changed'));
+      } catch (e) {
+        // ignore
+      }
+    } catch (e) {
+      console.warn('[NotificationService] markAllAsRead local persistence failed', e);
+    }
+
+    const res = await API.post("/users/notifications/mark_all_read/");
+    console.log("[NotificationService] Marked all as read:", res.data);
+    return res.data?.marked_read || 0;
+  } catch (error) {
+    console.error("[NotificationService] Failed to mark all as read:", error);
+    return 0;
+  }
+}
+
 export default {
   fetchUnifiedNotifications,
+  fetchUnreadCount,
+  markAllAsRead,
 };

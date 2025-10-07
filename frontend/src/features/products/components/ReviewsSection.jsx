@@ -63,6 +63,33 @@ const ReviewsSection = ({
             </div>
             <p>{r.comment}</p>
             <Text type="secondary">{new Date(r.created_at).toLocaleString()}</Text>
+
+            {/* Render seller / admin replies if present */}
+            {Array.isArray(r.replies) && r.replies.length > 0 && (
+              <div style={{ marginTop: 8 }}>
+                {r.replies.map((rp) => (
+                  <div
+                    key={rp.id}
+                    style={{
+                      background: "#f6ffed",
+                      border: "1px solid #e6f4ea",
+                      padding: 10,
+                      borderRadius: 8,
+                      marginTop: 8,
+                      color: "#14532d",
+                    }}
+                  >
+                    <div style={{ fontWeight: 700, marginBottom: 6 }}>
+                      {rp.user_name || rp.user?.username || rp.replier_name || "Cửa hàng"}
+                      <span style={{ fontWeight: 400, marginLeft: 8, color: "#4b5563", fontSize: 12 }}>
+                        {rp.created_at ? new Date(rp.created_at).toLocaleString() : ""}
+                      </span>
+                    </div>
+                    <div style={{ whiteSpace: "pre-wrap" }}>{rp.reply_text || rp.comment || rp.detail || ""}</div>
+                  </div>
+                ))}
+              </div>
+            )}
           </List.Item>
         )}
       />
