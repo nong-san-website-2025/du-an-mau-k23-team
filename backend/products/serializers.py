@@ -93,22 +93,23 @@ class ProductListSerializer(serializers.ModelSerializer):
     category_id = serializers.IntegerField(source='subcategory.category.id', read_only=True)
     subcategory = serializers.PrimaryKeyRelatedField(read_only=True)
     image = serializers.ImageField()
-    seller = serializers.PrimaryKeyRelatedField(read_only=True) 
-    seller_name = serializers.SerializerMethodField()  # ✅ dùng SerializerMethodField
+    seller = serializers.PrimaryKeyRelatedField(read_only=True)
+    seller_name = serializers.SerializerMethodField()
     sold_count = serializers.SerializerMethodField()
-    discount_percent = serializers.IntegerField(required=False)  # hoặc ReadOnlyField nếu chỉ đọc
-
-
+    discount_percent = serializers.IntegerField(required=False)
 
     class Meta:
         model = Product
         fields = [
-            'id', 'name', 'price', 'unit', 'image', 
-            'rating', 'review_count',
-            'location', 'brand', 'category_name', 'subcategory_name', 
-            'category_id', 'subcategory', 'description', 'stock', 'status', 'created_at', 'updated_at', 'seller', 'seller_name', 'sold_count', 'discount_percent'
+            'id', 'name', 'price', 'unit', 'image',
+            'rating', 'review_count', 'location', 'brand',
+            'category_name', 'subcategory_name', 'category_id', 'subcategory',
+            'description', 'stock', 'status', 'created_at', 'updated_at',
+            'seller', 'seller_name', 'sold_count', 'discount_percent',
+            "availability_status", "season_start", "season_end", "estimated_quantity", "preordered_quantity"
         ]
         read_only_fields = ["id", "created_at", "updated_at", "seller"]
+
 
     def get_image(self, obj):   
         request = self.context.get('request')

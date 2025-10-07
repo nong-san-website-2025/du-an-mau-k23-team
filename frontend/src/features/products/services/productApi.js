@@ -15,6 +15,20 @@ const buildHeaders = (isAuth = false, isFormData = false) => {
   return headers;
 };
 
+function normalizeStatus(product) {
+  const status = (product.status || "").toLowerCase().trim();
+  const stock = Number(product.stock ?? 0);
+
+  if (["comingsoon", "coming_soon", "sắpcó", "sapco"].includes(status)) {
+    return "coming_soon";
+  }
+
+  if (stock <= 0) {
+    return "out_of_stock";
+  }
+
+  return "in_stock";
+}
 // ===== Helper: Refresh Token =====
 async function refreshToken() {
   const refresh = getRefreshToken();
@@ -69,11 +83,19 @@ async function request(endpoint, options = {}, { auth = false } = {}) {
 export const productApi = {
   // ===== Public APIs =====
   getAllProducts() {
-    return request("/products/");
+    return request("/products/").then((data) =>
+      data.map((p) => ({
+        ...p,
+        status: normalizeStatus(p),
+      }))
+    );
   },
 
   getProduct(id) {
-    return request(`/products/${id}/`, {}, { auth: true });
+    return request(`/products/${id}/`, {}, { auth: true }).then((p) => ({
+      ...p,
+      status: normalizeStatus(p),
+    }));
   },
 
   getCategories() {
@@ -105,7 +127,9 @@ export const productApi = {
 
           const subcategoriesWithProducts = subcategories.map((sub) => ({
             name: sub.name,
-            products: allProducts.filter((p) => p.subcategory_name === sub.name),
+            products: allProducts.filter(
+              (p) => p.subcategory_name === sub.name
+            ),
           }));
 
           return {
@@ -150,7 +174,10 @@ export const productApi = {
       "/products/",
       {
         method: "POST",
-        body: productData instanceof FormData ? productData : JSON.stringify(productData),
+        body:
+          productData instanceof FormData
+            ? productData
+            : JSON.stringify(productData),
       },
       { auth: true }
     );
@@ -161,7 +188,10 @@ export const productApi = {
       `/products/${id}/`,
       {
         method: "PUT",
-        body: productData instanceof FormData ? productData : JSON.stringify(productData),
+        body:
+          productData instanceof FormData
+            ? productData
+            : JSON.stringify(productData),
       },
       { auth: true }
     );
@@ -169,5 +199,8 @@ export const productApi = {
 
   deleteProduct(id) {
     return request(`/products/${id}/`, { method: "DELETE" }, { auth: true });
+  },
+  getAll() {
+    return this.getAllProducts();
   },
 };

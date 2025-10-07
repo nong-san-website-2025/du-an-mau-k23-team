@@ -334,13 +334,31 @@ const UserProductPage = () => {
                               )}{" "}
                               VNĐ
                             </Text>
-                            <Button
-                              className="custom-btn"
-                              shape="default"
-                              icon={<ShoppingCartOutlined />}
-                              size="small"
-                              onClick={(e) => handleAddToCart(e, product)}
-                            />
+                            {product.availability_status === "coming_soon" ? (
+                              <Button
+                                type="default"
+                                size="small"
+                                style={{
+                                  backgroundColor: "#fadb14",
+                                  color: "#000",
+                                  fontWeight: 600,
+                                }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/products/${product.id}`);
+                                }}
+                              >
+                                Đặt trước
+                              </Button>
+                            ) : (
+                              <Button
+                                className="custom-btn"
+                                shape="default"
+                                icon={<ShoppingCartOutlined />}
+                                size="small"
+                                onClick={(e) => handleAddToCart(e, product)}
+                              />
+                            )}
                           </div>
                         </>
                       }

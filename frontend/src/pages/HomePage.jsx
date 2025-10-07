@@ -3,6 +3,7 @@ import { Spin, Modal } from "antd"; // TODO: nâng cấp props theo khuyến cá
 import BannerSlider from "../components/Home/BannerSlider.jsx";
 import CategorySection from "../components/Home/CategorySection.jsx";
 import PersonalizedSection from "../components/Home/PersonalizedSection.jsx";
+import HomeProductTabs from "../components/Home/HomeProductTabs.jsx";
 import { Helmet } from "react-helmet";
 
 import {
@@ -75,6 +76,7 @@ export default function HomePage() {
         {/* Bên trái: Carousel lớn */}
         <div style={{ flex: 7 }}>
           <BannerSlider />
+          
         </div>
 
         {/* Bên phải: 2 banner nhỏ */}
@@ -112,6 +114,7 @@ export default function HomePage() {
           />
         </div>
       </div>
+      <HomeProductTabs />
 
       {/* Danh Mục Nổi Bật */}
       <CategorySection categories={categories} />
