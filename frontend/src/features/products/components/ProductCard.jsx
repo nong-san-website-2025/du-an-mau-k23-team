@@ -13,6 +13,7 @@ export default function ProductCard({ product, onAddToCart, onBuyNow }) {
 
   // ✅ Logic xác định trạng thái sản phẩm
   const isComingSoon = product.availability_status === "coming_soon";
+  const availableQuantity = product.available_quantity ?? 0;
   const isOutOfStock = stock === 0 && !isComingSoon;
 
   const handleDetailClick = () => navigate(`/product/${product.id}`);

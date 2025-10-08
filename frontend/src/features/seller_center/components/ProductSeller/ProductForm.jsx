@@ -29,6 +29,12 @@ const ProductForm = ({ visible, onCancel, onSubmit, initialValues }) => {
       });
   };
 
+  useEffect(() => {
+    // Khi form load hoặc initialValues thay đổi, cập nhật availability state
+    const value = form.getFieldValue("availability_status") || "available";
+    setAvailability(value);
+  }, [form, initialValues]);
+
   return (
     <Modal
       open={visible}
@@ -82,7 +88,6 @@ const ProductForm = ({ visible, onCancel, onSubmit, initialValues }) => {
           label="Trạng thái hàng hóa"
           name="availability_status"
           rules={[{ required: true, message: "Vui lòng chọn trạng thái" }]}
-          initialValue="available"
         >
           <Select onChange={(value) => setAvailability(value)}>
             <Option value="available">Có sẵn</Option>

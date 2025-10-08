@@ -15,13 +15,26 @@ const HomeProductTabs = () => {
     const fetchProducts = async () => {
       try {
         const data = await productApi.getAll();
-        const sorted = data.sort(
+
+        // Lọc sản phẩm có sẵn
+        const availableProducts = data.filter(
+          (p) => p.availability_status === "available"
+        );
+
+        // Sắp xếp theo ngày tạo mới nhất
+        const sorted = availableProducts.sort(
           (a, b) => new Date(b.created_at) - new Date(a.created_at)
         );
         setNewProducts(sorted.slice(0, 10));
+
+        // Sản phẩm sắp có
         const coming = data
           .filter((p) => p.availability_status === "coming_soon")
-          .sort((a, b) => new Date(a.season_start) - new Date(b.season_start));
+          .sort(
+            (a, b) =>
+              new Date(a.season_start || "2100-01-01") -
+              new Date(b.season_start || "2100-01-01")
+          );
         setComingSoon(coming.slice(0, 10));
       } finally {
         setLoading(false);

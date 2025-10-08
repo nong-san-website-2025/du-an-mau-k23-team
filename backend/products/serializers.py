@@ -84,6 +84,14 @@ class ProductSerializer(serializers.ModelSerializer):
         ).aggregate(total=Sum('quantity'))['total']
         return total or 0
     
+    def get_available_quantity(self, obj):
+        if obj.availability_status == "coming_soon":
+            # Số lượng có thể đặt trước = estimated_quantity - preordered_quantity
+            if obj.estimated_quantity is not None:
+                return max(obj.estimated_quantity - obj.preordered_quantity, 0)
+            return None  # hoặc số lượng vô hạn nếu bạn muốn
+        # Nếu có sẵn → dựa vào stock
+        return obj.stock
 
 
 
