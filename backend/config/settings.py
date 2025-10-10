@@ -24,7 +24,6 @@ SECRET_KEY = os.environ.get(
 DEBUG = os.environ.get("DEBUG", "True") == "True"
 
 ALLOWED_HOSTS = [
-    "127.0.0.1", "localhost", "10.0.2.2", "192.168.1.173", "10.10.9.177",
     "*"
 ]
 
@@ -193,15 +192,12 @@ CLOUDINARY_STORAGE = {
 
 # --- CORS & CSRF
 CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-]
+CORS_ALLOW_ALL_ORIGINS = True
 
 CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "http://localhost:8000",
-    "http://127.0.0.1:8000",
+    "http://*.localhost",
+    "http://*.127.0.0.1",
+    "http://*.192.168.*.*",
 ]
 
 # --- Others

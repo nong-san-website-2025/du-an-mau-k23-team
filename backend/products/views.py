@@ -298,7 +298,7 @@ class ReviewListCreateView(generics.ListCreateAPIView):
 # Top-Products
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def top_products(request):
     filter_type = request.GET.get("filter", "today")
 
