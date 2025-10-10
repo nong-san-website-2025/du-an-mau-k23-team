@@ -47,10 +47,11 @@ export default function useSearch() {
 
   return {
     search,
-    results,
+    setSearch,              // ✅ thêm
+    searchResults: results, // ✅ đổi tên cho khớp
     showSuggestions,
     setShowSuggestions,
-    containerRef,
+    searchRef: containerRef, // ✅ đổi tên cho khớp
     handleSearchChange,
   };
 }
