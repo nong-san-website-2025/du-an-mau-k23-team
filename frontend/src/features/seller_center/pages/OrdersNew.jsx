@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { Table, Tag, Button, message } from "antd";
+import { Table, Tag, Button, message, Popconfirm, Space } from "antd";
 import API from "../../login_register/services/api";
 
-export default function OrdersNew() {
+export default function OrdersNew({ onAction }) {
   const [loading, setLoading] = useState(false);
   const [orders, setOrders] = useState([]);
   const [sellerProductIds, setSellerProductIds] = useState(new Set());
@@ -50,11 +50,24 @@ export default function OrdersNew() {
   const approve = async (orderId) => {
     try {
       await API.post(`orders/${orderId}/seller/approve/`);
-      message.success("Đã duyệt đơn, chuyển sang Chờ nhận hàng");
+      message.success("Đã duyệt đơn, chuyển sang Chờ lấy hàng");
       fetchPending(sellerProductIds);
+      onAction?.();
     } catch (e) {
       console.error(e);
       message.error(e?.response?.data?.error || "Duyệt đơn thất bại");
+    }
+  };
+
+  const cancelOrder = async (orderId) => {
+    try {
+      await API.post(`orders/${orderId}/cancel/`);
+      message.success(`Đơn #${orderId} đã được hủy`);
+      fetchPending(sellerProductIds);
+      onAction?.();
+    } catch (e) {
+      console.error(e);
+      message.error(e?.response?.data?.error || "Không thể hủy đơn hàng");
     }
   };
 
@@ -69,6 +82,7 @@ export default function OrdersNew() {
       await Promise.all(approvePromises);
       message.success(`Đã duyệt ${orders.length} đơn hàng thành công`);
       fetchPending(sellerProductIds);
+      onAction?.();
     } catch (e) {
       console.error(e);
       message.error(e?.response?.data?.error || "Duyệt tất cả đơn thất bại");
@@ -105,7 +119,18 @@ export default function OrdersNew() {
       title: "Hành động",
       key: "actions",
       render: (_, r) => (
-        <Button type="primary" onClick={() => approve(r.id)}>Duyệt đơn</Button>
+        <Space>
+          <Button type="primary" onClick={() => approve(r.id)}>Duyệt đơn</Button>
+          <Popconfirm
+            title="Xác nhận hủy đơn"
+            description={`Bạn có chắc muốn hủy đơn #${r.id}?`}
+            okText="Hủy đơn"
+            cancelText="Đóng"
+            onConfirm={() => cancelOrder(r.id)}
+          >
+            <Button danger>Hủy đơn</Button>
+          </Popconfirm>
+        </Space>
       )
     }
   ];

@@ -27,7 +27,8 @@ class OrderViewSet(viewsets.ModelViewSet):
         if self.action in [
             'list', 'retrieve', 'create', 
             'seller_pending', 'seller_processing', 
-            'seller_success', 'seller_approve', 'seller_complete'
+            'seller_success', 'seller_approve', 'seller_complete',
+            'seller_cancelled', 'cancel'
         ]:
             return [IsAuthenticated()]
         elif self.action in ['admin_list', 'admin_detail']:
@@ -118,6 +119,18 @@ class OrderViewSet(viewsets.ModelViewSet):
         qs = Order.objects.filter(items__product_id__in=seller_product_ids, status='shipping').distinct()
         return Response(self.get_serializer(qs, many=True).data)
 
+    @action(detail=False, methods=['get'], url_path='seller/cancelled')
+    def seller_cancelled(self, request):
+        """Đơn đã bị hủy"""
+        seller = getattr(request.user, 'seller', None)
+        if not seller:
+            return Response({'error': 'Chỉ seller mới có quyền truy cập'}, status=403)
+
+        from products.models import Product
+        seller_product_ids = Product.objects.filter(seller=seller).values_list('id', flat=True)
+        qs = Order.objects.filter(items__product_id__in=seller_product_ids, status='cancelled').distinct()
+        return Response(self.get_serializer(qs, many=True).data)
+
     @action(detail=False, methods=['get'], url_path='seller/complete')
     def seller_completed_orders(self, request):
         """Đơn đã hoàn tất"""
@@ -170,6 +183,44 @@ class OrderViewSet(viewsets.ModelViewSet):
             return Response({'error': 'Lỗi không xác định'}, status=500)
 
         return Response({'message': 'Hoàn tất đơn hàng', 'status': updated_order.status})
+
+    @action(detail=True, methods=['post'], url_path='cancel')
+    def cancel(self, request, pk=None):
+        """Hủy đơn nếu đang ở trạng thái pending hoặc shipping.
+        - Seller: phải sở hữu ít nhất một sản phẩm trong đơn.
+        - Buyer: phải là chủ sở hữu đơn hàng.
+        """
+        try:
+            order = Order.objects.get(pk=pk)
+        except Order.DoesNotExist:
+            return Response({'error': 'Không tìm thấy đơn hàng'}, status=404)
+
+        if order.status not in ['pending', 'shipping']:
+            return Response({'error': 'Chỉ hủy được đơn đang chờ xác nhận hoặc đang giao'}, status=400)
+
+        user = request.user
+
+        # Buyer: chủ sở hữu đơn được hủy trực tiếp
+        if order.user_id == user.id:
+            order.status = 'cancelled'
+            order.save(update_fields=['status'])
+            return Response({'message': 'Đơn hàng đã được hủy', 'status': order.status})
+
+        # Seller: cần sở hữu ít nhất một sản phẩm trong đơn
+        seller = getattr(user, 'seller', None)
+        if seller:
+            from products.models import Product
+            seller_product_ids = set(
+                Product.objects.filter(seller=seller).values_list('id', flat=True)
+            )
+            order_product_ids = set(order.items.values_list('product_id', flat=True))
+            if seller_product_ids.intersection(order_product_ids):
+                order.status = 'cancelled'
+                order.save(update_fields=['status'])
+                return Response({'message': 'Đơn hàng đã được hủy', 'status': order.status})
+            return Response({'error': 'Bạn không có quyền với đơn hàng này'}, status=403)
+
+        return Response({'error': 'Bạn không có quyền hủy đơn hàng này'}, status=403)
 
     # ========================
     # Admin APIs

@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { Table, Tag, Button, message } from "antd";
+import { Table, Tag, Button, message, Popconfirm, Space } from "antd";
 import API from "../../login_register/services/api";
 
-export default function OrdersProcessing() {
+export default function OrdersProcessing({ onAction }) {
   const [loading, setLoading] = useState(false);
   const [orders, setOrders] = useState([]);
 
@@ -52,21 +52,43 @@ export default function OrdersProcessing() {
       title: "Hành động",
       key: "actions",
       render: (_, r) => (
-        <Button
-          type="primary"
-          onClick={async () => {
-            try {
-              await API.post(`orders/${r.id}/seller/complete/`);
-              message.success(`Đơn #${r.id} đã xác nhận giao thành công`);
-              fetchProcessing();
-            } catch (e) {
-              console.error(e);
-              message.error(e.response?.data?.error || "Không thể xác nhận giao hàng");
-            }
-          }}
-        >
-          Đã giao thành công
-        </Button>
+        <Space>
+          <Button
+            type="primary"
+            onClick={async () => {
+              try {
+                await API.post(`orders/${r.id}/seller/complete/`);
+                message.success(`Đơn #${r.id} đã xác nhận giao thành công`);
+                fetchProcessing();
+                onAction?.();
+              } catch (e) {
+                console.error(e);
+                message.error(e.response?.data?.error || "Không thể xác nhận giao hàng");
+              }
+            }}
+          >
+            Đã giao thành công
+          </Button>
+          <Popconfirm
+            title="Xác nhận hủy đơn"
+            description={`Bạn có chắc muốn hủy đơn #${r.id}?`}
+            okText="Hủy đơn"
+            cancelText="Đóng"
+            onConfirm={async () => {
+              try {
+                await API.post(`orders/${r.id}/cancel/`);
+                message.success(`Đơn #${r.id} đã được hủy`);
+                fetchProcessing();
+                onAction?.();
+              } catch (e) {
+                console.error(e);
+                message.error(e.response?.data?.error || "Không thể hủy đơn hàng");
+              }
+            }}
+          >
+            <Button danger>Hủy đơn</Button>
+          </Popconfirm>
+        </Space>
       )
     }
   ];

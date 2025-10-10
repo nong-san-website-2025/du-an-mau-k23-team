@@ -9,6 +9,8 @@ import Finance from "../features/seller_center/pages/Finance";
 import OrdersNew from "../features/seller_center/pages/OrdersNew";
 import OrdersProcessing from "../features/seller_center/pages/OrdersProcessing";
 import StoreInfo from "../features/seller_center/pages/StoreInfo";
+import OrdersDelivered from "../features/seller_center/pages/OrdersDelivered";
+import OrdersCancelled from "../features/seller_center/pages/OrdersCancelled";
 import FlashSales from "../features/seller_center/pages/PromotionSeller/FlashSales";
 import Promotions from "../features/seller_center/pages/PromotionSeller/Promotions";
 import PromotionList from "../features/seller_center/pages/PromotionSeller/PromotionList";
@@ -33,6 +35,8 @@ export const sellerRoutes = [
       <Route path="finance" element={<Finance />} />
       <Route path="orders/new" element={<OrdersNew />} />
       <Route path="orders/processing" element={<OrdersProcessing />} />
+      <Route path="orders/delivered" element={<OrdersDelivered />} />
+      <Route path="orders/cancelled" element={<OrdersCancelled />} />
       {/* <Route path="/flash-sales" element={<FlashSales />} /> */}
       <Route path="promotions" element={<Promotions />} />
       <Route path="store-vouchers" element={<StoreVouchers />} />

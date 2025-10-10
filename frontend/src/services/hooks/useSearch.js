@@ -46,12 +46,31 @@ export default function useSearch() {
   };
 
   return {
+    // current search value and setter (export setter so consumers can programmatically set it)
     search,
+<<<<<<< HEAD
     setSearch,              // ✅ thêm
     searchResults: results, // ✅ đổi tên cho khớp
     showSuggestions,
     setShowSuggestions,
     searchRef: containerRef, // ✅ đổi tên cho khớp
+=======
+    setSearch,
+
+    // keep original name used in some consumers
+    results,
+
+    // also export under the name some files expect
+    searchResults: results,
+
+    showSuggestions,
+    setShowSuggestions,
+
+    // ref for the container (alias to searchRef for compatibility)
+    containerRef,
+    searchRef: containerRef,
+
+>>>>>>> ChiBao
     handleSearchChange,
   };
 }
