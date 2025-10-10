@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useInView } from "react-intersection-observer";
 import { productApi } from "../../features/products/services/productApi.js";
 import "../../styles/home/PersonalizedSections.css";
-import { intcomma } from "./../../utils/format";
+import { intcomma } from "../../utils/format.js";
 
 const PersonalizedSection = ({ username }) => {
   const navigate = useNavigate();
