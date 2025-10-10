@@ -176,13 +176,24 @@ const ProductDetailPage = () => {
     loadData();
   }, [id, user]);
 
-
   const handleAddToCart = async () => {
     // 👈 không cần (e, product) vì product đã có trong scope
-    if (!product || quantity > product.stock) {
-      toast.warning("Số lượng vượt quá hàng trong kho.", {
+    if (!product) return;
+
+    // 🚫 Ngăn không cho thêm giỏ nếu là sắp có hoặc hết hàng
+    if (
+      product.status === "coming_soon" ||
+      product.status === "comingsoon" ||
+      product.status === "sapco" ||
+      product.status === "sắp có"
+    ) {
+      toast.info("Sản phẩm sắp có, vui lòng đặt trước khi có hàng.", {
         position: "bottom-right",
       });
+      return;
+    }
+    if (product.stock <= 0) {
+      toast.warning("Sản phẩm đã hết hàng.", { position: "bottom-right" });
       return;
     }
 
@@ -263,8 +274,22 @@ const ProductDetailPage = () => {
 
   // Mua ngay
   const handleBuyNow = async () => {
-    if (!product || quantity < 1 || quantity > product.stock) {
-      toast.warning("Số lượng không hợp lệ.", { position: "bottom-right" });
+    if (!product) return;
+
+    if (
+      product.status === "coming_soon" ||
+      product.status === "comingsoon" ||
+      product.status === "sapco" ||
+      product.status === "sắp có"
+    ) {
+      toast.info("Sản phẩm sắp có, chưa thể mua ngay.", {
+        position: "bottom-right",
+      });
+      return;
+    }
+
+    if (product.stock <= 0) {
+      toast.warning("Sản phẩm đã hết hàng.", { position: "bottom-right" });
       return;
     }
     await addToCart(
@@ -364,6 +389,7 @@ const ProductDetailPage = () => {
               onBuyNow={handleBuyNow}
               adding={adding}
               user={user}
+              status={product.status}
             />
           </div>
         </Space>
@@ -372,7 +398,7 @@ const ProductDetailPage = () => {
       {/* Mô tả */}
       <Card style={{ marginTop: 24, borderRadius: 8 }}>
         <Title level={4} style={{ marginBottom: 8 }}>
-          📝 Mô tả sản phẩm
+          Mô tả sản phẩm
         </Title>
         <Paragraph
           style={{

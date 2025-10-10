@@ -49,7 +49,8 @@ class ProductSerializer(serializers.ModelSerializer):
             'id', 'name', 'description', 'price', 'discounted_price', 'unit',
             'stock', 'image', 'rating', 'review_count', 'location', 'brand',
             'subcategory', 'seller_name', 'created_at', 'updated_at',
-            'category', 'store', 'status', 'seller', 'sold_count', 'discount_percent'
+            'category', 'store', 'status', 'seller', 'sold_count', 'discount_percent', "is_hidden", "availability_status",
+            "season_start", "season_end", "estimated_quantity", "preordered_quantity",
         ]
         read_only_fields = ["status", "seller"]
 
@@ -83,6 +84,14 @@ class ProductSerializer(serializers.ModelSerializer):
         ).aggregate(total=Sum('quantity'))['total']
         return total or 0
     
+    def get_available_quantity(self, obj):
+        if obj.availability_status == "coming_soon":
+            # Số lượng có thể đặt trước = estimated_quantity - preordered_quantity
+            if obj.estimated_quantity is not None:
+                return max(obj.estimated_quantity - obj.preordered_quantity, 0)
+            return None  # hoặc số lượng vô hạn nếu bạn muốn
+        # Nếu có sẵn → dựa vào stock
+        return obj.stock
 
 
 
@@ -92,22 +101,23 @@ class ProductListSerializer(serializers.ModelSerializer):
     category_id = serializers.IntegerField(source='subcategory.category.id', read_only=True)
     subcategory = serializers.PrimaryKeyRelatedField(read_only=True)
     image = serializers.ImageField()
-    seller = serializers.PrimaryKeyRelatedField(read_only=True) 
-    seller_name = serializers.SerializerMethodField()  # ✅ dùng SerializerMethodField
+    seller = serializers.PrimaryKeyRelatedField(read_only=True)
+    seller_name = serializers.SerializerMethodField()
     sold_count = serializers.SerializerMethodField()
-    discount_percent = serializers.IntegerField(required=False)  # hoặc ReadOnlyField nếu chỉ đọc
-
-
+    discount_percent = serializers.IntegerField(required=False)
 
     class Meta:
         model = Product
         fields = [
-            'id', 'name', 'price', 'unit', 'image', 
-            'rating', 'review_count',
-            'location', 'brand', 'category_name', 'subcategory_name', 
-            'category_id', 'subcategory', 'description', 'stock', 'status', 'created_at', 'updated_at', 'seller', 'seller_name', 'sold_count', 'discount_percent'
+            'id', 'name', 'price', 'unit', 'image',
+            'rating', 'review_count', 'location', 'brand',
+            'category_name', 'subcategory_name', 'category_id', 'subcategory',
+            'description', 'stock', 'status', 'created_at', 'updated_at',
+            'seller', 'seller_name', 'sold_count', 'discount_percent',
+            "availability_status", "season_start", "season_end", "estimated_quantity", "preordered_quantity"
         ]
         read_only_fields = ["id", "created_at", "updated_at", "seller"]
+
 
     def get_image(self, obj):   
         request = self.context.get('request')

@@ -161,12 +161,19 @@ class SellerProductsAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        seller = getattr(request.user, "seller", None)
-        if not seller:
-            return Response({"detail": "Bạn không phải seller"}, status=403)
+        if getattr(request.user.role, "name", "") != "seller":
+            return Response({"detail": "Bạn chưa được duyệt làm seller"}, status=403)
+
+        seller, created = Seller.objects.get_or_create(
+            user=request.user,
+            defaults={
+                "store_name": f"Shop {request.user.username}",
+                "status": "approved",  # vì role seller thì chắc chắn được duyệt rồi
+            }
+        )
 
         search = request.GET.get("search", "")
-        status_filter = request.GET.get("status", "")
+        status_filter = request.GET.get("status", "")   
 
         products = Product.objects.filter(seller=seller)
 
@@ -179,16 +186,24 @@ class SellerProductsAPIView(APIView):
         serializer = ProductSerializer(products, many=True)
         return Response(serializer.data)
 
+
 class SellerMeAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        """Return current user's seller profile"""
-        seller = getattr(request.user, "seller", None)
-        if not seller:
-            return Response({"detail": "Không tìm thấy seller của bạn"}, status=404)
+        if getattr(request.user.role, "name", "") != "seller":
+            return Response({"detail": "Bạn chưa đăng ký làm seller"}, status=403)
+
+        seller, created = Seller.objects.get_or_create(
+            user=request.user,
+            defaults={
+                "store_name": f"Shop {request.user.username}",
+                "status": "pending",
+            }
+        )
         serializer = SellerDetailSerializer(seller)
         return Response(serializer.data)
+
 
 class ShopViewSet(viewsets.ModelViewSet):
     serializer_class = ShopSerializer
@@ -227,6 +242,13 @@ class ProductViewSet(viewsets.ModelViewSet):
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        # Nếu muốn check quyền: chỉ seller của shop mới xóa
+        if instance.shop.owner != request.user:
+            return Response({"detail": "Không có quyền xóa sản phẩm này"}, status=403)
+        self.perform_destroy(instance)
+        return Response(status=204)
 
 class SellerActivateAPIView(APIView):
     permission_classes = [IsAuthenticated]
