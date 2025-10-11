@@ -92,9 +92,18 @@ const ProductInfo = ({
             />
           </Space>
           {product.stock > 0 && (
-            <Text type="success" style={{ marginLeft: 12 }}>
-              Còn {product.stock} sản phẩm
-            </Text>
+            <>
+              <Text type="success" style={{ marginLeft: 12 }}>
+                Còn {product.stock} sản phẩm
+              </Text>
+
+              {product.sold_quantity > 0 && (
+                <Text type="secondary" style={{ marginLeft: 12 }}>
+                  Đã bán {product.sold_quantity.toLocaleString("vi-VN")} sản
+                  phẩm
+                </Text>
+              )}
+            </>
           )}
         </div>
       )}
@@ -130,6 +139,15 @@ const ProductInfo = ({
                 ? `${estimatedQuantity.toLocaleString("vi-VN")} sản phẩm`
                 : "Chưa xác định"}
             </Text>
+            {(product.ordered_quantity > 0 || product.sold_quantity > 0) && (
+              <Text>
+                <strong>Đã có:</strong>{" "}
+                {(
+                  product.ordered_quantity || product.sold_quantity
+                ).toLocaleString("vi-VN")}{" "}
+                lượt đặt hàng
+              </Text>
+            )}
           </Space>
         </div>
       )}

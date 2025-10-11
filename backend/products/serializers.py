@@ -94,6 +94,9 @@ class ProductSerializer(serializers.ModelSerializer):
         return obj.stock
 
 
+    def get_sold_quantity(self, obj):
+        return obj.sold_quantity
+
 
 class ProductListSerializer(serializers.ModelSerializer):
     category_name = serializers.CharField(source='subcategory.category.name', read_only=True)

@@ -88,6 +88,14 @@ class Product(models.Model):
         (áp dụng với trạng thái coming_soon).
         """
         return sum(item.quantity for item in self.order_items.all())
+    
+
+    @property
+    def sold_quantity(self):
+        # Đếm tổng số lượng sản phẩm đã bán từ bảng OrderItem
+        from orders.models import OrderItem
+        total = OrderItem.objects.filter(product=self).aggregate(models.Sum("quantity"))["quantity__sum"]
+        return total or 0
 
 
 class ProductFeature(models.Model):
