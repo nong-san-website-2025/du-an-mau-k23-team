@@ -11,15 +11,24 @@ export default function ProductCard({ product, onAddToCart, onBuyNow }) {
   const stock = Number(product.stock) || 0;
   const status = (product.status || "").toLowerCase().trim();
 
-  // ✅ Logic xác định trạng thái sản phẩm
+  // ✅ Logic xác định trạng thái
   const isComingSoon = product.availability_status === "coming_soon";
-  const availableQuantity = product.available_quantity ?? 0;
   const isOutOfStock = stock === 0 && !isComingSoon;
+  const orderedQuantity = Number(product.ordered_quantity) || 0;
 
   const handleDetailClick = () => navigate(`/product/${product.id}`);
 
   return (
-    <div className="product-card" style={{ textAlign: "center", padding: 12 }}>
+    <div
+      className="product-card"
+      style={{
+        textAlign: "center",
+        padding: 12,
+        borderRadius: 8,
+        boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+        background: "#fff",
+      }}
+    >
       <img
         src={
           product.image?.startsWith("/")
@@ -27,7 +36,6 @@ export default function ProductCard({ product, onAddToCart, onBuyNow }) {
             : product.image || "/default-product.png"
         }
         alt={product.name}
-        className="product-image"
         onClick={handleDetailClick}
         style={{
           width: "100%",
@@ -39,25 +47,40 @@ export default function ProductCard({ product, onAddToCart, onBuyNow }) {
       />
 
       <h3
+        onClick={handleDetailClick}
         style={{
           margin: "12px 0 4px 0",
           fontSize: "1rem",
           fontWeight: 600,
           cursor: "pointer",
+          lineHeight: 1.3,
         }}
-        onClick={handleDetailClick}
       >
         {product.name}
       </h3>
 
-      <Text style={{ display: "block", marginBottom: 8 }}>
+      <Text strong style={{ display: "block", marginBottom: 6 }}>
         {Number(product.discounted_price ?? product.price).toLocaleString(
           "vi-VN"
         )}{" "}
         ₫
       </Text>
 
-      {/* ✅ Hiển thị nút phù hợp */}
+      {/* ✅ Hiển thị "Đã đặt X sản phẩm" nếu có */}
+      {/* {orderedQuantity > 0 && (
+        <Text
+          style={{
+            display: "block",
+            color: "#888",
+            marginBottom: 8,
+            fontSize: 13,
+          }}
+        >
+          Đã đặt {orderedQuantity} sản phẩm
+        </Text>
+      )} */}
+
+      {/* ✅ Nút thao tác tùy theo trạng thái */}
       {isComingSoon ? (
         <>
           <Button type="primary" danger onClick={handleDetailClick}>
@@ -68,9 +91,25 @@ export default function ProductCard({ product, onAddToCart, onBuyNow }) {
           </Text>
         </>
       ) : isOutOfStock ? (
-        <Button disabled size="middle">
-          Hết hàng
-        </Button>
+        <>
+          {product.productinfo?.expected_available_date ? (
+            <>
+              <Button type="primary" danger onClick={handleDetailClick}>
+                Đặt hàng trước
+              </Button>
+              <Text type="secondary" style={{ display: "block", marginTop: 4 }}>
+                Dự kiến có hàng:{" "}
+                {new Date(
+                  product.productinfo.expected_available_date
+                ).toLocaleDateString("vi-VN")}
+              </Text>
+            </>
+          ) : (
+            <Button disabled size="middle">
+              Sản phẩm đã hết hàng
+            </Button>
+          )}
+        </>
       ) : (
         <>
           <Button

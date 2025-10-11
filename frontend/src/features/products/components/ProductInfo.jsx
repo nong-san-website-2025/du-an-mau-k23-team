@@ -72,7 +72,7 @@ const ProductInfo = ({
         </Text>
       </div>
 
-      {/* Chỉ hiển thị phần số lượng nếu không phải sắp có */}
+      {/* 🔹 Số lượng hiện tại và số lượng đã đặt */}
       {!isComingSoon && (
         <div style={{ marginBottom: 24 }}>
           <Text strong>Số lượng:</Text>
@@ -91,19 +91,25 @@ const ProductInfo = ({
               }
             />
           </Space>
+
+          {/* 🔸 Còn hàng / Đã bán / Đã đặt */}
           {product.stock > 0 && (
-            <>
-              <Text type="success" style={{ marginLeft: 12 }}>
-                Còn {product.stock} sản phẩm
+            <div style={{ marginTop: 8 }}>
+              <Text type="success">
+                Còn {product.stock.toLocaleString("vi-VN")} sản phẩm
               </Text>
 
-              {product.sold_quantity > 0 && (
+              {/* {product.sold_quantity > 0 && (
                 <Text type="secondary" style={{ marginLeft: 12 }}>
-                  Đã bán {product.sold_quantity.toLocaleString("vi-VN")} sản
-                  phẩm
+                  Đã bán {product.sold_quantity.toLocaleString("vi-VN")}
                 </Text>
-              )}
-            </>
+              )} */}
+
+              <Text type="secondary" style={{ marginLeft: 12 }}>
+                Đã bán {(product.ordered_quantity || 0).toLocaleString("vi-VN")}{" "}
+                sản phẩm
+              </Text>
+            </div>
           )}
         </div>
       )}
@@ -139,7 +145,8 @@ const ProductInfo = ({
                 ? `${estimatedQuantity.toLocaleString("vi-VN")} sản phẩm`
                 : "Chưa xác định"}
             </Text>
-            {(product.ordered_quantity > 0 || product.sold_quantity > 0) && (
+
+            {/* {(product.ordered_quantity > 0 || product.sold_quantity > 0) && (
               <Text>
                 <strong>Đã có:</strong>{" "}
                 {(
@@ -147,42 +154,51 @@ const ProductInfo = ({
                 ).toLocaleString("vi-VN")}{" "}
                 lượt đặt hàng
               </Text>
-            )}
+            )} */}
           </Space>
         </div>
       )}
 
-      {/* Hiển thị hành động chính */}
+      {/* 🔹 Các nút hành động */}
       <Space size="middle">
+        {/* 🔹 Nếu là sản phẩm sắp có */}
         {isComingSoon ? (
           <>
-            {product.stock <= 0 ? (
-              <>
-                <Button
-                  type="primary"
-                  size="large"
-                  danger
-                  onClick={() => onBuyNow(product)}
-                >
-                  Đặt trước
-                </Button>
-                <Text type="warning" style={{ marginLeft: 12 }}>
-                  Sắp có từ {product.season_start || "?"} đến{" "}
-                  {product.season_end || "?"} ({product.estimated_quantity || 0}{" "}
-                  sản phẩm)
-                </Text>
-              </>
-            ) : (
-              <Button disabled size="large">
-                Đang có hàng (chưa mở đặt trước)
-              </Button>
-            )}
+            <Button
+              type="primary"
+              size="large"
+              danger
+              onClick={() => onBuyNow(product)}
+            >
+              Đặt trước
+            </Button>
+            {/* <Text type="warning" style={{ marginLeft: 12 }}>
+              Sắp có từ {availableFrom || "?"} đến {availableTo || "?"} (
+              {estimatedQuantity || 0} sản phẩm)
+            </Text> */}
           </>
-        ) : isOutOfStock ? (
+        ) : /* 🔹 Nếu hết hàng nhưng có dự kiến (season_start/season_end) → vẫn cho đặt trước */
+        isOutOfStock && (availableFrom || availableTo) ? (
+          <>
+            <Button
+              type="primary"
+              size="large"
+              danger
+              onClick={() => onBuyNow(product)}
+            >
+              Đặt trước
+            </Button>
+            <Text type="warning" style={{ marginLeft: 12 }}>
+              Dự kiến có hàng từ {availableFrom || "?"} đến {availableTo || "?"}
+            </Text>
+          </>
+        ) : /* 🔹 Nếu hết hàng thật sự, không có dự kiến */
+        isOutOfStock ? (
           <Button disabled size="large">
             Hết hàng
           </Button>
         ) : (
+          /* 🔹 Nếu còn hàng bình thường */
           <>
             <Button
               type="primary"

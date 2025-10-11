@@ -50,7 +50,7 @@ class Product(models.Model):
     brand = models.CharField(max_length=100, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-
+    ordered_quantity = models.IntegerField(default=0)
     # Visibility and status
     is_hidden = models.BooleanField(default=False)
     status = models.CharField(  # trạng thái kiểm duyệt (admin)

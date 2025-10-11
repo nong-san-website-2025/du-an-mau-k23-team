@@ -392,6 +392,11 @@ const ProductDetailPage = () => {
               status={product.status}
             />
           </div>
+          {/* {product?.ordered_quantity > 0 && (
+            <p style={{ marginTop: 12, color: "#888", fontSize: 15 }}>
+              Đã có {product.ordered_quantity} sản phẩm được đặt
+            </p>
+          )} */}
         </Space>
       </Card>
 

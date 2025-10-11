@@ -50,7 +50,7 @@ class ProductSerializer(serializers.ModelSerializer):
             'stock', 'image', 'rating', 'review_count', 'location', 'brand',
             'subcategory', 'seller_name', 'created_at', 'updated_at',
             'category', 'store', 'status', 'seller', 'sold_count', 'discount_percent', "is_hidden", "availability_status",
-            "season_start", "season_end", "estimated_quantity", "preordered_quantity",
+            "season_start", "season_end", "estimated_quantity", "preordered_quantity", 'ordered_quantity',
         ]
         read_only_fields = ["status", "seller"]
 

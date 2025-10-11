@@ -72,14 +72,26 @@ class OrderViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'], url_path='top-products')
     def top_products(self, request):
-        """Top sản phẩm bán chạy"""
+        """Top sản phẩm bán chạy (kèm số lượng đã đặt tổng cộng)"""
+        from products.models import Product
+
         top_products = (
             OrderItem.objects
-            .values('product_id', 'product__name', 'product__image', 'product__seller__store_name')
-            .annotate(quantity_sold=Sum('quantity'), revenue=Sum('price'))
+            .values(
+                'product_id',
+                'product__name',
+                'product__image',
+                'product__seller__store_name',
+                'product__ordered_quantity',  # ✅ thêm dòng này
+            )
+            .annotate(
+                quantity_sold=Sum('quantity'),
+                revenue=Sum('price')
+            )
             .order_by('-quantity_sold')[:10]
         )
         return Response(top_products)
+
     
     @action(detail=False, methods=['get'], url_path='recent')
     def recent_orders(self, request):
