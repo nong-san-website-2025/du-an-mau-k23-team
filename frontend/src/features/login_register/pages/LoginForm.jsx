@@ -51,9 +51,11 @@ export default function LoginForm() {
 
   // Điều hướng theo vai trò
   const navigateByRole = (role) => {
-    switch (role) {
+    if (!role) return navigate("/");
+
+    switch (role.name) {
       case "admin":
-        navigate("/admin");
+        navigate("/admin/dashboard");
         break;
       case "seller":
         navigate("/seller-center");
@@ -146,6 +148,22 @@ export default function LoginForm() {
     }
   };
 
+  const handleLoginSuccess = async (data) => {
+    // data.role phải có: 'admin', 'seller', 'user'
+    await fetchCart();
+
+    const params = new URLSearchParams(location.search);
+    const redirectPath = params.get("redirect");
+
+    if (redirectPath) {
+      navigate(redirectPath);
+    } else if (data.role) {
+      navigateByRole(data.role);
+    } else {
+      navigate("/"); // fallback
+    }
+  };
+
   // Xử lý đăng nhập
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -155,17 +173,7 @@ export default function LoginForm() {
     try {
       const result = await login(username, password);
       if (result.success) {
-        await fetchCart();
-
-        // 👇 Lấy redirect từ URL
-        const params = new URLSearchParams(location.search);
-        const redirectPath = params.get("redirect");
-
-        if (redirectPath) {
-          navigate(redirectPath); // Chuyển đến trang yêu cầu
-        } else {
-          navigateByRole(result.role); // Điều hướng theo vai trò
-        }
+        await handleLoginSuccess(result); // <- gọi chung
       } else {
         setError(result.error || "Đăng nhập thất bại, vui lòng thử lại.");
       }

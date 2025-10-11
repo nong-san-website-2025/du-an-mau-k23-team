@@ -415,45 +415,42 @@ class LoginView(APIView):
         password = request.data.get("password")
 
         if not username or not password:
-            return Response(
-                {"detail": "Vui lòng nhập username và password"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"detail": "Vui lòng nhập username và password"},
+                            status=status.HTTP_400_BAD_REQUEST)
 
         # Xác thực user
         user = authenticate(username=username, password=password)
         if not user:
-            return Response(
-                {"detail": "Tên đăng nhập hoặc mật khẩu không chính xác"},
-                status=status.HTTP_401_UNAUTHORIZED
-            )
+            return Response({"detail": "Tên đăng nhập hoặc mật khẩu không chính xác"},
+                            status=status.HTTP_401_UNAUTHORIZED)
 
-        # **Kiểm tra trạng thái trước khi tạo token**
+        # Kiểm tra trạng thái
         if user.status != "active":
             if user.status == "pending":
-                return Response(
-                    {"detail": "Tài khoản chưa được xác thực. Vui lòng kiểm tra email!"},
-                    status=status.HTTP_403_FORBIDDEN
-                )
+                return Response({"detail": "Tài khoản chưa được xác thực. Vui lòng kiểm tra email!"},
+                                status=status.HTTP_403_FORBIDDEN)
             elif user.status == "inactive":
-                return Response(
-                    {"detail": "Tài khoản đã bị khóa."},
-                    status=status.HTTP_403_FORBIDDEN
-                )
+                return Response({"detail": "Tài khoản đã bị khóa."}, status=status.HTTP_403_FORBIDDEN)
 
-        # Tạo JWT token chỉ khi status = active
+        # Tạo JWT token
         refresh = RefreshToken.for_user(user)
 
+        # Lấy role info
+        role_data = {
+            "id": user.role.id,
+            "name": user.role.name
+        } if user.role else None
+
         return Response({
+            "id": user.id,
             "username": user.username,
             "email": user.email,
-            "role": {
-                "id": user.role.id,
-                "name": user.role.name
-            } if hasattr(user, "role") and user.role else None,
+            "full_name": user.full_name,
+            "role": role_data,
             "access": str(refresh.access_token),
             "refresh": str(refresh),
         }, status=status.HTTP_200_OK)
+
 
 
 class PasswordResetRequestView(generics.GenericAPIView):
