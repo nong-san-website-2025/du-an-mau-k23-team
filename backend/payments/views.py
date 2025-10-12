@@ -75,7 +75,7 @@ def withdraw_request(request):
     # Kiểm tra số dư
     product_ids = Product.objects.filter(seller=seller).values_list("id", flat=True)
     order_ids = OrderItem.objects.filter(product_id__in=product_ids).values_list("order_id", flat=True).distinct()
-    payments = Payment.objects.filter(order_id__in=order_ids, status__in=["SUCCESS", "Đã thanh toán"])
+    payments = Payment.objects.filter(order_id__in=order_ids, status="success")
     total_revenue = payments.aggregate(total=Sum("amount"))['total'] or 0
     total_withdrawn = WithdrawRequest.objects.filter(seller=seller, status__in=["paid", "approved"]).aggregate(total=Sum("amount"))['total'] or 0
     balance = float(total_revenue) - float(total_withdrawn)
@@ -95,7 +95,7 @@ def wallet_balance(request):
         return Response({"error": "Seller not found"}, status=404)
     product_ids = Product.objects.filter(seller=seller).values_list("id", flat=True)
     order_ids = OrderItem.objects.filter(product_id__in=product_ids).values_list("order_id", flat=True).distinct()
-    payments = Payment.objects.filter(order_id__in=order_ids, status__in=["SUCCESS", "Đã thanh toán"])
+    payments = Payment.objects.filter(order_id__in=order_ids, status="success")
     total_revenue = payments.aggregate(total=Sum("amount"))['total'] or 0
     total_withdrawn = WithdrawRequest.objects.filter(seller=seller, status__in=["paid", "approved"]).aggregate(total=Sum("amount"))['total'] or 0
     balance = float(total_revenue) - float(total_withdrawn)
@@ -114,7 +114,7 @@ def revenue_chart(request):
         return Response({"error": "Seller not found"}, status=404)
     product_ids = Product.objects.filter(seller=seller).values_list("id", flat=True)
     order_ids = OrderItem.objects.filter(product_id__in=product_ids).values_list("order_id", flat=True).distinct()
-    payments = Payment.objects.filter(order_id__in=order_ids, status__in=["SUCCESS", "Đã thanh toán"])
+    payments = Payment.objects.filter(order_id__in=order_ids, status="success")
 
     # Doanh thu theo ngày (7 ngày gần nhất)
     daily = payments.annotate(day=TruncDay("created_at")).values("day").annotate(amount=Sum("amount")).order_by("day")
@@ -159,18 +159,23 @@ def seller_finance(request):
     product_ids = Product.objects.filter(seller=seller).values_list("id", flat=True)
     # Lấy tất cả order item có product thuộc seller
     order_ids = OrderItem.objects.filter(product_id__in=product_ids).values_list("order_id", flat=True).distinct()
-    # Lấy tất cả payment liên quan các order này và đã thanh toán thành công
-    payments = Payment.objects.filter(order_id__in=order_ids, status__in=["SUCCESS", "Đã thanh toán"])
+    # Lấy TẤT CẢ payment liên quan các order này (cả success và pending)
+    payments = Payment.objects.filter(order_id__in=order_ids)
 
-    # Tổng doanh thu
-    total_revenue = payments.aggregate(total=models.Sum("amount"))['total'] or 0
+    # Tổng doanh thu (chỉ tính success)
+    total_revenue = payments.filter(status="success").aggregate(total=models.Sum("amount"))['total'] or 0
 
     # Serialize danh sách payment
     payment_data = PaymentSerializer(payments, many=True).data
+    
+    # Lấy lịch sử rút tiền của seller
+    withdraws = WithdrawRequest.objects.filter(seller=seller).order_by("-created_at")
+    withdraw_data = WithdrawRequestSerializer(withdraws, many=True).data
 
     return Response({
         "payments": payment_data,
-        "total_revenue": total_revenue
+        "total_revenue": total_revenue,
+        "withdraws": withdraw_data
     })
 
 

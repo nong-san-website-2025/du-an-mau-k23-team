@@ -47,6 +47,7 @@ export default function useSearch() {
 
   return {
     search,
+    setSearch,
     results,
     showSuggestions,
     setShowSuggestions,
