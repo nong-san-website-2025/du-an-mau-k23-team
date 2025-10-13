@@ -8,6 +8,10 @@ from django.utils.timezone import now
 from django.utils import timezone
 from django.db import transaction
 from django.contrib.auth import get_user_model
+from .serializers import SellerVoucherSerializer # Serializer cho seller mà chúng ta đã định nghĩa
+from sellers.models import Seller # Model Seller để liên kết
+from rest_framework import filters
+from django_filters.rest_framework import DjangoFilterBackend
 
 from .models import Voucher, FlashSale, UserVoucher
 from .serializers import (
@@ -320,3 +324,47 @@ class FlashSaleAdminViewSet(viewsets.ModelViewSet):
     queryset = FlashSale.objects.all().prefetch_related('products')  # ✅ Sửa ở đây
     serializer_class = FlashSaleAdminSerializer
     permission_classes = [IsAdminUser]
+
+
+# promotions/views.py
+
+# ... Dán đoạn code này vào cuối file ...
+
+# --- BẮT ĐẦU CODE THÊM MỚI CHO SELLER ---
+
+# Permission để kiểm tra user có phải là seller không
+class IsSellerUser(permissions.BasePermission):
+    """
+    Chỉ cho phép truy cập nếu user đã được xác thực và có liên kết đến một Seller profile.
+    """
+    def has_permission(self, request, view):
+        # Dựa trên model của bạn, user có một related_name là "seller"
+        return request.user.is_authenticated and hasattr(request.user, 'seller')
+
+# ViewSet dành riêng cho Seller để quản lý voucher
+class SellerVoucherViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint cho phép Seller quản lý (CRUD) các voucher của riêng họ.
+    """
+    serializer_class = SellerVoucherSerializer
+    permission_classes = [IsSellerUser] # Chỉ seller mới được truy cập
+
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['active'] # Lọc chính xác theo Trạng thái (active=true, active=false)
+    search_fields = ['title', 'code'] # Cho phép tìm kiếm theo Tên (title) và Mã (code)
+
+    def get_queryset(self):
+        # Chỉ trả về các voucher thuộc về cửa hàng của user đang đăng nhập
+        user_seller = self.request.user.seller
+        return Voucher.objects.filter(seller=user_seller).order_by('-created_at')
+
+    def perform_create(self, serializer):
+        # Tự động gán các giá trị khi Seller tạo voucher
+        user_seller = self.request.user.seller
+        serializer.save(
+            created_by=self.request.user,
+            seller=user_seller,
+            scope=Voucher.Scope.SELLER # Luôn là voucher của seller
+        )
+
+# --- KẾT THÚC CODE THÊM MỚI ---

@@ -336,3 +336,17 @@ def top_products(request):
         })
 
     return Response(data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated]) # Chỉ user đã đăng nhập mới được gọi
+def my_products_simple_list(request):
+    # Kiểm tra xem user có phải là seller không
+    if not hasattr(request.user, 'seller'):
+        return Response({"detail": "User is not a seller."}, status=403)
+    
+    seller = request.user.seller
+    # Lấy các sản phẩm của seller đó và chỉ chọn 2 trường id và name
+    products = Product.objects.filter(seller=seller).values('id', 'name')
+    
+    return Response(list(products))
