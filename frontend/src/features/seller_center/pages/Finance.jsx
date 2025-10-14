@@ -404,9 +404,13 @@ const Finance = () => {
   });
   const [payments, setPayments] = useState([]);
   const [transactions, setTransactions] = useState([]);
+  const [lastUpdated, setLastUpdated] = useState(null);
+  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(false);
 
-  const loadFinanceData = useCallback(async () => {
-    setLoading(true);
+  const loadFinanceData = useCallback(async (toggleLoading = true) => {
+    if (toggleLoading) {
+      setLoading(true);
+    }
     setError(null);
     try {
       const [balanceRes, chartRes, financeRes] = await Promise.all([
@@ -478,6 +482,7 @@ const Finance = () => {
       });
       setPayments(financeRes?.payments || []);
       setTransactions(derivedTransactions);
+      setLastUpdated(new Date());
     } catch (err) {
       console.error("Finance data loading error:", err);
       const errorMessage = err.message || "Không thể tải dữ liệu tài chính";
@@ -497,13 +502,27 @@ const Finance = () => {
         message.error(errorMessage);
       }
     } finally {
-      setLoading(false);
+      if (toggleLoading) {
+        setLoading(false);
+      }
     }
   }, []);
 
   useEffect(() => {
     loadFinanceData();
   }, [loadFinanceData]);
+
+  useEffect(() => {
+    if (!autoRefreshEnabled) {
+      return undefined;
+    }
+
+    const intervalId = setInterval(() => {
+      loadFinanceData(false);
+    }, 60000);
+
+    return () => clearInterval(intervalId);
+  }, [autoRefreshEnabled, loadFinanceData]);
 
   const filteredTransactions = useMemo(() => {
     const { dateRange, types, searchText } = filters;
@@ -671,11 +690,19 @@ const Finance = () => {
 
   const cashFlowForecast = useMemo(() => buildCashFlowForecast(filteredTransactions), [filteredTransactions]);
 
+  const chartData = useMemo(() => buildChartData(filteredTransactions), [filteredTransactions]);
+
   const chartConfig = useMemo(
     () => ({
-      data: buildChartData(filteredTransactions),
+      data: chartData,
       xField: "date",
       yField: "value",
+      animation: {
+        appear: {
+          animation: "path-in",
+          duration: 3000,
+        },
+      },
       seriesField: "metric",
       height: 260,
       padding: "auto",

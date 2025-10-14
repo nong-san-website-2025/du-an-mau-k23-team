@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Card, Tabs, Select, DatePicker, Row, Col, Statistic, Table, Progress, Tag, Typography } from "antd";
+import { Card, Tabs, Select, DatePicker, Row, Col, Statistic, Table, Progress, Tag, Typography, Button, Space } from "antd";
 import { 
   ArrowUpOutlined, 
   ArrowDownOutlined,
@@ -58,6 +58,8 @@ export default function Analytics() {
   const [salesData, setSalesData] = useState(null);
   const [productsData, setProductsData] = useState(null);
   const [trafficData, setTrafficData] = useState(null);
+  const [lastUpdated, setLastUpdated] = useState(null);
+  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(false);
 
   const API_BASE = "http://localhost:8000/api/sellers";
 
@@ -68,8 +70,22 @@ export default function Analytics() {
     fetchData();
   }, [activeTab, period, dateRange]);
 
-  const fetchData = async () => {
-    setLoading(true);
+  useEffect(() => {
+    if (!autoRefreshEnabled) {
+      return undefined;
+    }
+
+    const intervalId = setInterval(() => {
+      fetchData(false);
+    }, 60000);
+
+    return () => clearInterval(intervalId);
+  }, [autoRefreshEnabled, activeTab, period, dateRange]);
+
+  const fetchData = async (toggleLoading = true) => {
+    if (toggleLoading) {
+      setLoading(true);
+    }
     try {
       const token = localStorage.getItem("token");
       if (!token) {
@@ -108,12 +124,15 @@ export default function Analytics() {
         default:
           break;
       }
+      setLastUpdated(new Date());
     } catch (error) {
       console.error("Error fetching analytics:", error);
       console.error("Error response:", error.response?.data);
       alert(`Lỗi: ${error.response?.data?.detail || error.message}`);
     } finally {
-      setLoading(false);
+      if (toggleLoading) {
+        setLoading(false);
+      }
     }
   };
 
@@ -166,8 +185,33 @@ export default function Analytics() {
     };
 
   const renderOverview = () => {
-    if (loading) return <Card><div style={{ textAlign: "center", padding: 50 }}>⏳ Đang tải dữ liệu...</div></Card>;
-    if (!overviewData) return <Card><div style={{ textAlign: "center", padding: 50 }}>❌ Không có dữ liệu</div></Card>;
+    if (loading) {
+      return (
+        <Card>
+          <div style={{ textAlign: "center", padding: 50 }}>⏳ Đang tải dữ liệu...</div>
+        </Card>
+      );
+    }
+
+    if (!overviewData) {
+      return (
+        <Card>
+          <div style={{ textAlign: "center", padding: 50 }}>
+            ❌ Không có dữ liệu
+            <div style={{ marginTop: 16 }}>
+              <Space direction="vertical">
+                <Button type="primary" onClick={() => fetchData()}>
+                  Thử tải lại
+                </Button>
+                <Button onClick={() => setAutoRefreshEnabled(!autoRefreshEnabled)}>
+                  {autoRefreshEnabled ? "Tắt tự động làm mới" : "Bật tự động làm mới"}
+                </Button>
+              </Space>
+            </div>
+          </div>
+        </Card>
+      );
+    }
 
     const { kpis, trend_chart, top_products, funnel } = overviewData;
     const funnelData = [
@@ -187,72 +231,138 @@ export default function Analytics() {
           <Col xs={24} sm={12} lg={8} flex={1}>{renderThemedKPICard("Giá trị đơn TB", formatCurrency(kpis.aov.value), kpis.aov.growth, <GiftOutlined />, THEME_COLORS.primary)}</Col>
         </Row>
 
-        <Card title={<Title level={5}>Xu Hướng Tăng Trưởng</Title>} style={{ marginBottom: 24, borderRadius: '12px' }}>
-          <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={trend_chart} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-              <defs>
-                <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={THEME_COLORS.primary} stopOpacity={0.8}/>
-                  <stop offset="95%" stopColor={THEME_COLORS.primary} stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
-              <YAxis tickFormatter={(value) => `${(value / 1000000).toFixed(1)}Tr`} />
-              <Tooltip formatter={(value) => formatCurrency(value)} />
-              <Area type="monotone" dataKey="revenue" stroke={THEME_COLORS.primary} fillOpacity={1} fill="url(#colorRevenue)" strokeWidth={2} name="Doanh thu" />
-            </AreaChart>
-          </ResponsiveContainer>
-        </Card>
+        <Space direction="vertical" size={24} style={{ width: "100%" }}>
+          <Space direction="horizontal" size={16} align="center">
+            <Button type="primary" onClick={() => fetchData()} loading={loading}>
+              Làm mới số liệu
+            </Button>
+            <Button onClick={() => setAutoRefreshEnabled(!autoRefreshEnabled)}>
+              {autoRefreshEnabled ? "Tắt tự động làm mới" : "Bật tự động làm mới"}
+            </Button>
+            {lastUpdated && (
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                Cập nhật gần nhất: {lastUpdated.toLocaleString("vi-VN")}
+              </Text>
+            )}
+          </Space>
+          <Card title={<Title level={5}>Xu Hướng Tăng Trưởng</Title>} style={{ borderRadius: '12px' }}>
+            <ResponsiveContainer width="100%" height={300}>
+              <AreaChart data={trend_chart} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={THEME_COLORS.primary} stopOpacity={0.8} />
+                    <stop offset="95%" stopColor={THEME_COLORS.primary} stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="date" />
+                <YAxis tickFormatter={(value) => `${(value / 1000000).toFixed(1)}Tr`} />
+                <Tooltip formatter={(value) => formatCurrency(value)} />
+                <Area type="monotone" dataKey="revenue" stroke={THEME_COLORS.primary} fillOpacity={1} fill="url(#colorRevenue)" strokeWidth={2} name="Doanh thu" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </Card>
 
-        <Row gutter={[24, 24]}>
-          <Col xs={24} lg={14}>
-            <Card title={<Title level={5}>Nông Sản Bán Chạy Nhất</Title>} style={{ borderRadius: '12px', height: '100%' }}>
-              <Table dataSource={top_products} rowKey="id" pagination={false}
-                columns={[
-                  { title: "Sản phẩm", dataIndex: "name", key: "name",
-                    render: (text, record) => (
-                      <div style={{ display: "flex", alignItems: "center" }}>
-                        {record.image && <img src={record.image} alt={text} style={{ width: 45, height: 45, marginRight: 12, objectFit: "cover", borderRadius: '8px' }} />}
-                        <span>{text}</span>
-                      </div>
-                    )},
-                  { title: "Đã bán", dataIndex: "units_sold", key: "units_sold" },
-                  { title: "Doanh thu", dataIndex: "revenue", key: "revenue", render: (value) => formatCurrency(value) }
-                ]}
-              />
-            </Card>
-          </Col>
-          <Col xs={24} lg={10}>
-             <Card title={<Title level={5}>Phễu Bán Hàng</Title>} style={{ borderRadius: '12px', height: '100%' }}>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={funnelData} layout="vertical" margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis type="number" hide />
-                  <YAxis dataKey="stage" type="category" width={100} tickLine={false} axisLine={false} />
-                  <Tooltip />
-                  <Bar dataKey="value" name="Số lượng" barSize={35} radius={[0, 8, 8, 0]}>
-                     {funnelData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </Card>
-          </Col>
-        </Row>
+          <Row gutter={[24, 24]}>
+            <Col xs={24} lg={14}>
+              <Card title={<Title level={5}>Nông Sản Bán Chạy Nhất</Title>} style={{ borderRadius: '12px', height: '100%' }}>
+                <Table
+                  dataSource={top_products}
+                  rowKey="id"
+                  pagination={false}
+                  columns={[
+                    {
+                      title: "Sản phẩm",
+                      dataIndex: "name",
+                      key: "name",
+                      render: (text, record) => (
+                        <div style={{ display: "flex", alignItems: "center" }}>
+                          {record.image && (
+                            <img
+                              src={record.image}
+                              alt={text}
+                              style={{ width: 45, height: 45, marginRight: 12, objectFit: "cover", borderRadius: "8px" }}
+                            />
+                          )}
+                          <span>{text}</span>
+                        </div>
+                      )
+                    },
+                    { title: "Đã bán", dataIndex: "units_sold", key: "units_sold" },
+                    { title: "Doanh thu", dataIndex: "revenue", key: "revenue", render: (value) => formatCurrency(value) }
+                  ]}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} lg={10}>
+              <Card title={<Title level={5}>Phễu Bán Hàng</Title>} style={{ borderRadius: '12px', height: '100%' }}>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={funnelData} layout="vertical" margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis type="number" hide />
+                    <YAxis dataKey="stage" type="category" width={100} tickLine={false} axisLine={false} />
+                    <Tooltip />
+                    <Bar dataKey="value" name="Số lượng" barSize={35} radius={[0, 8, 8, 0]}>
+                      {funnelData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </Card>
+            </Col>
+          </Row>
+        </Space>
       </div>
     );
   };
 
   // Các hàm renderSales, renderProducts, renderTraffic không thay đổi...
   const renderSales = () => {
-    if (loading) return <Card><div style={{ textAlign: "center", padding: 50 }}>⏳ Đang tải dữ liệu...</div></Card>;
-    if (!salesData) return <Card><div style={{ textAlign: "center", padding: 50 }}>❌ Không có dữ liệu</div></Card>;
+    if (loading) {
+      return (
+        <Card>
+          <div style={{ textAlign: "center", padding: 50 }}>⏳ Đang tải dữ liệu...</div>
+        </Card>
+      );
+    }
+
+    if (!salesData) {
+      return (
+        <Card>
+          <div style={{ textAlign: "center", padding: 50 }}>
+            ❌ Không có dữ liệu
+            <div style={{ marginTop: 16 }}>
+              <Space direction="vertical">
+                <Button type="primary" onClick={() => fetchData()}>
+                  Thử tải lại
+                </Button>
+                <Button onClick={() => setAutoRefreshEnabled(!autoRefreshEnabled)}>
+                  {autoRefreshEnabled ? "Tắt tự động làm mới" : "Bật tự động làm mới"}
+                </Button>
+              </Space>
+            </div>
+          </div>
+        </Card>
+      );
+    }
     const { revenue_by_time, revenue_by_location, operational_metrics } = salesData;
 
     return (
       <div>
+        <Space direction="horizontal" size={16} align="center" style={{ marginBottom: 16 }}>
+          <Button type="primary" onClick={() => fetchData()} loading={loading}>
+            Làm mới số liệu
+          </Button>
+          <Button onClick={() => setAutoRefreshEnabled(!autoRefreshEnabled)}>
+            {autoRefreshEnabled ? "Tắt tự động làm mới" : "Bật tự động làm mới"}
+          </Button>
+          {lastUpdated && (
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              Cập nhật gần nhất: {lastUpdated.toLocaleString("vi-VN")}
+            </Text>
+          )}
+        </Space>
         <Card title={<Title level={5}>{period === "today" ? "Doanh thu theo giờ vàng" : "Doanh thu theo ngày"}</Title>} style={{ marginBottom: 24, borderRadius: '12px' }}>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={revenue_by_time}>
@@ -300,8 +410,33 @@ export default function Analytics() {
   };
   
   const renderProducts = () => {
-    if (loading) return <Card><div style={{ textAlign: "center", padding: 50 }}>⏳ Đang tải dữ liệu...</div></Card>;
-    if (!productsData) return <Card><div style={{ textAlign: "center", padding: 50 }}>❌ Không có dữ liệu</div></Card>;
+    if (loading) {
+      return (
+        <Card>
+          <div style={{ textAlign: "center", padding: 50 }}>⏳ Đang tải dữ liệu...</div>
+        </Card>
+      );
+    }
+
+    if (!productsData) {
+      return (
+        <Card>
+          <div style={{ textAlign: "center", padding: 50 }}>
+            ❌ Không có dữ liệu
+            <div style={{ marginTop: 16 }}>
+              <Space direction="vertical">
+                <Button type="primary" onClick={() => fetchData()}>
+                  Thử tải lại
+                </Button>
+                <Button onClick={() => setAutoRefreshEnabled(!autoRefreshEnabled)}>
+                  {autoRefreshEnabled ? "Tắt tự động làm mới" : "Bật tự động làm mới"}
+                </Button>
+              </Space>
+            </div>
+          </div>
+        </Card>
+      );
+    }
     const { product_performance, basket_analysis } = productsData;
 
     // Debug: Log dữ liệu để kiểm tra
@@ -358,8 +493,33 @@ export default function Analytics() {
   };
   
   const renderTraffic = () => {
-    if (loading) return <Card><div style={{ textAlign: "center", padding: 50 }}>⏳ Đang tải dữ liệu...</div></Card>;
-    if (!trafficData) return <Card><div style={{ textAlign: "center", padding: 50 }}>❌ Không có dữ liệu</div></Card>;
+    if (loading) {
+      return (
+        <Card>
+          <div style={{ textAlign: "center", padding: 50 }}>⏳ Đang tải dữ liệu...</div>
+        </Card>
+      );
+    }
+
+    if (!trafficData) {
+      return (
+        <Card>
+          <div style={{ textAlign: "center", padding: 50 }}>
+            ❌ Không có dữ liệu
+            <div style={{ marginTop: 16 }}>
+              <Space direction="vertical">
+                <Button type="primary" onClick={() => fetchData()}>
+                  Thử tải lại
+                </Button>
+                <Button onClick={() => setAutoRefreshEnabled(!autoRefreshEnabled)}>
+                  {autoRefreshEnabled ? "Tắt tự động làm mới" : "Bật tự động làm mới"}
+                </Button>
+              </Space>
+            </div>
+          </div>
+        </Card>
+      );
+    }
 
     const { traffic_sources, top_keywords, customer_analysis } = trafficData;
     const trafficPieData = (traffic_sources || []).map(item => ({ name: item.source, value: item.visits }));
