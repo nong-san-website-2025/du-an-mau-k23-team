@@ -15,25 +15,23 @@ function App() {
       <BrowserRouter>
         <AuthProvider>
           <CartProvider>
-              <Routes>
-                <Route path="/login" element={<LoginForm />} />
-                {userRoutes}
-                {adminRoutes}
-                {sellerRoutes}
-                {/* Handle backend redirect with tokens as query params */}
-                <Route path="/verify-email" element={<VerifyEmailPage />} />
-                {/* Optional legacy route (if ever linked directly from email) */}
-                <Route path="/verify-email/:uid/:token" element={<VerifyEmailPage />} />
-                {/* VNPAY return handler */}
-                <Route path="/vnpay-return" element={<VnpayReturn />} />
-                
-              </Routes>
-        </CartProvider>
-      </AuthProvider>
-    </BrowserRouter>
+            <Routes>
+              <Route path="/login" element={<LoginForm />} />
+              {userRoutes}
+              {adminRoutes}
+              {sellerRoutes}
+              {/* Handle backend redirect with tokens as query params */}
+              <Route path="/verify-email" element={<VerifyEmailPage />} />
+              {/* Optional legacy route (if ever linked directly from email) */}
+              <Route path="/verify-email/:uid/:token" element={<VerifyEmailPage />} />
+              {/* VNPAY return handler */}
+              <Route path="/vnpay-return" element={<VnpayReturn />} />
+            </Routes>
+          </CartProvider>
+        </AuthProvider>
+      </BrowserRouter>
     </div>
   );
 }
-
 
 export default App;
