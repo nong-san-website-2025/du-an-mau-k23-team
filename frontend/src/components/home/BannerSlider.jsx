@@ -71,6 +71,10 @@ export default function BannerSlider() {
               onLoad={() =>
                 setLoadedImages((prev) => ({ ...prev, [banner.id]: true }))
               }
+              onError={
+                () =>
+                  setLoadedImages((prev) => ({ ...prev, [banner.id]: true })) // <== Tắt skeleton nếu lỗi ảnh
+              }
             />
           </div>
         ))}
