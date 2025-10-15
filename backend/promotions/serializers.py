@@ -3,7 +3,8 @@ from .models import Promotion, Voucher ,FlashSale, UserVoucher, FlashSaleProduct
 from products.models import Product
 from orders.models import OrderItem
 from django.db.models import Sum
-
+from rest_framework import serializers
+from .models import Voucher
 
 
 class PromotionListSerializer(serializers.ModelSerializer):
@@ -269,4 +270,57 @@ class FlashSaleAdminSerializer(serializers.ModelSerializer):
         return instance
 
 
+class SellerVoucherSerializer(serializers.ModelSerializer):
+    # Dùng PrimaryKeyRelatedField để nhận một list các ID sản phẩm từ frontend
+    applicable_products = serializers.PrimaryKeyRelatedField(
+        queryset=Product.objects.all(),
+        many=True,
+        required=False # Không bắt buộc vì có thể áp dụng cho tất cả
+    )
+
+    class Meta:
+        model = Voucher
+        fields = [
+            'id', 'code', 'title', 'description',
+            'discount_percent', 'discount_amount', 'freeship_amount',
+            'min_order_value', 'max_discount_amount',
+            'start_at', 'end_at', 'active',
+            'distribution_type', 'total_quantity', 'per_user_quantity',
+            # Các trường mới thêm
+            'product_scope', 'applicable_products',
+        ]
+        # Các trường này sẽ được tự động điền trong view, không cần seller nhập
+        read_only_fields = ['id']
+
+    def validate(self, data):
+        # --- Validate loại giảm giá ---
+        count = sum(1 for k in ('discount_percent', 'discount_amount', 'freeship_amount') if data.get(k) is not None)
+        if count == 0:
+            raise serializers.ValidationError("Phải cung cấp 1 trong các loại giảm giá.")
+        if count > 1:
+            raise serializers.ValidationError("Chỉ được chọn 1 loại giảm giá.")
+
+        # --- Validate logic áp dụng sản phẩm ---
+        if data.get('product_scope') == Voucher.ProductScope.SPECIFIC:
+            if not data.get('applicable_products'):
+                raise serializers.ValidationError({
+                    "applicable_products": "Vui lòng chọn ít nhất một sản phẩm khi áp dụng cho sản phẩm tùy chọn."
+                })
+        
+        # --- VALIDATION BẢO MẬT: Kiểm tra sản phẩm có thuộc về cửa hàng không ---
+        request = self.context.get('request')
+        user_seller = getattr(request.user, 'seller', None)
+        
+        if not user_seller:
+             raise serializers.ValidationError("Tài khoản của bạn không liên kết với cửa hàng nào.")
+             
+        if 'applicable_products' in data:
+            for product in data['applicable_products']:
+                # Dựa trên model Product của bạn, trường liên kết là `seller`
+                if product.seller != user_seller:
+                    raise serializers.ValidationError({
+                        "applicable_products": f"Sản phẩm '{product.name}' không thuộc cửa hàng của bạn."
+                    })
+
+        return data
     

@@ -1,8 +1,8 @@
 // src/features/cart/pages/CartPage.jsx
 import React, { useState, useEffect } from "react";
 import { useCart } from "../services/CartContext";
-import { Card, Button, Row, Col, Modal, Checkbox, Popover } from "antd";
-import { Store } from "lucide-react";
+import { Card, Button, Modal, Checkbox, Popover } from "antd";
+import { Store, Ticket, TicketIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { productApi } from "../../products/services/productApi";
 import { Helmet } from "react-helmet";
@@ -14,16 +14,17 @@ function CartPage() {
     useCart();
   const [relatedProducts, setRelatedProducts] = useState([]);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [voucherModal, setVoucherModal] = useState({
+    visible: false,
+    storeId: null,
+    storeName: "",
+  });
 
   const navigate = useNavigate();
 
   useEffect(() => {
     console.log("🛒 cartItems:", JSON.stringify(cartItems, null, 2));
   }, [cartItems]);
-
-  const getCategoryIdFromProduct = (product) => {
-    return product?.category?.id || product?.category || null;
-  };
 
   // Load sản phẩm liên quan khi thêm sản phẩm vào giỏ
   useEffect(() => {
@@ -80,11 +81,6 @@ function CartPage() {
     return sum + (Number(prod.price) || 0) * (Number(item.quantity) || 0);
   }, 0);
 
-  const selectedQuantity = selectedItemsData.reduce(
-    (sum, item) => sum + Number(item.quantity || 0),
-    0
-  );
-
   // Popover content (Chi tiết đơn hàng)
   const popoverContent = (
     <div style={{ minWidth: 200 }}>
@@ -102,6 +98,22 @@ function CartPage() {
       </div>
     </div>
   );
+
+  const groupedItems = cartItems.reduce((acc, item) => {
+    const storeId =
+      item.product_data?.store?.id || item.product?.store?.id || "store-less";
+    if (!acc[storeId]) {
+      acc[storeId] = {
+        storeName:
+          item.product_data?.store?.name ||
+          item.product?.store?.store_name ||
+          "Sản phẩm khác",
+        items: [],
+      };
+    }
+    acc[storeId].items.push(item);
+    return acc;
+  }, {});
 
   if (cartItems.length === 0) {
     return (
@@ -124,7 +136,7 @@ function CartPage() {
   }
 
   return (
-    <div className="cart-page" style={{ padding: "2px 190px" }}>
+    <div className="cart-page" style={{ padding: "16px 120px" }}>
       <Helmet>
         <title>Giỏ hàng</title>
         <meta name="description" content="Giỏ hàng" />
@@ -133,80 +145,137 @@ function CartPage() {
       <div className="cart-container ">
         {/* LEFT: Danh sách sản phẩm */}
         <div className="cart-left">
-          <Card>
-            <div className="cart-header">
-              <Checkbox checked={allChecked} onChange={handleCheckAll} />
-              <span className="col-name">Sản phẩm</span>
-              <span className="col-price">Đơn giá</span>
-              <span className="col-quantity">Số lượng</span>
-              <span className="col-total">Thành tiền</span>
-            </div>
-
-            {cartItems.map((item) => {
-              const prod = item.product_data || item.product || {};
-              const stableKey = item.id || item.product;
-              const itemId = item.id || item.product_data?.id || item.product;
-              return (
-                <div key={stableKey} className="cart-item">
-                  <Checkbox
-                    checked={item.selected || false}
-                    onChange={() => handleCheckItem(stableKey)}
-                  />
-                  <div className="item-info">
-                    <img
-                      src={prod.image || "/no-image.png"}
-                      alt={prod.name}
-                      className="item-img"
-                      onClick={() => navigate(`/products/${prod.id}`)}
-                    />
-                    <span
-                      className="item-name"
-                      onClick={() => navigate(`/products/${prod.id}`)}
-                    >
-                      {prod.name || "---"}
-                    </span>
-                  </div>
-
-                  <div className="item-price">
-                    {Number(prod.price)?.toLocaleString("vi-VN")}₫
-                  </div>
-                  <div className="item-quantity " style={{ padding: "0 70px" }}>
-                    <QuantityInput item={item} itemId={itemId} />
-                  </div>
-                  <div className="item-total">
-                    {(
-                      Number(prod.price) * Number(item.quantity)
-                    ).toLocaleString("vi-VN")}
-                    ₫
-                  </div>
+          {Object.entries(groupedItems).map(
+            ([storeId, { storeName, items }]) => (
+              <Card key={storeId} className="store-group">
+                <div className="store-header" style={{ padding: "16px 23px" }}>
+                  <Store size={20} color="#16a34a" />
+                  <span
+                    className="store-name"
+                    onClick={() => navigate(`/store/${storeId}`)}
+                  >
+                    {storeName}
+                  </span>
                 </div>
-              );
-            })}
-          </Card>
+
+                <div className="cart-item-header">
+                  {/* placeholder for checkbox column */}
+                  <span className="col-checkbox" />
+                  <span style={{ paddingLeft: 16 }} className="col-name">
+                    Sản phẩm
+                  </span>
+                  <span className="col-price">Đơn giá</span>
+                  <span className="col-quantity">Số lượng</span>
+                  <span className="col-total">Thành tiền</span>
+                </div>
+
+                {items.map((item) => {
+                  const prod = item.product_data || item.product || {};
+                  const stableKey = item.id || item.product;
+                  const itemId =
+                    item.id || item.product_data?.id || item.product;
+                  return (
+                    <div key={stableKey} className="cart-item px-4">
+                      <Checkbox
+                        checked={item.selected || false}
+                        onChange={() => handleCheckItem(stableKey)}
+                      />
+                      <div className="item-info">
+                        <img
+                          src={prod.image || "/no-image.png"}
+                          alt={prod.name}
+                          className="item-img"
+                          onClick={() => navigate(`/products/${prod.id}`)}
+                        />
+                        <span
+                          className="item-name"
+                          onClick={() => navigate(`/products/${prod.id}`)}
+                        >
+                          {prod.name || "---"}
+                        </span>
+                      </div>
+
+                      <div className="item-price " style={{ paddingLeft: 12 }}>
+                        {Number(prod.price)
+                          ?.toLocaleString("vi-VN")
+                          .replaceAll(".", ",")}
+                        ₫
+                      </div>
+                      <div
+                        className="item-quantity "
+                        style={{ paddingLeft: 32 }}
+                      >
+                        <QuantityInput item={item} itemId={itemId} />
+                      </div>
+                      <div className="item-total">
+                        {(Number(prod.price) * Number(item.quantity))
+                          .toLocaleString("vi-VN")
+                          .replaceAll(".", ",")}
+                        ₫
+                      </div>
+                    </div>
+                  );
+                })}
+                <div className="store-voucher" style={{ padding: "0 22px" }}>
+                  <span>
+                    <TicketIcon color="#16a34a" />
+                  </span>
+                  <Button
+                    type="link"
+                    onClick={() =>
+                      setVoucherModal({ visible: true, storeId, storeName })
+                    }
+                  >
+                    Thêm mã giảm giá
+                  </Button>
+                </div>
+              </Card>
+            )
+          )}
         </div>
       </div>
 
       {/* Thanh tóm tắt đơn hàng cố định bên dưới */}
-      <div className="cart-bottom-bar " style={{ padding: "15px 190px" }}>
-        <Button danger size="small" onClick={() => setShowClearConfirm(true)}>
-          Xóa tất cả
-        </Button>
+      <div className="cart-bottom-bar" style={{ padding: "15px 140px" }}>
+        <div className="cart-global-header">
+          <Checkbox checked={allChecked} onChange={handleCheckAll} />
+          <span>Chọn tất cả ({cartItems.length} sản phẩm)</span>
+          <Button danger size="small" onClick={() => setShowClearConfirm(true)}>
+            Xóa tất cả
+          </Button>
+        </div>
+
         <div className="d-flex align-items-center gap-4">
           <Popover content={popoverContent} placement="topLeft">
             <div className="total-section">
-              <span className="total-label">Tổng cộng:</span>
+              <span className="total-label">
+                Tổng cộng{" "}
+                <span style={{ fontWeight: 500 }}>
+                  ({selectedItemsData?.length || 0} sản phẩm)
+                </span>
+                :
+              </span>
               <span className="total-price">
-                {selectedTotal.toLocaleString("vi-VN")}₫
+                {selectedTotal.toLocaleString("vi-VN").replaceAll(".", ",")}₫
               </span>
             </div>
           </Popover>
           <Button
-            type="primary"
             disabled={selectedItemsData.length === 0}
             onClick={() => navigate("/checkout")}
-            style={{ height: 50, fontSize: "16px", fontWeight: 500 }}
+            style={{
+              height: 50,
+              minWidth: 200,
+              fontSize: "16px",
+              fontWeight: 500,
+              backgroundColor: "#16a34a",
+              color: "#fff",
+              border: "none",
+              borderRadius: 4,
+            }}
+            className="btn-payment"
           >
-            Tiến hành thanh toán ({selectedQuantity})
+            Thanh Toán
           </Button>
         </div>
       </div>
@@ -222,8 +291,32 @@ function CartPage() {
         title="Xóa tất cả sản phẩm"
         okText="Xóa tất cả"
         cancelText="Hủy"
+        transitionName="ant-zoom-big"
+        maskTransitionName="ant-fade"
       >
         Bạn có chắc muốn xóa tất cả sản phẩm trong giỏ?
+      </Modal>
+
+      {/* Modal Voucher */}
+      <Modal
+        title={`Voucher cho shop ${voucherModal.storeName}`}
+        open={voucherModal.visible}
+        onCancel={() =>
+          setVoucherModal({ visible: false, storeId: null, storeName: "" })
+        }
+        footer={[
+          <Button
+            key="back"
+            onClick={() =>
+              setVoucherModal({ visible: false, storeId: null, storeName: "" })
+            }
+          >
+            Đóng
+          </Button>,
+        ]}
+      >
+        <p>Chức năng voucher đang được phát triển.</p>
+        <p>Voucher cho cửa hàng ID: {voucherModal.storeId}</p>
       </Modal>
     </div>
   );

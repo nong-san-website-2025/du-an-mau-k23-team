@@ -73,29 +73,21 @@ const StoreDetail = () => {
             : productsRes.data?.results || []
         );
 
-        // 3) Lấy voucher: của shop + toàn sàn (gộp dữ liệu)
-        const [sellerVoucherRes, systemVoucherRes] = await Promise.all([
-          axios.get(`http://localhost:8000/api/promotions/vouchers/`, {
-            params: { active: true, seller: id, ordering: "-created_at" },
-          }),
-          axios.get(`http://localhost:8000/api/promotions/vouchers/`, {
-            params: { active: true, scope: "system", ordering: "-created_at" },
-          }),
-        ]);
+        // 3) Lấy voucher công khai của cửa hàng (quay về cách gọi gốc)
+        const voucherRes = await axios.get(
+          `http://localhost:8000/api/promotions/vouchers/public/${id}/`
+        );
 
-        const combined = [
-          ...(sellerVoucherRes.data?.results || sellerVoucherRes.data || []),
-          ...(systemVoucherRes.data?.results || systemVoucherRes.data || []),
-        ];
+        const publicVouchers = voucherRes.data || [];
+        setVouchers(publicVouchers);
 
-        // Lọc voucher hợp lệ theo thời gian
+        // Lọc voucher hợp lệ theo thời gian (phía client để chắc chắn)
         const now = new Date();
         const valid = (v) =>
           (!v.start_at || new Date(v.start_at) <= now) &&
-          (!v.end_at || new Date(v.end_at) >= now) &&
-          v.active;
+          (!v.end_at || new Date(v.end_at) >= now);
 
-        setVouchers(combined.filter(valid));
+        setVouchers(publicVouchers.filter(valid));
       } catch (error) {
         console.error("Lỗi khi tải dữ liệu cửa hàng:", error);
       } finally {
@@ -137,10 +129,9 @@ const StoreDetail = () => {
         );
         setFollowers((f) => f + 1);
       } else {
-        await axios.delete(
-          `http://localhost:8000/api/sellers/${id}/follow/`,
-          { headers }
-        );
+        await axios.delete(`http://localhost:8000/api/sellers/${id}/follow/`, {
+          headers,
+        });
         setFollowers((f) => Math.max(0, f - 1));
       }
       setIsFollowing(!isFollowing);
@@ -218,7 +209,11 @@ const StoreDetail = () => {
                   <img
                     src={store.image}
                     alt={store.store_name}
-                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                    }}
                   />
                 ) : (
                   getInitial(store.store_name)
@@ -234,15 +229,32 @@ const StoreDetail = () => {
                   >
                     {isFollowing ? "Đang theo dõi" : "Theo dõi"}
                   </Button>
-                  <Button variant="outline-secondary" onClick={() => {
-                    try {
-                      // Save as last seller for global chat persistence
-                      localStorage.setItem('chat:lastSellerId', String(id));
-                      if (store?.store_name) localStorage.setItem('chat:lastSellerName', store.store_name);
-                      if (store?.image) localStorage.setItem('chat:lastSellerImage', store.image);
-                      window.dispatchEvent(new CustomEvent('chat:open', { detail: { sellerId: id } }));
-                    } catch (e) {}
-                  }}>Nhắn tin</Button>
+                  <Button
+                    variant="outline-secondary"
+                    onClick={() => {
+                      try {
+                        // Save as last seller for global chat persistence
+                        localStorage.setItem("chat:lastSellerId", String(id));
+                        if (store?.store_name)
+                          localStorage.setItem(
+                            "chat:lastSellerName",
+                            store.store_name
+                          );
+                        if (store?.image)
+                          localStorage.setItem(
+                            "chat:lastSellerImage",
+                            store.image
+                          );
+                        window.dispatchEvent(
+                          new CustomEvent("chat:open", {
+                            detail: { sellerId: id },
+                          })
+                        );
+                      } catch (e) {}
+                    }}
+                  >
+                    Nhắn tin
+                  </Button>
                 </div>
               </div>
             </Col>
@@ -267,45 +279,109 @@ const StoreDetail = () => {
                     {store.bio}
                   </div>
                 )}
-                {/* Stats */}
-                {/* <div className="d-flex flex-wrap align-items-center" style={{ gap: 16 }}>
-                  {stats.map((s, idx) => (
-                    <div key={idx} className="d-flex align-items-center" style={{ gap: 6 }}>
-                      <span className="text-muted" style={{ fontSize: 13 }}>{s.label}:</span>
-                      <strong style={{ fontSize: 14 }}>{String(s.value)}</strong>
-                      {idx < stats.length - 1 && (
-                        <span className="text-muted" style={{ margin: "0 6px" }}>|</span>
-                      )}
-                    </div>
-                  ))}
-                </div> */}
               </div>
             </Col>
-
           </Row>
         </Card.Body>
       </Card>
 
       {/* Voucher */}
-      <Card className="mb-4 border-0 shadow-sm" style={{ borderRadius: 14 }}>
+      <Card className="mb-2 border-0 shadow-sm" style={{ borderRadius: 4 }}>
         <Card.Body>
           {vouchers && vouchers.length > 0 ? (
-            <div className="d-flex flex-wrap" style={{ gap: 8 }}>
+            <div className="d-flex flex-wrap gap-2 justify-content-center">
               {vouchers.slice(0, 8).map((v) => (
-                <Badge
+                <div
                   key={v.id || v.code}
-                  bg="light"
-                  text="dark"
-                  className="p-2 border"
-                  style={{ borderRadius: 10, cursor: "pointer" }}
                   onClick={() => handleUseVoucher(v)}
+                  className="position-relative"
+                  style={{
+                    width: 240,
+                    background:
+                      "linear-gradient(145deg, #fff9db 0%, #fff3bf 100%)", // nền vàng nhạt kiểu giấy
+                    border: "1px dashed #d4af37", // viền vàng đồng
+                    borderRadius: "4px",
+                    padding: "8px",
+                    cursor: "pointer",
+                    transition: "transform 0.2s, box-shadow 0.2s",
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.12)",
+                    overflow: "hidden",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = "scale(1.03)";
+                    e.currentTarget.style.boxShadow =
+                      "0 6px 16px rgba(0,0,0,0.18)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = "scale(1)";
+                    e.currentTarget.style.boxShadow =
+                      "0 4px 12px rgba(0,0,0,0.12)";
+                  }}
                 >
-                  {v.title || v.campaign_name || v.code}
-                </Badge>
+                  {/* Tiêu đề */}
+                  <div
+                    className="text-left fw-bold"
+                    style={{
+                      fontSize: "0.95rem",
+                      color: "#5a3e0f",
+                      lineHeight: 1.3,
+                      minHeight: "1.3em",
+                    }}
+                    title={v.title}
+                  >
+                    {v.title || "Ưu đãi đặc biệt"}
+                  </div>
+
+                  {/* Số tiền giảm */}
+                  {v.discount_amount && (
+                    <div className="text-left">
+                      <span
+                        className="fw-normal"
+                        style={{
+                          fontSize: "0.9rem",
+                          color: "#c62828",
+                          textShadow: "0 1px 1px rgba(0,0,0,0.1)",
+                        }}
+                      >
+                        Giảm giá: {formatVND(v.discount_amount)}₫
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Điều kiện */}
+                  {v.min_order_value && (
+                    <div
+                      className="text-left"
+                      style={{
+                        fontSize: "0.75rem",
+                        color: "#6b5b2d",
+                        marginTop: "4px",
+                      }}
+                    >
+                      Áp dụng khi mua từ {formatVND(v.min_order_value)}₫
+                    </div>
+                  )}
+
+                  {/* Viền răng cưa giả (bằng CSS) - ở đáy */}
+                  <div
+                    className="position-absolute bottom-0 start-0 w-100"
+                    style={{
+                      height: "10px", // tăng nhẹ chiều cao để đủ chỗ cho răng sâu
+                      background: `url("data:image/svg+xml,%3Csvg width='100%25' height='10' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0,5 Q5,0 10,5 T20,5 T30,5 T40,5 T50,5 T60,5 T70,5 T80,5 T90,5 T100,5' stroke='%23d4af37' fill='none' stroke-width='1.2'/%3E%3C/svg%3E")`,
+                      backgroundSize: "cover",
+                    }}
+                  ></div>
+                </div>
               ))}
             </div>
           ) : (
-            <div className="text-muted">Hiện chưa có voucher nào.</div>
+            <div
+              className="text-center py-4 text-muted"
+              style={{ fontSize: "1rem" }}
+            >
+              🎟️ Cửa hàng chưa phát hành voucher nào. Theo dõi để không bỏ lỡ ưu
+              đãi!
+            </div>
           )}
         </Card.Body>
       </Card>
@@ -355,14 +431,19 @@ const StoreDetail = () => {
                   <Card.Img
                     variant="top"
                     src={(() => {
-                      const placeholder = "https://via.placeholder.com/300x200?text=No+Image";
+                      const placeholder = "";
                       if (!product.image) return placeholder;
-                      if (product.image.startsWith("http")) return product.image;
-                      if (product.image.startsWith("/")) return `http://localhost:8000${product.image}`;
+                      if (product.image.startsWith("http"))
+                        return product.image;
+                      if (product.image.startsWith("/"))
+                        return `http://localhost:8000${product.image}`;
                       return `http://localhost:8000/media/${product.image}`;
                     })()}
                     style={{ height: 200, objectFit: "cover" }}
-                    onError={e => { e.target.onerror = null; e.target.src = "https://via.placeholder.com/300x200?text=No+Image"; }}
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = "";
+                    }}
                   />
                   <Card.Body>
                     <Card.Title
@@ -395,14 +476,19 @@ const StoreDetail = () => {
       {/* Floating Chat – no longer occupies layout */}
       {(() => {
         try {
-          const ChatBox = require("../../stores/components/ChatBox.jsx").default;
+          const ChatBox =
+            require("../../stores/components/ChatBox.jsx").default;
           return (
             <ChatBox
               sellerId={id}
               token={token}
               sellerName={store.store_name}
               sellerImage={store.image}
-              userAvatar={(typeof window !== 'undefined' && localStorage.getItem('avatar')) || ''}
+              userAvatar={
+                (typeof window !== "undefined" &&
+                  localStorage.getItem("avatar")) ||
+                ""
+              }
             />
           );
         } catch (e) {
