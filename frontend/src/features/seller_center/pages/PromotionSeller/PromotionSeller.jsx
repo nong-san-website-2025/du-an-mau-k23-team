@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
     Button, Modal, message, Table, Space, Popconfirm, Tag,
     Form, Input, DatePicker, Radio, Select, InputNumber, Row, Col,
-    Dropdown, Menu
+    Dropdown, Menu, Switch
 } from 'antd';
 import {
     PlusOutlined, EllipsisOutlined, EditOutlined, DeleteOutlined, EyeOutlined
@@ -65,12 +65,26 @@ const PromotionForm = ({ onSubmit, onCancel, initialData, disabled = false }) =>
         delete payload.dateRange;
         onSubmit(payload);
     };
+
+    const formInitialValues = {
+        active: true, // Mặc định là hoạt động
+        ...initialData,
+        dateRange: initialData ? [moment(initialData.start_at), moment(initialData.end_at)] : undefined,
+    };
+
     return (
-        <Form form={form} layout="vertical" onFinish={onFinish} initialValues={{ ...initialData, dateRange: initialData ? [moment(initialData.start_at), moment(initialData.end_at)] : undefined }} disabled={disabled}>
+        <Form form={form} layout="vertical" onFinish={onFinish} initialValues={formInitialValues} disabled={disabled}>
             <Row gutter={16}><Col span={12}><Form.Item name="title" label="Tên chương trình" rules={[{ required: true, message: 'Vui lòng nhập tên!' }]}><Input /></Form.Item></Col><Col span={12}><Form.Item name="code" label="Mã khuyến mãi" rules={[{ required: true, message: 'Vui lòng nhập mã!' }]}><Input /></Form.Item></Col></Row>
             <Row gutter={16}><Col span={12}><Form.Item name="discount_amount" label="Số tiền giảm (VND)"><InputNumber min={0} style={{ width: '100%' }} formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} parser={(value) => value.replace(/\$\s?|(,*)/g, '')} /></Form.Item></Col><Col span={12}><Form.Item name="min_order_value" label="Giá trị đơn hàng tối thiểu (VND)"><InputNumber min={0} style={{ width: '100%' }} formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} parser={(value) => value.replace(/\$\s?|(,*)/g, '')} /></Form.Item></Col></Row>
             <Form.Item name="dateRange" label="Thời gian hiệu lực" rules={[{ required: true, message: 'Vui lòng chọn thời gian!' }]}><DatePicker.RangePicker showTime format="YYYY-MM-DD HH:mm" style={{ width: '100%' }} /></Form.Item>
-            <Form.Item name="product_scope" label="Phạm vi áp dụng"><Radio.Group onChange={(e) => setProductScope(e.target.value)}><Radio value="ALL">Tất cả sản phẩm</Radio><Radio value="SPECIFIC">Sản phẩm tùy chọn</Radio></Radio.Group></Form.Item>
+            <Row gutter={16}>
+                <Col span={12}>
+                    <Form.Item name="product_scope" label="Phạm vi áp dụng"><Radio.Group onChange={(e) => setProductScope(e.target.value)}><Radio value="ALL">Tất cả sản phẩm</Radio><Radio value="SPECIFIC">Sản phẩm tùy chọn</Radio></Radio.Group></Form.Item>
+                </Col>
+                <Col span={12}>
+                    <Form.Item name="active" label="Trạng thái hoạt động" valuePropName="checked"><Switch /></Form.Item>
+                </Col>
+            </Row>
             {productScope === 'SPECIFIC' && (<Form.Item name="applicable_products" label="Sản phẩm áp dụng"><Select mode="multiple" allowClear loading={loadingProducts} placeholder="Tìm và chọn sản phẩm" filterOption={(input, option) => option.children.toLowerCase().includes(input.toLowerCase())}>{products.map(product => (<Option key={product.id} value={product.id}>{product.name}</Option>))}</Select></Form.Item>)}
             {/* Chỉ hiển thị các nút hành động khi không ở chế độ "disabled" (chỉ xem) */}
             {!disabled && <Form.Item><Button type="primary" htmlType="submit">Lưu</Button><Button style={{ marginLeft: 8 }} onClick={onCancel}>Hủy</Button></Form.Item>}

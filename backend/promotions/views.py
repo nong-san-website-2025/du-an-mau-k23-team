@@ -368,3 +368,29 @@ class SellerVoucherViewSet(viewsets.ModelViewSet):
         )
 
 # --- KẾT THÚC CODE THÊM MỚI ---
+
+@api_view(['GET'])
+@permission_classes([AllowAny])  # Cho phép mọi người xem
+def public_seller_vouchers(request, seller_id):
+    """
+    Lấy danh sách voucher HOẠT ĐỘNG và CÒN HẠN của một seller cụ thể (dùng cho trang StoreDetail).
+    """
+    try:
+        seller = Seller.objects.get(id=seller_id)
+    except Seller.DoesNotExist:
+        return Response({"error": "Seller không tồn tại"}, status=404)
+
+    now = timezone.now()
+    vouchers = Voucher.objects.filter(
+        seller=seller,
+        active=True,
+        scope=Voucher.Scope.SELLER
+    ).filter(
+        Q(start_at__isnull=True) | Q(start_at__lte=now)
+    ).filter(
+        Q(end_at__isnull=True) | Q(end_at__gte=now)
+    ).order_by('-created_at')
+
+    # Serialize dữ liệu (dùng VoucherDetailSerializer hoặc tạo serializer đơn giản hơn)
+    serializer = VoucherDetailSerializer(vouchers, many=True)
+    return Response(serializer.data)

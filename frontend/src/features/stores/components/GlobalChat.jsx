@@ -1,265 +1,351 @@
-// GlobalChat.jsx (đã cải thiện giao diện)
-import React, { useEffect, useMemo, useState } from "react";
+/**
+ * GlobalChat.jsx - Cải tiến và Hiện đại hóa
+ *
+ * Chức năng chính:
+ * - Đóng vai trò là container chính cho toàn bộ giao diện chat.
+ * - Quản lý trạng thái đóng/mở của panel chat.
+ * - Quản lý danh sách các cuộc trò chuyện (conversations) và cuộc trò chuyện đang hoạt động.
+ * - Lắng nghe sự kiện `chat:open` để bắt đầu một cuộc trò chuyện mới.
+ * - Là "Single Source of Truth", truyền dữ liệu xuống cho ChatBox qua props.
+ *
+ * Cải tiến:
+ * - Giao diện được thay đổi: icon và khung chat thay thế lẫn nhau.
+ * - Thêm header vào khung chat với nút thu nhỏ, cải thiện trải nghiệm người dùng.
+ * - Cấu trúc code rõ ràng, hiện đại hơn với React Hooks.
+ */
+import React, { useState, useEffect, useCallback } from "react";
 import ChatBox from "./ChatBox.jsx";
-import { MessageSquare } from "lucide-react";
-import { AiOutlineMessage } from "react-icons/ai";
+import { MessageSquare, Users, Trash2, ChevronDown } from "lucide-react";
 
-export default function GlobalChat() {
-  const [open, setOpen] = useState(false);
-  const [token, setToken] = useState(null);
-  const [sellers, setSellers] = useState([]); // [{ id, name, image }]
-  const [currentId, setCurrentId] = useState(null);
-
-  const readRoster = () => {
+// Helper để quản lý danh sách cuộc trò chuyện trong localStorage
+const chatRoster = {
+  read: () => {
     try {
-      const raw = localStorage.getItem("chat:sellers");
+      const raw = localStorage.getItem("chat:roster");
       const arr = raw ? JSON.parse(raw) : [];
       return Array.isArray(arr) ? arr : [];
     } catch (_) {
       return [];
     }
-  };
-  const writeRoster = (arr) => {
-    try { localStorage.setItem("chat:sellers", JSON.stringify(arr)); } catch (_) {}
-  };
+  },
+  write: (arr) => {
+    try {
+      localStorage.setItem("chat:roster", JSON.stringify(arr));
+    } catch (_) {}
+  },
+};
 
+export default function GlobalChat() {
+  const [isOpen, setIsOpen] = useState(false);
+  const [token, setToken] = useState(null);
+  const [conversations, setConversations] = useState([]);
+  const [activeConvId, setActiveConvId] = useState(null);
+
+  // Khởi tạo state từ localStorage khi component được mount
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    setToken(localStorage.getItem('token'));
-    const roster = readRoster();
-    setSellers(roster);
-
-    const last = localStorage.getItem('chat:lastSellerId');
-    if (last) {
-      setCurrentId(last);
-      const name = localStorage.getItem('chat:lastSellerName') || undefined;
-      const image = localStorage.getItem('chat:lastSellerImage') || undefined;
-      if (!roster.some(s => String(s.id) === String(last))) {
-        const updated = [...roster, { id: String(last), name, image }];
-        setSellers(updated);
-        writeRoster(updated);
+    setToken(localStorage.getItem("token"));
+    const roster = chatRoster.read();
+    setConversations(roster);
+    if (roster.length > 0) {
+      const lastActiveId = localStorage.getItem("chat:lastActiveId");
+      if (lastActiveId && roster.some(c => String(c.id) === String(lastActiveId))) {
+        setActiveConvId(lastActiveId);
+      } else {
+        setActiveConvId(String(roster[0].id));
       }
-    } else if (roster.length > 0) {
-      setCurrentId(String(roster[0].id));
     }
   }, []);
 
+  // Lưu ID cuộc trò chuyện đang hoạt động vào localStorage
   useEffect(() => {
-    const handler = (e) => {
-      const sid = e?.detail?.sellerId;
-      if (!sid) return;
-      const id = String(sid);
-      const name = (typeof window !== 'undefined') ? (localStorage.getItem('chat:lastSellerName') || undefined) : undefined;
-      const image = (typeof window !== 'undefined') ? (localStorage.getItem('chat:lastSellerImage') || undefined) : undefined;
+    if (activeConvId) {
+      localStorage.setItem("chat:lastActiveId", activeConvId);
+    }
+  }, [activeConvId]);
 
-      setSellers((prev) => {
-        const exists = prev.some((s) => String(s.id) === id);
-        const next = exists ? prev.map(s => String(s.id) === id ? { ...s, name: s.name || name, image: s.image || image } : s)
-                             : [...prev, { id, name, image }];
-        writeRoster(next);
-        return next;
-      });
-      setCurrentId(id);
-      setOpen(true);
-    };
-    window.addEventListener('chat:open', handler);
-    return () => window.removeEventListener('chat:open', handler);
-  }, []);
+  // Lắng nghe sự kiện `chat:open` từ các nơi khác trong ứng dụng
+  const handleOpenChat = useCallback((e) => {
+    const { sellerId, sellerName, sellerImage } = e?.detail || {};
+    if (!sellerId) return;
 
-  const removeSeller = (id) => {
-    setSellers((prev) => {
-      const next = prev.filter((s) => String(s.id) !== String(id));
-      writeRoster(next);
+    const id = String(sellerId);
+    
+    setConversations(prev => {
+      const exists = prev.some(c => String(c.id) === id);
+      let next;
+      if (exists) {
+        next = [
+          { ...prev.find(c => String(c.id) === id), name: sellerName, image: sellerImage },
+          ...prev.filter(c => String(c.id) !== id)
+        ];
+      } else {
+        next = [{ id, name: sellerName, image: sellerImage }, ...prev];
+      }
+      chatRoster.write(next);
       return next;
     });
-    if (String(currentId) === String(id)) {
-      const nextList = sellers.filter((s) => String(s.id) !== String(id));
-      setCurrentId(nextList[0]?.id || null);
+
+    setActiveConvId(id);
+    setIsOpen(true);
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener("chat:open", handleOpenChat);
+    return () => window.removeEventListener("chat:open", handleOpenChat);
+  }, [handleOpenChat]);
+
+  // Xóa một cuộc trò chuyện khỏi danh sách
+  const removeConversation = (idToRemove, e) => {
+    e.stopPropagation();
+    const newConversations = conversations.filter(c => String(c.id) !== String(idToRemove));
+    setConversations(newConversations);
+    chatRoster.write(newConversations);
+
+    if (String(activeConvId) === String(idToRemove)) {
+      setActiveConvId(newConversations[0]?.id || null);
     }
   };
 
-  // Cải thiện giao diện
-  const bubbleBtnStyle = {
-    position: "fixed",
-    right: 20,
-    bottom: 10,
-    width: 100,
-    height: 50,
-    borderRadius: 4,
-    border: "none",
-    background: "#1677ff",
-    color: "#fff",
-    boxShadow: "0 6px 16px rgba(22, 119, 255, 0.4)",
-    cursor: "pointer",
-    zIndex: 1100,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: 24,
-  };
-
-  const panelStyle = {
-    position: "fixed",
-    right: 20,
-    bottom: 100,
-    width: 560,
-    maxWidth: "95vw",
-    border: "1px solid #e0e0e0",
-    borderRadius: 16,
-    overflow: "hidden",
-    background: "#fff",
-    boxShadow: "0 10px 30px rgba(0,0,0,0.15)",
-    zIndex: 1100,
-    display: "flex",
-    minHeight: 450,
-  };
-
-  const sidebarStyle = {
-    width: 180,
-    borderRight: "1px solid #e9ecef",
-    background: "#f8f9fa",
-    display: "flex",
-    flexDirection: "column",
-    overflowY: "auto",
-  };
-
-  const itemStyle = (active) => ({
-    display: "flex",
-    alignItems: "center",
-    gap: 10,
-    padding: "12px 10px",
-    cursor: "pointer",
-    background: active ? "#e6f4ff" : "transparent",
-    borderBottom: "1px solid #e9ecef",
-    transition: "background 0.2s",
-  });
+  const activeConversation = conversations.find(c => String(c.id) === String(activeConvId));
 
   return (
-    <div>
-      {/* Always-visible chat bubble */}
-      <button
-        aria-label="Open chat"
-        onClick={() => setOpen((v) => !v)}
-        style={bubbleBtnStyle}
-        title={open ? "Đóng chat" : "Mở chat"}
-      >
-        {open ? "×" : <AiOutlineMessage size={24} />}
-      </button>
+    <>
+      <style>{`
+        .chat-widget-container {
+          position: fixed;
+          bottom: 20px;
+          right: 20px;
+          z-index: 1100;
+        }
+        .chat-bubble-btn {
+          width: 60px;
+          height: 60px;
+          border-radius: 50%;
+          background-color: #16a34a; /* Green */
+          color: white;
+          border: none;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+          transition: all 0.3s ease;
+        }
+        .chat-bubble-btn:hover {
+          transform: scale(1.1);
+          box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+        }
+        .chat-panel {
+          width: 600px;
+          max-width: calc(100vw - 40px);
+          height: 70vh;
+          min-height: 450px;
+          max-height: 700px;
+          background: #fff;
+          border-radius: 16px;
+          box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+          opacity: 0;
+          transform: translateY(20px);
+          animation: slideUp 0.3s ease forwards;
+        }
+        @keyframes slideUp {
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        .panel-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 12px 16px;
+          background: #f8f9fa;
+          border-bottom: 1px solid #e9ecef;
+          flex-shrink: 0;
+        }
+        .panel-header h3 {
+          margin: 0;
+          font-size: 16px;
+          font-weight: 600;
+        }
+        .minimize-btn {
+          background: none;
+          border: none;
+          cursor: pointer;
+          padding: 4px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .minimize-btn:hover { background: #e9ecef; }
 
-      {/* Chat panel with sidebar + inline ChatBox */}
-      {open && (
-        <div style={panelStyle}>
-          <div style={sidebarStyle}>
-            <div style={{ 
-              padding: "14px", 
-              fontWeight: 600, 
-              borderBottom: "1px solid #e9ecef",
-              background: "#f8f9fa",
-              fontSize: 14,
-              color: "#333"
-            }}>
-              Tin nhắn
-            </div>
-            {sellers.length === 0 && (
-              <div style={{ 
-                padding: 20, 
-                fontSize: 13, 
-                color: "#777",
-                textAlign: "center",
-                fontStyle: "italic"
-              }}>
-                Chưa có cuộc trò chuyện.
-                <br />Vào trang cửa hàng và nhấn "Nhắn tin" để thêm.
+        .panel-body {
+          display: flex;
+          flex: 1;
+          min-height: 0;
+        }
+
+        .chat-sidebar {
+          width: 200px;
+          border-right: 1px solid #e9ecef;
+          background: #f8f9fa;
+          display: flex;
+          flex-direction: column;
+        }
+        .sidebar-header {
+          padding: 16px;
+          font-weight: 600;
+          color: #333;
+          border-bottom: 1px solid #e9ecef;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .sidebar-list {
+          flex: 1;
+          overflow-y: auto;
+        }
+        .conv-item {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 12px;
+          cursor: pointer;
+          transition: background 0.2s;
+          border-bottom: 1px solid #e9ecef;
+        }
+        .conv-item:hover { background: #f1f3f5; }
+        .conv-item.active { background: #e6f4ff; }
+        .conv-details { display: flex; align-items: center; gap: 10px; overflow: hidden; }
+        .conv-avatar {
+          width: 40px;
+          height: 40px;
+          border-radius: 50%;
+          overflow: hidden;
+          background: #e9ecef;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: 600;
+          color: #495057;
+          flex-shrink: 0;
+        }
+        .conv-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .conv-name { font-size: 14px; font-weight: 500; color: #343a40; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .remove-conv-btn {
+          border: none;
+          background: transparent;
+          color: #adb5bd;
+          cursor: pointer;
+          padding: 4px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .remove-conv-btn:hover { color: #495057; background: #dee2e6; }
+        .chat-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+        .empty-chat-view {
+          height: 100%;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          color: #868e96;
+          font-size: 14px;
+          background: #f8f9fa;
+          text-align: center;
+          padding: 20px;
+        }
+      `}</style>
+
+      <div className="chat-widget-container">
+        {!isOpen ? (
+          <button
+            className="chat-bubble-btn"
+            onClick={() => setIsOpen(true)}
+            aria-label="Mở chat"
+            title="Mở chat"
+          >
+            <MessageSquare size={28} />
+          </button>
+        ) : (
+          <div className="chat-panel">
+            <header className="panel-header">
+              <h3>Tin Nhắn</h3>
+              <button className="minimize-btn" onClick={() => setIsOpen(false)} title="Thu nhỏ">
+                <ChevronDown size={20} />
+              </button>
+            </header>
+            <div className="panel-body">
+              <div className="chat-sidebar">
+                <div className="sidebar-list">
+                  {conversations.length === 0 ? (
+                    <div className="empty-chat-view" style={{height: 'auto'}}>
+                      Chưa có cuộc trò chuyện nào.
+                    </div>
+                  ) : (
+                    conversations.map(conv => (
+                      <div
+                        key={conv.id}
+                        className={`conv-item ${String(activeConvId) === String(conv.id) ? "active" : ""}`}
+                        onClick={() => setActiveConvId(String(conv.id))}
+                      >
+                        <div className="conv-details">
+                          <div className="conv-avatar">
+                            {conv.image ? (
+                              <img src={conv.image} alt={conv.name} />
+                            ) : (
+                              <span>{(conv.name || "S").charAt(0).toUpperCase()}</span>
+                            )}
+                          </div>
+                          <span className="conv-name" title={conv.name || `Shop #${conv.id}`}>
+                            {conv.name || `Shop #${conv.id}`}
+                          </span>
+                        </div>
+                        <button
+                          className="remove-conv-btn"
+                          title="Xóa cuộc trò chuyện"
+                          onClick={(e) => removeConversation(conv.id, e)}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
-            )}
-            {sellers.map((s) => (
-              <div key={s.id} style={itemStyle(String(currentId) === String(s.id))}>
-                <div 
-                  onClick={() => setCurrentId(String(s.id))} 
-                  style={{ 
-                    display: "flex", 
-                    alignItems: "center", 
-                    gap: 10, 
-                    flex: 1 
-                  }}
-                >
-                  <div style={{ 
-                    width: 36, 
-                    height: 36, 
-                    borderRadius: "50%", 
-                    overflow: "hidden", 
-                    background: "#eee", 
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: 13,
-                    fontWeight: 600
-                  }}>
-                    {s.image ? (
-                      <img src={s.image} alt={s.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+
+              <main className="chat-main">
+                {token && activeConversation ? (
+                  <ChatBox
+                    key={activeConversation.id}
+                    sellerId={activeConversation.id}
+                    sellerName={activeConversation.name}
+                    sellerImage={activeConversation.image}
+                    token={token}
+                  />
+                ) : (
+                  <div className="empty-chat-view">
+                    {token ? (
+                      <>
+                        <MessageSquare size={48} strokeWidth={1} />
+                        <p style={{marginTop: 16}}>Chọn một cuộc trò chuyện để bắt đầu.</p>
+                      </>
                     ) : (
-                      <span>{(s.name || "S").charAt(0).toUpperCase()}</span>
+                      <p>Bạn cần đăng nhập để sử dụng tính năng này.</p>
                     )}
                   </div>
-                  <div style={{ 
-                    fontSize: 13, 
-                    whiteSpace: "nowrap", 
-                    overflow: "hidden", 
-                    textOverflow: "ellipsis",
-                    color: "#333"
-                  }}>
-                    {s.name || `Shop #${s.id}`}
-                  </div>
-                </div>
-                <button 
-                  onClick={() => removeSeller(s.id)} 
-                  title="Gỡ khỏi danh sách" 
-                  style={{ 
-                    border: "none", 
-                    background: "transparent", 
-                    color: "#999", 
-                    cursor: "pointer",
-                    fontSize: 18,
-                    width: 24,
-                    height: 24,
-                    borderRadius: "50%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center"
-                  }}
-                >
-                  ×
-                </button>
-              </div>
-            ))}
+                )}
+              </main>
+            </div>
           </div>
-
-          <div style={{ flex: 1, minWidth: 0 }}>
-            {token && currentId ? (
-              <ChatBox
-                inline
-                sellerId={currentId}
-                token={token}
-                sellerName={(typeof window !== 'undefined' && localStorage.getItem('chat:lastSellerId') === String(currentId) && localStorage.getItem('chat:lastSellerName')) || (sellers.find(s => String(s.id) === String(currentId))?.name)}
-                sellerImage={(typeof window !== 'undefined' && localStorage.getItem('chat:lastSellerId') === String(currentId) && localStorage.getItem('chat:lastSellerImage')) || (sellers.find(s => String(s.id) === String(currentId))?.image)}
-                userAvatar={(typeof window !== 'undefined' && localStorage.getItem('avatar')) || ''}
-              />
-            ) : (
-              <div style={{ 
-                height: 450, 
-                display: "flex", 
-                alignItems: "center", 
-                justifyContent: "center", 
-                color: "#999", 
-                fontSize: 14,
-                background: "#f8f9fa"
-              }}>
-                {token ? "Chọn một cuộc trò chuyện ở bên trái" : "Bạn cần đăng nhập để nhắn tin"}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </>
   );
 }

@@ -12,6 +12,7 @@ from .views import (
     claim_voucher,
     apply_voucher,
     consume_voucher, # Thêm dòng này
+    public_seller_vouchers,
 )
 
 # 2. Khởi tạo router MỘT LẦN DUY NHẤT
@@ -30,6 +31,7 @@ urlpatterns = [
     path('vouchers/claim/', claim_voucher, name='claim-voucher'),
     path('vouchers/apply/', apply_voucher, name='apply-voucher'),
     path('vouchers/consume/', consume_voucher, name='consume-voucher'),
+    path('vouchers/public/<int:seller_id>/', public_seller_vouchers, name='public-seller-vouchers'),
 ]
 
 # 5. Gộp các URL của router vào urlpatterns (Cách làm chuẩn của Django)

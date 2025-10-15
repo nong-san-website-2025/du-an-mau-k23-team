@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useCart } from "../services/CartContext";
-import { Modal, Button } from "react-bootstrap";
+import { Modal, Button } from "antd";
+import { ExclamationCircleOutlined, InfoCircleOutlined } from "@ant-design/icons";
 import "../styles/QuantityInput.css";
 
 function QuantityInput({ item }) {
@@ -15,7 +16,10 @@ function QuantityInput({ item }) {
   // Fetch stock if missing
   useEffect(() => {
     const prodId =
-      item?.product_data?.id || item?.product?.id || item?.product || item?.product_id;
+      item?.product_data?.id ||
+      item?.product?.id ||
+      item?.product ||
+      item?.product_id;
     if (maxStock == null && prodId) {
       import("../../products/services/productApi").then(({ productApi }) => {
         productApi
@@ -40,21 +44,19 @@ function QuantityInput({ item }) {
     if (maxStock != null && val > maxStock) {
       setLocalQuantity(maxStock);
       setShowStockNotice(true);
-      // ✅ Gọi updateQuantity cho cả guest và user
       const itemId = item.id || item.product_data?.id || item.product;
       updateQuantity(itemId, maxStock);
       return;
     }
 
     setLocalQuantity(val);
-    // ✅ Gọi updateQuantity cho cả guest và user
     const itemId = item.id || item.product_data?.id || item.product;
     updateQuantity(itemId, val);
   };
 
   const handleConfirmRemove = async () => {
     try {
-      const stableId = item.id || item.product_data?.id || item.product; // ✅ Đúng
+      const stableId = item.id || item.product_data?.id || item.product;
       await removeFromCart(stableId);
     } finally {
       setShowConfirm(false);
@@ -75,7 +77,7 @@ function QuantityInput({ item }) {
         max={maxStock ?? undefined}
         value={localQuantity}
         onChange={(e) => handleChange(Number(e.target.value))}
-        className="qty-input"
+        className="qty-input price-input"
       />
       <button
         className="qty-btn"
@@ -85,41 +87,46 @@ function QuantityInput({ item }) {
         +
       </button>
 
-      {/* Confirm remove modal */}
-      <Modal show={showConfirm} onHide={() => setShowConfirm(false)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title>Xóa sản phẩm</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          Bạn có chắc muốn xóa sản phẩm này khỏi giỏ hàng?
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowConfirm(false)}>
-            Hủy
-          </Button>
-          <Button variant="danger" onClick={handleConfirmRemove}>
-            Xóa
-          </Button>
-        </Modal.Footer>
+      {/* ✅ Modal xác nhận xóa sản phẩm */}
+      <Modal
+        open={showConfirm}
+        onCancel={() => setShowConfirm(false)}
+        centered
+        title={
+          <div className="flex items-center gap-2 text-red-600">
+            <ExclamationCircleOutlined />
+            <span>Xóa sản phẩm</span>
+          </div>
+        }
+        okText="Xóa"
+        cancelText="Hủy"
+        okType="danger"
+        onOk={handleConfirmRemove}
+      >
+        <p>Bạn có chắc muốn xóa sản phẩm này khỏi giỏ hàng?</p>
       </Modal>
 
-      {/* Stock notice modal */}
+      {/* ✅ Modal cảnh báo vượt tồn kho */}
       <Modal
-        show={showStockNotice}
-        onHide={() => setShowStockNotice(false)}
+        open={showStockNotice}
+        onCancel={() => setShowStockNotice(false)}
         centered
-      >
-        <Modal.Header closeButton>
-          <Modal.Title>Vượt quá tồn kho</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          Số lượng yêu cầu vượt quá tồn kho hiện có. Đã điều chỉnh về tối đa là {maxStock}.
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="primary" onClick={() => setShowStockNotice(false)}>
+        footer={[
+          <Button key="ok" type="primary" onClick={() => setShowStockNotice(false)}>
             Đã hiểu
-          </Button>
-        </Modal.Footer>
+          </Button>,
+        ]}
+        title={
+          <div className="flex items-center gap-2 text-blue-600">
+            <InfoCircleOutlined />
+            <span>Vượt quá tồn kho</span>
+          </div>
+        }
+      >
+        <p>
+          Số lượng yêu cầu vượt quá tồn kho hiện có. Đã điều chỉnh về tối đa là{" "}
+          <strong>{maxStock}</strong>.
+        </p>
       </Modal>
     </div>
   );
