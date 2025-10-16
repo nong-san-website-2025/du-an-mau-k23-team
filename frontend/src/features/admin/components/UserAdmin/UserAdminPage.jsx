@@ -16,7 +16,7 @@ export default function UserAdminPage() {
   };
 
   // Lấy JWT token từ localStorage
-  const accessToken = localStorage.getItem('access_token');
+  const accessToken = localStorage.getItem('token');
   const csrfToken = getCookie('csrftoken'); // Lấy CSRF token từ cookie
 
   // Fetch danh sách vai trò từ backend

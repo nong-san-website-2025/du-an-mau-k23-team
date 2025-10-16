@@ -159,7 +159,7 @@ const ProductTable = ({ data, onEdit, onDelete, onSelfReject }) => {
       dataSource={data}
       rowKey="id"
       bordered
-      pagination={{ pageSize: 5, showSizeChanger: false }}
+      pagination={{ pageSize: 10, showSizeChanger: false }}
       scroll={{ x: 1300 }}
       size="small"
     />

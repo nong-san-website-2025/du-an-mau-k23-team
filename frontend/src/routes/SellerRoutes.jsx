@@ -7,6 +7,7 @@ import SellerPrivateRoute from "../components/PrivateRoutes/SellerPrivateRoute";
 import Dashboard from "../features/seller_center/pages/Dashboard";
 import ProductsPage from "../features/seller_center/pages/ProductsPage";
 import Finance from "../features/seller_center/pages/Finance";
+import Analytics from "../features/seller_center/pages/Analytics";
 import OrdersNew from "../features/seller_center/pages/OrdersNew";
 import OrdersProcessing from "../features/seller_center/pages/OrdersProcessing";
 import StoreInfo from "../features/seller_center/pages/StoreInfo";
@@ -31,6 +32,7 @@ export const sellerRoutes = [
       <Route path="store/info" element={<StoreInfo />} />
       <Route path="products" element={<ProductsPage />} />
       <Route path="finance" element={<Finance />} />
+      <Route path="analytics" element={<Analytics />} />
       <Route path="orders/new" element={<OrdersNew />} />
       <Route path="orders/processing" element={<OrdersProcessing />} />
       <Route path="orders/delivered" element={<OrdersDelivered />} />

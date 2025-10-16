@@ -20,6 +20,7 @@ from .views import (
     SellerActivateAPIView
 )
 from sellers import views
+from sellers import views_analytics
 
 router = DefaultRouter()
 router.register(r'sellers', SellerViewSet, basename="sellers")
@@ -44,4 +45,9 @@ urlpatterns = [
     # List my followed sellers
     path('my/following/', views.MyFollowedSellersAPIView.as_view(), name='my-followed-sellers'),
     path('my/followers/', views.MyFollowersAPIView.as_view(), name='my-followers'),
+    # Analytics APIs
+    path('analytics/overview/', views_analytics.analytics_overview, name='analytics-overview'),
+    path('analytics/sales/', views_analytics.analytics_sales, name='analytics-sales'),
+    path('analytics/products/', views_analytics.analytics_products, name='analytics-products'),
+    path('analytics/traffic/', views_analytics.analytics_traffic, name='analytics-traffic'),
 ] + router.urls

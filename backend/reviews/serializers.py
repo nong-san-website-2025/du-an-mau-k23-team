@@ -31,7 +31,7 @@ class ReviewSerializer(serializers.ModelSerializer):
 
     def get_replies(self, obj):
         # Trả về danh sách reply của review
-        return ReviewReplySerializer(obj.replies.all(), many=True).data
+        return ReviewReplySerializer(obj.replies.all(), many=True, context=self.context).data
 
     def validate(self, data):
         # Chỉ dùng khi tạo review theo route products/<product_id>/reviews/
@@ -59,10 +59,18 @@ class ReviewListCreateView(generics.ListCreateAPIView):
 
 # ----------------- REVIEW REPLY -----------------
 class ReviewReplySerializer(serializers.ModelSerializer):
+    user_name = serializers.SerializerMethodField()
     class Meta:
         model = ReviewReply
         fields = "__all__"
         read_only_fields = ["user"]
+
+    def get_user_name(self, obj):
+        try:
+            # Prefer full name when available
+            return getattr(obj.user, 'get_full_name', lambda: None)() or getattr(obj.user, 'username', None) or str(obj.user)
+        except Exception:
+            return None
 
     def create(self, validated_data):
         request = self.context["request"]

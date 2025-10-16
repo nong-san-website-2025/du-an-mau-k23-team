@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Layout, Avatar, Dropdown, Badge, Spin } from "antd";
 import { UserOutlined, BellOutlined } from "@ant-design/icons";
-import sellerService from "../services/api/sellerService"
+import sellerService from "../services/api/sellerService";
 
 const { Header } = Layout;
 
@@ -12,7 +12,6 @@ export default function SellerTopbar() {
     { id: 3, message: "Hệ thống bảo trì lúc 23h", isRead: true },
   ]);
 
-  // State lưu thông tin seller
   const [seller, setSeller] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -31,7 +30,19 @@ export default function SellerTopbar() {
     fetchSeller();
   }, []);
 
-  // Menu user
+  // Lấy chữ cái đầu (loại bỏ dấu) và in hoa
+  const getInitial = (name) => {
+    if (!name) return "?";
+    // lấy chữ đầu của từ đầu tiên
+    const firstWord = name.trim().split(/\s+/)[0] || name.trim().charAt(0);
+    // loại bỏ dấu (normalize -> remove combining diacritics)
+    const withoutDiacritics = firstWord
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+    const ch = withoutDiacritics.charAt(0) || "?";
+    return ch.toUpperCase();
+  };
+
   const menuItems = [
     { key: "profile", label: "Hồ sơ" },
     { key: "logout", label: "Đăng xuất" },
@@ -44,7 +55,6 @@ export default function SellerTopbar() {
     }
   };
 
-  // Dropdown thông báo
   const notificationMenu = (
     <div style={{ width: 250, maxHeight: 300, overflowY: "auto" }}>
       {notifications.length === 0 ? (
@@ -77,19 +87,20 @@ export default function SellerTopbar() {
         gap: "20px",
       }}
     >
-      {/* Loading state */}
       {loading ? (
         <Spin size="small" />
       ) : (
         <>
-          {/* Chuông thông báo */}
-          <Dropdown overlay={notificationMenu} trigger={["click"]} placement="bottomRight">
+          <Dropdown
+            overlay={notificationMenu}
+            trigger={["click"]}
+            placement="bottomRight"
+          >
             <Badge count={notifications.filter((n) => !n.isRead).length}>
               <BellOutlined style={{ fontSize: "20px", cursor: "pointer" }} />
             </Badge>
           </Dropdown>
 
-          {/* Avatar user + Tên seller */}
           <Dropdown
             menu={{
               items: menuItems,
@@ -98,13 +109,23 @@ export default function SellerTopbar() {
             placement="bottomRight"
             arrow
           >
-            <div style={{ display: "flex", alignItems: "center", cursor: "pointer", gap: "8px" }}>
-              <Avatar
-                size="large"
-                src={seller?.avatar || null}
-                icon={!seller?.avatar && <UserOutlined />}
-              />
-              <span style={{ fontWeight: "500" }}>{seller?.store_name || "Người bán"}</span>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                cursor: "pointer",
+                gap: "8px",
+              }}
+            >
+
+              {/* Nếu có avatar thì dùng src, ngược lại hiển thị chữ cái đầu */}
+              {seller?.avatar ? (
+                <Avatar size="large" src={seller.avatar} />
+              ) : (
+                <Avatar size="large">
+                  {getInitial(seller?.store_name || seller?.name || "")}
+                </Avatar>
+              )}
             </div>
           </Dropdown>
         </>

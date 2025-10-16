@@ -28,11 +28,7 @@ export default function SellerSidebar() {
       icon: <DashboardOutlined />,
       label: "Tổng quan",
     },
-    {
-      key: "/seller-center/complaints",
-      icon: <WarningOutlined />,
-      label: "Khiếu nại",
-    },
+
     {
       key: "/seller-center/messages",
       icon: <WechatOutlined />,
@@ -42,7 +38,9 @@ export default function SellerSidebar() {
       key: "store",
       icon: <ShopOutlined />,
       label: "Cửa hàng",
-      children: [{ key: "/seller-center/store/info", label: "Thông tin cửa hàng" }],
+      children: [
+        { key: "/seller-center/store/info", label: "Thông tin cửa hàng" },
+      ],
     },
     {
       key: "products",
@@ -81,6 +79,12 @@ export default function SellerSidebar() {
       icon: <BarChartOutlined />,
       label: "Thống kê",
     },
+
+    {
+      key: "/seller-center/complaints",
+      icon: <WarningOutlined />,
+      label: "Khiếu nại",
+    },
     {
       key: "/seller-center/settings",
       icon: <SettingOutlined />,
@@ -103,9 +107,14 @@ export default function SellerSidebar() {
         <img
           src="/assets/logo/defaultLogo.png" // 👉 thay bằng logo thật của bạn
           alt="Logo"
-          style={{ height: "60px", width: "50px", paddingBottom:16 }}
+          style={{ height: "60px", width: "50px", paddingBottom: 16 }}
         />
-        <span className="" style={{ fontSize: "24px", fontWeight: "bold", paddingTop: 10}}>Trang người bán</span>
+        <span
+          className=""
+          style={{ fontSize: "24px", fontWeight: "bold", paddingTop: 10 }}
+        >
+          Trang người bán
+        </span>
       </div>
 
       {/* Menu */}

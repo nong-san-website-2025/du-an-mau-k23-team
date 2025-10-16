@@ -308,3 +308,11 @@ class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
         fields = ['id', 'username', 'email', 'full_name', 'phone']
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    """Serializer for Notification model"""
+    class Meta:
+        model = apps.get_model('users', 'Notification')
+        fields = ['id', 'type', 'title', 'message', 'detail', 'metadata', 'is_read', 'created_at', 'read_at']
+        read_only_fields = ['id', 'created_at']
