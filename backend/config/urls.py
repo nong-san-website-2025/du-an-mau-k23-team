@@ -51,6 +51,8 @@ urlpatterns = [
 
 
     path("api/", include("system.urls")),
+    path('api/', include('system_settings.urls')),
+
 ]
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

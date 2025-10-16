@@ -67,17 +67,6 @@ const HomeProductTabs = () => {
           padding: "0 15px",
         }}
       >
-        <Title
-          level={3}
-          style={{
-            textAlign: "start",
-            marginBottom: 25,
-            fontWeight: 700,
-            color: "#222",
-          }}
-        >
-          Sản phẩm nổi bật
-        </Title>
 
         <Tabs
           defaultActiveKey="1"
@@ -89,7 +78,7 @@ const HomeProductTabs = () => {
               children: (
                 <Row gutter={[16, 16]} justify="start">
                   {newProducts.map((p) => (
-                    <Col key={p.id} xs={12} sm={8} md={6} lg={6}>
+                    <Col key={p.id} xs={12} sm={8} md={6} lg={4} xl={4}>
                       <Card
                         hoverable
                         cover={
@@ -135,7 +124,7 @@ const HomeProductTabs = () => {
               children: (
                 <Row gutter={[16, 16]} justify="start">
                   {comingSoon.map((p) => (
-                    <Col key={p.id} xs={12} sm={8} md={6} lg={6}>
+                    <Col key={p.id} xs={12} sm={8} md={6} lg={4} xl={4}>
                       <Card
                         hoverable
                         cover={

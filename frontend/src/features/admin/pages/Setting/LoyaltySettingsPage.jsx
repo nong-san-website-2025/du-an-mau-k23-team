@@ -10,13 +10,27 @@ const API_BASE_URL = "http://localhost:8000/api";
 export default function LoyaltySettingsPage() {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
+  const token = localStorage.getItem("token");
 
+  // ✅ Cấu hình axios có token
+  const axiosConfig = {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  };
+
+  // ✅ Hàm lấy dữ liệu
   const fetchSettings = async () => {
     try {
-      const res = await axios.get(`${API_BASE_URL}/settings/loyalty/`);
+      const res = await axios.get(`${API_BASE_URL}/settings/loyalty/`, axiosConfig);
       form.setFieldsValue(res.data);
     } catch (err) {
-      message.error("Không tải được cài đặt điểm thưởng.");
+      console.error(err);
+      if (err.response?.status === 401) {
+        message.error("Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.");
+      } else {
+        message.error("Không tải được cài đặt điểm thưởng.");
+      }
     }
   };
 
@@ -24,13 +38,19 @@ export default function LoyaltySettingsPage() {
     fetchSettings();
   }, []);
 
+  // ✅ Hàm lưu dữ liệu
   const handleSave = async (values) => {
     setLoading(true);
     try {
-      await axios.put(`${API_BASE_URL}/settings/loyalty/`, values);
+      await axios.put(`${API_BASE_URL}/settings/loyalty/`, values, axiosConfig);
       message.success("Lưu cài đặt điểm thưởng thành công ✅");
     } catch (err) {
-      message.error("Lưu thất bại.");
+      console.error(err);
+      if (err.response?.status === 401) {
+        message.error("Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.");
+      } else {
+        message.error("Lưu thất bại.");
+      }
     } finally {
       setLoading(false);
     }
@@ -57,8 +77,15 @@ export default function LoyaltySettingsPage() {
 
         <Form.Item style={{ textAlign: "right" }}>
           <Space>
-            <Button icon={<ReloadOutlined />} onClick={fetchSettings}>Tải lại</Button>
-            <Button type="primary" htmlType="submit" icon={<SaveOutlined />} loading={loading}>
+            <Button icon={<ReloadOutlined />} onClick={fetchSettings}>
+              Tải lại
+            </Button>
+            <Button
+              type="primary"
+              htmlType="submit"
+              icon={<SaveOutlined />}
+              loading={loading}
+            >
               Lưu cài đặt
             </Button>
           </Space>

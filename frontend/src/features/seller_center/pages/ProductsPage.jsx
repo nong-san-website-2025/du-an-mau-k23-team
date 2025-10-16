@@ -1,5 +1,15 @@
 import React, { useEffect, useState } from "react";
-import { Button, message, Modal, Form, Input, Col, Row, Select, Upload } from "antd";
+import {
+  Button,
+  message,
+  Modal,
+  Form,
+  Input,
+  Col,
+  Row,
+  Select,
+  Upload,
+} from "antd";
 import axios from "axios";
 import ProductTable from "../../seller_center/components/ProductSeller/ProductTable";
 import { UploadOutlined } from "@ant-design/icons";
@@ -27,7 +37,9 @@ export default function ProductsPage() {
   // Lấy danh mục + sub
   const fetchCategories = async () => {
     try {
-      const res = await api.get("/products/categories/", { headers: getAuthHeaders() });
+      const res = await api.get("/products/categories/", {
+        headers: getAuthHeaders(),
+      });
       setCategories(res.data.results || res.data);
     } catch (err) {
       console.error(err);
@@ -49,13 +61,19 @@ export default function ProductsPage() {
       const mappedProducts = productsData.map((p) => {
         let categoryName = "";
         let subcategoryName = "";
-        const cat = categories.find((c) => c.subcategories.some((s) => s.id === p.subcategory));
+        const cat = categories.find((c) =>
+          c.subcategories.some((s) => s.id === p.subcategory)
+        );
         if (cat) {
           categoryName = cat.name;
           const sub = cat.subcategories.find((s) => s.id === p.subcategory);
           subcategoryName = sub ? sub.name : "";
         }
-        return { ...p, category_name: categoryName, subcategory_name: subcategoryName };
+        return {
+          ...p,
+          category_name: categoryName,
+          subcategory_name: subcategoryName,
+        };
       });
 
       setProducts(mappedProducts);
@@ -91,18 +109,28 @@ export default function ProductsPage() {
 
       let imageList = [];
       if (product.image) {
-        imageList = [{ uid: "-1", name: "image.png", status: "done", url: product.image }];
+        imageList = [
+          { uid: "-1", name: "image.png", status: "done", url: product.image },
+        ];
       }
 
       if (category) {
         setSubcategories(category.subcategories);
-        form.setFieldsValue({ ...product, category: category.id, image: imageList });
+        form.setFieldsValue({
+          ...product,
+          category: category.id,
+          image: imageList,
+        });
       } else {
         form.setFieldsValue({ ...product, image: imageList });
       }
     } else {
       form.resetFields();
-      form.setFieldsValue({ stock: 0, availability_status: "available", image: [] });
+      form.setFieldsValue({
+        stock: 0,
+        availability_status: "available",
+        image: [],
+      });
       setSubcategories([]);
     }
 
@@ -112,14 +140,22 @@ export default function ProductsPage() {
   const handleSubmit = async (values) => {
     try {
       const formData = new FormData();
-      ["availability_status", "season_start", "season_end", "estimated_quantity"].forEach(
-        (key) => {
-          if (values[key] !== undefined && values[key] !== null) formData.append(key, values[key]);
-        }
-      );
+      [
+        "availability_status",
+        "season_start",
+        "season_end",
+        "estimated_quantity",
+      ].forEach((key) => {
+        if (values[key] !== undefined && values[key] !== null)
+          formData.append(key, values[key]);
+      });
       Object.keys(values).forEach((key) => {
         if (values[key] !== undefined && values[key] !== null) {
-          if (key === "image" && Array.isArray(values[key]) && values[key][0]?.originFileObj) {
+          if (
+            key === "image" &&
+            Array.isArray(values[key]) &&
+            values[key][0]?.originFileObj
+          ) {
             formData.append("image", values[key][0].originFileObj);
           } else if (key !== "seller" && key !== "category") {
             formData.append(key, values[key]);
@@ -130,12 +166,18 @@ export default function ProductsPage() {
 
       if (editingProduct) {
         await api.put(`/products/${editingProduct.id}/`, formData, {
-          headers: { ...getAuthHeaders(), "Content-Type": "multipart/form-data" },
+          headers: {
+            ...getAuthHeaders(),
+            "Content-Type": "multipart/form-data",
+          },
         });
         message.success("Cập nhật sản phẩm thành công");
       } else {
         await api.post("/products/", formData, {
-          headers: { ...getAuthHeaders(), "Content-Type": "multipart/form-data" },
+          headers: {
+            ...getAuthHeaders(),
+            "Content-Type": "multipart/form-data",
+          },
         });
         message.success("Thêm sản phẩm thành công (chờ duyệt)");
       }
@@ -161,8 +203,14 @@ export default function ProductsPage() {
 
   const handleToggleHide = async (product) => {
     try {
-      await api.post(`/products/${product.id}/toggle-hide/`, {}, { headers: getAuthHeaders() });
-      message.success(product.is_hidden ? "Đã hiện sản phẩm" : "Đã ẩn sản phẩm");
+      await api.post(
+        `/products/${product.id}/toggle-hide/`,
+        {},
+        { headers: getAuthHeaders() }
+      );
+      message.success(
+        product.is_hidden ? "Đã hiện sản phẩm" : "Đã ẩn sản phẩm"
+      );
       fetchProducts(statusFilter, searchTerm);
     } catch (err) {
       console.error("toggle hide error:", err?.response?.data || err);
@@ -172,7 +220,11 @@ export default function ProductsPage() {
 
   const handleSelfReject = async (product) => {
     try {
-      await api.post(`/products/${product.id}/self-reject/`, {}, { headers: getAuthHeaders() });
+      await api.post(
+        `/products/${product.id}/self-reject/`,
+        {},
+        { headers: getAuthHeaders() }
+      );
       message.success("Đã chuyển sản phẩm sang trạng thái tự từ chối");
       fetchProducts(statusFilter, searchTerm);
     } catch (err) {
@@ -186,7 +238,9 @@ export default function ProductsPage() {
       <h2 style={{ marginBottom: 16 }}>Quản lý sản phẩm</h2>
 
       <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
-        <Button type="primary" onClick={() => openModal()}>Thêm sản phẩm</Button>
+        <Button type="primary" onClick={() => openModal()}>
+          Thêm sản phẩm
+        </Button>
 
         <Search
           placeholder="Tìm sản phẩm theo tên hoặc mã"
@@ -230,16 +284,29 @@ export default function ProductsPage() {
         centered
         style={{ top: 40 }}
       >
-        <Form form={form} layout="vertical" onFinish={handleSubmit} initialValues={{ stock: 0, availability_status: "available" }}>
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={handleSubmit}
+          initialValues={{ stock: 0, availability_status: "available" }}
+        >
           {/* Form fields như tên, giá, danh mục, danh mục con, stock, image */}
           <Row gutter={16}>
             <Col span={12}>
-              <Form.Item name="name" label="Tên sản phẩm" rules={[{ required: true, message: "Nhập tên sản phẩm" }]}>
+              <Form.Item
+                name="name"
+                label="Tên sản phẩm"
+                rules={[{ required: true, message: "Nhập tên sản phẩm" }]}
+              >
                 <Input />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="price" label="Giá" rules={[{ required: true, message: "Nhập giá sản phẩm" }]}>
+              <Form.Item
+                name="price"
+                label="Giá"
+                rules={[{ required: true, message: "Nhập giá sản phẩm" }]}
+              >
                 <Input type="number" min={0} />
               </Form.Item>
             </Col>
@@ -247,26 +314,43 @@ export default function ProductsPage() {
 
           <Row gutter={16}>
             <Col span={12}>
-              <Form.Item name="category" label="Danh mục" rules={[{ required: true, message: "Chọn danh mục" }]}>
+              <Form.Item
+                name="category"
+                label="Danh mục"
+                rules={[{ required: true, message: "Chọn danh mục" }]}
+              >
                 <Select
                   placeholder="Chọn danh mục"
                   onChange={(categoryId) => {
-                    const selected = categories.find((c) => c.id === categoryId);
+                    const selected = categories.find(
+                      (c) => c.id === categoryId
+                    );
                     setSubcategories(selected ? selected.subcategories : []);
                     form.setFieldsValue({ subcategory: undefined });
                   }}
                 >
                   {categories.map((cat) => (
-                    <Select.Option key={cat.id} value={cat.id}>{cat.name}</Select.Option>
+                    <Select.Option key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </Select.Option>
                   ))}
                 </Select>
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="subcategory" label="Danh mục con" rules={[{ required: true, message: "Chọn danh mục con" }]}>
-                <Select placeholder="Chọn danh mục con" disabled={!subcategories.length}>
+              <Form.Item
+                name="subcategory"
+                label="Danh mục con"
+                rules={[{ required: true, message: "Chọn danh mục con" }]}
+              >
+                <Select
+                  placeholder="Chọn danh mục con"
+                  disabled={!subcategories.length}
+                >
                   {subcategories.map((sub) => (
-                    <Select.Option key={sub.id} value={sub.id}>{sub.name}</Select.Option>
+                    <Select.Option key={sub.id} value={sub.id}>
+                      {sub.name}
+                    </Select.Option>
                   ))}
                 </Select>
               </Form.Item>
@@ -275,7 +359,11 @@ export default function ProductsPage() {
 
           <Row gutter={16}>
             <Col span={12}>
-              <Form.Item name="stock" label="Số lượng" rules={[{ required: true, message: "Nhập số lượng" }]}>
+              <Form.Item
+                name="stock"
+                label="Số lượng"
+                rules={[{ required: true, message: "Nhập số lượng" }]}
+              >
                 <Input type="number" min={0} />
               </Form.Item>
             </Col>
@@ -291,7 +379,11 @@ export default function ProductsPage() {
                   return e.fileList || [];
                 }}
               >
-                <Upload beforeUpload={() => false} maxCount={1} listType="picture">
+                <Upload
+                  beforeUpload={() => false}
+                  maxCount={1}
+                  listType="picture"
+                >
                   <Button icon={<UploadOutlined />}>Chọn ảnh</Button>
                 </Upload>
               </Form.Item>
@@ -299,34 +391,73 @@ export default function ProductsPage() {
           </Row>
 
           {/* Trạng thái hàng hóa */}
-          <Form.Item name="availability_status" label="Trạng thái hàng hóa" rules={[{ required: true, message: "Chọn trạng thái" }]}>
-            <Select onChange={(value) => {
-              if (value === "available") form.setFieldsValue({ season_start: null, season_end: null, estimated_quantity: null });
-            }}>
+          <Form.Item
+            name="availability_status"
+            label="Trạng thái hàng hóa"
+            rules={[{ required: true, message: "Chọn trạng thái" }]}
+          >
+            <Select
+              onChange={(value) => {
+                if (value === "available") {
+                  form.setFieldsValue({
+                    season_start: null,
+                    season_end: null,
+                    estimated_quantity: null,
+                  });
+                }
+              }}
+            >
               <Select.Option value="available">Có sẵn</Select.Option>
               <Select.Option value="coming_soon">Sắp có</Select.Option>
             </Select>
           </Form.Item>
 
-          {form.getFieldValue("availability_status") === "coming_soon" && (
-            <>
-              <Row gutter={16}>
-                <Col span={12}>
-                  <Form.Item name="season_start" label="Ngày bắt đầu mùa vụ" rules={[{ required: true, message: "Chọn ngày bắt đầu" }]}>
-                    <Input type="date" />
+          {/* ✅ Dùng shouldUpdate để form tự re-render khi availability_status đổi */}
+          <Form.Item
+            shouldUpdate={(prev, cur) =>
+              prev.availability_status !== cur.availability_status
+            }
+          >
+            {({ getFieldValue }) =>
+              getFieldValue("availability_status") === "coming_soon" && (
+                <>
+                  <Row gutter={16}>
+                    <Col span={12}>
+                      <Form.Item
+                        name="season_start"
+                        label="Ngày bắt đầu mùa vụ"
+                        rules={[
+                          { required: true, message: "Chọn ngày bắt đầu" },
+                        ]}
+                      >
+                        <Input type="date" />
+                      </Form.Item>
+                    </Col>
+                    <Col span={12}>
+                      <Form.Item
+                        name="season_end"
+                        label="Ngày kết thúc mùa vụ"
+                        rules={[
+                          { required: true, message: "Chọn ngày kết thúc" },
+                        ]}
+                      >
+                        <Input type="date" />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+                  <Form.Item
+                    name="estimated_quantity"
+                    label="Ước lượng sản lượng"
+                    rules={[
+                      { required: true, message: "Nhập sản lượng dự kiến" },
+                    ]}
+                  >
+                    <Input type="number" min={0} />
                   </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item name="season_end" label="Ngày kết thúc mùa vụ" rules={[{ required: true, message: "Chọn ngày kết thúc" }]}>
-                    <Input type="date" />
-                  </Form.Item>
-                </Col>
-              </Row>
-              <Form.Item name="estimated_quantity" label="Ước lượng sản lượng" rules={[{ required: true, message: "Nhập sản lượng dự kiến" }]}>
-                <Input type="number" min={0} />
-              </Form.Item>
-            </>
-          )}
+                </>
+              )
+            }
+          </Form.Item>
 
           <Form.Item name="description" label="Mô tả">
             <Input.TextArea rows={4} placeholder="Nhập mô tả sản phẩm" />

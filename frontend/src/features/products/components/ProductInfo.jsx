@@ -21,15 +21,23 @@ const ProductInfo = ({
   const status = (product.availability_status || product.status || "")
     .toLowerCase()
     .trim();
+  const rawStatus = (product.availability_status || "").toLowerCase().trim();
+  const stock = Number(product.stock) || 0;
 
+  // ✅ Xác định “Sắp có”
   const isComingSoon =
-    status === "coming_soon" ||
-    status === "sắp có" ||
-    status === "sapco" ||
-    status === "sap co" ||
-    status === "comingsoon";
+    rawStatus.includes("coming_soon") ||
+    rawStatus.includes("comingsoon") ||
+    rawStatus.includes("sắp") ||
+    rawStatus.includes("sap");
 
-  const isOutOfStock = !isComingSoon && product.stock <= 0;
+  // ✅ Nếu là “sắp có” thì KHÔNG bao giờ bị coi là hết hàng
+  const isOutOfStock = !isComingSoon && stock <= 0;
+  console.log("RENDER STATUS:", {
+    isComingSoon,
+    isOutOfStock,
+    status: product.status,
+  });
 
   // 🔹 Lấy thông tin thời gian & sản lượng dự kiến từ backend
   const availableFrom =
@@ -72,7 +80,7 @@ const ProductInfo = ({
         </Text>
       </div>
 
-      {/* Chỉ hiển thị phần số lượng nếu không phải sắp có */}
+      {/* 🔹 Số lượng hiện tại và số lượng đã đặt */}
       {!isComingSoon && (
         <div style={{ marginBottom: 24 }}>
           <Text strong>Số lượng:</Text>
@@ -91,10 +99,25 @@ const ProductInfo = ({
               }
             />
           </Space>
+
+          {/* 🔸 Còn hàng / Đã bán / Đã đặt */}
           {product.stock > 0 && (
-            <Text type="success" style={{ marginLeft: 12 }}>
-              Còn {product.stock} sản phẩm
-            </Text>
+            <div style={{ marginTop: 8 }}>
+              <Text type="success">
+                Còn {product.stock.toLocaleString("vi-VN")} sản phẩm
+              </Text>
+
+              {/* {product.sold_quantity > 0 && (
+                <Text type="secondary" style={{ marginLeft: 12 }}>
+                  Đã bán {product.sold_quantity.toLocaleString("vi-VN")}
+                </Text>
+              )} */}
+
+              <Text type="secondary" style={{ marginLeft: 12 }}>
+                Đã bán {(product.ordered_quantity || 0).toLocaleString("vi-VN")}{" "}
+                sản phẩm
+              </Text>
+            </div>
           )}
         </div>
       )}
@@ -130,47 +153,52 @@ const ProductInfo = ({
                 ? `${estimatedQuantity.toLocaleString("vi-VN")} sản phẩm`
                 : "Chưa xác định"}
             </Text>
+
+            {/* {(product.ordered_quantity > 0 || product.sold_quantity > 0) && (
+              <Text>
+                <strong>Đã có:</strong>{" "}
+                {(
+                  product.ordered_quantity || product.sold_quantity
+                ).toLocaleString("vi-VN")}{" "}
+                lượt đặt hàng
+              </Text>
+            )} */}
           </Space>
         </div>
       )}
 
-      {/* Hiển thị hành động chính */}
+      {/* 🔹 Các nút hành động */}
       <Space size="middle">
+        {/* 🔹 Ưu tiên hiển thị sản phẩm sắp có */}
         {isComingSoon ? (
           <>
-            {product.stock <= 0 ? (
-              <>
-                <Button
-                  type="primary"
-                  size="large"
-                  danger
-                  onClick={() => onBuyNow(product)}
-                >
-                  Đặt trước
-                </Button>
-                <Text type="warning" style={{ marginLeft: 12 }}>
-                  Sắp có từ {product.season_start || "?"} đến{" "}
-                  {product.season_end || "?"} ({product.estimated_quantity || 0}{" "}
-                  sản phẩm)
-                </Text>
-              </>
-            ) : (
-              <Button disabled size="large">
-                Đang có hàng (chưa mở đặt trước)
-              </Button>
-            )}
+            <Button
+              type="primary"
+              size="large"
+              danger
+              onClick={() => onBuyNow(product)}
+            >
+              Đặt trước
+            </Button>
+            <Text type="warning" style={{ display: "block", marginTop: 4 }}>
+              Sản phẩm sắp có
+            </Text>
           </>
         ) : isOutOfStock ? (
-          <Button disabled size="large">
-            Hết hàng
-          </Button>
+          <>
+            <Button type="primary" size="large" danger onClick={onBuyNow}>
+              Đặt trước
+            </Button>
+            <Text type="secondary" style={{ display: "block", marginTop: 4 }}>
+              Hết hàng — bạn có thể đặt trước
+            </Text>
+          </>
         ) : (
           <>
             <Button
               type="primary"
               size="large"
               icon={<ShoppingCartOutlined />}
-              loading={adding}
               onClick={onAddToCart}
             >
               Thêm vào giỏ

@@ -7,15 +7,18 @@ const ProductForm = ({ visible, onCancel, onSubmit, initialValues }) => {
   const [form] = Form.useForm();
   const [availability, setAvailability] = useState("available");
 
+  // Khi mở form hoặc giá trị ban đầu thay đổi
   useEffect(() => {
-    if (initialValues) {
-      form.setFieldsValue(initialValues);
-      setAvailability(initialValues.availability_status || "available");
-    } else {
-      form.resetFields();
-      setAvailability("available");
+    if (visible) {
+      if (initialValues) {
+        form.setFieldsValue(initialValues);
+        setAvailability(initialValues.availability_status || "available");
+      } else {
+        form.resetFields();
+        setAvailability("available");
+      }
     }
-  }, [initialValues, form]);
+  }, [visible, initialValues, form]);
 
   const handleOk = () => {
     form
@@ -23,17 +26,19 @@ const ProductForm = ({ visible, onCancel, onSubmit, initialValues }) => {
       .then((values) => {
         onSubmit(values);
         form.resetFields();
+        setAvailability("available");
       })
       .catch((info) => {
         console.log("Validate Failed:", info);
       });
   };
 
-  useEffect(() => {
-    // Khi form load hoặc initialValues thay đổi, cập nhật availability state
-    const value = form.getFieldValue("availability_status") || "available";
+  // ✅ Khi người dùng chọn lại trạng thái
+  const handleAvailabilityChange = (value) => {
     setAvailability(value);
-  }, [form, initialValues]);
+    // cập nhật vào form để không bị mất khi submit
+    form.setFieldsValue({ availability_status: value });
+  };
 
   return (
     <Modal
@@ -45,7 +50,6 @@ const ProductForm = ({ visible, onCancel, onSubmit, initialValues }) => {
       onOk={handleOk}
     >
       <Form form={form} layout="vertical" name="productForm">
-        {/* Tên sản phẩm */}
         <Form.Item
           label="Tên sản phẩm"
           name="name"
@@ -54,7 +58,6 @@ const ProductForm = ({ visible, onCancel, onSubmit, initialValues }) => {
           <Input placeholder="Nhập tên sản phẩm" />
         </Form.Item>
 
-        {/* Giá */}
         <Form.Item
           label="Giá (VNĐ)"
           name="price"
@@ -70,7 +73,6 @@ const ProductForm = ({ visible, onCancel, onSubmit, initialValues }) => {
           />
         </Form.Item>
 
-        {/* Tồn kho */}
         <Form.Item
           label="Tồn kho"
           name="stock"
@@ -83,19 +85,18 @@ const ProductForm = ({ visible, onCancel, onSubmit, initialValues }) => {
           />
         </Form.Item>
 
-        {/* Trạng thái hàng hóa */}
         <Form.Item
           label="Trạng thái hàng hóa"
           name="availability_status"
           rules={[{ required: true, message: "Vui lòng chọn trạng thái" }]}
         >
-          <Select onChange={(value) => setAvailability(value)}>
+          <Select onChange={handleAvailabilityChange}>
             <Option value="available">Có sẵn</Option>
             <Option value="coming_soon">Sắp có</Option>
           </Select>
         </Form.Item>
 
-        {/* Nếu là "Sắp có" thì hiện mùa vụ */}
+        {/* ✅ Chỉ hiện khi chọn “Sắp có” */}
         {availability === "coming_soon" && (
           <>
             <Form.Item

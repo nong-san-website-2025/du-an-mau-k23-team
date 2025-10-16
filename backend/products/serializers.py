@@ -50,7 +50,9 @@ class ProductSerializer(serializers.ModelSerializer):
             'stock', 'image', 'rating', 'review_count', 'location', 'brand',
             'subcategory', 'seller_name', 'created_at', 'updated_at',
             'category', 'store', 'status', 'seller', 'sold_count', 'discount_percent', "is_hidden", "availability_status",
-            "season_start", "season_end", "estimated_quantity", "preordered_quantity",
+            "season_start", "season_end", "estimated_quantity", "preordered_quantity", 'ordered_quantity',
+            "is_coming_soon",
+            "is_out_of_stock",
         ]
         read_only_fields = ["status", "seller"]
 
@@ -94,6 +96,22 @@ class ProductSerializer(serializers.ModelSerializer):
         return obj.stock
 
 
+    def get_sold_quantity(self, obj):
+        return obj.sold_quantity
+    
+
+    is_coming_soon = serializers.SerializerMethodField()
+    is_out_of_stock = serializers.SerializerMethodField()
+
+    def get_is_coming_soon(self, obj):
+        return obj.availability_status == "coming_soon"
+
+    def get_is_out_of_stock(self, obj):
+        # Nếu là sản phẩm sắp có thì không tính là hết hàng
+        if obj.availability_status == "coming_soon":
+            return False
+        return obj.stock <= 0
+
 
 class ProductListSerializer(serializers.ModelSerializer):
     category_name = serializers.CharField(source='subcategory.category.name', read_only=True)
@@ -114,7 +132,9 @@ class ProductListSerializer(serializers.ModelSerializer):
             'category_name', 'subcategory_name', 'category_id', 'subcategory',
             'description', 'stock', 'status', 'created_at', 'updated_at',
             'seller', 'seller_name', 'sold_count', 'discount_percent',
-            "availability_status", "season_start", "season_end", "estimated_quantity", "preordered_quantity"
+            "availability_status", "season_start", "season_end", "estimated_quantity", "preordered_quantity",
+            "is_coming_soon",
+            "is_out_of_stock",
         ]
         read_only_fields = ["id", "created_at", "updated_at", "seller"]
 
@@ -138,6 +158,19 @@ class ProductListSerializer(serializers.ModelSerializer):
             product=obj,
             order__status__in=['paid', 'shipped', 'delivered', 'success']
         ).aggregate(total=Sum('quantity'))['total'] or 0
+    
+
+    is_coming_soon = serializers.SerializerMethodField()
+    is_out_of_stock = serializers.SerializerMethodField()
+
+    def get_is_coming_soon(self, obj):
+        return obj.availability_status == "coming_soon"
+
+    def get_is_out_of_stock(self, obj):
+        # Nếu là sản phẩm sắp có thì không tính là hết hàng
+        if obj.availability_status == "coming_soon":
+            return False
+        return obj.stock <= 0
 
 
 

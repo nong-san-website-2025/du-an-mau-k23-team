@@ -50,7 +50,7 @@ class Product(models.Model):
     brand = models.CharField(max_length=100, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-
+    ordered_quantity = models.IntegerField(default=0)
     # Visibility and status
     is_hidden = models.BooleanField(default=False)
     status = models.CharField(  # trạng thái kiểm duyệt (admin)
@@ -88,6 +88,14 @@ class Product(models.Model):
         (áp dụng với trạng thái coming_soon).
         """
         return sum(item.quantity for item in self.order_items.all())
+    
+
+    @property
+    def sold_quantity(self):
+        # Đếm tổng số lượng sản phẩm đã bán từ bảng OrderItem
+        from orders.models import OrderItem
+        total = OrderItem.objects.filter(product=self).aggregate(models.Sum("quantity"))["quantity__sum"]
+        return total or 0
 
 
 class ProductFeature(models.Model):
