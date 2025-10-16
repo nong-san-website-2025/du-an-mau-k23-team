@@ -75,8 +75,7 @@
 .messageItem.mine .msgContent {
   background: #1677ff;
   color: white;
-  border-top-right-radius: 4px;
-  border-top-left-radius: 18px;
+  border-radius: 4px;
 }
 
 .messageItem.mine .msgAvatar {

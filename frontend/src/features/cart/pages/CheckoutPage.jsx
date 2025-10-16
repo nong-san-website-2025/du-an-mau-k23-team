@@ -348,10 +348,7 @@ const CheckoutPage = () => {
           <Select.Option value="Thanh toán khi nhận hàng">
             Thanh toán khi nhận hàng
           </Select.Option>
-          <Select.Option value="Chuyển khoản ngân hàng">
-            Chuyển khoản ngân hàng
-          </Select.Option>
-          <Select.Option value="Ví điện tử">Ví điện tử</Select.Option>
+          <Select.Option value="Ví điện tử">VNPAY</Select.Option>
         </Select>
       </Card>
 

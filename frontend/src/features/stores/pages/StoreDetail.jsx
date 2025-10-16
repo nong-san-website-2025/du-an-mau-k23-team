@@ -474,7 +474,7 @@ const StoreDetail = () => {
       </Row>
 
       {/* Floating Chat – no longer occupies layout */}
-      {(() => {
+      {/* {(() => {
         try {
           const ChatBox =
             require("../../stores/components/ChatBox.jsx").default;
@@ -494,7 +494,7 @@ const StoreDetail = () => {
         } catch (e) {
           return null;
         }
-      })()}
+      })()} */}
     </Container>
   );
 };

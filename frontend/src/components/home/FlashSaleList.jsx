@@ -65,6 +65,10 @@ const FlashSaleList = () => {
 
   const slidesToShow = Math.min(6, flashItems.length);
 
+  if (!loading && flashItems.length === 0) {
+    return null;
+  }
+
   return (
     <div className="flash-sale-section py-3">
       <div className="container">

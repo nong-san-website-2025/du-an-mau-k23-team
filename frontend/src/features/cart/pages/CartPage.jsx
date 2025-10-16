@@ -5,7 +5,6 @@ import { Card, Button, Modal, Checkbox, Popover } from "antd";
 import { Store, Ticket, TicketIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { productApi } from "../../products/services/productApi";
-import { Helmet } from "react-helmet";
 import QuantityInput from "./QuantityInput";
 import "../styles/CartPage.css";
 
@@ -117,32 +116,25 @@ function CartPage() {
 
   if (cartItems.length === 0) {
     return (
-      <div className="cart-empty text-center my-5">
-        <Helmet>
-          <title>Giỏ hàng</title>
-          <meta name="description" content="Giỏ hàng" />
-        </Helmet>
-        <h2>Giỏ hàng của bạn đang trống</h2>
-        <Button
-          type="primary"
-          icon={<Store />}
-          onClick={() => navigate("/")}
-          style={{ marginTop: 20 }}
-        >
-          Đi tới chợ
-        </Button>
-      </div>
+      <>
+        <div className="cart-empty text-center my-5">
+          <h2>Giỏ hàng của bạn đang trống</h2>
+          <Button
+            type="primary"
+            icon={<Store />}
+            onClick={() => navigate("/")}
+            style={{ marginTop: 20 }}
+          >
+            Đi tới chợ
+          </Button>
+        </div>
+      </>
     );
   }
 
   return (
-    <div className="cart-page" style={{ padding: "16px 120px" }}>
-      <Helmet>
-        <title>Giỏ hàng</title>
-        <meta name="description" content="Giỏ hàng" />
-      </Helmet>
-
-      <div className="cart-container ">
+    <div className="cart-page">
+      <div className="cart-container" style={{ padding: "16px 120px" }}>
         {/* LEFT: Danh sách sản phẩm */}
         <div className="cart-left">
           {Object.entries(groupedItems).map(
@@ -202,8 +194,8 @@ function CartPage() {
                         ₫
                       </div>
                       <div
-                        className="item-quantity "
-                        style={{ paddingLeft: 32 }}
+                        className="item-quantity  "
+                        style={{ paddingLeft: 48 }}
                       >
                         <QuantityInput item={item} itemId={itemId} />
                       </div>
