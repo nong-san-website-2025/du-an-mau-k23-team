@@ -177,27 +177,28 @@ const ProductDetailPage = () => {
   }, [id, user]);
 
   const handleAddToCart = async () => {
-    // 👈 không cần (e, product) vì product đã có trong scope
     if (!product) return;
 
-    // 🚫 Ngăn không cho thêm giỏ nếu là sắp có hoặc hết hàng
-    if (
-      product.status === "coming_soon" ||
-      product.status === "comingsoon" ||
-      product.status === "sapco" ||
-      product.status === "sắp có"
-    ) {
-      toast.info("Sản phẩm sắp có, vui lòng đặt trước khi có hàng.", {
+    const status = (product.status || "").toLowerCase().trim();
+    const isComingSoon =
+      status.includes("coming_soon") ||
+      status.includes("comingsoon") ||
+      status.includes("sắp") ||
+      status.includes("sap");
+
+    // Nếu là sản phẩm sắp có → cho phép đặt trước
+    if (isComingSoon) {
+      toast.info("Sản phẩm sắp có, bạn có thể đặt trước.", {
         position: "bottom-right",
       });
       return;
     }
-    if (product.stock <= 0) {
-      toast.warning("Sản phẩm đã hết hàng.", { position: "bottom-right" });
-      return;
-    }
 
-    // Helper: lấy product ID từ cart item
+    // Nếu hết hàng mà không phải sắp có → cho phép đặt trước (preorder)
+    const isOutOfStock = product.stock <= 0;
+    const preorder = isOutOfStock;
+
+    // Nếu đến đây thì có thể thêm vào giỏ
     const getProductId = (item) => {
       return (
         item.product_data?.id ||
@@ -210,7 +211,7 @@ const ProductDetailPage = () => {
     );
 
     if (existingItem) {
-      await updateQuantity(product.id, existingItem.quantity + quantity); // 👈 cộng thêm quantity hiện tại
+      await updateQuantity(product.id, existingItem.quantity + quantity);
       message.success("Đã cập nhật số lượng trong giỏ hàng!");
       return;
     }
@@ -218,7 +219,7 @@ const ProductDetailPage = () => {
     setAdding(true);
     await addToCart(
       product.id,
-      quantity, // 👈 dùng quantity thay vì 1
+      quantity,
       {
         id: product.id,
         name: product.name,
@@ -229,9 +230,13 @@ const ProductDetailPage = () => {
             : product.image?.startsWith("http")
               ? product.image
               : "",
+        // Thêm flag preorder để CartContext/Backend biết đây là đặt trước
+        preorder,
       },
       () => {
-        message.success("Đã thêm sản phẩm vào giỏ hàng!");
+        if (preorder)
+          message.success("Đã thêm sản phẩm vào giỏ hàng (Đặt trước)!");
+        else message.success("Đã thêm sản phẩm vào giỏ hàng!");
         setAdding(false);
       },
       () => {
@@ -276,39 +281,53 @@ const ProductDetailPage = () => {
   const handleBuyNow = async () => {
     if (!product) return;
 
-    if (
-      product.status === "coming_soon" ||
-      product.status === "comingsoon" ||
-      product.status === "sapco" ||
-      product.status === "sắp có"
-    ) {
-      toast.info("Sản phẩm sắp có, chưa thể mua ngay.", {
+    const status = (product.status || "").toLowerCase().trim();
+    const isComingSoon =
+      status.includes("coming_soon") ||
+      status.includes("comingsoon") ||
+      status.includes("sắp") ||
+      status.includes("sap");
+
+    if (isComingSoon) {
+      toast.success("Đã ghi nhận đơn đặt trước sản phẩm này!", {
         position: "bottom-right",
       });
       return;
     }
 
-    if (product.stock <= 0) {
-      toast.warning("Sản phẩm đã hết hàng.", { position: "bottom-right" });
-      return;
-    }
+    // Nếu hết hàng → chuyển hướng vẫn cho phép đặt trước: thêm vào giỏ với preorder flag
+    const isOutOfStock = product.stock <= 0;
+    const preorder = isOutOfStock;
+
+    // Nếu có sẵn → thêm vào giỏ và chuyển đến trang thanh toán
+    setAdding(true);
     await addToCart(
       product.id,
       quantity,
       {
         id: product.id,
         name: product.name,
+        price: Number(product.discounted_price ?? product.price) || 0,
         image:
           product.image && product.image.startsWith("/")
             ? `http://localhost:8000${product.image}`
-            : product.image,
-        price: Number(product.discounted_price ?? product.price) || 0,
+            : product.image?.startsWith("http")
+              ? product.image
+              : "",
+        preorder,
       },
-      () => {},
-      () => {}
+      () => {
+        if (preorder)
+          message.success("Đã thêm sản phẩm vào giỏ hàng (Đặt trước)!");
+        else message.success("Đã thêm sản phẩm vào giỏ hàng!");
+        setAdding(false);
+        navigate("/cart"); // hoặc navigate("/checkout") tùy luồng bạn
+      },
+      () => {
+        message.error("Không thể thêm vào giỏ hàng");
+        setAdding(false);
+      }
     );
-    selectOnlyByProductId(product.id);
-    navigate("/checkout");
   };
 
   if (loading) {

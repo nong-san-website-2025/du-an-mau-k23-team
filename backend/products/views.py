@@ -267,14 +267,13 @@ class SearchAPIView(APIView):
         if not query:
             return Response({'products': [], 'sellers': [   ]})
 
-        # Chỉ dùng tìm kiếm chính xác
         products = Product.objects.filter(
             Q(name__icontains=query) |
             Q(description__icontains=query)
         ).distinct()[:20]
 
         sellers = Seller.objects.filter(
-            Q(store_name__icontains=query)
+            Q(store_name__icontains=query) 
         ).distinct()[:10]
 
         return Response({

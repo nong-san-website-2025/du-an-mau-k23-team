@@ -8,13 +8,26 @@ const { Text } = Typography;
 export default function ProductCard({ product, onAddToCart, onBuyNow }) {
   const navigate = useNavigate();
 
+  const rawStatus = (product.availability_status || product.status || "")
+    .toLowerCase()
+    .trim();
   const stock = Number(product.stock) || 0;
-  const status = (product.status || "").toLowerCase().trim();
 
-  // ✅ Logic xác định trạng thái
-  const isComingSoon = product.availability_status === "coming_soon";
-  const isOutOfStock = stock === 0 && !isComingSoon;
-  const orderedQuantity = Number(product.ordered_quantity) || 0;
+  console.log("🐞 STATUS CHECK:", {
+    name: product.name,
+    stock: product.stock,
+    availability_status: product.availability_status,
+    status: product.status,
+  });
+  // ✅ Nhận dạng trạng thái "coming soon"
+  const isComingSoon =
+    rawStatus.includes("coming_soon") ||
+    rawStatus.includes("comingsoon") ||
+    rawStatus.includes("sắp") ||
+    rawStatus.includes("sap");
+
+  // ✅ Hết hàng chỉ khi không phải "coming soon"
+  const isOutOfStock = !isComingSoon && stock <= 0;
 
   const handleDetailClick = () => navigate(`/product/${product.id}`);
 
@@ -66,21 +79,7 @@ export default function ProductCard({ product, onAddToCart, onBuyNow }) {
         ₫
       </Text>
 
-      {/* ✅ Hiển thị "Đã đặt X sản phẩm" nếu có */}
-      {/* {orderedQuantity > 0 && (
-        <Text
-          style={{
-            display: "block",
-            color: "#888",
-            marginBottom: 8,
-            fontSize: 13,
-          }}
-        >
-          Đã đặt {orderedQuantity} sản phẩm
-        </Text>
-      )} */}
-
-      {/* ✅ Nút thao tác tùy theo trạng thái */}
+      {/* ✅ Xử lý giao diện nút theo trạng thái */}
       {isComingSoon ? (
         <>
           <Button type="primary" danger onClick={handleDetailClick}>
@@ -91,25 +90,9 @@ export default function ProductCard({ product, onAddToCart, onBuyNow }) {
           </Text>
         </>
       ) : isOutOfStock ? (
-        <>
-          {product.productinfo?.expected_available_date ? (
-            <>
-              <Button type="primary" danger onClick={handleDetailClick}>
-                Đặt hàng trước
-              </Button>
-              <Text type="secondary" style={{ display: "block", marginTop: 4 }}>
-                Dự kiến có hàng:{" "}
-                {new Date(
-                  product.productinfo.expected_available_date
-                ).toLocaleDateString("vi-VN")}
-              </Text>
-            </>
-          ) : (
-            <Button disabled size="middle">
-              Sản phẩm đã hết hàng
-            </Button>
-          )}
-        </>
+        <Button disabled size="middle">
+          Sản phẩm đã hết hàng
+        </Button>
       ) : (
         <>
           <Button

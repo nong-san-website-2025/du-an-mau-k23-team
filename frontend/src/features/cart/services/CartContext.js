@@ -110,7 +110,7 @@ export const CartProvider = ({ children }) => {
             const guestProductId =
               guestItem.product_data?.id || guestItem.product;
             const existingItem = userCart.find(
-              (item) => (item.product?.id || item.product_id) == guestProductId
+              (item) => (item.product?.id || item.product_id) === guestProductId
             );
 
             if (existingItem) {
@@ -156,7 +156,12 @@ export const CartProvider = ({ children }) => {
     setLoading(true);
     try {
       if (isAuthenticated()) {
-        await API.post("cartitems/", { product_id: productId, quantity });
+        // Gửi thêm trường `preorder` nếu có (backend có thể bỏ qua nếu không hỗ trợ)
+        await API.post("cartitems/", {
+          product_id: productId,
+          quantity,
+          preorder: !!productInfo?.preorder,
+        });
         await fetchCart();
       } else {
         let items = getGuestCart();
@@ -166,6 +171,8 @@ export const CartProvider = ({ children }) => {
           items.push({
             product: productId,
             quantity,
+            // Lưu flag preorder cho item guest để UI/checkout biết
+            preorder: !!productInfo?.preorder,
             product_data: {
               id: productInfo?.id || productId,
               name: productInfo?.name || "",
@@ -212,7 +219,7 @@ export const CartProvider = ({ children }) => {
       // Guest: dùng productId để tìm
       const items = getGuestCart();
       const idx = items.findIndex(
-        (i) => (i.product_data?.id || i.product) == productId
+        (i) => (i.product_data?.id || i.product) === productId
       );
       if (idx >= 0) {
         items[idx].quantity = newQty;
@@ -243,7 +250,7 @@ export const CartProvider = ({ children }) => {
     } else {
       // Guest: xóa dựa trên productId
       const items = getGuestCart().filter(
-        (i) => (i.product_data?.id || i.product) != productId
+        (i) => (i.product_data?.id || i.product) !== productId
       );
       saveGuestCart(items);
       setCartItems(items.map((i) => ({ ...i, selected: true })));

@@ -19,16 +19,24 @@ function normalizeStatus(product) {
   const status = (product.status || "").toLowerCase().trim();
   const stock = Number(product.stock ?? 0);
 
-  if (["comingsoon", "coming_soon", "sắpcó", "sapco"].includes(status)) {
+  // Ưu tiên nhận diện "sắp có"
+  if (
+    ["comingsoon", "coming_soon", "sắp có", "sap co", "sắpcó", "sapco"].some(
+      (s) => status.includes(s)
+    )
+  ) {
     return "coming_soon";
   }
 
+  // Nếu tồn kho hết → hết hàng
   if (stock <= 0) {
     return "out_of_stock";
   }
 
+  // Còn lại → có sẵn
   return "in_stock";
 }
+
 // ===== Helper: Refresh Token =====
 async function refreshToken() {
   const refresh = getRefreshToken();

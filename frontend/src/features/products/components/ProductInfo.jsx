@@ -21,15 +21,23 @@ const ProductInfo = ({
   const status = (product.availability_status || product.status || "")
     .toLowerCase()
     .trim();
+  const rawStatus = (product.availability_status || "").toLowerCase().trim();
+  const stock = Number(product.stock) || 0;
 
+  // ✅ Xác định “Sắp có”
   const isComingSoon =
-    status === "coming_soon" ||
-    status === "sắp có" ||
-    status === "sapco" ||
-    status === "sap co" ||
-    status === "comingsoon";
+    rawStatus.includes("coming_soon") ||
+    rawStatus.includes("comingsoon") ||
+    rawStatus.includes("sắp") ||
+    rawStatus.includes("sap");
 
-  const isOutOfStock = !isComingSoon && product.stock <= 0;
+  // ✅ Nếu là “sắp có” thì KHÔNG bao giờ bị coi là hết hàng
+  const isOutOfStock = !isComingSoon && stock <= 0;
+  console.log("RENDER STATUS:", {
+    isComingSoon,
+    isOutOfStock,
+    status: product.status,
+  });
 
   // 🔹 Lấy thông tin thời gian & sản lượng dự kiến từ backend
   const availableFrom =
@@ -161,7 +169,7 @@ const ProductInfo = ({
 
       {/* 🔹 Các nút hành động */}
       <Space size="middle">
-        {/* 🔹 Nếu là sản phẩm sắp có */}
+        {/* 🔹 Ưu tiên hiển thị sản phẩm sắp có */}
         {isComingSoon ? (
           <>
             <Button
@@ -172,39 +180,25 @@ const ProductInfo = ({
             >
               Đặt trước
             </Button>
-            {/* <Text type="warning" style={{ marginLeft: 12 }}>
-              Sắp có từ {availableFrom || "?"} đến {availableTo || "?"} (
-              {estimatedQuantity || 0} sản phẩm)
-            </Text> */}
-          </>
-        ) : /* 🔹 Nếu hết hàng nhưng có dự kiến (season_start/season_end) → vẫn cho đặt trước */
-        isOutOfStock && (availableFrom || availableTo) ? (
-          <>
-            <Button
-              type="primary"
-              size="large"
-              danger
-              onClick={() => onBuyNow(product)}
-            >
-              Đặt trước
-            </Button>
-            <Text type="warning" style={{ marginLeft: 12 }}>
-              Dự kiến có hàng từ {availableFrom || "?"} đến {availableTo || "?"}
+            <Text type="warning" style={{ display: "block", marginTop: 4 }}>
+              Sản phẩm sắp có
             </Text>
           </>
-        ) : /* 🔹 Nếu hết hàng thật sự, không có dự kiến */
-        isOutOfStock ? (
-          <Button disabled size="large">
-            Hết hàng
-          </Button>
+        ) : isOutOfStock ? (
+          <>
+            <Button type="primary" size="large" danger onClick={onBuyNow}>
+              Đặt trước
+            </Button>
+            <Text type="secondary" style={{ display: "block", marginTop: 4 }}>
+              Hết hàng — bạn có thể đặt trước
+            </Text>
+          </>
         ) : (
-          /* 🔹 Nếu còn hàng bình thường */
           <>
             <Button
               type="primary"
               size="large"
               icon={<ShoppingCartOutlined />}
-              loading={adding}
               onClick={onAddToCart}
             >
               Thêm vào giỏ
