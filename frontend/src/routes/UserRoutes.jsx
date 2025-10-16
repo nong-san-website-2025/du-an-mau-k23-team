@@ -23,6 +23,16 @@ import SearchResultsPage from "../pages/SearchResultPage";
 import ResetPasswordPage from "../features/login_register/components/ResetPasswordForm";
 
 
+// Customer Service Pages
+import HelpCenter from "../pages/CustomerService/HelpCenter";
+import BuyingGuide from "../pages/CustomerService/BuyingGuide";
+import WarrantyPolicy from "../pages/CustomerService/WarrantyPolicy";
+import ReturnPolicy from "../pages/CustomerService/ReturnPolicy";
+import ContactSupport from "../pages/CustomerService/ContactSupport";
+import SellingGuide from "../pages/CustomerService/SellingGuide";
+
+  
+
 export const userRoutes = [
   <Route path="/" element={<Layout />} key="layout">
     <Route index element={<HomePage />} />
@@ -32,6 +42,11 @@ export const userRoutes = [
     <Route path="products/:id" element={<ProductDetailPage />} />
     <Route path="cart" element={<CartPage />} />
     <Route path="featured" element={<FeaturedProductsPage />} />
+    <Route path="help-center" element={<HelpCenter />} />
+    <Route path="buying-guide" element={<BuyingGuide />} />
+    <Route path="warranty-policy" element={<WarrantyPolicy />} />
+    <Route path="return-policy" element={<ReturnPolicy />} />
+    <Route path="contact-support" element={<ContactSupport />} />
     <Route path="wishlist" element={<Wishlist />} />
     <Route path="abouts" element={<AboutPage />} />
     <Route path="store" element={<StoreList />} />
@@ -39,7 +54,6 @@ export const userRoutes = [
     <Route path="search/" element={<SearchResultsPage />} />
     <Route path="/reset-password/:uidb64/:token/" element={<ResetPasswordPage />} />
     <Route path="checkout" element={<CheckoutPage />} />
-
 
     {/* Private routes */}
     <Route element={<PrivateRoute />}>
@@ -51,5 +65,6 @@ export const userRoutes = [
       <Route path="/notifications" element={<NotificationPage />} />
       
     </Route>
-  </Route>
+  </Route>,
+  <Route path="/selling-guide" element={<SellingGuide />} />
 ];

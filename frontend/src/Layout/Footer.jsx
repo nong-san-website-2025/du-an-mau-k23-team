@@ -49,19 +49,24 @@ export default function Footer() {
               Dịch vụ khách hàng
             </h6>
             <ul className="list-unstyled mb-0">
-              {[
-                "Trung tâm trợ giúp",
-                "Hướng dẫn mua hàng",
-                "Chính sách bảo hành",
-                "Chính sách đổi trả",
-                "Liên hệ hỗ trợ",
-              ].map((item, i) => (
-                <li key={i}>
-                  <a href="#" className={linkClass}>
-                    {item}
-                  </a>
+              <li>
+                <Link to="/buying-guide" className={linkClass}>Hướng dẫn mua hàng</Link>
+              </li>
+               <li>
+                  <Link to="/selling-guide" className={linkClass}>Hướng Dẫn Bán Hàng</Link>
                 </li>
-              ))}
+               <li>
+                <Link to="/contact-support" className={linkClass}>Liên hệ hỗ trợ</Link>
+                 </li>
+              <li>
+                <Link to="/help-center" className={linkClass}>Trung tâm trợ giúp</Link>
+              </li>
+              <li>
+                <Link to="/return-policy" className={linkClass}>Chính sách đổi trả</Link>
+              </li>
+              <li>
+                <Link to="/warranty-policy" className={linkClass}>Chính sách bảo hành</Link>
+                </li>
             </ul>
           </div>
 
