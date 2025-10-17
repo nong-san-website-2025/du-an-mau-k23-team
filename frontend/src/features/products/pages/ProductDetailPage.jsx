@@ -278,6 +278,7 @@ const ProductDetailPage = () => {
   };
 
   // Mua ngay
+  // Mua ngay / Đặt trước
   const handleBuyNow = async () => {
     if (!product) return;
 
@@ -287,19 +288,43 @@ const ProductDetailPage = () => {
       status.includes("comingsoon") ||
       status.includes("sắp") ||
       status.includes("sap");
+    const isOutOfStock = product.stock <= 0;
 
-    if (isComingSoon) {
-      toast.success("Đã ghi nhận đơn đặt trước sản phẩm này!", {
-        position: "bottom-right",
-      });
+    // ✅ Nếu là sắp có hoặc hết hàng → xử lý "Đặt trước"
+    if (isComingSoon || isOutOfStock) {
+      try {
+        const stored = JSON.parse(localStorage.getItem("preorders")) || [];
+        const exists = stored.find((p) => String(p.id) === String(product.id));
+
+        if (!exists) {
+          stored.push({
+            id: product.id,
+            name: product.name,
+            image:
+              product.image && product.image.startsWith("/")
+                ? `http://localhost:8000${product.image}`
+                : product.image,
+            price: Number(product.discounted_price ?? product.price) || 0,
+            date: new Date().toISOString(),
+          });
+          localStorage.setItem("preorders", JSON.stringify(stored));
+        }
+
+        toast.success("✅ Sản phẩm đã được thêm vào danh sách đặt trước!", {
+          position: "bottom-right",
+        });
+
+        navigate("/preorders"); // 👉 chuyển sang trang lưu trữ đặt trước
+      } catch (err) {
+        console.error(err);
+        toast.error("Không thể lưu đơn đặt trước!", {
+          position: "bottom-right",
+        });
+      }
       return;
     }
 
-    // Nếu hết hàng → chuyển hướng vẫn cho phép đặt trước: thêm vào giỏ với preorder flag
-    const isOutOfStock = product.stock <= 0;
-    const preorder = isOutOfStock;
-
-    // Nếu có sẵn → thêm vào giỏ và chuyển đến trang thanh toán
+    // ✅ Nếu còn hàng → xử lý mua bình thường
     setAdding(true);
     await addToCart(
       product.id,
@@ -314,14 +339,12 @@ const ProductDetailPage = () => {
             : product.image?.startsWith("http")
               ? product.image
               : "",
-        preorder,
+        preorder: false,
       },
       () => {
-        if (preorder)
-          message.success("Đã thêm sản phẩm vào giỏ hàng (Đặt trước)!");
-        else message.success("Đã thêm sản phẩm vào giỏ hàng!");
+        message.success("Đã thêm sản phẩm vào giỏ hàng!");
         setAdding(false);
-        navigate("/cart"); // hoặc navigate("/checkout") tùy luồng bạn
+        navigate("/cart");
       },
       () => {
         message.error("Không thể thêm vào giỏ hàng");
@@ -411,11 +434,81 @@ const ProductDetailPage = () => {
               status={product.status}
             />
           </div>
-          {/* {product?.ordered_quantity > 0 && (
-            <p style={{ marginTop: 12, color: "#888", fontSize: 15 }}>
-              Đã có {product.ordered_quantity} sản phẩm được đặt
-            </p>
-          )} */}
+          {(product.status === "coming_soon" ||
+            product.status === "sắp có") && (
+            <div
+              style={{
+                marginTop: 12,
+                color: "#444",
+                fontSize: 15,
+                background: "#fffbe6",
+                padding: "14px 16px",
+                borderRadius: 8,
+                border: "1px solid #ffe58f",
+              }}
+            >
+              <p style={{ marginBottom: 6 }}>
+                <strong>Đã đặt trước:</strong>{" "}
+                <b style={{ color: "#1890ff" }}>
+                  {product.ordered_quantity || 0}
+                </b>{" "}
+                sản phẩm
+              </p>
+
+              <p style={{ marginBottom: 8 }}>
+                <strong>Cần đặt:</strong>{" "}
+                <b style={{ color: "#faad14" }}>
+                  {Math.max(
+                    (product.expected_quantity ||
+                      product.estimated_quantity ||
+                      0) - (product.ordered_quantity || 0),
+                    0
+                  ).toLocaleString("vi-VN")}
+                </b>{" "}
+                sản phẩm
+              </p>
+
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <Input
+                  type="number"
+                  min={1}
+                  value={quantity}
+                  onChange={(e) => setQuantity(Number(e.target.value))}
+                  style={{ width: 100 }}
+                />
+                <Button
+                  type="primary"
+                  onClick={async () => {
+                    try {
+                      const res = await productApi.preorderProduct(
+                        product.id,
+                        quantity
+                      );
+                      toast.success(
+                        `✅ Đặt trước ${quantity} sản phẩm thành công!`,
+                        {
+                          position: "bottom-right",
+                        }
+                      );
+                      // Cập nhật lại số lượng đã đặt
+                      setProduct((prev) => ({
+                        ...prev,
+                        ordered_quantity:
+                          (prev.ordered_quantity || 0) + Number(quantity),
+                      }));
+                      setQuantity(1);
+                    } catch (err) {
+                      toast.error("Không thể đặt trước sản phẩm này!", {
+                        position: "bottom-right",
+                      });
+                    }
+                  }}
+                >
+                  Đặt trước
+                </Button>
+              </div>
+            </div>
+          )}
         </Space>
       </Card>
 

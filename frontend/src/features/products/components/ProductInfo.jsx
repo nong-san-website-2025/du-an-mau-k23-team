@@ -6,6 +6,10 @@ import {
   PlusOutlined,
   ClockCircleOutlined,
 } from "@ant-design/icons";
+import { useNavigate } from "react-router-dom";
+import { message } from "antd";
+
+import { Modal, InputNumber } from "antd";
 
 const { Title, Text } = Typography;
 
@@ -17,6 +21,22 @@ const ProductInfo = ({
   onBuyNow,
   adding,
 }) => {
+  const navigate = useNavigate();
+  
+  const handlePreOrder = () => {
+    navigate("/preorder", {
+      state: {
+        product: {
+          id: product.id,
+          name: product.name,
+          price: product.price,
+          image: product.image,
+          available_from: product.available_from,
+        },
+      },
+    });
+  };
+
   // ✅ Ưu tiên đọc field availability_status từ backend
   const status = (product.availability_status || product.status || "")
     .toLowerCase()
@@ -38,6 +58,22 @@ const ProductInfo = ({
     isOutOfStock,
     status: product.status,
   });
+
+  // Guest preorders (localStorage) - tổng số lượng guest đã lưu cho sản phẩm này
+  let guestPreorderQty = 0;
+  try {
+    const stored = JSON.parse(localStorage.getItem("preorders") || "[]");
+    const entry = stored.find((p) => String(p.id) === String(product.id));
+    if (entry) guestPreorderQty = Number(entry.quantity || 0);
+  } catch (e) {
+    guestPreorderQty = 0;
+  }
+
+  const totalPreordered =
+    Number(product.preordered_quantity || product.total_preordered || 0) +
+    (guestPreorderQty || 0);
+  const userPreordered =
+    Number(product.user_preordered || 0) || guestPreorderQty;
 
   // 🔹 Lấy thông tin thời gian & sản lượng dự kiến từ backend
   const availableFrom =
@@ -137,6 +173,7 @@ const ProductInfo = ({
             <Tag icon={<ClockCircleOutlined />} color="orange">
               Sản phẩm sắp có
             </Tag>
+
             <Text>
               <strong>Thời gian dự kiến có hàng:</strong>{" "}
               {availableFrom
@@ -147,6 +184,7 @@ const ProductInfo = ({
                   }`
                 : "Đang cập nhật"}
             </Text>
+
             <Text>
               <strong>Sản lượng ước tính:</strong>{" "}
               {estimatedQuantity > 0
@@ -154,15 +192,10 @@ const ProductInfo = ({
                 : "Chưa xác định"}
             </Text>
 
-            {/* {(product.ordered_quantity > 0 || product.sold_quantity > 0) && (
-              <Text>
-                <strong>Đã có:</strong>{" "}
-                {(
-                  product.ordered_quantity || product.sold_quantity
-                ).toLocaleString("vi-VN")}{" "}
-                lượt đặt hàng
-              </Text>
-            )} */}
+            <Text>
+              <strong>Đã đặt trước:</strong>{" "}
+              {Number(totalPreordered || 0).toLocaleString("vi-VN")} sản phẩm
+            </Text>
           </Space>
         </div>
       )}
@@ -180,18 +213,25 @@ const ProductInfo = ({
             >
               Đặt trước
             </Button>
-            <Text type="warning" style={{ display: "block", marginTop: 4 }}>
+            {/* <Text type="warning" style={{ display: "block", marginTop: 4 }}>
               Sản phẩm sắp có
-            </Text>
+            </Text> */}
           </>
         ) : isOutOfStock ? (
           <>
             <Button type="primary" size="large" danger onClick={onBuyNow}>
               Đặt trước
             </Button>
-            <Text type="secondary" style={{ display: "block", marginTop: 4 }}>
-              Hết hàng — bạn có thể đặt trước
-            </Text>
+            <div style={{ display: "block", marginTop: 8 }}>
+              <Text type="secondary">Hết hàng — bạn có thể đặt trước</Text>
+              <div>
+                <Text style={{ marginLeft: 8 }}>
+                  <strong>Đã đặt trước:</strong>{" "}
+                  {Number(totalPreordered || 0).toLocaleString("vi-VN")} sản
+                  phẩm
+                </Text>
+              </div>
+            </div>
           </>
         ) : (
           <>

@@ -68,20 +68,10 @@ async function request(endpoint, options = {}, { auth = false } = {}) {
 
   let response = await fetch(url, config);
 
-  // Nếu token hết hạn, thử refresh
-  if (response.status === 401 && auth) {
-    try {
-      const newToken = await refreshToken();
-      config.headers.Authorization = `Bearer ${newToken}`;
-      response = await fetch(url, config);
-    } catch {
-      throw new Error("Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại");
-    }
-  }
-
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || "Có lỗi xảy ra");
+    const text = await response.text(); // ✅ đọc lỗi chi tiết
+    console.error("❌ API Error:", response.status, text); // ✅ in log
+    throw new Error("Có lỗi xảy ra");
   }
 
   return response.json();
@@ -153,6 +143,17 @@ export const productApi = {
           };
         }
       })
+    );
+  },
+
+  preorderProduct(productId, quantity) {
+    return request(
+      `/products/${productId}/preorder/`,
+      {
+        method: "POST",
+        body: JSON.stringify({ quantity }),
+      },
+      { auth: true }
     );
   },
 

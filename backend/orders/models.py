@@ -2,6 +2,8 @@ from django.db import models
 from django.utils import timezone
 from products.models import Product
 from users.models import CustomUser
+from django.contrib.auth.models import User
+from django.conf import settings
 
 # Thêm model Cart và CartItem để mỗi user có một giỏ hàng riêng
 class Cart(models.Model):
@@ -102,3 +104,17 @@ class Complaint(models.Model):
 
     def __str__(self):
         return f"Complaint {self.id} - Order {self.order.id}"
+    
+class Preorder(models.Model):
+    user = models.ForeignKey(
+    settings.AUTH_USER_MODEL,
+    on_delete=models.CASCADE,
+    related_name='preorders'
+)
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='preorders')
+    quantity = models.PositiveIntegerField(default=1)
+    preorder_date = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=50, default='pending')
+
+    def __str__(self):
+        return f"{self.user.username} - {self.product.name}"

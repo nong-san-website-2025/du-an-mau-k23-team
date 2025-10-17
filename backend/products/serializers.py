@@ -42,7 +42,10 @@ class ProductSerializer(serializers.ModelSerializer):
     seller = serializers.PrimaryKeyRelatedField(read_only=True)
     sold_count = serializers.SerializerMethodField()
     discount_percent = serializers.IntegerField(read_only=False, required=False)  # ✅ thêm field này
-
+    preordered_quantity = serializers.IntegerField(read_only=True)
+    available_quantity = serializers.SerializerMethodField()
+    total_preordered = serializers.SerializerMethodField()
+    user_preordered = serializers.SerializerMethodField()
     class Meta:
         model = Product
         fields = [
@@ -52,7 +55,7 @@ class ProductSerializer(serializers.ModelSerializer):
             'category', 'store', 'status', 'seller', 'sold_count', 'discount_percent', "is_hidden", "availability_status",
             "season_start", "season_end", "estimated_quantity", "preordered_quantity", 'ordered_quantity',
             "is_coming_soon",
-            "is_out_of_stock",
+            "is_out_of_stock", "available_quantity", "total_preordered", "user_preordered"
         ]
         read_only_fields = ["status", "seller"]
 
@@ -94,6 +97,17 @@ class ProductSerializer(serializers.ModelSerializer):
             return None  # hoặc số lượng vô hạn nếu bạn muốn
         # Nếu có sẵn → dựa vào stock
         return obj.stock
+    
+    def get_total_preordered(self, obj):
+        from django.db.models import Sum
+        return obj.preorders.aggregate(total=Sum('quantity'))['total'] or 0
+
+    def get_user_preordered(self, obj):
+        request = self.context.get('request')
+        if request and hasattr(request, 'user') and request.user.is_authenticated:
+            preorder = obj.preorders.filter(user=request.user).aggregate(total=Sum('quantity'))['total']
+            return preorder or 0
+        return 0
 
 
     def get_sold_quantity(self, obj):
@@ -111,6 +125,13 @@ class ProductSerializer(serializers.ModelSerializer):
         if obj.availability_status == "coming_soon":
             return False
         return obj.stock <= 0
+    
+    def get_available_quantity(self, obj):
+        if obj.availability_status == "coming_soon":
+            if obj.estimated_quantity is not None:
+                return max(obj.estimated_quantity - obj.preordered_quantity, 0)
+            return None
+        return obj.stock
 
 
 class ProductListSerializer(serializers.ModelSerializer):
@@ -123,6 +144,10 @@ class ProductListSerializer(serializers.ModelSerializer):
     seller_name = serializers.SerializerMethodField()
     sold_count = serializers.SerializerMethodField()
     discount_percent = serializers.IntegerField(required=False)
+    preordered_quantity = serializers.IntegerField(read_only=True)
+    available_quantity = serializers.SerializerMethodField()
+    total_preordered = serializers.SerializerMethodField()
+    user_preordered = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
@@ -134,8 +159,8 @@ class ProductListSerializer(serializers.ModelSerializer):
             'seller', 'seller_name', 'sold_count', 'discount_percent',
             "availability_status", "season_start", "season_end", "estimated_quantity", "preordered_quantity",
             "is_coming_soon",
-            "is_out_of_stock",
-        ]
+            "is_out_of_stock",  "available_quantity", "total_preordered", "user_preordered",
+        ] 
         read_only_fields = ["id", "created_at", "updated_at", "seller"]
 
 
@@ -171,7 +196,23 @@ class ProductListSerializer(serializers.ModelSerializer):
         if obj.availability_status == "coming_soon":
             return False
         return obj.stock <= 0
+    
+    def get_available_quantity(self, obj):
+        if obj.availability_status == "coming_soon":
+            if obj.estimated_quantity is not None:
+                return max(obj.estimated_quantity - obj.preordered_quantity, 0)
+            return None
+        return obj.stock
+    def get_total_preordered(self, obj):
+        from django.db.models import Sum
+        return obj.preorders.aggregate(total=Sum('quantity'))['total'] or 0
 
+    def get_user_preordered(self, obj):
+        request = self.context.get('request')
+        if request and hasattr(request, 'user') and request.user.is_authenticated:
+            preorder = obj.preorders.filter(user=request.user).aggregate(total=Sum('quantity'))['total']
+            return preorder or 0
+        return 0
 
 
 class SubcategoryCreateSerializer(serializers.ModelSerializer):
