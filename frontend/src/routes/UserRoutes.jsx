@@ -24,12 +24,15 @@ import ResetPasswordPage from "../features/login_register/components/ResetPasswo
 
 
 // Customer Service Pages
-import HelpCenter from "../pages/CustomerService/HelpCenter";
 import BuyingGuide from "../pages/CustomerService/BuyingGuide";
 import WarrantyPolicy from "../pages/CustomerService/WarrantyPolicy";
 import ReturnPolicy from "../pages/CustomerService/ReturnPolicy";
 import ContactSupport from "../pages/CustomerService/ContactSupport";
 import SellingGuide from "../pages/CustomerService/SellingGuide";
+import PrimarySecurity from "../pages/CustomerService/primarysecurity";
+import Recruitment from "../pages/CustomerService/Recruitment";
+import Termsofservice from "../pages/CustomerService/Termsofservice";
+
 
   
 
@@ -42,11 +45,13 @@ export const userRoutes = [
     <Route path="products/:id" element={<ProductDetailPage />} />
     <Route path="cart" element={<CartPage />} />
     <Route path="featured" element={<FeaturedProductsPage />} />
-    <Route path="help-center" element={<HelpCenter />} />
     <Route path="buying-guide" element={<BuyingGuide />} />
-    <Route path="warranty-policy" element={<WarrantyPolicy />} />
-    <Route path="return-policy" element={<ReturnPolicy />} />
-    <Route path="contact-support" element={<ContactSupport />} />
+    <Route path="warrantypolicy" element={<WarrantyPolicy />} />
+    <Route path="returnpolicy" element={<ReturnPolicy />} />
+  <Route path="contactsupport" element={<ContactSupport />} />
+    <Route path="primarysecurity" element={<PrimarySecurity />} />
+  <Route path="recruitment" element={<Recruitment />} />
+  <Route path="terms-of-service" element={<Termsofservice />} />
     <Route path="wishlist" element={<Wishlist />} />
     <Route path="abouts" element={<AboutPage />} />
     <Route path="store" element={<StoreList />} />

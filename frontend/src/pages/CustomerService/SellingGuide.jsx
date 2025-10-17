@@ -17,6 +17,7 @@ import {
 
 import Header from "../../Layout/Header";
 import Footer from "../../Layout/Footer";
+import { Link } from "react-router-dom";
 
 export default function SellingGuide() {
   // ...existing code...
@@ -113,18 +114,20 @@ export default function SellingGuide() {
                   Tạo tài khoản người bán chỉ mất vài phút.  
                   Hãy mang sản phẩm nông sản chất lượng của bạn đến cộng đồng GreenFarm!
                 </Typography.Paragraph>
-                <Button
-                  type="primary"
-                  size="large"
-                  style={{
-                    backgroundColor: "#52c41a",
-                    borderColor: "#52c41a",
-                    borderRadius: 24,
-                    padding: "0 28px",
-                  }}
-                >
-                  Đăng ký ngay
-                </Button>
+                <Link to="/register-seller">
+                  <Button
+                    type="primary"
+                    size="large"
+                    style={{
+                      backgroundColor: "#52c41a",
+                      borderColor: "#52c41a",
+                      borderRadius: 24,
+                      padding: "0 28px",
+                    }}
+                  >
+                    Đăng ký ngay
+                  </Button>
+                </Link>
               </Card>
             </Col>
           </Row>
