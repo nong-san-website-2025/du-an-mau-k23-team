@@ -12,6 +12,7 @@ import {
 } from "../services/api/homepageApi.js";
 import FlashSaleList from "../components/Home/FlashSaleList.jsx";
 import { getBannersByPosition } from "../features/admin/services/marketingApi.js";
+import QuickAccessBar from "../components/Home/QuickAccessBar.jsx";
 export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState([]);
@@ -76,7 +77,6 @@ export default function HomePage() {
         {/* Bên trái: Carousel lớn */}
         <div style={{ flex: 7 }}>
           <BannerSlider />
-          
         </div>
 
         {/* Bên phải: 2 banner nhỏ */}
@@ -114,10 +114,13 @@ export default function HomePage() {
           />
         </div>
       </div>
-      <HomeProductTabs />
+
+      <QuickAccessBar />
 
       {/* Danh Mục Nổi Bật */}
       <CategorySection categories={categories} />
+
+      <HomeProductTabs />
 
       <FlashSaleList />
 
