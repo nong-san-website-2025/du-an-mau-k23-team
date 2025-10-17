@@ -22,7 +22,8 @@ from django.db.models import Sum
 from orders.models import OrderItem  # giả sử bảng chi tiết đơn hàng tên là OrderItem
 from django.db.models.functions import Concat
 from django.contrib.postgres.search import TrigramSimilarity
-
+from orders.models import Preorder
+    
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
@@ -190,6 +191,40 @@ class ProductViewSet(viewsets.ModelViewSet):
         products = self.get_queryset().filter(status='approved', is_hidden=False).order_by('-created_at')[:12]
         serializer = ProductListSerializer(products, many=True, context={'request': request})
         return Response(serializer.data)
+    
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def preorder(self, request, pk=None):
+        product = self.get_object()
+        quantity = int(request.data.get('quantity', 0))
+
+        if product.availability_status != "coming_soon":
+            return Response({"detail": "Sản phẩm này không thể đặt trước."}, status=400)
+
+        if quantity <= 0:
+            return Response({"detail": "Số lượng đặt không hợp lệ."}, status=400)
+
+        # kiểm tra giới hạn
+        if product.estimated_quantity is not None:
+            remaining = product.estimated_quantity - product.preordered_quantity
+            if quantity > remaining:
+                return Response({"detail": f"Chỉ còn {remaining} sản phẩm có thể đặt trước."}, status=400)
+
+        # cập nhật số lượng đặt trước
+        product.preordered_quantity += quantity
+        product.save()
+
+        return Response({
+            "message": f"Đặt trước thành công {quantity} sản phẩm.",
+            "preordered_quantity": product.preordered_quantity,
+            "remaining": (
+                product.estimated_quantity - product.preordered_quantity
+                if product.estimated_quantity is not None
+                else None
+            ),
+        }, status=200)
+
+
 
 # ---------------- CategoryViewSet ----------------
 class CategoryViewSet(viewsets.ModelViewSet):
@@ -335,3 +370,31 @@ def top_products(request):
         })
 
     return Response(data)
+
+
+
+class PreorderCreateView(generics.CreateAPIView):
+    """
+    API để tạo đơn đặt trước sản phẩm
+    """
+    def post(self, request, *args, **kwargs):
+        product_id = request.data.get("product_id")
+        quantity = request.data.get("quantity", 1)
+
+        if not product_id:
+            return Response({"error": "Thiếu product_id"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Kiểm tra sản phẩm có tồn tại không
+        try:
+            product = Product.objects.get(id=product_id)
+        except Product.DoesNotExist:
+            return Response({"error": "Sản phẩm không tồn tại"}, status=status.HTTP_404_NOT_FOUND)
+
+        # Tạo đơn đặt trước (giả sử bạn có model Preorder)
+        preorder = Preorder.objects.create(
+            product=product,
+            quantity=quantity,
+            customer=request.user if request.user.is_authenticated else None,
+        )
+
+        return Response({"message": "Đặt trước thành công", "preorder_id": preorder.id}, status=status.HTTP_201_CREATED)

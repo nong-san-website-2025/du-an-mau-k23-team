@@ -21,6 +21,7 @@ import NotificationPage from "../features/users/pages/NotificationPage";
 import PaymentResultPage from "../features/cart/pages/PaymentResultPage";
 import SearchResultsPage from "../pages/SearchResultPage";
 import ResetPasswordPage from "../features/login_register/components/ResetPasswordForm";
+import PreorderPage from "../pages/PreorderPage";
 
 
 export const userRoutes = [
@@ -49,6 +50,8 @@ export const userRoutes = [
       <Route path="register-seller" element={<SellerRegisterPage />} />
       <Route path="/payment/result" element={<PaymentResultPage />} />
       <Route path="/notifications" element={<NotificationPage />} />
+      <Route path="/preorders" element={<PreorderPage />} />
+
       
     </Route>
   </Route>

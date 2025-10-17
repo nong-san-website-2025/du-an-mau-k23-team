@@ -544,6 +544,12 @@ export default function UserActions({
                 </Link>
               </Menu.Item>
 
+              <Menu.Item key="preorders">
+                <Link style={{ textDecoration: "none" }} to="/preorders">
+                  Đặt trước
+                </Link>
+              </Menu.Item>
+
               {/* Cửa hàng */}
               <Menu.Item
                 key="seller"

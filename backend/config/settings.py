@@ -62,6 +62,8 @@ INSTALLED_APPS = [
     "system",
 
     'system_settings',
+
+    
 ]
 
 # --- Email

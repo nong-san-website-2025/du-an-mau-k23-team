@@ -1,4 +1,5 @@
 from django.db import models
+from django.conf import settings    
 class Category(models.Model):
     name = models.CharField(max_length=100)
     key = models.CharField(max_length=50, unique=True)
@@ -96,8 +97,31 @@ class Product(models.Model):
         from orders.models import OrderItem
         total = OrderItem.objects.filter(product=self).aggregate(models.Sum("quantity"))["quantity__sum"]
         return total or 0
+    
+    @property
+    def preordered_quantity(self):
+        """Tổng số lượng đặt trước cho sản phẩm này"""
+        
+        total = self.preorders.aggregate(models.Sum("quantity"))["quantity__sum"]
+        return total or 0
 
 
 class ProductFeature(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="features")
     name = models.CharField(max_length=50)
+
+
+
+# class Preorder(models.Model):
+#     user = models.ForeignKey(
+#         settings.AUTH_USER_MODEL,
+#         on_delete=models.CASCADE,
+#         related_name="preorders"
+#     )
+#     product = models.ForeignKey(
+#         Product,
+#         on_delete=models.CASCADE,
+#         related_name="preorders"  # 👈 thêm dòng này
+#     )
+#     quantity = models.PositiveIntegerField()
+#     created_at = models.DateTimeField(auto_now_add=True)

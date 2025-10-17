@@ -53,6 +53,7 @@ urlpatterns = [
     path("api/", include("system.urls")),
     path('api/', include('system_settings.urls')),
 
+    path("api/preorders/", include("orders.urls")),
 ]
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
