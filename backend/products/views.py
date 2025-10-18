@@ -210,15 +210,20 @@ class ProductViewSet(viewsets.ModelViewSet):
             if quantity > remaining:
                 return Response({"detail": f"Chỉ còn {remaining} sản phẩm có thể đặt trước."}, status=400)
 
-        # cập nhật số lượng đặt trước
-        product.preordered_quantity += quantity
-        product.save()
+        # Tạo một bản Preorder thay vì cố gắng gán vào property read-only
+        try:
+            Preorder.objects.create(user=request.user, product=product, quantity=quantity)
+        except Exception as e:
+            return Response({"detail": f"Không thể lưu đặt trước: {str(e)}"}, status=500)
+
+        # Lấy lại tổng số lượng đã đặt trước từ aggregate property
+        total_preordered = product.preordered_quantity
 
         return Response({
             "message": f"Đặt trước thành công {quantity} sản phẩm.",
-            "preordered_quantity": product.preordered_quantity,
+            "preordered_quantity": total_preordered,
             "remaining": (
-                product.estimated_quantity - product.preordered_quantity
+                product.estimated_quantity - total_preordered
                 if product.estimated_quantity is not None
                 else None
             ),

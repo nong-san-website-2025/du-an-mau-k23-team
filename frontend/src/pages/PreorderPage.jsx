@@ -20,7 +20,7 @@ import { useLocation } from "react-router-dom";
 import axios from "axios";
 import { useCart } from "../features/cart/services/CartContext";
 
-import { InputNumber } from "antd";
+// Không cần InputNumber nữa, chọn số lượng trên trang sản phẩm
 
 const { Title, Text } = Typography;
 
@@ -108,24 +108,10 @@ const PreOrderPage = () => {
                   <Tag color="orange">Sắp có</Tag>
                 </Space>
 
-                {/* 🔹 Ô nhập số lượng */}
+                {/* 🔹 Số lượng (không chỉnh sửa ở đây) */}
                 <div style={{ marginTop: 12 }}>
                   <Text strong>Số lượng:</Text>
-                  <InputNumber
-                    min={1}
-                    value={item.quantity}
-                    onChange={(value) => {
-                      const updated = preOrders.map((p) =>
-                        p.id === item.id ? { ...p, quantity: value } : p
-                      );
-                      setPreOrders(updated);
-                      localStorage.setItem(
-                        "preorders",
-                        JSON.stringify(updated)
-                      );
-                    }}
-                    style={{ marginLeft: 8, width: 80 }}
-                  />
+                  <Text style={{ marginLeft: 8 }}>{item.quantity || 1}</Text>
                 </div>
 
                 {/* 🔹 Nút hành động */}
