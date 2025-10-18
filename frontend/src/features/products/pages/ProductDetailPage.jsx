@@ -379,14 +379,20 @@ const ProductDetailPage = () => {
         onOk={async () => {
           const qty = Number(preorderQty) || 1;
           try {
+            const preorderItem = {
+              id: product.id,
+              name: product.name,
+              image:
+                product.image && product.image.startsWith("/")
+                  ? `http://localhost:8000${product.image}`
+                  : product.image,
+              price: Number(product.discounted_price ?? product.price) || 0,
+              quantity: qty,
+              date: new Date().toISOString(),
+            };
+
             if (user) {
               await productApi.preorderProduct(product.id, qty);
-              toast.success(`✅ Đã đặt trước ${qty} sản phẩm!`, {
-                position: "bottom-right",
-              });
-              // Cập nhật state sản phẩm nếu backend trả về số liệu (tốt nhất là fetch lại)
-              const updated = await productApi.getProduct(product.id);
-              setProduct(updated);
             } else {
               const stored = JSON.parse(
                 localStorage.getItem("preorders") || "[]"
@@ -395,34 +401,17 @@ const ProductDetailPage = () => {
                 (p) => String(p.id) === String(product.id)
               );
               if (exists) {
-                exists.quantity = (exists.quantity || 0) + qty;
+                exists.quantity += qty;
                 exists.date = new Date().toISOString();
               } else {
-                stored.push({
-                  id: product.id,
-                  name: product.name,
-                  image:
-                    product.image && product.image.startsWith("/")
-                      ? `http://localhost:8000${product.image}`
-                      : product.image,
-                  price: Number(product.discounted_price ?? product.price) || 0,
-                  quantity: qty,
-                  date: new Date().toISOString(),
-                });
+                stored.push(preorderItem);
               }
               localStorage.setItem("preorders", JSON.stringify(stored));
-              toast.success(
-                `✅ Đã lưu ${qty} sản phẩm vào danh sách đặt trước (guest)!`,
-                {
-                  position: "bottom-right",
-                }
-              );
             }
 
             setShowPreorderModal(false);
-            navigate("/preorders");
+            navigate("/preorders", { state: { product: preorderItem } });
           } catch (err) {
-            console.error(err);
             toast.error("Không thể đặt trước sản phẩm này!", {
               position: "bottom-right",
             });
@@ -525,20 +514,61 @@ const ProductDetailPage = () => {
                   type="primary"
                   onClick={async () => {
                     try {
-                      await productApi.preorderProduct(product.id, quantity);
-                      toast.success(
-                        `✅ Đặt trước ${quantity} sản phẩm thành công!`,
-                        {
-                          position: "bottom-right",
+                      if (user) {
+                        // Authenticated users -> call backend
+                        await productApi.preorderProduct(product.id, quantity);
+                        toast.success(
+                          `✅ Đặt trước ${quantity} sản phẩm thành công!`,
+                          {
+                            position: "bottom-right",
+                          }
+                        );
+                        // Cập nhật lại số lượng đã đặt (local state)
+                        setProduct((prev) => ({
+                          ...prev,
+                          ordered_quantity:
+                            (prev.ordered_quantity || 0) + Number(quantity),
+                        }));
+                        setQuantity(1);
+                      } else {
+                        // Guest -> save to localStorage (same shape as modal)
+                        const stored = JSON.parse(
+                          localStorage.getItem("preorders") || "[]"
+                        );
+                        const exists = stored.find(
+                          (p) => String(p.id) === String(product.id)
+                        );
+                        if (exists) {
+                          exists.quantity = (exists.quantity || 0) + quantity;
+                          exists.date = new Date().toISOString();
+                        } else {
+                          stored.push({
+                            id: product.id,
+                            name: product.name,
+                            image:
+                              product.image && product.image.startsWith("/")
+                                ? `http://localhost:8000${product.image}`
+                                : product.image,
+                            price:
+                              Number(
+                                product.discounted_price ?? product.price
+                              ) || 0,
+                            quantity: quantity,
+                            date: new Date().toISOString(),
+                          });
                         }
-                      );
-                      // Cập nhật lại số lượng đã đặt
-                      setProduct((prev) => ({
-                        ...prev,
-                        ordered_quantity:
-                          (prev.ordered_quantity || 0) + Number(quantity),
-                      }));
-                      setQuantity(1);
+                        localStorage.setItem(
+                          "preorders",
+                          JSON.stringify(stored)
+                        );
+                        toast.success(
+                          `✅ Đã lưu ${quantity} sản phẩm vào danh sách đặt trước (guest)!`,
+                          { position: "bottom-right" }
+                        );
+                        setQuantity(1);
+                        // Optionally navigate to preorders page
+                        navigate("/preorders");
+                      }
                     } catch (err) {
                       toast.error("Không thể đặt trước sản phẩm này!", {
                         position: "bottom-right",

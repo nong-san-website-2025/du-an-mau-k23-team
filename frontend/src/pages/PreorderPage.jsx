@@ -10,17 +10,10 @@ import {
   Space,
   message,
 } from "antd";
-import {
-  EyeOutlined,
-  DeleteOutlined,
-  ClockCircleOutlined,
-} from "@ant-design/icons";
-import { useNavigate } from "react-router-dom";
-import { useLocation } from "react-router-dom";
+import { DeleteOutlined, ClockCircleOutlined } from "@ant-design/icons";
+import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import { useCart } from "../features/cart/services/CartContext";
-
-// Không cần InputNumber nữa, chọn số lượng trên trang sản phẩm
 
 const { Title, Text } = Typography;
 
@@ -31,7 +24,6 @@ const PreOrderPage = () => {
   const { addToCart } = useCart();
 
   useEffect(() => {
-    // Nếu có sản phẩm truyền sang từ ProductInfo thì thêm tạm vào danh sách
     if (state?.product) {
       setPreOrders([state.product]);
     } else {
@@ -45,6 +37,56 @@ const PreOrderPage = () => {
     setPreOrders(updated);
     localStorage.setItem("preorders", JSON.stringify(updated));
     message.success("Đã xóa khỏi danh sách đặt trước");
+  };
+
+  const handlePlaceOrder = async (item) => {
+    try {
+      // Nếu user đã đăng nhập → gọi backend
+      const token = localStorage.getItem("token");
+      if (token) {
+        await axios.post(
+          "/api/preorders/",
+          {
+            items: [
+              {
+                product: item.id,
+                quantity: item.quantity,
+                price: item.price || 0,
+              },
+            ],
+          },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+      }
+
+      // Thêm vào giỏ hàng
+      addToCart(
+        item.id,
+        item.quantity,
+        {
+          id: item.id,
+          name: item.name,
+          price: item.price || 0,
+          image: item.image,
+          preorder: true,
+        },
+        () => {},
+        () => {}
+      );
+
+      // Xóa khỏi danh sách đặt trước
+      const updated = preOrders.filter((p) => p.id !== item.id);
+      setPreOrders(updated);
+      localStorage.setItem("preorders", JSON.stringify(updated));
+
+      message.success("Sản phẩm đã vào giỏ hàng. Chuyển đến thanh toán...");
+      navigate("/cart"); // ✅ chuyển thẳng sang giỏ hàng
+    } catch (err) {
+      console.error(err);
+      message.error(
+        `Lỗi khi đặt hàng: ${err.response?.data?.detail || err.message}`
+      );
+    }
   };
 
   return (
@@ -95,7 +137,6 @@ const PreOrderPage = () => {
                   <Text strong style={{ color: "#52c41a" }}>
                     {item.price?.toLocaleString("vi-VN")} VNĐ
                   </Text>
-
                   {item.available_from && (
                     <Text type="secondary" style={{ fontSize: 13 }}>
                       <ClockCircleOutlined />{" "}
@@ -104,17 +145,14 @@ const PreOrderPage = () => {
                       )}
                     </Text>
                   )}
-
                   <Tag color="orange">Sắp có</Tag>
                 </Space>
 
-                {/* 🔹 Số lượng (không chỉnh sửa ở đây) */}
                 <div style={{ marginTop: 12 }}>
                   <Text strong>Số lượng:</Text>
                   <Text style={{ marginLeft: 8 }}>{item.quantity || 1}</Text>
                 </div>
 
-                {/* 🔹 Nút hành động */}
                 <div
                   style={{
                     marginTop: 16,
@@ -122,62 +160,7 @@ const PreOrderPage = () => {
                     justifyContent: "space-between",
                   }}
                 >
-                  <Button
-                    type="primary"
-                    onClick={async () => {
-                      try {
-                        // 🔹 Gọi API backend
-                        // Lưu ý: backend OrderCreateSerializer.create() đang tìm trường `product` chứ không phải `product_id`.
-                        await axios.post(
-                          "/api/preorders/",
-                          {
-                            items: [
-                              {
-                                product: item.id,
-                                quantity: item.quantity,
-                                price: item.price || 0,
-                              },
-                            ],
-                          },
-                          {
-                            headers: {
-                              Authorization: `Bearer ${localStorage.getItem("token")}`,
-                            },
-                          }
-                        );
-
-                        // 🔹 Thêm vào giỏ hàng — gọi đúng chữ ký addToCart(productId, quantity, productInfo, ...)
-                        addToCart(
-                          item.id,
-                          item.quantity,
-                          {
-                            id: item.id,
-                            name: item.name,
-                            price: item.price || 0,
-                            image: item.image,
-                          },
-                          () => {},
-                          () => {}
-                        );
-
-                        message.success(
-                          "Đặt hàng thành công! Sản phẩm đã vào giỏ hàng."
-                        );
-                        navigate("/cart");
-                      } catch (err) {
-                        // Hiển thị chi tiết lỗi trả về từ server (nếu có)
-                        console.error("Preorder error:", err);
-                        console.error("Server response:", err.response?.data);
-                        message.error(
-                          `Lỗi khi đặt hàng: ${
-                            err.response?.data?.detail ||
-                            JSON.stringify(err.response?.data) ||
-                            err.message
-                          }`
-                        );
-                      }
-                    }}
-                  >
+                  <Button type="primary" onClick={() => handlePlaceOrder(item)}>
                     Đặt hàng
                   </Button>
                   <Button

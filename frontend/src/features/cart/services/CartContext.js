@@ -202,7 +202,7 @@ export const CartProvider = ({ children }) => {
       // Đã đăng nhập: cần tìm `item.id` từ `cartItems`
       const item = cartItems.find(
         (i) =>
-          (i.product?.id || i.product_id || i.product_data?.id || i.product) ==
+          (i.product?.id || i.product_id || i.product_data?.id || i.product) ===
           productId
       );
       if (!item) return;
@@ -236,7 +236,7 @@ export const CartProvider = ({ children }) => {
       // Tìm cart item có product = productId
       const item = cartItems.find(
         (i) =>
-          (i.product?.id || i.product_id || i.product_data?.id || i.product) ==
+          (i.product?.id || i.product_id || i.product_data?.id || i.product) ===
           productId
       );
       if (!item) return;
