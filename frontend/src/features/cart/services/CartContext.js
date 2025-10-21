@@ -1,3 +1,4 @@
+// src/features/cart/services/CartContext.jsx
 import React, {
   createContext,
   useContext,
@@ -11,6 +12,13 @@ import { productApi } from "../../products/services/productApi";
 
 const CartContext = createContext();
 export const useCart = () => useContext(CartContext);
+
+// Hàm helper trích xuất product ID nhất quán
+const getItemProductId = (item) =>
+  item.product_data?.id ||
+  item.product?.id ||
+  item.product_id ||
+  item.product;
 
 export const CartProvider = ({ children }) => {
   const [cartItems, setCartItems] = useState([]);
@@ -41,14 +49,11 @@ export const CartProvider = ({ children }) => {
     try {
       if (isAuthenticated()) {
         const res = await API.get("cartitems/");
-
-        // Lấy danh sách item từ server
         const items = res.data;
 
-        // Fetch chi tiết product nếu thiếu
         const itemsWithDetails = await Promise.all(
           items.map(async (item) => {
-            if (item.product_data && item.product_data.name) {
+            if (item.product_data?.name) {
               return { ...item, selected: true };
             } else {
               try {
@@ -73,7 +78,6 @@ export const CartProvider = ({ children }) => {
             }
           })
         );
-
         setCartItems(itemsWithDetails);
       } else {
         const guestItems = getGuestCart().map((i) => ({
@@ -85,41 +89,36 @@ export const CartProvider = ({ children }) => {
     } catch (err) {
       console.error("❌ Lỗi khi fetch giỏ hàng:", err);
       setCartItems([]);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, [isAuthenticated, getGuestCart]);
 
-  // Load cart on mount / location change
   useEffect(() => {
     fetchCart();
-  }, [fetchCart]); // chỉ chạy 1 lần khi component mount
+  }, [fetchCart]);
 
-  // Thay thế useEffect cũ (dựa vào localStorage) bằng useEffect lắng nghe sự kiện
+  // Sync guest cart on login
   useEffect(() => {
     const handleUserLoggedIn = async () => {
       const guestCart = getGuestCart();
       if (guestCart.length > 0 && !isSyncing) {
         setIsSyncing(true);
         try {
-          // 1. Lấy giỏ hàng hiện tại của user
           const userCartRes = await API.get("cartitems/");
           const userCart = userCartRes.data || [];
 
-          // 2. Đồng bộ guest cart vào user cart
           for (const guestItem of guestCart) {
-            const guestProductId =
-              guestItem.product_data?.id || guestItem.product;
+            const guestProductId = getItemProductId(guestItem);
             const existingItem = userCart.find(
-              (item) => (item.product?.id || item.product_id) === guestProductId
+              (item) => getItemProductId(item) === guestProductId
             );
 
             if (existingItem) {
-              // Cập nhật số lượng
               await API.patch(`cartitems/${existingItem.id}/`, {
                 quantity: existingItem.quantity + guestItem.quantity,
               });
             } else {
-              // Thêm mới
               await API.post("cartitems/", {
                 product_id: guestProductId,
                 quantity: guestItem.quantity,
@@ -127,9 +126,8 @@ export const CartProvider = ({ children }) => {
             }
           }
 
-          // 3. Dọn dẹp guest cart
           localStorage.removeItem("guest_cart");
-          await fetchCart(); // Cập nhật UI
+          await fetchCart();
         } catch (err) {
           console.error("❌ Sync guest cart failed:", err);
           toast.error("Đồng bộ giỏ hàng từ chế độ khách thất bại");
@@ -140,12 +138,11 @@ export const CartProvider = ({ children }) => {
     };
 
     window.addEventListener("user-logged-in", handleUserLoggedIn);
-    return () =>
-      window.removeEventListener("user-logged-in", handleUserLoggedIn);
+    return () => window.removeEventListener("user-logged-in", handleUserLoggedIn);
   }, [getGuestCart, fetchCart, isSyncing]);
 
   // Add item
-  const addToCart = async (
+  const addToCart = useCallback(async (
     productId,
     quantity = 1,
     productInfo,
@@ -156,7 +153,6 @@ export const CartProvider = ({ children }) => {
     setLoading(true);
     try {
       if (isAuthenticated()) {
-        // Gửi thêm trường `preorder` nếu có (backend có thể bỏ qua nếu không hỗ trợ)
         await API.post("cartitems/", {
           product_id: productId,
           quantity,
@@ -165,13 +161,13 @@ export const CartProvider = ({ children }) => {
         await fetchCart();
       } else {
         let items = getGuestCart();
-        const idx = items.findIndex((i) => i.product === productId);
-        if (idx >= 0) items[idx].quantity += quantity;
-        else
+        const idx = items.findIndex((i) => getItemProductId(i) === productId);
+        if (idx >= 0) {
+          items[idx].quantity += quantity;
+        } else {
           items.push({
             product: productId,
             quantity,
-            // Lưu flag preorder cho item guest để UI/checkout biết
             preorder: !!productInfo?.preorder,
             product_data: {
               id: productInfo?.id || productId,
@@ -179,98 +175,97 @@ export const CartProvider = ({ children }) => {
               price: productInfo?.price || 0,
             },
           });
+        }
         saveGuestCart(items);
         setCartItems(items.map((i) => ({ ...i, selected: true })));
       }
-
-      if (onSuccess) onSuccess(); // ✅ gọi callback khi thành công
+      onSuccess?.();
     } catch (err) {
       console.error(err);
       toast.error("Không thể thêm vào giỏ hàng");
-      if (onError) onError(err); // ✅ gọi callback khi lỗi
+      onError?.(err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [isAuthenticated, fetchCart, getGuestCart, saveGuestCart]);
 
   // Update quantity
-  // Trong CartContext.js
-  const updateQuantity = async (productId, newQty) => {
-    if (newQty < 1) return removeFromCart(productId);
+  const updateQuantity = useCallback(async (productId, newQty) => {
+    if (newQty < 1) {
+      await removeFromCart(productId);
+      return;
+    }
 
     if (isAuthenticated()) {
-      // Đã đăng nhập: cần tìm `item.id` từ `cartItems`
-      const item = cartItems.find(
-        (i) =>
-          (i.product?.id || i.product_id || i.product_data?.id || i.product) ==
-          productId
-      );
+      const item = cartItems.find(i => getItemProductId(i) == productId);
       if (!item) return;
 
       try {
         await API.patch(`cartitems/${item.id}/`, { quantity: newQty });
-        setCartItems((prev) =>
-          prev.map((i) => (i.id === item.id ? { ...i, quantity: newQty } : i))
+        setCartItems(prev =>
+          prev.map(i => (i.id === item.id ? { ...i, quantity: newQty } : i))
         );
       } catch (err) {
         console.error("Lỗi cập nhật số lượng:", err);
+        toast.error("Cập nhật số lượng thất bại");
       }
     } else {
-      // Guest: dùng productId để tìm
       const items = getGuestCart();
-      const idx = items.findIndex(
-        (i) => (i.product_data?.id || i.product) === productId
-      );
+      const idx = items.findIndex(i => getItemProductId(i) === productId);
       if (idx >= 0) {
         items[idx].quantity = newQty;
         saveGuestCart(items);
-        setCartItems(items.map((i) => ({ ...i, selected: true })));
+        setCartItems(items.map(i => ({ ...i, selected: true })));
       }
     }
-  };
+  }, [cartItems, isAuthenticated, getGuestCart, saveGuestCart]);
 
-  // Remove item
-  // Remove item by PRODUCT ID (not cart item ID)
-  const removeFromCart = async (productId) => {
+  // ✅ FIXED: removeFromCart không còn bị stale state
+  const removeFromCart = useCallback(async (productId) => {
+    if (!productId) return;
+
     if (isAuthenticated()) {
-      // Tìm cart item có product = productId
-      const item = cartItems.find(
-        (i) =>
-          (i.product?.id || i.product_id || i.product_data?.id || i.product) ==
-          productId
-      );
-      if (!item) return;
+      // Dùng cartItems hiện tại (có thể stale, nhưng thường OK)
+      const item = cartItems.find(i => getItemProductId(i) == productId);
+      if (!item?.id) {
+        console.warn("Item not found for deletion:", productId);
+        return;
+      }
 
       try {
         await API.delete(`cartitems/${item.id}/`);
-        await fetchCart();
+        await fetchCart(); // ✅ Đồng bộ lại toàn bộ giỏ
       } catch (err) {
-        console.error(err);
+        console.error("Failed to delete cart item:", err);
+        toast.error("Xóa sản phẩm thất bại");
       }
     } else {
-      // Guest: xóa dựa trên productId
-      const items = getGuestCart().filter(
-        (i) => (i.product_data?.id || i.product) !== productId
-      );
-      saveGuestCart(items);
-      setCartItems(items.map((i) => ({ ...i, selected: true })));
+      // ✅ Guest: luôn đọc từ localStorage → không stale
+      const current = getGuestCart();
+      const filtered = current.filter(i => getItemProductId(i) != productId);
+      saveGuestCart(filtered);
+      setCartItems(filtered.map(i => ({ ...i, selected: true })));
     }
-  };
+  }, [cartItems, isAuthenticated, fetchCart, getGuestCart, saveGuestCart]);
 
   // Clear cart
-  const clearCart = async () => {
+  const clearCart = useCallback(async () => {
     if (isAuthenticated()) {
       for (const item of cartItems) {
-        await API.delete(`cartitems/${item.id}/`);
+        try {
+          await API.delete(`cartitems/${item.id}/`);
+        } catch (err) {
+          console.error("Error deleting item:", err);
+        }
       }
     }
     setCartItems([]);
     saveGuestCart([]);
-  };
+  }, [cartItems, isAuthenticated, saveGuestCart]);
 
-  // Clear only selected items
+  // Clear selected items
   const clearSelectedItems = useCallback(async () => {
-    const selectedItems = cartItems.filter((item) => item.selected);
+    const selectedItems = cartItems.filter(item => item.selected);
     if (isAuthenticated()) {
       for (const item of selectedItems) {
         try {
@@ -280,55 +275,43 @@ export const CartProvider = ({ children }) => {
         }
       }
     }
-    // Update local state: remove selected items
-    setCartItems((prev) => prev.filter((item) => !item.selected));
-    // Update guest cart: remove selected items
+    // Update state
+    setCartItems(prev => prev.filter(item => !item.selected));
+    // Update guest cart
     const guestItems = getGuestCart();
     const updatedGuestItems = guestItems.filter(
-      (item) =>
-        !selectedItems.some(
-          (selected) =>
-            selected.product === item.product ||
-            selected.product_id === item.product
-        )
+      item => !selectedItems.some(sel => getItemProductId(sel) === getItemProductId(item))
     );
     saveGuestCart(updatedGuestItems);
   }, [cartItems, isAuthenticated, getGuestCart, saveGuestCart]);
 
-  // Lắng nghe sự kiện clear-cart từ Orders page khi VNPAY success
+  // Event listener for payment success
   useEffect(() => {
-    const handler = async () => {
-      try {
-        await clearSelectedItems(); // Chỉ xóa những item đã chọn
-      } catch (e) {}
-    };
+    const handler = () => clearSelectedItems();
     window.addEventListener("clear-cart", handler);
     return () => window.removeEventListener("clear-cart", handler);
   }, [clearSelectedItems]);
 
-  // Tick/untick
-  const selectAllItems = () =>
-    setCartItems((prev) => prev.map((i) => ({ ...i, selected: true })));
-  const deselectAllItems = () =>
-    setCartItems((prev) => prev.map((i) => ({ ...i, selected: false })));
-  const toggleItem = (itemId) =>
-    setCartItems((prev) =>
-      prev.map((i) =>
-        i.id === itemId || i.product === itemId
-          ? { ...i, selected: !i.selected }
-          : i
-      )
-    );
+  // Selection handlers
+  const selectAllItems = useCallback(() =>
+    setCartItems(prev => prev.map(i => ({ ...i, selected: true }))), []);
+  const deselectAllItems = useCallback(() =>
+    setCartItems(prev => prev.map(i => ({ ...i, selected: false }))), []);
 
-  // Select only one product by productId (works for both guest and server cart shapes)
-  const selectOnlyByProductId = (productId) =>
-    setCartItems((prev) =>
-      prev.map((i) => {
-        const pid =
-          i.product?.id || i.product_id || i.product_data?.id || i.product;
-        return { ...i, selected: String(pid) === String(productId) };
-      })
-    );
+  const toggleItem = useCallback((productId) =>
+    setCartItems(prev =>
+      prev.map(i =>
+        getItemProductId(i) == productId ? { ...i, selected: !i.selected } : i
+      )
+    ), []);
+
+  const selectOnlyByProductId = useCallback((productId) =>
+    setCartItems(prev =>
+      prev.map(i => ({
+        ...i,
+        selected: String(getItemProductId(i)) === String(productId)
+      }))
+    ), []);
 
   return (
     <CartContext.Provider
@@ -345,6 +328,7 @@ export const CartProvider = ({ children }) => {
         deselectAllItems,
         toggleItem,
         selectOnlyByProductId,
+        getItemProductId, // expose helper if needed elsewhere
       }}
     >
       {children}

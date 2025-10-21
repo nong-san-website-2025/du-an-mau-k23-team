@@ -3,10 +3,9 @@ import {
   IonPage,
   IonHeader,
   IonToolbar,
-  IonSearchbar,
   IonButtons,
-  IonButton,
-  IonIcon,
+  IonBackButton,
+  IonTitle,
   IonContent,
   IonGrid,
   IonRow,
@@ -16,47 +15,58 @@ import {
   IonCardTitle,
   IonImg,
   IonText,
+  IonButton,
+  IonIcon,
   IonSpinner,
   IonInfiniteScroll,
   IonInfiniteScrollContent,
 } from "@ionic/react";
-import { chatbubbleOutline, cartOutline } from "ionicons/icons";
-import { productApi } from "../api/productApi";
-import { useCart } from "../context/CartContext";
+import { cartOutline } from "ionicons/icons";
+import { useParams } from "react-router-dom";
+import { productApi } from "../../api/productApi";
+import { Product } from "../../types/models";
+import { useCart } from "../../context/CartContext";
 
-interface Product {
-  id: number;
-  name: string;
-  brand?: string;
-  price: number;
-  image?: string;
-}
-
-const Tab1: React.FC = () => {
+const ProductList: React.FC = () => {
+  const { subcategoryId } = useParams<{ subcategoryId: string }>();
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [visibleProducts, setVisibleProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(true);
-  const { addToCart, cartItemCount } = useCart();
+  const { addToCart } = useCart();
 
-  const ITEMS_PER_LOAD = 10; // 👈 số sản phẩm load mỗi lần
+  const ITEMS_PER_LOAD = 10;
+
+  // Hàm format giá VND
+  const formatPriceVND = (price: number) => {
+    return price
+      .toLocaleString("vi-VN", {
+        style: "currency",
+        currency: "VND",
+        minimumFractionDigits: 0,
+      })
+      .replace("₫", "")
+      .trim();
+  };
 
   useEffect(() => {
     const fetchProducts = async () => {
+      if (!subcategoryId) return;
       try {
         setLoading(true);
-        const data = await productApi.getAllProducts();
+        setError(null);
+        const data = await productApi.getProductsBySubcategory(Number(subcategoryId));
 
         if (!Array.isArray(data)) {
-          throw new Error("API không trả về danh sách sản phẩm hợp lệ");
+          throw new Error("Dữ liệu sản phẩm không hợp lệ");
         }
 
         setAllProducts(data);
         setVisibleProducts(data.slice(0, ITEMS_PER_LOAD));
-        if (data.length <= ITEMS_PER_LOAD) setHasMore(false);
+        setHasMore(data.length > ITEMS_PER_LOAD);
       } catch (err) {
-        console.error(err);
+        console.error("Lỗi tải sản phẩm:", err);
         setError("Không thể tải sản phẩm");
       } finally {
         setLoading(false);
@@ -64,11 +74,10 @@ const Tab1: React.FC = () => {
     };
 
     fetchProducts();
-  }, []);
+  }, [subcategoryId]);
 
-  // Khi cuộn xuống gần cuối => load thêm 10 sản phẩm nữa
   const loadMore = async (e: CustomEvent<void>) => {
-    await new Promise((resolve) => setTimeout(resolve, 700)); // delay nhẹ cho UX
+    await new Promise((resolve) => setTimeout(resolve, 500)); // delay nhẹ
 
     const nextCount = visibleProducts.length + ITEMS_PER_LOAD;
     const nextProducts = allProducts.slice(0, nextCount);
@@ -81,63 +90,30 @@ const Tab1: React.FC = () => {
     (e.target as HTMLIonInfiniteScrollElement).complete();
   };
 
-  const formatPriceVND = (price: string | number) => {
-    const num = Number(price);
-    if (isNaN(num)) return price;
-    return num
-      .toLocaleString("vi-VN", {
-        style: "currency",
-        currency: "VND",
-        minimumFractionDigits: 0,
-      })
-      .replace("₫", "")
-      .trim();
-  };
-
   return (
     <IonPage>
-      <IonHeader>
-        <IonToolbar style={{ "--background": "#4caf50" }}>
-          <IonSearchbar placeholder="Search" showClearButton="focus" />
-          <IonButtons slot="end">
-            <IonButton>
-              <IonIcon icon={chatbubbleOutline} color="light" size="large" />
-            </IonButton>
-            <IonButton routerLink="/cart" style={{ position: "relative" }}>
-              <IonIcon icon={cartOutline} color="light" size="large" />
-              {cartItemCount > 0 && (
-                <div
-                  style={{
-                    position: "absolute",
-                    top: "-4px",
-                    right: "-4px",
-                    background: "red",
-                    color: "white",
-                    borderRadius: "50%",
-                    width: "16px",
-                    height: "16px",
-                    fontSize: "10px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontWeight: "bold",
-                  }}
-                >
-                  {cartItemCount > 9 ? "9+" : cartItemCount}
-                </div>
-              )}
-            </IonButton>
+      <IonHeader translucent>
+        <IonToolbar color="light">
+          <IonButtons slot="start">
+            <IonBackButton defaultHref="/category" />
           </IonButtons>
+          <IonTitle>Sản phẩm</IonTitle>
         </IonToolbar>
       </IonHeader>
 
       <IonContent className="ion-padding">
         {loading ? (
-          <div className="ion-text-center" style={{ padding: "20px" }}>
+          <div className="ion-text-center" style={{ padding: "40px" }}>
             <IonSpinner name="crescent" />
           </div>
         ) : error ? (
-          <IonText color="danger">{error}</IonText>
+          <IonText color="danger" style={{ display: "block", textAlign: "center", padding: "20px" }}>
+            {error}
+          </IonText>
+        ) : allProducts.length === 0 ? (
+          <IonText color="medium" style={{ display: "block", textAlign: "center", padding: "40px" }}>
+            Không có sản phẩm nào.
+          </IonText>
         ) : (
           <>
             <IonGrid>
@@ -149,14 +125,13 @@ const Tab1: React.FC = () => {
                         margin: "0",
                         borderRadius: "12px",
                         overflow: "hidden",
+                        boxShadow: "0 2px 6px rgba(0,0,0,0.08)",
                       }}
                     >
                       <IonImg
                         src={
                           product.image ||
-                          `https://via.placeholder.com/300x200?text=${encodeURIComponent(
-                            product.name
-                          )}`
+                          `https://via.placeholder.com/300x200?text=${encodeURIComponent(product.name)}`
                         }
                         style={{ height: "150px", objectFit: "cover" }}
                         alt={product.name}
@@ -166,7 +141,15 @@ const Tab1: React.FC = () => {
                           {product.brand || "Thương hiệu"}
                         </IonText>
                         <IonCardTitle
-                          style={{ fontSize: "1rem", fontWeight: "500" }}
+                          style={{
+                            fontSize: "1rem",
+                            fontWeight: "500",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            display: "-webkit-box",
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: "vertical",
+                          }}
                         >
                           {product.name}
                         </IonCardTitle>
@@ -179,11 +162,8 @@ const Tab1: React.FC = () => {
                         <IonButton
                           expand="block"
                           color="success"
-                          onClick={() => {
-                            // 👇 Loại bỏ brand nếu không cần thiết trong context
-                            const { ...productForCart } = product;
-                            addToCart(productForCart, 1);
-                          }}
+                          onClick={() => addToCart(product, 1)}
+                          style={{ marginTop: "8px" }}
                         >
                           <IonIcon icon={cartOutline} slot="start" />
                           Thêm vào giỏ
@@ -195,7 +175,6 @@ const Tab1: React.FC = () => {
               </IonRow>
             </IonGrid>
 
-            {/* Infinite Scroll */}
             <IonInfiniteScroll
               onIonInfinite={loadMore}
               threshold="100px"
@@ -203,7 +182,7 @@ const Tab1: React.FC = () => {
             >
               <IonInfiniteScrollContent
                 loadingSpinner="dots"
-                loadingText="Đang tải..."
+                loadingText="Đang tải thêm..."
               />
             </IonInfiniteScroll>
           </>
@@ -213,4 +192,4 @@ const Tab1: React.FC = () => {
   );
 };
 
-export default Tab1;
+export default ProductList;

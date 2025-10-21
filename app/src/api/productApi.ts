@@ -1,13 +1,40 @@
 // src/api/productApi.ts
-import { request } from "./api";
-import { Product, Category } from "../types/models";
+import { API } from "./api"; // ✅ Dùng API wrapper thay vì request trực tiếp
+import { Product, Category, Subcategory } from "../types/models";
 
 export const productApi = {
-  getAllProducts: (): Promise<Product[]> => request("/products/"),
-  // src/api/productApi.ts
-  getFeaturedProducts(): Promise<Product[]> {
-    return request<Product[]>("/products/top-products/"); // ✅ Đúng đường dẫn
+  // ===== PRODUCT =====
+  getAllProducts(): Promise<Product[]> {
+    return API.get("/products/");
   },
-  getProduct: (id: number): Promise<Product> => request(`/products/${id}/`),
-  getCategories: (): Promise<Category[]> => request("/products/categories/"),
+
+  getFeaturedProducts(): Promise<Product[]> {
+    return API.get("/products/top-products/");
+  },
+
+  getProduct(id: number): Promise<Product> {
+    return API.get(`/products/${id}/`);
+  },
+
+  // ===== CATEGORY =====
+  getCategories(): Promise<Category[]> {
+    return API.get("/products/categories/");
+  },
+
+  // ✅ ===== SUBCATEGORY =====
+  getSubcategories(categoryId: number): Promise<Subcategory[]> {
+    return API.get(`/products/categories/${categoryId}/subcategories/`);
+  },
+
+  getProducts(
+    params: { subcategory?: string; search?: string } = {}
+  ): Promise<Product[]> {
+    const query = new URLSearchParams(params).toString();
+    const url = query ? `/products/?${query}` : "/products/";
+    return API.get(url);
+  },
+
+  getProductsBySubcategory(subcategoryId: number): Promise<Product[]> {
+    return API.get(`/products/subcategories/${subcategoryId}/products/`);
+  },
 };

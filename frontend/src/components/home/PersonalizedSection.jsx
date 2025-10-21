@@ -17,16 +17,26 @@ const PersonalizedSection = ({ username }) => {
     rootMargin: "0px 0px 200px 0px",
   });
 
+  const shuffleArray = (array) => {
+    const newArray = [...array];
+    for (let i = newArray.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+    }
+    return newArray;
+  };
+
   useEffect(() => {
     if (inView && !hasLoaded) {
       const fetchProducts = async () => {
         setLoading(true);
         try {
           const data = await productApi.getAllProducts();
-          setProducts(data || []);
+          const shuffled = shuffleArray(data || []);
+          setProducts(shuffled.slice(0, 18)); // chỉ lấy 18
           setHasLoaded(true);
         } catch (error) {
-          console.error("❌ Lỗi tải sản phẩm gợi ý:", error.message);
+
         } finally {
           setLoading(false);
         }

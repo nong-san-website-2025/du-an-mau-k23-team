@@ -18,6 +18,7 @@ import "@ionic/react/css/palettes/dark.system.css";
 import "./theme/variables.css";
 import { CartProvider } from "./context/CartContext";
 import { ToastContainer } from "react-toastify";
+import { AuthProvider } from "./context/AuthContext";
 
 setupIonicReact();
 
@@ -28,30 +29,31 @@ if (Capacitor.isNativePlatform()) {
 }
 
 const App: React.FC = () => (
-  <CartProvider>
-    <IonApp>
-      <IonReactRouter>
-        <IonTabs>
-          <IonRouterOutlet>
-            <AppRoutes />
-          </IonRouterOutlet>
-          <TabNavigation />
-        </IonTabs>
-      </IonReactRouter>
-    </IonApp>
-    <ToastContainer
-      position="bottom-right"
-      autoClose={2000}
-      hideProgressBar={false}
-      newestOnTop={false}
-      closeOnClick
-      rtl={false}
-      pauseOnFocusLoss
-      draggable
-      pauseOnHover
-      
-    />
-  </CartProvider>
+  <AuthProvider>
+    <CartProvider>
+      <IonApp>
+        <IonReactRouter>
+          <IonTabs>
+            <IonRouterOutlet>
+              <AppRoutes />
+            </IonRouterOutlet>
+            <TabNavigation />
+          </IonTabs>
+        </IonReactRouter>
+      </IonApp>
+      <ToastContainer
+        position="bottom-right"
+        autoClose={2000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+      />
+    </CartProvider>
+  </AuthProvider>
 );
 
 export default App;

@@ -25,6 +25,13 @@ from django.contrib.postgres.search import TrigramSimilarity
 from orders.models import Preorder
     
 
+@api_view(['GET'])
+@permission_classes([AllowAny]) 
+def products_by_subcategory(request, subcategory_id):
+    products = Product.objects.filter(subcategory_id=subcategory_id, status='approved')
+    serializer = ProductListSerializer(products, many=True)
+    return Response(serializer.data)
+
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def products_by_seller(request, seller_id):

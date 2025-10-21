@@ -1,20 +1,29 @@
+// src/api/api.ts
+import { SecureStorage } from "./../utils/secureStorage"; // ✅ Import mới
+
 const API_URL = "http://10.0.2.2:8000/api";
 
-const getToken = (): string | null => localStorage.getItem("token");
-const getRefreshToken = (): string | null =>
-  localStorage.getItem("refresh_token");
-const clearAuth = () => {
-  localStorage.removeItem("token");
-  localStorage.removeItem("refresh_token");
+// ✅ DÙNG SECURE STORAGE THAY VÌ LOCALSTORAGE
+const getToken = async (): Promise<string | null> => {
+  return await SecureStorage.getToken();
 };
 
-const buildHeaders = (
+const getRefreshToken = async (): Promise<string | null> => {
+  return await SecureStorage.getRefreshToken();
+};
+
+const clearAuth = async () => {
+  await SecureStorage.removeToken();
+  await SecureStorage.removeRefreshToken();
+};
+
+const buildHeaders = async (
   isAuth = false,
   isFormData = false
-): Record<string, string> => {
+): Promise<Record<string, string>> => {
   const headers: Record<string, string> = {};
   if (isAuth) {
-    const token = getToken();
+    const token = await getToken();
     if (token) headers.Authorization = `Bearer ${token}`;
   }
   if (!isFormData) headers["Content-Type"] = "application/json";
@@ -22,7 +31,7 @@ const buildHeaders = (
 };
 
 const refreshToken = async (): Promise<string> => {
-  const refresh = getRefreshToken();
+  const refresh = await getRefreshToken();
   if (!refresh) throw new Error("Refresh token không tồn tại");
 
   const res = await fetch(`${API_URL}/token/refresh/`, {
@@ -34,7 +43,7 @@ const refreshToken = async (): Promise<string> => {
   if (!res.ok) throw new Error("Làm mới token thất bại");
 
   const data = await res.json();
-  localStorage.setItem("token", data.access);
+  await SecureStorage.setToken(data.access); // ✅ Lưu vào secure storage
   return data.access;
 };
 
@@ -46,7 +55,7 @@ async function request<T = unknown>(
 ): Promise<T> {
   const url = `${API_URL}${endpoint}`;
   const isFormData = options.body instanceof FormData;
-  const headers = buildHeaders(config.auth, isFormData);
+  const headers = await buildHeaders(config.auth, isFormData); // ✅ await
 
   const fetchConfig: RequestInit = {
     method: options.method || "GET",
@@ -64,7 +73,7 @@ async function request<T = unknown>(
       ).Authorization = `Bearer ${newToken}`;
       response = await fetch(url, fetchConfig);
     } catch {
-      clearAuth();
+      await clearAuth();
       throw new Error("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
     }
   }
@@ -75,7 +84,7 @@ async function request<T = unknown>(
       const err = await response.json();
       msg = err.message || err.detail || msg;
     } catch {
-      // Không cần xử lý thêm nếu JSON không hợp lệ
+      // ignore
     }
     throw new Error(msg);
   }
@@ -105,5 +114,5 @@ export const API = {
     request<T>(endpoint, { method: "DELETE" }, { auth }),
 };
 
-// ✅ Export toàn bộ những gì file khác cần
-export { getToken, clearAuth, request };
+// Export nếu cần (ít dùng)
+export { getToken, clearAuth };

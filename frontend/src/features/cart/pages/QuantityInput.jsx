@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { useCart } from "../services/CartContext";
 import { Modal, Button } from "antd";
-import { ExclamationCircleOutlined, InfoCircleOutlined } from "@ant-design/icons";
+import {
+  ExclamationCircleOutlined,
+  InfoCircleOutlined,
+} from "@ant-design/icons";
 import "../styles/QuantityInput.css";
 
 function QuantityInput({ item }) {
@@ -56,8 +59,12 @@ function QuantityInput({ item }) {
 
   const handleConfirmRemove = async () => {
     try {
-      const stableId = item.id || item.product_data?.id || item.product;
-      await removeFromCart(stableId);
+      const productId =
+        item.product_data?.id ||
+        item.product?.id ||
+        item.product_id ||
+        item.product;
+      await removeFromCart(productId);
     } finally {
       setShowConfirm(false);
     }
@@ -112,7 +119,11 @@ function QuantityInput({ item }) {
         onCancel={() => setShowStockNotice(false)}
         centered
         footer={[
-          <Button key="ok" type="primary" onClick={() => setShowStockNotice(false)}>
+          <Button
+            key="ok"
+            type="primary"
+            onClick={() => setShowStockNotice(false)}
+          >
             Đã hiểu
           </Button>,
         ]}
