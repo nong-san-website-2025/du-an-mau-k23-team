@@ -23,6 +23,7 @@ import StoreCard from "../components/StoreCard";
 import { productApi } from "../services/productApi";
 import { reviewApi } from "../services/reviewApi";
 import { useAuth } from "../../login_register/services/AuthContext";
+// import { usePreOrder } from "../context/PreOrderContext";
 
 const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
@@ -66,6 +67,8 @@ const ProductDetailPage = () => {
       setIsFavorite(false);
     }
   }, [id]);
+
+  
 
   // Thêm trong useEffect load dữ liệu
   useEffect(() => {
@@ -378,6 +381,48 @@ const ProductDetailPage = () => {
         okText="Xác nhận đặt"
         onOk={async () => {
           const qty = Number(preorderQty) || 1;
+
+          // 🟩 Lấy số lượng ước tính (hoặc tồn kho, tùy sản phẩm)
+          const totalEstimate =
+            Number(product?.estimated_quantity) ||
+            Number(product?.expected_quantity) ||
+            Number(product?.stock) ||
+            0;
+
+          // 🟥 Nếu không có số lượng ước tính
+          if (totalEstimate <= 0) {
+            toast.warning(
+              "⚠️ Sản phẩm chưa có số lượng ước tính, không thể đặt trước!",
+              {
+                position: "bottom-right",
+              }
+            );
+            return;
+          }
+
+          // 🟨 Số lượng đã đặt trước (từ product hoặc localStorage)
+          const ordered = Number(product?.ordered_quantity) || 0;
+          const remaining = totalEstimate - ordered;
+
+          // 🟦 Kiểm tra còn hàng đặt trước không
+          if (remaining <= 0) {
+            toast.warning("⚠️ Sản phẩm đã đạt giới hạn đặt trước!", {
+              position: "bottom-right",
+            });
+            return;
+          }
+
+          // 🟧 Kiểm tra người dùng nhập quá giới hạn
+          if (qty > remaining) {
+            toast.error(
+              `Bạn chỉ có thể đặt tối đa ${remaining} sản phẩm nữa!`,
+              {
+                position: "bottom-right",
+              }
+            );
+            return;
+          }
+
           try {
             const preorderItem = {
               id: product.id,
@@ -391,17 +436,30 @@ const ProductDetailPage = () => {
               date: new Date().toISOString(),
             };
 
+            // 🟢 Nếu có tài khoản
             if (user) {
               await productApi.preorderProduct(product.id, qty);
             } else {
+              // 🟡 Nếu chưa login thì lưu local
               const stored = JSON.parse(
                 localStorage.getItem("preorders") || "[]"
               );
               const exists = stored.find(
                 (p) => String(p.id) === String(product.id)
               );
+
               if (exists) {
-                exists.quantity += qty;
+                const newQty = exists.quantity + qty;
+                if (newQty > totalEstimate) {
+                  toast.error(
+                    `Bạn chỉ có thể đặt tối đa ${
+                      totalEstimate - exists.quantity
+                    } sản phẩm nữa!`,
+                    { position: "bottom-right" }
+                  );
+                  return;
+                }
+                exists.quantity = newQty;
                 exists.date = new Date().toISOString();
               } else {
                 stored.push(preorderItem);
@@ -409,12 +467,19 @@ const ProductDetailPage = () => {
               localStorage.setItem("preorders", JSON.stringify(stored));
             }
 
+            // 🟢 Cập nhật trạng thái
             setShowPreorderModal(false);
+            message.success(`✅ Đặt trước ${qty} sản phẩm thành công!`);
+            setProduct((prev) => ({
+              ...prev,
+              ordered_quantity: (prev.ordered_quantity || 0) + qty,
+            }));
             navigate("/preorders", { state: { product: preorderItem } });
           } catch (err) {
             toast.error("Không thể đặt trước sản phẩm này!", {
               position: "bottom-right",
             });
+            console.error(err);
           }
         }}
       >
@@ -514,6 +579,30 @@ const ProductDetailPage = () => {
                   type="primary"
                   onClick={async () => {
                     try {
+                      const maxQty =
+                        product.expected_quantity ||
+                        product.estimated_quantity ||
+                        product.stock ||
+                        0;
+
+                      const ordered = product.ordered_quantity || 0;
+                      const remaining = Math.max(maxQty - ordered, 0);
+
+                      if (remaining <= 0) {
+                        toast.warning("⚠️ Sản phẩm đã hết lượt đặt trước!", {
+                          position: "bottom-right",
+                        });
+                        return;
+                      }
+
+                      if (quantity > remaining) {
+                        toast.error(
+                          `Bạn chỉ có thể đặt trước tối đa ${remaining} sản phẩm nữa!`,
+                          { position: "bottom-right" }
+                        );
+                        return;
+                      }
+
                       if (user) {
                         // Authenticated users -> call backend
                         await productApi.preorderProduct(product.id, quantity);
@@ -523,23 +612,36 @@ const ProductDetailPage = () => {
                             position: "bottom-right",
                           }
                         );
-                        // Cập nhật lại số lượng đã đặt (local state)
+
+                        // Cập nhật lại số lượng đã đặt trong local state
                         setProduct((prev) => ({
                           ...prev,
                           ordered_quantity:
                             (prev.ordered_quantity || 0) + Number(quantity),
                         }));
                         setQuantity(1);
+                        navigate("/preorders"); // ➜ Chuyển tới danh sách đặt trước
                       } else {
-                        // Guest -> save to localStorage (same shape as modal)
+                        // Guest -> save to localStorage
                         const stored = JSON.parse(
                           localStorage.getItem("preorders") || "[]"
                         );
                         const exists = stored.find(
                           (p) => String(p.id) === String(product.id)
                         );
+
                         if (exists) {
-                          exists.quantity = (exists.quantity || 0) + quantity;
+                          const newQty = (exists.quantity || 0) + quantity;
+                          if (newQty > remaining) {
+                            toast.error(
+                              `Bạn chỉ có thể đặt thêm tối đa ${
+                                remaining - (exists.quantity || 0)
+                              } sản phẩm nữa!`,
+                              { position: "bottom-right" }
+                            );
+                            return;
+                          }
+                          exists.quantity = newQty;
                           exists.date = new Date().toISOString();
                         } else {
                           stored.push({
@@ -557,17 +659,19 @@ const ProductDetailPage = () => {
                             date: new Date().toISOString(),
                           });
                         }
+
                         localStorage.setItem(
                           "preorders",
                           JSON.stringify(stored)
                         );
                         toast.success(
-                          `✅ Đã lưu ${quantity} sản phẩm vào danh sách đặt trước (guest)!`,
-                          { position: "bottom-right" }
+                          `✅ Đã lưu ${quantity} sản phẩm vào danh sách đặt trước!`,
+                          {
+                            position: "bottom-right",
+                          }
                         );
                         setQuantity(1);
-                        // Optionally navigate to preorders page
-                        navigate("/preorders");
+                        navigate("/preorders"); // ➜ Chuyển tới danh sách đặt trước
                       }
                     } catch (err) {
                       toast.error("Không thể đặt trước sản phẩm này!", {

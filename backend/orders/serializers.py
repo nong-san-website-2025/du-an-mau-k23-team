@@ -1,6 +1,11 @@
 from rest_framework import serializers
 from .models import Order, OrderItem, Complaint
+from .models import Preorder
 
+class PreorderSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Preorder
+        fields = "__all__"
 
 
 

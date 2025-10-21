@@ -196,38 +196,52 @@ class ProductViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def preorder(self, request, pk=None):
         product = self.get_object()
-        quantity = int(request.data.get('quantity', 0))
+        quantity = int(request.data.get('quantity', 1))
 
+        # ✅ Chỉ cho phép đặt nếu là sản phẩm sắp có
         if product.availability_status != "coming_soon":
             return Response({"detail": "Sản phẩm này không thể đặt trước."}, status=400)
 
         if quantity <= 0:
             return Response({"detail": "Số lượng đặt không hợp lệ."}, status=400)
 
-        # kiểm tra giới hạn
-        if product.estimated_quantity is not None:
-            remaining = product.estimated_quantity - product.preordered_quantity
-            if quantity > remaining:
-                return Response({"detail": f"Chỉ còn {remaining} sản phẩm có thể đặt trước."}, status=400)
+        # ✅ Làm mới dữ liệu để đảm bảo chính xác
+        product.refresh_from_db()
 
-        # Tạo một bản Preorder thay vì cố gắng gán vào property read-only
-        try:
-            Preorder.objects.create(user=request.user, product=product, quantity=quantity)
-        except Exception as e:
-            return Response({"detail": f"Không thể lưu đặt trước: {str(e)}"}, status=500)
+        # ✅ Kiểm tra giới hạn đặt trước
+        current_preordered = product.ordered_quantity or 0
+        estimated = product.estimated_quantity or 0
 
-        # Lấy lại tổng số lượng đã đặt trước từ aggregate property
-        total_preordered = product.preordered_quantity
+        remaining = estimated - current_preordered
+
+        if remaining <= 0:
+            return Response({"detail": "Sản phẩm đã đạt giới hạn đặt trước."}, status=400)
+
+        if quantity > remaining:
+            return Response({"detail": f"Chỉ còn {remaining} sản phẩm có thể đặt trước."}, status=400)
+
+        # ✅ Cập nhật số lượng đặt
+        product.ordered_quantity = current_preordered + quantity
+        product.save(update_fields=["ordered_quantity"])
 
         return Response({
             "message": f"Đặt trước thành công {quantity} sản phẩm.",
-            "preordered_quantity": total_preordered,
-            "remaining": (
-                product.estimated_quantity - total_preordered
-                if product.estimated_quantity is not None
-                else None
-            ),
+            "ordered_quantity": product.ordered_quantity,
+            "remaining": estimated - product.ordered_quantity
         }, status=200)
+    
+    @property
+    def can_preorder(self):
+        if self.availability_status != "coming_soon":
+            return False
+        if self.estimated_quantity is None:
+            return False
+        return self.ordered_quantity < self.estimated_quantity
+
+
+
+
+
 
 
 
@@ -378,7 +392,7 @@ def top_products(request):
 
 
 
-class PreorderCreateView(generics.CreateAPIView):
+
     """
     API để tạo đơn đặt trước sản phẩm
     """
@@ -401,5 +415,35 @@ class PreorderCreateView(generics.CreateAPIView):
             quantity=quantity,
             customer=request.user if request.user.is_authenticated else None,
         )
+        if product.ordered_quantity + quantity > product.estimated_quantity:
+                return Response(
+                    {"error": "Vượt quá số lượng đặt trước cho phép."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+                product.ordered_quantity += quantity
+                product.save()
 
         return Response({"message": "Đặt trước thành công", "preorder_id": preorder.id}, status=status.HTTP_201_CREATED)
+    
+
+    @api_view(['POST'])
+    @permission_classes([IsAuthenticated])
+    def remove_preorder(request):
+        product_id = request.data.get('product_id')
+        quantity = int(request.data.get('quantity', 1))
+
+        try:
+            preorder = PreOrder.objects.get(user=request.user, product_id=product_id)
+            preorder.quantity = max(0, preorder.quantity - quantity)
+            preorder.save()
+
+            # Giảm luôn tổng số lượng đã đặt trong Product nếu có
+            product = preorder.product
+            if hasattr(product, "ordered_quantity"):
+                product.ordered_quantity = max(0, product.ordered_quantity - quantity)
+                product.save()
+
+            return Response({"message": "Đã cập nhật số lượng đặt trước"}, status=200)
+        except PreOrder.DoesNotExist:
+            return Response({"error": "Không tìm thấy đơn đặt trước"}, status=404)

@@ -290,6 +290,72 @@ export default function ProductsPage() {
           onFinish={handleSubmit}
           initialValues={{ stock: 0, availability_status: "available" }}
         >
+          <Form.Item
+            name="availability_status"
+            label="Trạng thái hàng hóa"
+            rules={[{ required: true, message: "Chọn trạng thái" }]}
+          >
+            <Select
+              onChange={(value) => {
+                if (value === "available") {
+                  form.setFieldsValue({
+                    season_start: null,
+                    season_end: null,
+                    estimated_quantity: null,
+                  });
+                }
+              }}
+            >
+              <Select.Option value="available">Có sẵn</Select.Option>
+              <Select.Option value="coming_soon">Sắp có</Select.Option>
+            </Select>
+          </Form.Item>
+
+          <Form.Item
+            shouldUpdate={(prev, cur) =>
+              prev.availability_status !== cur.availability_status
+            }
+          >
+            {({ getFieldValue }) =>
+              getFieldValue("availability_status") === "coming_soon" && (
+                <>
+                  <Row gutter={16}>
+                    <Col span={12}>
+                      <Form.Item
+                        name="season_start"
+                        label="Ngày bắt đầu mùa vụ"
+                        rules={[
+                          { required: true, message: "Chọn ngày bắt đầu" },
+                        ]}
+                      >
+                        <Input type="date" />
+                      </Form.Item>
+                    </Col>
+                    <Col span={12}>
+                      <Form.Item
+                        name="season_end"
+                        label="Ngày kết thúc mùa vụ"
+                        rules={[
+                          { required: true, message: "Chọn ngày kết thúc" },
+                        ]}
+                      >
+                        <Input type="date" />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+                  <Form.Item
+                    name="estimated_quantity"
+                    label="Ước lượng sản lượng"
+                    rules={[
+                      { required: true, message: "Nhập sản lượng dự kiến" },
+                    ]}
+                  >
+                    <Input type="number" min={0} />
+                  </Form.Item>
+                </>
+              )
+            }
+          </Form.Item>
           {/* Form fields như tên, giá, danh mục, danh mục con, stock, image */}
           <Row gutter={16}>
             <Col span={12}>
@@ -391,73 +457,8 @@ export default function ProductsPage() {
           </Row>
 
           {/* Trạng thái hàng hóa */}
-          <Form.Item
-            name="availability_status"
-            label="Trạng thái hàng hóa"
-            rules={[{ required: true, message: "Chọn trạng thái" }]}
-          >
-            <Select
-              onChange={(value) => {
-                if (value === "available") {
-                  form.setFieldsValue({
-                    season_start: null,
-                    season_end: null,
-                    estimated_quantity: null,
-                  });
-                }
-              }}
-            >
-              <Select.Option value="available">Có sẵn</Select.Option>
-              <Select.Option value="coming_soon">Sắp có</Select.Option>
-            </Select>
-          </Form.Item>
 
           {/* ✅ Dùng shouldUpdate để form tự re-render khi availability_status đổi */}
-          <Form.Item
-            shouldUpdate={(prev, cur) =>
-              prev.availability_status !== cur.availability_status
-            }
-          >
-            {({ getFieldValue }) =>
-              getFieldValue("availability_status") === "coming_soon" && (
-                <>
-                  <Row gutter={16}>
-                    <Col span={12}>
-                      <Form.Item
-                        name="season_start"
-                        label="Ngày bắt đầu mùa vụ"
-                        rules={[
-                          { required: true, message: "Chọn ngày bắt đầu" },
-                        ]}
-                      >
-                        <Input type="date" />
-                      </Form.Item>
-                    </Col>
-                    <Col span={12}>
-                      <Form.Item
-                        name="season_end"
-                        label="Ngày kết thúc mùa vụ"
-                        rules={[
-                          { required: true, message: "Chọn ngày kết thúc" },
-                        ]}
-                      >
-                        <Input type="date" />
-                      </Form.Item>
-                    </Col>
-                  </Row>
-                  <Form.Item
-                    name="estimated_quantity"
-                    label="Ước lượng sản lượng"
-                    rules={[
-                      { required: true, message: "Nhập sản lượng dự kiến" },
-                    ]}
-                  >
-                    <Input type="number" min={0} />
-                  </Form.Item>
-                </>
-              )
-            }
-          </Form.Item>
 
           <Form.Item name="description" label="Mô tả">
             <Input.TextArea rows={4} placeholder="Nhập mô tả sản phẩm" />

@@ -1,181 +1,99 @@
 import React, { useEffect, useState } from "react";
-import {
-  Card,
-  Button,
-  Typography,
-  Empty,
-  Row,
-  Col,
-  Tag,
-  Space,
-  message,
-} from "antd";
-import { DeleteOutlined, ClockCircleOutlined } from "@ant-design/icons";
-import { useNavigate, useLocation } from "react-router-dom";
-import axios from "axios";
-import { useCart } from "../features/cart/services/CartContext";
+import { Card, Button, Empty, message, Row, Col, Typography, Divider } from "antd";
 
 const { Title, Text } = Typography;
 
-const PreOrderPage = () => {
-  const [preOrders, setPreOrders] = useState([]);
-  const navigate = useNavigate();
-  const { state } = useLocation();
-  const { addToCart } = useCart();
+export default function PreorderPage() {
+  const [preorders, setPreorders] = useState([]);
 
   useEffect(() => {
-    if (state?.product) {
-      setPreOrders([state.product]);
-    } else {
-      const stored = JSON.parse(localStorage.getItem("preorders") || "[]");
-      setPreOrders(stored);
-    }
-  }, [state]);
+    const stored = JSON.parse(localStorage.getItem("preorders")) || [];
+    setPreorders(stored);
+  }, []);
 
   const removeItem = (id) => {
-    const updated = preOrders.filter((item) => item.id !== id);
-    setPreOrders(updated);
+    const updated = preorders.filter((item) => item.id !== id);
+    setPreorders(updated);
     localStorage.setItem("preorders", JSON.stringify(updated));
-    message.success("Đã xóa khỏi danh sách đặt trước");
+    message.success("Đã xóa sản phẩm khỏi danh sách đặt trước");
   };
 
-  const handlePlaceOrder = async (item) => {
-    try {
-      // Nếu user đã đăng nhập → gọi backend
-      const token = localStorage.getItem("token");
-      if (token) {
-        await axios.post(
-          "/api/preorders/",
-          {
-            items: [
-              {
-                product: item.id,
-                quantity: item.quantity,
-                price: item.price || 0,
-              },
-            ],
-          },
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-      }
-
-      // Thêm vào giỏ hàng
-      addToCart(
-        item.id,
-        item.quantity,
-        {
-          id: item.id,
-          name: item.name,
-          price: item.price || 0,
-          image: item.image,
-          preorder: true,
-        },
-        () => {},
-        () => {}
-      );
-
-      // Xóa khỏi danh sách đặt trước
-      const updated = preOrders.filter((p) => p.id !== item.id);
-      setPreOrders(updated);
-      localStorage.setItem("preorders", JSON.stringify(updated));
-
-      message.success("Sản phẩm đã vào giỏ hàng. Chuyển đến thanh toán...");
-      navigate("/cart"); // ✅ chuyển thẳng sang giỏ hàng
-    } catch (err) {
-      console.error(err);
-      message.error(
-        `Lỗi khi đặt hàng: ${err.response?.data?.detail || err.message}`
-      );
-    }
-  };
+  if (preorders.length === 0) {
+    return (
+      <div style={{ textAlign: "center", marginTop: "80px" }}>
+        <Empty description="Chưa có sản phẩm nào được đặt trước" />
+      </div>
+    );
+  }
 
   return (
-    <div
-      style={{
-        padding: "40px 80px",
-        background: "#f5f7fa",
-        minHeight: "100vh",
-      }}
-    >
-      <div style={{ textAlign: "center", marginBottom: 40 }}>
-        <Title level={2}>Danh sách Đặt trước</Title>
-        <Text type="secondary">
-          Các sản phẩm bạn đã đăng ký đặt trước sẽ hiển thị tại đây.
-        </Text>
-      </div>
+    <div style={{ padding: "40px 60px", background: "#fafafa", minHeight: "100vh" }}>
+      <Title level={3} style={{ marginBottom: "30px", textAlign: "center" }}>
+        🛒 Danh sách sản phẩm đã đặt trước
+      </Title>
 
-      {preOrders.length === 0 ? (
-        <Empty description="Chưa có sản phẩm nào được đặt trước" />
-      ) : (
-        <Row gutter={[24, 24]}>
-          {preOrders.map((item) => (
-            <Col key={item.id} xs={24} sm={12} md={8} lg={6}>
-              <Card
-                hoverable
-                style={{
-                  borderRadius: 12,
-                  boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
-                }}
-                cover={
+      <Row gutter={[24, 24]}>
+        {preorders.map((item) => (
+          <Col xs={24} sm={12} md={8} lg={6} key={item.id}>
+            <Card
+              hoverable
+              bordered={false}
+              cover={
+                <div
+                  style={{
+                    position: "relative",
+                    overflow: "hidden",
+                    borderRadius: "12px",
+                  }}
+                >
                   <img
                     alt={item.name}
-                    src={item.image || "/placeholder.png"}
+                    src={item.image}
                     style={{
-                      height: 180,
+                      height: 220,
+                      width: "100%",
                       objectFit: "cover",
-                      borderTopLeftRadius: 12,
-                      borderTopRightRadius: 12,
+                      transition: "transform 0.4s ease",
                     }}
+                    onMouseOver={(e) => (e.currentTarget.style.transform = "scale(1.05)")}
+                    onMouseOut={(e) => (e.currentTarget.style.transform = "scale(1)")}
                   />
-                }
-              >
+                </div>
+              }
+              style={{
+                borderRadius: 12,
+                boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+                background: "#fff",
+              }}
+            >
+              <div style={{ marginTop: 10 }}>
                 <Title level={5} ellipsis={{ rows: 2 }}>
                   {item.name}
                 </Title>
+                <Text type="secondary">Giá: </Text>
+                <Text strong>{item.price.toLocaleString()}₫</Text>
 
-                <Space direction="vertical" size={4}>
-                  <Text strong style={{ color: "#52c41a" }}>
-                    {item.price?.toLocaleString("vi-VN")} VNĐ
-                  </Text>
-                  {item.available_from && (
-                    <Text type="secondary" style={{ fontSize: 13 }}>
-                      <ClockCircleOutlined />{" "}
-                      {new Date(item.available_from).toLocaleDateString(
-                        "vi-VN"
-                      )}
-                    </Text>
-                  )}
-                  <Tag color="orange">Sắp có</Tag>
-                </Space>
+                <Divider style={{ margin: "10px 0" }} />
 
-                <div style={{ marginTop: 12 }}>
-                  <Text strong>Số lượng:</Text>
-                  <Text style={{ marginLeft: 8 }}>{item.quantity || 1}</Text>
-                </div>
+                <Text>
+                  <strong>Số lượng:</strong> {item.quantity}
+                </Text>
+                <br />
+                <Text>
+                  <strong>Tổng:</strong>{" "}
+                  {(item.price * item.quantity).toLocaleString()}₫
+                </Text>
 
-                <div
-                  style={{
-                    marginTop: 16,
-                    display: "flex",
-                    justifyContent: "space-between",
-                  }}
-                >
-                  <Button type="primary" onClick={() => handlePlaceOrder(item)}>
-                    Đặt hàng
+                <div style={{ marginTop: 15, textAlign: "right" }}>
+                  <Button danger onClick={() => removeItem(item.id)}>
+                    Xóa đặt trước
                   </Button>
-                  <Button
-                    danger
-                    icon={<DeleteOutlined />}
-                    onClick={() => removeItem(item.id)}
-                  />
                 </div>
-              </Card>
-            </Col>
-          ))}
-        </Row>
-      )}
+              </div>
+            </Card>
+          </Col>
+        ))}
+      </Row>
     </div>
   );
-};
-
-export default PreOrderPage;
+}

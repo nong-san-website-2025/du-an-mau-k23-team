@@ -24,7 +24,8 @@ export default function Footer() {
               </div>
             </div>
             <div className="text-muted mb-3" style={{ fontSize: 15, textAlign: "justify" }}>
-              Nền tảng thương mại điện tử hàng đầu chuyên cung cấp nông sản tươi sống, an toàn và chất lượng cao trực tiếp từ nông dân đến người tiêu dùng.
+              Nền tảng thương mại điện tử hàng đầu chuyên cung cấp nông sản tươi sống, an toàn 
+              và chất lượng cao trực tiếp từ nông dân đến người tiêu dùng.
             </div>
             <div className="d-flex gap-2">
               <a href="#" className="btn btn-outline-secondary rounded-circle p-2" aria-label="Facebook"><Facebook size={20} /></a>

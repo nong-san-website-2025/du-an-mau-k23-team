@@ -22,19 +22,32 @@ const ProductInfo = ({
   adding,
 }) => {
   const navigate = useNavigate();
-  
-  const handlePreOrder = () => {
-    navigate("/preorder", {
-      state: {
-        product: {
-          id: product.id,
-          name: product.name,
-          price: product.price,
-          image: product.image,
-          available_from: product.available_from,
-        },
-      },
-    });
+
+  const handlePreorder = (product) => {
+    const stored = JSON.parse(localStorage.getItem("preorders")) || [];
+    const existing = stored.find((item) => item.id === product.id);
+
+    const estimatedStock = product.estimated_stock || 10; // ví dụ từ backend
+    const currentQty = existing ? existing.quantity : 0;
+
+    if (currentQty >= estimatedStock) {
+      message.warning("⚠️ Đã đạt số lượng đặt trước tối đa cho sản phẩm này!");
+      return;
+    }
+
+    // Nếu chưa vượt
+    let updated;
+    if (existing) {
+      updated = stored.map((item) =>
+        item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
+      );
+    } else {
+      updated = [...stored, { ...product, quantity: 1 }];
+    }
+
+    localStorage.setItem("preorders", JSON.stringify(updated));
+    window.dispatchEvent(new Event("storage"));
+    message.success("✅ Đã thêm vào danh sách đặt trước!");
   };
 
   // ✅ Ưu tiên đọc field availability_status từ backend
@@ -201,45 +214,79 @@ const ProductInfo = ({
       )}
 
       {/* 🔹 Các nút hành động */}
-      <Space size="middle">
-        {/* 🔹 Ưu tiên hiển thị sản phẩm sắp có */}
+      {/* 🔹 Các nút hành động */}
+      {/* 🔹 Các nút hành động */}
+      <Space size="middle" style={{ marginTop: 16 }}>
         {isComingSoon ? (
-          <>
+          // 🔸 Sản phẩm sắp có → chỉ cho đặt trước, KHÔNG mua ngay / thêm giỏ
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <InputNumber
+              min={1}
+              value={quantity}
+              onChange={(v) => onQuantityChange(v)}
+              style={{ width: 80 }}
+            />
             <Button
               type="primary"
               size="large"
               danger
-              onClick={() => onBuyNow(product)}
+              onClick={() => {
+                try {
+                  const qty = Number(quantity) || 1;
+                  const preorderItem = {
+                    id: product.id,
+                    name: product.name,
+                    image:
+                      product.image && product.image.startsWith("/")
+                        ? `http://localhost:8000${product.image}`
+                        : product.image,
+                    price:
+                      Number(product.discounted_price ?? product.price) || 0,
+                    quantity: qty,
+                    date: new Date().toISOString(),
+                  };
+
+                  // Lưu vào localStorage (chưa mở bán nên không thêm vào giỏ / mua ngay)
+                  const stored = JSON.parse(
+                    localStorage.getItem("preorders") || "[]"
+                  );
+                  const exists = stored.find(
+                    (p) => String(p.id) === String(product.id)
+                  );
+                  if (exists) {
+                    exists.quantity += qty;
+                    exists.date = new Date().toISOString();
+                  } else {
+                    stored.push(preorderItem);
+                  }
+                  localStorage.setItem("preorders", JSON.stringify(stored));
+
+                  message.success("Đặt trước thành công! 🎉");
+                  navigate("/preorders", { state: { product: preorderItem } });
+                } catch (err) {
+                  message.error("Không thể đặt trước sản phẩm này!");
+                }
+              }}
             >
               Đặt trước
             </Button>
-            {/* <Text type="warning" style={{ display: "block", marginTop: 4 }}>
-              Sản phẩm sắp có
-            </Text> */}
-          </>
+          </div>
         ) : isOutOfStock ? (
+          // 🔸 Hết hàng → chỉ hiển thị thông báo
           <>
-            <Button type="primary" size="large" danger onClick={onBuyNow}>
-              Đặt trước
+            <Button disabled size="large">
+              Sản phẩm đã hết hàng
             </Button>
-            <div style={{ display: "block", marginTop: 8 }}>
-              <Text type="secondary">Hết hàng — bạn có thể đặt trước</Text>
-              <div>
-                <Text style={{ marginLeft: 8 }}>
-                  <strong>Đã đặt trước:</strong>{" "}
-                  {Number(totalPreordered || 0).toLocaleString("vi-VN")} sản
-                  phẩm
-                </Text>
-              </div>
-            </div>
           </>
         ) : (
+          // 🔸 Có hàng → hiển thị thêm giỏ / mua ngay
           <>
             <Button
               type="primary"
               size="large"
               icon={<ShoppingCartOutlined />}
               onClick={onAddToCart}
+              loading={adding}
             >
               Thêm vào giỏ
             </Button>

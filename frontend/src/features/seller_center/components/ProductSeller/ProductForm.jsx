@@ -7,14 +7,17 @@ const ProductForm = ({ visible, onCancel, onSubmit, initialValues }) => {
   const [form] = Form.useForm();
   const [availability, setAvailability] = useState("available");
 
-  // Khi mở form hoặc giá trị ban đầu thay đổi
   useEffect(() => {
     if (visible) {
       if (initialValues) {
-        form.setFieldsValue(initialValues);
+        form.setFieldsValue({
+          ...initialValues,
+          availability_status: initialValues.availability_status || "available",
+        });
         setAvailability(initialValues.availability_status || "available");
       } else {
         form.resetFields();
+        form.setFieldsValue({ availability_status: "available" });
         setAvailability("available");
       }
     }
@@ -28,15 +31,11 @@ const ProductForm = ({ visible, onCancel, onSubmit, initialValues }) => {
         form.resetFields();
         setAvailability("available");
       })
-      .catch((info) => {
-        console.log("Validate Failed:", info);
-      });
+      .catch((info) => console.log("Validate Failed:", info));
   };
 
-  // ✅ Khi người dùng chọn lại trạng thái
   const handleAvailabilityChange = (value) => {
     setAvailability(value);
-    // cập nhật vào form để không bị mất khi submit
     form.setFieldsValue({ availability_status: value });
   };
 
@@ -50,6 +49,19 @@ const ProductForm = ({ visible, onCancel, onSubmit, initialValues }) => {
       onOk={handleOk}
     >
       <Form form={form} layout="vertical" name="productForm">
+        {/* 🟨 Di chuyển “Trạng thái hàng hóa” lên đầu */}
+        <Form.Item
+          label="Trạng thái hàng hóa"
+          name="availability_status"
+          rules={[{ required: true, message: "Vui lòng chọn trạng thái" }]}
+          initialValue="available"
+        >
+          <Select onChange={handleAvailabilityChange}>
+            <Option value="available">Có sẵn</Option>
+            <Option value="coming_soon">Sắp có</Option>
+          </Select>
+        </Form.Item>
+
         <Form.Item
           label="Tên sản phẩm"
           name="name"
@@ -85,17 +97,6 @@ const ProductForm = ({ visible, onCancel, onSubmit, initialValues }) => {
           />
         </Form.Item>
 
-        <Form.Item
-          label="Trạng thái hàng hóa"
-          name="availability_status"
-          rules={[{ required: true, message: "Vui lòng chọn trạng thái" }]}
-        >
-          <Select onChange={handleAvailabilityChange}>
-            <Option value="available">Có sẵn</Option>
-            <Option value="coming_soon">Sắp có</Option>
-          </Select>
-        </Form.Item>
-
         {/* ✅ Chỉ hiện khi chọn “Sắp có” */}
         {availability === "coming_soon" && (
           <>
@@ -121,7 +122,7 @@ const ProductForm = ({ visible, onCancel, onSubmit, initialValues }) => {
 
             <Form.Item
               label="Sản lượng dự kiến"
-              name="expected_quantity"
+              name="estimated_quantity"
               rules={[
                 { required: true, message: "Vui lòng nhập sản lượng dự kiến" },
               ]}

@@ -52,6 +52,9 @@ class Product(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     ordered_quantity = models.IntegerField(default=0)
+    estimated_quantity = models.PositiveIntegerField(default=10)  # Số lượng dự kiến có thể đặt trước
+    ordered_quantity = models.PositiveIntegerField(default=0) 
+    availability_status = models.CharField(max_length=50, default='available')  
     # Visibility and status
     is_hidden = models.BooleanField(default=False)
     status = models.CharField(  # trạng thái kiểm duyệt (admin)
@@ -62,7 +65,7 @@ class Product(models.Model):
 
     availability_status = models.CharField(  # trạng thái seller chọn
         max_length=20,
-        choices=AVAILABILITY_CHOICES,
+        choices=AVAILABILITY_CHOICES,   
         default="available",
     )
 
@@ -100,10 +103,10 @@ class Product(models.Model):
     
     @property
     def preordered_quantity(self):
-        """Tổng số lượng đặt trước cho sản phẩm này"""
-        
-        total = self.preorders.aggregate(models.Sum("quantity"))["quantity__sum"]
+        """Tổng số lượng đặt trước cho sản phẩm này (chưa bị hủy)"""
+        total = self.preorders.filter(status="pending").aggregate(models.Sum("quantity"))["quantity__sum"]
         return total or 0
+
 
 
 class ProductFeature(models.Model):

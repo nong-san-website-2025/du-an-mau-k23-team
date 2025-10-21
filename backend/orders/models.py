@@ -106,14 +106,22 @@ class Complaint(models.Model):
     
 class Preorder(models.Model):
     user = models.ForeignKey(
-    settings.AUTH_USER_MODEL,
-    on_delete=models.CASCADE,
-    related_name='preorders'
-)
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='preorders')
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='preorders'
+    )
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name='preorders'
+    )
     quantity = models.PositiveIntegerField(default=1)
     preorder_date = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=50, default='pending')
 
+    class Meta:
+        unique_together = ('user', 'product')  # ✅ Mỗi user chỉ được đặt trước 1 lần cho 1 sản phẩm
+
     def __str__(self):
-        return f"{self.user.username} - {self.product.name}"
+        return f"{self.user.username} - {self.product.name} ({self.quantity})"
+

@@ -26,7 +26,6 @@ function App() {
                 <Route path="/verify-email/:uid/:token" element={<VerifyEmailPage />} />
                 {/* VNPAY return handler */}
                 <Route path="/vnpay-return" element={<VnpayReturn />} />
-                
               </Routes>
         </CartProvider>
       </AuthProvider>
