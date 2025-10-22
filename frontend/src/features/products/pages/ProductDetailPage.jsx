@@ -253,6 +253,8 @@ const ProductDetailPage = () => {
     );
   };
 
+  
+
   // Gửi đánh giá
   const handleSubmitReview = async () => {
     if (!user) {
