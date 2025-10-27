@@ -1,128 +1,171 @@
 import React from "react";
 import {
-	PercentageOutlined,
-	ToolOutlined,
-	FileSearchOutlined,
-	PhoneOutlined,
-	MailOutlined,
+  LockOutlined,
+  SafetyCertificateOutlined,
+  EyeInvisibleOutlined,
+  MailOutlined,
 } from "@ant-design/icons";
-import { Card, Typography, Divider, List, Row, Col, Space, Tag } from "antd";
+import {
+  Card,
+  Typography,
+  Row,
+  Col,
+  Tag,
+  Button,
+  Divider,
+  List,
+  Space,
+} from "antd";
 
 const { Title, Paragraph, Text, Link } = Typography;
 
-const WarrantyPolicy = () => {
-	return (
-		<div style={{ background: "#f9fafb", minHeight: "100vh", padding: "40px" }}>
-			<Row justify="center">
-				<Col xs={24} md={20} lg={16}>
-					<Card
-						bordered={false}
-						style={{
-							borderRadius: 12,
-							boxShadow: "0 2px 12px rgba(0,0,0,0.05)",
-							background: "#fff",
-						}}
-					>
-						<Space direction="vertical" size="large" style={{ width: "100%", textAlign: "justify" }}>
-							<div style={{ textAlign: "center" }}>
-								<ToolOutlined style={{ fontSize: 40, color: "#1890ff" }} />
-								<Title level={2} style={{ marginTop: 10 }}>
-									Chính Sách Bảo Hành
-								</Title>
-								<Paragraph type="secondary" style={{ fontSize: 16 }}>
-									Chúng tôi cung cấp chính sách bảo hành rõ ràng để bảo vệ quyền lợi khách hàng. Vui lòng đọc
-									kỹ các điều khoản dưới đây để biết quyền lợi và thủ tục bảo hành.
-								</Paragraph>
-							</div>
+const PrivacyPolicyPage = () => {
+  const handleSendEmail = () => {
+    window.location.href = "mailto:support@nongsan.vn";
+  };
 
-							<Divider />
+  return (
+    <div style={{ background: "#f9fafb", minHeight: "100vh", padding: "50px 0 70px" }}>
+      <Row justify="center">
+        <Col xs={24} md={20} lg={16}>
+          <Card
+            bordered={false}
+            style={{
+              borderRadius: 16,
+              boxShadow: "0 2px 12px rgba(0,0,0,0.05)",
+              background: "#fff",
+              padding: "40px 30px",
+            }}
+          >
+            {/* 🌿 Header */}
+            <div style={{ textAlign: "center", marginBottom: 40 }}>
+              <SafetyCertificateOutlined style={{ fontSize: 48, color: "#16a34a" }} />
+              <Title level={2} style={{ marginTop: 12, color: "#14532d" }}>
+                Chính Sách Bảo Mật
+              </Title>
+              <Paragraph style={{ color: "#475569", fontSize: 16, maxWidth: 600, margin: "0 auto" }}>
+                NôngSản.vn cam kết bảo vệ quyền riêng tư và dữ liệu cá nhân của người dùng.
+                Chúng tôi đảm bảo mọi thông tin của bạn được bảo mật tuyệt đối và chỉ sử dụng
+                cho mục đích hợp pháp.
+              </Paragraph>
+            </div>
 
-							<Title level={4}>1. Phạm vi bảo hành</Title>
-							<List
-								dataSource={[
-									"Bảo hành cho các lỗi kỹ thuật phát sinh do nhà sản xuất.",
-									"Không áp dụng cho hư hỏng do lắp đặt sai, sử dụng sai hướng dẫn, va đập, rơi vỡ.",
-									"Một số phụ kiện tiêu hao, pin hoặc các bộ phận hao mòn không được bảo hành.",
-								]}
-								renderItem={(item) => (
-									<List.Item>
-										<Text>• {item}</Text>
-									</List.Item>
-								)}
-							/>
+            <Divider />
 
-							<Divider />
+            {/* 🔒 Nguyên tắc bảo mật */}
+            <Title level={4}>1. Nguyên tắc bảo mật</Title>
+            <List
+              dataSource={[
+                "Mọi thông tin cá nhân được mã hóa và lưu trữ an toàn.",
+                "Không chia sẻ dữ liệu với bên thứ ba khi chưa có sự đồng ý.",
+                "Thường xuyên kiểm tra và cập nhật hệ thống để tránh rò rỉ thông tin.",
+              ]}
+              renderItem={(item) => (
+                <List.Item>
+                  <Text>• {item}</Text>
+                </List.Item>
+              )}
+            />
 
-							<Title level={4}>2. Thời hạn bảo hành</Title>
-							<Paragraph>
-								Thời hạn bảo hành sẽ được ghi rõ trên phiếu bảo hành hoặc trang chi tiết sản phẩm. Nếu không có
-								thông tin khác, mặc định bảo hành 12 tháng cho sản phẩm điện tử và 3 tháng cho phụ kiện đi kèm.
-							</Paragraph>
+            <Divider />
 
-							<Divider />
+            {/* 🧭 Quyền của người dùng */}
+            <Title level={4}>2. Quyền của người dùng</Title>
+            <Paragraph>
+              Người dùng có quyền yêu cầu truy cập, chỉnh sửa hoặc xóa thông tin cá nhân của mình.
+              Mọi yêu cầu sẽ được xử lý nhanh chóng trong vòng 7 ngày làm việc.
+            </Paragraph>
 
-							<Title level={4}>3. Quy trình yêu cầu bảo hành</Title>
-							<List
-								dataSource={[
-									"Liên hệ bộ phận chăm sóc khách hàng và cung cấp mã đơn hàng cùng mô tả vấn đề.",
-									"Gửi hình ảnh/clip thể hiện lỗi (nếu có) để hỗ trợ đánh giá ban đầu.",
-									"Gửi sản phẩm tới trung tâm bảo hành theo hướng dẫn để kiểm tra chính thức.",
-									"Sau khi kiểm tra, nếu lỗi thuộc phạm vi bảo hành, sản phẩm sẽ được sửa chữa hoặc đổi mới.",
-								]}
-								renderItem={(item, idx) => (
-									<List.Item>
-										<Text strong style={{ marginRight: 8 }}>{idx + 1}.</Text>
-										<Text style={{ flex: 1 }}>{item}</Text>
-									</List.Item>
-								)}
-							/>
+            <Divider />
 
-							<Divider />
+            {/* 🧠 Mục đích thu thập thông tin */}
+            <Title level={4}>3. Mục đích thu thập thông tin</Title>
+            <List
+              dataSource={[
+                "Cung cấp dịch vụ, hỗ trợ và chăm sóc khách hàng tốt hơn.",
+                "Phân tích dữ liệu để nâng cao trải nghiệm người dùng.",
+                "Gửi thông tin khuyến mãi, bản tin mới (khi có sự đồng ý).",
+              ]}
+              renderItem={(item) => (
+                <List.Item>
+                  <Text>• {item}</Text>
+                </List.Item>
+              )}
+            />
 
-							<Title level={4}>4. Trường hợp từ chối bảo hành</Title>
-							<List
-								dataSource={[
-									"Sản phẩm bị can thiệp, mở máy không phải trung tâm bảo hành ủy quyền.",
-									"Hư hỏng do thiên tai, tai nạn, cháy nổ, nước ngập.",
-									"Sản phẩm đã quá hạn bảo hành hoặc không xuất trình được hóa đơn/phiếu bảo hành hợp lệ.",
-								]}
-								renderItem={(item) => (
-									<List.Item>
-										<Text>• {item}</Text>
-									</List.Item>
-								)}
-							/>
+            <Divider />
 
-							<Divider />
+            {/* 🧩 Cách bảo vệ tài khoản */}
+            <Title level={4}>4. Cách bảo vệ tài khoản của bạn</Title>
+            <List
+              dataSource={[
+                "Không chia sẻ mật khẩu hoặc mã OTP với bất kỳ ai.",
+                "Chỉ đăng nhập tại trang chính thức: https://nongsan.vn.",
+                "Thoát khỏi tài khoản sau khi sử dụng thiết bị công cộng.",
+                "Báo ngay cho NôngSản.vn nếu phát hiện truy cập trái phép.",
+              ]}
+              renderItem={(item, index) => (
+                <List.Item>
+                  <Text>{index + 1}. {item}</Text>
+                </List.Item>
+              )}
+            />
 
-							<Title level={4}>5. Liên hệ bảo hành</Title>
-							<Paragraph>Vui lòng liên hệ với chúng tôi để được hỗ trợ bảo hành:</Paragraph>
-							<Space direction="vertical">
-								<Tag icon={<PhoneOutlined />} color="blue">
-									Hotline: <Link href="tel:0123456789">0123 456 789</Link>
-								</Tag>
-								<Tag icon={<MailOutlined />} color="green">
-									Email: <Link href="mailto:hotro@duan.com">hotro@duan.com</Link>
-								</Tag>
-							</Space>
+            <Divider />
 
-							<Divider />
+            {/* 📨 Liên hệ */}
+            <Title level={4}>5. Liên hệ hỗ trợ bảo mật</Title>
+            <Paragraph>
+              Nếu bạn có thắc mắc hoặc cần hỗ trợ về bảo mật thông tin, vui lòng liên hệ với chúng tôi:
+            </Paragraph>
 
-							<Title level={4}>Ghi chú thêm</Title>
-							<Paragraph>
-								- Khi gửi yêu cầu bảo hành, vui lòng đính kèm hóa đơn mua hàng hoặc mã đơn để chúng tôi kiểm tra nhanh
-								hơn.
-							</Paragraph>
-							<Paragraph>
-								- Chi phí vận chuyển gửi sản phẩm đến trung tâm bảo hành có thể do khách hàng chịu, trừ khi lỗi
-								do nhà sản xuất hoặc do lỗi giao hàng từ phía chúng tôi.
-							</Paragraph>
-						</Space>
-					</Card>
-				</Col>
-			</Row>
-		</div>
-	);
+            <Space direction="vertical" style={{ width: "100%", textAlign: "center" }}>
+              <Tag
+                color="green"
+                style={{
+                  color: "#14532d",
+                  fontWeight: 600,
+                  background: "#f6ffed",
+                  borderRadius: 20,
+                  padding: "6px 14px",
+                  fontSize: 15,
+                  margin: "0 auto",
+                }}
+              >
+                <MailOutlined /> support@nongsan.vn
+              </Tag>
+
+              <Button
+                icon={<MailOutlined />}
+                size="large"
+                onClick={handleSendEmail}
+                style={{
+                  background: "#16a34a",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: 25,
+                  padding: "8px 30px",
+                  fontWeight: 600,
+                  fontSize: 16,
+                  transition: "all 0.3s ease",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "#22c55e")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "#16a34a")}
+              >
+                Gửi Gmail cho chúng tôi
+              </Button>
+            </Space>
+
+            <Divider />
+
+            <Paragraph type="secondary" style={{ textAlign: "center", marginTop: 20 }}>
+              © 2025 NôngSản.vn – Mọi quyền được bảo lưu.
+            </Paragraph>
+          </Card>
+        </Col>
+      </Row>
+    </div>
+  );
 };
 
-export default WarrantyPolicy;
+export default PrivacyPolicyPage;

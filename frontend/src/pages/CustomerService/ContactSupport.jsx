@@ -67,45 +67,71 @@ export default function ContactSupport() {
                 bordered={false}
                 style={{
                   borderRadius: 16,
-                  padding: "20px 10px",
+                  padding: "26px 18px",
                   textAlign: "center",
                   background: "#f9fafb",
-                  boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
+                  boxShadow: "0 3px 10px rgba(0,0,0,0.05)",
                   transition: "all 0.3s",
                 }}
+                bodyStyle={{ padding: 0 }}
               >
-                <div
-                  style={{
-                    fontSize: 28,
-                    color: opt.color,
-                    marginBottom: 12,
-                  }}
-                >
-                  {opt.icon}
+                <div style={{ marginBottom: 18 }}>
+                  <div
+                    style={{
+                      fontSize: 30,
+                      color: opt.color,
+                      marginBottom: 10,
+                    }}
+                  >
+                    {opt.icon}
+                  </div>
+                  <Title
+                    level={5}
+                    style={{
+                      color: "#14532d",
+                      fontWeight: 700,
+                      marginBottom: 8,
+                    }}
+                  >
+                    {opt.title}
+                  </Title>
+                  <Paragraph
+                    style={{
+                      color: "#4b5563",
+                      fontSize: 14,
+                      minHeight: 40,
+                      marginBottom: 18,
+                    }}
+                  >
+                    {opt.description}
+                  </Paragraph>
+                  <Button
+                    type="primary"
+                    size="middle"
+                    href={opt.href}
+                    style={{
+                      backgroundColor: opt.color,
+                      border: "none",
+                      borderRadius: 20,
+                      fontWeight: 600,
+                      padding: "0 26px",
+                      transition: "all 0.3s ease",
+                      boxShadow: "0 2px 6px rgba(0,0,0,0.08)",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.target.style.filter = "brightness(1.1)";
+                      e.target.style.transform = "translateY(-2px)";
+                      e.target.style.boxShadow = "0 4px 10px rgba(0,0,0,0.15)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.filter = "brightness(1)";
+                      e.target.style.transform = "translateY(0)";
+                      e.target.style.boxShadow = "0 2px 6px rgba(0,0,0,0.08)";
+                    }}
+                  >
+                    {opt.action}
+                  </Button>
                 </div>
-                <Title
-                  level={5}
-                  style={{ color: "#14532d", fontWeight: 700, marginBottom: 8 }}
-                >
-                  {opt.title}
-                </Title>
-                <Paragraph style={{ color: "#4b5563", fontSize: 14, minHeight: 40 }}>
-                  {opt.description}
-                </Paragraph>
-                <Button
-                  type="primary"
-                  size="middle"
-                  href={opt.href}
-                  style={{
-                    backgroundColor: opt.color,
-                    border: "none",
-                    borderRadius: 8,
-                    fontWeight: 500,
-                    marginTop: 10,
-                  }}
-                >
-                  {opt.action}
-                </Button>
               </Card>
             </Col>
           ))}
@@ -132,7 +158,15 @@ export default function ContactSupport() {
                 </Space>
               }
             >
-              <ul style={{ color: "#374151", fontSize: 14, lineHeight: 1.8, paddingLeft: 20 }}>
+              <ul
+                style={{
+                  color: "#374151",
+                  fontSize: 14,
+                  lineHeight: 1.8,
+                  paddingLeft: 20,
+                  marginBottom: 0,
+                }}
+              >
                 <li>Thông tin của bạn được bảo mật tuyệt đối theo chính sách quyền riêng tư.</li>
                 <li>Nếu chưa nhận phản hồi sau 12 giờ, hãy kiểm tra thư mục spam hoặc gọi hotline.</li>
                 <li>Với yêu cầu khẩn cấp, vui lòng chọn liên hệ qua điện thoại.</li>
@@ -158,7 +192,7 @@ export default function ContactSupport() {
                 </Space>
               }
             >
-              <ul style={{ color: "#374151", fontSize: 14, lineHeight: 1.8 }}>
+              <ul style={{ color: "#374151", fontSize: 14, lineHeight: 1.8, marginBottom: 0 }}>
                 {officeHours.map((o) => (
                   <li
                     key={o.day}
@@ -166,7 +200,7 @@ export default function ContactSupport() {
                       display: "flex",
                       justifyContent: "space-between",
                       borderBottom: "1px dashed #e5e7eb",
-                      padding: "4px 0",
+                      padding: "6px 0",
                     }}
                   >
                     <span>{o.day}</span>

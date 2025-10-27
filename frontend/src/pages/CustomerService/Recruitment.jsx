@@ -6,226 +6,114 @@ import {
   EnvironmentOutlined,
   MailOutlined,
   PhoneOutlined,
+  CheckCircleOutlined,
 } from "@ant-design/icons";
-import { Card, Typography, Row, Col, Tag } from "antd";
+import { Typography, Row, Col, Space, Divider } from "antd";
 
 const { Title, Paragraph, Text } = Typography;
 
-const values = [
+const steps = [
   {
-    icon: <SolutionOutlined style={{ fontSize: 28, color: "#16a34a" }} />,
+    icon: <SolutionOutlined style={{ fontSize: 22, color: "#16a34a" }} />,
     title: "Phát triển con người",
-    desc: "Con người là yếu tố cốt lõi giúp NôngSản.vn phát triển bền vững.",
+    desc: "NôngSản.vn đặt con người là trung tâm trong mọi chiến lược phát triển.",
   },
   {
-    icon: <RiseOutlined style={{ fontSize: 28, color: "#16a34a" }} />,
+    icon: <RiseOutlined style={{ fontSize: 22, color: "#16a34a" }} />,
     title: "Cơ hội thăng tiến",
-    desc: "Môi trường khuyến khích học hỏi, sáng tạo và phát triển nghề nghiệp.",
+    desc: "Luôn khuyến khích sáng tạo, học hỏi và phát triển nghề nghiệp lâu dài.",
   },
   {
-    icon: <EnvironmentOutlined style={{ fontSize: 28, color: "#16a34a" }} />,
+    icon: <EnvironmentOutlined style={{ fontSize: 22, color: "#16a34a" }} />,
     title: "Văn hoá xanh",
-    desc: "Làm việc xanh – sống xanh – hướng đến nông nghiệp bền vững Việt Nam.",
+    desc: "Làm việc xanh – sống xanh – cùng hướng tới nền nông nghiệp bền vững.",
+  },
+  {
+    icon: <CheckCircleOutlined style={{ fontSize: 22, color: "#16a34a" }} />,
+    title: "Cơ hội nghề nghiệp",
+    desc: "Tham gia đội ngũ NôngSản.vn tại các vị trí: Kinh doanh, Marketing, Kỹ thuật.",
   },
 ];
 
-const openings = [
-  {
-    role: "Nhân viên Kinh doanh",
-    description: "Phụ trách mở rộng khách hàng và phát triển thị trường.",
-    type: "Full-time",
-  },
-  {
-    role: "Chuyên viên Marketing",
-    description: "Xây dựng chiến lược truyền thông và thương hiệu sản phẩm nông sản sạch.",
-    type: "Full-time",
-  },
-  {
-    role: "Kỹ thuật Nông nghiệp",
-    description: "Giám sát quy trình sản xuất, đảm bảo chất lượng và hỗ trợ kỹ thuật nông dân.",
-    type: "On-site",
-  },
-];
-
-export default function Recruitment() {
+export default function RecruitmentMinimal() {
   return (
     <div
       style={{
-        background: "#ffffff",
+        background: "#fff",
         minHeight: "100vh",
-        padding: "50px 0 80px",
+        padding: "40px 0 60px",
       }}
     >
-      {/* 🌿 Header */}
-      <Row justify="center" style={{ marginBottom: 40 }}>
-        <Col xs={22} md={16} lg={10}>
-          <Card
-            bordered={false}
-            style={{
-              textAlign: "center",
-              borderRadius: 24,
-              background: "#ffffff",
-              boxShadow: "0 4px 12px rgba(0,0,0,0.06)",
-              padding: "36px 20px",
-            }}
-          >
-            <TeamOutlined style={{ fontSize: 54, color: "#16a34a" }} />
-            <Title level={2} style={{ color: "#14532d", marginTop: 12 }}>
-              Tuyển dụng NôngSản.vn
-            </Title>
-            <Paragraph style={{ color: "#475569", fontSize: 15 }}>
-              Cùng NôngSản.vn xây dựng môi trường làm việc xanh – thân thiện – phát triển bền vững,
-              nơi mỗi cá nhân đều được trân trọng và có cơ hội tỏa sáng.
-            </Paragraph>
-          </Card>
-        </Col>
-      </Row>
-
-      {/* 🌱 Giá trị cốt lõi */}
-      <Row justify="center" gutter={[24, 24]} style={{ marginBottom: 40 }}>
-        {values.map((item, i) => (
-          <Col xs={24} md={8} key={i}>
-            <Card
-              bordered={false}
-              style={{
-                borderRadius: 16,
-                padding: "24px 20px",
-                background: "#ffffff",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
-                height: "100%",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                  marginBottom: 10,
-                }}
-              >
-                {item.icon}
-                <Title
-                  level={4}
-                  style={{
-                    color: "#14532d",
-                    fontSize: 17,
-                    marginBottom: 0,
-                  }}
-                >
-                  {item.title}
-                </Title>
-              </div>
-              <Paragraph style={{ color: "#475569", fontSize: 14 }}>
-                {item.desc}
-              </Paragraph>
-            </Card>
-          </Col>
-        ))}
-      </Row>
-
-      {/* 💼 Vị trí tuyển dụng */}
-      <Row justify="center" style={{ marginBottom: 20 }}>
-        <Col xs={22} md={16} lg={10}>
-          <Title
-            level={3}
-            style={{
-              color: "#14532d",
-              textAlign: "center",
-              marginBottom: 20,
-            }}
-          >
-            Vị trí đang tuyển
+      {/* Header */}
+      <Row justify="center" style={{ marginBottom: 30 }}>
+        <Col xs={22} md={16} lg={10} style={{ textAlign: "center" }}>
+          <TeamOutlined style={{ fontSize: 46, color: "#16a34a" }} />
+          <Title level={2} style={{ color: "#14532d", marginTop: 10 }}>
+            Tuyển Dụng Cùng NôngSản.vn
           </Title>
+          <Paragraph style={{ color: "#475569", fontSize: 15 }}>
+            Cùng chúng tôi xây dựng môi trường làm việc xanh – thân thiện – bền
+            vững, nơi mỗi cá nhân đều được trân trọng và phát triển.
+          </Paragraph>
         </Col>
       </Row>
 
-      <Row gutter={[16, 16]} justify="center" style={{ maxWidth: 900, margin: "0 auto" }}>
-        {openings.map((job, index) => (
-          <Col xs={24} sm={12} md={8} key={index}>
-            <Card
-              bordered
-              style={{
-                borderRadius: 12,
-                textAlign: "center",
-                borderColor: "#b7eb8f",
-                background: "#ffffff",
-                height: "100%",
-                boxShadow: "0 2px 6px rgba(0,0,0,0.05)",
-                padding: "18px 12px",
-              }}
-            >
-              <Title level={5} style={{ color: "#237804", marginBottom: 6 }}>
-                {job.role}
-              </Title>
-              <Paragraph
-                style={{
-                  color: "#555",
-                  fontSize: 14,
-                  marginBottom: 10,
-                  minHeight: 40,
-                }}
-              >
-                {job.description}
-              </Paragraph>
-              <Tag
-                color="green"
-                style={{
-                  fontWeight: 600,
-                  background: "#eaffea",
-                  color: "#237804",
-                  fontSize: 13,
-                  borderRadius: 20,
-                  padding: "3px 14px",
-                }}
-              >
-                {job.type}
-              </Tag>
-            </Card>
-          </Col>
-        ))}
+      {/* Steps */}
+      <Row justify="center">
+        <Col xs={22} md={16} lg={10}>
+          <Space
+            direction="vertical"
+            size="large"
+            style={{ width: "100%", borderLeft: "2px solid #16a34a", paddingLeft: 16 }}
+          >
+            {steps.map((item, i) => (
+              <div key={i}>
+                <Space align="start" size="middle">
+                  {item.icon}
+                  <div>
+                    <Text
+                      strong
+                      style={{
+                        color: "#14532d",
+                        fontSize: 15,
+                        display: "block",
+                      }}
+                    >
+                      {item.title}
+                    </Text>
+                    <Paragraph
+                      style={{
+                        color: "#475569",
+                        fontSize: 14,
+                        marginBottom: 0,
+                      }}
+                    >
+                      {item.desc}
+                    </Paragraph>
+                  </div>
+                </Space>
+              </div>
+            ))}
+          </Space>
+        </Col>
       </Row>
 
-      {/* 📩 Thông tin liên hệ */}
-      <Row justify="center" style={{ marginTop: 50 }}>
-        <Col xs={22} md={14} lg={8}>
-          <Card
-            bordered={false}
-            style={{
-              borderRadius: 16,
-              textAlign: "center",
-              background: "#f6ffed",
-              padding: "30px 20px",
-              boxShadow: "0 2px 10px rgba(0,0,0,0.05)",
-            }}
-          >
-            <Title
-              level={4}
-              style={{ color: "#14532d", marginBottom: 10, fontSize: 17 }}
-            >
-              Ứng tuyển ngay hôm nay
-            </Title>
-            <Paragraph style={{ color: "#237804", fontSize: 14 }}>
-              Gửi CV của bạn về địa chỉ email bên dưới hoặc liên hệ hotline để được hỗ trợ nhanh nhất.
-            </Paragraph>
-            <Tag
-              color="green"
-              style={{
-                color: "#14532d",
-                fontWeight: 600,
-                background: "#eaffea",
-                borderRadius: 20,
-                padding: "6px 14px",
-                fontSize: 15,
-                display: "block",
-                margin: "0 auto 8px",
-              }}
-            >
-              <MailOutlined /> tuyendung@nongsan.vn
-            </Tag>
-            <Text style={{ color: "#14532d", fontSize: 15 }}>
-              <PhoneOutlined /> 0123 456 789
-            </Text>
-          </Card>
+      {/* Contact */}
+      <Divider style={{ margin: "50px auto 30px", width: "60%" }} />
+      <Row justify="center">
+        <Col xs={22} md={16} lg={8} style={{ textAlign: "center" }}>
+          <Title level={4} style={{ color: "#14532d" }}>
+            Liên hệ ứng tuyển
+          </Title>
+          <Paragraph style={{ color: "#237804", fontSize: 14, marginBottom: 10 }}>
+            Gửi CV của bạn về email hoặc liên hệ hotline để được hỗ trợ nhanh nhất.
+          </Paragraph>
+          <Paragraph style={{ fontSize: 15, color: "#14532d", marginBottom: 6 }}>
+            <MailOutlined /> tuyendung@nongsan.vn
+          </Paragraph>
+          <Paragraph style={{ fontSize: 15, color: "#14532d" }}>
+            <PhoneOutlined /> 0123 456 789
+          </Paragraph>
         </Col>
       </Row>
     </div>

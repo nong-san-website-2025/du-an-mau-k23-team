@@ -145,6 +145,29 @@ const BuyingGuideAntd = () => {
           </Card>
         </Col>
       </Row>
+      {/* Nút mua hàng ngay */}
+      <div style={{ textAlign: "center", marginTop: 40 }}>
+        <a href="/products">
+          <button
+            style={{
+              backgroundColor: "#16a34a",
+              color: "#fff",
+              border: "none",
+              borderRadius: 24,
+              padding: "12px 36px",
+              fontSize: 18,
+              fontWeight: 600,
+              cursor: "pointer",
+              boxShadow: "0 2px 8px rgba(22,163,74,0.15)",
+              transition: "background 0.2s",
+            }}
+            onMouseOver={e => e.currentTarget.style.backgroundColor = '#198754'}
+            onMouseOut={e => e.currentTarget.style.backgroundColor = '#16a34a'}
+          >
+            Mua hàng ngay
+          </button>
+        </a>
+      </div>
     </div>
   );
 };

@@ -65,7 +65,16 @@ export default function Footer() {
               </li>
               <li>
                 <Link to="/warrantypolicy" className={linkClass}>Chính sách bảo hành</Link>
-                </li>
+              </li>
+                <li>
+                <Link to="/RturnmoNey" className={linkClass}>Trả Hàng/Hoàn Tiền </Link>
+              </li>
+              <li>
+                <Link to="/GreenFarmwallet" className={linkClass}>Ví GreenFarm </Link>
+              </li>
+                 <li>
+                <Link to="/faq" className={linkClass}>Câu Hỏi Thường Gặp </Link>
+              </li>
             </ul>
           </div>
 

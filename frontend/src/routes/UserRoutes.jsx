@@ -22,7 +22,6 @@ import PaymentResultPage from "../features/cart/pages/PaymentResultPage";
 import SearchResultsPage from "../pages/SearchResultPage";
 import ResetPasswordPage from "../features/login_register/components/ResetPasswordForm";
 
-
 // Customer Service Pages
 import BuyingGuide from "../pages/CustomerService/BuyingGuide";
 import WarrantyPolicy from "../pages/CustomerService/WarrantyPolicy";
@@ -32,6 +31,9 @@ import SellingGuide from "../pages/CustomerService/SellingGuide";
 import PrimarySecurity from "../pages/CustomerService/primarysecurity";
 import Recruitment from "../pages/CustomerService/Recruitment";
 import Termsofservice from "../pages/CustomerService/Termsofservice";
+import RturnmoNey from "../pages/CustomerService/RturnmoNey";
+import  GreenFarmwallet from "../pages/CustomerService/GreenFarmwallet";
+import Frequentlyaskedquestions from "../pages/CustomerService/FAQ";
 
 
   
@@ -48,10 +50,10 @@ export const userRoutes = [
     <Route path="buying-guide" element={<BuyingGuide />} />
     <Route path="warrantypolicy" element={<WarrantyPolicy />} />
     <Route path="returnpolicy" element={<ReturnPolicy />} />
-  <Route path="contactsupport" element={<ContactSupport />} />
+    <Route path="contactsupport" element={<ContactSupport />} />
     <Route path="primarysecurity" element={<PrimarySecurity />} />
-  <Route path="recruitment" element={<Recruitment />} />
-  <Route path="terms-of-service" element={<Termsofservice />} />
+    <Route path="recruitment" element={<Recruitment />} />
+     <Route path="terms-of-service" element={<Termsofservice />} />
     <Route path="wishlist" element={<Wishlist />} />
     <Route path="abouts" element={<AboutPage />} />
     <Route path="store" element={<StoreList />} />
@@ -68,7 +70,9 @@ export const userRoutes = [
       <Route path="register-seller" element={<SellerRegisterPage />} />
       <Route path="/payment/result" element={<PaymentResultPage />} />
       <Route path="/notifications" element={<NotificationPage />} />
-      
+      <Route path="rturnmoney" element={<RturnmoNey />} />
+      <Route path="GreenFarmwallet" element={<GreenFarmwallet />} />
+      <Route path="faq" element={<Frequentlyaskedquestions />} />
     </Route>
   </Route>,
   <Route path="/selling-guide" element={<SellingGuide />} />
