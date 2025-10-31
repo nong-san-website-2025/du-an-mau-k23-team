@@ -40,26 +40,15 @@ const ProductInfo = ({
   const rawStatus = (product.availability_status || "").toLowerCase().trim();
   const stock = Number(product.stock) || 0;
 
-  // ✅ Xác định “Sắp có”
   const isComingSoon =
     rawStatus.includes("coming_soon") ||
     rawStatus.includes("comingsoon") ||
     rawStatus.includes("sắp") ||
     rawStatus.includes("sap");
 
-  // ✅ Nếu là “sắp có” thì KHÔNG bao giờ bị coi là hết hàng
   const isOutOfStock = !isComingSoon && stock <= 0;
 
-  // Guest preorders (localStorage) - tổng số lượng guest đã lưu cho sản phẩm này
-  let guestPreorderQty = 0;
-  try {
-    const stored = JSON.parse(localStorage.getItem("preorders") || "[]");
-    const entry = stored.find((p) => String(p.id) === String(product.id));
-    if (entry) guestPreorderQty = Number(entry.quantity || 0);
-  } catch (e) {
-    guestPreorderQty = 0;
-  }
-
+  const guestPreorderQty = 0; // bạn có thể thay bằng props.guestPreorderQty nếu truyền từ ngoài vào
   const totalPreordered =
     Number(product.preordered_quantity || product.total_preordered || 0) +
     (guestPreorderQty || 0);
@@ -269,7 +258,12 @@ const ProductInfo = ({
             >
               Thêm vào giỏ
             </Button>
-            <Button className="btn-classic" type="primary" size="large"  onClick={onBuyNow}>
+            <Button
+              className="btn-classic"
+              type="primary"
+              size="large"
+              onClick={onBuyNow}
+            >
               Mua ngay
             </Button>
           </>

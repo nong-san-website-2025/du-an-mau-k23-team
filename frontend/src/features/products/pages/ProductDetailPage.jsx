@@ -22,6 +22,7 @@ import StoreCard from "../components/StoreCard";
 import { productApi } from "../services/productApi";
 import { reviewApi } from "../services/reviewApi";
 import { useAuth } from "../../login_register/services/AuthContext";
+// import { usePreOrder } from "../context/PreOrderContext";
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -46,6 +47,8 @@ const ProductDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [quantity, setQuantity] = useState(1);
+  const [showPreorderModal, setShowPreorderModal] = useState(false);
+  const [preorderQty, setPreorderQty] = useState(1);
   const [isFavorite, setIsFavorite] = useState(false);
   const [relatedProducts, setRelatedProducts] = useState([]);
 
@@ -75,6 +78,8 @@ const ProductDetailPage = () => {
       setIsFavorite(false);
     }
   }, [id]);
+
+  
 
   // Thêm trong useEffect load dữ liệu
   useEffect(() => {
@@ -211,6 +216,8 @@ const ProductDetailPage = () => {
     );
   };
 
+  
+
   // Gửi đánh giá
   const handleSubmitReview = async () => {
     if (!user) {
@@ -262,35 +269,9 @@ const ProductDetailPage = () => {
 
     // ✅ Nếu là sắp có hoặc hết hàng → xử lý "Đặt trước"
     if (isComingSoon || isOutOfStock) {
-      try {
-        const stored = JSON.parse(localStorage.getItem("preorders")) || [];
-        const exists = stored.find((p) => String(p.id) === String(product.id));
-
-        if (!exists) {
-          stored.push({
-            id: product.id,
-            name: product.name,
-            image:
-              product.image && product.image.startsWith("/")
-                ? `http://localhost:8000${product.image}`
-                : product.image,
-            price: Number(product.discounted_price ?? product.price) || 0,
-            date: new Date().toISOString(),
-          });
-          localStorage.setItem("preorders", JSON.stringify(stored));
-        }
-
-        toast.success("✅ Sản phẩm đã được thêm vào danh sách đặt trước!", {
-          position: "bottom-right",
-        });
-
-        navigate("/preorders"); // 👉 chuyển sang trang lưu trữ đặt trước
-      } catch (err) {
-        console.error(err);
-        toast.error("Không thể lưu đơn đặt trước!", {
-          position: "bottom-right",
-        });
-      }
+      // Hiện modal để người dùng nhập số lượng đặt trước ngay trên trang sản phẩm
+      setPreorderQty(quantity || 1);
+      setShowPreorderModal(true);
       return;
     }
 
@@ -460,23 +441,100 @@ const ProductDetailPage = () => {
                   type="primary"
                   onClick={async () => {
                     try {
-                      const res = await productApi.preorderProduct(
-                        product.id,
-                        quantity
-                      );
-                      toast.success(
-                        `✅ Đặt trước ${quantity} sản phẩm thành công!`,
-                        {
+                      const maxQty =
+                        product.expected_quantity ||
+                        product.estimated_quantity ||
+                        product.stock ||
+                        0;
+
+                      const ordered = product.ordered_quantity || 0;
+                      const remaining = Math.max(maxQty - ordered, 0);
+
+                      if (remaining <= 0) {
+                        toast.warning("⚠️ Sản phẩm đã hết lượt đặt trước!", {
                           position: "bottom-right",
+                        });
+                        return;
+                      }
+
+                      if (quantity > remaining) {
+                        toast.error(
+                          `Bạn chỉ có thể đặt trước tối đa ${remaining} sản phẩm nữa!`,
+                          { position: "bottom-right" }
+                        );
+                        return;
+                      }
+
+                      if (user) {
+                        // Authenticated users -> call backend
+                        await productApi.preorderProduct(product.id, quantity);
+                        toast.success(
+                          `✅ Đặt trước ${quantity} sản phẩm thành công!`,
+                          {
+                            position: "bottom-right",
+                          }
+                        );
+
+                        // Cập nhật lại số lượng đã đặt trong local state
+                        setProduct((prev) => ({
+                          ...prev,
+                          ordered_quantity:
+                            (prev.ordered_quantity || 0) + Number(quantity),
+                        }));
+                        setQuantity(1);
+                        navigate("/preorders"); // ➜ Chuyển tới danh sách đặt trước
+                      } else {
+                        // Guest -> save to localStorage
+                        const stored = JSON.parse(
+                          localStorage.getItem("preorders") || "[]"
+                        );
+                        const exists = stored.find(
+                          (p) => String(p.id) === String(product.id)
+                        );
+
+                        if (exists) {
+                          const newQty = (exists.quantity || 0) + quantity;
+                          if (newQty > remaining) {
+                            toast.error(
+                              `Bạn chỉ có thể đặt thêm tối đa ${
+                                remaining - (exists.quantity || 0)
+                              } sản phẩm nữa!`,
+                              { position: "bottom-right" }
+                            );
+                            return;
+                          }
+                          exists.quantity = newQty;
+                          exists.date = new Date().toISOString();
+                        } else {
+                          stored.push({
+                            id: product.id,
+                            name: product.name,
+                            image:
+                              product.image && product.image.startsWith("/")
+                                ? `http://localhost:8000${product.image}`
+                                : product.image,
+                            price:
+                              Number(
+                                product.discounted_price ?? product.price
+                              ) || 0,
+                            quantity: quantity,
+                            date: new Date().toISOString(),
+                          });
                         }
-                      );
-                      // Cập nhật lại số lượng đã đặt
-                      setProduct((prev) => ({
-                        ...prev,
-                        ordered_quantity:
-                          (prev.ordered_quantity || 0) + Number(quantity),
-                      }));
-                      setQuantity(1);
+
+                        localStorage.setItem(
+                          "preorders",
+                          JSON.stringify(stored)
+                        );
+                        toast.success(
+                          `✅ Đã lưu ${quantity} sản phẩm vào danh sách đặt trước!`,
+                          {
+                            position: "bottom-right",
+                          }
+                        );
+                        setQuantity(1);
+                        navigate("/preorders"); // ➜ Chuyển tới danh sách đặt trước
+                      }
                     } catch (err) {
                       toast.error("Không thể đặt trước sản phẩm này!", {
                         position: "bottom-right",

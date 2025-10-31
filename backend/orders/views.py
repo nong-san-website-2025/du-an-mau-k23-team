@@ -17,6 +17,10 @@ from django.utils.timezone import now, timedelta
 from rest_framework.decorators import api_view, permission_classes
 from promotions.models import Voucher, UserVoucher
 from users.models import PointHistory
+from orders.models import Preorder
+from orders.serializers import PreorderSerializer
+from rest_framework import generics
+
 
 
 logger = logging.getLogger(__name__)
@@ -388,3 +392,28 @@ def top_products(request):
     )
 
     return Response(list(items))
+
+
+
+class PreorderDeleteView(generics.DestroyAPIView):
+    """
+    Xóa sản phẩm đặt trước (chỉ người đặt mới được xóa)
+    """
+    queryset = Preorder.objects.all()
+    serializer_class = PreorderSerializer
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, *args, **kwargs):
+        preorder_id = kwargs.get("pk")
+        preorder = Preorder.objects.filter(id=preorder_id, user=request.user).first()
+        if not preorder:
+            return Response(
+                {"error": "Không tìm thấy đơn đặt trước"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        preorder.delete()
+        return Response(
+            {"message": "Xóa đặt trước thành công"},
+            status=status.HTTP_204_NO_CONTENT
+        )
