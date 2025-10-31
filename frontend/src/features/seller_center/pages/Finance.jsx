@@ -461,15 +461,6 @@ const Finance = () => {
 
       const derivedTransactions = deriveTransactionRows(financeRes?.payments);
 
-      // Debug: Log calculated values
-      console.log("=== CALCULATED VALUES ===");
-      console.log("Available Balance:", toNumber(balanceRes?.balance));
-      console.log("Pending Balance:", pendingBalance);
-      console.log("Monthly Revenue:", monthlyRevenue);
-      console.log("Monthly Withdrawn:", monthlyWithdrawn);
-      console.log("Gross Profit:", derivedSummary.grossProfit);
-      console.log("Total Fees:", derivedSummary.totalFees);
-      console.log("Total COGS:", derivedSummary.totalCogs);
 
       setSummary({
         availableBalance: toNumber(balanceRes?.balance),

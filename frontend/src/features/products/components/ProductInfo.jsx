@@ -1,5 +1,5 @@
 import React from "react";
-import { Button, Space, Typography, Rate, Tag } from "antd";
+import { Button, Space, Typography, Rate, Tag, InputNumber } from "antd";
 import {
   ShoppingCartOutlined,
   MinusOutlined,
@@ -7,9 +7,9 @@ import {
   ClockCircleOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
-import { message } from "antd";
+import { formatVND } from "../../stores/components/StoreDetail/utils/utils";
 
-import { Modal, InputNumber } from "antd";
+import "../styles/ProductDetailPage.css";
 
 const { Title, Text } = Typography;
 
@@ -22,7 +22,7 @@ const ProductInfo = ({
   adding,
 }) => {
   const navigate = useNavigate();
-  
+
   const handlePreOrder = () => {
     navigate("/preorder", {
       state: {
@@ -37,10 +37,6 @@ const ProductInfo = ({
     });
   };
 
-  // ✅ Ưu tiên đọc field availability_status từ backend
-  const status = (product.availability_status || product.status || "")
-    .toLowerCase()
-    .trim();
   const rawStatus = (product.availability_status || "").toLowerCase().trim();
   const stock = Number(product.stock) || 0;
 
@@ -53,11 +49,6 @@ const ProductInfo = ({
 
   // ✅ Nếu là “sắp có” thì KHÔNG bao giờ bị coi là hết hàng
   const isOutOfStock = !isComingSoon && stock <= 0;
-  console.log("RENDER STATUS:", {
-    isComingSoon,
-    isOutOfStock,
-    status: product.status,
-  });
 
   // Guest preorders (localStorage) - tổng số lượng guest đã lưu cho sản phẩm này
   let guestPreorderQty = 0;
@@ -72,8 +63,6 @@ const ProductInfo = ({
   const totalPreordered =
     Number(product.preordered_quantity || product.total_preordered || 0) +
     (guestPreorderQty || 0);
-  const userPreordered =
-    Number(product.user_preordered || 0) || guestPreorderQty;
 
   // 🔹 Lấy thông tin thời gian & sản lượng dự kiến từ backend
   const availableFrom =
@@ -93,23 +82,45 @@ const ProductInfo = ({
       <Space size="small" style={{ marginBottom: 16 }}>
         <Rate disabled value={Math.round(product.rating || 0)} />
         <Text type="secondary">
-          {Number(product.rating).toFixed(1)} ★ ({product.review_count} đánh
-          giá)
+          {Number(product.rating).toFixed(1)} ★ ({product.review_count} Đánh
+          Giá) |
+        </Text>
+        <Text className="d-flex gap-1">
+          <Text type="secondary">Đã bán </Text>
+          <div>{Number(product.sold_count)}</div>
         </Text>
       </Space>
 
+      {/* 💰 Giá sản phẩm (hiển thị song song giá giảm & giá gốc) */}
       <div style={{ marginBottom: 16 }}>
-        <Title level={3} style={{ color: "#52c41a", margin: 0 }}>
-          {product.discount > 0
-            ? `${Math.round(
-                product.price * (1 - product.discount / 100)
-              ).toLocaleString("vi-VN")} VNĐ`
-            : `${Math.round(product.price)?.toLocaleString("vi-VN")} VNĐ`}
-        </Title>
-        {product.discount > 0 && (
-          <Text delete type="secondary" style={{ marginLeft: 8 }}>
-            {Math.round(product.price)?.toLocaleString("vi-VN")} VNĐ
-          </Text>
+        {product.discount_percent > 0 ? (
+          <>
+            <Title
+              level={2}
+              style={{
+                color: "#52c41a",
+                margin: 0,
+                display: "inline-block",
+                fontWeight: "700",
+              }}
+            >
+              {formatVND(product.discounted_price)}
+            </Title>
+            <Text
+              delete
+              type="secondary"
+              style={{ marginLeft: 8, fontSize: 16 }}
+            >
+              {formatVND(product.original_price)} đ
+            </Text>
+            <Tag color="red" style={{ marginLeft: 8 }}>
+              -{product.discount_percent}%
+            </Tag>
+          </>
+        ) : (
+          <Title level={3} style={{ color: "#52c41a", margin: 0 }}>
+            {Math.round(product.original_price).toLocaleString("vi-VN")} ₫
+          </Title>
         )}
         <Text type="secondary" style={{ marginLeft: 8 }}>
           / {product.unit}
@@ -118,43 +129,58 @@ const ProductInfo = ({
 
       {/* 🔹 Số lượng hiện tại và số lượng đã đặt */}
       {!isComingSoon && (
-        <div style={{ marginBottom: 24 }}>
-          <Text strong>Số lượng:</Text>
-          <Space size="middle" style={{ marginLeft: 12 }}>
-            <Button
-              icon={<MinusOutlined />}
-              onClick={() => onQuantityChange(Math.max(1, quantity - 1))}
-            />
-            <Text style={{ width: 40, textAlign: "center" }}>{quantity}</Text>
-            <Button
-              icon={<PlusOutlined />}
-              onClick={() =>
-                onQuantityChange(
-                  quantity < product.stock ? quantity + 1 : quantity
-                )
-              }
-            />
-          </Space>
-
-          {/* 🔸 Còn hàng / Đã bán / Đã đặt */}
-          {product.stock > 0 && (
-            <div style={{ marginTop: 8 }}>
-              <Text type="success">
-                Còn {product.stock.toLocaleString("vi-VN")} sản phẩm
-              </Text>
-
-              {/* {product.sold_quantity > 0 && (
-                <Text type="secondary" style={{ marginLeft: 12 }}>
-                  Đã bán {product.sold_quantity.toLocaleString("vi-VN")}
-                </Text>
-              )} */}
-
-              <Text type="secondary" style={{ marginLeft: 12 }}>
-                Đã bán {(product.ordered_quantity || 0).toLocaleString("vi-VN")}{" "}
-                sản phẩm
-              </Text>
+        <div
+          style={{
+            marginBottom: 24,
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            flexDirection: "column",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <Text strong>Số lượng:</Text>
+            <div style={{ display: "flex", padding: "0x 10px" }}>
+              <Button
+                className="btn-quantity"
+                icon={<MinusOutlined />}
+                onClick={() => onQuantityChange(Math.max(1, quantity - 1))}
+                disabled={quantity <= 1}
+              />
+              <InputNumber
+                min={1}
+                max={product.stock}
+                value={quantity}
+                onChange={(value) => {
+                  if (value !== null && !isNaN(value)) {
+                    const clamped = Math.max(1, Math.min(value, product.stock));
+                    onQuantityChange(clamped);
+                  }
+                }}
+                style={{ width: 100 }}
+                controls={false}
+                className="custom-input-number"
+              />
+              <Button
+                className="btn-quantity"
+                icon={<PlusOutlined />}
+                onClick={() =>
+                  onQuantityChange(
+                    quantity < product.stock ? quantity + 1 : quantity
+                  )
+                }
+                disabled={quantity >= product.stock}
+              />
             </div>
-          )}
+            {/* 🔸 Còn hàng */}
+            {product.stock > 0 && (
+              <div style={{ marginTop: 8 }}>
+                <Text type="success">
+                  Còn {product.stock.toLocaleString("vi-VN")} sản phẩm
+                </Text>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -243,7 +269,7 @@ const ProductInfo = ({
             >
               Thêm vào giỏ
             </Button>
-            <Button type="primary" size="large" danger onClick={onBuyNow}>
+            <Button className="btn-classic" type="primary" size="large"  onClick={onBuyNow}>
               Mua ngay
             </Button>
           </>

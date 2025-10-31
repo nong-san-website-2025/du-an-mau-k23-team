@@ -67,7 +67,6 @@ export default function LoginForm() {
 
   const handleGoogleLogin = async (response) => {
     try {
-      console.log("Google OAuth raw response:", response);
 
       if (!response || !response.credential) {
         throw new Error("Không nhận được Google credential token");
@@ -84,7 +83,6 @@ export default function LoginForm() {
       );
 
       const data = await res.json();
-      console.log("Google backend response:", data);
 
       if (!res.ok) {
         throw new Error(data.error || "Google login thất bại");
@@ -125,7 +123,6 @@ export default function LoginForm() {
       );
 
       const data = await res.json();
-      console.log("Facebook backend response:", data);
 
       if (!res.ok) {
         throw new Error(data.error || "Đăng nhập Facebook thất bại");
@@ -197,13 +194,14 @@ export default function LoginForm() {
         >
           {/* Bên trái: Logo + Tiêu đề */}
 
-          <Link
-            to="/"
+          <a
+            href="/"
             style={{
               textDecoration: "none",
               display: "flex",
               alignItems: "center",
-              gap: "12px",
+              gap: "0px",
+              cursor: "pointer",
             }}
           >
             <img
@@ -213,16 +211,15 @@ export default function LoginForm() {
                 width: 40,
                 height: 40,
                 objectFit: "cover",
-                cursor: "pointer",
               }}
             />
             <Typography
               variant="h6"
-              sx={{ fontWeight: "bold", color: "#4caf50", cursor: "pointer" }}
+              sx={{ fontWeight: "bold", color: "#195a34" }}
             >
               GreenFarm
             </Typography>
-          </Link>
+          </a>
 
           {/* Bên phải: Các icon hỗ trợ */}
           <div className="d-flex align-items-center gap-3">

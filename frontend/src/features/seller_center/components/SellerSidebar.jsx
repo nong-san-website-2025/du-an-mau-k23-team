@@ -46,7 +46,7 @@ export default function SellerSidebar() {
       key: "products",
       icon: <AppstoreOutlined />,
       label: "Sản phẩm",
-      children: [{ key: "/seller-center/products", label: "Thêm sản phẩm" }],
+      children: [{ key: "/seller-center/products", label: "Quản lý sản phẩm" }],
     },
     {
       key: "orders",

@@ -186,7 +186,7 @@ def promotions_overview(request):
     data = []
     for v in vouchers:
         data.append({
-            "id": f"voucher-{v.id}",
+            "id": v.id,    
             "code": v.code,
             "name": v.title or v.code,
             "type": "voucher",

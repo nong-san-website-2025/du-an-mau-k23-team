@@ -1,11 +1,12 @@
 import React from "react";
-import { Button, Space, Tooltip, Popconfirm } from "antd";
+import { Dropdown, Menu, Button, Popconfirm } from "antd";
 import {
   CheckOutlined,
   CloseOutlined,
   EyeOutlined,
   LockOutlined,
   UnlockOutlined,
+  MoreOutlined,
 } from "@ant-design/icons";
 
 const SellerActions = ({ record, onApprove, onReject, onView, onLock }) => {
@@ -17,59 +18,59 @@ const SellerActions = ({ record, onApprove, onReject, onView, onLock }) => {
 
   const handleLockToggle = async () => {
     try {
-      await onLock(record); // onLock sẽ tự quyết định lock/unlock dựa vào record.status
+      await onLock(record);
     } catch (err) {
       console.error(err);
     }
   };
 
-  return (
-    <Space>
-      <Tooltip title="Duyệt">
-        <Button
-          type="primary"
-          icon={<CheckOutlined />}
-          onClick={() => onApprove(record)}
-          disabled={isApproved || isLocked || isRejected || isActive}
-        />
-      </Tooltip>
+  const menu = (
+    <Menu>
+      <Menu.Item
+        key="approve"
+        icon={<CheckOutlined />}
+        disabled={isApproved || isLocked || isRejected || isActive}
+        onClick={() => onApprove(record)}
+      >
+        Duyệt cửa hàng
+      </Menu.Item>
 
-      <Tooltip title="Từ chối">
-        <Button
-          danger
-          icon={<CloseOutlined />}
-          onClick={() => onReject(record)}
-          disabled={isApproved || isLocked || isRejected || isActive}
-        />
-      </Tooltip>
+      <Menu.Item
+        key="reject"
+        icon={<CloseOutlined />}
+        disabled={isApproved || isLocked || isRejected || isActive}
+        onClick={() => onReject(record)}
+      >
+        Từ chối cửa hàng
+      </Menu.Item>
 
-      <Tooltip title="Xem chi tiết">
-        <Button icon={<EyeOutlined />} onClick={() => onView(record)} />
-      </Tooltip>
+      <Menu.Item key="view" icon={<EyeOutlined />} onClick={() => onView(record)}>
+        Xem chi tiết
+      </Menu.Item>
 
-      <Tooltip
-        title={
-          record.status === "active" ? "Khóa tài khoản" : "Mở khóa tài khoản"
-        }
-       
+      <Menu.Item
+        key="lock"
+        icon={isActive ? <LockOutlined /> : <UnlockOutlined />}
+        disabled={isApproved || isRejected || isPending}
       >
         <Popconfirm
-          title={`Bạn có chắc muốn ${record.status === "active" ? "khóa" : "mở khóa"} tài khoản này?`}
+          title={`Bạn có chắc muốn ${
+            isActive ? "khóa" : "mở khóa"
+          } cửa hàng này?`}
           onConfirm={handleLockToggle}
           okText="Có"
           cancelText="Hủy"
         >
-          <Button
-            danger={record.status === "active"}
-            type={record.status === "locked" ? "default" : "primary"}
-            icon={
-              record.status === "active" ? <LockOutlined /> : <UnlockOutlined />
-            }
-             disabled={isApproved || isRejected || isPending}
-          />
+          {isActive ? "Khóa tài khoản" : "Mở khóa tài khoản"}
         </Popconfirm>
-      </Tooltip>
-    </Space>
+      </Menu.Item>
+    </Menu>
+  );
+
+  return (
+    <Dropdown overlay={menu} trigger={["click"]}>
+      <Button icon={<MoreOutlined />} />
+    </Dropdown>
   );
 };
 

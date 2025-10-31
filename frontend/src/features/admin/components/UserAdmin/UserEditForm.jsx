@@ -26,7 +26,6 @@ export default function UserEditForm({ editUser, onCancel, onSave }) {
         headers: { Authorization: `Bearer ${token}` },
       })
       .then((res) => {
-        console.log("✅ Roles response:", res.data);
         setRoles(res.data || []);
       })
       .catch((err) => console.error("❌ Lỗi load roles:", err));
@@ -67,7 +66,6 @@ export default function UserEditForm({ editUser, onCancel, onSave }) {
         }
       );
 
-      console.log("✅ Update user response:", response.data);
       if (onSave) onSave(response.data);
     } catch (err) {
       console.error(

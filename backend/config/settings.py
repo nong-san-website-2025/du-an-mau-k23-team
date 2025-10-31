@@ -13,6 +13,9 @@ load_dotenv()  # Load biến môi trường từ .env nếu có
 USE_TZ = True  # Django dùng timezone chuẩn UTC, nên giữ nguyên True
 TIME_ZONE = "Asia/Ho_Chi_Minh"  # Múi giờ Việt Nam
 
+USE_I18N = True
+USE_L10N = True
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # ⚠️ Lấy SECRET_KEY từ env để bảo mật khi deploy
@@ -48,7 +51,7 @@ INSTALLED_APPS = [
 
     # Local apps
     "users", "sellers", "products", "reviews",
-    "cart", "orders", "payments", "store", "wallet",'complaints', "marketing", "promotions", "delivery", "chat", 'config',
+    "cart", "orders", "payments", "store", "wallet",'complaints', "marketing", "promotions", "delivery", "chat", 'config', 'search',
 
     # Cloudinary
 

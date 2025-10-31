@@ -42,7 +42,6 @@ export default function UserAdminPage() {
     })
       .then(res => res.json())
       .then(data => {
-        console.log("User data:", data); // Thêm dòng này
         setUsers(data);
       })
       .catch(err => console.error(err))

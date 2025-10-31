@@ -18,7 +18,6 @@ import "../styles/AdminSidebar.css";
 const { Sider } = Layout;
 
 const Sidebar = () => {
-
   const location = useLocation();
   const navigate = useNavigate();
   return (
@@ -27,7 +26,7 @@ const Sidebar = () => {
         mode="inline"
         selectedKeys={[location.pathname]}
         onClick={({ key }) => {
-          if (typeof key === 'string' && key.startsWith('/')) navigate(key);
+          if (typeof key === "string" && key.startsWith("/")) navigate(key);
         }}
         style={{ height: "100%", borderRight: 0 }}
       >
@@ -82,10 +81,10 @@ const Sidebar = () => {
           title="Đơn hàng & Vận chuyển"
         >
           <Menu.Item key="/admin/orders">
-            <Link to="/admin/orders">{("Quản lý đơn hàng")}</Link>
+            <Link to="/admin/orders">{"Quản lý đơn hàng"}</Link>
           </Menu.Item>
           <Menu.Item key="/admin/shipping">
-            <Link to="/admin/shipping">{("Đối tác vận chuyển")}</Link>
+            <Link to="/admin/shipping">{"Đối tác vận chuyển"}</Link>
           </Menu.Item>
         </Menu.SubMenu>
 
@@ -109,43 +108,46 @@ const Sidebar = () => {
         </Menu.SubMenu>
 
         <Menu.SubMenu
-              key="reports"
-              icon={<BarChartOutlined />}
-              title="Thống kê & Báo cáo"
-            >
-              <Menu.Item key="/admin/reports/revenue">
-                <Link to="/admin/reports/revenue">Doanh thu</Link>
-              </Menu.Item>
-              <Menu.Item key="/admin/reports/products">
-                <Link to="/admin/reports/products">Sản phẩm</Link>
-              </Menu.Item>
-              <Menu.Item key="/admin/reports/orders">
-                <Link to="/admin/reports/orders">Đơn hàng</Link>
-              </Menu.Item>
-              <Menu.Item key="/admin/reports/customers">
-                <Link to="/admin/reports/customers">Khách hàng</Link>
-              </Menu.Item>
-              <Menu.Item key="/admin/reports/agriculture">
-                <Link to="/admin/reports/agriculture">Nông sản</Link>
-              </Menu.Item>
-            </Menu.SubMenu>
+          key="reports"
+          icon={<BarChartOutlined />}
+          title="Thống kê & Báo cáo"
+        >
+          <Menu.Item key="/admin/reports/revenue">
+            <Link to="/admin/reports/revenue">Doanh thu</Link>
+          </Menu.Item>
+          <Menu.Item key="/admin/reports/products">
+            <Link to="/admin/reports/products">Sản phẩm</Link>
+          </Menu.Item>
+          <Menu.Item key="/admin/reports/orders">
+            <Link to="/admin/reports/orders">Đơn hàng</Link>
+          </Menu.Item>
+          <Menu.Item key="/admin/reports/customers">
+            <Link to="/admin/reports/customers">Khách hàng</Link>
+          </Menu.Item>
+          <Menu.Item key="/admin/reports/agriculture">
+            <Link to="/admin/reports/agriculture">Nông sản</Link>
+          </Menu.Item>
+        </Menu.SubMenu>
 
-
-          <Menu.SubMenu
-            key="marketing"
-            icon={<NotificationOutlined />}
-            title="Marketing"
-          >
-            <Menu.Item key="/admin/marketing/banners">
-              <Link to="/admin/marketing/banners">{("Banner")}</Link>
-            </Menu.Item>
-            <Menu.Item key="flash-sale">
-              <Link to="/admin/marketing/flashsale">{("Flash_sale")}</Link>
-            </Menu.Item>
-          </Menu.SubMenu>
+        <Menu.SubMenu
+          key="marketing"
+          icon={<NotificationOutlined />}
+          title="Marketing"
+        >
+          <Menu.Item key="/admin/marketing/banners">
+            <Link to="/admin/marketing/banners">{"Banner"}</Link>
+          </Menu.Item>
+          <Menu.Item key="flash-sale">
+            <Link to="/admin/promotions/flashsale">{"Flash Sale"}</Link>
+          </Menu.Item>
+        </Menu.SubMenu>
 
         {/* 📑 Khiếu nại / Báo cáo */}
-        <Menu.SubMenu key="complaints" icon={<WarningOutlined />} title="Khiếu nại / Báo cáo">
+        <Menu.SubMenu
+          key="complaints"
+          icon={<WarningOutlined />}
+          title="Khiếu nại"
+        >
           <Menu.Item key="/admin/complaints/user-reports">
             <Link to="/admin/complaints/user-reports">Người dùng báo cáo</Link>
           </Menu.Item>
@@ -158,9 +160,6 @@ const Sidebar = () => {
         >
           <Menu.Item key="/admin/promotions">
             <Link to="/admin/promotions">Quản lý khuyến mãi</Link>
-          </Menu.Item>
-          <Menu.Item key="/admin/promotions/flashsale">
-            <Link to="/admin/promotions/flashsale">Flash Sale</Link>
           </Menu.Item>
         </Menu.SubMenu>
       </Menu>

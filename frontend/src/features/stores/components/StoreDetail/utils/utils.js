@@ -3,7 +3,12 @@
 export const formatVND = (value) => {
   const n = Number(value);
   if (Number.isNaN(n)) return "";
-  return Math.round(n).toLocaleString("vi-VN");
+  // Làm tròn và chuyển sang chuỗi với dấu phẩy thay cho dấu chấm
+  return (
+    Math.round(n)
+      .toString()
+      .replace(/\B(?=(\d{3})+(?!\d))/g, ",") + " ₫"
+  );
 };
 
 export const formatDate = (iso) => {

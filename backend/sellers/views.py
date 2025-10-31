@@ -142,7 +142,7 @@ class SellerViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        return Seller.objects.all()
+        return Seller.objects.all().order_by('-created_at')
 
     def perform_create(self, serializer):
         if self.request.user.is_staff:

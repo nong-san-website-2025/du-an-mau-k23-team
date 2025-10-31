@@ -27,7 +27,6 @@ const NotificationSettings = () => {
 
   const handleSave = () => {
     // Sau này sẽ gọi API PUT/PATCH ở đây
-    console.log("Đã lưu cài đặt:", settings);
     setSaved(true);
   };
 

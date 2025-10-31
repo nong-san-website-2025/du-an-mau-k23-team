@@ -5,15 +5,22 @@ import { useNavigate } from "react-router-dom";
 import { productApi } from "../features/products/services/productApi";
 import { AppstoreOutlined, ClockCircleOutlined } from "@ant-design/icons";
 import "../features/products/styles/UserProductPage.css";
+import NoImage from "../components/shared/NoImage"; // ✅ Import NoImage
 
 const { Text } = Typography;
+
+// Hàm kiểm tra ảnh hợp lệ
+const isValidImageUrl = (url) => {
+  if (!url || typeof url !== "string") return false;
+  return url.startsWith("http") || url.startsWith("/");
+};
 
 const ComingSoonProductsPage = () => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const productsPerPage = 18; // 6 cột × 3 hàng
+  const productsPerPage = 18;
 
   const navigate = useNavigate();
 
@@ -52,7 +59,6 @@ const ComingSoonProductsPage = () => {
 
   return (
     <div style={{ padding: "12px 190px" }}>
-      {/* --- TIÊU ĐỀ CHUYÊN NGHIỆP CHO "SẮP CÓ" --- */}
       <div
         style={{
           display: "flex",
@@ -80,7 +86,7 @@ const ComingSoonProductsPage = () => {
                 left: 0,
                 width: "72px",
                 height: "3px",
-                backgroundColor: "#3b82f6", // xanh dương – màu "sắp tới", "mong đợi"
+                backgroundColor: "#3b82f6",
                 borderRadius: "2px",
               }}
             />
@@ -122,17 +128,19 @@ const ComingSoonProductsPage = () => {
                 <Card
                   hoverable
                   cover={
-                    <img
-                      alt={product.name}
-                      src={
-                        product.image?.startsWith("/")
-                          ? `http://localhost:8000${product.image}`
-                          : product.image?.startsWith("http")
-                          ? product.image
-                          : "https://via.placeholder.com/400x300?text=No+Image"
-                      }
-                      style={{ height: 160, objectFit: "cover" }}
-                    />
+                    isValidImageUrl(product.image) ? (
+                      <img
+                        alt={product.name}
+                        src={
+                          product.image.startsWith("/")
+                            ? `http://localhost:8000${product.image}`
+                            : product.image
+                        }
+                        style={{ height: 160, objectFit: "cover", width: "100%" }}
+                      />
+                    ) : (
+                      <NoImage height={160} text="No image" />
+                    )
                   }
                   onClick={() => navigate(`/products/${product.id}`)}
                 >
@@ -189,7 +197,6 @@ const ComingSoonProductsPage = () => {
             ))}
           </Row>
 
-          {/* Phân trang */}
           {totalPages > 1 && (
             <div style={{ marginTop: "24px", textAlign: "center" }}>
               <Pagination

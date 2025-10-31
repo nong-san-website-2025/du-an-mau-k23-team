@@ -15,15 +15,22 @@ import { useCart } from "../features/cart/services/CartContext";
 import { productApi } from "../features/products/services/productApi";
 import { ShoppingCartOutlined, AppstoreOutlined } from "@ant-design/icons";
 import "../features/products/styles/UserProductPage.css";
+import NoImage from "../components/shared/NoImage"; // ✅ Import NoImage
 
 const { Title, Text } = Typography;
+
+// Hàm kiểm tra URL ảnh hợp lệ
+const isValidImageUrl = (url) => {
+  if (!url || typeof url !== "string") return false;
+  return url.startsWith("http") || url.startsWith("/");
+};
 
 const NewProductsPage = () => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const productsPerPage = 18; // 6 sản phẩm/hàng × 3 hàng = 18
+  const productsPerPage = 18;
 
   const navigate = useNavigate();
   const { addToCart, cartItems, updateQuantity } = useCart();
@@ -45,15 +52,9 @@ const NewProductsPage = () => {
     fetchProducts();
   }, []);
 
-  // Tính tổng số trang
   const totalPages = Math.ceil(products.length / productsPerPage);
-
-  // Lấy sản phẩm cho trang hiện tại
   const startIndex = (currentPage - 1) * productsPerPage;
-  const currentProducts = products.slice(
-    startIndex,
-    startIndex + productsPerPage
-  );
+  const currentProducts = products.slice(startIndex, startIndex + productsPerPage);
 
   const handleAddToCart = async (e, product) => {
     e.stopPropagation();
@@ -94,7 +95,6 @@ const NewProductsPage = () => {
 
   return (
     <div style={{ padding: "12px 190px" }}>
-      {/* --- TIÊU ĐỀ CHUYÊN NGHIỆP --- */}
       <div
         style={{
           display: "flex",
@@ -169,17 +169,19 @@ const NewProductsPage = () => {
                 <Card
                   hoverable
                   cover={
-                    <img
-                      alt={product.name}
-                      src={
-                        product.image?.startsWith("/")
-                          ? `http://localhost:8000${product.image}`
-                          : product.image?.startsWith("http")
-                            ? product.image
-                            : "https://via.placeholder.com/400x300?text=No+Image"
-                      }
-                      style={{ height: 160, objectFit: "cover" }}
-                    />
+                    isValidImageUrl(product.image) ? (
+                      <img
+                        alt={product.name}
+                        src={
+                          product.image.startsWith("/")
+                            ? `http://localhost:8000${product.image}`
+                            : product.image
+                        }
+                        style={{ height: 160, objectFit: "cover", width: "100%" }}
+                      />
+                    ) : (
+                      <NoImage height={160} text="No image" />
+                    )
                   }
                   onClick={() => navigate(`/products/${product.id}`)}
                   style={{ borderRadius: 8 }}
@@ -221,7 +223,6 @@ const NewProductsPage = () => {
             ))}
           </Row>
 
-          {/* Phân trang */}
           {totalPages > 1 && (
             <div style={{ marginTop: "24px", textAlign: "center" }}>
               <Pagination

@@ -39,6 +39,6 @@
   height: 100vh;   /* full chiều cao màn hình */
   width: 240px;    /* tùy bạn */
   background: #fff;
-  border-right: 1px solid #eee;
+  border-right: 2px solid #eee;
   overflow-y: auto; /* nếu menu dài thì cho scroll riêng */
 }

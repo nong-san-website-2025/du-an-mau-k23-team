@@ -1,144 +1,206 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import NoImage from "../shared/NoImage";
 
-const FlashSaleItem = ({ flash }) => {
+export default function FlashSaleItem({ flash }) {
   const [progress, setProgress] = useState(0);
 
   const remainingStock = flash.remaining_stock ?? flash.stock;
   const isSoldOut = remainingStock <= 0;
-  const progressPercent = ((flash.stock - remainingStock) / flash.stock) * 100;
+  const soldPercent = ((flash.stock - remainingStock) / flash.stock) * 100;
   const isAlmostSoldOut = remainingStock / flash.stock < 0.1;
 
-  useEffect(() => {
-    setProgress(progressPercent);
-  }, [progressPercent]);
+  useEffect(() => setProgress(soldPercent), [soldPercent]);
 
   const imageUrl =
     flash.product_image?.trim() ||
     flash.thumbnail_url?.trim() ||
     flash.image?.trim();
-  const hasImage = !!imageUrl; // true nếu có URL hợp lệ
 
-  console.log(flash);
+  const discount =
+    flash.original_price && flash.flash_price
+      ? Math.round(
+          ((flash.original_price - flash.flash_price) / flash.original_price) *
+            100
+        )
+      : 0;
 
   return (
-    <div className="card h-100 shadow-sm border-0 overflow-hidden hover-scale">
-      <Link to={`/products/${flash.product_id}`}>
-        {hasImage ? (
+    <div className="flash-card">
+      <div className="flash-image">
+        {imageUrl ? (
           <img
             src={imageUrl}
-            className="card-img-top"
             alt={flash.product_name}
-            style={{ height: "160px", objectFit: "cover" }}
             loading="lazy"
-            onError={(e) => {
-              e.currentTarget.onerror = null;
-              e.currentTarget.style.display = "none";
-              e.currentTarget.parentNode.querySelector(
-                ".no-image"
-              ).style.display = "flex";
-            }}
+            onError={(e) => (e.currentTarget.style.display = "none")}
           />
-        ) : null}
-        <div
-          className="no-image"
-          style={{
-            display: hasImage ? "none" : "flex",
-            height: "160px",
-            justifyContent: "center",
-            alignItems: "center",
-            background: "#f0f0f0",
-            color: "#999",
-            fontWeight: "bold",
-          }}
-        >
-          No image
-        </div>
-      </Link>
+        ) : (
+          <NoImage height={160} text="No Image" />
+        )}
+        {discount > 0 && <div className="discount-badge">-{discount}%</div>}
+      </div>
 
-      <div className="card-body d-flex flex-column">
-        <h5 className="card-title text-truncate" title={flash.product_name}>
+      <div className="flash-info">
+        <h6 className="product-name" title={flash.product_name}>
           {flash.product_name}
-        </h5>
-        <p className="text-danger fw-bold fs-5 mb-1">
-          {Number(flash.flash_price).toLocaleString()}đ
-        </p>
-
-        {/* Progress Bar */}
-        <div
-          className="progress mt-3 mb-1"
-          style={{ height: "10px", borderRadius: "5px", background: "#e0e0e0" }}
-        >
-          <div
-            className={`progress-bar ${isAlmostSoldOut ? "pulse" : ""} shimmer`}
-            role="progressbar"
-            style={{
-              width: `${Math.min(100, Math.max(0, progress))}%`,
-              borderRadius: "5px",
-              transition: "width 0.8s ease-in-out",
-            }}
-          ></div>
-        </div>
-        <small className="text-muted mb-2 d-block">
-          Đã bán: {flash.stock - remainingStock} / {flash.stock}
-        </small>
-
-        <div className="mt-auto">
-          {isSoldOut ? (
-            <button className="btn btn-secondary w-100" disabled>
-              Đã bán hết
-            </button>
-          ) : (
-            <Link
-              to={`/products/${flash.product_id}`}
-              className="btn btn-success w-100 fw-bold"
-            >
-              Mua ngay
-            </Link>
+        </h6>
+        <div className="price-group">
+          <span className="flash-price">
+            {Number(flash.flash_price).toLocaleString()}₫
+          </span>
+          {flash.original_price && (
+            <span className="original-price">
+              {Number(flash.original_price).toLocaleString()}₫
+            </span>
           )}
         </div>
+
+        <div className="progress-container">
+          <div
+            className="progress-bar"
+            style={{
+              width: `${Math.min(100, Math.max(0, progress))}%`,
+            }}
+          />
+        </div>
+        <small className="stock-text">
+          {isSoldOut
+            ? "Đã bán hết 🔥"
+            : `Đã bán ${flash.stock - remainingStock}/${flash.stock}`}
+        </small>
+
+        <Link
+          to={`/products/${flash.product_id}`}
+          className={`buy-btn ${isSoldOut ? "disabled" : ""}`}
+          style={{ textDecoration: "none" }}
+        >
+          {isSoldOut ? "Đã hết hàng" : "Mua ngay"}
+        </Link>
       </div>
 
       <style jsx>{`
-        .hover-scale:hover img {
+        .flash-card {
+          background: #fff;
+          overflow: hidden;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+          transition: all 0.3s ease;
+          cursor: pointer;
+        }
+        .flash-card:hover {
+          transform: translateY(-4px);
+          box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+        }
+
+        .flash-image {
+          position: relative;
+          width: 100%;
+          height: 160px;
+          overflow: hidden;
+        }
+
+        .flash-image img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          transition: transform 0.4s ease;
+        }
+
+        .flash-card:hover img {
           transform: scale(1.05);
         }
-        .hover-scale:hover {
-          box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
-          transition: box-shadow 0.3s;
+
+        .discount-badge {
+          position: absolute;
+          top: 0px;
+          right: 0px;
+          background: linear-gradient(45deg, #ff4d4f, #ff7a45);
+          color: #fff;
+          font-weight: bold;
+          font-size: 0.8rem;
+          padding: 4px 8px;
+          border-radius: 0px 0px 0px 6px;
         }
 
-        .pulse {
-          animation: pulseGlow 1s ease-in-out infinite;
-        }
-        @keyframes pulseGlow {
-          0% {
-            box-shadow: 0 0 8px #ff4d4f;
-          }
-          50% {
-            box-shadow: 0 0 12px #ff4d4f;
-          }
-          100% {
-            box-shadow: 0 0 8px #ff4d4f;
-          }
+        .flash-info {
+          padding: 12px;
+          text-align: center;
         }
 
-        .shimmer {
-          background: linear-gradient(270deg, #56ab2f, #a8e063, #56ab2f);
-          background-size: 600% 100%;
-          animation: shimmer 2s linear infinite;
+        .product-name {
+          font-size: 0.9rem;
+          font-weight: 600;
+          margin-bottom: 6px;
+          line-height: 1.3;
+          min-height: 36px;
+          color: #222;
+
+          /* ✨ Giới hạn chữ hiển thị */
+          overflow: hidden;
+          text-overflow: ellipsis;
+          display: -webkit-box;
+          -webkit-line-clamp: 2; /* số dòng muốn hiển thị, có thể đổi 1 hoặc 3 */
+          -webkit-box-orient: vertical;
+          word-break: break-word;
         }
-        @keyframes shimmer {
-          0% {
-            background-position: 0% 0;
-          }
-          100% {
-            background-position: 100% 0;
-          }
+
+        .price-group {
+          margin-bottom: 8px;
+        }
+
+        .flash-price {
+          font-size: 1.1rem;
+          font-weight: bold;
+          color: #ff4d4f;
+          margin-right: 6px;
+        }
+
+        .original-price {
+          text-decoration: line-through;
+          color: #999;
+          font-size: 0.85rem;
+        }
+
+        .progress-container {
+          height: 8px;
+          background: #f2f2f2;
+          border-radius: 10px;
+          overflow: hidden;
+          margin-bottom: 4px;
+        }
+
+        .progress-bar {
+          height: 100%;
+          background: linear-gradient(90deg, #ff7a45, #ff4d4f);
+          transition: width 0.5s ease-in-out;
+          position: relative;
+        }
+
+        .stock-text {
+          font-size: 0.8rem;
+          color: ${isAlmostSoldOut ? "#ff4d4f" : "#666"};
+          font-weight: 500;
+        }
+
+        .buy-btn {
+          display: block;
+          margin-top: 8px;
+          background: linear-gradient(90deg, #ff7a45, #ff4d4f);
+          color: white;
+          font-weight: bold;
+          border: none;
+          padding: 6px 0;
+          border-radius: 6px;
+          transition: 0.3s;
+        }
+        .buy-btn:hover {
+          background: linear-gradient(90deg, #ff4d4f, #ff7a45);
+        }
+        .buy-btn.disabled {
+          background: #ccc;
+          cursor: not-allowed;
         }
       `}</style>
     </div>
   );
-};
-
-export default FlashSaleItem;
+}

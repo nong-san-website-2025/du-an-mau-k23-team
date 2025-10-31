@@ -12,6 +12,7 @@ import {
   Input,
   Breadcrumb,
   message,
+  notification,
 } from "antd";
 import ProductImage from "../components/ProductImage";
 import ProductInfo from "../components/ProductInfo";
@@ -23,13 +24,18 @@ import { reviewApi } from "../services/reviewApi";
 import { useAuth } from "../../login_register/services/AuthContext";
 
 const { Title, Text, Paragraph } = Typography;
-const { TextArea } = Input;
 
 const ProductDetailPage = () => {
   const { id } = useParams();
+
   const navigate = useNavigate();
-  const { addToCart, updateQuantity, cartItems, selectOnlyByProductId } =
-    useCart();
+  useEffect(() => {
+    // Cuộn ngay lập tức, đồng bộ
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, [id]);
+
+  const { addToCart } = useCart();
   const { user } = useAuth();
 
   const [categoryName, setCategoryName] = useState("Danh mục");
@@ -52,6 +58,13 @@ const ProductDetailPage = () => {
 
   // Hàm tạo mảng breadcrumb từ category lồng nhau
 
+  // Trong ProductDetailPage.jsx
+  useEffect(() => {
+    if (!loading) {
+
+      window.scrollTo({ top: 0, behavior: "instant" }); // hoặc 'smooth' nếu muốn
+    }
+  }, [loading]);
   // Kiểm tra trạng thái yêu thích từ localStorage
   useEffect(() => {
     try {
@@ -186,63 +199,15 @@ const ProductDetailPage = () => {
       status.includes("sắp") ||
       status.includes("sap");
 
-    // Nếu là sản phẩm sắp có → cho phép đặt trước
-    if (isComingSoon) {
-      toast.info("Sản phẩm sắp có, bạn có thể đặt trước.", {
-        position: "bottom-right",
-      });
-      return;
-    }
+    // Sản phẩm sắp có → đặt trước
+    const preorder = isComingSoon || product.stock <= 0;
 
-    // Nếu hết hàng mà không phải sắp có → cho phép đặt trước (preorder)
-    const isOutOfStock = product.stock <= 0;
-    const preorder = isOutOfStock;
-
-    // Nếu đến đây thì có thể thêm vào giỏ
-    const getProductId = (item) => {
-      return (
-        item.product_data?.id ||
-        (item.product?.id !== undefined ? item.product.id : item.product)
-      );
-    };
-
-    const existingItem = cartItems.find(
-      (item) => String(getProductId(item)) === String(product.id)
-    );
-
-    if (existingItem) {
-      await updateQuantity(product.id, existingItem.quantity + quantity);
-      message.success("Đã cập nhật số lượng trong giỏ hàng!");
-      return;
-    }
-
-    setAdding(true);
     await addToCart(
       product.id,
       quantity,
-      {
-        id: product.id,
-        name: product.name,
-        price: Number(product.discounted_price ?? product.price) || 0,
-        image:
-          product.image && product.image.startsWith("/")
-            ? `http://localhost:8000${product.image}`
-            : product.image?.startsWith("http")
-              ? product.image
-              : "",
-        // Thêm flag preorder để CartContext/Backend biết đây là đặt trước
-        preorder,
-      },
-      () => {
-        if (preorder)
-          message.success("Đã thêm sản phẩm vào giỏ hàng (Đặt trước)!");
-        else message.success("Đã thêm sản phẩm vào giỏ hàng!");
-        setAdding(false);
-      },
-      () => {
-        message.error("Không thể thêm vào giỏ hàng");
-        setAdding(false);
-      }
+      { ...product, preorder },
+      () => setQuantity(1), // onSuccess callback chỉ reset số lượng
+      () => {} // onError callback nếu muốn thêm xử lý riêng
     );
   };
 
@@ -253,9 +218,14 @@ const ProductDetailPage = () => {
       return;
     }
     if (newComment.trim() === "") {
-      toast.warning("Vui lòng nhập bình luận", { position: "bottom-right" });
+      notification.warning({
+        message: "Cảnh báo",
+        description: "Vui lòng nhập nội dung đánh giá.",
+        placement: "topRight",
+      });
       return;
     }
+
     try {
       await reviewApi.addReview(id, { rating: newRating, comment: newComment });
       const updatedProduct = await productApi.getProduct(id);
@@ -392,28 +362,38 @@ const ProductDetailPage = () => {
     { title: product.name },
   ];
   return (
-    <div style={{ padding: "24px 160px" }}>
-      <Breadcrumb
-        items={breadcrumbItems.map((item) => ({
-          title: item.href ? (
-            <a
-              href={item.href}
-              onClick={(e) => {
-                e.preventDefault();
-                navigate(item.href);
-              }}
-              style={{ color: "#1890ff" }}
-            >
-              {item.title}
-            </a>
-          ) : (
-            item.title
-          ),
-        }))}
-        style={{ marginBottom: 16 }}
-      />
+    <div style={{ padding: "20px 160px" }}>
+      <div
+        style={{
+          marginBottom: 8,
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          maxWidth: "100%",
+        }}
+      >
+        <Breadcrumb
+          items={breadcrumbItems.map((item) => ({
+            title: item.href ? (
+              <a
+                href={item.href}
+                onClick={(e) => {
+                  e.preventDefault();
+                  navigate(item.href);
+                }}
+                style={{ color: "#1890ff" }}
+              >
+                {item.title}
+              </a>
+            ) : (
+              item.title
+            ),
+          }))}
+        />
+      </div>
+
       <Card style={{ borderRadius: 8 }}>
-        <Space size={24} style={{ width: "100%" }}>
+        <Space size={24} style={{ width: "100%", alignItems: "flex-start" }}>
           <div style={{ flex: 1 }}>
             <ProductImage
               product={product}
@@ -512,6 +492,11 @@ const ProductDetailPage = () => {
         </Space>
       </Card>
 
+      {/* Cửa hàng */}
+      {product.store && (
+        <StoreCard store={product.store} productId={product.id} />
+      )}
+
       {/* Mô tả */}
       <Card style={{ marginTop: 24, borderRadius: 8 }}>
         <Title level={4} style={{ marginBottom: 8 }}>
@@ -531,11 +516,19 @@ const ProductDetailPage = () => {
         </Paragraph>
         <div style={{ display: "flex", gap: 24, marginTop: 8 }}>
           <div>
+            <Text strong>Đơn vị:</Text>
+            <Text style={{ marginLeft: 8 }}>
+              {product.unit || <Text type="secondary">Không xác định</Text>}
+            </Text>
+          </div>
+
+          <div>
             <Text strong>Thương hiệu:</Text>
             <Text style={{ marginLeft: 8 }}>
               {product.brand || <Text type="secondary">Không có</Text>}
             </Text>
           </div>
+
           <div>
             <Text strong>Vị trí:</Text>
             <Text style={{ marginLeft: 8 }}>
@@ -544,11 +537,6 @@ const ProductDetailPage = () => {
           </div>
         </div>
       </Card>
-
-      {/* Cửa hàng */}
-      {product.store && (
-        <StoreCard store={product.store} productId={product.id} />
-      )}
 
       {/* Đánh giá */}
       <ReviewsSection

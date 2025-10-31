@@ -1,10 +1,36 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import React, { useEffect, useMemo, useState } from "react"
+import {
+  Card,
+  Form,
+  Input,
+  Upload,
+  Button,
+  Row,
+  Col,
+  Typography,
+  message,
+  Spin,
+  Divider,
+  Avatar,
+  Space,
+  Tag,
+} from "antd"
+import {
+  ShopOutlined,
+  UploadOutlined,
+  SaveOutlined,
+  EnvironmentOutlined,
+  PhoneOutlined,
+  InfoCircleOutlined,
+} from "@ant-design/icons"
 import sellerService from "../services/api/sellerService"
 
+const { Title, Text } = Typography
+const { TextArea } = Input
+
 export default function StoreManagement() {
-  // Keep UI minimal and focused on fields that exist in backend Seller model
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [sellerId, setSellerId] = useState(null)
@@ -14,7 +40,7 @@ export default function StoreManagement() {
     bio: "",
     address: "",
     phone: "",
-    image: null, // current image URL
+    image: null,
   })
   const [imageFile, setImageFile] = useState(null)
 
@@ -34,7 +60,7 @@ export default function StoreManagement() {
         })
       } catch (e) {
         console.error(e)
-        alert("Không thể tải thông tin cửa hàng của bạn")
+        message.error("Không thể tải thông tin cửa hàng")
       } finally {
         if (mounted) setLoading(false)
       }
@@ -55,16 +81,10 @@ export default function StoreManagement() {
     setForm((prev) => ({ ...prev, [name]: value }))
   }
 
-  const handleImageChange = (e) => {
-    const file = e.target.files?.[0]
-    if (file) setImageFile(file)
-  }
-
   const handleSave = async () => {
     if (!sellerId) return
     try {
       setSaving(true)
-      // Build payload
       let payload
       if (imageFile) {
         payload = new FormData()
@@ -84,143 +104,186 @@ export default function StoreManagement() {
       const updated = await sellerService.update(sellerId, payload)
       setForm((prev) => ({
         ...prev,
-        store_name: updated.store_name || prev.store_name,
-        bio: updated.bio ?? prev.bio,
-        address: updated.address ?? prev.address,
-        phone: updated.phone ?? prev.phone,
-        image: updated.image ?? prev.image,
+        ...updated,
       }))
       setImageFile(null)
-      alert("Đã lưu thay đổi thông tin cửa hàng")
+      message.success("Đã lưu thay đổi thành công 🎉")
     } catch (e) {
       console.error(e)
-      alert("Lưu thất bại. Vui lòng thử lại!")
+      message.error("Lưu thất bại, vui lòng thử lại!")
     } finally {
       setSaving(false)
     }
   }
 
-  if (loading) {
-    return (
-      <div className="container-fluid py-4" style={{ maxWidth: "1000px" }}>
-        <p className="text-muted">Đang tải thông tin cửa hàng...</p>
-      </div>
-    )
+  const uploadProps = {
+    beforeUpload: (file) => {
+      setImageFile(file)
+      return false
+    },
+    showUploadList: false,
   }
 
-  return (
-    <div className="container-fluid py-4" style={{ maxWidth: "1000px" }}>
-      {/* Header */}
-      <div className="d-flex align-items-center mb-4">
-        <div className="p-3 rounded-3 me-3" style={{ backgroundColor: "rgba(22, 78, 99, 0.1)" }}>
-          <span className="icon icon-shop" style={{ fontSize: "2rem" }}></span>
-        </div>
-        <div>
-          <h1 className="h4 fw-bold text-dark mb-1">Cài đặt Cửa hàng</h1>
-          <p className="text-muted mb-0">Chỉnh sửa thông tin sẽ được đồng bộ sang trang cửa hàng</p>
-        </div>
+  if (loading)
+    return (
+      <div className="flex justify-center items-center py-10">
+        <Spin tip="Đang tải dữ liệu..." />
       </div>
+    )
 
-      <div className="row g-4">
-        {/* Logo */}
-        <div className="col-lg-4">
-          <div className="card agricultural-card h-100">
-            <div className="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
-              <h5 className="card-title mb-0">
-                <span className="icon icon-image me-2 text-primary"></span>
-                Logo cửa hàng
-              </h5>
-            </div>
-            <div className="card-body">
-              <div className="mb-3 text-center">
-                <div
-                  className="border border-2 border-dashed rounded-3 p-3"
-                  style={{ borderColor: "#e2e8f0" }}
-                >
-                  {previewUrl ? (
-                    <img
-                      src={previewUrl}
-                      alt="logo preview"
-                      style={{ maxWidth: "100%", maxHeight: 180, objectFit: "contain" }}
-                    />
-                  ) : (
-                    <div className="text-muted small">Chưa có logo</div>
-                  )}
-                </div>
-              </div>
-              <input type="file" className="form-control" accept="image/*" onChange={handleImageChange} />
-              <small className="text-muted">PNG/JPG tối đa 2MB</small>
-            </div>
-          </div>
+  return (
+    <div style={{ padding: "24px" }}>
+      {/* Header */}
+      <Space align="center" style={{ marginBottom: 24 }}>
+        <ShopOutlined style={{ fontSize: 32, color: "#1677ff" }} />
+        <div>
+          <Title level={4} style={{ margin: 0 }}>
+            Cài đặt Cửa hàng
+          </Title>
+          <Text type="secondary">
+            Quản lý thông tin & hình ảnh hiển thị công khai trên trang cửa hàng
+          </Text>
         </div>
+      </Space>
 
-        {/* Basic Info */}
-        <div className="col-lg-8">
-          <div className="card agricultural-card h-100">
-            <div className="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
-              <div>
-                <h5 className="card-title mb-1">
-                  <span className="icon icon-shop me-2 text-primary"></span>
-                  Thông tin cửa hàng
-                </h5>
-                <p className="text-muted small mb-0">Chỉ giữ các trường cần thiết: Tên, Mô tả, Địa chỉ, SĐT</p>
-              </div>
+      <Row gutter={24}>
+        {/* Bên trái: Thông tin tổng quan */}
+        <Col xs={24} lg={8}>
+          <Card
+            bordered={false}
+            style={{
+              borderRadius: 12,
+              boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
+            }}
+          >
+            <div style={{ textAlign: "center" }}>
+              <Avatar
+                size={120}
+                src={previewUrl}
+                icon={<ShopOutlined />}
+                style={{
+                  marginBottom: 16,
+                  border: "2px solid #f0f0f0",
+                  backgroundColor: "#fafafa",
+                }}
+              />
+              <Upload {...uploadProps} accept="image/*">
+                <Button icon={<UploadOutlined />}>Đổi logo</Button>
+              </Upload>
             </div>
-            <div className="card-body">
-              <div className="mb-3">
-                <label className="form-label fw-semibold">Tên cửa hàng</label>
-                <input
-                  type="text"
+
+            <Divider />
+
+            <Title level={5} style={{ marginBottom: 8, textAlign: "center" }}>
+              {form.store_name || "Tên cửa hàng"}
+            </Title>
+
+            <Text type="secondary" style={{ display: "block", textAlign: "center" }}>
+              {form.bio || "Chưa có mô tả"}
+            </Text>
+
+            <Divider />
+
+            <div style={{ lineHeight: 1.8 }}>
+              <p>
+                <EnvironmentOutlined className="me-2" />{" "}
+                {form.address || <Text type="secondary">Chưa có địa chỉ</Text>}
+              </p>
+              <p>
+                <PhoneOutlined className="me-2" />{" "}
+                {form.phone || <Text type="secondary">Chưa có SĐT</Text>}
+              </p>
+            </div>
+
+            <div style={{ textAlign: "center", marginTop: 12 }}>
+              <Tag color="blue">Cửa hàng đang hoạt động</Tag>
+            </div>
+          </Card>
+        </Col>
+
+        {/* Bên phải: Form chỉnh sửa */}
+        <Col xs={24} lg={16}>
+          <Card
+            bordered={false}
+            style={{
+              borderRadius: 12,
+              boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
+            }}
+            title={
+              <Space>
+                <InfoCircleOutlined />
+                <span>Chỉnh sửa thông tin</span>
+              </Space>
+            }
+          >
+            <Form layout="vertical">
+              <Form.Item
+                label="Tên cửa hàng"
+                required
+                tooltip="Tên hiển thị công khai trên trang cửa hàng"
+              >
+                <Input
                   name="store_name"
-                  className="form-control"
                   value={form.store_name}
                   onChange={handleChange}
+                  placeholder="VD: Nông Sản Xanh Đà Lạt"
                 />
-              </div>
+              </Form.Item>
 
-              <div className="mb-3">
-                <label className="form-label fw-semibold">Mô tả</label>
-                <textarea
+              <Form.Item label="Mô tả cửa hàng">
+                <TextArea
                   name="bio"
-                  className="form-control"
                   rows={3}
                   value={form.bio}
                   onChange={handleChange}
+                  placeholder="Giới thiệu ngắn gọn về cửa hàng"
                 />
-              </div>
+              </Form.Item>
 
-              <div className="row g-3">
-                <div className="col-md-8">
-                  <label className="form-label fw-semibold">Địa chỉ</label>
-                  <input
-                    type="text"
-                    name="address"
-                    className="form-control"
-                    value={form.address}
-                    onChange={handleChange}
-                  />
-                </div>
-                <div className="col-md-4">
-                  <label className="form-label fw-semibold">Số điện thoại</label>
-                  <input
-                    type="tel"
-                    name="phone"
-                    className="form-control"
-                    value={form.phone}
-                    onChange={handleChange}
-                  />
-                </div>
-              </div>
-            </div>
+              <Row gutter={16}>
+                <Col span={16}>
+                  <Form.Item label="Địa chỉ">
+                    <Input
+                      name="address"
+                      value={form.address}
+                      onChange={handleChange}
+                      placeholder="Nhập địa chỉ cụ thể"
+                    />
+                  </Form.Item>
+                </Col>
+                <Col span={8}>
+                  <Form.Item
+                    label="Số điện thoại"
+                    rules={[{ pattern: /^[0-9]{9,11}$/, message: "SĐT không hợp lệ" }]}
+                  >
+                    <Input
+                      name="phone"
+                      value={form.phone}
+                      onChange={handleChange}
+                      placeholder="VD: 098xxxxxxx"
+                    />
+                  </Form.Item>
+                </Col>
+              </Row>
 
-            <div className="card-footer bg-transparent border-0 d-flex justify-content-end">
-              <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
-                {saving ? "Đang lưu..." : "Lưu thay đổi"}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+              <Divider />
+
+              <Form.Item>
+                <Button
+                  type="primary"
+                  icon={<SaveOutlined />}
+                  onClick={handleSave}
+                  loading={saving}
+                  size="large"
+                  style={{ float: "right", minWidth: 150 }}
+                >
+                  {saving ? "Đang lưu..." : "Lưu thay đổi"}
+                </Button>
+              </Form.Item>
+            </Form>
+          </Card>
+        </Col>
+      </Row>
     </div>
   )
 }

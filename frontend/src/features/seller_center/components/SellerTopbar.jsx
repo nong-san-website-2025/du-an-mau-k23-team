@@ -120,7 +120,7 @@ export default function SellerTopbar() {
 
               {/* Nếu có avatar thì dùng src, ngược lại hiển thị chữ cái đầu */}
               {seller?.avatar ? (
-                <Avatar size="large" src={seller.avatar} />
+                <Avatar size="large" src={seller.image} />
               ) : (
                 <Avatar size="large">
                   {getInitial(seller?.store_name || seller?.name || "")}

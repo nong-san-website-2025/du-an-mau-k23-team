@@ -86,7 +86,6 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = async () => {
-    console.log("AuthProvider: Logging out user");
 
     // Xử lý cart như cũ
     try {

@@ -7,7 +7,9 @@
 .image-section .main-image {
   border-radius: 16px;
   box-shadow: 0 6px 25px rgba(0, 0, 0, 0.12);
-  transition: transform 0.4s ease, box-shadow 0.4s ease;
+  transition:
+    transform 0.4s ease,
+    box-shadow 0.4s ease;
 }
 .image-section .main-image:hover {
   transform: scale(1.02);
@@ -120,4 +122,115 @@
   margin-top: 50px;
   font-size: 1.1rem;
   color: #777;
+}
+
+.product-detail-breadcrumb {
+  width: 100%;
+}
+
+.product-detail-breadcrumb ol {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  width: 100%;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+}
+
+.product-detail-breadcrumb li {
+  display: flex;
+  align-items: center;
+}
+
+.product-detail-breadcrumb li:not(:last-child) {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.product-detail-breadcrumb-link {
+  display: inline-block;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #1890ff;
+}
+
+.product-detail-breadcrumb-link:hover {
+  color: #40a9ff;
+}
+
+.product-detail-breadcrumb li:last-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.product-detail-breadcrumb-last {
+  flex: 1;
+  min-width: 0;
+}
+
+.product-detail-breadcrumb-last .ant-breadcrumb-link {
+  display: block;
+  max-width: 100%;
+}
+
+.product-detail-breadcrumb-title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.4em;
+  max-height: 2.8em;
+  width: 100%;
+}
+
+.product-detail-breadcrumb-wrap ol {
+  flex-wrap: wrap;
+}
+
+.product-detail-breadcrumb-wrap .product-detail-breadcrumb-last {
+  flex: 1 0 100%;
+  margin-top: 4px;
+}
+
+.product-detail-breadcrumb-wrap
+  .product-detail-breadcrumb-last
+  .ant-breadcrumb-link {
+  width: 100%;
+}
+
+.custom-input-number input {
+  text-align: center;
+  color: #388e3c !important;
+}
+
+.custom-input-number {
+  border-radius: 0 !important;
+}
+
+.custom-input-number:hover {
+  border-color: #000 !important;
+}
+
+/* Trong file CSS của bạn */
+.custom-input-number.ant-input-number-focused {
+  border-color: #000 !important;
+  box-shadow: 0 0 0 2px rgba(86, 86, 86, 0.2) !important;
+}
+
+.btn-quantity {
+  border-radius: 0px;
+}
+
+.btn-classic{
+  background-color: #2E7D32;
+}
+
+.btn-classic:hover{
+  background-color: #43A047 !important;
 }

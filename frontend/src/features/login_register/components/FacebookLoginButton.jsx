@@ -10,7 +10,6 @@ export default function FacebookLoginIcon({ onSuccess }) {
 
     window.FB.login(
       (response) => {
-        console.log("Facebook response:", response);
         if (response.authResponse?.accessToken) {
           onSuccess(response.authResponse.accessToken);
         } else {

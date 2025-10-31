@@ -1,22 +1,69 @@
+/* ====== Container cuộn ngang ====== */
+.category-scroll-container {
+  display: flex;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: #4caf50 #f0f0f0; /* Firefox */
+  position: relative;
+}
+
+/* ====== Ẩn thanh cuộn mặc định ====== */
+.category-scroll-container::-webkit-scrollbar {
+  height: 8px;
+  background: transparent;
+}
+
+.category-scroll-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.category-scroll-container::-webkit-scrollbar-thumb {
+  background: linear-gradient(90deg, #66bb6a, #43a047);
+  border-radius: 10px;
+  transition: opacity 0.3s;
+  opacity: 0; /* Ẩn khi không hover */
+}
+
+/* ====== Khi hover container thì hiện thanh cuộn ====== */
+.category-scroll-container:hover::-webkit-scrollbar-thumb {
+  opacity: 1;
+}
+
+/* Firefox ẩn thanh cuộn khi không hover */
+.category-scroll-container {
+  scrollbar-color: transparent transparent;
+}
+.category-scroll-container:hover {
+  scrollbar-color: #4caf50 #f0f0f0;
+}
+
+/* ====== Item danh mục ====== */
 .category-item {
+  flex: 0 0 auto;
+  width: 120px;
   border: 1px solid #ddd;
   border-radius: 0px;
   transition: all 0.25s ease-in-out;
   background-color: #fff;
+  scroll-snap-align: start;
+  text-align: center;
 }
 
 .category-item:hover {
-  border: 2px solid #4caf50; /* Màu xanh lá nhạt hoặc tuỳ chỉnh */
+  border: 1px solid #4caf50;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-  transform: translateY(-2px); /* Nhấc lên nhẹ khi hover */
 }
 
+/* ====== Placeholder khi loading (hiệu ứng shimmer) ====== */
 .category-placeholder {
   display: flex;
   flex-direction: column;
   align-items: center;
   padding: 1rem;
   background-color: #fff;
+  flex: 0 0 auto;
+  width: 120px;
 }
 
 .category-placeholder .circle {
@@ -26,7 +73,7 @@
   background: linear-gradient(90deg, #eee 25%, #ddd 50%, #eee 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
-  margin-bottom: 0.5rem;
+  
 }
 
 .category-placeholder .text {

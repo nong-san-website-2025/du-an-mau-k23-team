@@ -3,7 +3,14 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "../services/CartContext";
 import { toast } from "react-toastify";
-import { Card, Typography, Button, Select } from "antd";
+import {
+  Card,
+  Typography,
+  Button,
+  Select,
+  notificationInfo,
+  notification,
+} from "antd";
 import API from "../../login_register/services/api";
 
 import PaymentButton from "../components/PaymnentButton"; // VNPAY button
@@ -59,12 +66,10 @@ const CheckoutPage = () => {
     }
     try {
       const res = await applyVoucher(code, total); // gọi API apply_voucher
-      console.log("Voucher API response:", res);
 
       setDiscount(res?.discount || 0); // 👈 lấy đúng key discount
       setVoucherCode(code);
     } catch (err) {
-      console.error("Apply voucher error:", err.response?.data || err.message);
       setDiscount(0);
       setVoucherCode("");
       message.error("Mã voucher không hợp lệ hoặc đã hết hạn!");
@@ -74,7 +79,6 @@ const CheckoutPage = () => {
   // Lấy địa chỉ đã chọn
   const selectedAddress = useMemo(() => {
     const addr = addresses.find((a) => a.id === selectedAddressId) || null;
-    console.log("🔍 selectedAddress full object:", addr); // 👈 XEM TOÀN BỘ OBJECT
     return addr;
   }, [addresses, selectedAddressId]);
 
@@ -117,7 +121,6 @@ const CheckoutPage = () => {
 
       // SỬA: Kiểm tra cả district_code và ward_code
       if (!to_district_id || !to_ward_code) {
-        console.log("🚫 Thiếu quận/huyện hoặc phường/xã → không gọi API");
         setShippingFee(0);
         setShippingStatus("idle");
         return;
@@ -142,10 +145,8 @@ const CheckoutPage = () => {
           height: 10,
         };
 
-        console.log("📦 Gửi payload:", payload);
 
         const res = await API.post("delivery/fee/", payload);
-        console.log("✅ GHN Response:", res.data);
 
         const fee = res.data?.fee || 0;
         setShippingFee(fee);
@@ -191,76 +192,46 @@ const CheckoutPage = () => {
 
   // Xử lý đặt hàng
   const handleOrder = async () => {
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem("token"); // 👈 THÊM DÒNG NÀY
     if (!token) {
-      // Hiển thị toast
-      toast.info("Vui lòng đăng nhập để tiếp tục đặt hàng!", {
-        position: "bottom-right",
-        autoClose: 3000, // 3 giây
-      });
-
-      // Sau 3s, chuyển đến trang login và lưu redirect
-      setTimeout(() => {
-        navigate("/login?redirect=/checkout");
-      }, 3500);
-
-      return;
-    }
-    if (cartItems.filter((i) => i.selected).length === 0)
-      return toast.error("Giỏ hàng trống!");
-
-    const finalName = manualEntry
-      ? customerName
-      : selectedAddress?.recipient_name || "";
-    const finalPhone = manualEntry
-      ? customerPhone
-      : selectedAddress?.phone || "";
-    const finalAddress = manualEntry
-      ? addressText
-      : selectedAddress?.location || "";
-
-    // Validate tối thiểu khi nhập tay
-    if (manualEntry && (!geoManual.districtId || !geoManual.wardCode)) {
-      toast.error("Vui lòng chọn Quận/Huyện và Phường/Xã");
+      notification.info("Vui lòng đăng nhập để tiếp tục đặt hàng!");
+      navigate("/login?redirect=/checkout");
       return;
     }
 
-    setIsLoading(true);
+    const selectedItems = cartItems.filter((i) => i.selected);
+    if (selectedItems.length === 0) {
+      return;
+    }
+
+    // 👇 TẠO orderData Ở ĐÂY
+    const orderData = {
+      total_price: totalAfterDiscount,
+      customer_name: manualEntry
+        ? customerName
+        : selectedAddress?.recipient_name || "",
+      customer_phone: manualEntry
+        ? customerPhone
+        : selectedAddress?.phone || "",
+      address: manualEntry ? addressText : selectedAddress?.location || "",
+      note,
+      payment_method: payment === "Ví điện tử" ? "vnpay" : "cod",
+      items: selectedItems.map((item) => ({
+        product: item.product?.id || item.product,
+        quantity: parseInt(item.quantity) || 1,
+        price: parseFloat(item.product?.price) || 0,
+      })),
+    };
+
     try {
-      const orderData = {
-        total_price: totalAfterDiscount,
-        status: "pending",
-        shipping_fee: shippingFee,
-        customer_name: finalName,
-        customer_phone: finalPhone,
-        address: finalAddress,
-        note: note.trim(),
-        payment_method: payment,
-        voucher_code: voucherCode || null, // 👈 THÊM DÒNG NÀY
-        to_district_id: manualEntry
-          ? geoManual.districtId
-          : selectedAddress?.district_id,
-        to_ward_code: manualEntry
-          ? geoManual.wardCode
-          : selectedAddress?.ward_code,
-        items: cartItems
-          .filter((it) => it.selected)
-          .map((item) => {
-            const product = item.product_data || item.product || {};
-            return {
-              product: product.id || item.product, // ID sản phẩm
-              quantity: parseInt(item.quantity) || 1,
-              price: parseFloat(product.price) || 0,
-            };
-          }),
-      };
-
+      setIsLoading(true);
       await API.post("orders/", orderData);
       await clearCart();
-      toast.success("Đặt hàng thành công!");
+      notification.success("Đặt hàng thành công!");
       navigate("/orders?tab=pending");
-    } catch (err) {
-      toast.error("Đặt hàng thất bại!");
+    } catch (error) {
+      console.error("Đặt hàng thất bại:", error);
+      notification.error("Đặt hàng thất bại!");
     } finally {
       setIsLoading(false);
     }

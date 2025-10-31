@@ -27,7 +27,6 @@ export default function OrderPieChart({ data = [] }) {
     value: item.count,
   }));
 
-  console.log("📊 OrderPieChart data:", chartData);
 
   return (
     <ResponsiveContainer width="100%" height={320}>

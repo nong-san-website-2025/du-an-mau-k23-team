@@ -10,10 +10,12 @@ import {
   Table,
   Dropdown,
   Menu,
+  Space,
 } from "antd";
 import { EllipsisOutlined } from "@ant-design/icons";
 import axios from "axios";
 import AddCategoryWithSubModal from "../../components/ProductAdmin/Category/AddCategoryWithSubModal";
+import AdminPageLayout from "../../components/AdminPageLayout"; // ← Đảm bảo đường dẫn đúng
 
 const { Option } = Select;
 
@@ -29,18 +31,12 @@ function getAuthHeaders() {
 const CategoryManagementPage = () => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
-
-  // bộ lọc
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
-
-  // modal chi tiết
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
-
   const [addModalVisible, setAddModalVisible] = useState(false);
 
-  // gọi API lấy danh mục
   const fetchCategories = async () => {
     try {
       setLoading(true);
@@ -49,7 +45,6 @@ const CategoryManagementPage = () => {
       });
       const raw = Array.isArray(res.data) ? res.data : res.data.results || [];
 
-      // chuyển thành treeData (có children)
       const mapped = raw.map((cat) => ({
         key: `cat-${cat.id}`,
         id: cat.id,
@@ -79,7 +74,6 @@ const CategoryManagementPage = () => {
     fetchCategories();
   }, []);
 
-  // lọc dữ liệu
   const filteredData = data.filter((item) => {
     const matchesSearch = item.name
       .toLowerCase()
@@ -95,7 +89,7 @@ const CategoryManagementPage = () => {
 
   const handleEdit = (record) => {
     setSelectedCategory(record);
-    setAddModalVisible(true); // dùng modal vừa tạo
+    setAddModalVisible(true);
   };
 
   const handleDelete = async (record) => {
@@ -113,13 +107,12 @@ const CategoryManagementPage = () => {
     }
   };
 
-  // cột table
   const columns = [
     {
       title: "Tên",
       dataIndex: "name",
       key: "name",
-      width: 300, // tăng chiều dài
+      width: 300,
       render: (text, record) =>
         record.type === "Category"
           ? text
@@ -129,14 +122,14 @@ const CategoryManagementPage = () => {
       title: "Loại",
       dataIndex: "type",
       key: "type",
-      width: 150, // tăng chiều dài một chút
+      width: 150,
       render: (type) => (type === "Category" ? "Danh mục cha" : "Danh mục con"),
     },
     {
       title: "Trạng thái",
       dataIndex: "status",
       key: "status",
-      width: 100, // giảm chiều rộng
+      width: 100,
       render: (status) => {
         let color = "red";
         let label = "Ngưng";
@@ -150,7 +143,7 @@ const CategoryManagementPage = () => {
     {
       title: "Hành động",
       key: "actions",
-      width: 80, // giảm chiều rộng
+      width: 80,
       render: (_, record) => {
         const menu = (
           <Menu>
@@ -175,43 +168,32 @@ const CategoryManagementPage = () => {
     },
   ];
 
-  return (
-    <div style={{ padding: 20, background: "#fff", minHeight: "100vh" }}>
-      <h2 style={{ padding: 10 }}>Quản lý danh mục</h2>
-
-      {/* Toolbar */}
-      <div
-        style={{ display: "flex", gap: 16, marginBottom: 16, flexWrap: "wrap" }}
+  // ✅ Toolbar cho AdminPageLayout
+  const toolbar = (
+    <Space wrap>
+      <Input
+        placeholder="Tìm kiếm theo tên danh mục"
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+        style={{ width: 300 }}
+      />
+      <Select
+        placeholder="Lọc theo trạng thái"
+        onChange={(value) => setStatusFilter(value)}
+        style={{ width: 200 }}
+        allowClear
       >
-        <Input
-          placeholder="Tìm kiếm theo tên danh mục"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          style={{ width: 300 }}
-        />
+        <Option value="active">Hoạt động</Option>
+        <Option value="inactive">Ngưng</Option>
+      </Select>
+      <Button type="primary" onClick={() => setAddModalVisible(true)}>
+        + Thêm danh mục
+      </Button>
+    </Space>
+  );
 
-        <Select
-          placeholder="Lọc theo trạng thái"
-          onChange={(value) => setStatusFilter(value)}
-          style={{ width: 200 }}
-          allowClear
-        >
-          <Option value="active">Hoạt động</Option>
-          <Option value="inactive">Ngưng</Option>
-        </Select>
-
-        <Button type="primary" onClick={() => setAddModalVisible(true)}>
-          + Thêm danh mục
-        </Button>
-
-        <AddCategoryWithSubModal
-          visible={addModalVisible}
-          onClose={() => setAddModalVisible(false)}
-          onSuccess={fetchCategories}
-          category={selectedCategory}
-        />
-      </div>
-
+  return (
+    <AdminPageLayout title="QUẢN LÝ DANH MỤC" extra={toolbar}>
       {loading ? (
         <Spin />
       ) : (
@@ -223,7 +205,13 @@ const CategoryManagementPage = () => {
         />
       )}
 
-      {/* Modal chi tiết */}
+      <AddCategoryWithSubModal
+        visible={addModalVisible}
+        onClose={() => setAddModalVisible(false)}
+        onSuccess={fetchCategories}
+        category={selectedCategory}
+      />
+
       {selectedCategory && (
         <Modal
           open={modalVisible}
@@ -250,7 +238,7 @@ const CategoryManagementPage = () => {
           </Descriptions>
         </Modal>
       )}
-    </div>
+    </AdminPageLayout>
   );
 };
 

@@ -17,15 +17,11 @@ export default function NotificationPage() {
   useEffect(() => {
     let mounted = true;
     const run = async () => {
-      console.log('[NotificationPage] userId:', userId);
       if (!userId) {
-        console.log('[NotificationPage] No userId, skipping fetch');
         return;
       }
       try {
-        console.log('[NotificationPage] Fetching notifications...');
         const list = await fetchUnifiedNotifications(userId);
-        console.log('[NotificationPage] Fetched list:', list);
 
         // Mark all as read when viewing notification page (persist client-side and backend)
         await markAllAsRead(userId);

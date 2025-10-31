@@ -1,11 +1,12 @@
 // pages/UsersPage.jsx
 import React, { useEffect, useState } from "react";
-import AdminPageLayout from "../components/AdminPageLayout";
 import UserSideBar from "../components/UserAdmin/UserSidebar";
 import UserTable from "../components/UserAdmin/UserTable";
 import UserDetailModal from "../components/UserAdmin/UserDetailRow";
 import axios from "axios";
 import { useTranslation } from "react-i18next";
+import { Button, Row, Col, Input, Space } from "antd";
+import AdminPageLayout from "../components/AdminPageLayout"; // ✅ Thêm layout
 
 export default function UsersPage() {
   const [users, setUsers] = useState([]);
@@ -66,75 +67,77 @@ export default function UsersPage() {
   };
 
   return (
-    <AdminPageLayout>
-      <div className="container-fluid py-3 px-3">
-        <h2 className="mb-4">{t("Quản lý người dùng") || "Quản lý người dùng"}</h2>
-        {/* ===================== Toolbar ===================== */}
-        <div className="row g-2 mb-3 align-items-center">
-          <div className="col-12 col-md-4 col-lg-3" style={{ height: 40 }}>
-            <UserSideBar
-              roles={roles}
-              selectedRole={selectedRole}
-              setSelectedRole={setSelectedRole}
-              onRoleCreated={() => {
-                fetchRoles();
-                fetchUsers();
-              }}
-              searchTerm={searchTerm}
-              setSearchTerm={setSearchTerm}
-              onAddUser={() => setTriggerAddUser(true)}
-            />
-          </div>
+    <AdminPageLayout
+      title={t("QUẢN LÝ NGƯỜI DÙNG")}
+      // extra={
+      //   <Button type="primary" onClick={() => setTriggerAddUser(true)}>
+      //     + {t("Thêm người dùng")}
+      //   </Button>
+      // }
+    >
+      {/* Thanh công cụ lọc + tìm kiếm */}
+      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+        <Col xs={24} sm={12} md={8} lg={6}>
+          <UserSideBar
+            roles={roles}
+            selectedRole={selectedRole}
+            setSelectedRole={setSelectedRole}
+            onRoleCreated={() => {
+              fetchRoles();
+              fetchUsers();
+            }}
+            searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
+            onAddUser={() => setTriggerAddUser(true)}
+          />
+        </Col>
 
-          <div className="col-12 col-md-5 col-lg-6">
-            <input
-              type="text"
-              className="form-control"
-              placeholder={t("Tìm kiếm người dùng...")}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              style={{ minHeight: 40   }}
-            />
-          </div>
+        <Col xs={24} sm={12} md={10} lg={12}>
+          <Input
+            placeholder={t("Tìm kiếm người dùng...")}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            allowClear
+          />
+        </Col>
 
-          <div className="col-12 col-md-3 col-lg-3 text-md-end">
-            <button
-              className="btn text-white w-100 w-md-auto"
-              style={{ backgroundColor: "#0c0febff", fontWeight: 600 }}
+        <Col xs={24} sm={24} md={6} lg={6}>
+          <Space style={{ width: "100%", justifyContent: "flex-end" }}>
+            <Button
+              type="primary"
               onClick={() => setTriggerAddUser(true)}
+              className="w-100 w-md-auto"
             >
               + {t("Thêm người dùng")}
-            </button>
-          </div>
-        </div>
+            </Button>
+          </Space>
+        </Col>
+      </Row>
 
-        {/* ===================== User Table ===================== */}
-        <div className="table-responsive">
-          <UserTable
-            users={users}
-            setUsers={setUsers}
-            loading={loading}
-            selectedRole={selectedRole}
-            searchTerm={searchTerm}
-            roles={roles}
-            checkedIds={checkedIds}
-            setCheckedIds={setCheckedIds}
-            triggerAddUser={triggerAddUser}
-            setTriggerAddUser={setTriggerAddUser}
-            onShowDetail={handleShowDetail}
-          />
-        </div>
+      {/* Bảng danh sách người dùng */}
+      <UserTable
+        users={users}
+        setUsers={setUsers}
+        loading={loading}
+        selectedRole={selectedRole}
+        searchTerm={searchTerm}
+        roles={roles}
+        checkedIds={checkedIds}
+        setCheckedIds={setCheckedIds}
+        triggerAddUser={triggerAddUser}
+        setTriggerAddUser={setTriggerAddUser}
+        onShowDetail={handleShowDetail}
+      />
 
-        {/* ===================== User Detail Modal ===================== */}
-        {selectedUser && (
-          <UserDetailModal
-            user={selectedUser}
-            visible={showDetailModal}
-            onClose={() => setShowDetailModal(false)}
-            onUserUpdated={handleUserUpdated}
-          />
-        )}
-      </div>
+      {/* Modal chi tiết người dùng */}
+      {selectedUser && (
+        <UserDetailModal
+          user={selectedUser}
+          visible={showDetailModal}
+          onClose={() => setShowDetailModal(false)}
+          onUserUpdated={handleUserUpdated}
+        />
+      )}
     </AdminPageLayout>
   );
 }

@@ -27,7 +27,7 @@ const ProductTable = ({
       title: "Tên sản phẩm",
       dataIndex: "name",
       key: "name",
-      width: 250,
+      width: 200,
       sorter: (a, b) => (a.name || "").localeCompare(b.name || ""),
     },
     {
@@ -56,6 +56,26 @@ const ProductTable = ({
       sorter: (a, b) => a.price - b.price,
       align: "right",
     },
+
+    {
+      title: "Đơn vị",
+      dataIndex: "unit",
+      key: "unit",
+      width: 70,
+      align: "center",
+      render: (unit) => {
+        const unitLabels = {
+          kg: "kg",
+          g: "g",
+          l: "lít",
+          ml: "ml",
+          unit: "cái", // ✅ chuyển 'unit' → 'cái'
+          bag: "bao",
+        };
+        return unitLabels[unit] || unit || "—";
+      },
+    },
+
     {
       title: "Trạng thái",
       key: "status",

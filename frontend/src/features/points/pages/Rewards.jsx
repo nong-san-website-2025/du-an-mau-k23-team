@@ -12,7 +12,6 @@ export default function Rewards() {
   useEffect(() => {
     if (token) {
       getUserPoints(token).then((data) => {
-        console.log("API response:", data); // Thêm log để kiểm tra dữ liệu trả về
         setPoints(data.points || 0);
         setPointHistory(data.history || []);
       });

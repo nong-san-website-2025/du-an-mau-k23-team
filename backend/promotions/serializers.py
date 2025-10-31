@@ -123,7 +123,7 @@ class UserVoucherSerializer(serializers.ModelSerializer):
 class FlashSaleProductSerializer(serializers.ModelSerializer):
     product_id = serializers.IntegerField(source='product.id')
     product_name = serializers.CharField(source='product.name')
-    original_price = serializers.DecimalField(source='product.price', max_digits=12, decimal_places=0)
+    original_price = serializers.DecimalField(source='product.original_price', max_digits=12, decimal_places=0)
     # Nếu bạn có field ảnh, ví dụ: product.image.url
     product_image = serializers.SerializerMethodField() 
     remaining_stock = serializers.SerializerMethodField()
@@ -165,7 +165,12 @@ class FlashSaleSerializer(serializers.ModelSerializer):
 
 class FlashSaleProductAdminSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source='product.name', read_only=True)
-    original_price = serializers.DecimalField(source='product.price', max_digits=12, decimal_places=0, read_only=True)
+    original_price = serializers.DecimalField(
+        source='product.original_price',
+        max_digits=12,
+        decimal_places=0,
+        read_only=True
+    )
     remaining_stock = serializers.SerializerMethodField()
 
     class Meta:
@@ -230,9 +235,9 @@ class FlashSaleAdminSerializer(serializers.ModelSerializer):
                     "flash_price": f"Giá flash của sản phẩm {product} phải > 0."
                 })
 
-            if product.price and flash_price >= product.price:
+            if product.original_price and flash_price >= product.original_price:
                 raise serializers.ValidationError({
-                    "flash_price": f"Giá flash của sản phẩm {product} phải thấp hơn giá gốc ({product.price})."
+                    "flash_price": f"Giá flash của sản phẩm {product} phải thấp hơn giá gốc ({product.original_price})."
                 })
 
             # Kiểm tra tồn kho

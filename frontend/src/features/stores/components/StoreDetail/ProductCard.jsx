@@ -79,7 +79,7 @@ const ProductCard = ({ product }) => {
               }}
             >
               <Text type="danger" strong>
-                {formatVND(product.discounted_price ?? product.price)} VNĐ
+                {formatVND(product.discounted_price ?? product.price)} đ
               </Text>
 
               <Button

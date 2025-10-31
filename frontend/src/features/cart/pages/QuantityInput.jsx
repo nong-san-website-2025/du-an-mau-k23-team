@@ -47,14 +47,22 @@ function QuantityInput({ item }) {
     if (maxStock != null && val > maxStock) {
       setLocalQuantity(maxStock);
       setShowStockNotice(true);
-      const itemId = item.id || item.product_data?.id || item.product;
-      updateQuantity(itemId, maxStock);
+      const productId =
+        item.product_data?.id ||
+        item.product?.id ||
+        item.product_id ||
+        item.product;
+      updateQuantity(productId, maxStock);
       return;
     }
 
     setLocalQuantity(val);
-    const itemId = item.id || item.product_data?.id || item.product;
-    updateQuantity(itemId, val);
+    const productId =
+      item.product_data?.id ||
+      item.product?.id ||
+      item.product_id ||
+      item.product;
+    updateQuantity(productId, val);
   };
 
   const handleConfirmRemove = async () => {

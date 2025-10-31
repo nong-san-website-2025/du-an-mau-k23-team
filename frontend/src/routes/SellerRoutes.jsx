@@ -8,17 +8,17 @@ import Dashboard from "../features/seller_center/pages/Dashboard";
 import ProductsPage from "../features/seller_center/pages/ProductsPage";
 import Finance from "../features/seller_center/pages/Finance";
 import Analytics from "../features/seller_center/pages/Analytics";
-import OrdersNew from "../features/seller_center/pages/OrdersNew";
-import OrdersProcessing from "../features/seller_center/pages/OrdersProcessing";
+import OrdersNew from "../features/seller_center/pages/OrderSeller/OrdersNew";
+import OrdersProcessing from "../features/seller_center/pages/OrderSeller/OrdersProcessing";
 import StoreInfo from "../features/seller_center/pages/StoreInfo";
 import ProductReviews from "../features/seller_center/pages/Reviews"; // Giả sử file chính là index.jsx hoặc Reviews.jsx
-import SellerComplaintsPage from "../features/seller_center/pages/SellerComplaintsPage";
+import SellerComplaintsPage from "../features/seller_center/pages/ComplaintSeller/ComplaintPage";
 import SellerMessages from "../features/seller_center/pages/SellerMessages";
 
 // CHỈ IMPORT DUY NHẤT COMPONENT NÀY CHO TRANG KHUYẾN MÃI
-import PromotionSeller from "../features/seller_center/pages/PromotionSeller/PromotionSeller";
-import OrdersDelivered from './../features/seller_center/pages/OrdersDelivered';
-import OrdersCancelled from './../features/seller_center/pages/OrdersCancelled';
+import PromotionSeller from "../features/seller_center/pages/PromotionSeller/PromotionPage";
+import OrdersDelivered from './../features/seller_center/pages/OrderSeller/OrdersDelivered';
+import OrdersCancelled from './../features/seller_center/pages/OrderSeller/OrdersCancelled';
 
 export const sellerRoutes = [
   <Route element={<SellerPrivateRoute />} key="seller-protect">

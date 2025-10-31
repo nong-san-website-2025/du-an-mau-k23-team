@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { Search } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Package, Search, FolderOpen, Store } from "lucide-react";
 
 export default function SearchBoxWithSuggestions({
   search,
@@ -10,255 +10,438 @@ export default function SearchBoxWithSuggestions({
   searchResults,
   handleSearchChange,
   handleSearchSubmit,
-  greenText,
   containerRef,
 }) {
   const navigate = useNavigate();
 
-  // Load giá trị search từ localStorage khi component mount
   useEffect(() => {
-    const savedSearch = localStorage.getItem("searchValue");
-    if (savedSearch) {
-      setSearch(savedSearch);
-    }
+    const saved = localStorage.getItem("searchValue");
+    if (saved) setSearch(saved);
   }, [setSearch]);
 
-  // Hàm khi click nút search
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [containerRef, setShowSuggestions]);
+
   const handleSearchClick = () => {
     if (!search.trim()) return;
 
-    // Lưu giá trị search vào localStorage
     localStorage.setItem("searchValue", search);
+    logSearchKeyword(search); // ✅ Dùng lại hàm
 
-    // Thực hiện tìm kiếm
     handleSearchSubmit(search);
-
-    // Điều hướng đến trang kết quả tìm kiếm
     navigate(`/search?query=${encodeURIComponent(search)}`);
+    setShowSuggestions(false);
   };
 
-  // Bộ lọc thông minh - chỉ loại bỏ kết quả không liên quan
-  const smartFilter = (items, query, type = "product") => {
-    if (!query) return [];
+  const logSearchKeyword = (keyword) => {
+    const token =
+      localStorage.getItem("access_token") ||
+      localStorage.getItem("token") ||
+      localStorage.getItem("authToken") ||
+      localStorage.getItem("accessToken");
 
-    const queryLower = query.toLowerCase().trim();
-    const results = [];
+    const headers = {
+      "Content-Type": "application/json",
+    };
 
-    for (const item of items) {
-      let textToSearch = "";
-
-      if (type === "product") {
-        textToSearch = `${item.name || ""} ${item.description || ""}`;
-      } else {
-        textToSearch = `${item.title || ""} ${item.content || ""} ${item.excerpt || ""}`;
-      }
-
-      const textLower = textToSearch.toLowerCase();
-
-      // Kiểm tra xem từ khóa có thực sự tồn tại trong văn bản không
-      if (textLower.includes(queryLower)) {
-        // Tính điểm độ liên quan
-        const relevanceScore = calculateRelevance(item, queryLower, textLower);
-        results.push({ ...item, relevanceScore });
-      }
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
     }
 
-    // Sắp xếp theo độ liên quan và giới hạn kết quả
-    return results
-      .sort((a, b) => b.relevanceScore - a.relevanceScore)
-      .slice(0, 5)
-      .map(({ relevanceScore, ...item }) => item);
+    fetch("/api/search/search-log/", {
+      method: "POST",
+      headers: headers,
+      credentials: "include",
+      body: JSON.stringify({ keyword: keyword.trim() }),
+    })
+      .then((res) => res.json())
+      .then((data) => console.log("📊 Search log response:", data))
+      .catch((err) => console.error("❌ Search log error:", err));
   };
 
-  // Hàm tính độ liên quan
-  const calculateRelevance = (item, query, text) => {
-    let score = 0;
+  const filteredProducts = (searchResults?.products || []).slice(0, 5);
 
-    // Ưu tiên tên sản phẩm/bài viết
-    const name = item.name || item.title || "";
-    const nameLower = name.toLowerCase();
+  const filteredCategories = (searchResults?.categories || []).slice(0, 3);
+  const filteredSellers = (searchResults?.sellers || []).slice(0, 3);
 
-    if (nameLower.includes(query)) {
-      score += 100; // Rất liên quan nếu tên chứa từ khóa
-    }
-
-    // Ưu tiên từ khóa nguyên vẹn
-    if (text.includes(query)) {
-      score += 50;
-    }
-
-    // Trừ điểm nếu từ khóa quá ngắn và kết quả quá dài
-    if (query.length < 3 && text.length > 50) {
-      // Nhưng vẫn cho qua nếu từ khóa nằm trong tên
-      if (nameLower.includes(query)) {
-        score += 20; // Bù lại điểm nếu từ khóa trong tên
-      } else {
-        score -= 30; // Tránh kết quả quá rộng nếu không ở tên
-      }
-    }
-
-    return score;
-  };
-
-  // Áp dụng bộ lọc
-  const filteredProducts = smartFilter(
-    searchResults?.products || [],
-    search,
-    "product"
-  );
+  const totalResults = searchResults?.products?.length || 0;
+  const hasResults =
+    filteredProducts.length > 0 ||
+    filteredCategories.length > 0 ||
+    filteredSellers.length > 0;
 
   return (
     <div
-      className="position-relative me-0 d-none d-md-block"
+      className="position-relative d-none d-md-block"
       ref={containerRef}
       style={{ zIndex: 3000 }}
     >
-      {/* Nút search */}
+      {/* Search Input */}
       <div style={{ position: "relative" }}>
-        <button
-          className="btn btn-link position-absolute end-0 top-50 translate-middle-y"
-          style={{
-            right: 10,
-            color: "#16a34a",
-            backgroundColor: "#4CAF50",
-            padding: "3px 16px",
-            borderRadius: "4px",
-            margin: "1px 3px 1px 1px",
-            border: "none",
-            cursor: "pointer",
-          }}
-          onClick={handleSearchClick}
-        >
-          <Search size={24} style={{ color: "#FFFFFF" }} />
-        </button>
-
         <input
           type="text"
-          placeholder="Tìm kiếm sản phẩm ..."
-          className="form-control ps-3 pe-5"
+          placeholder="Tìm kiếm sản phẩm, danh mục, cửa hàng..."
+          className="form-control"
           style={{
             width: 700,
-            height: 40,
-            fontSize: 16,
-            fontFamily: "Roboto",
-            borderRadius: "8px",
-            border: "1px solid #ddd",
-            paddingLeft: "16px",
+            height: 42,
+            fontSize: 15,
+            borderRadius: 21,
+            border: "2px solid rgba(255,255,255,0.3)",
+            paddingLeft: 20,
+            paddingRight: 50,
+            backgroundColor: "rgba(255,255,255,0.95)",
+            transition: "all 0.2s ease",
+            boxShadow: showSuggestions
+              ? "0 4px 12px rgba(0,0,0,0.15)"
+              : "0 2px 8px rgba(0,0,0,0.1)",
           }}
           value={search}
           onChange={handleSearchChange}
-          onFocus={() => search && setShowSuggestions(true)}
+          onFocus={() => setShowSuggestions(true)}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               e.preventDefault();
-              handleSearchSubmit(); // Nhấn Enter để search
+              handleSearchClick();
             }
           }}
         />
-      </div>
-
-      {/* Danh sách gợi ý */}
-      {showSuggestions && filteredProducts.length > 0 && (
-        <div
-          className="shadow-lg bg-white rounded position-absolute mt-2"
+        <button
+          onClick={handleSearchClick}
           style={{
-            left: 0,
-            top: "100%",
-            minWidth: 700,
-            maxWidth: 1200,
-            zIndex: 3000,
-            boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
-            padding: "16px",
-            maxHeight: "400px",
-            overflowY: "auto",
-            border: "1px solid #e0e0e0",
+            position: "absolute",
+            right: 4,
+            top: "50%",
+            transform: "translateY(-50%)",
+            backgroundColor: "#4CAF50",
+            border: "none",
+            borderRadius: 17,
+            width: 34,
+            height: 34,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            transition: "all 0.2s ease",
+            boxShadow: "0 2px 8px rgba(76,175,80,0.3)",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = "#45a049";
+            e.currentTarget.style.transform = "translateY(-50%) scale(1.05)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = "#4CAF50";
+            e.currentTarget.style.transform = "translateY(-50%) scale(1)";
           }}
         >
-          {filteredProducts.length > 0 && (
-            <div style={{ marginBottom: "16px" }}>
+          <Search size={18} color="white" />
+        </button>
+      </div>
+
+      {/* Suggestions Dropdown */}
+      {showSuggestions && search.trim() && (
+        <div
+          style={{
+            position: "absolute",
+            left: 0,
+            top: "calc(100% + 8px)",
+            width: 700,
+            backgroundColor: "white",
+            borderRadius: 16,
+            boxShadow: "0 12px 40px rgba(0,0,0,0.12)",
+            border: "1px solid rgba(0,0,0,0.06)",
+            overflow: "hidden",
+            zIndex: 3000,
+          }}
+        >
+          {/* Category Results */}
+          {filteredCategories.length > 0 && (
+            <div>
               <div
                 style={{
+                  padding: "12px 20px",
+                  backgroundColor: "#fafafa",
+                  borderBottom: "1px solid #f0f0f0",
                   display: "flex",
                   alignItems: "center",
-                  marginBottom: "8px",
-                  paddingBottom: "4px",
-                  borderBottom: "1px solid #eee",
+                  gap: 8,
                 }}
               >
-                <strong style={{ color: "#16a34a", fontSize: "14px" }}>
-                  Sản phẩm ({filteredProducts.length})
-                </strong>
+                <FolderOpen size={16} color="#0040d4ff" />
+                <span
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: "#666",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.5px",
+                  }}
+                >
+                  Danh mục
+                </span>
+                <span
+                  style={{
+                    marginLeft: "auto",
+                    fontSize: 12,
+                    color: "#999",
+                  }}
+                >
+                  {filteredCategories.length} kết quả
+                </span>
               </div>
-              <ul style={{ listStyle: "none", paddingLeft: 0, margin: 0 }}>
-                {filteredProducts.map((product) => (
-                  <li
-                    key={product.id}
-                    style={{
-                      padding: "8px 12px",
-                      borderRadius: "6px",
-                      marginBottom: "4px",
-                      transition: "background-color 0.2s",
-                      cursor: "pointer",
-                      border: "1px solid #f0f0f0",
+
+              <div>
+                {filteredCategories.map((category) => (
+                  <div
+                    key={category.id}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      const keyword = category.name;
+                      logSearchKeyword(keyword); // ✅ Ghi log
+                      navigate(
+                        `/products?category=${encodeURIComponent(keyword)}`
+                      );
+                      setShowSuggestions(false);
                     }}
-                    onMouseDown={() => {
-                      // Sử dụng onMouseDown để tránh lỗi khi mất focus
+                    style={{
+                      padding: "4px 20px",
+                      cursor: "pointer",
+                      borderBottom: "1px solid #f5f5f5",
+                      transition: "background-color 0.15s ease",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 12,
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = "#f0f8ff";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = "transparent";
+                    }}
+                  >
+                    <div style={{ flex: 1 }}>
+                      <div
+                        style={{
+                          fontWeight: 500,
+                          fontSize: 14,
+                          color: "#1a1a1a",
+                          marginBottom: 2,
+                        }}
+                      >
+                        {category.name}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Seller Results */}
+          {filteredSellers.length > 0 && (
+            <div>
+              <div
+                style={{
+                  padding: "4px 20px",
+                  backgroundColor: "#fafafa",
+                  borderBottom: "1px solid #f0f0f0",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+              >
+                <Store size={16} color="#FFC107" />
+                <span
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: "#666",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.5px",
+                  }}
+                >
+                  Cửa hàng
+                </span>
+                <span
+                  style={{
+                    marginLeft: "auto",
+                    fontSize: 12,
+                    color: "#999",
+                  }}
+                >
+                  {filteredSellers.length} kết quả
+                </span>
+              </div>
+
+              <div>
+                {filteredSellers.map((seller) => (
+                  <div
+                    key={seller.id}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      const keyword = seller.name || seller.shop_name;
+                      logSearchKeyword(keyword); // ✅ Ghi log
+                      navigate(`/sellers/${seller.id}`);
+                      setShowSuggestions(false);
+                    }}
+                    style={{
+                      padding: "4px 20px",
+                      cursor: "pointer",
+                      borderBottom: "1px solid #f5f5f5",
+                      transition: "background-color 0.15s ease",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 12,
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = "#fff8f0";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = "transparent";
+                    }}
+                  >
+                    <div style={{ flex: 1 }}>
+                      <div
+                        style={{
+                          fontWeight: 500,
+                          fontSize: 14,
+                          color: "#1a1a1a",
+                          marginBottom: 2,
+                        }}
+                      >
+                        {seller.name || seller.shop_name}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Product Results */}
+          {filteredProducts.length > 0 && (
+            <div>
+              <div
+                style={{
+                  padding: "4px 20px",
+                  backgroundColor: "#fafafa",
+                  borderBottom: "1px solid #f0f0f0",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+              >
+                <Package size={16} color="#4CAF50" />
+                <span
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: "#666",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.5px",
+                  }}
+                >
+                  Sản phẩm
+                </span>
+                <span
+                  style={{
+                    marginLeft: "auto",
+                    fontSize: 12,
+                    color: "#999",
+                  }}
+                >
+                  {filteredProducts.length} kết quả
+                </span>
+              </div>
+
+              <div style={{ maxHeight: 320, overflowY: "auto" }}>
+                {filteredProducts.map((product) => (
+                  <div
+                    key={product.id}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      const keyword = product.name;
+                      logSearchKeyword(keyword); // ✅ Ghi log
                       navigate(`/products/${product.id}`);
                       setShowSuggestions(false);
+                    }}
+                    style={{
+                      padding: "4px 20px",
+                      cursor: "pointer",
+                      borderBottom: "1px solid #f5f5f5",
+                      transition: "background-color 0.15s ease",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = "#A5D6A7";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = "transparent";
                     }}
                   >
                     <div
                       style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "12px",
+                        fontWeight: 500,
+                        fontSize: 14,
+                        color: "#1a1a1a",
+                        marginBottom: 4,
+                        lineHeight: 1.4,
                       }}
                     >
-                      <div style={{ flex: 1 }}>
-                        <div
-                          style={{
-                            fontWeight: 500,
-                            color: "#333",
-                            fontSize: "14px",
-                            lineHeight: 1.4,
-                          }}
-                        >
-                          {product.name}
-                        </div>
-                        <div
-                          style={{
-                            fontSize: "12px",
-                            color: "#666",
-                            marginTop: "2px",
-                            display: "-webkit-box",
-                            WebkitLineClamp: 1,
-                            WebkitBoxOrient: "vertical",
-                            overflow: "hidden",
-                          }}
-                        >
-                          {product.description || "Không có mô tả"}
-                        </div>
-                      </div>
+                      {product.name}
                     </div>
-                  </li>
+                  </div>
                 ))}
-              </ul>
+              </div>
+
+              {totalResults > 5 && (
+                <div
+                  style={{
+                    padding: "12px 20px",
+                    textAlign: "center",
+                    fontSize: 13,
+                    color: "#4CAF50",
+                    fontWeight: 500,
+                    cursor: "pointer",
+                    borderTop: "1px solid #f0f0f0",
+                    backgroundColor: "#fafafa",
+                  }}
+                  onClick={handleSearchClick}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = "#e8f5e9";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = "#fafafa";
+                  }}
+                >
+                  Xem tất cả {totalResults} kết quả
+                </div>
+              )}
             </div>
           )}
 
-          {/* Hiển thị thông báo nếu có kết quả bị ẩn */}
-          {searchResults.products.length > 5 && (
+          {/* No Results */}
+          {!hasResults && (
             <div
               style={{
+                padding: "40px 20px",
                 textAlign: "center",
-                padding: "8px 0",
-                fontSize: "12px",
                 color: "#999",
-                borderTop: "1px solid #eee",
-                marginTop: "8px",
               }}
             >
-              +{searchResults.products.length - 5} sản phẩm khác...
+              <div style={{ fontSize: 48, marginBottom: 12 }}>🔍</div>
+              <div style={{ fontSize: 14, fontWeight: 500, color: "#666" }}>
+                Không tìm thấy kết quả
+              </div>
+              <div style={{ fontSize: 12, color: "#999", marginTop: 4 }}>
+                Thử tìm kiếm với từ khóa khác
+              </div>
             </div>
           )}
         </div>

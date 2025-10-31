@@ -1,7 +1,8 @@
 from django.db import models
 from django.conf import settings    
+import unicodedata
 class Category(models.Model):
-    name = models.CharField(max_length=100)
+    name = models.CharField(max_length=100, db_index=True)
     key = models.CharField(max_length=50, unique=True)
     icon = models.CharField(max_length=50, default='Package')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -35,14 +36,25 @@ class Product(models.Model):
         ("coming_soon", "Sắp có"),
     ]
 
+    UNIT_CHOICES = [
+        ("kg", "Kilogram"),
+        ("g", "Gram"),
+        ("l", "Lít"),
+        ("ml", "Milliliter"),
+        ("unit", "Cái / Chiếc"),
+    ]
+
+
     seller = models.ForeignKey("sellers.Seller", on_delete=models.CASCADE, related_name="products")
     subcategory = models.ForeignKey(Subcategory, on_delete=models.CASCADE, related_name='products', null=True, blank=True)
     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='products', null=True, blank=True)
-    name = models.CharField(max_length=255)
+    name = models.CharField(max_length=255, db_index=True)
+    normalized_name = models.CharField(max_length=255, blank=True, db_index=True)
+
     description = models.TextField()
-    price = models.DecimalField(max_digits=10, decimal_places=2)
-    discount_percent = models.DecimalField(max_digits=5, decimal_places=2, default=0)
-    unit = models.CharField(max_length=20, default='kg')
+    original_price = models.DecimalField(max_digits=10, decimal_places=0)
+    discounted_price = models.DecimalField(max_digits=10, decimal_places=0, default=0)
+    unit = models.CharField(max_length=10, choices=UNIT_CHOICES, default="kg")
     stock = models.PositiveIntegerField(default=0)
     image = models.ImageField(upload_to='products/', blank=True, null=True)
     rating = models.DecimalField(max_digits=3, decimal_places=1, default=0)
@@ -72,15 +84,23 @@ class Product(models.Model):
 
     def __str__(self):
         return self.name
+    
+    def save(self, *args, **kwargs):
+        self.normalized_name = unicodedata.normalize('NFD', self.name)
+        self.normalized_name = ''.join(ch for ch in self.normalized_name if unicodedata.category(ch) != 'Mn')
+        self.normalized_name = self.normalized_name.lower().strip()
+        super().save(*args, **kwargs)
 
     @property
-    def discounted_price(self):
-        try:
-            if getattr(self, "discount", 0) > 0:
-                return self.price * (100 - getattr(self, "discount", 0)) / 100
-        except Exception:
-            pass
-        return self.price
+    def discount_percent(self):
+        """Tính phần trăm giảm giá từ giá gốc và giá giảm"""
+        if self.original_price and self.discounted_price:
+            try:
+                discount = 100 * (1 - self.discounted_price / self.original_price)
+                return round(discount, 2)
+            except Exception:
+                return 0
+        return 0
 
     @property
     def preordered_quantity(self):
@@ -93,7 +113,6 @@ class Product(models.Model):
 
     @property
     def sold_quantity(self):
-        # Đếm tổng số lượng sản phẩm đã bán từ bảng OrderItem
         from orders.models import OrderItem
         total = OrderItem.objects.filter(product=self).aggregate(models.Sum("quantity"))["quantity__sum"]
         return total or 0
@@ -110,6 +129,22 @@ class ProductFeature(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="features")
     name = models.CharField(max_length=50)
 
+class ProductImage(models.Model):
+    product = models.ForeignKey(
+        Product, 
+        on_delete=models.CASCADE, 
+        related_name='images'
+    )
+    image = models.ImageField(upload_to='products/gallery/')
+    is_primary = models.BooleanField(default=False)
+    order = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['order', 'created_at']
+    
+    def __str__(self):
+        return f"{self.product.name} - Image {self.id}"
 
 
 # class Preorder(models.Model):

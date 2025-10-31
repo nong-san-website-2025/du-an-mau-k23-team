@@ -1,10 +1,12 @@
 // src/features/admin/components/UserTable.jsx
 import React, { useMemo, useState, useEffect } from "react";
-import { Table, Dropdown, Button, Modal, message } from "antd";
+import { Table, Dropdown, Button, Modal, message, Tag } from "antd";
 import {
   EllipsisOutlined,
   EyeOutlined,
   DeleteOutlined,
+  LockOutlined,
+  UnlockOutlined,
 } from "@ant-design/icons";
 import axios from "axios";
 import UserAddModal from "./UserAddModal";
@@ -35,13 +37,14 @@ export default function UserTable({
 
   const filteredUsers = useMemo(() => {
     const s = norm(searchTerm);
-    const roleKey =
-      selectedRole === "all" || selectedRole === ""
-        ? null
-        : String(selectedRole);
 
     return (Array.isArray(users) ? users : [])
-      .filter((u) => u?.role?.name?.toLowerCase() !== "admin")
+      .filter(
+        (u) =>
+          u?.role?.name?.toLowerCase() === "customer" ||
+          u?.role?.name?.toLowerCase() === "seller"
+      )
+
       .filter((u) => {
         const hitSearch =
           s === "" ||
@@ -50,10 +53,9 @@ export default function UserTable({
           norm(u.email).includes(s) ||
           norm(u.phone).includes(s);
 
-        const hitRole = !roleKey || sameId(roleKey, u?.role?.id);
-        return hitSearch && hitRole;
+        return hitSearch;
       });
-  }, [users, searchTerm, selectedRole]);
+  }, [users, searchTerm]);
 
   const rowSelection = {
     selectedRowKeys: checkedIds,
@@ -63,7 +65,6 @@ export default function UserTable({
     }),
   };
   const handleToggleUser = async (user) => {
-    console.log("Trạng thái hiện tại:", user.is_active);
     try {
       const res = await axios.patch(
         `http://localhost:8000/api/users/${user.id}/toggle-active/`,
@@ -157,31 +158,15 @@ export default function UserTable({
       ),
     },
     {
-      title: t("Vai trò"),
-      key: "role",
-      dataIndex: ["role", "name"],
-      width: 120,
-      align: "center",
-      sorter: (a, b) => (a.role?.name || "").localeCompare(b.role?.name || ""),
-      render: (role) => {
-        const roleName = role?.toLowerCase();
-        if (roleName === "seller")
-          return <span className="badge bg-success">{t("seller")}</span>;
-        if (roleName === "support")
-          return <span className="badge bg-warning">{t("support")}</span>;
-        return <span className="badge bg-secondary">{role || t("user")}</span>;
-      },
-    },
-    {
       title: t("Email"),
-      dataIndex: "email",
+      dataIndex: "email_masked",
       key: "email",
       width: 200,
       sorter: (a, b) => (a.email || "").localeCompare(b.email || ""),
     },
     {
       title: t("Số điện thoại"),
-      dataIndex: "phone",
+      dataIndex: "phone_masked",
       key: "phone",
       width: 140,
       sorter: (a, b) => (a.phone || "").localeCompare(b.phone || ""),
@@ -191,20 +176,22 @@ export default function UserTable({
     {
       title: "Trạng thái",
       key: "status",
-      width: 120,
+      width: 150,
       align: "center",
       render: (_, record) => (
-        <span
-          className={`badge ${record.is_active ? "bg-success" : "bg-danger"}`}
+        <Tag
+          color={record.is_active ? "green" : "red"}
+          style={{ fontWeight: 600, borderRadius: 8, padding: "4px 10px" }}
         >
           {record.is_active ? "Đang hoạt động" : "Đang khóa"}
-        </span>
+        </Tag>
       ),
     },
+
     {
-      title: t("Hành động / Chi tiết"),
+      title: t("Hành động"),
       key: "actions_detail",
-      width: 140,
+      width: 100,
       align: "center",
       render: (_, record) => (
         <Dropdown
@@ -215,11 +202,22 @@ export default function UserTable({
                 label: (
                   <span
                     style={{
-                      color: record.is_active ? "orange" : "green",
-                      fontWeight: 500,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
                     }}
                   >
-                    {record.is_active ? "Khóa tài khoản" : "Mở khóa tài khoản"}
+                    {record.is_active ? (
+                      <>
+                        <LockOutlined />
+                        Khóa tài khoản
+                      </>
+                    ) : (
+                      <>
+                        <UnlockOutlined />
+                        Mở khóa tài khoản
+                      </>
+                    )}
                   </span>
                 ),
                 onClick: () => handleToggleUser(record),
@@ -227,15 +225,9 @@ export default function UserTable({
               {
                 key: "delete",
                 label: (
-                  <span
-                    style={{
-                      color: record.can_delete ? "red" : "gray",
-                      cursor: record.can_delete ? "pointer" : "not-allowed",
-                      opacity: record.can_delete ? 1 : 0.5,
-                    }}
-                  >
+                  <span style={{}}>
                     <DeleteOutlined className="me-2" />
-                    {t("Delete")}
+                    {t("Xoá tài khoản")}
                   </span>
                 ),
                 disabled: !record.can_delete,
@@ -244,18 +236,12 @@ export default function UserTable({
               {
                 key: "detail",
                 label: (
-                  <span
-                    style={{
-                      color: "blue",
-                      fontWeight: 500,
-                      cursor: "pointer",
-                    }}
-                    onClick={() => onShowDetail(record)}
-                  >
+                  <span>
                     <EyeOutlined className="me-2" />
                     {t("Chi tiết")}
                   </span>
                 ),
+                onClick: () => onShowDetail(record),
               },
             ],
           }}

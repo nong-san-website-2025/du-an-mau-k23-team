@@ -67,8 +67,6 @@ const BannerForm = ({ bannerId, onSuccess }) => {
     if (fileList.length > 0 && fileList[0].originFileObj) {
       formData.append("image", fileList[0].originFileObj);
     }
-    console.log("Image field:", values.image);
-    console.log("First file:", values.image?.[0]?.originFileObj);
     try {
       if (bannerId) {
         await API.put(`/marketing/banners/${bannerId}/`, formData, {});

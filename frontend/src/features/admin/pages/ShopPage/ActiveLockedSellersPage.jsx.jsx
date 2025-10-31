@@ -3,6 +3,7 @@ import { Input, message, Spin, Modal, Descriptions } from "antd";
 import SellerTable from "../../components/ShopAdmin/SellerTable";
 import axios from "axios";
 import { useTranslation } from "react-i18next";
+import AdminPageLayout from "../../components/AdminPageLayout"; // ← Đảm bảo đường dẫn đúng
 
 const api = axios.create({
   baseURL: process.env.REACT_APP_API_URL,
@@ -27,10 +28,16 @@ const ActiveLockedSellersPage = () => {
       const res = await api.get("/sellers/group/business", {
         headers: getAuthHeaders(),
       });
+
       const filtered = res.data.filter((item) =>
         ["active", "locked"].includes(item.status)
       );
-      setData(filtered);
+
+      const sorted = filtered.sort(
+        (a, b) => new Date(b.created_at) - new Date(a.created_at)
+      );
+
+      setData(sorted);
     } catch (err) {
       console.error(err);
       message.error(t("sellers_active_locked.load_failed"));
@@ -74,20 +81,21 @@ const ActiveLockedSellersPage = () => {
     setModalVisible(true);
   };
 
+  // ✅ Toolbar cho extra
+  const toolbar = (
+    <Input
+      placeholder={t("Tìm kiếm theo tên cửa hàng hoặc email...")}
+      value={searchTerm}
+      onChange={(e) => setSearchTerm(e.target.value)}
+      style={{ width: 300 }}
+    />
+  );
+
   return (
-    <div style={{ padding: 20, background: "#fff", minHeight: "100vh" }}>
-      <h2 style={{ padding: 10 }}>{t("Cửa hàng hoạt động / khóa")}</h2>
-
-      {/* Toolbar tìm kiếm */}
-      <div style={{ display: "flex", gap: 16, marginBottom: 16 }}>
-        <Input
-          placeholder={t("Tìm kiếm theo tên cửa hàng hoặc email...")}
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          style={{ width: 300 }}
-        />
-      </div>
-
+    <AdminPageLayout
+      title={t("CỬA HÀNG HOẠT ĐỘNG")}
+      extra={toolbar}
+    >
       {loading ? (
         <Spin />
       ) : (
@@ -109,7 +117,6 @@ const ActiveLockedSellersPage = () => {
           width={800}
         >
           <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
-            {/* Ảnh */}
             <div style={{ flex: "0 0 250px", textAlign: "center" }}>
               {selectedSeller.image ? (
                 <img
@@ -142,7 +149,6 @@ const ActiveLockedSellersPage = () => {
               )}
             </div>
 
-            {/* Thông tin chi tiết */}
             <div style={{ flex: "1 1 400px" }}>
               <Descriptions
                 column={1}
@@ -183,7 +189,7 @@ const ActiveLockedSellersPage = () => {
           </div>
         </Modal>
       )}
-    </div>
+    </AdminPageLayout>
   );
 };
 

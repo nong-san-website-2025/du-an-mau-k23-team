@@ -1,7 +1,8 @@
 import React from "react";
 import { Table, Button, Popconfirm, Tag, Space } from "antd";
+import { intcomma } from "../../../../utils/format";
 
-const ProductTable = ({ data, onEdit, onDelete, onSelfReject }) => {
+const ProductTable = ({ data, onEdit, onDelete, onSelfReject, onRow }) => {
   const columns = [
     { title: "ID", dataIndex: "id", key: "id", width: 70, align: "center" },
     {
@@ -25,12 +26,21 @@ const ProductTable = ({ data, onEdit, onDelete, onSelfReject }) => {
       ),
     },
     {
-      title: "Giá (VNĐ)",
-      dataIndex: "price",
-      key: "price",
+      title: "Giá gốc",
+      dataIndex: "original_price",
+      key: "original_price",
       width: 120,
       align: "right",
-      render: (price) => (price ? price.toLocaleString("vi-VN") : "0"),
+      render: (price) => intcomma(price), // <= dùng intcomma
+    },
+
+    {
+      title: "Giá giảm",
+      dataIndex: "discounted_price",
+      key: "discounted_price",
+      width: 120,
+      align: "right",
+      render: (price) => intcomma(price) , // <= dùng intcomma
     },
     {
       title: "Tồn kho",
@@ -78,36 +88,62 @@ const ProductTable = ({ data, onEdit, onDelete, onSelfReject }) => {
       },
     },
     {
-      title: "Mùa vụ & Sản lượng",
+      title: "Mùa vụ",
       key: "season",
-      width: 280,
+      width: 260,
       render: (record) => {
-        if (record.availability_status === "coming_soon") {
-          const formatDate = (d) =>
-            d ? new Date(d).toLocaleDateString("vi-VN") : "";
-          return (
-            <div style={{ textAlign: "left" }}>
+        if (record.availability_status !== "coming_soon") {
+          return <span style={{ color: "#8c8c8c" }}>—</span>;
+        }
+
+        const formatDate = (dateStr) => {
+          if (!dateStr) return "—";
+          const d = new Date(dateStr);
+          return isNaN(d.getTime()) ? "—" : d.toLocaleDateString("vi-VN");
+        };
+
+        const start = formatDate(record.season_start);
+        const end = formatDate(record.season_end);
+        const estimated = record.estimated_quantity || 0;
+        const ordered = record.ordered_quantity || 0;
+
+        return (
+          <div style={{ fontSize: 13, lineHeight: 1.5 }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                marginBottom: 4,
+              }}
+            >
+              <span style={{ color: "#595959", fontWeight: 500 }}>📅</span>
+              <span>
+                <b>{start}</b> → <b>{end}</b>
+              </span>
+            </div>
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
               <div>
-                <b>Mùa vụ:</b> {formatDate(record.season_start)} →{" "}
-                {formatDate(record.season_end)}
+                <Tag
+                  color="purple"
+                  style={{ fontSize: 12, fontWeight: 500, marginRight: 0 }}
+                >
+                  Dự kiến: {estimated.toLocaleString("vi-VN")}
+                </Tag>
               </div>
               <div>
-                <b>Dự kiến:</b>{" "}
-                {record.estimated_quantity?.toLocaleString("vi-VN") || 0} sản
-                phẩm
-              </div>
-              <div>
-                <b>Đã đặt:</b>{" "}
-                {record.ordered_quantity?.toLocaleString("vi-VN") || 0} sản phẩm
+                <Tag
+                  color="geekblue"
+                  style={{ fontSize: 12, fontWeight: 500, marginRight: 0 }}
+                >
+                  Đã đặt: {ordered.toLocaleString("vi-VN")}
+                </Tag>
               </div>
             </div>
-          );
-        }
-        // Khi "có sẵn" thì không hiển thị gì
-        return null;
+          </div>
+        );
       },
     },
-
     {
       title: "Hành động",
       key: "action",
@@ -117,37 +153,44 @@ const ProductTable = ({ data, onEdit, onDelete, onSelfReject }) => {
         const isSelfRejected = record.status === "self_rejected";
 
         return (
-          <Space size="small">
-            {!isSelfRejected && (
-              <Popconfirm
-                title="Bạn có chắc muốn tự từ chối sản phẩm này?"
-                okText="Xác nhận"
-                cancelText="Hủy"
-                onConfirm={() => onSelfReject(record)}
+          <div onClick={(e) => e.stopPropagation()}>
+            <Space size="small">
+              {!isSelfRejected && (
+                <Popconfirm
+                  title="Bạn có chắc muốn tự từ chối sản phẩm này?"
+                  okText="Xác nhận"
+                  cancelText="Hủy"
+                  onConfirm={() => onSelfReject(record)}
+                >
+                  <Button type="link" danger>
+                    Tự từ chối
+                  </Button>
+                </Popconfirm>
+              )}
+              <Button
+                type="link"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit(record);
+                }}
               >
-                <Button type="link" danger>
-                  Tự từ chối
-                </Button>
-              </Popconfirm>
-            )}
-            {/* Luôn hiển thị nút Sửa */}
-            <Button type="link" onClick={() => onEdit(record)}>
-              Sửa
-            </Button>
-            {isSelfRejected && (
-              <Popconfirm
-                title="Bạn có chắc chắn muốn xóa sản phẩm này?"
-                okText="Xóa"
-                cancelText="Hủy"
-                okButtonProps={{ danger: true }}
-                onConfirm={() => onDelete(record.id)}
-              >
-                <Button type="link" danger>
-                  Xóa
-                </Button>
-              </Popconfirm>
-            )}
-          </Space>
+                Sửa
+              </Button>
+              {isSelfRejected && (
+                <Popconfirm
+                  title="Bạn có chắc chắn muốn xóa sản phẩm này?"
+                  okText="Xóa"
+                  cancelText="Hủy"
+                  okButtonProps={{ danger: true }}
+                  onConfirm={() => onDelete(record.id)}
+                >
+                  <Button type="link" danger>
+                    Xóa
+                  </Button>
+                </Popconfirm>
+              )}
+            </Space>
+          </div>
         );
       },
     },
@@ -162,6 +205,7 @@ const ProductTable = ({ data, onEdit, onDelete, onSelfReject }) => {
       pagination={{ pageSize: 10, showSizeChanger: false }}
       scroll={{ x: 1300 }}
       size="small"
+      onRow={onRow} // 👈 Thêm dòng này
     />
   );
 };

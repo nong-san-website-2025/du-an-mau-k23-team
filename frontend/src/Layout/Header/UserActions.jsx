@@ -62,10 +62,14 @@ export default function UserActions({
       // Fast path: read notifications from localStorage (written by notification service) to avoid network
       const localList = getNotifications() || [];
       // getReadIds is synchronous and fast from notificationService
-      const svc = await import("../../features/users/services/notificationService");
+      const svc = await import(
+        "../../features/users/services/notificationService"
+      );
       const { getReadIds } = svc;
       const readSet = getReadIds(userId);
-      const unread = (localList || []).filter((n) => !readSet.has(String(n.id))).length;
+      const unread = (localList || []).filter(
+        (n) => !readSet.has(String(n.id))
+      ).length;
       setUnreadCount(unread);
     } catch (e) {
       // ignore, leave current unreadCount
@@ -73,59 +77,71 @@ export default function UserActions({
   }, [userId]);
 
   // Fetch unified notifications and return annotated list (don't set state here so caller can enrich first)
-  const fetchNotifications = useCallback(async (force = false) => {
-    // Allow fetching even if userId is not yet available; server uses token to scope results
-    try {
-      const { fetchUnifiedNotifications, annotateRead } = await import(
-        "../../features/users/services/notificationService"
-      );
-      const list = await fetchUnifiedNotifications(userId, force);
-      const annotated = annotateRead(list, userId);
-      return annotated;
-    } catch (e) {
-      return [];
-    }
-  }, [userId]);
+  const fetchNotifications = useCallback(
+    async (force = false) => {
+      // Allow fetching even if userId is not yet available; server uses token to scope results
+      try {
+        const { fetchUnifiedNotifications, annotateRead } = await import(
+          "../../features/users/services/notificationService"
+        );
+        const list = await fetchUnifiedNotifications(userId, force);
+        const annotated = annotateRead(list, userId);
+        return annotated;
+      } catch (e) {
+        return [];
+      }
+    },
+    [userId]
+  );
 
   // Compute unread directly from unified notifications (server + generated), so icon matches dropdown/page
-  const computeUnreadFromUnified = useCallback(async (force = false) => {
-    try {
-      const list = await fetchNotifications(force);
-      // list are annotated (annotateRead sets `read` using local read-set) but
-      // also fall back to DB-provided read flags. Treat a notification as read
-      // if either annotated `n.read` is true or the local read set contains it.
-      const svc = await import("../../features/users/services/notificationService");
-      const { getReadIds } = svc;
-      const readSet = getReadIds(userId);
-      const unread = (list || []).filter((n) => {
-        const id = String(n.id);
-        const serverMarkedRead = !!n.read; // annotateRead should set this
-        const locallyMarked = readSet.has(id);
-        return !(serverMarkedRead || locallyMarked);
-      }).length;
-      setUnreadCount(unread);
-      return list;
-    } catch (e) {
-      // fallback to lightweight unread endpoint
+  const computeUnreadFromUnified = useCallback(
+    async (force = false) => {
       try {
-        await fetchUnreadCount();
-      } catch {}
-      return [];
-    }
-  }, [userId, fetchNotifications]);
+        const list = await fetchNotifications(force);
+        // list are annotated (annotateRead sets `read` using local read-set) but
+        // also fall back to DB-provided read flags. Treat a notification as read
+        // if either annotated `n.read` is true or the local read set contains it.
+        const svc = await import(
+          "../../features/users/services/notificationService"
+        );
+        const { getReadIds } = svc;
+        const readSet = getReadIds(userId);
+        const unread = (list || []).filter((n) => {
+          const id = String(n.id);
+          const serverMarkedRead = !!n.read; // annotateRead should set this
+          const locallyMarked = readSet.has(id);
+          return !(serverMarkedRead || locallyMarked);
+        }).length;
+        setUnreadCount(unread);
+        return list;
+      } catch (e) {
+        // fallback to lightweight unread endpoint
+        try {
+          await fetchUnreadCount();
+        } catch {}
+        return [];
+      }
+    },
+    [userId, fetchNotifications]
+  );
 
   // Fast synchronous initialization from localStorage so badge shows immediately without waiting
   useEffect(() => {
     try {
       const localList = getNotifications() || [];
       // Read read-ids directly from localStorage (browser-safe)
-      const raw = localStorage.getItem(`notif_read_${userId || 'guest'}`);
+      const raw = localStorage.getItem(`notif_read_${userId || "guest"}`);
       let arr = [];
       try {
         arr = raw ? JSON.parse(raw) : [];
-      } catch { arr = []; }
+      } catch {
+        arr = [];
+      }
       const readSet = new Set(Array.isArray(arr) ? arr.map(String) : []);
-      const unread = (localList || []).filter((n) => !readSet.has(String(n.id))).length;
+      const unread = (localList || []).filter(
+        (n) => !readSet.has(String(n.id))
+      ).length;
       setUnreadCount(unread);
     } catch (e) {
       // ignore
@@ -135,15 +151,23 @@ export default function UserActions({
   // Heavy: Fetch full notifications only when dropdown is opened
   // If metadata missing, fetch from orders API and merge into notifications state.
   const enrichTopNotifications = useCallback(async (notificationsList) => {
-    if (!notificationsList || notificationsList.length === 0) return notificationsList;
+    if (!notificationsList || notificationsList.length === 0)
+      return notificationsList;
     try {
-      const axiosModule = await import("../../features/admin/services/axiosInstance");
+      const axiosModule = await import(
+        "../../features/admin/services/axiosInstance"
+      );
       const axiosInstance = axiosModule.default;
 
       const top = notificationsList.slice(0, 3);
       // Collect order ids or codes from notifications (normalize 'db-123' -> '123')
       const ids = top
-        .map((n) => n.metadata && (n.metadata.order_id || n.metadata.id) || n.order_id || n.id)
+        .map(
+          (n) =>
+            (n.metadata && (n.metadata.order_id || n.metadata.id)) ||
+            n.order_id ||
+            n.id
+        )
         .filter(Boolean)
         .map((v) => String(v).replace(/^db-/, ""));
 
@@ -173,14 +197,29 @@ export default function UserActions({
 
       // Merge found order info into notifications
       const merged = notificationsList.map((n) => {
-        const rawId = (n.metadata && (n.metadata.order_id || n.metadata.id)) || n.order_id || n.id || "";
+        const rawId =
+          (n.metadata && (n.metadata.order_id || n.metadata.id)) ||
+          n.order_id ||
+          n.id ||
+          "";
         const nid = String(rawId).replace(/^db-/, "");
         if (nid && ordersById[nid]) {
           const o = ordersById[nid];
           const md = { ...(n.metadata || {}) };
-          md.order_code = md.order_code || o.ghn_order_code || o.code || o.number || o.id;
-          md.order_total = md.order_total || o.total_price || o.total || o.grand_total || o.amount || 0;
-          md.shop_name = md.shop_name || (o.seller && (o.seller.store_name || o.seller.name)) || o.store_name || md.shop_name;
+          md.order_code =
+            md.order_code || o.ghn_order_code || o.code || o.number || o.id;
+          md.order_total =
+            md.order_total ||
+            o.total_price ||
+            o.total ||
+            o.grand_total ||
+            o.amount ||
+            0;
+          md.shop_name =
+            md.shop_name ||
+            (o.seller && (o.seller.store_name || o.seller.name)) ||
+            o.store_name ||
+            md.shop_name;
           return { ...n, metadata: md };
         }
         return n;
@@ -195,8 +234,8 @@ export default function UserActions({
   useEffect(() => {
     let mounted = true;
 
-  // Initial load - derive unread from cache first to avoid flashing old number, then fetch unified to compute exact unread
-  deriveUnreadFromCache().then(() => computeUnreadFromUnified(false));
+    // Initial load - derive unread from cache first to avoid flashing old number, then fetch unified to compute exact unread
+    deriveUnreadFromCache().then(() => computeUnreadFromUnified(false));
 
     // SSE connection for real-time updates
     let sseCleanup = null;
@@ -214,7 +253,7 @@ export default function UserActions({
               setUnified(enriched);
             }
           } catch (e) {
-            console.error('Error handling SSE update:', e);
+            console.error("Error handling SSE update:", e);
             fetchUnreadCount();
           }
         })();
@@ -266,15 +305,17 @@ export default function UserActions({
       deriveUnreadFromCache();
       if (dropdownLoaded) fetchNotifications();
     };
-    window.addEventListener('notif_read_changed', onNotifReadChanged);
+    window.addEventListener("notif_read_changed", onNotifReadChanged);
 
     return () => {
       mounted = false;
       if (sseCleanup) sseCleanup();
       window.removeEventListener("focus", onFocus);
       window.removeEventListener("storage", onStorage);
-      window.removeEventListener('notif_read_changed', onNotifReadChanged);
-      try { clearInterval(pollId); } catch (e) {}
+      window.removeEventListener("notif_read_changed", onNotifReadChanged);
+      try {
+        clearInterval(pollId);
+      } catch (e) {}
     };
   }, [userId, fetchUnreadCount, fetchNotifications, dropdownLoaded]);
 
@@ -304,7 +345,9 @@ export default function UserActions({
     let mounted = true;
     (async () => {
       try {
-        const svc = await import("../../features/users/services/notificationService");
+        const svc = await import(
+          "../../features/users/services/notificationService"
+        );
         const { getReadIds } = svc;
         const readSet = getReadIds(userId);
         const unread = (unified || []).filter((n) => {
@@ -318,7 +361,9 @@ export default function UserActions({
         // ignore and keep existing unreadCount
       }
     })();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, [unified, userId]);
 
   // Helpers to extract order info from a notification object
@@ -337,19 +382,39 @@ export default function UserActions({
     const md = noti.metadata || {};
     // common fields for order code
     const orderCode =
-      md.order_code || md.order_number || md.code || md.number || noti.order_code || noti.order_number || null;
+      md.order_code ||
+      md.order_number ||
+      md.code ||
+      md.number ||
+      noti.order_code ||
+      noti.order_number ||
+      null;
     // shop / seller name
     const shopName =
-      md.seller_store_name || md.store_name || md.shop_name || md.seller_name || noti.seller_store_name || noti.store_name || null;
+      md.seller_store_name ||
+      md.store_name ||
+      md.shop_name ||
+      md.seller_name ||
+      noti.seller_store_name ||
+      noti.store_name ||
+      null;
     // price / total
-    const priceRaw = md.order_total || md.total || md.amount || md.grand_total || md.price || noti.order_total || noti.total || null;
+    const priceRaw =
+      md.order_total ||
+      md.total ||
+      md.amount ||
+      md.grand_total ||
+      md.price ||
+      noti.order_total ||
+      noti.total ||
+      null;
     const price = formatVND(priceRaw);
     return { orderCode, shopName, price };
   };
 
   return (
     <div
-      className="d-flex align-items-center ms-3"
+      className="d-flex align-items-center ms-3 mb-2 "
       style={{ flexShrink: 0, flexWrap: "nowrap" }}
     >
       {/* Mobile search button */}
@@ -371,23 +436,34 @@ export default function UserActions({
         onMouseEnter={() => {
           setShowNotificationDropdown && setShowNotificationDropdown(true);
           // Load full notifications when hovering (lazy load)
-            if (!dropdownLoaded) {
-              (async () => {
-                const list = await fetchNotifications(true);
+          if (!dropdownLoaded) {
+            (async () => {
+              const list = await fetchNotifications(true);
+              try {
+                console.debug(
+                  "[UserActions] hover fetched notifications ids:",
+                  (list || []).map((n) => n.id)
+                );
+              } catch (e) {}
+              try {
+                const enriched = await enrichTopNotifications(list);
                 try {
-                  console.debug('[UserActions] hover fetched notifications ids:', (list||[]).map(n=>n.id));
-                } catch(e){}
-                try {
-                  const enriched = await enrichTopNotifications(list);
-                  try { console.debug('[UserActions] hover enriched ids:', (enriched||[]).map(n=> ({id:n.id, metadata: n.metadata}))); } catch(e){}
-                  setUnified(enriched);
-                  setDropdownLoaded(true);
-                } catch (e) {
-                  setUnified(list);
-                  setDropdownLoaded(true);
-                }
-              })();
-            }
+                  console.debug(
+                    "[UserActions] hover enriched ids:",
+                    (enriched || []).map((n) => ({
+                      id: n.id,
+                      metadata: n.metadata,
+                    }))
+                  );
+                } catch (e) {}
+                setUnified(enriched);
+                setDropdownLoaded(true);
+              } catch (e) {
+                setUnified(list);
+                setDropdownLoaded(true);
+              }
+            })();
+          }
         }}
         onMouseLeave={() =>
           setShowNotificationDropdown && setShowNotificationDropdown(false)
@@ -533,10 +609,16 @@ export default function UserActions({
                     <div style={{ flex: 1 }}>
                       {(() => {
                         const md = noti.metadata || {};
-                        const isReply = (noti.type || "").toLowerCase() === 'review_reply' || md.reply_text;
+                        const isReply =
+                          (noti.type || "").toLowerCase() === "review_reply" ||
+                          md.reply_text;
                         // For reply notifications we skip showing the verbose title/message
                         // (e.g. "Phản hồi từ thamvo1:") and instead show structured fields below.
-                        const titleText = isReply ? (md.product_name ? `Phản hồi đánh giá` : "Phản hồi") : (noti.title || noti.message);
+                        const titleText = isReply
+                          ? md.product_name
+                            ? `Phản hồi đánh giá`
+                            : "Phản hồi"
+                          : noti.title || noti.message;
                         return (
                           <>
                             <div
@@ -551,11 +633,23 @@ export default function UserActions({
 
                             {/* Order-specific and reply details */}
                             {(() => {
-                              const { orderCode, shopName, price } = getOrderInfo(noti);
+                              const { orderCode, shopName, price } =
+                                getOrderInfo(noti);
                               const showPrice = !isReply && price; // hide price for replies
-                              if (orderCode || shopName || showPrice || isReply) {
+                              if (
+                                orderCode ||
+                                shopName ||
+                                showPrice ||
+                                isReply
+                              ) {
                                 return (
-                                  <div style={{ marginTop: 6, fontSize: 13, color: "#14532d" }}>
+                                  <div
+                                    style={{
+                                      marginTop: 6,
+                                      fontSize: 13,
+                                      color: "#14532d",
+                                    }}
+                                  >
                                     {orderCode && (
                                       <div>
                                         <strong>Mã đơn:</strong> {orderCode}
@@ -577,16 +671,28 @@ export default function UserActions({
                                     {isReply && (
                                       <div style={{ marginTop: 6 }}>
                                         {md.replier_name && (
-                                          <div><strong>Người phản hồi:</strong> {md.replier_name}</div>
+                                          <div>
+                                            <strong>Người phản hồi:</strong>{" "}
+                                            {md.replier_name}
+                                          </div>
                                         )}
                                         {md.product_name && (
-                                          <div><strong>Sản phẩm:</strong> {md.product_name}</div>
+                                          <div>
+                                            <strong>Sản phẩm:</strong>{" "}
+                                            {md.product_name}
+                                          </div>
                                         )}
                                         {md.shop_name && (
-                                          <div><strong>Cửa hàng phản hồi:</strong> {md.shop_name}</div>
+                                          <div>
+                                            <strong>Cửa hàng phản hồi:</strong>{" "}
+                                            {md.shop_name}
+                                          </div>
                                         )}
                                         {md.reply_text && (
-                                          <div><strong>Trả lời:</strong> {md.reply_text}</div>
+                                          <div>
+                                            <strong>Trả lời:</strong>{" "}
+                                            {md.reply_text}
+                                          </div>
                                         )}
                                       </div>
                                     )}
@@ -599,17 +705,18 @@ export default function UserActions({
                         );
                       })()}
                       {/* Show noti.detail only when it's not a reply (to avoid duplicate reply text) */}
-                      {!(noti.metadata && noti.metadata.reply_text) && noti.detail && (
-                        <div
-                          style={{
-                            fontSize: 13,
-                            color: "#166534",
-                            marginTop: 2,
-                          }}
-                        >
-                          {noti.detail}
-                        </div>
-                      )}
+                      {!(noti.metadata && noti.metadata.reply_text) &&
+                        noti.detail && (
+                          <div
+                            style={{
+                              fontSize: 13,
+                              color: "#166534",
+                              marginTop: 2,
+                            }}
+                          >
+                            {noti.detail}
+                          </div>
+                        )}
                       {noti.time && (
                         <div
                           style={{
@@ -634,13 +741,13 @@ export default function UserActions({
                     style={{ color: "#16a34a", fontWeight: 600, fontSize: 15 }}
                     onClick={async () => {
                       try {
-                          const svc = await import(
-                            "../../features/users/services/notificationService"
-                          );
-                          await svc.markAllAsRead(userId);
-                          const { annotateRead } = svc;
-                          setUnified((prev) => annotateRead(prev || [], userId));
-                          setUnreadCount(0);
+                        const svc = await import(
+                          "../../features/users/services/notificationService"
+                        );
+                        await svc.markAllAsRead(userId);
+                        const { annotateRead } = svc;
+                        setUnified((prev) => annotateRead(prev || [], userId));
+                        setUnreadCount(0);
                       } catch (error) {
                         console.error("Failed to mark all as read:", error);
                       }
@@ -762,7 +869,20 @@ export default function UserActions({
                         border: "1px solid #e5e7eb",
                       }}
                     />
-                    <span>{item.product?.name || "Sản phẩm"}</span>
+                    <span
+                      style={{
+                        display: "-webkit-box",
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: "vertical",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        wordBreak: "break-word",
+                        flex: 1,
+                        lineHeight: 1.4,
+                      }}
+                    >
+                      {item.product?.name || "Sản phẩm"}
+                    </span>
                     <span
                       style={{
                         marginLeft: "auto",
@@ -934,11 +1054,9 @@ export default function UserActions({
             ) : (
               // Trong phần hiển thị avatar
               <Avatar
-                style={{ backgroundColor: "#16a34a", fontWeight: "bold" }}
+                style={{ backgroundColor: "#eee", fontWeight: "bold" }}
                 size={32}
-              >
-                
-              </Avatar>
+              ></Avatar>
             )}
           </Button>
         </Dropdown>

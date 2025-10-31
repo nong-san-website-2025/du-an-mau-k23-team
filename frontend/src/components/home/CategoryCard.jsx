@@ -6,7 +6,7 @@ export default function CategoryCard({ title, image, onClick }) {
   return (
     <div
       onClick={onClick}
-      className="flex flex-col items-center p-4 rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 cursor-pointer bg-white"
+      className="flex flex-col items-center p-0 rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 cursor-pointer bg-white"
     >
       <div className="w-20 h-20 mb-2 flex items-center justify-center overflow-hidden rounded-full bg-gray-50">
         <img

@@ -25,7 +25,6 @@ class SSEManager {
 
       this.eventSource.onopen = () => {
         this.isConnected = true;
-        console.log("✅ SSE connected for notifications");
         if (this.reconnectTimeout) {
           clearTimeout(this.reconnectTimeout);
           this.reconnectTimeout = null;
@@ -53,7 +52,6 @@ class SSEManager {
         // Auto-reconnect after 5 seconds
         if (!this.reconnectTimeout) {
           this.reconnectTimeout = setTimeout(() => {
-            console.log("🔄 Attempting to reconnect SSE...");
             this.connect(this.userId);
           }, 5000);
         }
@@ -73,7 +71,6 @@ class SSEManager {
       this.eventSource.close();
       this.eventSource = null;
       this.isConnected = false;
-      console.log("❌ SSE disconnected");
     }
   }
 

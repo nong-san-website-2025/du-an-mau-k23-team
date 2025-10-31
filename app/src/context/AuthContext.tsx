@@ -47,14 +47,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    console.log("AuthProvider: initializing auth...");
     const initAuth = async () => {
       try {
         const token = await SecureStorage.getToken();
-        console.log(
-          "Token from secure storage:",
-          token ? "✅ exists" : "❌ null"
-        );
 
         if (!token) {
           setUser(null);
@@ -63,13 +58,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         }
 
         const userData = await API.get<User>("/users/me/", true);
-        console.log("User data fetched:", userData);
         setUser({ ...userData, isAuthenticated: true, token });
       } catch (err) {
         console.error("AuthProvider init error:", err);
         setUser(null);
       } finally {
-        console.log("AuthProvider: setting loading = false");
         setLoading(false); // 👈 đảm bảo dòng này luôn chạy
       }
     };

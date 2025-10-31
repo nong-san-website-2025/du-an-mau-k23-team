@@ -1,0 +1,12 @@
+.product-card.ant-card {
+  border: 1px solid #dfdfdf !important;
+  overflow: hidden !important; /* ← NGĂN phần cover tràn ra ngoài border */
+}
+
+.product-card.ant-card:hover {
+  border: 1px solid #4caf50 !important;
+}
+
+.product-card .ant-card-body {
+  padding: 8px 10px; /* ← Giảm padding trong card */
+}

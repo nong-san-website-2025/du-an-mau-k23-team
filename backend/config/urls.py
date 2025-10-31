@@ -32,7 +32,8 @@ urlpatterns = [
     path('api/cart/', include('cart.urls')),
     path('', include('reviews.urls')),
     path("api/promotions/", include("promotions.urls")),
-     path("api/promotions/", include(promotions_router.urls)),
+    path("api/promotions/", include(promotions_router.urls)),
+    path('api/search/', include('search.urls')),
 
     path('api/complaints/', include('complaints.urls')),
 

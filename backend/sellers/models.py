@@ -6,7 +6,7 @@ from products.models import Product
 
 class Seller(models.Model):
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name="seller")
-    store_name = models.CharField(max_length=255)
+    store_name = models.CharField(max_length=255, db_index=True)
     bio = models.TextField(blank=True)
     address = models.CharField(max_length=255, blank=True)  
     phone = models.CharField(max_length=20, blank=True)     

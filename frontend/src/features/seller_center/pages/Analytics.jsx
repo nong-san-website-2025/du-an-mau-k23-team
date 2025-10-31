@@ -439,10 +439,6 @@ export default function Analytics() {
     }
     const { product_performance, basket_analysis } = productsData;
 
-    // Debug: Log dữ liệu để kiểm tra
-    console.log("Products Data:", productsData);
-    console.log("Basket Analysis:", basket_analysis);
-
     return (
       <div>
         <Card title={<Title level={5}>Hiệu suất từng loại nông sản</Title>} style={{ marginBottom: 24, borderRadius: '12px' }}>

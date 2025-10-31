@@ -1,40 +1,156 @@
-/* Padding carousel để arrow không che card */
-.flash-sale-section .ant-carousel {
-  padding: 0 10px; /* khoảng trống 2 bên cho arrow */
-  overflow: visible; /* cho phép arrow scale ra ngoài */
+.flash-sale-section {
+  background: linear-gradient(135deg, #fff7e6, #fff);
+  padding: 20px 0px;
+  border-radius: 12px;
+  position: relative;
+  transition: all 0.3s ease;
 }
 
-/* Arrow mặc định với box-shadow */
-.ant-carousel .slick-prev,
-.ant-carousel .slick-next {
-  width: 50px;
-  height: 50px;
-  background: rgba(255, 255, 255, 0.9);
-  border-radius: 50%;
-  top: 40%;
+/* --- Header --- */
+.flash-sale-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: white;
+  padding: 12px 20px;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  margin-bottom: 20px;
+}
+
+.flash-sale-header .left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.flash-sale-header h2 {
+  color: #ff4d4f;
+  font-weight: 800;
+  font-size: 1.4rem;
+}
+
+.flash-sale-header .flash-icon {
+  width: 32px;
+  height: 32px;
+}
+
+.flash-sale-header .right {
+  font-weight: 500;
+  color: #555;
+}
+
+/* --- Carousel --- */
+.flash-sale-carousel-wrapper {
+  position: relative;
+  overflow: visible !important;
+}
+
+/* Ẩn mũi tên mặc định */
+.flash-sale-carousel-wrapper .slick-prev,
+.flash-sale-carousel-wrapper .slick-next {
+  opacity: 0;
+  transition: opacity 0.3s ease;
   z-index: 10;
-  display: flex !important;
+}
+
+/* Hover vào khu vực flash sale thì hiện mũi tên */
+.flash-sale-section:hover .slick-prev,
+.flash-sale-section:hover .slick-next {
+  opacity: 1;
+}
+
+/* Tinh chỉnh vị trí & màu mũi tên */
+.flash-sale-carousel-wrapper .slick-prev,
+.flash-sale-carousel-wrapper .slick-next {
+  width: 34px;
+  height: 32px;
+  background: rgba(255, 77, 79, 0.1);
+  border-radius: 50%;
+}
+
+.flash-sale-carousel-wrapper .slick-prev:hover,
+.flash-sale-carousel-wrapper .slick-next:hover {
+  background: #ff4d4f;
+}
+
+.flash-sale-carousel-wrapper .slick-prev::before,
+.flash-sale-carousel-wrapper .slick-next::before {
+  color: #ff4d4f;
+  font-size: 20px;
+}
+
+.flash-sale-carousel-wrapper .slick-prev:hover::before,
+.flash-sale-carousel-wrapper .slick-next:hover::before {
+  color: white;
+}
+
+.flash-slide {
+  padding: 0px;
+}
+
+/* --- View All button --- */
+.view-all {
+  text-align: center;
+  margin-top: 10px;
+}
+
+.view-all-btn {
+  display: inline-block;
+  background: #fff0f0;
+  color: #ff4d4f;
+  font-weight: 600;
+  text-decoration: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+}
+
+.view-all-btn:hover {
+  background: #ff4d4f;
+  color: #fff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(255, 77, 79, 0.2);
+}
+/* --- Nút custom --- */
+.custom-prev,
+.custom-next {
+  position: absolute;
+  top: 50%; /* căn giữa theo carousel */
+  transform: translateY(-50%);
+  z-index: 5;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background-color: rgba(0, 128, 0, 0.15); /* xanh lá nhạt */
+  color: #007b00; /* xanh lá đậm */
+  font-size: 28px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
-  transition: transform 0.2s, box-shadow 0.2s;
-  transform-origin: center; /* fix scale lệch vị trí */
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.1);
 }
 
-/* Di chuyển ra ngoài card */
-.ant-carousel .slick-prev { left: -55px; }
-.ant-carousel .slick-next { right: -55px; }
-
-/* Hover arrow: scale + shadow */
-.ant-carousel .slick-prev:hover,
-.ant-carousel .slick-next:hover {
-  transform: scale(1.2); /* phóng to 20% */
-  box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+/* Hover */
+.custom-prev:hover,
+.custom-next:hover {
+  background-color: rgba(0, 128, 0, 0.25);
+  transform: translateY(-50%) scale(1.1);
 }
 
-/* Arrow icon mặc định */
-.ant-carousel .slick-prev:before,
-.ant-carousel .slick-next:before {
-  color: #333;
-  font-size: 24px;
+/* Vị trí hai nút */
+.custom-prev {
+  left: -16px; /* vừa sát carousel */
+}
+
+.custom-next {
+  right: -16px;
+}
+
+/* Nếu đang ở đầu/cuối carousel */
+.slick-disabled {
+  opacity: 0.3;
+  pointer-events: none;
 }

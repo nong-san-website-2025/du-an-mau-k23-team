@@ -159,8 +159,9 @@ class FlashSaleProduct(models.Model):
     def __str__(self):
         return f"{self.product.name} - {self.flash_price}"
     def clean(self):
-        if self.flash_price >= self.product.price:
+        if self.flash_price >= self.product.original_price:
             raise ValidationError({'flash_price': 'Flash price phải thấp hơn giá gốc.'})
+
     @property
     def remaining_stock(self):
         from orders.models import OrderItem

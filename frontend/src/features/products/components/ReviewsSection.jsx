@@ -34,7 +34,7 @@ const ReviewsSection = ({
           <div style={{ marginBottom: 24 }}>
             <Space direction="vertical" style={{ width: "100%" }}>
               <Space>
-                <Text>Chọn số sao:</Text>
+                <Text>Đánh giá:</Text>
                 <Rate value={newRating} onChange={onNewRatingChange} />
               </Space>
               <TextArea

@@ -1,28 +1,28 @@
-from rest_framework import viewsets, status
+from django.db.models import Q, Sum, Count
+from django.utils.timezone import now, timedelta
+from django.core.cache import cache
+from rest_framework import viewsets, generics, permissions, status
+from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
-from django.db.models import Q
-from .models import Product, Category
-from .serializers import ProductSerializer, ProductListSerializer, CategorySerializer, SubcategorySerializer
 from rest_framework.views import APIView
+
+
+from .models import Product, Category, Subcategory
+from .serializers import (
+    ProductSerializer,
+    ProductListSerializer,
+    CategorySerializer,
+    SubcategorySerializer,
+    CategoryCreateSerializer,
+)
 from sellers.models import Seller
-from sellers.serializers import SellerSerializer
-from rest_framework import generics, permissions
 from reviews.models import Review
 from reviews.serializers import ReviewSerializer
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAdminUser
-from rest_framework.decorators import action
-from .models import Category, Subcategory, Product
-from .serializers import CategorySerializer, SubcategorySerializer, ProductListSerializer, CategoryCreateSerializer
-from rest_framework.permissions import AllowAny
-from rest_framework import viewsets, permissions, status
-from django.utils.timezone import now, timedelta
-from django.db.models import Sum
-from orders.models import OrderItem  # giả sử bảng chi tiết đơn hàng tên là OrderItem
-from django.db.models.functions import Concat
-from django.contrib.postgres.search import TrigramSimilarity
-from orders.models import Preorder
+from orders.models import OrderItem, Preorder
+
+import unicodedata
+
     
 
 @api_view(['GET'])
@@ -60,7 +60,7 @@ class SubcategoryViewSet(viewsets.ModelViewSet):
 
 class ProductViewSet(viewsets.ModelViewSet):
     permission_classes = [AllowAny]
-    queryset = Product.objects.select_related('subcategory__category', 'seller').all()
+    queryset = Product.objects.select_related('subcategory__category', 'seller').prefetch_related('images').all()
 
     def get_permissions(self):
         # Public read, restricted write/actions
@@ -83,9 +83,9 @@ class ProductViewSet(viewsets.ModelViewSet):
         return super().destroy(request, *args, **kwargs)
 
     def get_queryset(self):
-        queryset = Product.objects.select_related('subcategory__category', 'seller').all()
+        queryset = Product.objects.select_related('subcategory__category', 'seller').prefetch_related('images').all()
         user = self.request.user
-        role = getattr(user, 'role', None)  # Nếu không có role, None
+        role = getattr(user, 'role', None)
 
         # ----- Phân quyền role -----
         if role == 'seller':
@@ -238,6 +238,7 @@ class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
     permission_classes = [permissions.AllowAny]
+    pagination_class = None
 
     def get_serializer_class(self):
         if self.action in ['create', 'update', 'partial_update']:
@@ -300,28 +301,77 @@ class CategoryViewSet(viewsets.ModelViewSet):
             "products_by_subcategory": grouped
         })
 
+def normalize_text(text):
+    if not text:
+        return ''
+    text = unicodedata.normalize('NFD', text)
+    text = ''.join(ch for ch in text if unicodedata.category(ch) != 'Mn')
+    return text.lower().strip()
 
 class SearchAPIView(APIView):
     permission_classes = [permissions.AllowAny]
 
+    def get_image_url(self, obj, field_name, request):
+        field = getattr(obj, field_name, None)
+        if field and hasattr(field, 'url'):
+            return request.build_absolute_uri(field.url)
+        return None
+
     def get(self, request):
         query = request.GET.get('q', '').strip()
         if not query:
-            return Response({'products': [], 'sellers': [   ]})
+            return Response({'products': [], 'sellers': [], 'categories': []})
 
-        products = Product.objects.filter(
-            Q(name__icontains=query) |
-            Q(description__icontains=query)
-        ).distinct()[:20]
+        cache_key = f'search:{query.lower()[:50]}'
+        cached_result = cache.get(cache_key)
+        if cached_result:
+            return Response(cached_result)
+
+        norm_query = normalize_text(query)
+
+        products_qs = Product.objects.filter(
+            Q(normalized_name__icontains=norm_query) | Q(description__icontains=query)
+)
+
+        # Lọc không dấu trong Python
+        products = [
+            p for p in products_qs
+            if norm_query in normalize_text(p.name) or norm_query in normalize_text(p.description or "")
+        ]
+
+        categories = Category.objects.filter(
+            Q(name__icontains=query) | Q(name__icontains=norm_query)
+        ).annotate(product_count=Count('subcategories__products')).order_by('-product_count')[:5]
 
         sellers = Seller.objects.filter(
-            Q(store_name__icontains=query) 
-        ).distinct()[:10]
+            Q(store_name__icontains=query) | Q(store_name__icontains=norm_query)
+        ).annotate(product_count=Count('products')).order_by('-product_count')[:10]
 
-        return Response({
-            'products': ProductListSerializer(products, many=True, context={'request': request}).data,
-            'sellers': SellerSerializer(sellers, many=True).data
-        })
+        result = {
+            'products': [{
+                'id': p.id,
+                'name': p.name,
+                'description': p.description[:100] if p.description else None,
+                'image': self.get_image_url(p, 'image', request),
+                'category_name': p.subcategory.category.name if p.subcategory and p.subcategory.category else None,
+            } for p in products],
+            'categories': [{
+                'id': c.id,
+                'name': c.name,
+                'product_count': c.product_count,
+                'image': self.get_image_url(c, 'image', request),
+            } for c in categories],
+            'sellers': [{
+                'id': s.id,
+                'name': s.store_name,
+                'shop_name': s.store_name,
+                'product_count': s.product_count,
+                'avatar': self.get_image_url(s, 'avatar', request),
+            } for s in sellers]
+        }
+
+        cache.set(cache_key, result, 300)
+        return Response(result)
     
 class ReviewListCreateView(generics.ListCreateAPIView):
     serializer_class = ReviewSerializer

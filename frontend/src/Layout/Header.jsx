@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import useUserProfile from "../features/users/services/useUserProfile";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -18,6 +18,8 @@ export default function Header({ shouldFetchProfile = true }) {
 
   const { cartItems } = useCart();
   const cartCount = cartItems.length;
+  const [popularItems, setPopularItems] = useState([]);
+
   const navigate = useNavigate();
 
   const { storeName, sellerStatus } = useSellerStatus(shouldFetchProfile);
@@ -36,6 +38,7 @@ export default function Header({ shouldFetchProfile = true }) {
     useState(false);
   const [showCartDropdown, setShowCartDropdown] = useState(false);
   const [hoveredDropdown, setHoveredDropdown] = useState(null);
+  const [hotKeywords, setHotKeywords] = useState([]);
 
   const greenText = {
     color: "#4caf50",
@@ -43,8 +46,25 @@ export default function Header({ shouldFetchProfile = true }) {
     fontWeight: 800,
   };
 
-  console.log("👤 userProfile trong Header:", userProfile);
+  useEffect(() => {
+    fetch("/api/search/popular-keywords/")
+      .then((res) => res.json())
+      .then((data) => {
+        const keywords = data.keywords?.slice(0, 7) || [];
+        setHotKeywords(keywords);
+      })
+      .catch((err) => {
+        console.error("❌ Fetch hot keywords failed:", err);
+        setHotKeywords([]);
+      });
+  }, []);
 
+  useEffect(() => {
+    fetch("/api/search/popular-items/")
+      .then((res) => res.json())
+      .then((data) => setPopularItems(data.items || []))
+      .catch((err) => console.error("Failed to load popular items", err));
+  }, []);
   const handleLogout = () => {
     localStorage.clear();
     setShowProfileDropdown(false);
@@ -80,20 +100,77 @@ export default function Header({ shouldFetchProfile = true }) {
         >
           <div
             className="container-fluid d-flex align-items-center justify-content-between py-1 px-1"
-            style={{ minHeight: "60px", flexWrap: "nowrap" }}
+            style={{
+              minHeight: "60px",
+              flexWrap: "nowrap",
+              position: "relative",
+            }}
           >
-            <Logo greenText={greenText} />
-            <SearchBoxWithSuggestions
-              search={search}
-              setSearch={setSearch}
-              showSuggestions={showSuggestions}
-              setShowSuggestions={setShowSuggestions}
-              searchResults={searchResults}
-              handleSearchChange={handleSearchChange}
-              handleSearchSubmit={handleSearchSubmit}
-              greenText={greenText}
-              containerRef={searchRef}
-            />
+            <div style={{ paddingBottom: 10 }}>
+              <Logo greenText={greenText} />
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "flex-start",
+                position: "relative",
+              }}
+            >
+              <SearchBoxWithSuggestions
+                search={search}
+                setSearch={setSearch}
+                showSuggestions={showSuggestions}
+                setShowSuggestions={setShowSuggestions}
+                searchResults={searchResults}
+                handleSearchChange={handleSearchChange}
+                handleSearchSubmit={handleSearchSubmit}
+                greenText={greenText}
+                containerRef={searchRef}
+              />
+
+              {popularItems.length > 0 && (
+                <div
+                  style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: "4px",
+                    marginTop: "4px",
+                  }}
+                >
+                  {popularItems.slice(0, 7).map((item) => (
+                    <span
+                      key={`${item.type}-${item.id}`}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (item.type === "product") {
+                          navigate(`/products/${item.id}`);
+                        } else if (item.type === "category") {
+                          navigate(
+                            `/products?category=${encodeURIComponent(item.name)}`
+                          );
+                        }
+                      }}
+                      style={{
+                        padding: "4px 6px",
+                        color: "white",
+                        borderRadius: "16px",
+                        fontSize: "13px",
+                        cursor: "pointer",
+                        whiteSpace: "nowrap", // ← không xuống dòng
+                        overflow: "hidden", // ← ẩn phần tràn
+                        textOverflow: "clip", // ← hiển thị "..." khi tràn
+                        maxWidth: "120px", // ← giới hạn độ rộng (bắt buộc để ellipsis hoạt động)
+                      }}
+                    >
+                      {item.name}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <UserActions
               greenText={greenText}
               cartCount={cartCount}

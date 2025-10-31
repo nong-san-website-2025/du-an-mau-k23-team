@@ -17,16 +17,19 @@ class ProductMiniSerializer(serializers.ModelSerializer):
 class SellerListSerializer(serializers.ModelSerializer):
     owner_username = serializers.CharField(source='user.username', read_only=True)
     user_email = serializers.EmailField(source="user.email", read_only=True)
-    created_at = serializers.DateTimeField(format="%d/%m/%Y %H:%M", read_only=True)
+    created_at = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%S.%fZ")
     followers_count = serializers.SerializerMethodField()
-
+    total_products = serializers.SerializerMethodField()
+    
     class Meta:
         model = Seller
-        fields = ['id', 'store_name', 'image', 'address', 'status', 'bio', 'owner_username', 'phone', 'user_email', 'created_at', 'followers_count']
+        fields = ['id', 'store_name', 'image', 'address', 'status', 'bio', 'owner_username', 'phone', 'user_email', 'created_at', 'followers_count', 'total_products']
 
     def get_followers_count(self, obj):
         return obj.followers.count()
 
+    def get_total_products(self, obj):
+        return obj.products.count()  # hoặc Product.objects.filter(store=obj).count()
 class SellerRegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = Seller
@@ -36,6 +39,8 @@ class SellerDetailSerializer(serializers.ModelSerializer):
     products = ProductMiniSerializer(many=True, read_only=True, source='product_set')
     followers_count = serializers.SerializerMethodField()
     is_following = serializers.SerializerMethodField()
+    total_products = serializers.SerializerMethodField()
+
 
     class Meta:
         model = Seller
@@ -51,10 +56,14 @@ class SellerDetailSerializer(serializers.ModelSerializer):
             'products',
             'followers_count',
             'is_following',
+            'total_products'
         ]
 
     def get_followers_count(self, obj):
         return obj.followers.count()
+    
+    def get_total_products(self, obj):
+        return obj.products.count()  # hoặc Product.objects.filter(store=obj).count()
 
     def get_is_following(self, obj):
         request = self.context.get('request')

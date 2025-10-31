@@ -1,112 +1,206 @@
 import React from "react";
-import { useNavigate } from "react-router-dom";
+import { Card, Button, Typography, Rate } from "antd";
 import { ShoppingCartOutlined } from "@ant-design/icons";
-import { Button, Typography } from "antd";
+import NoImage from "../../../components/shared/NoImage";
+import { useNavigate } from "react-router-dom";
+import "../styles/ProductCard.css";
+import { formatVND } from "./../../stores/components/StoreDetail/utils/utils";
 
 const { Text } = Typography;
 
-export default function ProductCard({ product, onAddToCart, onBuyNow }) {
+// 🎨 Màu cố định cho từng feature
+const featureColors = {
+  "Hữu cơ": "#52c41a",
+  "Không thuốc trừ sâu": "#f5222d",
+  "Tự nhiên": "#1890ff",
+  "Sạch": "#faad14",
+};
+
+export default function ProductCard({
+  product,
+  onAddToCart,
+  showAddToCart = true,
+}) {
   const navigate = useNavigate();
 
-  const rawStatus = (product.availability_status || product.status || "")
-    .toLowerCase()
-    .trim();
-  const stock = Number(product.stock) || 0;
+  const handleClick = () => {
+    navigate(`/products/${product.id}`);
+  };
 
-  console.log("🐞 STATUS CHECK:", {
-    name: product.name,
-    stock: product.stock,
-    availability_status: product.availability_status,
-    status: product.status,
-  });
-  // ✅ Nhận dạng trạng thái "coming soon"
-  const isComingSoon =
-    rawStatus.includes("coming_soon") ||
-    rawStatus.includes("comingsoon") ||
-    rawStatus.includes("sắp") ||
-    rawStatus.includes("sap");
+  const imageUrl =
+    product.image && product.image.startsWith("/")
+      ? `http://localhost:8000${product.image}`
+      : product.image?.startsWith("http")
+      ? product.image
+      : null;
 
-  // ✅ Hết hàng chỉ khi không phải "coming soon"
-  const isOutOfStock = !isComingSoon && stock <= 0;
-
-  const handleDetailClick = () => navigate(`/product/${product.id}`);
+  const discountPercent =
+    product.discount_percent ||
+    (product.original_price && product.discounted_price
+      ? Math.round(
+          ((product.original_price - product.discounted_price) /
+            product.original_price) *
+            100
+        )
+      : 0);
 
   return (
-    <div
+    <Card
+      hoverable
+      onClick={handleClick}
+      cover={
+        <div style={{ position: "relative" }}>
+          {imageUrl ? (
+            <img
+              alt={product.name}
+              src={imageUrl}
+              style={{
+                height: 160,
+                objectFit: "cover",
+                width: "100%",
+                borderRadius: "8px 8px 0 0",
+              }}
+            />
+          ) : (
+            <NoImage height={160} text="Không có hình ảnh" />
+          )}
+
+          {/* 🔰 Góc phải trên: badge giảm giá */}
+          {discountPercent > 0 && (
+            <div
+              style={{
+                position: "absolute",
+                top: 0,
+                right: 0,
+                backgroundColor: "#d9f7be", // xanh lá nhạt
+                color: "#389e0d", // xanh lá đậm
+                fontWeight: 600,
+                fontSize: 12,
+                borderRadius: "0px 0px 0px 8px",
+                padding: "2px 6px",
+                boxShadow: "0 1px 4px rgba(0,0,0,0.15)",
+              }}
+            >
+              -{discountPercent}%
+            </div>
+          )}
+
+          {/* 🔸 Góc trái dưới: feature badges */}
+          {product.features && product.features.length > 0 && (
+            <div
+              className="product-features-overlay"
+              style={{
+                position: "absolute",
+                bottom: 0,
+                left: 0,
+                display: "flex",
+                flexWrap: "wrap",
+                gap: "4px",
+              }}
+            >
+              {product.features.slice(0, 3).map((feature, index) => {
+                const bgColor = featureColors[feature.name] || "#d9d9d9";
+                return (
+                  <span
+                    key={index}
+                    style={{
+                      backgroundColor: bgColor,
+                      borderRadius: "0px 0px 0px 0px",
+                      padding: "2px 6px",
+                      fontSize: 10,
+                      fontWeight: 500,
+                      color: "#fff",
+                      boxShadow: "0 1px 3px rgba(0,0,0,0.15)",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {feature.name}
+                  </span>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      }
       className="product-card"
-      style={{
-        textAlign: "center",
-        padding: 12,
-        borderRadius: 8,
-        boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-        background: "#fff",
-      }}
     >
-      <img
-        src={
-          product.image?.startsWith("/")
-            ? `http://localhost:8000${product.image}`
-            : product.image || "/default-product.png"
-        }
-        alt={product.name}
-        onClick={handleDetailClick}
-        style={{
-          width: "100%",
-          height: 200,
-          objectFit: "cover",
-          borderRadius: 8,
-          cursor: "pointer",
-        }}
-      />
-
-      <h3
-        onClick={handleDetailClick}
-        style={{
-          margin: "12px 0 4px 0",
-          fontSize: "1rem",
-          fontWeight: 600,
-          cursor: "pointer",
-          lineHeight: 1.3,
-        }}
-      >
-        {product.name}
-      </h3>
-
-      <Text strong style={{ display: "block", marginBottom: 6 }}>
-        {Number(product.discounted_price ?? product.price).toLocaleString(
-          "vi-VN"
-        )}{" "}
-        ₫
-      </Text>
-
-      {/* ✅ Xử lý giao diện nút theo trạng thái */}
-      {isComingSoon ? (
-        <>
-          <Button type="primary" danger onClick={handleDetailClick}>
-            Đặt hàng
-          </Button>
-          <Text type="warning" style={{ display: "block", marginTop: 4 }}>
-            Sắp có hàng
+      <Card.Meta
+        title={
+          <Text strong ellipsis={{ tooltip: product.name }}>
+            {product.name}
           </Text>
-        </>
-      ) : isOutOfStock ? (
-        <Button disabled size="middle">
-          Sản phẩm đã hết hàng
-        </Button>
-      ) : (
-        <>
-          <Button
-            icon={<ShoppingCartOutlined />}
-            onClick={() => onAddToCart(product)}
-            style={{ marginRight: 8 }}
-          >
-            Thêm giỏ hàng
-          </Button>
-          <Button type="primary" danger onClick={() => onBuyNow(product)}>
-            Mua ngay
-          </Button>
-        </>
-      )}
-    </div>
+        }
+        description={
+          <>
+            {/* ⭐ Rating */}
+            <Rate
+              disabled
+              allowHalf
+              defaultValue={product.rating || 0}
+              style={{ fontSize: 10 }}
+            />
+
+            {/* 💰 Giá và nút giỏ hàng */}
+            <div
+              style={{
+                marginTop: 8,
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              {/* Giá + discount */}
+              <div>
+                <Text type="danger" strong style={{ fontSize: 14 }}>
+                  {formatVND(product.discounted_price)}
+                </Text>
+                {product.original_price && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <Text
+                      delete
+                      type="secondary"
+                      style={{ fontSize: 12, opacity: 0.8 }}
+                    >
+                      {formatVND(product.original_price)}
+                    </Text>
+                  </div>
+                )}
+              </div>
+
+              {/* 🛒 Nút thêm vào giỏ */}
+              {showAddToCart &&
+                (product.availability_status === "coming_soon" ? (
+                  <Button
+                    type="default"
+                    size="small"
+                    style={{
+                      backgroundColor: "#fadb14",
+                      color: "#000",
+                      fontWeight: 600,
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onAddToCart?.(product.id, 1, product);
+                    }}
+                  >
+                    Đặt trước
+                  </Button>
+                ) : (
+                  <Button
+                    className="custom-btn"
+                    shape="default"
+                    icon={<ShoppingCartOutlined />}
+                    size="small"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onAddToCart?.(e, product);
+                    }}
+                  />
+                ))}
+            </div>
+          </>
+        }
+      />
+    </Card>
   );
 }

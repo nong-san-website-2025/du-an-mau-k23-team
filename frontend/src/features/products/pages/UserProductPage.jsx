@@ -19,6 +19,8 @@ import {
 } from "antd";
 import { ShoppingCartOutlined, AppstoreOutlined } from "@ant-design/icons";
 import "../styles/UserProductPage.css";
+import ProductCard from "../components/ProductCard";
+import Layout from "../../../Layout/LayoutDefault";
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -187,205 +189,136 @@ const UserProductPage = () => {
   }
 
   return (
-    <Row gutter={[16, 16]} style={{ padding: "12px 190px" }}>
-      {/* Sidebar */}
-      <Col xs={24} md={6}>
-        <Space direction="vertical" style={{ width: "100%" }} size="middle">
-          <Title level={5}>Bộ lọc</Title>
-          <Select
-            placeholder="Danh mục"
-            value={selectedCategory || undefined}
-            onChange={(value) => {
-              setSelectedCategory(value);
-              setSelectedSubcategory("");
-            }}
-            style={{ width: "100%" }}
-            allowClear
-          >
-            {categories.map((cat) => (
-              <Option key={cat.id} value={cat.name}>
-                {cat.name}
-              </Option>
-            ))}
-          </Select>
-          {selectedCategory && (
+    <Layout>
+      <Row gutter={[16, 16]}>
+        {/* Sidebar */}
+        <Col xs={24} md={6}>
+          <Space direction="vertical" style={{ width: "100%" }} size="middle">
+            <Title level={5}>Bộ lọc</Title>
             <Select
-              placeholder="Danh mục con"
-              value={selectedSubcategory || undefined}
-              onChange={(value) => setSelectedSubcategory(value)}
+              placeholder="Danh mục"
+              value={selectedCategory || undefined}
+              onChange={(value) => {
+                setSelectedCategory(value);
+                setSelectedSubcategory("");
+              }}
               style={{ width: "100%" }}
               allowClear
             >
-              {subcategoriesForSelected.map((sub) => (
-                <Option key={sub.id} value={sub.name}>
-                  {sub.name}
+              {categories.map((cat) => (
+                <Option key={cat.id} value={cat.name}>
+                  {cat.name}
                 </Option>
               ))}
             </Select>
-          )}
-          <Select
-            placeholder="Thương hiệu"
-            value={selectedBrand || undefined}
-            onChange={(value) => setSelectedBrand(value)}
-            style={{ width: "100%" }}
-            allowClear
-          >
-            {uniqueBrands.map((b) => (
-              <Option key={b} value={b}>
-                {b}
-              </Option>
-            ))}
-          </Select>
-          <Select
-            placeholder="Vị trí"
-            value={selectedLocation || undefined}
-            onChange={(value) => setSelectedLocation(value)}
-            style={{ width: "100%" }}
-            allowClear
-          >
-            {uniqueLocations.map((l) => (
-              <Option key={l} value={l}>
-                {l}
-              </Option>
-            ))}
-          </Select>
-          <Space>
-            <Input
-              type="number"
-              placeholder="Min"
-              value={priceRange[0]}
-              onChange={(e) =>
-                setPriceRange([Number(e.target.value), priceRange[1]])
-              }
-            />
-            <Input
-              type="number"
-              placeholder="Max"
-              value={priceRange[1]}
-              onChange={(e) =>
-                setPriceRange([priceRange[0], Number(e.target.value)])
-              }
-            />
-          </Space>
-        </Space>
-      </Col>
-
-      {/* Product Grid */}
-      <Col xs={24} md={18}>
-        {loading ? (
-          <div style={{ textAlign: "center", paddingTop: 50 }}>
-            <Spin size="large" />
-          </div>
-        ) : filteredProducts.length === 0 ? (
-          <div style={{ textAlign: "center", paddingTop: 50, color: "#888" }}>
-            <AppstoreOutlined style={{ fontSize: 64 }} />
-            <Text>Không có sản phẩm nào</Text>
-          </div>
-        ) : (
-          <>
-            <Row gutter={[16, 16]}>
-              {paginatedProducts.map((product) => (
-                <Col key={product.id} xs={24} sm={12} md={12} lg={8} xl={6}>
-                  <Card
-                    hoverable
-                    cover={
-                      <img
-                        alt={product.name}
-                        src={
-                          product.image && product.image.startsWith("/")
-                            ? `http://localhost:8000${product.image}`
-                            : product.image?.startsWith("http")
-                              ? product.image
-                              : "https://via.placeholder.com/400x300?text=No+Image"
-                        }
-                        style={{ height: 160, objectFit: "cover" }}
-                      />
-                    }
-                    onClick={() => navigate(`/products/${product.id}`)}
-                  >
-                    <Card.Meta
-                      title={
-                        <Text strong ellipsis={{ tooltip: product.name }}>
-                          {product.name}
-                        </Text>
-                      }
-                      description={
-                        <>
-                          <Rate
-                            disabled
-                            allowHalf
-                            defaultValue={product.rating || 0}
-                            style={{ fontSize: 14 }}
-                          />
-                          <Text style={{ marginLeft: 4 }} type="secondary">
-                            ({product.review_count || 0})
-                          </Text>
-                          <div
-                            style={{
-                              marginTop: 8,
-                              display: "flex",
-                              justifyContent: "space-between",
-                              alignItems: "center",
-                            }}
-                          >
-                            <Text type="danger" strong>
-                              {Math.round(product.price)?.toLocaleString(
-                                "vi-VN"
-                              )}{" "}
-                              VNĐ
-                            </Text>
-                            {product.availability_status === "coming_soon" ? (
-                              <Button
-                                type="default"
-                                size="small"
-                                style={{
-                                  backgroundColor: "#fadb14",
-                                  color: "#000",
-                                  fontWeight: 600,
-                                }}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  navigate(`/products/${product.id}`);
-                                }}
-                              >
-                                Đặt trước
-                              </Button>
-                            ) : (
-                              <Button
-                                className="custom-btn"
-                                shape="default"
-                                icon={<ShoppingCartOutlined />}
-                                size="small"
-                                onClick={(e) => handleAddToCart(e, product)}
-                              />
-                            )}
-                          </div>
-                        </>
-                      }
-                    />
-                  </Card>
-                </Col>
-              ))}
-            </Row>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "center",
-                marginTop: 16,
-              }}
+            {selectedCategory && (
+              <Select
+                placeholder="Danh mục con"
+                value={selectedSubcategory || undefined}
+                onChange={(value) => setSelectedSubcategory(value)}
+                style={{ width: "100%" }}
+                allowClear
+              >
+                {subcategoriesForSelected.map((sub) => (
+                  <Option key={sub.id} value={sub.name}>
+                    {sub.name}
+                  </Option>
+                ))}
+              </Select>
+            )}
+            <Select
+              placeholder="Thương hiệu"
+              value={selectedBrand || undefined}
+              onChange={(value) => setSelectedBrand(value)}
+              style={{ width: "100%" }}
+              allowClear
             >
-              <Pagination
-                current={currentPage}
-                pageSize={PAGE_SIZE}
-                total={filteredProducts.length}
-                onChange={(page) => setCurrentPage(page)}
-                showSizeChanger={false}
+              {uniqueBrands.map((b) => (
+                <Option key={b} value={b}>
+                  {b}
+                </Option>
+              ))}
+            </Select>
+            <Select
+              placeholder="Vị trí"
+              value={selectedLocation || undefined}
+              onChange={(value) => setSelectedLocation(value)}
+              style={{ width: "100%" }}
+              allowClear
+            >
+              {uniqueLocations.map((l) => (
+                <Option key={l} value={l}>
+                  {l}
+                </Option>
+              ))}
+            </Select>
+            <Space>
+              <Input
+                type="number"
+                placeholder="Min"
+                value={priceRange[0]}
+                onChange={(e) =>
+                  setPriceRange([Number(e.target.value), priceRange[1]])
+                }
               />
+              <Input
+                type="number"
+                placeholder="Max"
+                value={priceRange[1]}
+                onChange={(e) =>
+                  setPriceRange([priceRange[0], Number(e.target.value)])
+                }
+              />
+            </Space>
+          </Space>
+        </Col>
+
+        {/* Product Grid */}
+        <Col xs={24} md={18}>
+          {loading ? (
+            <div style={{ textAlign: "center", paddingTop: 50 }}>
+              <Spin size="large" />
             </div>
-          </>
-        )}
-      </Col>
-    </Row>
+          ) : filteredProducts.length === 0 ? (
+            <div style={{ textAlign: "center", paddingTop: 50, color: "#888" }}>
+              <AppstoreOutlined style={{ fontSize: 64 }} />
+              <Text>Không có sản phẩm nào</Text>
+            </div>
+          ) : (
+            <>
+              <Row gutter={[16, 16]}>
+                {paginatedProducts.map((product) => (
+                  <Col key={product.id} xs={24} sm={12} md={12} lg={8} xl={6}>
+                    <ProductCard
+                      key={product.id}
+                      product={product}
+                      onAddToCart={handleAddToCart} // ✅ không dùng arrow function nữa
+                      // vẫn dùng hàm sẵn có
+                    />
+                  </Col>
+                ))}
+              </Row>
+
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "center",
+                  marginTop: 16,
+                }}
+              >
+                <Pagination
+                  current={currentPage}
+                  pageSize={PAGE_SIZE}
+                  total={filteredProducts.length}
+                  onChange={(page) => setCurrentPage(page)}
+                  showSizeChanger={false}
+                />
+              </div>
+            </>
+          )}
+        </Col>
+      </Row>
+    </Layout>
   );
 };
 

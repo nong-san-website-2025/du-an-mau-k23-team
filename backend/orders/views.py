@@ -45,7 +45,11 @@ class OrderViewSet(viewsets.ModelViewSet):
         queryset = Order.objects.all()
 
         # Admin xem tất cả
-        if self.action == 'admin_list' and user.is_authenticated and getattr(user, 'is_admin', False):
+       # Admin xem tất cả
+        if self.action == 'admin_list' and getattr(user, 'is_admin', False):
+            pass
+        elif self.action == 'get_detail':
+            # Không filter theo user — quyền sẽ được kiểm tra trong get_object()
             pass
         elif user.is_authenticated:
             queryset = queryset.filter(user=user)
@@ -104,6 +108,12 @@ class OrderViewSet(viewsets.ModelViewSet):
         serializer = OrderSerializer(qs[:10], many=True)
         return Response(serializer.data)
 
+    @action(detail=True, methods=["get"], url_path="detail")
+    def get_detail(self, request, pk=None):
+        """Lấy chi tiết đơn hàng gồm thông tin khách hàng + danh sách sản phẩm"""
+        order = self.get_object()
+        serializer = OrderSerializer(order, context={"request": request})
+        return Response(serializer.data)
     # ========================
     # Seller APIs
     # ========================

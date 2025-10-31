@@ -8,13 +8,13 @@ import {
   Popconfirm,
   message,
   Typography,
-  Card,
 } from "antd";
 import { PlusOutlined, EditOutlined, DeleteOutlined } from "@ant-design/icons";
 import FlashSaleModal from "../../components/FlashSaleAdmin/FlashSaleModal";
 import { getFlashSales, deleteFlashSale } from "../../services/flashsaleApi";
 import moment from "moment";
 import { intcomma } from "../../../../utils/format";
+import AdminPageLayout from "../../components/AdminPageLayout"; // ✅ Thêm layout
 
 const { Title } = Typography;
 
@@ -29,7 +29,6 @@ const FlashSalePage = () => {
     try {
       const res = await getFlashSales();
       if (Array.isArray(res.data)) {
-        // ✅ GIỮ NGUYÊN CẤU TRÚC — KHÔNG FLATTEN
         setData(res.data);
       } else {
         console.error("Dữ liệu không phải mảng:", res.data);
@@ -71,10 +70,8 @@ const FlashSalePage = () => {
       key: "time",
       render: (_, record) => (
         <div>
-          <div>
-            {moment(record.start_time).local().format("DD/MM HH:mm")}→{" "}
-            {moment(record.end_time).local().format("DD/MM HH:mm")}
-          </div>
+          {moment(record.start_time).local().format("DD/MM HH:mm")} →{" "}
+          {moment(record.end_time).local().format("DD/MM HH:mm")}
         </div>
       ),
       width: 200,
@@ -83,9 +80,7 @@ const FlashSalePage = () => {
       title: "Sản phẩm",
       key: "product_count",
       render: (_, record) => (
-        <Tag color="blue">
-          {record.flashsale_products?.length || 0} sản phẩm
-        </Tag>
+        <Tag color="blue">{record.flashsale_products?.length || 0} sản phẩm</Tag>
       ),
     },
     {
@@ -135,97 +130,81 @@ const FlashSalePage = () => {
   ];
 
   return (
-    <div style={{ padding: "24px" }}>
-      <Card>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: 24,
+    <AdminPageLayout
+      title="QUẢN LÝ FLASH SALE"
+      extra={
+        <Button
+          type="primary"
+          icon={<PlusOutlined />}
+          onClick={() => {
+            setEditingRecord(null);
+            setModalVisible(true);
           }}
         >
-          <Title level={3}>Quản lý Flash Sale</Title>
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => {
-              setEditingRecord(null);
-              setModalVisible(true);
-            }}
-          >
-            Tạo Flash Sale
-          </Button>
-        </div>
-
-        {/* ✅ Đóng thẻ Table đúng cú pháp */}
-        <Table
-          columns={columns}
-          dataSource={data}
-          rowKey="id"
-          loading={loading}
-          pagination={{ pageSize: 10 }}
-          expandable={{
-            expandedRowRender: (record) => (
-              <div style={{ padding: "16px 24px" }}>
-                <Title level={5} style={{ marginBottom: 16 }}>
-                  Danh sách sản phẩm ({record.flashsale_products?.length || 0})
-                </Title>
-                <Table
-                  dataSource={record.flashsale_products || []}
-                  rowKey="id"
-                  pagination={false}
-                  showHeader={false}
-                  size="small"
-                >
-                  <Table.Column
-                    title="Sản phẩm"
-                    render={(product) => (
+          Tạo Flash Sale
+        </Button>
+      }
+    >
+      <Table
+        columns={columns}
+        dataSource={data}
+        bordered
+        rowKey="id"
+        loading={loading}
+        pagination={{ pageSize: 10 }}
+        expandable={{
+          expandedRowRender: (record) => (
+            <div style={{ padding: "16px 24px" }}>
+              <Title level={5} style={{ marginBottom: 16 }}>
+                Danh sách sản phẩm ({record.flashsale_products?.length || 0})
+              </Title>
+              <Table
+                dataSource={record.flashsale_products || []}
+                rowKey="id"
+                pagination={false}
+                showHeader={false}
+                size="small"
+              >
+                <Table.Column
+                  render={(product) => (
+                    <div>
+                      <strong>{product.product_name}</strong>
                       <div>
-                        <strong>{product.product_name}</strong>
-                        <div>
-                          {product.original_price?.toLocaleString()}đ →{" "}
-                          <Tag color="red">
-                            {intcomma(product.flash_price)}đ
-                          </Tag>
-                        </div>
+                        {product.original_price?.toLocaleString()}đ →{" "}
+                        <Tag color="red">{intcomma(product.flash_price)}đ</Tag>
                       </div>
-                    )}
-                  />
-                  <Table.Column
-                    title="Số lượng"
-                    render={(product) =>
-                      `${product.stock - (product.remaining_stock || 0)} / ${product.stock}`
-                    }
-                  />
-                  <Table.Column
-                    title="Còn lại"
-                    render={(product) => (
-                      <Tag
-                        color={product.remaining_stock <= 0 ? "red" : "green"}
-                      >
-                        {product.remaining_stock || product.stock} còn
-                      </Tag>
-                    )}
-                  />
-                </Table>
-              </div>
-            ),
-            rowExpandable: (record) => record.flashsale_products?.length > 0,
-          }}
-        />
+                    </div>
+                  )}
+                />
+                <Table.Column
+                  render={(product) =>
+                    `${product.stock - (product.remaining_stock || 0)} / ${product.stock}`
+                  }
+                />
+                <Table.Column
+                  render={(product) => (
+                    <Tag color={product.remaining_stock <= 0 ? "red" : "green"}>
+                      {product.remaining_stock || product.stock} còn
+                    </Tag>
+                  )}
+                />
+              </Table>
+            </div>
+          ),
+          rowExpandable: (record) => record.flashsale_products?.length > 0,
+        }}
+      />
 
-        <FlashSaleModal
-          visible={modalVisible}
-          onCancel={() => setModalVisible(false)}
-          onSuccess={() => {
-            setModalVisible(false);
-            loadData();
-          }}
-          record={editingRecord}
-        />
-      </Card>
-    </div>
+      <FlashSaleModal
+        visible={modalVisible}
+        onCancel={() => setModalVisible(false)}
+        onSuccess={() => {
+          setModalVisible(false);
+          loadData();
+        }}
+        record={editingRecord}
+      />
+    </AdminPageLayout>
   );
 };
 
