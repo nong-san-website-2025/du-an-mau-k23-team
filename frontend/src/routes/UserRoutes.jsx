@@ -31,7 +31,7 @@ import ContactSupport from "../pages/CustomerService/ContactSupport";
 import SellingGuide from "../pages/CustomerService/SellingGuide";
 import NewProductsPage from "../pages/NewProductsPage";
 import ComingSoonProductsPage from "../pages/ComingSoonProductsPage";
-import PrimarySecurity from "../pages/CustomerService/primarysecurity";
+import PrimarySecurity from "../pages/CustomerService/Primarysecurity";
 import Recruitment from "../pages/CustomerService/Recruitment";
 import Termsofservice from "../pages/CustomerService/Termsofservice";
 import RturnmoNey from "../pages/CustomerService/RturnmoNey";
