@@ -24,7 +24,6 @@ import ResetPasswordPage from "../features/login_register/components/ResetPasswo
 import PreorderPage from "../pages/PreorderPage";
 
 // Customer Service Pages
-import HelpCenter from "../pages/CustomerService/HelpCenter";
 import BuyingGuide from "../pages/CustomerService/BuyingGuide";
 import WarrantyPolicy from "../pages/CustomerService/WarrantyPolicy";
 import ReturnPolicy from "../pages/CustomerService/ReturnPolicy";
@@ -32,6 +31,15 @@ import ContactSupport from "../pages/CustomerService/ContactSupport";
 import SellingGuide from "../pages/CustomerService/SellingGuide";
 import NewProductsPage from "../pages/NewProductsPage";
 import ComingSoonProductsPage from "../pages/ComingSoonProductsPage";
+import PrimarySecurity from "../pages/CustomerService/primarysecurity";
+import Recruitment from "../pages/CustomerService/Recruitment";
+import Termsofservice from "../pages/CustomerService/Termsofservice";
+import RturnmoNey from "../pages/CustomerService/RturnmoNey";
+import  GreenFarmwallet from "../pages/CustomerService/GreenFarmwallet";
+import Frequentlyaskedquestions from "../pages/CustomerService/FAQ";
+
+
+  
 
 export const userRoutes = [
   <Route path="/" element={<Layout />} key="layout">
@@ -42,11 +50,13 @@ export const userRoutes = [
     <Route path="products/:id" element={<ProductDetailPage />} />
     <Route path="cart" element={<CartPage />} />
     <Route path="featured" element={<FeaturedProductsPage />} />
-    <Route path="help-center" element={<HelpCenter />} />
     <Route path="buying-guide" element={<BuyingGuide />} />
-    <Route path="warranty-policy" element={<WarrantyPolicy />} />
-    <Route path="return-policy" element={<ReturnPolicy />} />
-    <Route path="contact-support" element={<ContactSupport />} />
+    <Route path="warrantypolicy" element={<WarrantyPolicy />} />
+    <Route path="returnpolicy" element={<ReturnPolicy />} />
+    <Route path="contactsupport" element={<ContactSupport />} />
+    <Route path="primarysecurity" element={<PrimarySecurity />} />
+    <Route path="recruitment" element={<Recruitment />} />
+     <Route path="terms-of-service" element={<Termsofservice />} />
     <Route path="wishlist" element={<Wishlist />} />
     <Route path="abouts" element={<AboutPage />} />
     <Route path="store" element={<StoreList />} />
@@ -69,6 +79,9 @@ export const userRoutes = [
       <Route path="/payment/result" element={<PaymentResultPage />} />
       <Route path="/notifications" element={<NotificationPage />} />
       <Route path="/preorders" element={<PreorderPage />} />
+      <Route path="rturnmoney" element={<RturnmoNey />} />
+      <Route path="GreenFarmwallet" element={<GreenFarmwallet />} />
+      <Route path="faq" element={<Frequentlyaskedquestions />} />
     </Route>
   </Route>,
   <Route path="/selling-guide" element={<SellingGuide />} />,

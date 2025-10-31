@@ -1,4 +1,4 @@
-import React from "react";
+  import React from "react";
 import { Link } from "react-router-dom";
 import { Facebook, Instagram, Mail, Phone, Clock, MapPin } from "lucide-react";
 import logo from "../assets/logo/imagelogo.png";
@@ -56,34 +56,30 @@ export default function Footer() {
             </h6>
             <ul className="list-unstyled mb-0">
               <li>
-                <Link to="/buying-guide" className={linkClass}>
-                  Hướng dẫn mua hàng
-                </Link>
+                <Link to="/buying-guide" className={linkClass}>Hướng dẫn mua hàng</Link>
+                </li>
+                 <li>
+                <Link to="/selling-guide" className={linkClass}>Hướng dẫn Bán Hàng</Link>
+                </li>
+
+               <li>
+                <Link to="/contactsupport" className={linkClass}>Liên hệ hỗ trợ</Link>
+                 </li>
+              
+              <li>
+                <Link to="/returnpolicy" className={linkClass}>Chính sách đổi trả</Link>
               </li>
               <li>
-                <Link to="/selling-guide" className={linkClass}>
-                  Hướng Dẫn Bán Hàng
-                </Link>
+                <Link to="/warrantypolicy" className={linkClass}>Chính sách bảo hành</Link>
+              </li>
+                <li>
+                <Link to="/RturnmoNey" className={linkClass}>Trả Hàng/Hoàn Tiền </Link>
               </li>
               <li>
-                <Link to="/contact-support" className={linkClass}>
-                  Liên hệ hỗ trợ
-                </Link>
+                <Link to="/GreenFarmwallet" className={linkClass}>Ví GreenFarm </Link>
               </li>
-              <li>
-                <Link to="/help-center" className={linkClass}>
-                  Trung tâm trợ giúp
-                </Link>
-              </li>
-              <li>
-                <Link to="/return-policy" className={linkClass}>
-                  Chính sách đổi trả
-                </Link>
-              </li>
-              <li>
-                <Link to="/warranty-policy" className={linkClass}>
-                  Chính sách bảo hành
-                </Link>
+                 <li>
+                <Link to="/faq" className={linkClass}>Câu Hỏi Thường Gặp </Link>
               </li>
             </ul>
           </div>
@@ -97,36 +93,12 @@ export default function Footer() {
               GreenFarm
             </h6>
             <ul className="list-unstyled mb-0">
-              <li>
-                <Link to="/abouts" className={linkClass}>
-                  Về chúng tôi
-                </Link>
-              </li>
-              <li>
-                <a href="#" className={linkClass}>
-                  Tuyển dụng
-                </a>
-              </li>
-              <li>
-                <a href="#" className={linkClass}>
-                  Chính sách bảo mật
-                </a>
-              </li>
-              <li>
-                <a href="#" className={linkClass}>
-                  Điều khoản dịch vụ
-                </a>
-              </li>
-              <li>
-                <Link to="/featured" className={linkClass}>
-                  Sản phẩm
-                </Link>
-              </li>
-              <li>
-                <Link to="/blog" className={linkClass}>
-                  Blog
-                </Link>
-              </li>
+              <li><Link to="/abouts" className={linkClass}>Về chúng tôi</Link></li>
+              <li><Link to="/recruitment" className={linkClass}>Tuyển dụng</Link></li>
+              <li><Link to="/primarysecurity" className={linkClass}>Chính sách bảo mật</Link></li>
+              <li><Link to="/terms-of-service" className={linkClass}>Điều khoản dịch vụ</Link></li>
+              <li><Link to="/featured" className={linkClass}>Sản phẩm</Link></li>
+              <li><Link to="/blog" className={linkClass}>Blog</Link></li>
             </ul>
           </div>
 

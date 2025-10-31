@@ -1,12 +1,5 @@
 import React from "react";
-import {
-  Row,
-  Col,
-  Card,
-  Typography,
-  Space,
-  Tag,
-} from "antd";
+import { Row, Col, Card, Typography, Space, Button, Divider } from "antd";
 import {
   PhoneOutlined,
   MailOutlined,
@@ -20,24 +13,27 @@ const { Title, Paragraph, Text } = Typography;
 const contactOptions = [
   {
     icon: <PhoneOutlined />,
-    title: "Hotline 0123 456 789",
-    description: "Gọi miễn phí trong giờ hành chính.",
+    title: "Hotline hỗ trợ",
+    description: "Liên hệ trực tiếp để được tư vấn nhanh chóng và chính xác.",
     action: "Gọi ngay",
     href: "tel:0123456789",
+    color: "#16a34a",
   },
   {
     icon: <MailOutlined />,
-    title: "Email hỗ trợ",
-    description: "Gửi thư đến info@greenfarm.vn, phản hồi trong 12 giờ.",
+    title: "Email liên hệ",
+    description: "Gửi thư đến info@nongsan.vn, phản hồi trong vòng 12 giờ.",
     action: "Gửi email",
-    href: "mailto:info@greenfarm.vn",
+    href: "mailto:info@nongsan.vn",
+    color: "#2563eb",
   },
   {
     icon: <EnvironmentOutlined />,
-    title: "Trung tâm GreenFarm",
-    description: "Tầng 5, 123 Nguyễn Huệ, Quận 1, TP. HCM.",
+    title: "Văn phòng NôngSản.vn",
+    description: "Quận Ninh Kiều, TP. Cần Thơ.",
     action: "Xem bản đồ",
     href: "https://maps.google.com",
+    color: "#f59e0b",
   },
 ];
 
@@ -47,118 +43,168 @@ const officeHours = [
   { day: "Chủ nhật", time: "09:00 - 18:00" },
 ];
 
-export default function ContactInfoOnly() {
+export default function ContactSupport() {
   return (
-    <div className="bg-gradient-to-b from-green-50 via-white to-white py-16 px-6">
-      <div className="max-w-5xl mx-auto">
-        {/* Tiêu đề */}
-        <div className="text-center mb-12">
-          <Tag color="green" className="px-4 py-1 text-base">
-            Liên hệ hỗ trợ
-          </Tag>
-          <Title
-            level={1}
-            style={{
-              color: "#166534",
-              fontWeight: "900",
-              marginTop: "16px",
-            }}
-          >
-            Chúng tôi luôn lắng nghe bạn
+    <div style={{ background: "#ffffff", padding: "60px 20px" }}>
+      <div style={{ maxWidth: 1000, margin: "0 auto" }}>
+        {/* 🌿 Tiêu đề chính */}
+        <div style={{ textAlign: "center", marginBottom: 50 }}>
+          <Title level={2} style={{ color: "#166534", fontWeight: 800 }}>
+            Liên hệ & Hỗ trợ khách hàng
           </Title>
-          <Paragraph type="secondary" style={{ fontSize: "16px" }}>
-            Hãy chọn phương thức liên hệ phù hợp. Đội ngũ chăm sóc khách hàng GreenFarm
-            luôn sẵn sàng hỗ trợ bạn nhanh chóng và tận tâm.
+          <Paragraph style={{ color: "#4b5563", fontSize: 16 }}>
+            Chúng tôi luôn sẵn sàng hỗ trợ bạn trong mọi vấn đề liên quan đến đơn hàng,
+            tài khoản và dịch vụ của NôngSản.vn.
           </Paragraph>
         </div>
 
-        {/* Thông tin liên hệ */}
-        <Row gutter={[32, 32]} justify="center" className="mb-12">
-          {contactOptions.map((opt, i) => (
-            <Col xs={24} sm={12} lg={8} key={i}>
+        {/* 📞 Các kênh liên hệ */}
+        <Row gutter={[24, 24]} justify="center">
+          {contactOptions.map((opt, index) => (
+            <Col xs={24} sm={12} md={8} key={index}>
               <Card
                 hoverable
                 bordered={false}
-                className="shadow-md hover:shadow-xl transition-all rounded-2xl text-center"
                 style={{
-                  background: "rgba(255,255,255,0.9)",
-                  border: "1px solid #d1fae5",
-                  height: "100%",
+                  borderRadius: 16,
+                  padding: "26px 18px",
+                  textAlign: "center",
+                  background: "#f9fafb",
+                  boxShadow: "0 3px 10px rgba(0,0,0,0.05)",
+                  transition: "all 0.3s",
                 }}
+                bodyStyle={{ padding: 0 }}
               >
-                <Space
-                  direction="vertical"
-                  size="small"
-                  align="center"
-                  style={{ width: "100%" }}
-                >
-                  <div className="flex items-center justify-center w-14 h-14 bg-green-100 rounded-full text-green-600 text-2xl mb-2">
+                <div style={{ marginBottom: 18 }}>
+                  <div
+                    style={{
+                      fontSize: 30,
+                      color: opt.color,
+                      marginBottom: 10,
+                    }}
+                  >
                     {opt.icon}
                   </div>
-                  <Title level={4} style={{ color: "#14532d" }}>
+                  <Title
+                    level={5}
+                    style={{
+                      color: "#14532d",
+                      fontWeight: 700,
+                      marginBottom: 8,
+                    }}
+                  >
                     {opt.title}
                   </Title>
-                  <Paragraph style={{ color: "#4b5563", fontSize: "14px" }}>
+                  <Paragraph
+                    style={{
+                      color: "#4b5563",
+                      fontSize: 14,
+                      minHeight: 40,
+                      marginBottom: 18,
+                    }}
+                  >
                     {opt.description}
                   </Paragraph>
-                  <a
-                    href={opt.href || "#"}
-                    className="text-green-600 font-semibold hover:underline"
+                  <Button
+                    type="primary"
+                    size="middle"
+                    href={opt.href}
+                    style={{
+                      backgroundColor: opt.color,
+                      border: "none",
+                      borderRadius: 20,
+                      fontWeight: 600,
+                      padding: "0 26px",
+                      transition: "all 0.3s ease",
+                      boxShadow: "0 2px 6px rgba(0,0,0,0.08)",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.target.style.filter = "brightness(1.1)";
+                      e.target.style.transform = "translateY(-2px)";
+                      e.target.style.boxShadow = "0 4px 10px rgba(0,0,0,0.15)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.filter = "brightness(1)";
+                      e.target.style.transform = "translateY(0)";
+                      e.target.style.boxShadow = "0 2px 6px rgba(0,0,0,0.08)";
+                    }}
                   >
                     {opt.action}
-                  </a>
-                </Space>
+                  </Button>
+                </div>
               </Card>
             </Col>
           ))}
         </Row>
 
-        {/* Lưu ý & Thời gian làm việc */}
-        <Row gutter={[32, 32]}>
+        {/* 🕓 Thông tin thêm */}
+        <Divider style={{ margin: "60px 0 40px 0" }} />
+        <Row gutter={[24, 24]}>
           <Col xs={24} md={12}>
             <Card
+              bordered={false}
+              style={{
+                borderRadius: 16,
+                background: "#f0fdf4",
+                border: "1px solid #dcfce7",
+                height: "100%",
+              }}
               title={
                 <Space>
-                  <InfoCircleOutlined className="text-green-600" />
-                  <Text strong>Lưu ý</Text>
+                  <InfoCircleOutlined style={{ color: "#16a34a" }} />
+                  <Text strong style={{ color: "#14532d" }}>
+                    Lưu ý khi liên hệ
+                  </Text>
                 </Space>
               }
-              bordered={false}
-              className="shadow-sm rounded-2xl"
-              style={{
-                border: "1px solid #d1fae5",
-                background: "#f0fdf4",
-              }}
             >
-              <ul className="list-disc list-inside text-gray-600 text-sm space-y-2">
-                <li>
-                  Thông tin của bạn được bảo mật theo chính sách quyền riêng tư GreenFarm.
-                </li>
-                <li>
-                  Kiểm tra hộp thư spam nếu chưa nhận phản hồi sau 12 giờ làm việc.
-                </li>
-                <li>Yêu cầu khẩn, vui lòng gọi hotline để được hỗ trợ ngay.</li>
+              <ul
+                style={{
+                  color: "#374151",
+                  fontSize: 14,
+                  lineHeight: 1.8,
+                  paddingLeft: 20,
+                  marginBottom: 0,
+                }}
+              >
+                <li>Thông tin của bạn được bảo mật tuyệt đối theo chính sách quyền riêng tư.</li>
+                <li>Nếu chưa nhận phản hồi sau 12 giờ, hãy kiểm tra thư mục spam hoặc gọi hotline.</li>
+                <li>Với yêu cầu khẩn cấp, vui lòng chọn liên hệ qua điện thoại.</li>
               </ul>
             </Card>
           </Col>
 
           <Col xs={24} md={12}>
             <Card
+              bordered={false}
+              style={{
+                borderRadius: 16,
+                background: "#ffffff",
+                border: "1px solid #dcfce7",
+                height: "100%",
+              }}
               title={
                 <Space>
-                  <ClockCircleOutlined className="text-green-600" />
-                  <Text strong>Thời gian làm việc</Text>
+                  <ClockCircleOutlined style={{ color: "#16a34a" }} />
+                  <Text strong style={{ color: "#14532d" }}>
+                    Thời gian làm việc
+                  </Text>
                 </Space>
               }
-              bordered={false}
-              className="shadow-sm rounded-2xl"
-              style={{ border: "1px solid #d1fae5" }}
             >
-              <ul className="text-gray-700 text-sm space-y-2">
+              <ul style={{ color: "#374151", fontSize: 14, lineHeight: 1.8, marginBottom: 0 }}>
                 {officeHours.map((o) => (
-                  <li key={o.day} className="flex justify-between">
+                  <li
+                    key={o.day}
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      borderBottom: "1px dashed #e5e7eb",
+                      padding: "6px 0",
+                    }}
+                  >
                     <span>{o.day}</span>
-                    <span className="font-semibold text-green-700">{o.time}</span>
+                    <span style={{ fontWeight: 600, color: "#16a34a" }}>{o.time}</span>
                   </li>
                 ))}
               </ul>
