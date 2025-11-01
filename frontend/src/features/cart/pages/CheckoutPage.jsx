@@ -145,7 +145,6 @@ const CheckoutPage = () => {
           height: 10,
         };
 
-
         const res = await API.post("delivery/fee/", payload);
 
         const fee = res.data?.fee || 0;
@@ -227,7 +226,6 @@ const CheckoutPage = () => {
       setIsLoading(true);
       await API.post("orders/", orderData);
       await clearCart();
-      notification.success("Đặt hàng thành công!");
       navigate("/orders?tab=pending");
     } catch (error) {
       console.error("Đặt hàng thất bại:", error);

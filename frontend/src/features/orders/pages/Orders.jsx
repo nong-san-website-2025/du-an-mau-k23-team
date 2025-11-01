@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef  } from "react";
-import { useLocation} from "react-router-dom";
+import React, { useState, useEffect, useRef } from "react";
+import { useLocation } from "react-router-dom";
 import { Tabs } from "antd";
 import { toast } from "react-toastify"; // ✅ thêm
 import OrderTab from "./OrderTab";
+import "../styles/css/Order.css"
 
 const { TabPane } = Tabs;
 
@@ -17,7 +18,9 @@ const Orders = () => {
     const tabParam = urlParams.get("tab");
     if (
       tabParam &&
-      ["pending", "shipping", "delivery", "completed", "cancelled"].includes(tabParam)
+      ["pending", "shipping", "delivery", "completed", "cancelled"].includes(
+        tabParam
+      )
     ) {
       setActiveTab(tabParam);
     }
@@ -57,10 +60,11 @@ const Orders = () => {
         <Tabs
           activeKey={activeTab}
           onChange={setActiveTab}
-          tabBarGutter={256}
+          tabBarGutter={172} // giảm từ 256 xuống 48
           tabBarStyle={{ marginBottom: 6 }}
           size="large"
           centered
+          className="custom-tabs"
         >
           <TabPane tab={<span>Chờ xác nhận</span>} key="pending">
             <OrderTab status="pending" />
