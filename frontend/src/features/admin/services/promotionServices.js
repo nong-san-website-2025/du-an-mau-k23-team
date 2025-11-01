@@ -1,6 +1,7 @@
 import axiosClient from "./axiosClient";
 const API_URL = "/promotions"; // axiosClient đã có baseURL
 
+
 // ===============================================
 // CÁC HÀM API CHUNG & CHO USER (Giữ nguyên)
 // ===============================================
@@ -155,3 +156,43 @@ export const getMyProductsForVoucher = async () => {
   const res = await axiosClient.get('/products/my-products/simple/');
   return res.data;
 }
+
+/**
+ * GET PUBLIC voucher của 1 seller cụ thể (dùng trong trang cửa hàng) gì đó nè
+ */
+
+/**
+ * Lấy danh sách voucher CÔNG KHAI của một shop cụ thể để hiển thị cho khách
+ * @param {number} sellerId - ID của shop/seller
+ * @returns {Promise<Array>}
+ */
+export const getPublicVouchersForSeller = async (sellerId) => {
+  // Trỏ đến API public_seller_vouchers mà bạn đã tạo ở backend
+  const res = await axiosClient.get(`/promotions/vouchers/public/${sellerId}/`);
+  return res.data;
+};
+
+// ... các hàm API khác của bạn ...
+
+
+/**
+ * Lấy danh sách TẤT CẢ voucher (system/shop) MÀ USER ĐÃ LƯU
+ * và có thể sử dụng cho giỏ hàng hiện tại. (Dùng cho Modal)
+ * @param {Array<{product_id: number, quantity: number}>} items 
+ * @returns {Promise<object>} - { system_vouchers: [], shop_vouchers: {seller_id: []} }
+ */
+export const getEligibleVouchers = async (items) => {
+  const res = await axiosClient.post('/promotions/vouchers/eligible-for-cart/', { items });
+  return res.data;
+};
+
+/**
+ * GỌI API ĐỂ TÍNH TOÁN GIÁ CUỐI CÙNG
+ * @param {object} payload - { items: [...], manual_system_voucher_code: 'CODE', manual_shop_vouchers: {sellerId: 'CODE'} }
+ * @returns {Promise<object>} - Thông tin chi tiết về giảm giá và tổng tiền.
+ */
+export const calculateCheckout = async (payload) => {
+  // Trỏ đến API calculate-checkout trong app orders
+  const res = await axiosClient.post('/orders/calculate-checkout/', payload); 
+  return res.data;
+};

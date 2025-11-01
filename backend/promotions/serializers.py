@@ -17,6 +17,9 @@ class VoucherDetailSerializer(serializers.ModelSerializer):
     promotion = PromotionListSerializer(read_only=True)
     per_user_quantity = serializers.IntegerField(required=False, default=1)
 
+    # --- PHẦN MỚI: Thêm tên nguồn phát hành ---
+    source_name = serializers.SerializerMethodField()
+
     class Meta:
         model = Voucher
         fields = [
@@ -27,9 +30,17 @@ class VoucherDetailSerializer(serializers.ModelSerializer):
             'created_by', 'created_at',
             # new distribution / quantity fields
             'distribution_type', 'total_quantity', 'per_user_quantity',
-            'discount_type',
+            'discount_type','source_name',
         ]
         read_only_fields = ['created_by', 'created_at', 'promotion']
+
+    # --- HÀM MỚI: Để lấy tên nguồn gốc voucher ---
+    def get_source_name(self, obj):
+        if obj.scope == 'system':
+            return 'GreenFarm' # Tên mặc định cho voucher hệ thống
+        if obj.scope == 'seller' and obj.seller:
+            return obj.seller.store_name # Lấy tên shop từ model Seller
+        return 'Không rõ'  
 
     def validate(self, data):
         # --- Discount type validation ---
@@ -118,7 +129,7 @@ class UserVoucherSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = UserVoucher
-        fields = ["id", "voucher", "is_used", "used_at"]    
+        fields = ["id", "voucher", "is_used", "used_at", "quantity", "used_count"] 
 
 class FlashSaleProductSerializer(serializers.ModelSerializer):
     product_id = serializers.IntegerField(source='product.id')

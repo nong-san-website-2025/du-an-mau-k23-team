@@ -1,4 +1,3 @@
-// src/features/stores/components/StoreDetail/StoreHeader.jsx
 import React from "react";
 import { Card, Button, Typography, Row, Col, Rate } from "antd";
 import { MessageOutlined, PlusOutlined } from "@ant-design/icons";
@@ -121,51 +120,17 @@ const StoreHeader = ({
 
         {/* Stats & Bio */}
         <Col xs={24} md={14}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            <div
-              style={{
-                display: "flex",
-                gap: 28,
-                flexWrap: "wrap",
-                alignItems: "center",
-              }}
-            >
-              {/* Following */}
-              <div style={{ textAlign: "center" }}>
-                <Text style={{ display: "block", color: "#64748b", fontSize: 13 }}>
-                  Đang theo dõi
-                </Text>
-                <Text style={{ fontSize: 17, fontWeight: 700, color: "#0f172a" }}>
-                  {followingCount}
-                </Text>
-              </div>
-
-              {/* Followers */}
-              <div style={{ textAlign: "center" }}>
-                <Text style={{ display: "block", color: "#64748b", fontSize: 13 }}>
-                  Lượt theo dõi
-                </Text>
-                <Text style={{ fontSize: 17, fontWeight: 700, color: "#0f172a" }}>
-                  {followers}
-                </Text>
-              </div>
-
-              {/* Rating */}
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <Text style={{ color: "#64748b", fontSize: 13 }}>Đánh giá:</Text>
-                <Rate
-                  disabled
-                  allowHalf
-                  value={ratingStats.rating || 0}
-                  style={{ fontSize: 14, color: "#f59e0b" }}
-                />
-                <Text style={{ fontSize: 17, fontWeight: 700, color: "#0f172a" }}>
-                  {ratingStats.avg?.toFixed(1) || "0.0"}
-                </Text>
-                <Text style={{ color: "#64748b", fontSize: 13 }}>
-                  ({ratingStats.total || 0})
-                </Text>
-              </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div>
+              <Text strong>{followingCount}</Text> Đang theo dõi
+            </div>
+            <div>
+              <Text strong>{followers}</Text> Người theo dõi
+            </div>
+            {/* DÒNG ĐÃ ĐƯỢC SỬA LỖI */}
+            <div>
+              Đánh giá: <Text strong>{(ratingStats?.avg ?? 0).toFixed(1)}</Text>{" "}
+              (<Text strong>{ratingStats?.total ?? 0}</Text>)
             </div>
 
             {/* Bio */}
