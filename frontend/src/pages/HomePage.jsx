@@ -73,12 +73,13 @@ export default function HomePage() {
       {/* Banner Carousel */}
       <div className="d-flex gap-0 mt-3 ">
         {/* Bên trái: Carousel lớn */}
-        <div style={{ flex: 7 }}>
+        <div className="main-banner">
           <BannerSlider />
         </div>
 
         {/* Bên phải: 2 banner nhỏ */}
         <div
+          className="side-banners"
           style={{
             flex: 3,
             display: "flex",
@@ -89,9 +90,9 @@ export default function HomePage() {
           <img
             src=""
             alt=""
+            className="side-banner-image"
             style={{
               width: "100%",
-              height: "150px",
               objectFit: "cover",
               borderRadius: 8,
               cursor: "pointer",
@@ -101,9 +102,9 @@ export default function HomePage() {
           <img
             src=""
             alt=""
+            className="side-banner-image"
             style={{
               width: "100%",
-              height: "150px",
               objectFit: "cover",
               borderRadius: 8,
               cursor: "pointer",

@@ -24,7 +24,8 @@ const RelatedProducts = ({ products }) => {
                   <img
                     alt={p.name}
                     src={imgSrc}
-                    style={{ height: 150, objectFit: "contain" }}
+                    className="related-product-image"
+                    style={{ objectFit: "contain" }}
                   />
                 }
                 onClick={() => navigate(`/products/${p.id}`)}

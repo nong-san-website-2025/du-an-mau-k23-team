@@ -18,6 +18,7 @@ export default function SellerMessages() {
   const [messages, setMessages] = useState([]);
   const [loadingMsgs, setLoadingMsgs] = useState(false);
   const [input, setInput] = useState("");
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const wsRef = useRef(null);
   const listRef = useRef(null);
 
@@ -323,6 +324,15 @@ export default function SellerMessages() {
     }
   }, [messages]);
 
+  // Handle window resize
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const buyerName = (conv) => {
     // Prefer cached profile by buyer id for consistent display across list
     const id = getBuyerId(conv);
@@ -379,7 +389,14 @@ export default function SellerMessages() {
 
   return (
     <Layout style={{ background: "#fff", height: "100%", minHeight: "80vh" }}>
-      <Sider width={320} style={{ background: "#fff", borderRight: "1px solid #eee" }}>
+      <Sider
+        width={window.innerWidth < 768 ? 280 : 320}
+        style={{
+          background: "#fff",
+          borderRight: "1px solid #eee",
+          display: window.innerWidth < 768 ? 'none' : 'block'
+        }}
+      >
         <div style={{ padding: 16 }}>
           <Title level={4} style={{ marginBottom: 12 }}>
             Hộp thư
@@ -413,11 +430,48 @@ export default function SellerMessages() {
           />
         )}
       </Sider>
-      <Content style={{ padding: 16 }}>
+      <Content style={{ padding: window.innerWidth < 768 ? 8 : 16 }}>
         {!selectedConv ? (
-          <Empty description="Chọn một cuộc hội thoại để xem chi tiết" />
+          <div>
+            {/* Mobile: Show conversation list when no selection */}
+            {window.innerWidth < 768 && (
+              <div style={{ marginBottom: 16 }}>
+                <Title level={4} style={{ marginBottom: 12 }}>
+                  Hộp thư
+                </Title>
+                <Button onClick={fetchConversations} style={{ marginBottom: 12 }}>Làm mới</Button>
+                {loadingConvs ? (
+                  <div style={{ padding: 16 }}>
+                    <Spin /> Đang tải cuộc hội thoại...
+                  </div>
+                ) : conversations.length === 0 ? (
+                  <div style={{ padding: 16 }}>
+                    <Empty description="Chưa có cuộc hội thoại" />
+                  </div>
+                ) : (
+                  <List
+                    itemLayout="horizontal"
+                    dataSource={conversations}
+                    renderItem={(item) => (
+                      <List.Item
+                        onClick={() => handleSelectConversation(item)}
+                        style={{ cursor: "pointer", background: selectedConv?.id === item.id ? "#f5faff" : "transparent", paddingLeft: 16, paddingRight: 16 }}
+                      >
+                        <List.Item.Meta
+                          avatar={<Avatar src={buyerAvatar(item)} alt={buyerName(item)}>{buyerName(item).charAt(0)}</Avatar>}
+                          title={<span>{buyerName(item)}</span>}
+                          description={<Text type="secondary">#{item.id}</Text>}
+                        />
+                      </List.Item>
+                    )}
+                  />
+                )}
+              </div>
+            )}
+            <Empty description="Chọn một cuộc hội thoại để xem chi tiết" />
+          </div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 140px)" }}>
+          <div style={{ display: "flex", flexDirection: "column", height: window.innerWidth < 768 ? "calc(100vh - 200px)" : "calc(100vh - 140px)" }}>
             <div style={{ padding: "8px 12px", borderBottom: "1px solid #eee", display: "flex", alignItems: "center", gap: 12 }}>
               <Avatar src={buyerAvatar(selectedConv)} alt={buyerName(selectedConv)}>
                 {buyerName(selectedConv).charAt(0)}
@@ -458,7 +512,7 @@ export default function SellerMessages() {
                     borderRadius: 16,
                     borderTopRightRadius: isSeller ? 4 : 16,
                     borderTopLeftRadius: isSeller ? 16 : 4,
-                    maxWidth: 520,
+                    maxWidth: window.innerWidth < 768 ? 280 : 520,
                     whiteSpace: "pre-wrap",
                     wordBreak: "break-word",
                   };
@@ -485,7 +539,7 @@ export default function SellerMessages() {
                         {/* Image attachment (if any) */}
                         {m.image && (
                           <div>
-                            <img src={toAbsolute(m.image)} alt="attachment" style={{ maxWidth: 300, borderRadius: 8, display: 'block' }} />
+                            <img src={toAbsolute(m.image)} alt="attachment" style={{ maxWidth: window.innerWidth < 768 ? 250 : 300, borderRadius: 8, display: 'block' }} />
                           </div>
                         )}
                       </div>
@@ -501,6 +555,7 @@ export default function SellerMessages() {
                 placeholder="Nhập tin nhắn..."
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
+                style={{ flex: 1 }}
               />
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'center' }}>
                 {/* Hidden native input */}

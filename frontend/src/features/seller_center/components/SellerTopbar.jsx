@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { Layout, Avatar, Dropdown, Badge, Spin } from "antd";
-import { UserOutlined, BellOutlined } from "@ant-design/icons";
+import { Layout, Avatar, Dropdown, Badge, Spin, Button } from "antd";
+import { UserOutlined, BellOutlined, MenuOutlined } from "@ant-design/icons";
 import sellerService from "../services/api/sellerService"
 
 const { Header } = Layout;
 
-export default function SellerTopbar() {
+export default function SellerTopbar({ collapsed, setCollapsed }) {
   const [notifications, setNotifications] = useState([
     { id: 1, message: "Có đơn hàng mới", isRead: false },
     { id: 2, message: "Khách hủy đơn #1234", isRead: false },
@@ -72,11 +72,19 @@ export default function SellerTopbar() {
       className="bg-white px-6 shadow-sm"
       style={{
         display: "flex",
-        justifyContent: "flex-end",
+        justifyContent: "space-between",
         alignItems: "center",
         gap: "20px",
       }}
     >
+      {/* Menu button for mobile */}
+      <Button
+        type="text"
+        icon={<MenuOutlined />}
+        onClick={() => setCollapsed(!collapsed)}
+        style={{ display: window.innerWidth < 768 ? 'block' : 'none' }}
+      />
+
       {/* Loading state */}
       {loading ? (
         <Spin size="small" />

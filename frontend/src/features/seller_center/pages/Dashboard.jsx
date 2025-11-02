@@ -282,7 +282,7 @@ export default function Dashboard() {
   const monthDelta = useMemo(() => percentDelta(monthRevenue, prevMonthRevenue), [monthRevenue, prevMonthRevenue])
 
   return (
-    <Container fluid className="py-4">
+    <Container fluid className="py-4 px-2 px-md-4">
       {/* Header */}
       <Row className="mb-4">
         <Col>
@@ -291,7 +291,7 @@ export default function Dashboard() {
               <TrendingUp size={24} />
             </div>
             <div>
-              <h2 className="mb-0 fw-bold text-balance">Tổng quan cửa hàng</h2>
+              <h2 className="mb-0 fw-bold text-balance" style={{ fontSize: '1.5rem' }}>Tổng quan cửa hàng</h2>
               <p className="text-muted mb-0">Theo dõi hiệu suất kinh doanh của bạn</p>
             </div>
           </div>
@@ -300,13 +300,13 @@ export default function Dashboard() {
 
       {/* Sales Overview */}
       <Row className="mb-4">
-        <Col lg={4} md={6} className="mb-3">
+        <Col xs={12} sm={6} lg={4} className="mb-3">
           <Card className="h-100 border-0 shadow-sm">
             <Card.Body>
               <div className="d-flex align-items-center justify-content-between">
                 <div>
                   <p className="text-muted mb-1 small">Doanh số hôm nay</p>
-                  <h4 className="mb-0 fw-bold" style={{ color: "var(--color-primary)" }}>
+                  <h4 className="mb-0 fw-bold" style={{ color: "var(--color-primary)", fontSize: '1.2rem' }}>
                     {formatCurrency(todayRevenue)}
                   </h4>
                 </div>
@@ -324,13 +324,13 @@ export default function Dashboard() {
           </Card>
         </Col>
 
-        <Col lg={4} md={6} className="mb-3">
+        <Col xs={12} sm={6} lg={4} className="mb-3">
           <Card className="h-100 border-0 shadow-sm">
             <Card.Body>
               <div className="d-flex align-items-center justify-content-between">
                 <div>
                   <p className="text-muted mb-1 small">Doanh số tuần</p>
-                  <h4 className="mb-0 fw-bold" style={{ color: "var(--color-accent)" }}>
+                  <h4 className="mb-0 fw-bold" style={{ color: "var(--color-accent)", fontSize: '1.2rem' }}>
                     {formatCurrency(weekRevenue)}
                   </h4>
                 </div>
@@ -348,13 +348,13 @@ export default function Dashboard() {
           </Card>
         </Col>
 
-        <Col lg={4} md={6} className="mb-3">
+        <Col xs={12} sm={6} lg={4} className="mb-3">
           <Card className="h-100 border-0 shadow-sm">
             <Card.Body>
               <div className="d-flex align-items-center justify-content-between">
                 <div>
                   <p className="text-muted mb-1 small">Doanh số tháng</p>
-                  <h4 className="mb-0 fw-bold" style={{ color: "var(--color-chart-4)" }}>
+                  <h4 className="mb-0 fw-bold" style={{ color: "var(--color-chart-4)", fontSize: '1.2rem' }}>
                     {formatCurrency(monthRevenue)}
                   </h4>
                 </div>
@@ -375,7 +375,7 @@ export default function Dashboard() {
 
       {/* Orders and Products */}
       <Row className="mb-4">
-        <Col lg={6} className="mb-4">
+        <Col xs={12} lg={6} className="mb-4">
           <Card className="h-100 border-0 shadow-sm">
             <Card.Header className="bg-transparent border-0 pb-0">
               <div className="d-flex align-items-center gap-2">
@@ -388,7 +388,7 @@ export default function Dashboard() {
                 <div className="text-center py-3"><Spinner animation="border" size="sm" /> Đang tải…</div>
               ) : (
                 <Row>
-                  <Col sm={6} className="mb-2">
+                  <Col xs={6} className="mb-2">
                     <div className="text-center p-3 rounded" style={{ backgroundColor: "var(--color-muted)" }}>
                       <h3 className="mb-1 fw-bold" style={{ color: "var(--color-primary)" }}>
                         {orderNewCount}
@@ -396,7 +396,7 @@ export default function Dashboard() {
                       <p className="text-muted mb-0 small">Đơn hàng mới</p>
                     </div>
                   </Col>
-                  <Col sm={6} className="mb-2">
+                  <Col xs={6} className="mb-2">
                     <div className="text-center p-3 rounded" style={{ backgroundColor: "var(--color-muted)" }}>
                       <h3 className="mb-1 fw-bold" style={{ color: "var(--color-accent)" }}>
                         {orderProcessingCount}
@@ -410,7 +410,7 @@ export default function Dashboard() {
           </Card>
         </Col>
 
-        <Col lg={6} className="mb-4">
+        <Col xs={12} lg={6} className="mb-4">
           <Card className="h-100 border-0 shadow-sm">
             <Card.Header className="bg-transparent border-0 pb-0">
               <div className="d-flex align-items-center gap-2">

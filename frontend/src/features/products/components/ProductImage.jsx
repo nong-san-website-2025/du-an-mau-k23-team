@@ -15,7 +15,8 @@ const ProductImage = ({ product, isFavorite, onToggleFavorite }) => {
         src={imgSrc}
         alt={product.name}
         preview={false}
-        style={{ maxHeight: 450, objectFit: "contain" }}
+        className="product-detail-image"
+        style={{ objectFit: "contain" }}
       />
       <Button
         type="text"

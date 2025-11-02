@@ -297,7 +297,7 @@ const ProductDetailPage = () => {
 
   if (error || !product) {
     return (
-      <div style={{ maxWidth: 600, margin: "10px 190px" }}>
+      <div className="product-detail-error-container">
         <Alert
           message="Lỗi"
           description={error}
@@ -325,7 +325,7 @@ const ProductDetailPage = () => {
     { title: product.name },
   ];
   return (
-    <div style={{ padding: "24px 160px" }}>
+    <div className="product-detail-page-container">
       <Breadcrumb
         items={breadcrumbItems.map((item) => ({
           title: item.href ? (

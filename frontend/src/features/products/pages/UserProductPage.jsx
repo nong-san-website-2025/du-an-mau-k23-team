@@ -187,7 +187,7 @@ const UserProductPage = () => {
   }
 
   return (
-    <Row gutter={[16, 16]} style={{ padding: "12px 190px" }}>
+    <Row gutter={[16, 16]} className="products-page-container">
       {/* Sidebar */}
       <Col xs={24} md={6}>
         <Space direction="vertical" style={{ width: "100%" }} size="middle">
@@ -298,7 +298,8 @@ const UserProductPage = () => {
                               ? product.image
                               : "https://via.placeholder.com/400x300?text=No+Image"
                         }
-                        style={{ height: 160, objectFit: "cover" }}
+                        className="product-card-image"
+                        style={{ objectFit: "cover" }}
                       />
                     }
                     onClick={() => navigate(`/products/${product.id}`)}

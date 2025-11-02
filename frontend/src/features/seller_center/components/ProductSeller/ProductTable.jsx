@@ -1,7 +1,16 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Table, Button, Popconfirm, Tag, Space } from "antd";
 
 const ProductTable = ({ data, onEdit, onDelete, onToggleHide, onSelfReject }) => {
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   const columns = [
     {
       title: "ID",
@@ -126,7 +135,7 @@ const ProductTable = ({ data, onEdit, onDelete, onToggleHide, onSelfReject }) =>
       rowKey="id"
       bordered
       pagination={{ pageSize: 5, showSizeChanger: false }}
-      scroll={{ x: 950 }}
+      scroll={{ x: windowWidth < 768 ? 600 : 950 }}
       size="small"
     />
   );

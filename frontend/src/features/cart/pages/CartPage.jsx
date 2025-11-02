@@ -124,7 +124,7 @@ function CartPage() {
   }
 
   return (
-    <div className="cart-page" style={{ padding: "2px 190px" }}>
+    <div className="cart-page">
       <Helmet>
         <title>Giỏ hàng</title>
         <meta name="description" content="Giỏ hàng" />
@@ -187,7 +187,7 @@ function CartPage() {
       </div>
 
       {/* Thanh tóm tắt đơn hàng cố định bên dưới */}
-      <div className="cart-bottom-bar " style={{ padding: "15px 190px" }}>
+      <div className="cart-bottom-bar">
         <Button danger size="small" onClick={() => setShowClearConfirm(true)}>
           Xóa tất cả
         </Button>

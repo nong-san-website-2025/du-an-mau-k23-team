@@ -34,7 +34,7 @@ export default function ProductsPage() {
   const [subcategories, setSubcategories] = useState([]);
   const [statusFilter, setStatusFilter] = useState("");
   const [form] = Form.useForm();
-
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
 
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -71,6 +71,15 @@ export default function ProductsPage() {
   useEffect(() => {
     fetchProducts();
     fetchCategories();
+  }, []);
+
+  // Handle window resize
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   const openModal = (product = null) => {
@@ -184,11 +193,16 @@ export default function ProductsPage() {
   };
 
   return (
-    <div style={{ padding: 20, background: "#fff", minHeight: "100vh" }}>
+    <div style={{ padding: windowWidth < 768 ? 10 : 20, background: "#fff", minHeight: "100vh" }}>
       <h2 style={{ marginBottom: 16 }}>Quản lý sản phẩm</h2>
 
       {/* Thanh công cụ: Thêm sản phẩm + Tìm kiếm + Lọc */}
-      <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
+      <div style={{
+        display: "flex",
+        flexDirection: windowWidth < 768 ? "column" : "row",
+        gap: windowWidth < 768 ? 8 : 12,
+        marginBottom: 16
+      }}>
         <Button type="primary" onClick={() => openModal()}>
           Thêm sản phẩm
         </Button>
@@ -201,13 +215,13 @@ export default function ProductsPage() {
             setSearchTerm(value);
             fetchProducts(statusFilter, value);
           }}
-          style={{ width: 300 }}
+          style={{ width: windowWidth < 768 ? "100%" : 300 }}
         />
 
         {/* Lọc trạng thái */}
         <Select
           placeholder="Lọc trạng thái"
-          style={{ width: 150 }}
+          style={{ width: windowWidth < 768 ? "100%" : 150 }}
           value={statusFilter || undefined}
           onChange={(value) => {
             setStatusFilter(value);

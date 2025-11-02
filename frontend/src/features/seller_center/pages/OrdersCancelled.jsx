@@ -1,36 +1,59 @@
 import React, { useEffect, useState } from "react";
-import { Table, Tag, Button, message } from "antd";
+import {
+  Table,
+  Tag,
+  message,
+  Typography,
+  Button,
+  Modal,
+  Descriptions,
+  List,
+  Image,
+  Divider,
+  Space,
+} from "antd";
+import { useNavigate } from "react-router-dom";
 import API from "../../login_register/services/api";
 
-export default function OrdersProcessing() {
+const { Text } = Typography;
+
+export default function OrdersCancelled() {
   const [loading, setLoading] = useState(false);
   const [orders, setOrders] = useState([]);
-<<<<<<< Updated upstream
-=======
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [detailVisible, setDetailVisible] = useState(false);
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
->>>>>>> Stashed changes
+  const navigate = useNavigate();
 
-  const fetchProcessing = async () => {
+  const formatCurrency = (value) =>
+    Number(value || 0).toLocaleString("vi-VN", {
+      minimumFractionDigits: 0,
+    });
+
+  const resolveProductImage = (imagePath = "") => {
+    if (!imagePath) return "";
+    if (imagePath.startsWith("http")) return imagePath;
+    if (imagePath.startsWith("/")) return `http://localhost:8000${imagePath}`;
+    return `http://localhost:8000/media/${imagePath}`;
+  };
+
+  const fetchCancelledOrders = async () => {
     setLoading(true);
     try {
-      const res = await API.get("orders/seller/processing/");
+      const res = await API.get("orders/seller/cancelled/");
       setOrders(res.data || []);
-    } catch (e) {
-      console.error(e);
-      message.error("Không thể tải đơn đang xử lý");
+    } catch (error) {
+      console.error(error);
+      message.error("Không thể tải danh sách đơn đã hủy");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchProcessing();
+    fetchCancelledOrders();
   }, []);
 
-<<<<<<< Updated upstream
-=======
   // Handle window resize
   useEffect(() => {
     const handleResize = () => {
@@ -50,139 +73,108 @@ export default function OrdersProcessing() {
     setSelectedOrder(null);
   };
 
-  const renderStatusTag = (status) => (
-    <Tag color={status === "shipping" ? "blue" : "gold"}>{status}</Tag>
-  );
+  const renderStatusTag = (status) => <Tag color="red">{status}</Tag>;
 
->>>>>>> Stashed changes
+  const getColumnWidth = (mobile, tablet, desktop) => {
+    if (windowWidth < 768) return mobile;
+    if (windowWidth < 1024) return tablet;
+    return desktop;
+  };
+
+  const getButtonSize = () => {
+    if (windowWidth < 768) return "small";
+    if (windowWidth < 1024) return "default";
+    return "default";
+  };
+
   const columns = [
-    { title: "Mã đơn", dataIndex: "id", key: "id", width: windowWidth < 768 ? 80 : 100 },
+    { title: "Mã đơn", dataIndex: "id", key: "id", width: getColumnWidth(80, 90, 100) },
     {
       title: "Khách hàng",
       key: "customer",
-<<<<<<< Updated upstream
-      render: (_, r) => (
-=======
-      width: windowWidth < 768 ? 150 : 200,
-      render: (_, record) => (
->>>>>>> Stashed changes
+      width: getColumnWidth(150, 180, 200),
+      render: (_, order) => (
         <div>
-          <div><strong>{r.customer_name}</strong></div>
-          <div style={{fontSize:12, color:'#666'}}>{r.customer_phone}</div>
-          <div style={{fontSize:12, color:'#666'}}>{r.address}</div>
+          <div><strong>{order.customer_name}</strong></div>
+          <div style={{ fontSize: 12, color: "#666" }}>{order.customer_phone}</div>
+          <div style={{ fontSize: 12, color: "#666" }}>{order.address}</div>
         </div>
-      )
+      ),
     },
     {
       title: "Trạng thái",
       dataIndex: "status",
       key: "status",
-<<<<<<< Updated upstream
-      render: s => <Tag color={s === 'shipping' ? 'blue' : 'gold'}>{s}</Tag>
-=======
-      width: windowWidth < 768 ? 100 : 120,
+      width: getColumnWidth(100, 110, 120),
       render: renderStatusTag,
->>>>>>> Stashed changes
     },
     {
       title: "Tổng tiền",
       dataIndex: "total_price",
       key: "total_price",
-<<<<<<< Updated upstream
-      render: v => <strong>{Number(v).toLocaleString()}đ</strong>
-=======
-      width: windowWidth < 768 ? 120 : 140,
+      width: getColumnWidth(120, 130, 140),
       render: (value) => <strong>{formatCurrency(value)}đ</strong>,
->>>>>>> Stashed changes
+    },
+    {
+      title: "Số lượng sản phẩm",
+      key: "items_count",
+      width: getColumnWidth(100, 110, 120),
+      render: (_, order) => order.items?.length || 0,
+    },
+    {
+      title: "Cập nhật lần cuối",
+      dataIndex: "updated_at",
+      key: "updated_at",
+      width: getColumnWidth(150, 170, 180),
+      render: (value, order) => {
+        const time = value || order.cancelled_at || order.created_at;
+        if (!time) return "-";
+        return new Date(time).toLocaleString("vi-VN");
+      },
     },
     {
       title: "Hành động",
       key: "actions",
-<<<<<<< Updated upstream
-      render: (_, r) => (
-        <Button
-          type="primary"
-          onClick={async () => {
-            try {
-              await API.post(`orders/${r.id}/seller/complete/`);
-              message.success(`Đơn #${r.id} đã xác nhận giao thành công`);
-              fetchProcessing();
-            } catch (e) {
-              console.error(e);
-              message.error(e.response?.data?.error || "Không thể xác nhận giao hàng");
-            }
-          }}
-        >
-          Đã giao thành công
-        </Button>
-      )
-    }
-=======
-      width: windowWidth < 768 ? 300 : 400,
+      width: getColumnWidth(120, 130, 140),
       render: (_, record) => (
-        <Space direction={windowWidth < 768 ? "vertical" : "horizontal"} size={windowWidth < 768 ? "small" : "middle"}>
-          <Button size={windowWidth < 768 ? "small" : "default"} onClick={() => openDetail(record)}>Xem chi tiết</Button>
-          <Button
-            size={windowWidth < 768 ? "small" : "default"}
-            type="primary"
-            onClick={async () => {
-              try {
-                await API.post(`orders/${record.id}/seller/complete/`);
-                message.success(`Đơn #${record.id} đã xác nhận giao thành công`);
-                fetchProcessing();
-                onAction?.();
-              } catch (error) {
-                console.error(error);
-                message.error(error.response?.data?.error || "Không thể xác nhận giao hàng");
-              }
-            }}
-          >
-            {windowWidth < 768 ? "Đã giao" : "Đã giao thành công"}
-          </Button>
-          <Popconfirm
-            title="Xác nhận hủy đơn"
-            description={`Bạn có chắc muốn hủy đơn #${record.id}?`}
-            okText="Hủy đơn"
-            cancelText="Đóng"
-            onConfirm={async () => {
-              try {
-                await API.post(`orders/${record.id}/cancel/`);
-                message.success(`Đơn #${record.id} đã được hủy`);
-                fetchProcessing();
-                onAction?.();
-              } catch (error) {
-                console.error(error);
-                message.error(error.response?.data?.error || "Không thể hủy đơn hàng");
-              }
-            }}
-          >
-            <Button size={windowWidth < 768 ? "small" : "default"} danger>Hủy đơn</Button>
-          </Popconfirm>
-        </Space>
+        <Button size={getButtonSize()} onClick={() => openDetail(record)}>Xem chi tiết</Button>
       ),
     },
->>>>>>> Stashed changes
   ];
 
   return (
-    <div style={{ padding: windowWidth < 768 ? 10 : 20 }}>
-      <h2 style={{ marginBottom: 16 }}>Đơn đang xử lý</h2>
+    <div>
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+        <div>
+          <h2 className="text-2xl font-bold">Đơn đã hủy</h2>
+          <Text type="secondary">
+            Danh sách các đơn bị hủy sẽ hiển thị tại đây để bạn dễ dàng theo dõi.
+          </Text>
+        </div>
+        <div className="flex gap-2">
+          <Button onClick={() => navigate("/seller-center/orders/new")}>
+            Xem đơn mới
+          </Button>
+          <Button type="primary" onClick={fetchCancelledOrders} loading={loading}>
+            Tải lại
+          </Button>
+        </div>
+      </div>
       <Table
         rowKey="id"
         loading={loading}
         dataSource={orders}
         columns={columns}
-        scroll={{ x: windowWidth < 768 ? 800 : 1200 }}
-        size="small"
+        scroll={{ x: windowWidth < 1024 ? 800 : 1200 }}
+        size={windowWidth < 768 ? "small" : "middle"}
+        pagination={{ pageSize: windowWidth < 768 ? 5 : 10 }}
       />
-<<<<<<< Updated upstream
-=======
 
       <Modal
         open={detailVisible}
         onCancel={closeDetail}
         footer={null}
-        width={windowWidth < 768 ? windowWidth - 20 : 760}
+        width={windowWidth < 768 ? windowWidth - 32 : windowWidth < 1024 ? 700 : 760}
         centered
         destroyOnClose
         title={
@@ -206,10 +198,10 @@ export default function OrdersProcessing() {
               <Descriptions.Item label="Số điện thoại">
                 {selectedOrder.customer_phone || "—"}
               </Descriptions.Item>
-              <Descriptions.Item label="Địa chỉ" span={windowWidth < 768 ? 1 : 2}>
+              <Descriptions.Item label="Địa chỉ" span={2}>
                 {selectedOrder.address || "—"}
               </Descriptions.Item>
-              <Descriptions.Item label="Ghi chú" span={windowWidth < 768 ? 1 : 2}>
+              <Descriptions.Item label="Ghi chú" span={2}>
                 {selectedOrder.note || "—"}
               </Descriptions.Item>
               <Descriptions.Item label="Thanh toán">
@@ -251,7 +243,13 @@ export default function OrdersProcessing() {
                             {formatCurrency(item.price)}đ × {item.quantity}
                           </div>
                           {item.seller_name && (
-                            <div style={{ fontSize: 12, color: "#6b7280", marginTop: 4 }}>
+                            <div
+                              style={{
+                                fontSize: 12,
+                                color: "#6b7280",
+                                marginTop: 4,
+                              }}
+                            >
                               Nhà cung cấp: {item.seller_name}
                             </div>
                           )}
@@ -268,14 +266,14 @@ export default function OrdersProcessing() {
 
             <Divider style={{ margin: "8px 0" }} />
 
-            <div style={{ display: "flex", flexDirection: windowWidth < 768 ? "column" : "row", justifyContent: "flex-end", gap: windowWidth < 768 ? 16 : 24, alignItems: windowWidth < 768 ? "flex-start" : "flex-end" }}>
-              <div style={{ textAlign: windowWidth < 768 ? "left" : "right" }}>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 24 }}>
+              <div style={{ textAlign: "right" }}>
                 <div style={{ fontSize: 13, color: "#6b7280" }}>Phí vận chuyển</div>
                 <div style={{ fontWeight: 600 }}>
                   {formatCurrency(selectedOrder.shipping_fee || 0)}đ
                 </div>
               </div>
-              <div style={{ textAlign: windowWidth < 768 ? "left" : "right" }}>
+              <div style={{ textAlign: "right" }}>
                 <div style={{ fontSize: 13, color: "#6b7280" }}>Tổng tiền</div>
                 <div style={{ fontSize: 18, fontWeight: 700, color: "#16a34a" }}>
                   {formatCurrency(selectedOrder.total_price)}đ
@@ -285,7 +283,6 @@ export default function OrdersProcessing() {
           </div>
         )}
       </Modal>
->>>>>>> Stashed changes
     </div>
   );
 }

@@ -60,10 +60,9 @@ export default function BannerSlider() {
               onClick={() =>
                 banner.click_url && window.open(banner.click_url, "_blank")
               }
-              className="shadow"
+              className="shadow banner-image"
               style={{
                 width: "100%",
-                height: "300px",
                 objectFit: "cover",
                 cursor: "pointer",
                 display: loadedImages[banner.id] ? "block" : "none",

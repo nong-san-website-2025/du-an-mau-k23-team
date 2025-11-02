@@ -32,3 +32,72 @@
   0% { background-position: 100% 0; }
   100% { background-position: -100% 0; }
 }
+
+/* Responsive Banner Height */
+.banner-placeholder {
+  height: 300px; /* Default for desktop */
+}
+
+@media (max-width: 768px) {
+  .banner-placeholder {
+    height: 250px; /* Tablet */
+  }
+}
+
+@media (max-width: 576px) {
+  .banner-placeholder {
+    height: 200px; /* Mobile */
+  }
+}
+
+.banner-image {
+  height: 300px; /* Default for desktop */
+}
+
+@media (max-width: 768px) {
+  .banner-image {
+    height: 250px; /* Tablet */
+  }
+}
+
+@media (max-width: 576px) {
+  .banner-image {
+    height: 200px; /* Mobile */
+  }
+}
+
+.side-banner-image {
+  height: 150px; /* Default for desktop */
+}
+
+@media (max-width: 768px) {
+  .side-banner-image {
+    height: 125px; /* Tablet */
+  }
+}
+
+@media (max-width: 576px) {
+  .side-banner-image {
+    height: 100px; /* Mobile */
+  }
+}
+
+.side-banners {
+  display: flex !important; /* Default */
+}
+
+@media (max-width: 576px) {
+  .side-banners {
+    display: none !important; /* Hide on mobile */
+  }
+}
+
+.main-banner {
+  flex: 7; /* Default */
+}
+
+@media (max-width: 576px) {
+  .main-banner {
+    flex: 1; /* Full width on mobile */
+  }
+}

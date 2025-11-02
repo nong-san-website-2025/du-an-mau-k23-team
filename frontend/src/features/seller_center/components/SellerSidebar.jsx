@@ -17,7 +17,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 
 const { Sider } = Layout;
 
-export default function SellerSidebar() {
+export default function SellerSidebar({ collapsed, setCollapsed }) {
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -89,10 +89,20 @@ export default function SellerSidebar() {
   // Hàm điều hướng
   const onClick = ({ key }) => {
     navigate(key);
+    // On mobile, close sidebar after navigation
+    if (window.innerWidth < 768) {
+      setCollapsed(true);
+    }
   };
 
   return (
-    <Sider width={250} className="h-screen bg-white shadow-md">
+    <Sider
+      width={250}
+      collapsed={collapsed}
+      collapsedWidth={0}
+      className="h-screen bg-white shadow-md"
+      style={{ position: collapsed && window.innerWidth < 768 ? 'absolute' : 'relative', zIndex: 1000 }}
+    >
       {/* Logo */}
       <div
         className="flex items-center justify-center gap-3 py-2 cursor-pointer"
@@ -103,7 +113,7 @@ export default function SellerSidebar() {
           alt="Logo"
           style={{ height: "60px", width: "50px", paddingBottom:16 }}
         />
-        <span className="" style={{ fontSize: "24px", fontWeight: "bold", paddingTop: 10}}>Trang người bán</span>
+        {!collapsed && <span className="" style={{ fontSize: "24px", fontWeight: "bold", paddingTop: 10}}>Trang người bán</span>}
       </div>
 
       {/* Menu */}

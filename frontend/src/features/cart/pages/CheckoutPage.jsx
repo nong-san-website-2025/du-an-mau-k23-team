@@ -304,7 +304,7 @@ const CheckoutPage = () => {
   };
 
   return (
-    <div style={{ padding: 24, maxWidth: "100%", margin: "0 190px" }}>
+    <div className="checkout-page-container">
       <Title level={2}>Thanh toán đơn hàng</Title>
       {/* Danh sách sản phẩm */}
       <Card style={{ marginBottom: 24, borderRadius: 4 }}>

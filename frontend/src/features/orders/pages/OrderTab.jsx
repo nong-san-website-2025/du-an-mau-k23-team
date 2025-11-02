@@ -12,6 +12,7 @@ import {
   message,
 } from "antd";
 import API from "../../login_register/services/api";
+import "../styles/css/OrderTab.css";
 
 const { Panel } = Collapse;
 const { Text } = Typography;
@@ -215,6 +216,7 @@ const OrderTab = ({ status }) => {
                                 objectFit: "cover",
                                 marginRight: 12,
                               }}
+<<<<<<< Updated upstream
                               preview={false}
                             />
                             <div>
@@ -225,6 +227,72 @@ const OrderTab = ({ status }) => {
                               </Text>
                               {status === "completed" && (
                                 <div style={{ marginTop: 8 }}>
+=======
+                            >
+                              <Image
+                                src={imageSrc}
+                                alt={item.product_name}
+                                className="order-item-image"
+                                style={{
+                                  borderRadius: 10,
+                                  objectFit: "cover",
+                                  background: "#fff",
+                                }}
+                                preview={false}
+                              />
+                              <div style={{ flex: 1 }}>
+                                <Text
+                                  strong
+                                  style={{ display: "block", marginBottom: 4, fontSize: 15 }}
+                                >
+                                  {item.product_name}
+                                </Text>
+                                <Text type="secondary" style={{ fontSize: 13 }}>
+                                  {formatCurrency(item.price)}đ x {item.quantity}
+                                </Text>
+                                {status === "completed" && (
+                                  <Button
+                                    size="small"
+                                    type="primary"
+                                    ghost
+                                    style={{ marginTop: 10 }}
+                                    onClick={() => toggleComplaint(item.product)}
+                                  >
+                                    Khiếu nại
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+
+                            {status === "completed" && complaintOpen && (
+                              <div
+                                style={{
+                                  position: "fixed",
+                                  top: 0,
+                                  left: 0,
+                                  width: "100vw",
+                                  height: "100vh",
+                                  background: "rgba(0,0,0,0.18)",
+                                  zIndex: 9999,
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  padding: 16,
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    background: "#fff",
+                                    border: "1px solid #e0e0e0",
+                                    boxShadow: "0 8px 32px rgba(22,163,74,0.18)",
+                                    borderRadius: 18,
+                                    padding: 32,
+                                    maxWidth: 480,
+                                    width: "100%",
+                                    position: "relative",
+                                  }}
+                                >
+>>>>>>> Stashed changes
                                   <button
                                     onClick={() => toggleComplaint(item.product)}
                                     style={{

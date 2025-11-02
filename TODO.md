@@ -1,0 +1,4 @@
+- [x] Chỉnh sửa SellerLayout.jsx để thêm state cho sidebar thu gọn và breakpoint cho mobile
+- [x] Chỉnh sửa SellerSidebar.jsx để làm collapsible và điều chỉnh width
+- [x] Chỉnh sửa Dashboard.jsx để làm layout responsive
+- [ ] Test trên mobile view
