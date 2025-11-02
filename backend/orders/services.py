@@ -92,7 +92,7 @@ def complete_order(order, seller):
     reduce_stock_for_order(order)
 
     # 4. Cập nhật trạng thái đơn hàng sang 'delivery'
-    order.status = 'delivery'
+    order.status = 'success'
     order.save(update_fields=['status'])
 
     logger.info(f"Seller {seller.id} đã xác nhận giao Order #{order.id}. Trạng thái -> delivery")

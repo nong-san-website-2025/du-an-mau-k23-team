@@ -521,7 +521,7 @@ export default function Analytics() {
     const trafficPieData = (traffic_sources || []).map(item => ({ name: item.source, value: item.visits }));
     const customerPieData = [
       { name: "Khách mới", value: customer_analysis?.new_customers || 0 },
-      { name: "Khách quay lại", value: customer_analysis?.returning_customers || 0 }
+      { name: "Khách quay lại", value: customer_analysis  ?.returning_customers || 0 }
     ];
 
     return (

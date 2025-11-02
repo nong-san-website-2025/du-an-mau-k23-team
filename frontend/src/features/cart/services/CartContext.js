@@ -14,7 +14,7 @@ const CartContext = createContext();
 export const useCart = () => useContext(CartContext);
 
 // Helper lấy productId nhất quán
-const getItemProductId = (item) => {
+export const getItemProductId = (item) => {
   const id =
     item.product_data?.id ||
     item.product?.id ||
@@ -232,7 +232,9 @@ export const CartProvider = ({ children }) => {
         } else {
           let items = getGuestCart();
           const stringProductId = String(productId);
-          const idx = items.findIndex((i) => getItemProductId(i) === stringProductId);
+          const idx = items.findIndex(
+            (i) => getItemProductId(i) === stringProductId
+          );
           if (idx >= 0) {
             items[idx].quantity += quantity;
           } else {
@@ -438,15 +440,16 @@ export const CartProvider = ({ children }) => {
     () => setCartItems((prev) => prev.map((i) => ({ ...i, selected: false }))),
     []
   );
-  const toggleItem = useCallback(
-    (productId) =>
-      setCartItems((prev) =>
-        prev.map((i) =>
-          getItemProductId(i) == productId ? { ...i, selected: !i.selected } : i
-        )
-      ),
-    []
-  );
+  const toggleItem = useCallback((productId) => {
+    const targetId = String(productId); // chuẩn hóa
+    setCartItems((prev) =>
+      prev.map((i) =>
+        String(getItemProductId(i)) === targetId // dùng ===
+          ? { ...i, selected: !i.selected }
+          : i
+      )
+    );
+  }, []);
   const selectOnlyByProductId = useCallback(
     (productId) =>
       setCartItems((prev) =>

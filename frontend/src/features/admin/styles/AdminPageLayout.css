@@ -2,3 +2,10 @@
   border-radius: 0 !important;
   border: none !important;
 }
+
+.table-row:hover > td {
+  background-color: #f0f0f0 !important;
+  transition: background-color 0.3s ease;
+  cursor: pointer;
+}
+

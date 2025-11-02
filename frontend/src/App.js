@@ -21,6 +21,12 @@ function App() {
     }
   }, []);
 
+  useEffect(() => {
+    // Cuộn ngay lập tức, đồng bộ
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, []);
+
   return (
     <div className="main-container">
       <BrowserRouter>

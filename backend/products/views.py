@@ -61,7 +61,7 @@ class SubcategoryViewSet(viewsets.ModelViewSet):
 class ProductViewSet(viewsets.ModelViewSet):
     permission_classes = [AllowAny]
     queryset = Product.objects.select_related('subcategory__category', 'seller').prefetch_related('images').all()
-
+    
     def get_permissions(self):
         # Public read, restricted write/actions
         if self.action in ["list", "retrieve", "featured"]:
@@ -73,30 +73,42 @@ class ProductViewSet(viewsets.ModelViewSet):
             return ProductListSerializer
         return ProductSerializer
 
-    def destroy(self, request, *args, **kwargs):
-        product = self.get_object()
-        # Only owner can delete and only when self_rejected
-        if not hasattr(request.user, "seller") or product.seller != request.user.seller:
-            return Response({"detail": "Không có quyền"}, status=status.HTTP_403_FORBIDDEN)
-        if product.status != "self_rejected":
-            return Response({"detail": "Chỉ được xóa khi sản phẩm ở trạng thái tự từ chối"}, status=status.HTTP_400_BAD_REQUEST)
-        return super().destroy(request, *args, **kwargs)
+    # ✅ THÊM PHƯƠNG THỨC NÀY để kiểm tra quyền truy cập chi tiết sản phẩm
+    def retrieve(self, request, *args, **kwargs):
+        """
+        Chỉ admin mới có thể xem sản phẩm chưa approved/banned
+        Các role khác chỉ xem được sản phẩm approved và không bị ẩn
+        """
+        instance = self.get_object()
+        user = request.user
+        
+        # ✅ Admin có thể xem tất cả
+        if user.is_authenticated and user.is_staff:
+            serializer = self.get_serializer(instance)
+            return Response(serializer.data)
+        
+        # ✅ Các role khác chỉ được xem sản phẩm approved và không bị ẩn/banned
+        if instance.status != 'approved' or instance.is_hidden:
+            return Response(
+                {"detail": "Sản phẩm không tồn tại hoặc đã bị khóa."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
 
     def get_queryset(self):
         queryset = Product.objects.select_related('subcategory__category', 'seller').prefetch_related('images').all()
         user = self.request.user
         role = getattr(user, 'role', None)
 
-        # ----- Phân quyền role -----
-        if role == 'seller':
-            try:
-                seller = user.seller
-                queryset = queryset.filter(Q(status='approved') | Q(seller=seller))
-            except AttributeError:
-                queryset = queryset.filter(status='approved')
-        elif role == 'customer' or role is None:
+        # ✅ Chỉ admin mới thấy tất cả sản phẩm
+        if user.is_authenticated and user.is_staff:
+            # Admin thấy tất cả
+            pass
+        else:
+            # ✅ Tất cả role khác (seller, customer, guest) chỉ thấy approved và không bị ẩn
             queryset = queryset.filter(status='approved', is_hidden=False)
-        # admin hoặc các role khác thấy tất cả
 
         # ----- Filter theo query params -----
         params = self.request.query_params
@@ -104,7 +116,7 @@ class ProductViewSet(viewsets.ModelViewSet):
             category_value = params['category']
             queryset = queryset.filter(
                 Q(subcategory__category__key=category_value) |
-                Q(category__key=category_value)  # 👈 thêm dòng này
+                Q(category__key=category_value)
             )
 
         if 'subcategory' in params:
@@ -124,10 +136,6 @@ class ProductViewSet(viewsets.ModelViewSet):
 
         queryset = queryset.order_by(params.get('ordering', '-created_at'))
         return queryset
-
-
-
-
     # ----- Admin actions -----
     @action(detail=True, methods=["post"])
     def approve(self, request, pk=None):
@@ -278,13 +286,9 @@ class CategoryViewSet(viewsets.ModelViewSet):
         products = Product.objects.filter(subcategory__category=category)
 
         if role == 'seller':
-            try:
-                seller = user.seller
-                products = products.filter(Q(status='approved') | Q(seller=seller))
-            except AttributeError:
-                products = products.filter(status='approved')
+            products = products.filter(status='approved').exclude(status='banned')
         elif role == 'customer' or role is None:
-            products = products.filter(status='approved')
+            products = products.filter(status='approved').exclude(status='banned')
         # admin thấy tất cả
 
         serializer = ProductListSerializer(products, many=True, context={'request': request})
@@ -300,13 +304,9 @@ class CategoryViewSet(viewsets.ModelViewSet):
         products = Product.objects.filter(subcategory__category=category)
 
         if role == 'seller':
-            try:
-                seller = user.seller
-                products = products.filter(Q(status='approved') | Q(seller=seller))
-            except AttributeError:
-                products = products.filter(status='approved')
+            products = products.filter(status='approved').exclude(status='banned')
         elif role == 'customer' or role is None:
-            products = products.filter(status='approved')
+            products = products.filter(status='approved').exclude(status='banned')
         # admin thấy tất cả
 
         grouped = {}
@@ -348,23 +348,32 @@ class SearchAPIView(APIView):
 
         norm_query = normalize_text(query)
 
+        # ✅ Lọc sản phẩm chỉ lấy approved và không bị ẩn
         products_qs = Product.objects.filter(
+            Q(status="approved"),
+            Q(is_hidden=False),
+        ).filter(
             Q(normalized_name__icontains=norm_query) | Q(description__icontains=query)
-)
+        ).select_related('subcategory__category')
 
-        # Lọc không dấu trong Python
+        # ✅ Lọc không dấu trong Python (giữ nguyên logic cũ)
         products = [
             p for p in products_qs
             if norm_query in normalize_text(p.name) or norm_query in normalize_text(p.description or "")
         ]
 
+        # ✅ Chỉ lấy category và seller có sản phẩm được duyệt
         categories = Category.objects.filter(
             Q(name__icontains=query) | Q(name__icontains=norm_query)
-        ).annotate(product_count=Count('subcategories__products')).order_by('-product_count')[:5]
+        ).annotate(
+            product_count=Count('subcategories__products', filter=Q(subcategories__products__status='approved'))
+        ).order_by('-product_count')[:5]
 
         sellers = Seller.objects.filter(
             Q(store_name__icontains=query) | Q(store_name__icontains=norm_query)
-        ).annotate(product_count=Count('products')).order_by('-product_count')[:10]
+        ).annotate(
+            product_count=Count('products', filter=Q(products__status='approved'))
+        ).order_by('-product_count')[:10]
 
         result = {
             'products': [{
@@ -372,14 +381,19 @@ class SearchAPIView(APIView):
                 'name': p.name,
                 'description': p.description[:100] if p.description else None,
                 'image': self.get_image_url(p, 'image', request),
-                'category_name': p.subcategory.category.name if p.subcategory and p.subcategory.category else None,
+                'category_name': (
+                    p.subcategory.category.name
+                    if p.subcategory and p.subcategory.category else None
+                ),
             } for p in products],
+
             'categories': [{
                 'id': c.id,
                 'name': c.name,
                 'product_count': c.product_count,
                 'image': self.get_image_url(c, 'image', request),
             } for c in categories],
+
             'sellers': [{
                 'id': s.id,
                 'name': s.store_name,
@@ -391,6 +405,7 @@ class SearchAPIView(APIView):
 
         cache.set(cache_key, result, 300)
         return Response(result)
+
     
 class ReviewListCreateView(generics.ListCreateAPIView):
     serializer_class = ReviewSerializer

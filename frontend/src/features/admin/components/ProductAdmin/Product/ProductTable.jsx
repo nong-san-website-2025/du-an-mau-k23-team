@@ -1,9 +1,10 @@
 // src/features/admin/components/ProductTable.jsx
-import React from "react";
-import { Table } from "antd";
+import React, { useState } from "react";
+import { Table, Tooltip, Image } from "antd";
 import ProductStatusTag from "./ProductStatusTag";
 import ProductActions from "./ProductActions";
 import dayjs from "dayjs";
+import "../../../styles/AdminPageLayout.css";
 
 const ProductTable = ({
   data,
@@ -11,57 +12,138 @@ const ProductTable = ({
   onReject,
   onView,
   onToggleBan,
-  selectedRowKeys, // thêm state từ parent
+  selectedRowKeys,
   setSelectedRowKeys,
+  onRow,
 }) => {
+  const [selectedColumns, setSelectedColumns] = useState([
+    "image",
+    "name",
+    "category",
+    "seller",
+    "price",
+    "unit",
+    "status",
+    "created_at",
+    "action",
+  ]);
+
   const columns = [
     {
-      title: "ID",
-      dataIndex: "id",
-      key: "id",
+      title: "Ảnh",
+      key: "image",
+      dataIndex: "image",
       width: 60,
-      sorter: (a, b) => a.id - b.id,
       align: "center",
+      render: (_, record) => (
+        <div
+          style={{
+            width: 50,
+            height: 30,
+            borderRadius: 4,
+            backgroundColor: record.image ? "transparent" : "#d9d9d9", // ✅ xám nếu không có ảnh
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          {record.image ? (
+            <Image
+              src={record.image}
+              alt={record.name}
+              width={60}
+              height={40}
+              style={{
+                objectFit: "cover",
+                borderRadius: 4,
+              }}
+              onError={(e) => {
+                e.target.onerror = null;
+                e.target.src = "/no-image.png";
+              }}
+              preview={false}
+            />
+          ) : (
+            <span style={{ color: "#fff", fontSize: 12 }}>Không có ảnh</span>
+          )}
+        </div>
+      ),
     },
     {
       title: "Tên sản phẩm",
       dataIndex: "name",
       key: "name",
-      width: 200,
+      width: 240,
+      ellipsis: { showTitle: false },
+      render: (text) => (
+        <Tooltip title={text}>
+          <span
+            style={{
+              display: "inline-block",
+              maxWidth: 220,
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              verticalAlign: "middle",
+              fontWeight: 500,
+            }}
+          >
+            {text}
+          </span>
+        </Tooltip>
+      ),
       sorter: (a, b) => (a.name || "").localeCompare(b.name || ""),
     },
     {
       title: "Danh mục",
       key: "category",
-      width: 180,
+      width: 160,
+      align: "center",
       render: (_, record) => record.category_name || "—",
       sorter: (a, b) =>
         (a.category_name || "").localeCompare(b.category_name || ""),
-      align: "center",
     },
     {
       title: "Người bán",
       key: "seller",
-      width: 180,
-      render: (_, record) =>
-        record.seller?.store_name || record.seller_name || "—",
+      dataIndex: "seller",
+      width: 80,
+      align: "center",
+      render: (_, record) => {
+        const text = record.seller?.store_name || record.seller_name || "—";
+        return (
+          <Tooltip title={text}>
+            <span
+              style={{
+                display: "inline-block",
+                maxWidth: 160,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                verticalAlign: "middle",
+              }}
+            >
+              {text}
+            </span>
+          </Tooltip>
+        );
+      },
     },
+
     {
       title: "Giá",
       dataIndex: "price",
       key: "price",
       width: 120,
-      height: 70,
+      align: "right",
       render: (price) => (price ? `${Number(price).toLocaleString()} đ` : "—"),
       sorter: (a, b) => a.price - b.price,
-      align: "right",
     },
-
     {
       title: "Đơn vị",
       dataIndex: "unit",
       key: "unit",
-      width: 70,
+      width: 90,
       align: "center",
       render: (unit) => {
         const unitLabels = {
@@ -69,33 +151,34 @@ const ProductTable = ({
           g: "g",
           l: "lít",
           ml: "ml",
-          unit: "cái", // ✅ chuyển 'unit' → 'cái'
+          unit: "cái",
           bag: "bao",
         };
         return unitLabels[unit] || unit || "—";
       },
     },
-
     {
       title: "Trạng thái",
       key: "status",
       width: 140,
-      render: (_, record) => <ProductStatusTag status={record.status} />,
       align: "center",
+      render: (_, record) => <ProductStatusTag status={record.status} />,
     },
     {
       title: "Ngày tạo",
       dataIndex: "created_at",
       key: "created_at",
-      width: 160,
+      width: 180, // ✅ Tăng từ 160 lên 180
+      align: "center",
       render: (date) => (date ? dayjs(date).format("DD/MM/YYYY HH:mm") : "—"),
       sorter: (a, b) => new Date(a.created_at) - new Date(b.created_at),
-      align: "center",
     },
     {
       title: "Hành động",
       key: "action",
-      width: 90,
+      width: 100, // ✅ Tăng từ 120 lên 200
+      align: "center",
+      fixed: "right",
       render: (_, record) => (
         <ProductActions
           record={record}
@@ -105,25 +188,29 @@ const ProductTable = ({
           onToggleBan={onToggleBan}
         />
       ),
-      align: "center",
     },
   ];
 
   const rowSelection = {
     selectedRowKeys,
-    onChange: (keys) => setSelectedRowKeys(keys), // đây cần là function
+    onChange: (keys) => setSelectedRowKeys(keys),
   };
 
   return (
     <Table
-      columns={columns}
-      dataSource={data}
       rowKey="id"
       bordered
-      pagination={{ pageSize: 10 }}
-      scroll={{ x: 1100 }}
       size="small"
+      dataSource={data}
+      columns={columns.filter((col) => selectedColumns.includes(col.key))}
       rowSelection={rowSelection}
+      onRow={onRow}
+      pagination={{ pageSize: 10 }}
+      scroll={{
+        x: "max-content",
+      }}
+      sticky
+      rowClassName="table-row"
     />
   );
 };

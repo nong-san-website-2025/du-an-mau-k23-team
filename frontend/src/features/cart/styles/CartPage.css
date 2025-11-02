@@ -116,6 +116,13 @@
 .item-name {
   font-size: 16px;
   cursor: pointer;
+  max-width: 400px; /* ✅ Giới hạn chiều rộng text */
+  white-space: nowrap; /* Không xuống dòng */
+  overflow: hidden; /* Ẩn phần bị tràn */
+  text-overflow: ellipsis; /* Hiển thị dấu “…” */
+  display: inline-block; /* Cần để ellipsis hoạt động ổn định */
+  cursor: pointer;
+  color: #333;
 }
 
 .item-price,

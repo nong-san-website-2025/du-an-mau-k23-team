@@ -84,7 +84,7 @@ export const productApi = {
     return request("/products/").then((data) =>
       data.map((p) => ({
         ...p,
-        status: normalizeStatus(p),
+        availability_status: normalizeStatus(p),
       }))
     );
   },
@@ -92,7 +92,9 @@ export const productApi = {
   getProduct(id) {
     return request(`/products/${id}/`, {}, { auth: true }).then((p) => ({
       ...p,
-      status: normalizeStatus(p),
+      // ✅ Giữ nguyên p.status (là "approved", "pending", v.v.)
+      // ✅ Thêm field mới: availability_status hoặc displayStatus
+      availability_status: normalizeStatus(p), // hoặc displayStatus
     }));
   },
 

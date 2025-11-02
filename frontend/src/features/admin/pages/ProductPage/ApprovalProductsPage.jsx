@@ -15,6 +15,7 @@ import SellerSelect from "../../components/ProductAdmin/Product/SellerSelect";
 import CategorySelect from "../../components/ProductAdmin/Product/CategorySelect";
 import axios from "axios";
 import AdminPageLayout from "../../components/AdminPageLayout"; // ← Đường dẫn đúng
+import ProductDetailModal from "../../components/ProductAdmin/Product/ProductDetailModal";
 
 const { Option } = Select;
 
@@ -98,7 +99,11 @@ const ApprovalProductsPage = () => {
 
   const handleApprove = async (record) => {
     try {
-      await api.post(`/products/${record.id}/approve/`, {}, { headers: getAuthHeaders() });
+      await api.post(
+        `/products/${record.id}/approve/`,
+        {},
+        { headers: getAuthHeaders() }
+      );
       message.success(`Đã duyệt sản phẩm: ${record.name}`);
       fetchProducts();
     } catch {
@@ -108,7 +113,11 @@ const ApprovalProductsPage = () => {
 
   const handleReject = async (record) => {
     try {
-      await api.post(`/products/${record.id}/reject/`, {}, { headers: getAuthHeaders() });
+      await api.post(
+        `/products/${record.id}/reject/`,
+        {},
+        { headers: getAuthHeaders() }
+      );
       message.success(`Đã từ chối sản phẩm: ${record.name}`);
       fetchProducts();
     } catch {
@@ -119,10 +128,18 @@ const ApprovalProductsPage = () => {
   const handleToggleBan = async (record) => {
     try {
       if (record.status === "banned") {
-        await api.post(`/products/${record.id}/unban/`, {}, { headers: getAuthHeaders() });
+        await api.post(
+          `/products/${record.id}/unban/`,
+          {},
+          { headers: getAuthHeaders() }
+        );
         message.success("Đã mở khoá sản phẩm");
       } else {
-        await api.post(`/products/${record.id}/ban/`, {}, { headers: getAuthHeaders() });
+        await api.post(
+          `/products/${record.id}/ban/`,
+          {},
+          { headers: getAuthHeaders() }
+        );
         message.success("Đã khoá sản phẩm");
       }
       fetchProducts();
@@ -142,16 +159,32 @@ const ApprovalProductsPage = () => {
       setLoading(true);
       for (const id of selectedRowKeys) {
         if (action === "approve")
-          await api.post(`/products/${id}/approve/`, {}, { headers: getAuthHeaders() });
+          await api.post(
+            `/products/${id}/approve/`,
+            {},
+            { headers: getAuthHeaders() }
+          );
         else if (action === "reject")
-          await api.post(`/products/${id}/reject/`, {}, { headers: getAuthHeaders() });
+          await api.post(
+            `/products/${id}/reject/`,
+            {},
+            { headers: getAuthHeaders() }
+          );
         else if (action === "toggleBan") {
           const product = data.find((p) => p.id === id);
           if (product) {
             if (product.status === "banned")
-              await api.post(`/products/${id}/unban/`, {}, { headers: getAuthHeaders() });
+              await api.post(
+                `/products/${id}/unban/`,
+                {},
+                { headers: getAuthHeaders() }
+              );
             else
-              await api.post(`/products/${id}/ban/`, {}, { headers: getAuthHeaders() });
+              await api.post(
+                `/products/${id}/ban/`,
+                {},
+                { headers: getAuthHeaders() }
+              );
           }
         }
       }
@@ -162,16 +195,6 @@ const ApprovalProductsPage = () => {
       message.error("Thao tác hàng loạt thất bại");
     } finally {
       setLoading(false);
-    }
-  };
-
-  const translateStatus = (status) => {
-    switch (status) {
-      case "pending": return "Chờ duyệt";
-      case "approved": return "Đã duyệt";
-      case "rejected": return "Bị từ chối";
-      case "banned": return "Bị khóa";
-      default: return status;
     }
   };
 
@@ -249,58 +272,17 @@ const ApprovalProductsPage = () => {
           onReject={handleReject}
           onView={handleView}
           onToggleBan={handleToggleBan}
+          onRow={(record) => ({
+            onClick: () => handleView(record),
+          })}
         />
       )}
 
-      {selectedProduct && (
-        <Modal
-          open={modalVisible}
-          title={`Chi tiết sản phẩm: ${selectedProduct.name}`}
-          onCancel={() => setModalVisible(false)}
-          footer={null}
-          width={900}
-          centered
-        >
-          <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
-            <div style={{ flex: 1 }}>
-              <Descriptions
-                column={1}
-                bordered
-                size="middle"
-                labelStyle={{ width: 150, fontWeight: 500 }}
-              >
-                <Descriptions.Item label="ID">{selectedProduct.id}</Descriptions.Item>
-                <Descriptions.Item label="Tên sản phẩm">{selectedProduct.name}</Descriptions.Item>
-                <Descriptions.Item label="Danh mục">{selectedProduct.category_name || "-"}</Descriptions.Item>
-                <Descriptions.Item label="Shop">{selectedProduct.seller_name || "—"}</Descriptions.Item>
-                <Descriptions.Item label="Giá">
-                  {Number(selectedProduct.price).toLocaleString("vi-VN")} đ
-                </Descriptions.Item>
-                <Descriptions.Item label="Số lượng">{selectedProduct.stock}</Descriptions.Item>
-                <Descriptions.Item label="Trạng thái">
-                  {translateStatus(selectedProduct.status)}
-                </Descriptions.Item>
-                <Descriptions.Item label="Ngày tạo">
-                  {new Date(selectedProduct.created_at).toLocaleString("vi-VN")}
-                </Descriptions.Item>
-                <Descriptions.Item label="Mô tả">{selectedProduct.description || "-"}</Descriptions.Item>
-              </Descriptions>
-            </div>
-
-            <div style={{ width: 300, textAlign: "center", background: "#fafafa", border: "1px solid #f0f0f0", borderRadius: 12, padding: 16 }}>
-              <img
-                src={selectedProduct.image || "https://via.placeholder.com/250x250.png?text=No+Image"}
-                alt={selectedProduct.name}
-                style={{ width: "100%", height: 250, objectFit: "contain", borderRadius: 8, marginBottom: 10 }}
-              />
-              <div style={{ fontWeight: 600 }}>{selectedProduct.name}</div>
-              <div style={{ color: "#888" }}>
-                {Number(selectedProduct.price).toLocaleString("vi-VN")} đ
-              </div>
-            </div>
-          </div>
-        </Modal>
-      )}
+      <ProductDetailModal
+        visible={modalVisible}
+        product={selectedProduct}
+        onClose={() => setModalVisible(false)}
+      />
     </AdminPageLayout>
   );
 };

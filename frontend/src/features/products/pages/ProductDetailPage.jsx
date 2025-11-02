@@ -22,26 +22,17 @@ import StoreCard from "../components/StoreCard";
 import { productApi } from "../services/productApi";
 import { reviewApi } from "../services/reviewApi";
 import { useAuth } from "../../login_register/services/AuthContext";
-// import { usePreOrder } from "../context/PreOrderContext";
 
 const { Title, Text, Paragraph } = Typography;
 
 const ProductDetailPage = () => {
   const { id } = useParams();
-
   const navigate = useNavigate();
-  useEffect(() => {
-    // Cuộn ngay lập tức, đồng bộ
-    document.documentElement.scrollTop = 0;
-    document.body.scrollTop = 0;
-  }, [id]);
-
   const { addToCart } = useCart();
   const { user } = useAuth();
 
   const [categoryName, setCategoryName] = useState("Danh mục");
   const [subcategoryName, setSubcategoryName] = useState("Phân loại");
-
   const [adding, setAdding] = useState(false);
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -59,16 +50,17 @@ const ProductDetailPage = () => {
   const [hasReviewed, setHasReviewed] = useState(false);
   const [myReview, setMyReview] = useState(null);
 
-  // Hàm tạo mảng breadcrumb từ category lồng nhau
+  useEffect(() => {
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, [id]);
 
-  // Trong ProductDetailPage.jsx
   useEffect(() => {
     if (!loading) {
-
-      window.scrollTo({ top: 0, behavior: "instant" }); // hoặc 'smooth' nếu muốn
+      window.scrollTo({ top: 0, behavior: "instant" });
     }
   }, [loading]);
-  // Kiểm tra trạng thái yêu thích từ localStorage
+
   useEffect(() => {
     try {
       const list = JSON.parse(localStorage.getItem("wishlist") || "[]");
@@ -79,15 +71,11 @@ const ProductDetailPage = () => {
     }
   }, [id]);
 
-  
-
-  // Thêm trong useEffect load dữ liệu
   useEffect(() => {
     const loadCategories = async () => {
       if (!product) return;
 
       try {
-        // Gọi API danh mục
         const [catRes, subRes] = await Promise.all([
           fetch("http://localhost:8000/api/products/categories/"),
           fetch("http://localhost:8000/api/products/subcategories/"),
@@ -111,7 +99,6 @@ const ProductDetailPage = () => {
     loadCategories();
   }, [product]);
 
-  // Load sản phẩm liên quan
   useEffect(() => {
     const loadRelated = async () => {
       try {
@@ -125,7 +112,6 @@ const ProductDetailPage = () => {
     loadRelated();
   }, []);
 
-  // Xử lý yêu thích
   const handleToggleFavorite = async () => {
     try {
       const list = JSON.parse(localStorage.getItem("wishlist") || "[]");
@@ -168,13 +154,26 @@ const ProductDetailPage = () => {
     }
   };
 
-  // Load dữ liệu
+  // ✅ Load dữ liệu với kiểm tra quyền truy cập
   useEffect(() => {
     const loadData = async () => {
       try {
         setLoading(true);
         setError(null);
         const productData = await productApi.getProduct(id);
+        console.log("✅ Product data loaded:", productData); // <-- THÊM DÒNG NÀY
+
+        // ✅ CHỈ ẨN SẢN PHẨM KHÔNG PHẢI 'approved'
+        const isStoreBlocked = productData.store?.status === "rejected";
+        const isProductVisible = productData.status === "approved";
+
+        if (!isProductVisible) {
+          setError("Sản phẩm không tồn tại hoặc đã bị khóa.");
+          return;
+        }
+
+        // ✅ Cho phép hiển thị sản phẩm dù cửa hàng bị rejected
+
         setProduct(productData);
 
         const reviewList = await reviewApi.getReviews(id);
@@ -186,14 +185,14 @@ const ProductDetailPage = () => {
           setHasReviewed(!!myReview);
         }
       } catch (err) {
-        setError("Không thể tải chi tiết sản phẩm.");
+        console.error("Load product error:", err);
+        setError("Sản phẩm không tồn tại hoặc đã bị khóa.");
       } finally {
         setLoading(false);
       }
     };
     loadData();
   }, [id, user]);
-
   const handleAddToCart = async () => {
     if (!product) return;
 
@@ -204,21 +203,17 @@ const ProductDetailPage = () => {
       status.includes("sắp") ||
       status.includes("sap");
 
-    // Sản phẩm sắp có → đặt trước
     const preorder = isComingSoon || product.stock <= 0;
 
     await addToCart(
       product.id,
       quantity,
       { ...product, preorder },
-      () => setQuantity(1), // onSuccess callback chỉ reset số lượng
-      () => {} // onError callback nếu muốn thêm xử lý riêng
+      () => setQuantity(1),
+      () => {}
     );
   };
 
-  
-
-  // Gửi đánh giá
   const handleSubmitReview = async () => {
     if (!user) {
       toast.info("Bạn cần đăng nhập để đánh giá", { position: "bottom-right" });
@@ -254,8 +249,6 @@ const ProductDetailPage = () => {
     }
   };
 
-  // Mua ngay
-  // Mua ngay / Đặt trước
   const handleBuyNow = async () => {
     if (!product) return;
 
@@ -267,15 +260,12 @@ const ProductDetailPage = () => {
       status.includes("sap");
     const isOutOfStock = product.stock <= 0;
 
-    // ✅ Nếu là sắp có hoặc hết hàng → xử lý "Đặt trước"
     if (isComingSoon || isOutOfStock) {
-      // Hiện modal để người dùng nhập số lượng đặt trước ngay trên trang sản phẩm
       setPreorderQty(quantity || 1);
       setShowPreorderModal(true);
       return;
     }
 
-    // ✅ Nếu còn hàng → xử lý mua bình thường
     setAdding(true);
     await addToCart(
       product.id,
@@ -313,13 +303,14 @@ const ProductDetailPage = () => {
     );
   }
 
+  // ✅ Hiển thị thông báo lỗi nếu không có quyền truy cập
   if (error || !product) {
     return (
-      <div style={{ maxWidth: 600, margin: "10px 190px" }}>
+      <div style={{ maxWidth: 600, margin: "40px auto", padding: "0 20px" }}>
         <Alert
-          message="Lỗi"
-          description={error}
-          type="error"
+          message="Không thể truy cập"
+          description={error || "Sản phẩm không tồn tại hoặc đã bị khóa."}
+          type="warning"
           showIcon
           action={
             <Button onClick={() => navigate(-1)} type="primary">
@@ -330,6 +321,7 @@ const ProductDetailPage = () => {
       </div>
     );
   }
+
   const breadcrumbItems = [
     { title: "Trang chủ", href: "/" },
     {
@@ -342,6 +334,7 @@ const ProductDetailPage = () => {
     },
     { title: product.name },
   ];
+
   return (
     <div style={{ padding: "20px 160px" }}>
       <div
@@ -466,7 +459,6 @@ const ProductDetailPage = () => {
                       }
 
                       if (user) {
-                        // Authenticated users -> call backend
                         await productApi.preorderProduct(product.id, quantity);
                         toast.success(
                           `✅ Đặt trước ${quantity} sản phẩm thành công!`,
@@ -475,16 +467,14 @@ const ProductDetailPage = () => {
                           }
                         );
 
-                        // Cập nhật lại số lượng đã đặt trong local state
                         setProduct((prev) => ({
                           ...prev,
                           ordered_quantity:
                             (prev.ordered_quantity || 0) + Number(quantity),
                         }));
                         setQuantity(1);
-                        navigate("/preorders"); // ➜ Chuyển tới danh sách đặt trước
+                        navigate("/preorders");
                       } else {
-                        // Guest -> save to localStorage
                         const stored = JSON.parse(
                           localStorage.getItem("preorders") || "[]"
                         );
@@ -533,7 +523,7 @@ const ProductDetailPage = () => {
                           }
                         );
                         setQuantity(1);
-                        navigate("/preorders"); // ➜ Chuyển tới danh sách đặt trước
+                        navigate("/preorders");
                       }
                     } catch (err) {
                       toast.error("Không thể đặt trước sản phẩm này!", {
@@ -550,12 +540,10 @@ const ProductDetailPage = () => {
         </Space>
       </Card>
 
-      {/* Cửa hàng */}
       {product.store && (
         <StoreCard store={product.store} productId={product.id} />
       )}
 
-      {/* Mô tả */}
       <Card style={{ marginTop: 24, borderRadius: 8 }}>
         <Title level={4} style={{ marginBottom: 8 }}>
           Mô tả sản phẩm
@@ -596,7 +584,6 @@ const ProductDetailPage = () => {
         </div>
       </Card>
 
-      {/* Đánh giá */}
       <ReviewsSection
         user={user}
         reviews={reviews}
@@ -609,7 +596,6 @@ const ProductDetailPage = () => {
         onSubmitReview={handleSubmitReview}
       />
 
-      {/* Sản phẩm liên quan */}
       <RelatedProducts products={relatedProducts} />
     </div>
   );

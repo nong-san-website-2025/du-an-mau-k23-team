@@ -1,6 +1,6 @@
 // src/features/cart/pages/CartPage.jsx
 import React, { useState, useEffect } from "react";
-import { useCart } from "../services/CartContext";
+import { useCart, getItemProductId } from "../services/CartContext";
 import { Card, Button, Modal, Checkbox, Popover } from "antd";
 import { Store, Ticket, TicketIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -9,6 +9,7 @@ import QuantityInput from "./QuantityInput";
 import "../styles/CartPage.css";
 import Layout from "../../../Layout/LayoutDefault";
 import { getSellerDetail } from "../../sellers/services/sellerService";
+import NoImage from "../../../components/shared/NoImage";
 
 function CartPage() {
   const { cartItems, clearCart, selectAllItems, deselectAllItems, toggleItem } =
@@ -25,8 +26,7 @@ function CartPage() {
 
   const navigate = useNavigate();
 
-  useEffect(() => {
-  }, [cartItems]);
+  useEffect(() => {}, [cartItems]);
 
   useEffect(() => {
     const loadSellerInfos = async () => {
@@ -210,21 +210,34 @@ function CartPage() {
                   {items.map((item) => {
                     const prod = item.product_data || item.product || {};
                     const stableKey = item.id || item.product;
-                    const itemId =
-                      item.id || item.product_data?.id || item.product;
+                    const itemId = getItemProductId(item);
                     return (
                       <div key={stableKey} className="cart-item px-4">
                         <Checkbox
                           checked={item.selected || false}
-                          onChange={() => handleCheckItem(stableKey)}
+                          onChange={() => handleCheckItem(itemId)}
                         />
                         <div className="item-info">
-                          <img
-                            src={prod.image || "/no-image.png"}
-                            alt={prod.name}
-                            className="item-img"
-                            onClick={() => navigate(`/products/${prod.id}`)}
-                          />
+                          {prod.image ? (
+                            <img
+                              src={prod.image}
+                              alt={prod.name}
+                              className="item-img"
+                              onClick={() => navigate(`/products/${prod.id}`)}
+                            />
+                          ) : (
+                            <div
+                              className="item-img"
+                              onClick={() => navigate(`/products/${prod.id}`)}
+                              style={{ cursor: "pointer" }}
+                            >
+                              <NoImage
+                                width="100%"
+                                height={90}
+                                text="Không có ảnh"
+                              />
+                            </div>
+                          )}
                           <span
                             className="item-name"
                             onClick={() => navigate(`/products/${prod.id}`)}

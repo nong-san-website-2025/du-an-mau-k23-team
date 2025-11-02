@@ -1,73 +1,18 @@
 import React from "react";
-import {
-  Dropdown,
-  Menu,
-  Button,
-  Tooltip,
-  Popconfirm,
-  message,
-} from "antd";
+import { Button, Tooltip, Popconfirm, message } from "antd";
 import {
   CheckOutlined,
   CloseOutlined,
-  EyeOutlined,
   StopOutlined,
   UnlockOutlined,
-  MoreOutlined,
 } from "@ant-design/icons";
-import { motion } from "framer-motion"; // 👈 dùng cho hiệu ứng nhẹ
+import { motion } from "framer-motion";
 
-const ProductActions = ({
-  record,
-  onApprove,
-  onReject,
-  onView,
-  onToggleBan,
-}) => {
+const ProductActions = ({ record, onApprove, onReject, onToggleBan }) => {
   const isApproved = record.status === "approved";
   const isRejected = record.status === "rejected";
   const isPending = record.status === "pending";
   const isBanned = record.status === "banned";
-
-  // ⚙️ Hàm hiển thị trạng thái tiếng Việt (cho tooltip hoặc tag)
-
-
-  // 📋 Menu phụ (Xem, Khoá/Mở khoá)
-  const menu = (
-    <Menu
-      style={{
-        minWidth: 180,
-        borderRadius: 8,
-        padding: 6,
-      }}
-    >
-      <Menu.Item
-        key="view"
-        icon={<EyeOutlined />}
-        onClick={() => onView(record)}
-      >
-        Xem chi tiết
-      </Menu.Item>
-
-      {isBanned ? (
-        <Menu.Item
-          key="unban"
-          icon={<UnlockOutlined style={{ color: "#52c41a" }} />}
-          onClick={() => onToggleBan(record)}
-        >
-          Mở khoá sản phẩm
-        </Menu.Item>
-      ) : (
-        <Menu.Item
-          key="ban"
-          icon={<StopOutlined style={{ color: "#ff4d4f" }} />}
-          onClick={() => onToggleBan(record)}
-        >
-          Khoá sản phẩm
-        </Menu.Item>
-      )}
-    </Menu>
-  );
 
   return (
     <motion.div
@@ -77,9 +22,10 @@ const ProductActions = ({
       style={{
         display: "flex",
         alignItems: "center",
-        gap: 8,
+        gap: 6,
         justifyContent: "center",
       }}
+      onClick={(e) => e.stopPropagation()} // ✅ chặn click lan lên row
     >
       {/* ✅ Duyệt sản phẩm */}
       <Tooltip title="Duyệt sản phẩm">
@@ -87,16 +33,19 @@ const ProductActions = ({
           title="Bạn có chắc muốn duyệt sản phẩm này?"
           okText="Duyệt"
           cancelText="Hủy"
-          onConfirm={() => {
+          onConfirm={(e) => {
+            e?.stopPropagation();
             onApprove(record);
             message.success("Đã duyệt sản phẩm!");
           }}
+          onCancel={(e) => e?.stopPropagation()}
         >
           <Button
             type="primary"
             icon={<CheckOutlined />}
             size="small"
             disabled={isApproved || isRejected || isBanned}
+            onClick={(e) => e.stopPropagation()}
           />
         </Popconfirm>
       </Tooltip>
@@ -107,32 +56,64 @@ const ProductActions = ({
           title="Bạn có chắc muốn từ chối sản phẩm này?"
           okText="Từ chối"
           cancelText="Hủy"
-          onConfirm={() => {
+          onConfirm={(e) => {
+            e?.stopPropagation();
             onReject(record);
             message.info("Đã từ chối sản phẩm.");
           }}
+          onCancel={(e) => e?.stopPropagation()}
         >
           <Button
             danger
             icon={<CloseOutlined />}
             size="small"
             disabled={isApproved || isRejected || isBanned}
+            onClick={(e) => e.stopPropagation()}
           />
         </Popconfirm>
       </Tooltip>
 
-      {/* 🔽 Các hành động phụ */}
-      <Dropdown overlay={menu} trigger={["click"]} placement="bottomRight">
-        <Tooltip title="Hành động khác">
-          <Button
-            icon={<MoreOutlined />}
-            size="small"
-            style={{
-              borderRadius: 6,
+      {/* 🚫 / 🔓 Khoá / Mở khoá sản phẩm */}
+      {isBanned ? (
+        <Tooltip title="Mở khoá sản phẩm">
+          <Popconfirm
+            title="Bạn có chắc muốn mở khoá sản phẩm này?"
+            okText="Mở khoá"
+            cancelText="Hủy"
+            onConfirm={(e) => {
+              e?.stopPropagation();
+              onToggleBan(record);
+              message.success("Đã mở khoá sản phẩm!");
             }}
-          />
+            onCancel={(e) => e?.stopPropagation()}
+          >
+            <Button
+              icon={<UnlockOutlined style={{ color: "#52c41a" }} />}
+              size="small"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </Popconfirm>
         </Tooltip>
-      </Dropdown>
+      ) : (
+        <Tooltip title="Khoá sản phẩm">
+          <Popconfirm
+            title="Bạn có chắc muốn khoá sản phẩm này?"
+            okText="Khoá"
+            cancelText="Hủy"
+            onConfirm={(e) => {
+              e?.stopPropagation();
+              onToggleBan(record);
+            }}
+            onCancel={(e) => e?.stopPropagation()}
+          >
+            <Button
+              icon={<StopOutlined style={{ color: "#ff4d4f" }} />}
+              size="small"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </Popconfirm>
+        </Tooltip>
+      )}
     </motion.div>
   );
 };

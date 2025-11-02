@@ -35,11 +35,8 @@ import PrimarySecurity from "../pages/CustomerService/Primarysecurity";
 import Recruitment from "../pages/CustomerService/Recruitment";
 import Termsofservice from "../pages/CustomerService/Termsofservice";
 import RturnmoNey from "../pages/CustomerService/RturnmoNey";
-import  GreenFarmwallet from "../pages/CustomerService/GreenFarmwallet";
+import GreenFarmwallet from "../pages/CustomerService/GreenFarmwallet";
 import Frequentlyaskedquestions from "../pages/CustomerService/FAQ";
-
-
-  
 
 export const userRoutes = [
   <Route path="/" element={<Layout />} key="layout">
@@ -56,7 +53,7 @@ export const userRoutes = [
     <Route path="contactsupport" element={<ContactSupport />} />
     <Route path="primarysecurity" element={<PrimarySecurity />} />
     <Route path="recruitment" element={<Recruitment />} />
-     <Route path="terms-of-service" element={<Termsofservice />} />
+    <Route path="terms-of-service" element={<Termsofservice />} />
     <Route path="wishlist" element={<Wishlist />} />
     <Route path="abouts" element={<AboutPage />} />
     <Route path="store" element={<StoreList />} />
@@ -84,5 +81,9 @@ export const userRoutes = [
       <Route path="faq" element={<Frequentlyaskedquestions />} />
     </Route>
   </Route>,
-  <Route path="/selling-guide" element={<SellingGuide />} />,
+  <Route
+    path="/selling-guide"
+    element={<SellingGuide />}
+    key="/selling-guide" // ✅ THÊM DÒNG NÀY
+  />,
 ];

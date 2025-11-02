@@ -27,6 +27,7 @@ export default function UserTable({
   onShowDetail,
   triggerAddUser,
   setTriggerAddUser,
+  onRow,
 }) {
   const { t } = useTranslation();
   const { confirm } = Modal;
@@ -191,64 +192,36 @@ export default function UserTable({
     {
       title: t("Hành động"),
       key: "actions_detail",
-      width: 100,
+      width: 180,
       align: "center",
       render: (_, record) => (
-        <Dropdown
-          menu={{
-            items: [
-              {
-                key: "toggle",
-                label: (
-                  <span
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                    }}
-                  >
-                    {record.is_active ? (
-                      <>
-                        <LockOutlined />
-                        Khóa tài khoản
-                      </>
-                    ) : (
-                      <>
-                        <UnlockOutlined />
-                        Mở khóa tài khoản
-                      </>
-                    )}
-                  </span>
-                ),
-                onClick: () => handleToggleUser(record),
-              },
-              {
-                key: "delete",
-                label: (
-                  <span style={{}}>
-                    <DeleteOutlined className="me-2" />
-                    {t("Xoá tài khoản")}
-                  </span>
-                ),
-                disabled: !record.can_delete,
-                onClick: () => record.can_delete && handleDeleteUser(record),
-              },
-              {
-                key: "detail",
-                label: (
-                  <span>
-                    <EyeOutlined className="me-2" />
-                    {t("Chi tiết")}
-                  </span>
-                ),
-                onClick: () => onShowDetail(record),
-              },
-            ],
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            gap: "8px",
           }}
-          trigger={["click"]}
+          onClick={(e) => e.stopPropagation()} // chặn click lan ra row
         >
-          <Button icon={<EllipsisOutlined />} />
-        </Dropdown>
+          {/* Khóa / Mở tài khoản */}
+          <Button
+            icon={record.is_active ? <LockOutlined /> : <UnlockOutlined />}
+            danger={!record.is_active}
+            type={record.is_active ? "default" : "primary"}
+            size="small"
+            onClick={() => handleToggleUser(record)}
+          />
+
+          {/* Xoá tài khoản */}
+          <Button
+            icon={<DeleteOutlined />}
+            type="primary"
+            danger
+            size="small"
+            disabled={!record.can_delete}
+            onClick={() => record.can_delete && handleDeleteUser(record)}
+          />
+        </div>
       ),
     },
   ];
@@ -271,6 +244,8 @@ export default function UserTable({
         pagination={{ pageSize: 10 }}
         size="small"
         scroll={{ x: 1000 }}
+        onRow={onRow} // 👈 THÊM DÒNG NÀY
+        rowClassName="table-row"
       />
 
       {showAddModal && (

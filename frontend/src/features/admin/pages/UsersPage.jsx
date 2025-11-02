@@ -7,6 +7,7 @@ import axios from "axios";
 import { useTranslation } from "react-i18next";
 import { Button, Row, Col, Input, Space } from "antd";
 import AdminPageLayout from "../components/AdminPageLayout"; // ✅ Thêm layout
+import "../styles/AdminPageLayout.css"
 
 export default function UsersPage() {
   const [users, setUsers] = useState([]);
@@ -69,6 +70,7 @@ export default function UsersPage() {
   return (
     <AdminPageLayout
       title={t("QUẢN LÝ NGƯỜI DÙNG")}
+      className="row-hover"
       // extra={
       //   <Button type="primary" onClick={() => setTriggerAddUser(true)}>
       //     + {t("Thêm người dùng")}
@@ -127,6 +129,9 @@ export default function UsersPage() {
         triggerAddUser={triggerAddUser}
         setTriggerAddUser={setTriggerAddUser}
         onShowDetail={handleShowDetail}
+        onRow={(record) => ({
+          onClick: () => handleShowDetail(record),
+        })}
       />
 
       {/* Modal chi tiết người dùng */}
