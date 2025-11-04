@@ -12,7 +12,7 @@ const StoreHeader = ({
   followingCount,
   ratingStats,
   onFollow,
-  onOpenChat,
+  handleOpenChat,
 }) => {
   return (
     <Card
@@ -99,7 +99,7 @@ const StoreHeader = ({
                 <Button
                   size="middle"
                   icon={<MessageOutlined />}
-                  onClick={onOpenChat}
+                  onClick={handleOpenChat} // <-- Dùng hàm này
                   style={{
                     borderRadius: 12,
                     fontWeight: 600,

@@ -3,6 +3,9 @@ from django.core.mail import send_mail
 from django.db.models import Sum, Count
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
+from django.http import JsonResponse
+from rest_framework_simplejwt.exceptions import TokenError
 
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.conf import settings
@@ -35,12 +38,14 @@ import requests
 from django.http import StreamingHttpResponse
 import json
 from queue import Queue
+from sellers.models import SellerActivityLog
 from threading import Lock
+
 
 
 FRONTEND_URL = "http://localhost:3000"
 
-# SSE globals
+
 user_queues = {}
 queue_lock = Lock()
 
@@ -423,7 +428,6 @@ class RegisterView(generics.CreateAPIView):
             fail_silently=False,
         )
     
-
 class LoginView(APIView):
     permission_classes = [AllowAny]
 
@@ -458,6 +462,19 @@ class LoginView(APIView):
             "name": user.role.name
         } if user.role else None
 
+        # 🔥 GHI LOG ĐĂNG NHẬP CHO SELLER
+        if user.role and user.role.name.lower() == "seller":
+            try:
+                seller = user.seller  # Giả sử user có OneToOneField với Seller
+                SellerActivityLog.objects.create(
+                    seller=seller,
+                    action="login",
+                    description=f"Đăng nhập từ IP: {self.get_client_ip(request)}"
+                )
+            except Exception as e:
+                # Không làm gián đoạn quá trình login nếu log thất bại
+                print(f"Failed to log seller activity: {e}")
+
         return Response({
             "id": user.id,
             "username": user.username,
@@ -468,7 +485,69 @@ class LoginView(APIView):
             "refresh": str(refresh),
         }, status=status.HTTP_200_OK)
 
+    def get_client_ip(self, request):
+        """Lấy IP của client"""
+        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        if x_forwarded_for:
+            ip = x_forwarded_for.split(',')[0]
+        else:
+            ip = request.META.get('REMOTE_ADDR')
+        return ip
 
+@csrf_exempt
+@require_POST
+def logout_view(request):
+    try:
+        try:
+            body = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({"detail": "Invalid JSON in request body"}, status=400)
+
+        refresh_token = body.get("refresh")
+        if not refresh_token:
+            return JsonResponse({"detail": "Refresh token is required"}, status=400)
+
+        # Decode refresh token để lấy user
+        token = RefreshToken(refresh_token)
+        user = User.objects.get(id=token["user_id"])
+
+        # 🔥 GHI LOG NẾU LÀ SELLER
+        if hasattr(user, 'role') and user.role and user.role.name.lower() == "seller":
+            try:
+                if hasattr(user, 'seller') and user.seller:
+                    from sellers.models import SellerActivityLog
+                    log = SellerActivityLog.objects.create(
+                        seller=user.seller,
+                        action="logout",
+                        description=f"Đăng xuất từ IP: {get_client_ip(request)}"
+                    )
+                    print(f"✅ Seller logout log created: {log.id}")
+            except Exception as log_error:
+                print(f"Warning: Failed to log seller activity: {log_error}")
+
+        # Optional: blacklist token (don't fail logout if blacklisting fails)
+        try:
+            token.blacklist()
+        except Exception as blacklist_error:
+            print(f"Warning: Failed to blacklist token: {blacklist_error}")
+
+        return JsonResponse({"detail": "Đăng xuất thành công"}, status=200)
+
+    except TokenError:
+        return JsonResponse({"detail": "Invalid or expired refresh token"}, status=400)
+    except User.DoesNotExist:
+        return JsonResponse({"detail": "User not found"}, status=400)
+    except Exception as e:
+        print("Logout error:", e)
+        return JsonResponse({"detail": "Logout failed"}, status=500)
+
+def get_client_ip(request):
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(',')[0]
+    else:
+        ip = request.META.get('REMOTE_ADDR')
+    return ip
 
 class PasswordResetRequestView(generics.GenericAPIView):
     permission_classes = [AllowAny]

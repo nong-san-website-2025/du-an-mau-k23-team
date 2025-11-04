@@ -43,8 +43,8 @@ import StatisticsPage from "../features/admin/pages/StatisticsPage";
 
 // Shop management
 import SellersPage from "../features/admin/pages/Sellers/SellersPage";
-import ActiveLockedSellersPage from "../features/admin/pages/ShopPage/ActiveLockedSellersPage.jsx"; // ✅ bỏ .jsx thừa
-import ApprovalSellersPage from "../features/admin/pages/ShopPage/ApprovalSellersPage.jsx";
+import ActiveLockedSellersPage from "../features/admin/pages/SellerPage/ActiveLockedSellersPage.jsx"; // ✅ bỏ .jsx thừa
+import ApprovalSellersPage from "../features/admin/pages/SellerPage/ApprovalSellersPage.jsx";
 import ApprovalProductsPage from "../features/admin/pages/ProductPage/ApprovalProductsPage.jsx";
 import CategoryManagementPage from "../features/admin/pages/ProductPage/CategoryManagement.jsx";
 import Promotions from "../features/admin/pages/Promotions/PromotionsPage.jsx";

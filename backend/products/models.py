@@ -56,7 +56,7 @@ class Product(models.Model):
     discounted_price = models.DecimalField(max_digits=10, decimal_places=0, default=0)
     unit = models.CharField(max_length=10, choices=UNIT_CHOICES, default="kg")
     stock = models.PositiveIntegerField(default=0)
-    image = models.ImageField(upload_to='products/', blank=True, null=True)
+    # image = models.ImageField(upload_to='products/', blank=True, null=True)
     rating = models.DecimalField(max_digits=3, decimal_places=1, default=0)
     review_count = models.PositiveIntegerField(default=0)
     location = models.CharField(max_length=100, blank=True)

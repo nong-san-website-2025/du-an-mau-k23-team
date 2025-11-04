@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 
+
 from .models import Product, Category, Subcategory
 from .serializers import (
     ProductSerializer,
@@ -21,7 +22,27 @@ from reviews.models import Review
 from reviews.serializers import ReviewSerializer
 from orders.models import OrderItem, Preorder
 
+
+from django.db.models import Sum, Count, Q
+from django.utils import timezone
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAdminUser
+from rest_framework.response import Response
+from django.contrib.auth import get_user_model
+from products.models import Product
+
+from rest_framework import status
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
+from .models import Product, ProductImage
+from .serializers import ProductImageCreateSerializer
+from sellers.models import Seller  # hoặc import đúng đường dẫn
+from rest_framework.parsers import MultiPartParser
+
 import unicodedata
+
+User = get_user_model()
 
     
 
@@ -254,7 +275,73 @@ class ProductViewSet(viewsets.ModelViewSet):
         return self.ordered_quantity < self.estimated_quantity
 
 
+class ProductImageUploadView(APIView):
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser]
 
+    def post(self, request, product_id):
+        # ✅ Kiểm tra product thuộc seller hiện tại
+        try:
+            product = Product.objects.get(id=product_id, seller__user=request.user)
+        except Product.DoesNotExist:
+            return Response(
+                {"error": "Sản phẩm không tồn tại hoặc không thuộc về bạn"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        files = request.FILES.getlist('images')
+        if not files:
+            return Response(
+                {"error": "Vui lòng chọn ít nhất một ảnh"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if len(files) > 6:
+            return Response(
+                {"error": "Tối đa 6 ảnh"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Optional: lấy danh sách is_primary (có thể chỉ cho phép 1 ảnh chính)
+        is_primary_flags = request.data.getlist('is_primary')  # ["true", "false", ...]
+        
+        created_images = []
+        for i, file in enumerate(files):
+            is_primary = False
+            if is_primary_flags and i < len(is_primary_flags):
+                is_primary = is_primary_flags[i].lower() == 'true'
+            # Hoặc: chỉ ảnh đầu tiên là chính (đơn giản)
+            # is_primary = (i == 0)
+
+            img = ProductImage.objects.create(
+                product=product,
+                image=file,
+                is_primary=is_primary
+            )
+            created_images.append(img)
+
+        # Nếu có ảnh mới, cập nhật Product.image = ảnh chính đầu tiên
+        primary_img = ProductImage.objects.filter(product=product, is_primary=True).first()
+        if primary_img:
+            product.image = primary_img.image
+            product.save(update_fields=['image'])
+
+        return Response(
+            {"message": "Tải ảnh thành công", "count": len(created_images)},
+            status=status.HTTP_201_CREATED
+        )
+
+
+class ProductImageDeleteView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, image_id):
+        try:
+            img = ProductImage.objects.get(id=image_id, product__seller__user=request.user)
+            img.delete()
+            return Response({"message": "Xóa ảnh thành công"}, status=status.HTTP_204_NO_CONTENT)
+        except ProductImage.DoesNotExist:
+            return Response({"error": "Ảnh không tồn tại"}, status=status.HTTP_404_NOT_FOUND)
 
 
 
@@ -531,3 +618,4 @@ def my_products_simple_list(request):
             return Response({"message": "Đã cập nhật số lượng đặt trước"}, status=200)
         except PreOrder.DoesNotExist:
             return Response({"error": "Không tìm thấy đơn đặt trước"}, status=404)
+

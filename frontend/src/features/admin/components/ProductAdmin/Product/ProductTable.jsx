@@ -181,7 +181,7 @@ const ProductTable = ({
       fixed: "right",
       render: (_, record) => (
         <ProductActions
-          record={record}
+          record={record} 
           onApprove={onApprove}
           onReject={onReject}
           onView={onView}

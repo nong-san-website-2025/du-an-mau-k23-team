@@ -21,4 +21,6 @@ urlpatterns = [
     path("products/bulk-approve/", views.bulk_approve_products, name="bulk-approve-products"),
     path('my-products/simple/', my_products_simple_list, name='my-products-simple'),
     path('subcategories/<int:subcategory_id>/products/', products_by_subcategory),
+    path('<int:product_id>/images/', views.ProductImageUploadView.as_view(), name='product-image-upload'),
+    path('images/<int:image_id>/', views.ProductImageDeleteView.as_view(), name='product-image-delete'),
 ]

@@ -3,19 +3,39 @@ from rest_framework import status as drf_status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status as drf_status
-from rest_framework.views import APIView
+from datetime import date
+
+from django.db.models import Sum, F, DecimalField
+
 from rest_framework import generics
+from django.db import models
+from django.db.models.functions import Coalesce, Cast
+
 from .models import Seller
 from .serializers import SellerListSerializer, SellerDetailSerializer, SellerRegisterSerializer
 from rest_framework import viewsets, permissions
-from .models import Seller, Shop, Product, Order, Voucher, SellerFollow
+from rest_framework.decorators import api_view, permission_classes
+from .models import Seller, Shop, Product, SellerFollow
 from .serializers import SellerSerializer,  ShopSerializer, ProductSerializer, OrderSerializer, VoucherSerializer, SellerFollowSerializer
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.decorators import api_view
 from django.contrib.auth.models import User
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.decorators import action
+from django.db.models import Sum, Count, Q, Avg
+
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from datetime import datetime   
+from django.utils import timezone
+
+from orders.models import Order, OrderItem 
+
+from sellers.models import SellerActivityLog
+from sellers.serializers import SellerActivityLogSerializer
+from products.serializers import ProductListSerializer
+
+
+
+
 from django.shortcuts import get_object_or_404
 
 @api_view(["GET"])
@@ -183,7 +203,7 @@ class SellerProductsAPIView(APIView):
         if status_filter:
             products = products.filter(status=status_filter)
 
-        serializer = ProductSerializer(products, many=True)
+        serializer = ProductListSerializer(products, many=True)
         return Response(serializer.data)
 
 
@@ -321,3 +341,110 @@ class MyFollowersAPIView(APIView):
             for f in qs
         ]
         return Response(data)
+
+@api_view(["GET"])
+@permission_classes([IsAdminUser])
+def seller_analytics_detail(request, seller_id):
+    try:
+        seller = Seller.objects.get(pk=seller_id)
+    except Seller.DoesNotExist:
+        return Response({"detail": "Seller not found"}, status=404)
+
+    # Thống kê sản phẩm
+    products = Product.objects.filter(seller=seller)
+    total_products = products.count()
+    active_products = products.filter(status="approved").count()
+    hidden_products = products.filter(is_hidden=True).count()
+
+    # Thống kê đơn hàng
+    order_ids = (
+        OrderItem.objects.filter(product__seller=seller)
+        .values_list("order_id", flat=True)
+        .distinct()
+    )
+    orders = Order.objects.filter(id__in=order_ids)
+    total_orders = orders.count()
+    orders_completed = orders.filter(status="success").count()
+    orders_pending = orders.filter(status="pending").count()
+    orders_canceled = orders.filter(status="cancelled").count()
+
+    # Tính toán doanh thu
+    now = timezone.now()
+    # Lấy ngày đầu tháng hiện tại
+    month_start = date(now.year, now.month, 1)
+
+    revenue_qs = OrderItem.objects.filter(
+        product__seller=seller,
+        order__status="success"
+    )
+
+    # Tổng doanh thu
+    total_revenue = revenue_qs.aggregate(
+        total=Coalesce(
+            Sum(
+                F('price') * F('quantity'),
+                output_field=DecimalField(max_digits=20, decimal_places=2)
+            ),
+            0,
+            output_field=DecimalField(max_digits=20, decimal_places=2)
+        )
+    )['total']
+
+    # Doanh thu tháng này (so sánh theo date thay vì datetime)
+    monthly_revenue = revenue_qs.filter(
+        order__created_at__date__gte=month_start
+    ).aggregate(
+        total=Coalesce(
+            Sum(
+                F('price') * F('quantity'),
+                output_field=DecimalField(max_digits=20, decimal_places=2)
+            ),
+            0,
+            output_field=DecimalField(max_digits=20, decimal_places=2)
+        )
+    )['total']
+
+    print(f"Month start: {month_start}")
+    print(f"Orders count this month: {revenue_qs.filter(order__created_at__date__gte=month_start).count()}")
+
+    # Thống kê đánh giá
+    review_stats = products.aggregate(
+        avg_rating=Avg("rating"),
+        total_reviews=Coalesce(Sum("review_count"), 0)
+    )
+    avg_rating = review_stats["avg_rating"] or 0
+    total_reviews = review_stats["total_reviews"] or 0
+
+    return Response({
+        "seller_id": seller.id,
+        "store_name": seller.store_name,
+        "overview": {
+            "total_products": total_products,
+            "active_products": active_products,
+            "hidden_products": hidden_products,
+            "total_orders": total_orders,
+            "orders_completed": orders_completed,
+            "orders_pending": orders_pending,
+            "orders_canceled": orders_canceled,
+        },
+        "finance": {
+            "monthly_revenue": float(monthly_revenue),
+            "total_revenue": float(total_revenue),
+        },
+        "reviews": {
+            "avg_rating": round(float(avg_rating), 2),
+            "total_reviews": int(total_reviews),
+        },
+    })
+
+@api_view(["GET"])
+@permission_classes([IsAdminUser])
+def seller_activity_history(request, seller_id):
+    try:
+        seller = Seller.objects.get(pk=seller_id)
+    except Seller.DoesNotExist:
+        return Response({"detail": "Seller not found"}, status=404)
+
+    logs = SellerActivityLog.objects.filter(seller=seller).order_by("-created_at")[:30]
+    serializer = SellerActivityLogSerializer(logs, many=True)
+    return Response(serializer.data)

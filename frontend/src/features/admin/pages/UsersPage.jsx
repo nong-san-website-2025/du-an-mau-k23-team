@@ -7,7 +7,7 @@ import axios from "axios";
 import { useTranslation } from "react-i18next";
 import { Button, Row, Col, Input, Space } from "antd";
 import AdminPageLayout from "../components/AdminPageLayout"; // ✅ Thêm layout
-import "../styles/AdminPageLayout.css"
+import "../styles/AdminPageLayout.css";
 
 export default function UsersPage() {
   const [users, setUsers] = useState([]);

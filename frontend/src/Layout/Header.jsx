@@ -9,13 +9,14 @@ import Logo from "./Header/Logo";
 import SearchBoxWithSuggestions from "./Header/SearchBoxWithSuggestions";
 import UserActions from "./Header/UserActions";
 import TopBar from "./Header/TopBar";
+import { useAuth } from "../features/login_register/services/AuthContext";
 
 import useSellerStatus from "../services/hooks/useSellerStatus";
 import useSearch from "../services/hooks/useSearch";
 
 export default function Header({ shouldFetchProfile = true }) {
   const userProfile = useUserProfile();
-
+  const { logout } = useAuth();
   const { cartItems } = useCart();
   const cartCount = cartItems.length;
   const [popularItems, setPopularItems] = useState([]);
@@ -65,8 +66,8 @@ export default function Header({ shouldFetchProfile = true }) {
       .then((data) => setPopularItems(data.items || []))
       .catch((err) => console.error("Failed to load popular items", err));
   }, []);
-  const handleLogout = () => {
-    localStorage.clear();
+  const handleLogout = async () => {
+    await logout(); // gọi logout từ AuthContext
     setShowProfileDropdown(false);
     navigate("/login", { replace: true });
   };

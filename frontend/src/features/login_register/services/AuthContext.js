@@ -86,36 +86,52 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = async () => {
-
-    // Xử lý cart như cũ
     try {
       const token = localStorage.getItem("token");
+
+      // 🔥 GỬI REQUEST LOGOUT ĐẾN BACKEND (ghi log)
       if (token) {
-        const res = await api.get("/cartitems/");
-        const serverCart = Array.isArray(res.data) ? res.data : [];
-        const guestCart = serverCart.map((item) => ({
-          product: item.product_data?.id || item.product,
-          quantity: item.quantity,
-          product_data: {
-            id: item.product_data?.id || item.product,
-            name: item.product_data?.name || "",
-            price: item.product_data?.price || 0,
-            image: item.product_data?.image || "",
-          },
-        }));
-        if (guestCart.length > 0) {
-          localStorage.setItem("guest_cart", JSON.stringify(guestCart));
+        try {
+          const refreshToken = localStorage.getItem("refresh");
+          await api.post("/users/logout/", {
+            refresh: refreshToken,
+          });
+        } catch (logoutErr) {
+          console.warn("Logout API call failed (but continuing):", logoutErr);
+        }
+
+        // Xử lý cart như cũ
+        try {
+          const res = await api.get("/cartitems/");
+          const serverCart = Array.isArray(res.data) ? res.data : [];
+          const guestCart = serverCart.map((item) => ({
+            product: item.product_data?.id || item.product,
+            quantity: item.quantity,
+            product_data: {
+              id: item.product_data?.id || item.product,
+              name: item.product_data?.name || "",
+              price: item.product_data?.price || 0,
+              image: item.product_data?.image || "",
+            },
+          }));
+          if (guestCart.length > 0) {
+            localStorage.setItem("guest_cart", JSON.stringify(guestCart));
+          }
+        } catch (e) {
+          console.warn("Could not sync cart to guest_cart on logout", e);
         }
       }
-    } catch (e) {
-      console.warn("Could not sync cart to guest_cart on logout", e);
+    } catch (err) {
+      console.error("Logout process error:", err);
+    } finally {
+      // ✅ LUÔN XÓA TOKEN VÀ RESET USER (dù có lỗi hay không)
+      const keysToRemove = ["token", "refresh"];
+      keysToRemove.forEach((k) => localStorage.removeItem(k));
+      setUser(null);
+
+      // 👇 GỬI SỰ KIỆN ĐĂNG XUẤT (nếu cần)
+      window.dispatchEvent(new CustomEvent("user-logged-out"));
     }
-
-    // Xoá token và thông tin xác thực
-    const keysToRemove = ["token", "refresh"];
-    keysToRemove.forEach((k) => localStorage.removeItem(k));
-
-    setUser(null);
   };
 
   const value = {

@@ -2,7 +2,11 @@ from rest_framework import serializers
 from .models import Seller
 from products.models import Product
 from rest_framework import serializers
-from .models import Seller, Shop, Order, Voucher, SellerFollow
+from .models import Seller, Shop, SellerFollow
+from orders.models import Order
+from promotions.models import Voucher
+from sellers.models import SellerActivityLog
+
 
 class ProductMiniSerializer(serializers.ModelSerializer):
     discounted_price = serializers.SerializerMethodField()
@@ -118,3 +122,9 @@ class SellerFollowSerializer(serializers.ModelSerializer):
         model = SellerFollow
         fields = ["id", "user", "seller", "created_at"]
         read_only_fields = ["id", "created_at", "user"]
+
+class SellerActivityLogSerializer(serializers.ModelSerializer):
+    action_display = serializers.CharField(source="get_action_display", read_only=True)
+    class Meta:
+        model = SellerActivityLog
+        fields = ["id", "action", "action_display", "description", "created_at"]

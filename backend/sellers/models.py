@@ -37,13 +37,27 @@ class Shop(models.Model):
     def __str__(self):
         return self.name
 
+class SellerActivityLog(models.Model):
+    ACTION_TYPES = [
+        ("login", "Đăng nhập"),
+        ("logout", "Đăng xuất"), 
+        ("add_product", "Thêm sản phẩm"),
+        ("update_product", "Cập nhật sản phẩm"),
+        ("delete_product", "Xóa sản phẩm"),
+        ("order_success", "Hoàn tất đơn hàng"),
+        ("account_locked", "Tài khoản bị khóa"),
+        ("account_unlocked", "Tài khoản được mở"),
+        ("profile_updated", "Cập nhật hồ sơ"),
+        ("other", "Khác"),
+    ]
 
-class Order(models.Model):
-    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name="orders")
-    customer_name = models.CharField(max_length=100)
-    total = models.DecimalField(max_digits=10, decimal_places=2)
-    status = models.CharField(max_length=50, default="pending")
+    seller = models.ForeignKey("Seller", on_delete=models.CASCADE, related_name="activity_logs")
+    action = models.CharField(max_length=50, choices=ACTION_TYPES)
+    description = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"[{self.seller.store_name}] {self.get_action_display()} - {self.created_at:%d/%m/%Y %H:%M}"
 
 class Voucher(models.Model):
     shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name="vouchers")

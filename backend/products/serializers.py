@@ -64,8 +64,9 @@ class ProductSerializer(serializers.ModelSerializer):
     discounted_price = serializers.SerializerMethodField()
     price = serializers.SerializerMethodField()
 
-    image = serializers.ImageField()
-    images = ProductImageSerializer(many=True, read_only=True)  # ✅ Thêm field images
+    main_image = serializers.SerializerMethodField()
+
+    images = ProductImageSerializer(many=True, read_only=True)  # 👈 chỉ để hiển thị
     
     store = SellerListSerializer(source='seller', read_only=True)
     seller = serializers.PrimaryKeyRelatedField(read_only=True)
@@ -82,7 +83,7 @@ class ProductSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'name', 'description',
             'original_price', 'discounted_price', 'price', 'discount_percent', 'unit',
-            'stock', 'image', 'images',  # ✅ Thêm 'images'
+            'stock', 'images',  # ✅ Thêm 'images'
             'rating', 'review_count',
             'location', 'brand', 'subcategory', 'seller_name',
             'created_at', 'updated_at', 'category', 'store',
@@ -90,9 +91,19 @@ class ProductSerializer(serializers.ModelSerializer):
             "availability_status", "season_start", "season_end",
             "estimated_quantity", "preordered_quantity", 'ordered_quantity',
             "is_coming_soon", "is_out_of_stock", "available_quantity",
-            "total_preordered", "user_preordered", "features"
+            "total_preordered", "user_preordered", "features", "main_image"
         ]
         read_only_fields = ["status", "seller"]
+
+    def get_main_image(self, obj):
+        primary_image = obj.images.filter(is_primary=True).first()
+        if primary_image:
+            return ProductImageSerializer(primary_image, context=self.context).data
+        # Nếu không có primary, lấy ảnh đầu tiên theo thứ tự
+        first_image = obj.images.first()
+        if first_image:
+            return ProductImageSerializer(first_image, context=self.context).data
+        return None
 
     def get_original_price(self, obj):
         return int(obj.original_price)
@@ -159,19 +170,26 @@ class ProductSerializer(serializers.ModelSerializer):
         return product
     
     def update(self, instance, validated_data):
-        features_data = validated_data.pop('features', None)
+        # 👇 Xử lý riêng field `image`
+            image = validated_data.pop('image', None)
+            if image is not None:
+                instance.image = image
+            # 👇 Xử lý features như cũ
+            features_data = validated_data.pop('features', None)
 
-        # Cập nhật các trường còn lại
-        product = super().update(instance, validated_data)
+            # Cập nhật các trường còn lại
+            for attr, value in validated_data.items():
+                setattr(instance, attr, value)
+            instance.save()
 
-        # Nếu có gửi features mới => xóa cũ + thêm mới
-        if features_data is not None:
-            instance.features.all().delete()
-            for feature in features_data:
-                ProductFeature.objects.create(product=instance, **feature)
+            # Cập nhật features
+            if features_data is not None:
+                instance.features.all().delete()
+                for feature in features_data:
+                    ProductFeature.objects.create(product=instance, **feature)
 
-        return product
-
+            return instance
+        
     is_coming_soon = serializers.SerializerMethodField()
     is_out_of_stock = serializers.SerializerMethodField()
 
@@ -189,7 +207,8 @@ class ProductListSerializer(serializers.ModelSerializer):
     subcategory_name = serializers.CharField(source='subcategory.name', read_only=True)
     category_id = serializers.IntegerField(source='subcategory.category.id', read_only=True)
     subcategory = serializers.PrimaryKeyRelatedField(read_only=True)
-    image = serializers.ImageField()
+    main_image = serializers.SerializerMethodField()
+
     images = ProductImageSerializer(many=True, read_only=True)  # ✅ Thêm field images
     
     seller = serializers.PrimaryKeyRelatedField(read_only=True)
@@ -216,7 +235,7 @@ class ProductListSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'name', 'description',
             'original_price', 'discounted_price', 'price', 'discount_percent', 'unit', 
-            'image', 'images',  # ✅ Thêm 'images'
+             'images',  # ✅ Thêm 'images'
             'rating', 'review_count', 'location', 'brand',
             'category_name', 'subcategory_name', 'category_id',
             'subcategory', 'stock', 'status', 'created_at', 'updated_at',
@@ -224,10 +243,19 @@ class ProductListSerializer(serializers.ModelSerializer):
             "availability_status", "season_start", "season_end",
             "estimated_quantity", "preordered_quantity",
             "is_coming_soon", "is_out_of_stock", "available_quantity",
-            "total_preordered", "user_preordered", "features", "store"
+            "total_preordered", "user_preordered", "features", "store", "main_image"
         ]
         read_only_fields = ["id", "created_at", "updated_at", "seller"]
 
+    def get_main_image(self, obj):
+        primary_image = obj.images.filter(is_primary=True).first()
+        if primary_image:
+            return ProductImageSerializer(primary_image, context=self.context).data
+        # Nếu không có primary, lấy ảnh đầu tiên theo thứ tự
+        first_image = obj.images.first()
+        if first_image:
+            return ProductImageSerializer(first_image, context=self.context).data
+        return None
     def get_original_price(self, obj):
         return int(obj.original_price)
 
@@ -283,6 +311,11 @@ class ProductListSerializer(serializers.ModelSerializer):
             return False
         return obj.stock <= 0
 
+class ProductImageCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductImage
+        fields = ['image', 'is_primary']
+        # 'order' có thể tự động hoặc không cần thiết nếu dùng drag-drop sau này
 
 class SubcategoryCreateSerializer(serializers.ModelSerializer):
     class Meta:

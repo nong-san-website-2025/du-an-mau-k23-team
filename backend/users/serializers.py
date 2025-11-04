@@ -58,7 +58,7 @@ class UserSerializer(serializers.ModelSerializer):
         fields = [
             "id", "username", "default_address",
             "full_name", "points", "role", "role_id", "created_at", "can_delete", "is_active",
-            "email", "phone", "email_masked", "phone_masked", "avatar"
+            "email", "phone", "email_masked", "phone_masked", "avatar", 'email', 'phone'
         ]
 
     def get_default_address(self, obj):
@@ -155,6 +155,18 @@ class UserSerializer(serializers.ModelSerializer):
         except Exception as e:
             print("[DEBUG] get_can_delete error:", e)
             return True
+        
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        request = self.context.get('request')
+
+        # ✅ Nếu là admin hoặc chính chủ user thì hiển thị email/phone thật
+        if request and (request.user.is_staff or request.user == instance):
+            data["email"] = instance.email
+            data["phone"] = instance.phone
+
+        return data
+
 
 
 

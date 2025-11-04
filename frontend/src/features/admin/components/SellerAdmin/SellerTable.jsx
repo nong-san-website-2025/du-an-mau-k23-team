@@ -3,8 +3,9 @@ import { Table } from "antd";
 import SellerStatusTag from "./SellerStatusTag";
 import SellerActions from "./SellerActions";
 import dayjs from "dayjs";
+import "../../styles/AdminPageLayout.css";
 
-const SellerTable = ({ data, onApprove, onReject, onView, onLock }) => {
+const SellerTable = ({ data, onApprove, onReject, onView, onLock, onRow }) => {
   const columns = [
     {
       title: "ID",
@@ -34,8 +35,7 @@ const SellerTable = ({ data, onApprove, onReject, onView, onLock }) => {
       dataIndex: "user_email",
       key: "user_email",
       width: 220,
-      sorter: (a, b) =>
-        (a.user_email || "").localeCompare(b.user_email || ""),
+      sorter: (a, b) => (a.user_email || "").localeCompare(b.user_email || ""),
     },
     {
       title: "Trạng thái",
@@ -51,8 +51,7 @@ const SellerTable = ({ data, onApprove, onReject, onView, onLock }) => {
       dataIndex: "created_at",
       key: "created_at",
       width: 160,
-      render: (date) =>
-        date ? dayjs(date).format("DD/MM/YYYY HH:mm") : "—",
+      render: (date) => (date ? dayjs(date).format("DD/MM/YYYY HH:mm") : "—"),
       sorter: (a, b) => new Date(a.created_at) - new Date(b.created_at),
       align: "center",
     },
@@ -60,16 +59,18 @@ const SellerTable = ({ data, onApprove, onReject, onView, onLock }) => {
       title: "Hành động",
       key: "action",
       width: 90,
-      render: (_, record) => (
-        <SellerActions
-          record={record}
-          onApprove={onApprove}
-          onReject={onReject}
-          onView={onView}
-          onLock={onLock}
-        />
-      ),
       align: "center",
+      render: (_, record) => (
+        <div onClick={(e) => e.stopPropagation()}>
+          <SellerActions
+            record={record}
+            onApprove={onApprove}
+            onReject={onReject}
+            onView={onView}
+            onLock={onLock}
+          />
+        </div>
+      ),
     },
   ];
 
@@ -82,6 +83,8 @@ const SellerTable = ({ data, onApprove, onReject, onView, onLock }) => {
       pagination={{ pageSize: 5 }}
       scroll={{ x: 1200 }}
       size="small"
+      onRow={onRow}
+      rowClassName="table-row"
     />
   );
 };

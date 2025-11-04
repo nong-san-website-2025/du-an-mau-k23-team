@@ -160,14 +160,14 @@ export default function UserTable({
     },
     {
       title: t("Email"),
-      dataIndex: "email_masked",
+      dataIndex: "email",
       key: "email",
       width: 200,
       sorter: (a, b) => (a.email || "").localeCompare(b.email || ""),
     },
     {
       title: t("Số điện thoại"),
-      dataIndex: "phone_masked",
+      dataIndex: "phone",
       key: "phone",
       width: 140,
       sorter: (a, b) => (a.phone || "").localeCompare(b.phone || ""),

@@ -27,12 +27,8 @@ export default function ProductCard({
     navigate(`/products/${product.id}`);
   };
 
-  const imageUrl =
-    product.image && product.image.startsWith("/")
-      ? `http://localhost:8000${product.image}`
-      : product.image?.startsWith("http")
-      ? product.image
-      : null;
+  const imageUrl = product.main_image?.image || null;
+
 
   const discountPercent =
     product.discount_percent ||

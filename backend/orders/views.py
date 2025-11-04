@@ -6,7 +6,7 @@ from django.utils import timezone
 from datetime import timedelta
 from django.db import transaction
 import logging
-
+from django.conf import settings
 from .models import Order, Complaint
 from .serializers import OrderSerializer, OrderCreateSerializer
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -21,10 +21,112 @@ from orders.models import Preorder
 from orders.serializers import PreorderSerializer
 from rest_framework import generics
 
+from django.db.models import Sum, Count, Q
+from django.utils import timezone
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAdminUser
+from rest_framework.response import Response
+from django.contrib.auth import get_user_model
+from .models import Order, OrderItem, Complaint
+from products.models import Product
+
+User = get_user_model()
 
 
 logger = logging.getLogger(__name__)
 
+
+
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def user_behavior_stats(request, user_id):
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return Response({"error": "User not found"}, status=404)
+
+    # === 1. Đơn hàng "thành công" (tính chi tiêu & tần suất) ===
+    successful_orders = Order.objects.filter(
+        user=user,
+        status__in=['success', 'delivered', 'shipping', 'out_for_delivery', 'ready_to_pick', 'picking']
+    )
+    total_orders = successful_orders.count()
+    total_spent = successful_orders.aggregate(
+        total=Sum('total_price')
+    )['total'] or 0
+
+    # === 2. Tần suất mua trong 90 ngày ===
+    ninety_days_ago = timezone.now() - timezone.timedelta(days=90)
+    purchase_frequency_90d = successful_orders.filter(
+        created_at__gte=ninety_days_ago
+    ).count()
+
+    # === 3. Tỷ lệ hoàn hàng: đếm đơn có status = 'returned' ===
+    total_returned = Order.objects.filter(user=user, status='returned').count()
+    return_rate = round((total_returned / total_orders) * 100, 1) if total_orders > 0 else 0
+
+    # === 4. Tỷ lệ khiếu nại ===
+    total_complaints = Complaint.objects.filter(order__user=user).count()
+    complaint_rate = round((total_complaints / total_orders) * 100, 1) if total_orders > 0 else 0
+
+    # === 5. Sản phẩm yêu thích (mua nhiều nhất từ đơn thành công) ===
+    purchased_products_qs = (
+        OrderItem.objects.filter(
+            order__user=user,
+            order__status__in=['success'],
+        )
+        .select_related('product')
+        .values('product_id', 'product__name', 'product__image')
+        .annotate(purchase_count=Sum('quantity'))
+        .order_by('-purchase_count')[:5]
+    )
+
+    purchased_products = []
+    for item in purchased_products_qs:
+        image_url = None
+        if item['product__image']:
+            image_url = request.build_absolute_uri(settings.MEDIA_URL + item['product__image'])
+        else:
+            image_url = None
+
+        purchased_products.append({
+            "id": item['product_id'],
+            "name": item['product__name'],
+            "image": image_url,
+            "purchase_count": item['purchase_count'],
+            "view_count": 0  # bạn có thể bỏ nếu chưa có log view
+        })
+
+    # === 6. Danh mục quan tâm (danh mục có nhiều đơn nhất) ===
+    categories_qs = (
+        OrderItem.objects.filter(
+            order__user=user,
+            order__status__in=['success', 'delivered', 'shipping', 'out_for_delivery', 'ready_to_pick', 'picking']
+        )
+        .select_related('product__subcategory__category')
+        .values('product__subcategory__category_id', 'product__subcategory__category__name')
+        .annotate(count=Count('id'))
+        .order_by('-count')[:5]
+    )
+
+    interested_categories = [
+        {
+            "id": item['product__subcategory__category_id'],
+            "name": item['product__subcategory__category__name']
+        }
+        for item in categories_qs
+        if item['product__subcategory__category_id']
+    ]
+
+    return Response({
+        "total_orders": total_orders,
+        "total_spent": int(total_spent),  # React mong đợi số nguyên
+        "purchase_frequency_90d": purchase_frequency_90d,
+        "return_rate": return_rate,
+        "complaint_rate": complaint_rate,
+        "purchased_products": purchased_products,
+        "interested_categories": interested_categories,
+    })
 
 class OrderViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
@@ -417,3 +519,4 @@ class PreorderDeleteView(generics.DestroyAPIView):
             {"message": "Xóa đặt trước thành công"},
             status=status.HTTP_204_NO_CONTENT
         )
+    
