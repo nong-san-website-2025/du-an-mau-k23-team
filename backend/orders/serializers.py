@@ -2,10 +2,55 @@ from rest_framework import serializers
 from .models import Order, OrderItem, Complaint
 from .models import Preorder
 
-class PreorderSerializer(serializers.ModelSerializer):
+class PreOrderSerializer(serializers.ModelSerializer):
+    product_name = serializers.CharField(source='product.name', read_only=True)
+    product_price = serializers.SerializerMethodField()
+    product_image = serializers.SerializerMethodField()
+    total_price = serializers.SerializerMethodField()
+    created_at = serializers.DateTimeField(source='preorder_date', read_only=True)
+
     class Meta:
         model = Preorder
-        fields = "__all__"
+        fields = [
+            'id',
+            'product',
+            'product_name',
+            'product_price',
+            'product_image',
+            'quantity',
+            'total_price',
+            'created_at',
+        ]
+
+    def get_product_price(self, obj):
+        """Lấy giá ưu đãi (discounted_price) nếu có, ngược lại lấy giá gốc."""
+        try:
+            product = obj.product
+            if not product:
+                return 0
+            # Ưu tiên lấy giá khuyến mãi
+            price = product.discounted_price or product.original_price or 0
+            return float(price)
+        except Exception:
+            return 0
+
+    def get_product_image(self, obj):
+        request = self.context.get('request')
+        if obj.product and obj.product.image:
+            if request:
+                return request.build_absolute_uri(obj.product.image.url)
+            return obj.product.image.url
+        return None
+
+    def get_total_price(self, obj):
+        """Tính tổng = giá * số lượng"""
+        price = self.get_product_price(obj)
+        qty = obj.quantity or 0
+        return round(price * qty, 2)
+
+
+
+
 
 
 

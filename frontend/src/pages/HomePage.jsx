@@ -4,13 +4,13 @@ import { Spin, Modal } from "antd";
 import { Helmet } from "react-helmet";
 
 // Components
-import BannerSlider from "../components/Home/BannerSlider.jsx"; // hero
-import SideBanners from "../components/Home/SideBanners.jsx"; // carousel (2 banner nhỏ)
-import QuickAccessBar from "../components/Home/QuickAccessBar.jsx";
-import CategorySection from "../components/Home/CategorySection.jsx";
-import HomeProductTabs from "../components/Home/HomeProductTabs.jsx";
-import FlashSaleList from "../components/Home/FlashSaleList.jsx";
-import PersonalizedSection from "../components/Home/PersonalizedSection.jsx";
+import BannerSlider from "../components/home/BannerSlider.jsx"; // hero
+import SideBanners from "../components/home/SideBanners.jsx"; // carousel (2 banner nhỏ)
+import QuickAccessBar from "../components/home/QuickAccessBar.jsx";
+import CategorySection from "../components/home/CategorySection.jsx";
+import HomeProductTabs from "../components/home/HomeProductTabs.jsx";
+import FlashSaleList from "../components/home/FlashSaleList.jsx";
+import PersonalizedSection from "../components/home/PersonalizedSection.jsx";
 
 // APIs
 import { fetchCategories } from "../services/api/homepageApi.js";

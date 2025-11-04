@@ -13,7 +13,7 @@ const featureColors = {
   "Hữu cơ": "#52c41a",
   "Không thuốc trừ sâu": "#f5222d",
   "Tự nhiên": "#1890ff",
-  "Sạch": "#faad14",
+  Sạch: "#faad14",
 };
 
 export default function ProductCard({
@@ -31,8 +31,8 @@ export default function ProductCard({
     product.image && product.image.startsWith("/")
       ? `http://localhost:8000${product.image}`
       : product.image?.startsWith("http")
-      ? product.image
-      : null;
+        ? product.image
+        : null;
 
   const discountPercent =
     product.discount_percent ||
@@ -155,7 +155,9 @@ export default function ProductCard({
                   {formatVND(product.discounted_price)}
                 </Text>
                 {product.original_price && (
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <div
+                    style={{ display: "flex", alignItems: "center", gap: 6 }}
+                  >
                     <Text
                       delete
                       type="secondary"
