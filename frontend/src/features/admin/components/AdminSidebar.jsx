@@ -1,4 +1,4 @@
-import { Layout, Menu } from "antd";
+import { Badge, Layout, Menu } from "antd";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   HomeOutlined,
@@ -10,16 +10,39 @@ import {
   NotificationOutlined,
   InboxOutlined,
   WarningOutlined,
-  GiftOutlined,
   TagOutlined,
 } from "@ant-design/icons";
 import "../styles/AdminSidebar.css";
+import axios from "axios";
+
+import React, { useEffect, useState } from "react";
 
 const { Sider } = Layout;
 
 const Sidebar = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const [pendingSellers, setPendingSellers] = useState(0);
+
+  useEffect(() => {
+    const fetchPendingSellers = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await axios.get(
+          `${process.env.REACT_APP_API_URL}/sellers/pending-count/`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        setPendingSellers(res.data.count || 0);
+      } catch (err) {
+        console.error("Lỗi khi lấy pending sellers:", err);
+      }
+    };
+
+    fetchPendingSellers();
+    const interval = setInterval(fetchPendingSellers, 3000); // 🔁 Cập nhật mỗi 30s
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <Sider width={250} className="sidebar">
       <Menu
@@ -51,8 +74,23 @@ const Sidebar = () => {
           <Menu.Item key="/admin/sellers/business">
             <Link to="/admin/sellers/business">Quản lý cửa hàng</Link>
           </Menu.Item>
+
           <Menu.Item key="/admin/sellers/approval">
-            <Link to="/admin/sellers/approval">Duyệt cửa hàng</Link>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <Link to="/admin/sellers/approval">Duyệt cửa hàng</Link>
+              <Badge
+                count={pendingSellers}
+                size="small"
+                overflowCount={99}
+                style={{ backgroundColor: "#f5222d" }}
+              />
+            </div>
           </Menu.Item>
         </Menu.SubMenu>
 

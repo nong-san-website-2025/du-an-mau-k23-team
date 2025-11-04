@@ -1,14 +1,6 @@
 // src/features/seller_center/components/ProductTable.jsx
 import React from "react";
-import {
-  Table,
-  Button,
-  Popconfirm,
-  Tag,
-  Space,
-  Tooltip,
-  Image,
-} from "antd";
+import { Table, Button, Popconfirm, Tag, Space, Tooltip, Image } from "antd";
 import {
   EditOutlined,
   DeleteOutlined,
@@ -16,6 +8,7 @@ import {
   PictureOutlined,
 } from "@ant-design/icons";
 import { intcomma } from "../../../../utils/format";
+import "../../styles/Table.css";
 
 const ProductTable = ({
   data,
@@ -75,7 +68,7 @@ const ProductTable = ({
                   fontSize: 14,
                 }}
               >
-                ❌
+                Chưa có ảnh
               </div>
             )}
             <Tooltip title={record.name} placement="topLeft">
@@ -152,6 +145,7 @@ const ProductTable = ({
           pending: { color: "orange", text: "Chờ duyệt" },
           approved: { color: "green", text: "Đã duyệt" },
           rejected: { color: "red", text: "Từ chối" },
+          banned: { color: "grey", text: "Đã khoá" },
           self_rejected: { color: "volcano", text: "Tự huỷ" },
         };
         const s = statusMap[status] || { color: "default", text: status };
@@ -227,8 +221,10 @@ const ProductTable = ({
       title: "Hành động",
       key: "action",
       fixed: "right",
-      width: 180,
+      width: 120,
       align: "center",
+      className: "compact-action-column",
+
       render: (_, record) => {
         const isSelfRejected = record.status === "self_rejected";
 
@@ -313,7 +309,7 @@ const ProductTable = ({
         showSizeChanger: false,
         showTotal: (total) => `Tổng ${total} sản phẩm`,
       }}
-      scroll={{ x: 1400 }}
+      scroll={{ x: 1400, y: 600 }}
       size="middle"
       onRow={onRow}
       rowClassName="table-row-hover"

@@ -45,22 +45,21 @@ const ProductForm = ({
   useEffect(() => {
     if (visible) {
       if (initialValues) {
+        // ✅ Đặt tất cả giá trị cũ
         form.setFieldsValue({
           ...initialValues,
           availability_status: initialValues.availability_status || "available",
         });
         setAvailability(initialValues.availability_status || "available");
 
-        // Nếu có gallery ảnh cũ
+        // ✅ Xử lý ảnh
         if (initialValues.images && initialValues.images.length > 0) {
-          // Trong useEffect của ProductForm.jsx
           const gallery = initialValues.images.map((img, idx) => ({
-            uid: String(img.id), // 👈 quan trọng: giữ id thật của ảnh
+            uid: String(img.id),
             name: `Ảnh ${idx + 1}`,
             status: "done",
             url: img.image,
             is_primary: img.is_primary,
-            // 👇 thêm thuộc tính này để phân biệt
             existingImageId: img.id,
           }));
           setFileList(gallery);
@@ -71,15 +70,19 @@ const ProductForm = ({
           setPrimaryImage(null);
         }
 
-        // Danh mục - nhóm
+        // ✅ Danh mục & nhóm
         const foundCategory = categories.find((cat) =>
           cat.subcategories.some((sub) => sub.id === initialValues.subcategory)
         );
         if (foundCategory) {
           setSelectedCategory(foundCategory.id);
           setSubcategories(foundCategory.subcategories);
+          form.setFieldsValue({
+            category: foundCategory.id, // 👈 THÊM DÒNG NÀY
+          });
         }
       } else {
+        // Reset khi mở form mới
         form.resetFields();
         setAvailability("available");
         setFileList([]);

@@ -9,6 +9,7 @@ import VerifyEmailPage from "./features/login_register/components/VerifyEmailPag
 import VnpayReturn from "./pages/VnpayReturn";
 import ScrollToTop from "./utils/ScrollToTop.js";
 import { useEffect } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 function App() {
   useEffect(() => {
@@ -21,11 +22,6 @@ function App() {
     }
   }, []);
 
-  useEffect(() => {
-    // Cuộn ngay lập tức, đồng bộ
-    document.documentElement.scrollTop = 0;
-    document.body.scrollTop = 0;
-  }, []);
 
   return (
     <div className="main-container">

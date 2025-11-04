@@ -38,6 +38,12 @@ from products.serializers import ProductListSerializer
 
 from django.shortcuts import get_object_or_404
 
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def pending_sellers_count(request):
+    count = Seller.objects.filter(status='pending').count()
+    return Response({"count": count})
+
 @api_view(["GET"])
 def search_sellers(request):
     q = request.GET.get("q", "")

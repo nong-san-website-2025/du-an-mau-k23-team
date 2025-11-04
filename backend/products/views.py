@@ -39,6 +39,7 @@ from .models import Product, ProductImage
 from .serializers import ProductImageCreateSerializer
 from sellers.models import Seller  # hoặc import đúng đường dẫn
 from rest_framework.parsers import MultiPartParser
+from sellers.models import SellerActivityLog
 
 import unicodedata
 
@@ -83,6 +84,28 @@ class ProductViewSet(viewsets.ModelViewSet):
     permission_classes = [AllowAny]
     queryset = Product.objects.select_related('subcategory__category', 'seller').prefetch_related('images').all()
     
+
+    def update(self, request, *args, **kwargs):
+        """
+        Ghi log mỗi khi sản phẩm được cập nhật
+        """
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+
+        # ✅ Ghi lại log nếu là seller cập nhật sản phẩm
+        user = request.user
+        if user.is_authenticated and hasattr(user, "seller"):
+           SellerActivityLog.objects.create(
+            seller=user.seller,
+            action="update_product",
+            description=f"Đã cập nhật sản phẩm '{instance.name}'"
+        )
+
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
     def get_permissions(self):
         # Public read, restricted write/actions
         if self.action in ["list", "retrieve", "featured"]:

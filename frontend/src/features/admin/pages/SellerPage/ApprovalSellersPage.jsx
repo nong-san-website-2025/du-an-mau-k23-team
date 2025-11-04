@@ -108,6 +108,8 @@ const ApprovalSellersPage = () => {
     setDetailVisible(true);
   };
 
+  const pendingCount = data.filter((item) => item.status === "pending").length;
+
   // 🔧 Toolbar lọc + tìm kiếm
   const toolbar = (
     <Space>
@@ -132,7 +134,11 @@ const ApprovalSellersPage = () => {
   );
 
   return (
-    <AdminPageLayout title={t("DUYỆT CỬA HÀNG")} extra={toolbar}>
+    <AdminPageLayout
+      title={t("DUYỆT CỬA HÀNG")}
+      extra={toolbar}
+      pendingSellers={pendingCount} // 👈 Thêm dòng này
+    >
       {loading ? (
         <Spin />
       ) : (

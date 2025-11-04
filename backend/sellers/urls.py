@@ -58,5 +58,6 @@ urlpatterns = [
     
     # Generic detail - ĐẶT CUỐI CÙNG
     path('<int:pk>/', SellerDetailAPIView.as_view(), name='seller-detail'),
+    path('pending-count/', views.pending_sellers_count, name='pending-sellers-count'),
     
 ] + router.urls

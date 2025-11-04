@@ -22,11 +22,11 @@ class OrderItemSerializer(serializers.ModelSerializer):
 
     def get_product_image(self, obj):
         request = self.context.get('request')
-        if obj.product and obj.product.image:
-            if hasattr(obj.product.image, 'url'):
-                if request:
-                    return request.build_absolute_uri(obj.product.image.url)
-                return obj.product.image.url
+        first_image = obj.product.images.first()  # ✅ Lấy ảnh đầu tiên
+        if first_image and hasattr(first_image.image, 'url'):
+            if request:
+                return request.build_absolute_uri(first_image.image.url)
+            return first_image.image.url
         return None
 
 
@@ -84,7 +84,9 @@ class OrderCreateSerializer(serializers.ModelSerializer):
 
                 try:
                     product = Product.objects.get(id=product_id)
-                    item_data_copy['product_image'] = product.image.name if product.image else ""
+                    first_image = product.images.first()
+                    item_data_copy['product_image'] = first_image.image.name if first_image else ""
+
                     item_data_copy['unit'] = product.unit
                     # Đảm bảo có giá sản phẩm
                     if 'price' not in item_data_copy or not item_data_copy['price']:

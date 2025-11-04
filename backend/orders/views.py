@@ -29,6 +29,8 @@ from rest_framework.response import Response
 from django.contrib.auth import get_user_model
 from .models import Order, OrderItem, Complaint
 from products.models import Product
+from django.db.models import Sum, OuterRef, Subquery
+from products.models import ProductImage
 
 User = get_user_model()
 
@@ -187,19 +189,22 @@ class OrderViewSet(viewsets.ModelViewSet):
         from products.models import Product
 
         top_products = (
-            OrderItem.objects
-            .values(
-                'product_id',
-                'product__name',
-                'product__image',
-                'product__seller__store_name',
-                'product__ordered_quantity',  # ✅ thêm dòng này
-            )
-            .annotate(
-                quantity_sold=Sum('quantity'),
-                revenue=Sum('price')
-            )
-            .order_by('-quantity_sold')[:10]
+             OrderItem.objects
+                .values(
+                    'product_id',
+                    'product__name',
+                    'product__seller__store_name',
+                )
+                .annotate(
+                    quantity_sold=Sum('quantity'),
+                    revenue=Sum('price'),
+                    # ✅ Lấy ảnh đầu tiên của sản phẩm qua Subquery
+                    first_image=Subquery(
+                        ProductImage.objects.filter(product=OuterRef('product_id'))
+                        .values('image')[:1]
+                    ),
+                )
+                .order_by('-quantity_sold')[:10]
         )
         return Response(top_products)
 

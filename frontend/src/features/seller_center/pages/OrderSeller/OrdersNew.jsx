@@ -12,32 +12,58 @@ import {
 import API from "../../../login_register/services/api";
 import OrdersBaseLayout from "../../components/OrderSeller/OrdersBaseLayout";
 import "../../styles/OrderPage.css";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 export default function OrdersNew() {
-  const [loading, setLoading] = useState(false);
-  const [orders, setOrders] = useState([]);
+  const queryClient = useQueryClient();
+
+  // ✅ Fetch danh sách đơn hàng
+  const {
+    data: orders = [],
+    isLoading,
+    isError,
+  } = useQuery({
+    queryKey: ["sellerOrders", "pending"],
+    queryFn: async () => {
+      const res = await API.get("orders/seller/pending/");
+      return res.data.sort((a, b) => b.id - a.id);
+    },
+    refetchInterval: 10000, // refetch 15s/lần để cập nhật realtime
+  });
+
+  // ✅ Mutations (Duyệt và Hủy đơn)
+  const approveMutation = useMutation({
+    mutationFn: (id) => API.post(`orders/${id}/seller/approve/`),
+    onSuccess: () => {
+      message.success("Đơn đã được duyệt");
+      queryClient.invalidateQueries(["sellerOrders", "pending"]);
+    },
+    onError: () => message.error("Lỗi khi duyệt đơn"),
+  });
+
+  const cancelMutation = useMutation({
+    mutationFn: (id) => API.post(`orders/${id}/cancel/`),
+    onSuccess: () => {
+      message.success("Đơn đã được hủy");
+      queryClient.invalidateQueries(["sellerOrders", "pending"]);
+    },
+    onError: () => message.error("Lỗi khi hủy đơn"),
+  });
+
+  useEffect(() => {
+    setFiltered(orders);
+  }, [orders]);
+
   const [filtered, setFiltered] = useState([]);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const [processingId, setProcessingId] = useState(null);
-
-  const fetchOrders = async () => {
-    setLoading(true);
-    try {
-      const res = await API.get("orders/seller/pending/");
-      // Sắp xếp theo id giảm dần (đơn mới nhất trước)
-      const sortedOrders = res.data.sort((a, b) => b.id - a.id);
-      setOrders(sortedOrders);
-      setFiltered(sortedOrders);
-    } catch (e) {
-      message.error("Không thể tải đơn mới");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [tick, setTick] = useState(0);
 
   useEffect(() => {
-    fetchOrders();
+    const interval = setInterval(() => {
+      setTick((t) => t + 1); // cứ mỗi giây render lại => cập nhật màu và text
+    }, 1000);
+    return () => clearInterval(interval);
   }, []);
 
   const handleSearch = (value) => {
@@ -53,7 +79,6 @@ export default function OrdersNew() {
 
   const fetchOrderDetail = async (id) => {
     try {
-
       const res = await API.get(`orders/${id}/detail/`);
       setSelectedOrder(res.data);
       setIsModalVisible(true);
@@ -62,33 +87,7 @@ export default function OrdersNew() {
     }
   };
 
-  const approve = async (id) => {
-    setProcessingId(id);
-    try {
-      await API.post(`orders/${id}/seller/approve/`);
-      message.success("Đơn đã được duyệt");
-      fetchOrders();
-    } catch {
-      message.error("Lỗi khi duyệt đơn");
-    } finally {
-      setProcessingId(null);
-    }
-  };
-
-  const cancel = async (id) => {
-    setProcessingId(id);
-    try {
-      await API.post(`orders/${id}/cancel/`);
-      message.success("Đơn đã được hủy");
-      fetchOrders();
-    } catch {
-      message.error("Lỗi khi hủy đơn");
-    } finally {
-      setProcessingId(null);
-    }
-  };
-
-  const getTimeWithWarning = (createdAt) => {
+  const getTimeWithWarning = (createdAt, tick) => {
     if (!createdAt) return { text: "-", color: "#999" };
 
     const now = new Date();
@@ -98,18 +97,14 @@ export default function OrdersNew() {
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-    // Màu cảnh báo dựa trên PHÚT
-    let color = "#52c41a"; // Xanh - mới (< 30 phút)
-    if (diffMinutes >= 30) color = "#faad14"; // Vàng - >= 30 phút
-    if (diffMinutes >= 60) color = "#ff4d4f"; // Đỏ - >= 60 phút (1 giờ)
+    let color = "#52c41a";
+    if (diffMinutes >= 30) color = "#faad14";
+    if (diffMinutes >= 60) color = "#ff4d4f";
 
-    // Text hiển thị
     let text;
-    if (diffMinutes < 1) {
-      text = "Mới";
-    } else if (diffMinutes < 60) {
-      text = `${diffMinutes} phút`;
-    } else if (diffHours < 24) {
+    if (diffMinutes < 1) text = "Mới";
+    else if (diffMinutes < 60) text = `${diffMinutes} phút`;
+    else if (diffHours < 24) {
       const remainMinutes = diffMinutes % 60;
       text =
         remainMinutes > 0
@@ -153,7 +148,7 @@ export default function OrdersNew() {
       width: 180,
       align: "center",
       render: (created_at) => {
-        const { text, color } = getTimeWithWarning(created_at);
+        const { text, color } = getTimeWithWarning(created_at, tick);
         return (
           <div>
             <div style={{ fontSize: 14, fontWeight: 600, color }}>{text}</div>
@@ -170,7 +165,6 @@ export default function OrdersNew() {
           </div>
         );
       },
-      sorter: (a, b) => new Date(b.created_at) - new Date(a.created_at),
     },
     {
       title: "Tổng tiền",
@@ -188,21 +182,20 @@ export default function OrdersNew() {
           <Popconfirm
             title="Xác nhận duyệt đơn"
             description="Bạn chắc chắn muốn duyệt đơn hàng này?"
-            onConfirm={() => approve(r.id)}
+            onConfirm={() => approveMutation.mutate(r.id)}
             okText="Duyệt"
             cancelText="Hủy"
-            okButtonProps={{ loading: processingId === r.id }}
+            okButtonProps={{ loading: approveMutation.isPending }}
           >
             <Button
               type="primary"
               size="middle"
-              loading={processingId === r.id}
-              disabled={processingId !== null}
+              loading={
+                approveMutation.isPending && approveMutation.variables === r.id
+              }
+              disabled={cancelMutation.isPending}
               style={{ minWidth: 90 }}
-              onClick={(e) => {
-                e.stopPropagation(); // Ngăn event bubble lên row
-                approve(r.id);
-              }}
+              onClick={(e) => e.stopPropagation()}
             >
               Duyệt đơn
             </Button>
@@ -211,20 +204,19 @@ export default function OrdersNew() {
           <Popconfirm
             title="Xác nhận từ chối"
             description="Bạn chắc chắn muốn từ chối đơn hàng này?"
-            onConfirm={() => cancel(r.id)}
+            onConfirm={() => cancelMutation.mutate(r.id)}
             okText="Từ chối"
             cancelText="Quay lại"
-            okButtonProps={{
-              danger: true,
-              loading: processingId === r.id,
-            }}
+            okButtonProps={{ danger: true, loading: cancelMutation.isPending }}
           >
             <Button
               size="middle"
               danger
               ghost
-              loading={processingId === r.id}
-              disabled={processingId !== null}
+              loading={
+                cancelMutation.isPending && cancelMutation.variables === r.id
+              }
+              disabled={approveMutation.isPending}
               style={{ minWidth: 90 }}
               onClick={(e) => e.stopPropagation()}
             >
@@ -240,7 +232,7 @@ export default function OrdersNew() {
     <>
       <OrdersBaseLayout
         title="ĐƠN HÀNG MỚI"
-        loading={loading}
+        loading={isLoading}
         data={filtered}
         columns={columns}
         onSearch={handleSearch}
