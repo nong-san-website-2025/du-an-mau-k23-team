@@ -444,6 +444,10 @@ def normalize_text(text):
     text = ''.join(ch for ch in text if unicodedata.category(ch) != 'Mn')
     return text.lower().strip()
 
+class FeaturedCategoryListView(generics.ListAPIView):
+    queryset = Category.objects.filter(is_featured=True)
+    serializer_class = CategorySerializer
+
 class SearchAPIView(APIView):
     permission_classes = [permissions.AllowAny]
 
@@ -523,7 +527,7 @@ class SearchAPIView(APIView):
         cache.set(cache_key, result, 300)
         return Response(result)
 
-    
+
 class ReviewListCreateView(generics.ListCreateAPIView):
     serializer_class = ReviewSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
@@ -537,6 +541,19 @@ class ReviewListCreateView(generics.ListCreateAPIView):
 
 
 
+@api_view(["GET"])
+def new_products(request):
+    """Lấy 6 sản phẩm mới nhất"""
+    products = Product.objects.order_by('-created_at')[:6]
+    serializer = ProductSerializer(products, many=True)
+    return Response(serializer.data)
+
+@api_view(["GET"])
+def best_sellers(request):
+    """Lấy 6 sản phẩm bán chạy nhất"""
+    products = Product.objects.order_by('-sold')[:6]
+    serializer = ProductSerializer(products, many=True)
+    return Response(serializer.data)
 # Top-Products
 
 @api_view(["GET"])

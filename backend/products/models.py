@@ -8,6 +8,7 @@ class Category(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=20, default="active")
     image = models.ImageField(upload_to='categories/', blank=True, null=True)
+    is_featured = models.BooleanField(default=False)
     
     def __str__(self):
         return self.name
@@ -56,6 +57,8 @@ class Product(models.Model):
     discounted_price = models.DecimalField(max_digits=10, decimal_places=0, default=0)
     unit = models.CharField(max_length=10, choices=UNIT_CHOICES, default="kg")
     stock = models.PositiveIntegerField(default=0)
+    sold = models.IntegerField(default=0, blank=True)
+
     # image = models.ImageField(upload_to='products/', blank=True, null=True)
     rating = models.DecimalField(max_digits=3, decimal_places=1, default=0)
     review_count = models.PositiveIntegerField(default=0)
@@ -63,7 +66,6 @@ class Product(models.Model):
     brand = models.CharField(max_length=100, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    ordered_quantity = models.IntegerField(default=0)
     estimated_quantity = models.PositiveIntegerField(default=10)  # Số lượng dự kiến có thể đặt trước
     ordered_quantity = models.PositiveIntegerField(default=0) 
     availability_status = models.CharField(max_length=50, default='available')  

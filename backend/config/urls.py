@@ -49,6 +49,7 @@ urlpatterns = [
 
     path("api/marketing/", include("marketing.urls")),
     path("api/chat/", include("chat.urls")),
+    path("api/", include("blog.urls")),
 
 
     path("api/", include("system.urls")),

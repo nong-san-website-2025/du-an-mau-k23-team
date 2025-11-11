@@ -46,10 +46,7 @@ const Home: React.FC = () => {
       try {
         setLoading(true);
         const data = await productApi.getAllProducts();
-
-        if (!Array.isArray(data)) {
-          throw new Error("API không trả về danh sách sản phẩm hợp lệ");
-        }
+        console.log("Sản phẩm từ API:", data); // 🔍 kiểm tra dữ liệu
 
         setAllProducts(data);
         setVisibleProducts(data.slice(0, ITEMS_PER_LOAD));
@@ -132,7 +129,10 @@ const Home: React.FC = () => {
                           alt={product.name}
                         />
                         <IonCardHeader style={{ padding: "12px" }}>
-                          <IonText color="medium" style={{ fontSize: "0.8rem" }}>
+                          <IonText
+                            color="medium"
+                            style={{ fontSize: "0.8rem" }}
+                          >
                             {product.brand || "Thương hiệu"}
                           </IonText>
                           <IonCardTitle
@@ -167,6 +167,9 @@ const Home: React.FC = () => {
                 ))}
               </IonRow>
             </IonGrid>
+            <IonText color="dark">
+              Dữ liệu: {JSON.stringify(visibleProducts)}
+            </IonText>
 
             <IonInfiniteScroll
               onIonInfinite={loadMore}

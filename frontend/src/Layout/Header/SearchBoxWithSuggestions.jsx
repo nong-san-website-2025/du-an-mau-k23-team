@@ -288,7 +288,7 @@ export default function SearchBoxWithSuggestions({
                       e.preventDefault();
                       const keyword = seller.name || seller.shop_name;
                       logSearchKeyword(keyword); // ✅ Ghi log
-                      navigate(`/sellers/${seller.id}`);
+                      navigate(`/store/${seller.id}`);
                       setShowSuggestions(false);
                     }}
                     style={{

@@ -21,7 +21,13 @@ const { Option } = Select;
 const BannerForm = ({ bannerId, onSuccess }) => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
+  const [slots, setSlots] = useState([]);
 
+  useEffect(() => {
+    API.get("/marketing/slots/")
+      .then((res) => setSlots(res.data))
+      .catch(() => message.error("Không tải được danh sách vị trí quảng cáo"));
+  }, []);
   // Load dữ liệu nếu đang sửa
   useEffect(() => {
     if (bannerId) {
@@ -51,7 +57,8 @@ const BannerForm = ({ bannerId, onSuccess }) => {
 
     // Thêm các trường
     if (values.title) formData.append("title", values.title);
-    formData.append("position", values.position);
+    formData.append("slot_id", values.slot);
+
     formData.append("priority", String(values.priority));
     formData.append("is_active", values.is_active ? "true" : "false");
 
@@ -109,15 +116,15 @@ const BannerForm = ({ bannerId, onSuccess }) => {
 
       <Form.Item
         label="Vị trí hiển thị"
-        name="position"
-        rules={[{ required: true, message: "Vui lòng chọn vị trí" }]}
+        name="slot"
+        rules={[{ required: true, message: "Vui lòng chọn vị trí quảng cáo" }]}
       >
-        <Select>
-          <Option value="hero">Hero - Top trang</Option>
-          <Option value="carousel">Carousel (slider)</Option>
-          <Option value="side">Sidebar</Option>
-          <Option value="mobile">Chỉ hiển thị trên điện thoại</Option>
-          <Option value="modal">Modal Popup (hiện khi vào web)</Option>
+        <Select placeholder="Chọn vị trí hiển thị">
+          {slots.map((s) => (
+            <Option key={s.id} value={s.id}>
+              {s.name}
+            </Option>
+          ))}
         </Select>
       </Form.Item>
 

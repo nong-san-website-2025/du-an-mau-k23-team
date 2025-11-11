@@ -7,8 +7,8 @@ export default function CategorySection({ categories = [], loading = false }) {
   const placeholderCount = 12;
 
   return (
-    <div className="mb-4">
-      <h2 className="fs-5 fw-bold mb-3">Danh Mục Nổi Bật</h2>
+    <div className="">
+      <h2 className="fs-5 fw-normal">DANH MỤC</h2>
 
       <div className="category-scroll-container ">
         {loading
@@ -22,7 +22,7 @@ export default function CategorySection({ categories = [], loading = false }) {
               <Link
                 key={cat.id}
                 to={`/products?category=${encodeURIComponent(cat.name)}`}
-                className="category-item text-decoration-none text-dark pt-3"
+                className="category-item text-decoration-none text-dark pt-2"
               >
                 <div
                   className="category-inner"

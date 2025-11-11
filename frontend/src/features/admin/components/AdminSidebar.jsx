@@ -39,7 +39,7 @@ const Sidebar = () => {
     };
 
     fetchPendingSellers();
-    const interval = setInterval(fetchPendingSellers, 3000); // 🔁 Cập nhật mỗi 30s
+    const interval = setInterval(fetchPendingSellers, 30000); // 🔁 Cập nhật mỗi 30s
     return () => clearInterval(interval);
   }, []);
 
@@ -173,10 +173,13 @@ const Sidebar = () => {
           title="Marketing"
         >
           <Menu.Item key="/admin/marketing/banners">
-            <Link to="/admin/marketing/banners">{"Banner"}</Link>
+            <Link to="/admin/marketing/banners">{"Quản lý Banner"}</Link>
+          </Menu.Item>
+          <Menu.Item key="/admin/marketing/blogs">
+            <Link to="/admin/marketing/blogs">{"Quản lý Bài Viết"}</Link>
           </Menu.Item>
           <Menu.Item key="flash-sale">
-            <Link to="/admin/promotions/flashsale">{"Flash Sale"}</Link>
+            <Link to="/admin/promotions/flashsale">{"Quản lý Flash Sale"}</Link>
           </Menu.Item>
         </Menu.SubMenu>
 

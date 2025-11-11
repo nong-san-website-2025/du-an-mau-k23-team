@@ -215,3 +215,9 @@ export const productApi = {
     return this.getAllProducts();
   },
 };
+
+export const fetchNewProducts = () =>
+  fetch(`${API_URL}/products/new-products/`).then((res) => res.json());
+
+export const fetchBestSellers = () =>
+  fetch(`${API_URL}/products/best-sellers/`).then((res) => res.json());

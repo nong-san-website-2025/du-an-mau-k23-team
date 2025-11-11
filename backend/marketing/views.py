@@ -1,25 +1,29 @@
 # apps/marketing/views.py
-from rest_framework import viewsets, status
-from rest_framework.parsers import MultiPartParser, FormParser
-from rest_framework.permissions import  AllowAny
+from rest_framework import viewsets
+from rest_framework.permissions import IsAdminUser, AllowAny
+from .models import Banner, AdSlot
+from .serializers import BannerSerializer, AdSlotSerializer
 from django.utils import timezone
+from django.db import models
 
-from .models import Banner
-from .serializers import (
-    BannerSerializer
-)
+class AdSlotViewSet(viewsets.ModelViewSet):
+    queryset = AdSlot.objects.all()
+    serializer_class = AdSlotSerializer
+    permission_classes = [IsAdminUser]
 
-# --------- ADMIN CRUD VIEWS ---------
+
 class BannerViewSet(viewsets.ModelViewSet):
     queryset = Banner.objects.all()
     serializer_class = BannerSerializer
     permission_classes = [AllowAny]
-    parser_classes = [MultiPartParser, FormParser]
 
     def get_queryset(self):
-        queryset = Banner.objects.all()
-        position = self.request.query_params.get('position')
-        if position:
-            queryset = queryset.filter(position=position)
-        return queryset
-
+        qs = super().get_queryset()
+        slot = self.request.query_params.get("slot")
+        now = timezone.now()    
+        if slot:
+            qs = qs.filter(slot__code=slot)
+        qs = qs.filter(is_active=True, start_at__lte=now).filter(
+            models.Q(end_at__isnull=True) | models.Q(end_at__gte=now)
+        )
+        return qs

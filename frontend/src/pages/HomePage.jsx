@@ -1,11 +1,9 @@
 // src/pages/HomePage.jsx
 import { useState, useEffect, Suspense } from "react";
-import { Spin, Modal } from "antd";
+import { Spin } from "antd";
 import { Helmet } from "react-helmet";
 
 // Components
-import BannerSlider from "../components/home/BannerSlider.jsx"; // hero
-import SideBanners from "../components/home/SideBanners.jsx"; // carousel (2 banner nhỏ)
 import QuickAccessBar from "../components/home/QuickAccessBar.jsx";
 import CategorySection from "../components/home/CategorySection.jsx";
 import HomeProductTabs from "../components/home/HomeProductTabs.jsx";
@@ -14,8 +12,13 @@ import PersonalizedSection from "../components/home/PersonalizedSection.jsx";
 
 // APIs
 import { fetchCategories } from "../services/api/homepageApi.js";
-import { getBannersByPosition } from "../features/admin/services/marketingApi.js";
+import { getBannersBySlot } from "../features/admin/services/marketingApi.js";
 import Layout from "../Layout/LayoutDefault.js";
+import "../styles/HomePage.css";
+import DynamicAdSlot from "../features/admin/components/MarketingAdmin/DynamicAdSlot.jsx";
+import BannerSlider from "../components/home/BannerSlider.jsx";
+import FeaturedBlogs from "../components/home/FeaturedBlogs.jsx";
+import PromotionSection from "../components/home/PromotionSection.jsx";
 
 export default function HomePage() {
   const [loading, setLoading] = useState(true);
@@ -30,7 +33,7 @@ export default function HomePage() {
         // Gọi song song 3 API: categories, modal, carousel
         const [catRes, modalRes] = await Promise.all([
           fetchCategories(),
-          getBannersByPosition("modal"),
+          getBannersBySlot("modal"),
           // Không cần gọi carousel ở đây vì SideBanners sẽ tự gọi
         ]);
 
@@ -72,79 +75,60 @@ export default function HomePage() {
 
   return (
     <Layout>
-      <div className="container" style={{ padding: "0 16px" }}>
-        <Helmet>
-          <title>GreenFarm</title>
-          <meta name="description" content="Đây là trang chủ của website." />
-        </Helmet>
-
-        {/* === Hero + Side Banners === */}
-        <div className="d-flex gap-0 mt-3">
-          <div style={{ flex: 7 }}>
-            <BannerSlider /> {/* position = "hero" */}
-          </div>
-          <div style={{ flex: 3 }}>
-            <SideBanners /> {/* position = "carousel" — tự gọi API bên trong */}
-          </div>
-        </div>
-
-        <QuickAccessBar />
-        <CategorySection categories={categories} />
-
-        <FlashSaleList />
-
-        <HomeProductTabs />
-
-        <Suspense fallback={<Spin />}>
-          <PersonalizedSection username={username} />
-        </Suspense>
-
-        {/* === Modal Popup === */}
-        {popupAds.length > 0 && (
-          <Modal
-            key={popupAds[0]?.id}
-            open={true}
-            footer={null}
-            closable
-            onCancel={() => setPopupAds([])}
-            centered
-            width="60vw"
-            styles={{
-              body: {
-                padding: 0,
-                margin: 0,
-                height: "60vh",
-                overflow: "hidden",
-                background: "transparent",
-              },
-            }}
-            className="full-screen-modal"
-          >
-            {popupAds[0]?.image && (
-              <img
-                src={popupAds[0].image}
-                alt={popupAds[0].title || "Popup Banner"}
-                loading="lazy"
-                onClick={() =>
-                  popupAds[0].click_url &&
-                  window.open(
-                    popupAds[0].click_url,
-                    "_blank",
-                    "noopener,noreferrer"
-                  )
-                }
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
-                  display: "block",
-                  borderRadius: 8,
-                  cursor: "pointer",
-                }}
+      <Helmet>
+        <title>GreenFarm</title>
+        <meta name="description" content="Đây là trang chủ của website." />
+      </Helmet>
+      <div className="container">
+        <section className="home-section hero-section">
+          <div className="d-flex gap-0 mt-3 note">
+            <div style={{ flex: 7 }}>
+              <BannerSlider slotCode="banner_hero" />
+            </div>
+            <div style={{ flex: 3 }}>
+              <DynamicAdSlot
+                slotCode="banner_mini_side"
+                maxHeight="150px"
+                limit={2}
+                className="side-banners-container"
               />
-            )}
-          </Modal>
-        )}
+            </div>
+          </div>
+        </section>
+
+        {/* === Thanh truy cập nhanh === */}
+        <section className="home-section">
+          <QuickAccessBar />
+        </section>
+
+        <DynamicAdSlot slotCode="homepage_between_sections" maxHeight="200px" />
+
+        {/* === Danh mục nổi bật === */}
+        <section className="home-section">
+          <CategorySection categories={categories} />
+        </section>
+
+        <section className="home-section">
+          <PromotionSection />
+        </section>
+
+        {/* === Flash Sale === */}
+        <section className="home-section">
+          <FlashSaleList />
+        </section>
+
+        <DynamicAdSlot slotCode="category-personalized" maxHeight="400px" />
+
+        {/* === Gợi ý cho bạn === */}
+        <section className="home-section">
+          <Suspense fallback={<Spin />}>
+            <PersonalizedSection username={username} />
+          </Suspense>
+        </section>
+
+        <section className="home-section">
+          <FeaturedBlogs />
+        </section>
       </div>
     </Layout>
   );

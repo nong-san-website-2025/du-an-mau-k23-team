@@ -16,52 +16,42 @@ import {
   Space,
   message,
 } from "antd";
-import {
-  UploadOutlined,
-} from "@ant-design/icons";
+import { UploadOutlined } from "@ant-design/icons";
 import axios from "axios";
-
 
 const { Option } = Select;
 const { TextArea } = Input;
 const { Title, Text } = Typography;
 
-const ProductForm = ({
-  visible,
-  onCancel,
-  onSubmit,
-  initialValues,
-  categories = [],
-}) => {
+const ProductForm = ({ visible, onCancel, onSubmit, initialValues }) => {
   const [form] = Form.useForm();
-const [availability, setAvailability] = useState("available");
-const [selectedCategory, setSelectedCategory] = useState(null);
-const [subcategories, setSubcategories] = useState([]);
-const [fileList, setFileList] = useState([]); // cho gallery nhiều ảnh
-const [primaryImage, setPrimaryImage] = useState(null);
-const [imageFile, setImageFile] = useState(null); // cho 1 ảnh upload nhanh
-const [previewUrl, setPreviewUrl] = useState(null);
-const [categories, setCategories] = useState([]);
+  const [availability, setAvailability] = useState("available");
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [subcategories, setSubcategories] = useState([]);
+  const [fileList, setFileList] = useState([]); // cho gallery nhiều ảnh
+  const [primaryImage, setPrimaryImage] = useState(null);
+  const [imageFile, setImageFile] = useState(null); // cho 1 ảnh upload nhanh
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const [categories, setCategories] = useState([]);
 
   useEffect(() => {
-  axios
-    .get("http://localhost:8000/api/categories/")
-    .then((res) => setCategories(res.data))
-    .catch((err) => console.error("Lỗi tải categories:", err));
+    axios
+      .get("http://localhost:8000/api/categories/")
+      .then((res) => setCategories(res.data))
+      .catch((err) => console.error("Lỗi tải categories:", err));
 
-  axios
-    .get("http://localhost:8000/api/subcategories/")
-    .then((res) => setSubcategories(res.data))
-    .catch((err) => console.error("Lỗi tải subcategories:", err));
-}, []);
-
+    axios
+      .get("http://localhost:8000/api/subcategories/")
+      .then((res) => setSubcategories(res.data))
+      .catch((err) => console.error("Lỗi tải subcategories:", err));
+  }, []);
 
   const handleCategoryChange = (categoryId) => {
-  setSelectedCategory(categoryId);
-  const selected = categories.find((cat) => cat.id === categoryId);
-  setSubcategories(selected ? selected.subcategories : []);
-  form.setFieldsValue({ subcategory: undefined });
-};
+    setSelectedCategory(categoryId);
+    const selected = categories.find((cat) => cat.id === categoryId);
+    setSubcategories(selected ? selected.subcategories : []);
+    form.setFieldsValue({ subcategory: undefined });
+  };
 
   // 🟢 Khi mở modal, fill dữ liệu hoặc reset
   useEffect(() => {
@@ -115,7 +105,6 @@ const [categories, setCategories] = useState([]);
     }
   }, [visible, initialValues, categories, form]);
 
-
   // 🟢 Xử lý chọn ảnh
   const handleImageChange = (info) => {
     const file = info.file?.originFileObj;
@@ -138,38 +127,37 @@ const [categories, setCategories] = useState([]);
 
   // 🟢 Gửi form
   const handleOk = () => {
-  form
-    .validateFields()
-    .then((values) => {
-      const formData = new FormData();
+    form
+      .validateFields()
+      .then((values) => {
+        const formData = new FormData();
 
-      // Gửi các field thông thường
-      Object.entries(values).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          formData.append(key, value);
+        // Gửi các field thông thường
+        Object.entries(values).forEach(([key, value]) => {
+          if (value !== undefined && value !== null) {
+            formData.append(key, value);
+          }
+        });
+
+        // Ảnh chính (nhiều ảnh)
+        const primaryFile = fileList.find((file) => file.uid === primaryImage);
+        if (primaryFile?.originFileObj) {
+          formData.append("image", primaryFile.originFileObj);
         }
+
+        // Ảnh đơn (previewUrl)
+        if (imageFile) {
+          formData.append("image_single", imageFile);
+        }
+
+        onSubmit(formData);
+        onCancel();
+      })
+      .catch((err) => {
+        message.error("Vui lòng kiểm tra lại thông tin!");
+        console.log(err);
       });
-
-      // Ảnh chính (nhiều ảnh)
-      const primaryFile = fileList.find((file) => file.uid === primaryImage);
-      if (primaryFile?.originFileObj) {
-        formData.append("image", primaryFile.originFileObj);
-      }
-
-      // Ảnh đơn (previewUrl)
-      if (imageFile) {
-        formData.append("image_single", imageFile);
-      }
-
-      onSubmit(formData);
-      onCancel();
-    })
-    .catch((err) => {
-      message.error("Vui lòng kiểm tra lại thông tin!");
-      console.log(err);
-    });
-};
-
+  };
 
   return (
     <Modal
@@ -271,7 +259,9 @@ const [categories, setCategories] = useState([]);
               <Form.Item
                 label="Trạng thái hàng hóa"
                 name="availability_status"
-                rules={[{ required: true, message: "Vui lòng chọn trạng thái" }]}
+                rules={[
+                  { required: true, message: "Vui lòng chọn trạng thái" },
+                ]}
                 initialValue="available"
               >
                 <Select onChange={handleAvailabilityChange}>
@@ -419,6 +409,7 @@ const [categories, setCategories] = useState([]);
             </Card>
           </Col>
         </Row>
+      </Form>
     </Modal>
   );
 };

@@ -40,7 +40,7 @@ class CategorySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Category
-        fields = ['id', 'name', 'key', 'icon', 'status', 'subcategories', 'image']
+        fields = ['id', 'name', 'key', 'icon', 'status', 'subcategories', 'image', 'is_featured']
 
     def get_image_url(self, obj):
         request = self.context.get('request')
@@ -91,7 +91,7 @@ class ProductSerializer(serializers.ModelSerializer):
             "availability_status", "season_start", "season_end",
             "estimated_quantity", "preordered_quantity", 'ordered_quantity',
             "is_coming_soon", "is_out_of_stock", "available_quantity",
-            "total_preordered", "user_preordered", "features", "main_image"
+            "total_preordered", "user_preordered", "features", "main_image", 'sold'
         ]
         read_only_fields = ["status", "seller"]
 
@@ -234,12 +234,12 @@ class ProductListSerializer(serializers.ModelSerializer):
         model = Product
         fields = [
             'id', 'name', 'description',
-            'original_price', 'discounted_price', 'price', 'discount_percent', 'unit', 
+            'original_price', 'discounted_price', 'price', 'discount_percent', 'unit',
              'images',  # ✅ Thêm 'images'
             'rating', 'review_count', 'location', 'brand',
             'category_name', 'subcategory_name', 'category_id',
             'subcategory', 'stock', 'status', 'created_at', 'updated_at',
-            'seller', 'seller_name', 'sold_count',
+            'seller', 'seller_name', 'sold_count', 'sold',
             "availability_status", "season_start", "season_end",
             "estimated_quantity", "preordered_quantity",
             "is_coming_soon", "is_out_of_stock", "available_quantity",

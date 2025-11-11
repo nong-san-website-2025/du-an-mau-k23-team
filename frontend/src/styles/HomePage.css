@@ -1,0 +1,39 @@
+.homepage-container {
+  margin: 0 90px;
+  
+}
+
+.home-section {
+  margin-top: 32px;
+  margin-bottom: 32px;
+}
+
+.hero-section {
+  margin-top: 16px;
+  margin-bottom: 16px;
+}
+
+/* Nền trắng cho từng section để tách biệt */
+.home-section > div,
+.home-section .category-scroll-container,
+.home-section .row {
+  background: #fff;
+  border-radius: 8px;
+  padding: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+/* Tiêu đề section thống nhất */
+.home-section h2 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+.note{
+  padding: 0px !important;
+  height: 300px !important;
+}
+
+
+  

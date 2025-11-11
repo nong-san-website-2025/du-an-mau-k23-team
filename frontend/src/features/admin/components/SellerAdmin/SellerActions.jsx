@@ -1,10 +1,15 @@
 import React from "react";
 import { Button, Popconfirm, Space, Tooltip } from "antd";
 import {
+  CheckCircleTwoTone,
   CheckOutlined,
+  CloseCircleTwoTone,
   CloseOutlined,
   EyeOutlined,
+  EyeTwoTone,
   LockOutlined,
+  PlayCircleOutlined,
+  StopOutlined,
   UnlockOutlined,
 } from "@ant-design/icons";
 
@@ -25,47 +30,55 @@ const SellerActions = ({ record, onApprove, onReject, onView, onLock }) => {
 
   return (
     <Space size="small">
-
-      {/* ✅ Duyệt */}
       <Tooltip title="Duyệt cửa hàng">
         <Button
-          icon={<CheckOutlined />}
-          type="primary"
+          icon={<CheckCircleTwoTone twoToneColor="#52c41a" />}
+          type="text"
           size="small"
-          disabled={isApproved || isLocked || isRejected || isActive}
           onClick={() => onApprove(record)}
+          disabled={isApproved || isLocked || isRejected || isActive}
         />
       </Tooltip>
 
-      {/* ❌ Từ chối */}
       <Tooltip title="Từ chối cửa hàng">
         <Button
-          icon={<CloseOutlined />}
-          type="default"
-          danger
+          icon={<CloseCircleTwoTone twoToneColor="#ff4d4f" />}
+          type="text"
           size="small"
-          disabled={isApproved || isLocked || isRejected || isActive}
           onClick={() => onReject(record)}
+          disabled={isApproved || isLocked || isRejected || isActive}
         />
       </Tooltip>
 
-      {/* 🔒 / 🔓 Khóa / Mở khóa */}
       <Tooltip title={isActive ? "Khóa cửa hàng" : "Mở khóa cửa hàng"}>
         <Popconfirm
-          title={`Bạn có chắc muốn ${
-            isActive ? "khóa" : "mở khóa"
-          } cửa hàng này?`}
+          title={`Bạn có chắc muốn ${isActive ? "khóa" : "mở khóa"} cửa hàng này?`}
           onConfirm={handleLockToggle}
           okText="Có"
           cancelText="Hủy"
         >
           <Button
-            icon={isActive ? <LockOutlined /> : <UnlockOutlined />}
-            type={isActive ? "default" : "primary"}
+            icon={
+              isActive ? (
+                <StopOutlined style={{ color: "#faad14" }} />
+              ) : (
+                <PlayCircleOutlined style={{ color: "#1890ff" }} />
+              )
+            }
+            type="text"
             size="small"
             disabled={isApproved || isRejected || isPending}
           />
         </Popconfirm>
+      </Tooltip>
+
+      <Tooltip title="Xem chi tiết">
+        <Button
+          icon={<EyeTwoTone />}
+          type="text"
+          size="small"
+          onClick={() => onView(record)}
+        />
       </Tooltip>
     </Space>
   );

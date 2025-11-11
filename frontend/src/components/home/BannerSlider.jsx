@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import Slider from "react-slick";
-import { getBannersByPosition } from "../../features/admin/services/marketingApi.js";
+import { getBannersBySlot } from "../../features/admin/services/marketingApi.js";
 import { LeftOutlined, RightOutlined } from "@ant-design/icons";
 import NoImage from "../shared/NoImage.jsx"; // ✅ Import NoImage
 import "../../styles/home/BannerSlider.css";
@@ -16,7 +16,7 @@ export default function BannerSlider() {
   const sliderRef = React.useRef(null);
 
   useEffect(() => {
-    getBannersByPosition("hero")
+    getBannersBySlot("banner_hero")
       .then((res) => {
         const activeBanners = res.data.filter((b) => b.is_active);
         setBanners(activeBanners.length > 0 ? activeBanners : []);
@@ -41,7 +41,7 @@ export default function BannerSlider() {
   if (banners.length === 0) return null;
 
   return (
-    <div className="position-relative mb-4 border">
+    <div className="position-relative mb-4">
       <Slider ref={sliderRef} {...settings}>
         {banners.map((banner) => {
           const hasValidImage = isValidImageUrl(banner.image);
@@ -71,6 +71,9 @@ export default function BannerSlider() {
                     width: "100%",
                     height: "300px",
                     objectFit: "cover",
+                    objectPosition: "center",
+                    borderRadius: "8px",
+
                   }}
                   // Không cần onLoad/onError phức tạp nữa
                 />

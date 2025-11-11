@@ -1,43 +1,14 @@
 // src/components/Home/QuickAccessBar.jsx
 import React from "react";
 import { Card } from "antd";
-import { 
-  GiftOutlined, 
-  FireOutlined, 
-  CrownOutlined, 
-  DollarOutlined,
-  // Thêm icon mới ở đây nếu cần
-} from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
+import { voucher, sale, loyalty, coming_soon } from "../../assets/icons";
 
-// Dễ dàng mở rộng: cứ thêm vào mảng này
 const quickLinks = [
-  {
-    title: "Voucher",
-    icon: <GiftOutlined style={{ fontSize: 24, color: "#ff6f00" }} />,
-    path: "/promotions/vouchers",
-  },
-  {
-    title: "Siêu Sale",
-    icon: <FireOutlined style={{ fontSize: 24, color: "#ff4d4f" }} />,
-    path: "/flash-sales",
-  },
-  {
-    title: "Thân thiết",
-    icon: <CrownOutlined style={{ fontSize: 24, color: "#722ed1" }} />,
-    path: "/loyalty",
-  },
-  {
-    title: "Deal rẻ",
-    icon: <DollarOutlined style={{ fontSize: 24, color: "#52c41a" }} />,
-    path: "/deals",
-  },
-  // 👇 Thêm item mới ở đây — KHÔNG cần sửa CSS!
-  // {
-  //   title: "Mới",
-  //   icon: <StarOutlined style={{ fontSize: 24, color: "#faad14" }} />,
-  //   path: "/new",
-  // },
+  { title: "Mã giảm giá", icon: voucher, path: "/promotions/vouchers" },
+  { title: "Siêu Sale", icon: sale, path: "/flash-sales" },
+  { title: "Khách mối", icon: loyalty, path: "/loyalty" },
+  { title: "Hàng sắp có", icon: coming_soon, path: "/coming-soon" },
 ];
 
 const QuickAccessBar = () => {
@@ -47,38 +18,52 @@ const QuickAccessBar = () => {
     <div
       style={{
         display: "flex",
-        justifyContent: "space-between", // ← CĂN ĐỀU TỪ TRÁI SANG PHẢI
+        justifyContent: "space-between",
         width: "100%",
-        padding: "8px 0 16px",
-        gap: 12, // khoảng cách giữa các item (tuỳ chọn)
+        padding: "8px 0 8px",
+        gap: 12,
       }}
     >
       {quickLinks.map((item, index) => (
-        <div
-          key={index}
-          style={{
-            flex: 1, // ← Mỗi item chiếm phần bằng nhau
-            minWidth: 0, // tránh bị tràn chữ
-          }}
-        >
+        <div key={index} style={{ flex: 1, minWidth: 0 }}>
           <Card
             hoverable
             style={{
               textAlign: "center",
               borderRadius: 12,
-              height: "100%",
-              transition: "all 0.2s",
               boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+              transition: "all 0.2s ease",
             }}
             bodyStyle={{ padding: "16px 8px" }}
             onClick={() => navigate(item.path)}
           >
-            <div style={{ marginBottom: 8 }}>{item.icon}</div>
+            <div
+              style={{
+                display: "inline-flex",
+                justifyContent: "center",
+                alignItems: "center",
+                border: "1px solid #ccc", // viền xám nhẹ
+                borderRadius: "12px", // bo góc mềm mại
+                padding: "6px", // cách viền với ảnh
+                backgroundColor: "#fff", // nền trắng (giúp icon rõ)
+              }}
+            >
+              <img
+                src={item.icon}
+                alt={item.title}
+                style={{
+                  width: 38,
+                  height: 38,
+                  objectFit: "contain",
+                  filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.1))",
+                }}
+              />
+            </div>
+
             <div
               style={{
                 fontSize: 14,
                 fontWeight: 500,
-                lineHeight: 1.3,
                 whiteSpace: "nowrap",
                 overflow: "hidden",
                 textOverflow: "ellipsis",

@@ -35,39 +35,47 @@ const ProductTable = ({
       dataIndex: "image",
       width: 60,
       align: "center",
-      render: (_, record) => (
-        <div
-          style={{
-            width: 50,
-            height: 30,
-            borderRadius: 4,
-            backgroundColor: record.image ? "transparent" : "#d9d9d9", // ✅ xám nếu không có ảnh
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          {record.image ? (
-            <Image
-              src={record.image}
-              alt={record.name}
-              width={60}
-              height={40}
-              style={{
-                objectFit: "cover",
-                borderRadius: 4,
-              }}
-              onError={(e) => {
-                e.target.onerror = null;
-                e.target.src = "/no-image.png";
-              }}
-              preview={false}
-            />
-          ) : (
-            <span style={{ color: "#fff", fontSize: 12 }}>Không có ảnh</span>
-          )}
-        </div>
-      ),
+      render: (_, record) => {
+        // Lấy URL ảnh từ main_image.image hoặc ảnh đầu tiên trong mảng images
+        const productImage = record.main_image?.image || (record.images?.length > 0 ? record.images[0].image : null);
+        
+        return (
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: 50,
+              height: 30,
+              borderRadius: 4,
+              backgroundColor: productImage ? "transparent" : "#f5f5f5",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              border: "1px solid #e8e8e8",
+            }}
+          >
+            {productImage ? (
+              <Image
+                src={productImage} // URL ảnh đã đầy đủ, không cần thêm API base
+                alt={record.name}
+                width={60}
+                height={40}
+                style={{
+                  objectFit: "cover",
+                  borderRadius: 4,
+                }}
+                onError={(e) => {
+                  e.target.onerror = null;
+                  e.target.src = "https://placehold.co/60x40/f5f5f5/999999?text=No+Image";
+                }}
+                fallback="https://placehold.co/60x40/f5f5f5/999999?text=Error"
+                preview={true}
+              />
+            ) : (
+              <span style={{ color: "#999", fontSize: 12 }}>Chưa có ảnh</span>
+            )}
+          </div>
+        );
+      },
     },
     {
       title: "Tên sản phẩm",

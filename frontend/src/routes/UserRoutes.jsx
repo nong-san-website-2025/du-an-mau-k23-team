@@ -37,12 +37,14 @@ import Termsofservice from "../pages/CustomerService/Termsofservice";
 import RturnmoNey from "../pages/CustomerService/RturnmoNey";
 import GreenFarmwallet from "../pages/CustomerService/GreenFarmwallet";
 import Frequentlyaskedquestions from "../pages/CustomerService/FAQ";
+import BlogListPage from "../features/blog/pages/BlogListPage";
+import BlogDetailPage from "../features/blog/pages/BlogDetailPage";
 
 export const userRoutes = [
   <Route path="/" element={<Layout />} key="layout">
     <Route index element={<HomePage />} />
-    <Route path="blog" element={<BlogHome />} />
-    <Route path="blog/:slug" element={<BlogDetail />} />
+    <Route path="blog" element={<BlogListPage />} />
+    <Route path="blog/:slug" element={<BlogDetailPage />} />
     <Route path="products" element={<UserProductPage />} />
     <Route path="products/:id" element={<ProductDetailPage />} />
     <Route path="cart" element={<CartPage />} />

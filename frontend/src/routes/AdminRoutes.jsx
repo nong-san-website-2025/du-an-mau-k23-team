@@ -57,6 +57,7 @@ import MarketingAutomationPage from "../features/admin/pages/Setting/MarketingAu
 import LoyaltySettingsPage from "../features/admin/pages/Setting/LoyaltySettingsPage";
 import ThemeSettingsPage from "../features/admin/pages/Setting/ThemeSettingsPage";
 import MarketingAdminPage from './../features/admin/pages/MarketingAdmin/AdminMarketingPage';
+import AdminBlogs from "../features/admin/pages/BlogAdmin/AdminBlogs.jsx";
 
 export const adminRoutes = [
   <Route element={<AdminPrivateRoute />} key="admin-protect">
@@ -87,6 +88,7 @@ export const adminRoutes = [
       <Route path="promotions" element={<Promotions />} />
       <Route path="promotions/flashsale" element={<FlashSale />} />
       <Route path="marketing/banners" element={<MarketingAdminPage />} />
+      <Route path="marketing/blogs" element={<AdminBlogs />} />
       <Route path="promotions/coupons" element={<Coupons />} />
 
       {/* Reports */}

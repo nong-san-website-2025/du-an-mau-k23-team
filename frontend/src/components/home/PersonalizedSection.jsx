@@ -45,9 +45,10 @@ const PersonalizedSection = ({ username, onAddToCart }) => {
     }
   }, [inView, hasLoaded]);
 
+  // src/components/home/PersonalizedSection.jsx
   return (
-    <div ref={ref} className="bg-white px-4 py-3 shadow-sm mt-1 w-100">
-      <h2 className="fs-5 fw-bold mb-3">Gợi Ý Cho Bạn</h2>
+    <div ref={ref} className="mb-4">
+      <h2 className="fs-5 fw-normal mb-3">GỢI Ý CHO BẠN</h2>
 
       <div className="row g-3">
         {loading
@@ -63,7 +64,7 @@ const PersonalizedSection = ({ username, onAddToCart }) => {
                 <ProductCard
                   product={product}
                   onAddToCart={(e, product) => {
-                    e.stopPropagation(); // ngăn click bắn lên Card
+                    e.stopPropagation();
                     addToCart(product.id, 1, product);
                   }}
                 />
