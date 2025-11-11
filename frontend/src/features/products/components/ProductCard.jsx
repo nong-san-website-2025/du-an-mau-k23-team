@@ -1,6 +1,9 @@
 import React from "react";
 import { Card, Button, Typography, Rate } from "antd";
-import { ShoppingCartOutlined } from "@ant-design/icons";
+import {
+  ShoppingCartOutlined,
+  FireOutlined, // 👈 MỚI: Thêm icon cho "đã bán"
+} from "@ant-design/icons";
 import NoImage from "../../../components/shared/NoImage";
 import { useNavigate } from "react-router-dom";
 import "../styles/ProductCard.css";
@@ -13,7 +16,7 @@ const featureColors = {
   "Hữu cơ": "#52c41a",
   "Không thuốc trừ sâu": "#f5222d",
   "Tự nhiên": "#1890ff",
-  "Sạch": "#faad14",
+  Sạch: "#faad14",
 };
 
 export default function ProductCard({
@@ -29,7 +32,6 @@ export default function ProductCard({
 
   const imageUrl = product.main_image?.image || null;
 
-
   const discountPercent =
     product.discount_percent ||
     (product.original_price && product.discounted_price
@@ -39,6 +41,9 @@ export default function ProductCard({
             100
         )
       : 0);
+
+  // Giả định số lượng đã bán (bạn có thể dùng sold_quantity hoặc total_sold)
+  const quantitySold = product.sold || product.total_sold || 0;
 
   return (
     <Card
@@ -128,13 +133,42 @@ export default function ProductCard({
         }
         description={
           <>
-            {/* ⭐ Rating */}
-            <Rate
-              disabled
-              allowHalf
-              defaultValue={product.rating || 0}
-              style={{ fontSize: 10 }}
-            />
+            {/* ⭐ Rating & Đã bán (PHẦN ĐƯỢC CẬP NHẬT) */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 8, // Khoảng cách giữa rating và đã bán
+                flexWrap: "wrap", // Cho phép xuống dòng nếu không đủ chỗ
+                minHeight: 18, // Đảm bảo chiều cao ổn định
+              }}
+            >
+              <Rate
+                disabled
+                allowHalf
+                defaultValue={product.rating || 0}
+                style={{ fontSize: 10 }}
+              />
+
+              {/* Mới: Hiển thị số lượng đã bán */}
+              {quantitySold > 0 && (
+                <>
+
+                  <Text
+                    type="secondary"
+                    style={{
+                      fontSize: 10,
+                      display: "flex",
+                      alignItems: "end",
+                      gap: 4,
+                    }}
+                  >
+                    Đã bán {quantitySold}
+                  </Text>
+                </>
+              )}
+            </div>
 
             {/* 💰 Giá và nút giỏ hàng */}
             <div
@@ -151,7 +185,9 @@ export default function ProductCard({
                   {formatVND(product.discounted_price)}
                 </Text>
                 {product.original_price && (
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <div
+                    style={{ display: "flex", alignItems: "center", gap: 6 }}
+                  >
                     <Text
                       delete
                       type="secondary"

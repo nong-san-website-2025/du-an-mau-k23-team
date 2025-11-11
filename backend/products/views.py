@@ -80,6 +80,13 @@ class SubcategoryViewSet(viewsets.ModelViewSet):
     serializer_class = SubcategorySerializer
     permission_classes = [AllowAny]
 
+    @action(detail=False, methods=["get"], url_path="by-category/(?P<category_id>[^/.]+)")
+    def by_category(self, request, category_id=None):
+        """Trả về danh mục con thuộc 1 danh mục cha"""
+        subcategories = self.queryset.filter(category_id=category_id)
+        serializer = self.get_serializer(subcategories, many=True)
+        return Response(serializer.data)
+
 class ProductViewSet(viewsets.ModelViewSet):
     permission_classes = [AllowAny]
     queryset = Product.objects.select_related('subcategory__category', 'seller').prefetch_related('images').all()
