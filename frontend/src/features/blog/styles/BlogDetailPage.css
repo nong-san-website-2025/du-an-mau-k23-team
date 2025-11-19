@@ -1,10 +1,8 @@
-/* ===== BLOG DETAIL PAGE - CLEAN GREEN DESIGN ===== */
-
 /* Container chính */
 .blog-detail-container {
   background: #f5f5f5;
   min-height: 100vh;
-  padding: 3rem 1rem;
+  padding: 1rem 1rem;
 }
 
 .blog-content-wrapper {
@@ -21,6 +19,7 @@
   margin-bottom: 2.5rem;
   height: 450px;
   background: #e8f5e9;
+  animation: fadeIn 0.6s ease-out;
 }
 
 .blog-header-image img {
@@ -42,6 +41,7 @@
   margin-bottom: 2rem;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
   border-left: 4px solid #4caf50;
+  animation: fadeIn 0.5s ease-out;
 }
 
 .blog-title {
@@ -88,61 +88,105 @@
 .blog-actions {
   display: flex;
   justify-content: center;
-  gap: 1.5rem;
+  align-items: center;
+  gap: 1rem;
   margin: 2.5rem 0;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+  border-radius: 16px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
 }
 
-.like-btn, .bookmark-btn {
-  min-width: 120px;
-  height: 44px !important;
-  border-radius: 8px !important;
-  font-weight: 600 !important;
-  font-size: 0.95rem !important;
-  border: 2px solid #e0e0e0 !important;
-  background: white !important;
-  color: #546e7a !important;
-  transition: all 0.3s ease !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
+/* Base button styles */
+.blog-actions .ant-btn {
+  min-width: 130px;
+  height: 48px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: 2px solid;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
-.like-btn:hover {
-  border-color: #ef5350 !important;
-  color: #ef5350 !important;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(239, 83, 80, 0.2) !important;
+.blog-actions .ant-btn::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
 }
 
-.bookmark-btn:hover {
-  border-color: #4caf50 !important;
-  color: #4caf50 !important;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.2) !important;
+.blog-actions .ant-btn:active::before {
+  width: 300px;
+  height: 300px;
 }
 
-.like-btn.liked {
-  background: #ef5350 !important;
-  border-color: #ef5350 !important;
-  color: white !important;
+/* Default button state */
+.blog-actions .ant-btn {
+  background: white;
+  border-color: #e8e8e8;
+  color: #64748b;
 }
 
-.like-btn.liked:hover {
-  background: #e53935 !important;
-  border-color: #e53935 !important;
+.blog-actions .ant-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
 }
 
-.bookmark-btn.bookmarked {
-  background: #4caf50 !important;
-  border-color: #4caf50 !important;
-  color: white !important;
+/* Like button - liked state */
+.blog-actions .ant-btn.liked {
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+  border-color: #ff6b6b;
+  color: white;
+  box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
 }
 
-.bookmark-btn.bookmarked:hover {
-  background: #43a047 !important;
-  border-color: #43a047 !important;
+.blog-actions .ant-btn.liked:hover {
+  background: linear-gradient(135deg, #ff5252 0%, #e53e3e 100%);
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 8px 25px rgba(255, 82, 82, 0.5);
 }
 
-.like-btn .anticon, .bookmark-btn .anticon {
-  font-size: 1.1rem;
+/* Bookmark button - bookmarked state */
+.blog-actions .ant-btn.bookmarked {
+  background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+  border-color: #4ade80;
+  color: white;
+  box-shadow: 0 4px 15px rgba(74, 222, 128, 0.4);
+}
+
+.blog-actions .ant-btn.bookmarked:hover {
+  background: linear-gradient(135deg, #3bc96e 0%, #16a34a 100%);
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 8px 25px rgba(59, 201, 110, 0.5);
+}
+
+/* Icon styling */
+.blog-actions .ant-btn .anticon {
+  font-size: 1.2rem;
+  transition: transform 0.3s ease;
+}
+
+.blog-actions .ant-btn:hover .anticon {
+  transform: scale(1.15);
+}
+
+/* Count badge */
+.blog-actions .ant-btn span:last-child {
+  font-weight: 700;
+  letter-spacing: 0.3px;
 }
 
 /* Content Card */
@@ -152,6 +196,7 @@
   padding: 3rem;
   margin-bottom: 3rem;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  animation: fadeIn 0.5s ease-out;
 }
 
 .blog-content-card .prose {
@@ -256,6 +301,7 @@
   border-radius: 12px;
   padding: 2.5rem;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  animation: fadeIn 0.5s ease-out;
 }
 
 .comment-section-title {
@@ -419,7 +465,7 @@
     gap: 1rem;
   }
 
-  .like-btn, .bookmark-btn {
+  .blog-actions .ant-btn {
     min-width: 100px;
     height: 40px !important;
     font-size: 0.9rem !important;
@@ -460,14 +506,31 @@
   }
 }
 
-.blog-title-section,
-.blog-content-card,
-.comment-section {
-  animation: fadeIn 0.5s ease-out;
+@keyframes heartBeat {
+  0%, 100% {
+    transform: scale(1);
+  }
+  25% {
+    transform: scale(1.3);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  75% {
+    transform: scale(1.25);
+  }
 }
 
-.blog-header-image {
-  animation: fadeIn 0.6s ease-out;
+@keyframes bookmarkPop {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.25) rotate(-10deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
 }
 
 /* Scrollbar Styling */

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   Collapse,
   Tag,
@@ -49,6 +49,7 @@ const OrderTab = ({ status }) => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [cancelingOrderIds, setCancelingOrderIds] = useState(new Set());
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
 
   // Complaint UI state per product
   const [openComplaint, setOpenComplaint] = useState({}); // { [productId]: boolean }
@@ -56,6 +57,7 @@ const OrderTab = ({ status }) => {
   const [complaintFiles, setComplaintFiles] = useState({}); // { [productId]: File[] }
   const [sendingByProduct, setSendingByProduct] = useState({}); // { [productId]: boolean }
   const [activePanels, setActivePanels] = useState([]);
+  const scrollRef = useRef(null);
 
   const toggleComplaint = (productId) => {
     setOpenComplaint((prev) => ({ ...prev, [productId]: !prev[productId] }));
@@ -141,6 +143,13 @@ const OrderTab = ({ status }) => {
     }
   };
 
+  // Handle window resize
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   // Fetch dữ liệu từ API
   useEffect(() => {
     setLoading(true);
@@ -192,9 +201,21 @@ const OrderTab = ({ status }) => {
     color: "#1f2937",
   };
 
+  const isMobile = windowWidth < 576;
+
   return (
     <div style={{ width: "100%" }}>
-      <div style={{ maxWidth: 1200, margin: "0 auto", paddingBottom: 24 }}>
+      <div
+        ref={scrollRef}
+        style={{
+          maxWidth: isMobile ? '100%' : 1200,
+          margin: "0 auto",
+          paddingBottom: 24,
+          overflowX: isMobile ? 'auto' : 'visible',
+          paddingLeft: isMobile ? 8 : 0,
+          paddingRight: isMobile ? 8 : 0,
+        }}
+      >
         <Collapse
           accordion
           bordered={false}
@@ -289,7 +310,7 @@ const OrderTab = ({ status }) => {
                       size="small"
                       colon={false}
                       labelStyle={{
-                        width: 110,
+                        width: isMobile ? 80 : 110,
                         fontWeight: 600,
                         color: "#4b5563",
                         marginBottom: 4,
@@ -345,6 +366,7 @@ const OrderTab = ({ status }) => {
                                 style={{
                                   color: "#27ae60",
                                   whiteSpace: "nowrap",
+                                  fontSize: isMobile ? 14 : 16,
                                 }}
                               >
                                 {formatCurrency(productTotal)}đ
@@ -362,8 +384,8 @@ const OrderTab = ({ status }) => {
                               <Image
                                 src={imageSrc}
                                 alt={item.product_name}
-                                width={56}
-                                height={56}
+                                width={isMobile ? 48 : 56}
+                                height={isMobile ? 48 : 56}
                                 style={{
                                   borderRadius: 10,
                                   objectFit: "cover",
@@ -377,15 +399,25 @@ const OrderTab = ({ status }) => {
                                   style={{
                                     display: "block",
                                     marginBottom: 4,
-                                    fontSize: 15,
+                                    fontSize: isMobile ? 14 : 15,
                                   }}
                                 >
                                   {item.product_name}
                                 </Text>
-                                <Text type="secondary" style={{ fontSize: 13 }}>
+                                <Text type="secondary" style={{ fontSize: isMobile ? 12 : 13 }}>
                                   {formatCurrency(item.price)}đ x{" "}
                                   {item.quantity}
                                 </Text>
+                                {item.category_name && (
+                                  <Tag color="blue" style={{ marginTop: 4, fontSize: isMobile ? 11 : 12 }}>
+                                    {item.category_name}
+                                  </Tag>
+                                )}
+                                {item.commission_rate && (
+                                  <Text type="secondary" style={{ display: "block", fontSize: isMobile ? 11 : 12, marginTop: 4 }}>
+                                    Phí sàn: {formatCurrency((item.price * item.quantity) * item.commission_rate)}đ ({(item.commission_rate * 100).toFixed(1)}%)
+                                  </Text>
+                                )}
                                 {status === "completed" && (
                                   <Button
                                     size="small"
@@ -426,7 +458,7 @@ const OrderTab = ({ status }) => {
                                       "0 8px 32px rgba(22,163,74,0.18)",
                                     borderRadius: 18,
                                     padding: 32,
-                                    maxWidth: 480,
+                                    maxWidth: isMobile ? '90%' : 480,
                                     width: "100%",
                                     position: "relative",
                                   }}
@@ -454,7 +486,7 @@ const OrderTab = ({ status }) => {
                                     <label
                                       style={{
                                         fontWeight: 700,
-                                        fontSize: 17,
+                                        fontSize: isMobile ? 16 : 17,
                                         color: "#16a34a",
                                       }}
                                     >
@@ -476,7 +508,7 @@ const OrderTab = ({ status }) => {
                                         padding: 12,
                                         borderRadius: 10,
                                         border: "1.5px solid #b5e3c7",
-                                        fontSize: 16,
+                                        fontSize: isMobile ? 14 : 16,
                                         background: "#f6fff8",
                                         resize: "vertical",
                                         outline: "none",
@@ -488,7 +520,7 @@ const OrderTab = ({ status }) => {
                                     <label
                                       style={{
                                         fontWeight: 700,
-                                        fontSize: 17,
+                                        fontSize: isMobile ? 16 : 17,
                                         color: "#16a34a",
                                       }}
                                     >
@@ -506,7 +538,7 @@ const OrderTab = ({ status }) => {
                                       }
                                       style={{
                                         marginTop: 10,
-                                        fontSize: 15,
+                                        fontSize: isMobile ? 14 : 15,
                                         padding: 6,
                                         borderRadius: 8,
                                         border: "1.5px solid #b5e3c7",
@@ -554,7 +586,7 @@ const OrderTab = ({ status }) => {
                     />
                     <Divider style={{ margin: "12px 0" }} />
                     <div style={{ textAlign: "right" }}>
-                      <Text strong style={{ fontSize: 16, color: "#27ae60" }}>
+                      <Text strong style={{ fontSize: isMobile ? 15 : 16, color: "#27ae60" }}>
                         Tổng tiền: {formatCurrency(order.total_price)}đ
                       </Text>
                     </div>

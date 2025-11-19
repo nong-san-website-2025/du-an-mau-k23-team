@@ -5,9 +5,10 @@ const NoImage = ({
   width = "100%", // ✅ Mặc định 100%, nhưng có thể truyền số pixel
   height = 160,
   text = "Không có hình ảnh",
+  className = "",
 }) => (
   <div
-    className="no-image"
+    className={`no-image ${className}`}
     style={{
       width: typeof width === "number" ? `${width}px` : width,
       height: `${height}px`,

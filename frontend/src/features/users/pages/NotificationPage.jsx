@@ -133,11 +133,12 @@ export default function NotificationPage() {
 
   return (
     <Card
-      style={{ maxWidth: "100%", margin: "10px 190px" }}
+      className="mx-2 mx-md-5 my-3"
+      style={{ maxWidth: "100%" }}
       title={
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <BellOutlined style={{ fontSize: 24, color: token.colorPrimary }} />
-          <Title level={4} style={{ margin: 0, color: token.colorTextHeading }}>
+        <div className="d-flex align-items-center gap-2 gap-md-3">
+          <BellOutlined style={{ fontSize: 20 }} className="text-primary" />
+          <Title level={4} className="mb-0 fs-5 fs-md-4" style={{ color: token.colorTextHeading }}>
             Thông báo
           </Title>
         </div>
@@ -156,8 +157,8 @@ export default function NotificationPage() {
         itemLayout="horizontal"
         renderItem={(noti) => (
           <List.Item
+            className="px-2 px-md-3 py-3"
             style={{
-              padding: "16px 0",
               borderBottom: `1px solid ${token.colorBorder}`,
             }}
           >
@@ -222,16 +223,18 @@ export default function NotificationPage() {
                     const price = formatVND(md.order_total || md.total || md.amount || noti.order_total);
                     if (orderCode || shopName || price) {
                       return (
-                        <div style={{ marginBottom: 8, color: token.colorTextSecondary }}>
-                          {orderCode && (
-                            <div><strong>Mã đơn:</strong> {orderCode}</div>
-                          )}
-                          {shopName && (
-                            <div><strong>Cửa hàng:</strong> {shopName}</div>
-                          )}
-                          {price && (
-                            <div><strong>Giá:</strong> {price}</div>
-                          )}
+                        <div className="mb-2 small text-muted">
+                          <div className="row g-2">
+                            {orderCode && (
+                              <div className="col-12 col-md-4"><strong>Mã đơn:</strong> {orderCode}</div>
+                            )}
+                            {shopName && (
+                              <div className="col-12 col-md-4"><strong>Cửa hàng:</strong> {shopName}</div>
+                            )}
+                            {price && (
+                              <div className="col-12 col-md-4"><strong>Giá:</strong> {price}</div>
+                            )}
+                          </div>
                         </div>
                       );
                     }
@@ -242,7 +245,7 @@ export default function NotificationPage() {
                     const md = noti.metadata || {};
                     if (md.reply_text || md.shop_name) {
                       return (
-                        <div style={{ marginBottom: 8, color: token.colorTextSecondary }}>
+                        <div className="mb-2 small text-muted">
                           {md.shop_name && (<div><strong>Cửa hàng phản hồi:</strong> {md.shop_name}</div>)}
                           {md.reply_text && (<div><strong>Trả lời:</strong> {md.reply_text}</div>)}
                         </div>
@@ -250,22 +253,23 @@ export default function NotificationPage() {
                     }
                     return null;
                   })()}
-                  {noti.thumbnail && (
-                    <img
-                      src={noti.thumbnail}
-                      alt=""
-                      style={{
-                        width: 60,
-                        height: 60,
-                        objectFit: "cover",
-                        borderRadius: token.borderRadius,
-                        border: `1px solid ${token.colorBorder}`,
-                      }}
-                    />
-                  )}
-                  <Text type="secondary" style={{ fontSize: 12 }}>
-                    {noti.time}
-                  </Text>
+                  <div className="d-flex align-items-center justify-content-between mt-2">
+                    {noti.thumbnail && (
+                      <img
+                        src={noti.thumbnail}
+                        alt=""
+                        className="me-3 rounded border"
+                        style={{
+                          width: 50,
+                          height: 50,
+                          objectFit: "cover",
+                        }}
+                      />
+                    )}
+                    <Text type="secondary" className="small ms-auto">
+                      {noti.time}
+                    </Text>
+                  </div>
                 </div>
               }
             />

@@ -1,8 +1,6 @@
 import { Route } from "react-router-dom";
 import Layout from "../Layout/Layout";
 import HomePage from "../pages/HomePage";
-import BlogHome from "../pages/Blog/BlogHome";
-import BlogDetail from "../pages/Blog/BlogDetail";
 import UserProductPage from "../features/products/pages/UserProductPage";
 import ProductDetailPage from "../features/products/pages/ProductDetailPage";
 import CartPage from "../features/cart/pages/CartPage";

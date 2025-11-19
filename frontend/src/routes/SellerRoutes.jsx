@@ -19,6 +19,7 @@ import SellerMessages from "../features/seller_center/pages/SellerMessages";
 import PromotionSeller from "../features/seller_center/pages/PromotionSeller/PromotionPage";
 import OrdersDelivered from './../features/seller_center/pages/OrderSeller/OrdersDelivered';
 import OrdersCancelled from './../features/seller_center/pages/OrderSeller/OrdersCancelled';
+import SellerWallet from "../features/seller_center/pages/SellerWallet";
 
 export const sellerRoutes = [
   <Route element={<SellerPrivateRoute />} key="seller-protect">
@@ -31,6 +32,8 @@ export const sellerRoutes = [
       <Route path="messages" element={<SellerMessages />} />
       <Route path="store/info" element={<StoreInfo />} />
       <Route path="products" element={<ProductsPage />} />
+      <Route path="wallet" element={<SellerWallet />} />
+
       <Route path="finance" element={<Finance />} />
       <Route path="analytics" element={<Analytics />} />
       <Route path="orders/new" element={<OrdersNew />} />

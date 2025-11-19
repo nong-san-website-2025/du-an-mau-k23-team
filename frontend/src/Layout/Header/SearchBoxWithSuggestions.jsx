@@ -79,7 +79,7 @@ export default function SearchBoxWithSuggestions({
 
   return (
     <div
-      className="position-relative d-none d-md-block"
+      className="position-relative"
       ref={containerRef}
       style={{ zIndex: 3000 }}
     >
@@ -90,7 +90,9 @@ export default function SearchBoxWithSuggestions({
           placeholder="Tìm kiếm sản phẩm, danh mục, cửa hàng..."
           className="form-control"
           style={{
-            width: 700,
+            width: "100%",
+            maxWidth: 700,
+            minWidth: 250,
             height: 42,
             fontSize: 15,
             borderRadius: 21,
@@ -152,7 +154,8 @@ export default function SearchBoxWithSuggestions({
             position: "absolute",
             left: 0,
             top: "calc(100% + 8px)",
-            width: 700,
+            width: "100%",
+            maxWidth: 700,
             backgroundColor: "white",
             borderRadius: 16,
             boxShadow: "0 12px 40px rgba(0,0,0,0.12)",

@@ -22,6 +22,7 @@ import StoreCard from "../components/StoreCard";
 import { productApi } from "../services/productApi";
 import { reviewApi } from "../services/reviewApi";
 import { useAuth } from "../../login_register/services/AuthContext";
+import "../styles/ProductDetailPage.css";
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -200,7 +201,7 @@ const ProductDetailPage = () => {
     const isComingSoon =
       status.includes("coming_soon") ||
       status.includes("comingsoon") ||
-      status.includes("sắp") ||
+      status.includes("sắp") || 
       status.includes("sap");
 
     const preorder = isComingSoon || product.stock <= 0;
@@ -306,7 +307,7 @@ const ProductDetailPage = () => {
   // ✅ Hiển thị thông báo lỗi nếu không có quyền truy cập
   if (error || !product) {
     return (
-      <div style={{ maxWidth: 600, margin: "40px auto", padding: "0 20px" }}>
+      <div className="product-detail-container"> 
         <Alert
           message="Không thể truy cập"
           description={error || "Sản phẩm không tồn tại hoặc đã bị khóa."}
@@ -336,18 +337,11 @@ const ProductDetailPage = () => {
   ];
 
   return (
-    <div style={{ padding: "20px 160px" }}>
-      <div
-        style={{
-          marginBottom: 8,
-          whiteSpace: "nowrap",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          maxWidth: "100%",
-        }}
-      >
+    <div className="product-detail-container">
+      <div className="product-detail-breadcrumb-wrap">
         <Breadcrumb
-          items={breadcrumbItems.map((item) => ({
+          className="product-detail-breadcrumb"
+          items={breadcrumbItems.map((item, index) => ({
             title: item.href ? (
               <a
                 href={item.href}
@@ -355,20 +349,22 @@ const ProductDetailPage = () => {
                   e.preventDefault();
                   navigate(item.href);
                 }}
-                style={{ color: "#1890ff" }}
+                className="product-detail-breadcrumb-link"
               >
                 {item.title}
               </a>
             ) : (
-              item.title
+              <span className={index === breadcrumbItems.length - 1 ? "product-detail-breadcrumb-title" : ""}>
+                {item.title}
+              </span>
             ),
           }))}
         />
       </div>
 
       <Card style={{ borderRadius: 8 }}>
-        <Space size={24} style={{ width: "100%", alignItems: "flex-start" }}>
-          <div style={{ flex: 1 }}>
+        <div className="product-layout">
+          <div className="product-image-section">
             <ProductImage
               product={product}
               isFavorite={isFavorite}
@@ -376,7 +372,7 @@ const ProductDetailPage = () => {
             />
           </div>
 
-          <div style={{ flex: 1 }}>
+          <div className="product-info-section">
             <ProductInfo
               product={product}
               quantity={quantity}
@@ -537,7 +533,7 @@ const ProductDetailPage = () => {
               </div>
             </div>
           )}
-        </Space>
+        </div>
       </Card>
 
       {product.store && (

@@ -5,6 +5,7 @@ import ProductStatusTag from "./ProductStatusTag";
 import ProductActions from "./ProductActions";
 import dayjs from "dayjs";
 import "../../../styles/AdminPageLayout.css";
+import ActionButtons from "../../ActionButtons";
 
 const ProductTable = ({
   data,
@@ -37,8 +38,10 @@ const ProductTable = ({
       align: "center",
       render: (_, record) => {
         // Lấy URL ảnh từ main_image.image hoặc ảnh đầu tiên trong mảng images
-        const productImage = record.main_image?.image || (record.images?.length > 0 ? record.images[0].image : null);
-        
+        const productImage =
+          record.main_image?.image ||
+          (record.images?.length > 0 ? record.images[0].image : null);
+
         return (
           <div
             onClick={(e) => e.stopPropagation()}
@@ -65,7 +68,8 @@ const ProductTable = ({
                 }}
                 onError={(e) => {
                   e.target.onerror = null;
-                  e.target.src = "https://placehold.co/60x40/f5f5f5/999999?text=No+Image";
+                  e.target.src =
+                    "https://placehold.co/60x40/f5f5f5/999999?text=No+Image";
                 }}
                 fallback="https://placehold.co/60x40/f5f5f5/999999?text=Error"
                 preview={true}
@@ -148,24 +152,6 @@ const ProductTable = ({
       sorter: (a, b) => a.price - b.price,
     },
     {
-      title: "Đơn vị",
-      dataIndex: "unit",
-      key: "unit",
-      width: 90,
-      align: "center",
-      render: (unit) => {
-        const unitLabels = {
-          kg: "kg",
-          g: "g",
-          l: "lít",
-          ml: "ml",
-          unit: "cái",
-          bag: "bao",
-        };
-        return unitLabels[unit] || unit || "—";
-      },
-    },
-    {
       title: "Trạng thái",
       key: "status",
       width: 140,
@@ -184,12 +170,13 @@ const ProductTable = ({
     {
       title: "Hành động",
       key: "action",
-      width: 100, // ✅ Tăng từ 120 lên 200
+      width: 100,
       align: "center",
       fixed: "right",
       render: (_, record) => (
-        <ProductActions
-          record={record} 
+        <ActionButtons
+          record={record}
+          type="sản phẩm"
           onApprove={onApprove}
           onReject={onReject}
           onView={onView}

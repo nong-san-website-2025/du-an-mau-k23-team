@@ -68,7 +68,7 @@ export default function UserTable({
   const handleToggleUser = async (user) => {
     try {
       const res = await axios.patch(
-        `http://localhost:8000/api/users/${user.id}/toggle-active/`,
+        `http://localhost:8000/api/users/toggle-active/${user.id}/`,
         {},
         {
           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
@@ -171,7 +171,7 @@ export default function UserTable({
       key: "phone",
       width: 140,
       sorter: (a, b) => (a.phone || "").localeCompare(b.phone || ""),
-      render: (phone) => phone || t("no_phone"),
+      render: (phone) => phone || t("Chưa có"),
     },
 
     {

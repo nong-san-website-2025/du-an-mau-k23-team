@@ -4,6 +4,7 @@ import SellerStatusTag from "./SellerStatusTag";
 import SellerActions from "./SellerActions";
 import dayjs from "dayjs";
 import "../../styles/AdminPageLayout.css";
+import ActionButtons from "../ActionButtons";
 
 const SellerTable = ({ data, onApprove, onReject, onView, onLock, onRow }) => {
   const columns = [
@@ -61,15 +62,14 @@ const SellerTable = ({ data, onApprove, onReject, onView, onLock, onRow }) => {
       width: 90,
       align: "center",
       render: (_, record) => (
-        <div onClick={(e) => e.stopPropagation()}>
-          <SellerActions
-            record={record}
-            onApprove={onApprove}
-            onReject={onReject}
-            onView={onView}
-            onLock={onLock}
-          />
-        </div>
+        <ActionButtons
+          record={record}
+          type="cửa hàng"
+          onApprove={onApprove}
+          onReject={onReject}
+          onView={onView}
+          onToggleBan={onLock} // vì Seller dùng onLock
+        />
       ),
     },
   ];
@@ -80,7 +80,7 @@ const SellerTable = ({ data, onApprove, onReject, onView, onLock, onRow }) => {
       dataSource={data}
       rowKey="id"
       bordered
-      pagination={{ pageSize: 5 }}
+      pagination={{ pageSize: 10 }}
       scroll={{ x: 1200 }}
       size="small"
       onRow={onRow}

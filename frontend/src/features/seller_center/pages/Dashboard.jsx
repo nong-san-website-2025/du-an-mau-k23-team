@@ -1,25 +1,32 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Container,
   Row,
   Col,
   Card,
+  Statistic,
   Badge,
-  ListGroup,
+  List,
   Alert,
-  Spinner,
-} from "react-bootstrap";
+  Spin,
+  Typography,
+  Tag,
+  Space,
+} from "antd";
 import {
-  TrendingUp,
-  ShoppingCart,
-  Bell,
-  DollarSign,
-  Calendar,
-  Star,
-} from "lucide-react";
+  RiseOutlined,
+  ShoppingCartOutlined,
+  BellOutlined,
+  DollarOutlined,
+  CalendarOutlined,
+  StarOutlined,
+} from "@ant-design/icons";
 import API from "../../login_register/services/api";
 
-// --- Helpers ---
+import "../styles/Dashboard.css";
+
+const { Title, Text } = Typography;
+
+/* ========= HELPERS ========= */
 const formatCurrency = (amount) => {
   const n = Number(amount || 0);
   return new Intl.NumberFormat("vi-VN", {
@@ -28,27 +35,24 @@ const formatCurrency = (amount) => {
   }).format(n);
 };
 
-const toRelativeTime = (dateStr) => {
+const toRelativeTime = (dStr) => {
   try {
     const now = new Date();
-    const d = new Date(dateStr);
-    const diffMs = now.getTime() - d.getTime();
-    const sec = Math.max(0, Math.floor(diffMs / 1000));
-    if (sec < 60) return "vừa xong";
-    const min = Math.floor(sec / 60);
-    if (min < 60) return `${min} phút trước`;
-    const hr = Math.floor(min / 60);
-    if (hr < 24) return `${hr} giờ trước`;
-    const day = Math.floor(hr / 24);
-    return `${day} ngày trước`;
-  } catch (e) {
+    const d = new Date(dStr);
+
+    const diff = (now - d) / 1000;
+    if (diff < 60) return "vừa xong";
+    if (diff < 3600) return `${Math.floor(diff / 60)} phút trước`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)} giờ trước`;
+    return `${Math.floor(diff / 86400)} ngày trước`;
+  } catch {
     return "";
   }
 };
 
 const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
 const endOfDay = (d) =>
-  new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+  new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59);
 
 const addDays = (d, days) => {
   const nd = new Date(d);
@@ -57,55 +61,44 @@ const addDays = (d, days) => {
 };
 
 const startOfWeek = (d) => {
-  // Week starts Monday
-  const day = d.getDay() || 7; // Sunday -> 7
-  const diff = day - 1;
-  const monday = addDays(startOfDay(d), -diff);
-  return monday;
+  const day = d.getDay() === 0 ? 7 : d.getDay();
+  return addDays(startOfDay(d), -(day - 1));
 };
 
 const endOfWeek = (d) => addDays(startOfWeek(d), 6);
-
 const startOfMonth = (d) => new Date(d.getFullYear(), d.getMonth(), 1);
 const endOfMonth = (d) =>
-  new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999);
+  new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59);
 
 const inRange = (dateStr, from, to) => {
   const t = new Date(dateStr).getTime();
-  return t >= from.getTime() && t <= to.getTime();
+  return t >= from && t <= to;
 };
 
-const percentDelta = (current, previous) => {
+const percentDelta = (current, prev) => {
   const c = Number(current || 0);
-  const p = Number(previous || 0);
+  const p = Number(prev || 0);
   if (p === 0) return c > 0 ? 100 : 0;
   return ((c - p) / p) * 100;
 };
 
-// Aggregate revenue and top products from orders (expects 'items' and 'created_at')
-// If validProductIds is provided (Set of product IDs), only aggregate those items and
-// compute revenue as the sum of item (price * quantity) for matched products.
 const aggregateFromOrders = (orders, { from, to, validProductIds }) => {
   let revenue = 0;
-  const productMap = new Map(); // key: product_name -> { sold, revenue }
-
-  const filterByProduct = !!(
-    validProductIds &&
-    typeof validProductIds.has === "function" &&
-    validProductIds.size >= 0
-  );
+  const productMap = new Map();
+  const filter = validProductIds && validProductIds.size >= 0;
 
   for (const o of orders || []) {
     if (!o?.created_at || !inRange(o.created_at, from, to)) continue;
 
-    if (filterByProduct) {
-      // Only sum items that belong to this seller
+    if (filter) {
       for (const it of o.items || []) {
         if (!validProductIds.has(it.product)) continue;
-        const name = it.product_name || `SP#${it.product}`;
+        const name = it.product_name;
         const qty = Number(it.quantity || 0);
         const price = Number(it.price || 0);
+
         revenue += qty * price;
+
         const prev = productMap.get(name) || { sold: 0, revenue: 0 };
         productMap.set(name, {
           sold: prev.sold + qty,
@@ -113,13 +106,14 @@ const aggregateFromOrders = (orders, { from, to, validProductIds }) => {
         });
       }
     } else {
-      // Fallback: use order total and include all items for top products listing
       const total = Number(o.total_price || 0);
       revenue += total;
+
       for (const it of o.items || []) {
-        const name = it.product_name || `SP#${it.product}`;
+        const name = it.product_name;
         const qty = Number(it.quantity || 0);
         const price = Number(it.price || 0);
+
         const prev = productMap.get(name) || { sold: 0, revenue: 0 };
         productMap.set(name, {
           sold: prev.sold + qty,
@@ -131,18 +125,19 @@ const aggregateFromOrders = (orders, { from, to, validProductIds }) => {
 
   const products = [...productMap.entries()]
     .map(([name, val]) => ({ name, ...val }))
-    .sort((a, b) => b.sold - a.sold || b.revenue - a.revenue);
+    .sort((a, b) => b.sold - a.sold);
 
   return { revenue, products };
 };
 
+/* ========= MAIN COMPONENT ========= */
 export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [accessDenied, setAccessDenied] = useState(false);
-  const [pendingOrders, setPendingOrders] = useState([]);
-  const [processingOrders, setProcessingOrders] = useState([]); // shipping
 
-  // Sales stats
+  const [pendingOrders, setPendingOrders] = useState([]);
+  const [processingOrders, setProcessingOrders] = useState([]);
+
   const [todayRevenue, setTodayRevenue] = useState(0);
   const [yesterdayRevenue, setYesterdayRevenue] = useState(0);
   const [weekRevenue, setWeekRevenue] = useState(0);
@@ -150,566 +145,337 @@ export default function Dashboard() {
   const [monthRevenue, setMonthRevenue] = useState(0);
   const [prevMonthRevenue, setPrevMonthRevenue] = useState(0);
 
-  // Orders box
   const [orderNewCount, setOrderNewCount] = useState(0);
   const [orderProcessingCount, setOrderProcessingCount] = useState(0);
 
-  // Top products (limit 4, based on recent 30 days of processing orders)
   const [topProducts, setTopProducts] = useState([]);
-
-  // Notifications
   const [notifications, setNotifications] = useState([]);
-  const [reviewActivities, setReviewActivities] = useState([]);
 
-  // Seller product IDs to scope revenue and top products to this seller only
+  const [reviewActivities, setReviewActivities] = useState([]);
   const [sellerProductIds, setSellerProductIds] = useState(new Set());
 
-  const computeStats = (ordersArr, validIds) => {
-    const now = new Date();
-
-    // Today vs Yesterday
-    const todayFrom = startOfDay(now);
-    const todayTo = endOfDay(now);
-    const yFrom = startOfDay(addDays(now, -1));
-    const yTo = endOfDay(addDays(now, -1));
-
-    const todayAgg = aggregateFromOrders(ordersArr, {
-      from: todayFrom,
-      to: todayTo,
-      validProductIds: validIds,
-    });
-    const yAgg = aggregateFromOrders(ordersArr, {
-      from: yFrom,
-      to: yTo,
-      validProductIds: validIds,
-    });
-
-    setTodayRevenue(todayAgg.revenue);
-    setYesterdayRevenue(yAgg.revenue);
-
-    // This week vs last week
-    const thisWeekFrom = startOfWeek(now);
-    const thisWeekTo = endOfWeek(now);
-    const lastWeekFrom = addDays(thisWeekFrom, -7);
-    const lastWeekTo = addDays(thisWeekTo, -7);
-
-    const wAgg = aggregateFromOrders(ordersArr, {
-      from: thisWeekFrom,
-      to: thisWeekTo,
-      validProductIds: validIds,
-    });
-    const pwAgg = aggregateFromOrders(ordersArr, {
-      from: lastWeekFrom,
-      to: lastWeekTo,
-      validProductIds: validIds,
-    });
-
-    setWeekRevenue(wAgg.revenue);
-    setPrevWeekRevenue(pwAgg.revenue);
-
-    // This month vs last month
-    const thisMonthFrom = startOfMonth(now);
-    const thisMonthTo = endOfMonth(now);
-    const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 15);
-    const lastMonthFrom = startOfMonth(lastMonthDate);
-    const lastMonthTo = endOfMonth(lastMonthDate);
-
-    const mAgg = aggregateFromOrders(ordersArr, {
-      from: thisMonthFrom,
-      to: thisMonthTo,
-      validProductIds: validIds,
-    });
-    const pmAgg = aggregateFromOrders(ordersArr, {
-      from: lastMonthFrom,
-      to: lastMonthTo,
-      validProductIds: validIds,
-    });
-
-    setMonthRevenue(mAgg.revenue);
-    setPrevMonthRevenue(pmAgg.revenue);
-
-    // Top products - last 30 days from shipping orders
-    const recentFrom = addDays(now, -30);
-    const recentAgg = aggregateFromOrders(ordersArr, {
-      from: recentFrom,
-      to: now,
-      validProductIds: validIds,
-    });
-    setTopProducts(recentAgg.products.slice(0, 4));
-  };
-
   const intervalRef = useRef(null);
-  const loadDataRef = useRef(null);
-  const loadReviewActivitiesRef = useRef(null);
 
+  /* ===== LOADERS (giữ nguyên logic cũ) ===== */
   const loadData = async (opts = {}) => {
-    const silent = !!opts.silent;
     try {
-      if (!silent) setLoading(true);
-      const [pendingRes, processingRes, successRes, sellerProdsRes] =
-        await Promise.all([
-          API.get("orders/seller/pending/"),
-          API.get("orders/seller/processing/"),
-          API.get("orders/seller/complete/"),
-          API.get("sellers/productseller/"),
-        ]);
+      if (!opts.silent) setLoading(true);
 
-      const pend = pendingRes?.data || [];
-      const ship = processingRes?.data || [];
-      const successOrders = successRes?.data || [];
-      const sellerProdList = sellerProdsRes?.data || [];
+      const [pend, proc, success, sellerProds] = await Promise.all([
+        API.get("orders/seller/pending/"),
+        API.get("orders/seller/processing/"),
+        API.get("orders/seller/complete/"),
+        API.get("sellers/productseller/"),
+      ]);
 
-      setPendingOrders(pend);
-      setProcessingOrders(ship);
+      setPendingOrders(pend.data || []);
+      setProcessingOrders(proc.data || []);
+      setOrderNewCount((pend.data || []).length);
+      setOrderProcessingCount((proc.data || []).length);
 
-      setOrderNewCount(pend.length);
-      setOrderProcessingCount(ship.length);
-
-      // Save seller product IDs to scope revenue and top products
-      const ids = new Set((sellerProdList || []).map((p) => p.id));
+      const ids = new Set((sellerProds.data || []).map((p) => p.id));
       setSellerProductIds(ids);
 
-      // Compute sales from COMPLETED orders to match Finance page semantics
-      computeStats(successOrders, ids);
+      computeStats(success.data || [], ids);
     } catch (err) {
-      const status = err?.response?.status;
-      if (status === 403) {
-        // User is not authorized as seller -> stop polling and surface a message
+      if (err?.response?.status === 403) {
         setAccessDenied(true);
-        try {
-          if (intervalRef.current) {
-            clearInterval(intervalRef.current);
-            intervalRef.current = null;
-          }
-        } catch (e) {
-          // ignore
-        }
-      } else {
-        console.error("Dashboard loadData error:", err);
+        clearInterval(intervalRef.current);
       }
     } finally {
-      if (!silent) setLoading(false);
+      if (!opts.silent) setLoading(false);
     }
   };
 
   const loadReviewActivities = async () => {
     try {
-      // Recent activities for notifications (reviews only)
-      const actRes = await API.get(
+      const res = await API.get(
         "reviews/seller/reviews/recent-activities/?limit=5"
       );
-      const acts = actRes?.data?.results || [];
-
-      const mapped = acts.map((a) => ({
-        type: "review",
-        message: a.message,
-        created_at: a.created_at,
-      }));
-      setReviewActivities(mapped);
-    } catch (e) {
-      // Silent fail for notifications
-    }
+      setReviewActivities(
+        (res.data.results || []).map((a) => ({
+          message: a.message,
+          created_at: a.created_at,
+        }))
+      );
+    } catch {}
   };
 
-  // keep stable refs for effects/polling
-  loadDataRef.current = loadData;
-  loadReviewActivitiesRef.current = loadReviewActivities;
+  const computeStats = (orders, validIds) => {
+    const now = new Date();
 
-  // Prevent lint: sellerProductIds state exists for future use
-  useEffect(() => {}, [sellerProductIds]);
+    const today = aggregateFromOrders(orders, {
+      from: startOfDay(now),
+      to: endOfDay(now),
+      validProductIds: validIds,
+    });
 
-  // Build combined notifications: newest pending orders + recent review activities (max 5)
+    const yesterday = aggregateFromOrders(orders, {
+      from: startOfDay(addDays(now, -1)),
+      to: endOfDay(addDays(now, -1)),
+      validProductIds: validIds,
+    });
+
+    setTodayRevenue(today.revenue);
+    setYesterdayRevenue(yesterday.revenue);
+
+    const week = aggregateFromOrders(orders, {
+      from: startOfWeek(now),
+      to: endOfWeek(now),
+      validProductIds: validIds,
+    });
+
+    const prevWeek = aggregateFromOrders(orders, {
+      from: addDays(startOfWeek(now), -7),
+      to: addDays(endOfWeek(now), -7),
+      validProductIds: validIds,
+    });
+
+    setWeekRevenue(week.revenue);
+    setPrevWeekRevenue(prevWeek.revenue);
+
+    const month = aggregateFromOrders(orders, {
+      from: startOfMonth(now),
+      to: endOfMonth(now),
+      validProductIds: validIds,
+    });
+
+    const prevMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 15);
+    const pm = aggregateFromOrders(orders, {
+      from: startOfMonth(prevMonthDate),
+      to: endOfMonth(prevMonthDate),
+      validProductIds: validIds,
+    });
+
+    setMonthRevenue(month.revenue);
+    setPrevMonthRevenue(pm.revenue);
+
+    const last30 = aggregateFromOrders(orders, {
+      from: addDays(now, -30),
+      to: now,
+      validProductIds: validIds,
+    });
+
+    setTopProducts(last30.products.slice(0, 4));
+  };
+
+  /* ===== EFFECT ===== */
   useEffect(() => {
-    const orderNewNotifs = (pendingOrders || [])
-      .slice()
-      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-      .slice(0, 3)
-      .map((o) => ({
-        type: "success",
-        message: `Đơn hàng mới #${o.id} đã được tạo`,
-        time: toRelativeTime(o.created_at),
-        created_at: o.created_at,
-      }));
+    loadData();
+    loadReviewActivities();
 
-    const deliveredNotifs = (processingOrders || [])
-      .filter((o) => o.status === "success") // in case API returns mixed
-      .slice()
-      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-      .slice(0, 2)
-      .map((o) => ({
-        type: "success",
-        message: `Đơn hàng #${o.id} đã giao thành công`,
-        time: toRelativeTime(o.created_at),
-        created_at: o.created_at,
-      }));
-
-    const reviewNotifs = (reviewActivities || []).map((r) => ({
-      type: "info",
-      message: r.message,
-      time: toRelativeTime(r.created_at),
-      created_at: r.created_at,
-    }));
-
-    const merged = [...orderNewNotifs, ...deliveredNotifs, ...reviewNotifs]
-      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-      .slice(0, 5);
-
-    setNotifications(merged);
-  }, [pendingOrders, processingOrders, reviewActivities]);
-
-  useEffect(() => {
-    // Initial load
-    let mounted = true;
-
-    const doLoad = async () => {
-      if (!mounted) return;
-      await loadData();
-      await loadReviewActivities();
-    };
-
-    doLoad();
-
-    // Auto refresh every 10s, silent to avoid flicker
     intervalRef.current = setInterval(() => {
       loadData({ silent: true });
       loadReviewActivities();
     }, 10000);
 
-    return () => {
-      mounted = false;
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-    // intentionally left empty; we call stable refs inside
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => clearInterval(intervalRef.current);
   }, []);
 
-  const todayDelta = useMemo(
-    () => percentDelta(todayRevenue, yesterdayRevenue),
-    [todayRevenue, yesterdayRevenue]
-  );
-  const weekDelta = useMemo(
-    () => percentDelta(weekRevenue, prevWeekRevenue),
-    [weekRevenue, prevWeekRevenue]
-  );
-  const monthDelta = useMemo(
-    () => percentDelta(monthRevenue, prevMonthRevenue),
-    [monthRevenue, prevMonthRevenue]
-  );
+  /* ===== DELTAS ===== */
+  const todayDelta = percentDelta(todayRevenue, yesterdayRevenue);
+  const weekDelta = percentDelta(weekRevenue, prevWeekRevenue);
+  const monthDelta = percentDelta(monthRevenue, prevMonthRevenue);
 
+  /* ===== MERGED NOTIFICATIONS ===== */
+  useEffect(() => {
+    const notif = [];
+
+    pendingOrders.slice(0, 3).forEach((o) =>
+      notif.push({
+        message: `Đơn hàng mới #${o.id}`,
+        time: toRelativeTime(o.created_at),
+        created_at: o.created_at,
+      })
+    );
+
+    reviewActivities.forEach((r) =>
+      notif.push({
+        message: r.message,
+        time: toRelativeTime(r.created_at),
+        created_at: r.created_at,
+      })
+    );
+
+    setNotifications(
+      notif.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 5)
+    );
+  }, [pendingOrders, reviewActivities]);
+
+  /* ========= RENDER ========= */
   return (
-    <Container fluid className="py-4">
+    <div style={{ padding: "24px" }}>
       {accessDenied && (
-        <Row className="mb-3">
-          <Col>
-            <Alert variant="warning">
-              Bạn không có quyền truy cập trang người bán (403). Vui lòng đăng
-              nhập lại hoặc đăng ký cửa hàng nếu chưa có.
-            </Alert>
-          </Col>
-        </Row>
+        <Alert
+          type="warning"
+          message="Bạn không có quyền truy cập trang người bán."
+          className="mb-4"
+        />
       )}
-      {/* Header */}
-      <Row className="mb-4">
-        <Col>
-          <div className="d-flex align-items-center gap-3 mb-2">
-            <div
-              className="p-2 rounded-circle"
-              style={{
-                backgroundColor: "var(--color-primary)",
-                color: "var(--color-primary-foreground)",
-              }}
-            >
-              <TrendingUp size={24} />
-            </div>
-            <div>
-              <h2 className="mb-0 fw-bold text-balance">Tổng quan cửa hàng</h2>
-              <p className="text-muted mb-0">
-                Theo dõi hiệu suất kinh doanh của bạn
-              </p>
-            </div>
-          </div>
-        </Col>
-      </Row>
 
-      {/* Sales Overview */}
-      <Row className="mb-4">
-        <Col lg={4} md={6} className="mb-3">
-          <Card className="h-100 border-0 shadow-sm">
-            <Card.Body>
-              <div className="d-flex align-items-center justify-content-between">
-                <div>
-                  <p className="text-muted mb-1 small">Doanh số hôm nay</p>
-                  <h4
-                    className="mb-0 fw-bold"
-                    style={{ color: "var(--color-primary)" }}
-                  >
-                    {formatCurrency(todayRevenue)}
-                  </h4>
-                </div>
-                <div
-                  className="p-3 rounded-circle"
-                  style={{
-                    backgroundColor: "var(--color-primary)",
-                    opacity: 0.1,
-                  }}
-                >
-                  <DollarSign
-                    size={24}
-                    style={{ color: "var(--color-primary)" }}
-                  />
-                </div>
-              </div>
-              <div className="mt-2">
-                <Badge
-                  bg={todayDelta >= 0 ? "success" : "danger"}
-                  className="small"
-                >
-                  {todayDelta >= 0 ? "+" : ""}
-                  {todayDelta.toFixed(1)}%
-                </Badge>
-                <span className="text-muted small ms-2">so với hôm qua</span>
-              </div>
-            </Card.Body>
+      <Space align="center" className="mb-4">
+        <RiseOutlined style={{ fontSize: 32, color: "#1890ff" }} />
+        <div>
+          <Title level={3} style={{ margin: 0 }}>
+            Tổng quan cửa hàng
+          </Title>
+          <Text type="secondary">Theo dõi hiệu suất kinh doanh theo thời gian thực</Text>
+        </div>
+      </Space>
+
+      {/* SALES OVERVIEW */}
+      <Row gutter={[16, 16]}>
+        {/* TODAY */}
+        <Col xs={24} md={8}>
+          <Card>
+            <Statistic
+              title="Doanh số hôm nay"
+              value={todayRevenue}
+              formatter={formatCurrency}
+              prefix={<DollarOutlined />}
+            />
+
+            <Tag color={todayDelta >= 0 ? "green" : "red"} className="mt-2">
+              {todayDelta >= 0 ? "+" : ""}
+              {todayDelta.toFixed(1)}%
+            </Tag>
+            <Text type="secondary" className="ms-2">
+              so với hôm qua
+            </Text>
           </Card>
         </Col>
 
-        <Col lg={4} md={6} className="mb-3">
-          <Card className="h-100 border-0 shadow-sm">
-            <Card.Body>
-              <div className="d-flex align-items-center justify-content-between">
-                <div>
-                  <p className="text-muted mb-1 small">Doanh số tuần</p>
-                  <h4
-                    className="mb-0 fw-bold"
-                    style={{ color: "var(--color-accent)" }}
-                  >
-                    {formatCurrency(weekRevenue)}
-                  </h4>
-                </div>
-                <div
-                  className="p-3 rounded-circle"
-                  style={{
-                    backgroundColor: "var(--color-accent)",
-                    opacity: 0.1,
-                  }}
-                >
-                  <Calendar
-                    size={24}
-                    style={{ color: "var(--color-accent)" }}
-                  />
-                </div>
-              </div>
-              <div className="mt-2">
-                <Badge
-                  bg={weekDelta >= 0 ? "success" : "danger"}
-                  className="small"
-                >
-                  {weekDelta >= 0 ? "+" : ""}
-                  {weekDelta.toFixed(1)}%
-                </Badge>
-                <span className="text-muted small ms-2">so với tuần trước</span>
-              </div>
-            </Card.Body>
+        {/* WEEK */}
+        <Col xs={24} md={8}>
+          <Card>
+            <Statistic
+              title="Doanh số tuần"
+              value={weekRevenue}
+              formatter={formatCurrency}
+              prefix={<CalendarOutlined />}
+            />
+            <Tag color={weekDelta >= 0 ? "green" : "red"} className="mt-2">
+              {weekDelta >= 0 ? "+" : ""}
+              {weekDelta.toFixed(1)}%
+            </Tag>
+            <Text type="secondary" className="ms-2">
+              so với tuần trước
+            </Text>
           </Card>
         </Col>
 
-        <Col lg={4} md={6} className="mb-3">
-          <Card className="h-100 border-0 shadow-sm">
-            <Card.Body>
-              <div className="d-flex align-items-center justify-content-between">
-                <div>
-                  <p className="text-muted mb-1 small">Doanh số tháng</p>
-                  <h4
-                    className="mb-0 fw-bold"
-                    style={{ color: "var(--color-chart-4)" }}
-                  >
-                    {formatCurrency(monthRevenue)}
-                  </h4>
-                </div>
-                <div
-                  className="p-3 rounded-circle"
-                  style={{
-                    backgroundColor: "var(--color-chart-4)",
-                    opacity: 0.1,
-                  }}
-                >
-                  <TrendingUp
-                    size={24}
-                    style={{ color: "var(--color-chart-4)" }}
-                  />
-                </div>
-              </div>
-              <div className="mt-2">
-                <Badge
-                  bg={monthDelta >= 0 ? "success" : "danger"}
-                  className="small"
-                >
-                  {monthDelta >= 0 ? "+" : ""}
-                  {monthDelta.toFixed(1)}%
-                </Badge>
-                <span className="text-muted small ms-2">
-                  so với tháng trước
-                </span>
-              </div>
-            </Card.Body>
+        {/* MONTH */}
+        <Col xs={24} md={8}>
+          <Card>
+            <Statistic
+              title="Doanh số tháng"
+              value={monthRevenue}
+              formatter={formatCurrency}
+              prefix={<RiseOutlined />}
+            />
+
+            <Tag color={monthDelta >= 0 ? "green" : "red"} className="mt-2">
+              {monthDelta >= 0 ? "+" : ""}
+              {monthDelta.toFixed(1)}%
+            </Tag>
+            <Text type="secondary" className="ms-2">
+              so với tháng trước
+            </Text>
           </Card>
         </Col>
       </Row>
 
-      {/* Orders and Products */}
-      <Row className="mb-4">
-        <Col lg={6} className="mb-4">
-          <Card className="h-100 border-0 shadow-sm">
-            <Card.Header className="bg-transparent border-0 pb-0">
-              <div className="d-flex align-items-center gap-2">
-                <ShoppingCart
-                  size={20}
-                  style={{ color: "var(--color-primary)" }}
-                />
-                <h5 className="mb-0 fw-semibold">Đơn hàng</h5>
-              </div>
-            </Card.Header>
-            <Card.Body>
-              {loading ? (
-                <div className="text-center py-3">
-                  <Spinner animation="border" size="sm" /> Đang tải…
-                </div>
-              ) : (
-                <Row>
-                  <Col sm={6} className="mb-2">
-                    <div
-                      className="text-center p-3 rounded"
-                      style={{ backgroundColor: "var(--color-muted)" }}
-                    >
-                      <h3
-                        className="mb-1 fw-bold"
-                        style={{ color: "var(--color-primary)" }}
-                      >
-                        {orderNewCount}
-                      </h3>
-                      <p className="text-muted mb-0 small">Đơn hàng mới</p>
-                    </div>
-                  </Col>
-                  <Col sm={6} className="mb-2">
-                    <div
-                      className="text-center p-3 rounded"
-                      style={{ backgroundColor: "var(--color-muted)" }}
-                    >
-                      <h3
-                        className="mb-1 fw-bold"
-                        style={{ color: "var(--color-accent)" }}
-                      >
-                        {orderProcessingCount}
-                      </h3>
-                      <p className="text-muted mb-0 small">Đang xử lý</p>
-                    </div>
-                  </Col>
-                </Row>
-              )}
-            </Card.Body>
+      {/* ORDERS + TOP PRODUCTS */}
+      <Row gutter={[16, 16]} className="mt-4">
+        {/* ORDERS */}
+        <Col xs={24} md={12}>
+          <Card
+            title={
+              <Space>
+                <ShoppingCartOutlined />
+                <span>Đơn hàng</span>
+              </Space>
+            }
+          >
+            {loading ? (
+              <Spin />
+            ) : (
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Card bordered style={{ textAlign: "center" }}>
+                    <Title level={3}>{orderNewCount}</Title>
+                    <Text>Đơn hàng mới</Text>
+                  </Card>
+                </Col>
+
+                <Col span={12}>
+                  <Card bordered style={{ textAlign: "center" }}>
+                    <Title level={3}>{orderProcessingCount}</Title>
+                    <Text>Đang xử lý</Text>
+                  </Card>
+                </Col>
+              </Row>
+            )}
           </Card>
         </Col>
 
-        <Col lg={6} className="mb-4">
-          <Card className="h-100 border-0 shadow-sm">
-            <Card.Header className="bg-transparent border-0 pb-0">
-              <div className="d-flex align-items-center gap-2">
-                <Star size={20} style={{ color: "var(--color-accent)" }} />
-                <h5 className="mb-0 fw-semibold">Sản phẩm bán chạy</h5>
-              </div>
-            </Card.Header>
-            <Card.Body>
-              {loading ? (
-                <div className="text-center py-3">
-                  <Spinner animation="border" size="sm" /> Đang tải…
-                </div>
-              ) : (
-                <ListGroup variant="flush">
-                  {topProducts.length === 0 && (
-                    <div className="text-muted small">Chưa có dữ liệu</div>
-                  )}
-                  {topProducts.map((product, index) => (
-                    <ListGroup.Item
-                      key={product.name}
-                      className="px-0 py-2 border-0"
-                    >
-                      <div className="d-flex justify-content-between align-items-center">
-                        <div className="d-flex align-items-center gap-3">
-                          <div
-                            className="rounded-circle d-flex align-items-center justify-content-center fw-bold text-white"
-                            style={{
-                              width: 32,
-                              height: 32,
-                              backgroundColor:
-                                index === 0
-                                  ? "var(--color-primary)"
-                                  : "var(--color-muted-foreground)",
-                              fontSize: 14,
-                            }}
-                          >
-                            {index + 1}
-                          </div>
-                          <div>
-                            <p className="mb-0 fw-medium">{product.name}</p>
-                            <small className="text-muted">
-                              Đã bán: {product.sold}
-                            </small>
-                          </div>
-                        </div>
-                        <div className="text-end">
-                          <p
-                            className="mb-0 fw-semibold"
-                            style={{ color: "var(--color-primary)" }}
-                          >
-                            {formatCurrency(product.revenue)}
-                          </p>
-                        </div>
-                      </div>
-                    </ListGroup.Item>
-                  ))}
-                </ListGroup>
-              )}
-            </Card.Body>
+        {/* TOP PRODUCTS */}
+        <Col xs={24} md={12}>
+          <Card
+            title={
+              <Space>
+                <StarOutlined />
+                <span>Sản phẩm bán chạy</span>
+              </Space>
+            }
+          >
+            {topProducts.length === 0 ? (
+              <Text type="secondary">Không có dữ liệu</Text>
+            ) : (
+              <List
+                dataSource={topProducts}
+                renderItem={(item) => (
+                  <List.Item>
+                    <Space direction="vertical">
+                      <Text strong>{item.name}</Text>
+                      <Text type="secondary">{item.sold} đã bán</Text>
+                    </Space>
+                    <div>{formatCurrency(item.revenue)}</div>
+                  </List.Item>
+                )}
+              />
+            )}
           </Card>
         </Col>
       </Row>
 
-      {/* Notifications */}
-      <Row>
-        <Col>
-          <Card className="border-0 shadow-sm">
-            <Card.Header className="bg-transparent border-0 pb-0">
-              <div className="d-flex align-items-center gap-2">
-                <Bell size={20} style={{ color: "var(--color-primary)" }} />
-                <h5 className="mb-0 fw-semibold">Thông báo hệ thống</h5>
-              </div>
-            </Card.Header>
-            <Card.Body>
-              {notifications.length === 0 && (
-                <div className="text-muted small">Chưa có thông báo</div>
-              )}
-              {notifications.map((notification, index) => (
-                <Alert
-                  key={index}
-                  variant={
-                    notification.type === "success"
-                      ? "success"
-                      : notification.type === "warning"
-                        ? "warning"
-                        : "info"
-                  }
-                  className="mb-2 py-2"
-                >
-                  <div className="d-flex justify-content-between align-items-start">
-                    <p className="mb-0 small">{notification.message}</p>
-                    <small className="text-muted">{notification.time}</small>
-                  </div>
-                </Alert>
-              ))}
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
-    </Container>
+      {/* NOTIFICATIONS */}
+      <Card
+        className="mt-4"
+        title={
+          <Space>
+            <BellOutlined />
+            <span>Thông báo gần đây</span>
+          </Space>
+        }
+      >
+        {notifications.length === 0 ? (
+          <Text type="secondary">Không có thông báo</Text>
+        ) : (
+          <List
+            dataSource={notifications}
+            renderItem={(n) => (
+              <Alert
+                message={n.message}
+                description={<Text type="secondary">{n.time}</Text>}
+                type="info"
+                showIcon
+                className="mb-2"
+              />
+            )}
+          />
+        )}
+      </Card>
+    </div>
   );
 }

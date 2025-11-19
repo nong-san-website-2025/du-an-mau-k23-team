@@ -9,6 +9,7 @@ class Category(models.Model):
     status = models.CharField(max_length=20, default="active")
     image = models.ImageField(upload_to='categories/', blank=True, null=True)
     is_featured = models.BooleanField(default=False)
+    commission_rate = models.FloatField(default=0.05)  # 5% mặc định
     
     def __str__(self):
         return self.name

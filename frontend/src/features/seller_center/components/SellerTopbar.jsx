@@ -1,11 +1,22 @@
-import React, { useState, useEffect } from "react";
-import { Layout, Avatar, Dropdown, Badge, Spin } from "antd";
-import { UserOutlined, BellOutlined } from "@ant-design/icons";
+import React, { useState, useEffect, useMemo } from "react";
+import {
+  Layout,
+  Avatar,
+  Dropdown,
+  Badge,
+  Spin,
+  Button,
+  List,
+  Typography,
+  Tooltip,
+  Skeleton,
+} from "antd";
+import { UserOutlined, BellOutlined, MenuOutlined } from "@ant-design/icons";
 import sellerService from "../services/api/sellerService";
 
 const { Header } = Layout;
 
-export default function SellerTopbar() {
+export default function SellerTopbar({ onToggleSidebar }) {
   const [notifications, setNotifications] = useState([
     { id: 1, message: "Có đơn hàng mới", isRead: false },
     { id: 2, message: "Khách hủy đơn #1234", isRead: false },
@@ -30,17 +41,13 @@ export default function SellerTopbar() {
     fetchSeller();
   }, []);
 
-  // Lấy chữ cái đầu (loại bỏ dấu) và in hoa
   const getInitial = (name) => {
     if (!name) return "?";
-    // lấy chữ đầu của từ đầu tiên
     const firstWord = name.trim().split(/\s+/)[0] || name.trim().charAt(0);
-    // loại bỏ dấu (normalize -> remove combining diacritics)
     const withoutDiacritics = firstWord
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "");
-    const ch = withoutDiacritics.charAt(0) || "?";
-    return ch.toUpperCase();
+    return (withoutDiacritics.charAt(0) || "?").toUpperCase();
   };
 
   const menuItems = [
@@ -55,80 +62,90 @@ export default function SellerTopbar() {
     }
   };
 
-  const notificationMenu = (
-    <div style={{ width: 250, maxHeight: 300, overflowY: "auto" }}>
-      {notifications.length === 0 ? (
-        <p style={{ textAlign: "center", margin: 0 }}>Không có thông báo</p>
-      ) : (
-        notifications.map((n) => (
-          <div
-            key={n.id}
+  const notificationMenu = useMemo(
+    () => (
+      <List
+        size="small"
+        style={{ width: 300, maxHeight: 320, overflowY: "auto" }}
+        dataSource={notifications}
+        renderItem={(item) => (
+          <List.Item
             style={{
-              padding: "8px",
-              backgroundColor: n.isRead ? "#fff" : "#f6f6f6",
-              borderBottom: "1px solid #eee",
+              backgroundColor: item.isRead ? "#fff" : "#f5f5f5",
               cursor: "pointer",
+              padding: "8px 12px",
             }}
           >
-            {n.message}
-          </div>
-        ))
-      )}
-    </div>
+            <Typography.Text strong={!item.isRead}>
+              {item.message}
+            </Typography.Text>
+          </List.Item>
+        )}
+      />
+    ),
+    [notifications]
   );
 
   return (
     <Header
-      className="bg-white px-6 shadow-sm"
+      className="bg-white px-4 shadow-sm"
       style={{
         display: "flex",
-        justifyContent: "flex-end",
+        justifyContent: "space-between",
         alignItems: "center",
-        gap: "20px",
+        gap: 16,
       }}
     >
+      {/* Toggle sidebar for mobile */}
+      {onToggleSidebar && (
+        <Button
+          type="text"
+          icon={<MenuOutlined />}
+          onClick={onToggleSidebar}
+          style={{ fontSize: 20 }}
+        />
+      )}
+      <div style={{ flex: 1 }} /> {/* Spacer */}
+      {/* Notifications */}
       {loading ? (
-        <Spin size="small" />
+        <Spin size="small" style={{ marginRight: 16 }} />
       ) : (
-        <>
-          <Dropdown
-            overlay={notificationMenu}
-            trigger={["click"]}
-            placement="bottomRight"
+        <Dropdown
+          overlay={notificationMenu}
+          trigger={["click"]}
+          placement="bottomRight"
+        >
+          <Badge
+            count={notifications.filter((n) => !n.isRead).length}
+            offset={[0, 0]}
           >
-            <Badge count={notifications.filter((n) => !n.isRead).length}>
-              <BellOutlined style={{ fontSize: "20px", cursor: "pointer" }} />
-            </Badge>
-          </Dropdown>
-
-          <Dropdown
-            menu={{
-              items: menuItems,
-              onClick: onMenuClick,
-            }}
-            placement="bottomRight"
-            arrow
+            <BellOutlined
+              style={{ fontSize: 20, cursor: "pointer", marginRight: 16 }}
+            />
+          </Badge>
+        </Dropdown>
+      )}
+      {/* Seller avatar + menu */}
+      {loading ? (
+        <Skeleton.Avatar active size="large" shape="circle" />
+      ) : (
+        <Dropdown
+          menu={{ items: menuItems, onClick: onMenuClick }}
+          placement="bottomRight"
+          arrow
+        >
+          <div
+            style={{ display: "flex", alignItems: "center", cursor: "pointer" }}
           >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                cursor: "pointer",
-                gap: "8px",
-              }}
-            >
-
-              {/* Nếu có avatar thì dùng src, ngược lại hiển thị chữ cái đầu */}
-              {seller?.avatar ? (
-                <Avatar size="large" src={seller.image} />
-              ) : (
-                <Avatar size="large">
-                  {getInitial(seller?.store_name || seller?.name || "")}
-                </Avatar>
-              )}
-            </div>
-          </Dropdown>
-        </>
+            {seller?.avatar ? (
+              <Avatar size="large" src={seller.avatar} />
+            ) : (
+              <Avatar size="large">
+                {getInitial(seller?.store_name || seller?.name || "")}
+              </Avatar>
+            )}
+          </div>
+        </Dropdown>
       )}
     </Header>
   );

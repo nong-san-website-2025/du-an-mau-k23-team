@@ -9,7 +9,6 @@ import DashboardPage from "../features/admin/pages/DashboardPage";
 import UsersPage from "../features/admin/pages/UsersPage";
 import ProfilePage from "../features/admin/pages/Users/ProfilePage";
 import ChangePasswordPage from "../features/admin/pages/Users/ChangePasswordPage";
-import StaffPage from "../features/admin/pages/StaffPage";
 
 // Orders & Complaints
 import OrdersPage from "../features/admin/pages/OrdersPage";
@@ -26,19 +25,16 @@ import NotificationsPage from "../pages/NotificationsPage.jsx";
 
 // Reports
 import ReportsPage from "../features/admin/pages/ReportsPage";
-import ReportRevenuePage from "../features/admin/pages/ReportRevenuePage";
-import ReportProductsPage from "../features/admin/pages/ReportProductsPage";  
-import ReportCancelRatePage from "../features/admin/pages/ReportCancelRatePage";
-import ReportCustomersPage from "../features/admin/pages/ReportCustomersPage";
-import ReportAgriculturePage from "../features/admin/pages/ReportAgriculturePage";
-import ReportOrdersPage from "../features/admin/pages/ReportOrdersPage";
+import ReportRevenuePage from "../features/admin/pages/StatisticAdmin/ReportRevenuePage.jsx";
+import ReportProductsPage from "../features/admin/pages/StatisticAdmin/ReportProductsPage.jsx";  
+import ReportCancelRatePage from "../features/admin/pages/StatisticAdmin/ReportCancelRatePage.jsx";
+import ReportCustomersPage from "../features/admin/pages/StatisticAdmin/ReportCustomersPage.jsx";
+import ReportAgriculturePage from "../features/admin/pages/StatisticAdmin/ReportAgriculturePage.jsx";
+import ReportOrdersPage from "../features/admin/pages/StatisticAdmin/ReportOrdersPage.jsx";
 
 
 
 
-
-// Support & Statistics
-import SupportPage from "../features/admin/pages/SupportPage";
 import StatisticsPage from "../features/admin/pages/StatisticsPage";
 
 // Shop management
@@ -71,9 +67,6 @@ export const adminRoutes = [
       <Route path="profile" element={<ProfilePage />} />
       <Route path="change-password" element={<ChangePasswordPage />} />
 
-      {/* Staff */}
-      <Route path="staff" element={<StaffPage />} />
-
       {/* Orders & Complaints */}
       <Route path="orders" element={<OrdersPage />} />
       <Route path="complaints" element={<ComplaintsPage />} />
@@ -81,7 +74,8 @@ export const adminRoutes = [
 
       {/* Vouchers & Wallet */}
       <Route path="vouchers" element={<VouchersPage />} />
-      <Route path="wallet" element={<WalletPage />} />
+      <Route path="payments/wallets" element={<WalletPage />} />
+
 
       {/* Marketing & Promotions */}
       <Route path="notifications" element={<NotificationsPage />} />
@@ -102,7 +96,6 @@ export const adminRoutes = [
 
 
       {/* Support & Statistics */}
-      <Route path="supports" element={<SupportPage />} />
       <Route path="statistics" element={<StatisticsPage />} />
 
       {/* Shop management */}

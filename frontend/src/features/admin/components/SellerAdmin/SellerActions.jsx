@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Button, Popconfirm, Space, Tooltip } from "antd";
 import {
   CheckCircleTwoTone,
@@ -12,8 +12,10 @@ import {
   StopOutlined,
   UnlockOutlined,
 } from "@ant-design/icons";
+import SellerRejectionModal from "./SellerRejectionModal";
 
 const SellerActions = ({ record, onApprove, onReject, onView, onLock }) => {
+  const [rejectModalVisible, setRejectModalVisible] = useState(false);
   const isApproved = record.status === "approved";
   const isRejected = record.status === "rejected";
   const isLocked = record.status === "locked";
@@ -45,10 +47,17 @@ const SellerActions = ({ record, onApprove, onReject, onView, onLock }) => {
           icon={<CloseCircleTwoTone twoToneColor="#ff4d4f" />}
           type="text"
           size="small"
-          onClick={() => onReject(record)}
+          onClick={() => setRejectModalVisible(true)}
           disabled={isApproved || isLocked || isRejected || isActive}
         />
       </Tooltip>
+
+      <SellerRejectionModal
+        visible={rejectModalVisible}
+        onClose={() => setRejectModalVisible(false)}
+        seller={record}
+        onRejectSuccess={onReject}
+      />
 
       <Tooltip title={isActive ? "Khóa cửa hàng" : "Mở khóa cửa hàng"}>
         <Popconfirm
@@ -70,15 +79,6 @@ const SellerActions = ({ record, onApprove, onReject, onView, onLock }) => {
             disabled={isApproved || isRejected || isPending}
           />
         </Popconfirm>
-      </Tooltip>
-
-      <Tooltip title="Xem chi tiết">
-        <Button
-          icon={<EyeTwoTone />}
-          type="text"
-          size="small"
-          onClick={() => onView(record)}
-        />
       </Tooltip>
     </Space>
   );

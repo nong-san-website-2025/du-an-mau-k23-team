@@ -1,7 +1,37 @@
 .product-detail-container {
   font-family: "Segoe UI", sans-serif;
   background: #fafafa;
-  padding: 30px 15px;
+  padding: 20px 16px;
+}
+
+@media (min-width: 576px) {
+  .product-detail-container {
+    padding: 20px 24px;
+  }
+}
+
+@media (min-width: 768px) {
+  .product-detail-container {
+    padding: 20px 48px;
+  }
+}
+
+@media (min-width: 992px) {
+  .product-detail-container {
+    padding: 20px 96px;
+  }
+}
+
+@media (min-width: 1200px) {
+  .product-detail-container {
+    padding: 20px 144px;
+  }
+}
+
+@media (min-width: 1600px) {
+  .product-detail-container {
+    padding: 20px 160px;
+  }
 }
 
 .image-section .main-image {
@@ -233,4 +263,118 @@
 
 .btn-classic:hover{
   background-color: #43A047 !important;
+}
+
+/* Responsive product layout */
+.product-layout {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+@media (max-width: 767px) {
+  .product-layout {
+    flex-direction: column;
+    gap: 16px;
+  }
+}
+
+.product-image-section,
+.product-info-section {
+  flex: 1;
+}
+
+@media (max-width: 767px) {
+  .product-image-section,
+  .product-info-section {
+    flex: none;
+    width: 100%;
+  }
+}
+
+/* Responsive product image */
+.responsive-product-image-container {
+  width: 100%;
+  max-width: 450px;
+  margin: 0 auto;
+}
+
+.responsive-product-image {
+  width: 100%;
+  height: 450px;
+}
+
+.responsive-thumbnail-grid {
+  max-width: 450px;
+  margin: 0 auto;
+}
+
+@media (max-width: 575px) {
+  .responsive-product-image {
+    height: 300px;
+  }
+
+  .responsive-thumbnail-grid {
+    max-width: 300px;
+  }
+}
+
+@media (min-width: 576px) and (max-width: 767px) {
+  .responsive-product-image {
+    height: 350px;
+  }
+
+  .responsive-thumbnail-grid {
+    max-width: 350px;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+  .responsive-product-image {
+    height: 400px;
+  }
+
+  .responsive-thumbnail-grid {
+    max-width: 400px;
+  }
+}
+
+@media (min-width: 992px) {
+  .responsive-product-image {
+    height: 450px;
+  }
+
+  .responsive-thumbnail-grid {
+    max-width: 450px;
+  }
+}
+
+/* Responsive NoImage component */
+.no-image.responsive-product-image {
+  width: 100% !important;
+  height: 450px !important;
+}
+
+@media (max-width: 575px) {
+  .no-image.responsive-product-image {
+    height: 300px !important;
+  }
+}
+
+@media (min-width: 576px) and (max-width: 767px) {
+  .no-image.responsive-product-image {
+    height: 350px !important;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+  .no-image.responsive-product-image {
+    height: 400px !important;
+  }
+}
+
+@media (min-width: 992px) {
+  .no-image.responsive-product-image {
+    height: 450px !important;
+  }
 }

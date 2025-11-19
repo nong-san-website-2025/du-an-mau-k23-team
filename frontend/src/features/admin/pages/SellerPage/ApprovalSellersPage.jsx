@@ -86,20 +86,8 @@ const ApprovalSellersPage = () => {
   };
 
   const handleReject = async (record) => {
-    try {
-      await api.post(
-        `/sellers/${record.id}/reject/`,
-        {},
-        { headers: getAuthHeaders() }
-      );
-      message.success(
-        t("approval_sellers.rejected", { name: record.store_name })
-      );
-      fetchSellers();
-    } catch (err) {
-      console.error(err);
-      message.error(t("approval_sellers.reject_failed"));
-    }
+    // Modal sẽ xử lý việc gọi API, đây chỉ là callback để reload data
+    fetchSellers();
   };
 
   // 👁 Xem chi tiết
@@ -159,6 +147,9 @@ const ApprovalSellersPage = () => {
           visible={detailVisible}
           onClose={() => setDetailVisible(false)}
           seller={selectedSeller}
+          onApprove={handleApprove}
+          onReject={handleReject}
+          onActionSuccess={fetchSellers}
         />
       )}
     </AdminPageLayout>

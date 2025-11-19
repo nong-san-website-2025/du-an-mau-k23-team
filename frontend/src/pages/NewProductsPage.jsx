@@ -87,45 +87,24 @@ const NewProductsPage = () => {
 
   if (error) {
     return (
-      <div style={{ padding: "12px 190px" }}>
+      <div className="responsive-container">
         <Alert message="Lỗi" description={error} type="error" showIcon />
       </div>
     );
   }
 
   return (
-    <div style={{ padding: "12px 190px" }}>
+    <div className="responsive-container">
       <div
         style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
           marginBottom: "28px",
         }}
+        className="responsive-header"
       >
         <div style={{ display: "flex", alignItems: "center" }}>
-          <h2
-            style={{
-              fontSize: "24px",
-              fontWeight: 700,
-              color: "#111827",
-              margin: 0,
-              position: "relative",
-              paddingBottom: "6px",
-            }}
-          >
+          <h2 className="responsive-title">
             Sản phẩm mới
-            <span
-              style={{
-                position: "absolute",
-                bottom: 0,
-                left: 0,
-                width: "120px",
-                height: "3px",
-                backgroundColor: "#f59e0b",
-                borderRadius: "2px",
-              }}
-            />
+            <span />
           </h2>
           <span
             style={{

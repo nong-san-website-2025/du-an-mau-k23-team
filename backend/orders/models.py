@@ -51,6 +51,7 @@ class Order(models.Model):
     note = models.TextField(blank=True, null=True, default="")
     payment_method = models.CharField(max_length=50, default="Thanh toán khi nhận hàng", null=True, blank=True)
     total_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    shipping_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0)  # Phí vận chuyển
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
     stock_deducted = models.BooleanField(default=False)  # Đánh dấu đã trừ tồn kho để tránh trừ lặp lại
     sold_counted = models.BooleanField(default=False)

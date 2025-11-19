@@ -19,6 +19,7 @@ export default function OrdersProcessing({ onAction }) {
   const [orders, setOrders] = useState([]);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [detailVisible, setDetailVisible] = useState(false);
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
 
   const fetchProcessing = async () => {
     setLoading(true);
@@ -47,6 +48,12 @@ export default function OrdersProcessing({ onAction }) {
 
   useEffect(() => {
     fetchProcessing();
+  }, []);
+
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   const openDetail = (order) => {
@@ -134,21 +141,90 @@ export default function OrdersProcessing({ onAction }) {
     },
   ];
 
+  const isMobile = windowWidth < 576;
+  const isTablet = windowWidth >= 576 && windowWidth < 992;
+
+  const responsiveColumns = columns.map(col => {
+    if (col.key === 'customer') {
+      return {
+        ...col,
+        render: (_, record) => (
+          <div>
+            <div><strong>{record.customer_name}</strong></div>
+            {!isMobile && (
+              <>
+                <div style={{ fontSize: 12, color: "#666" }}>{record.customer_phone}</div>
+                <div style={{ fontSize: 12, color: "#666" }}>{record.address}</div>
+              </>
+            )}
+          </div>
+        ),
+      };
+    }
+    if (col.key === 'actions') {
+      return {
+        ...col,
+        render: (_, record) => (
+          <Space direction={isMobile ? "vertical" : "horizontal"}>
+            <Button onClick={() => openDetail(record)}>Xem chi tiết</Button>
+            <Button
+              type="primary"
+              onClick={async () => {
+                try {
+                  await API.post(`orders/${record.id}/seller/complete/`);
+                  message.success(`Đơn #${record.id} đã xác nhận giao thành công`);
+                  fetchProcessing();
+                  onAction?.();
+                } catch (error) {
+                  console.error(error);
+                  message.error(error.response?.data?.error || "Không thể xác nhận giao hàng");
+                }
+              }}
+            >
+              Đã giao thành công
+            </Button>
+            <Popconfirm
+              title="Xác nhận hủy đơn"
+              description={`Bạn có chắc muốn hủy đơn #${record.id}?`}
+              okText="Hủy đơn"
+              cancelText="Đóng"
+              onConfirm={async () => {
+                try {
+                  await API.post(`orders/${record.id}/cancel/`);
+                  message.success(`Đơn #${record.id} đã được hủy`);
+                  fetchProcessing();
+                  onAction?.();
+                } catch (error) {
+                  console.error(error);
+                  message.error(error.response?.data?.error || "Không thể hủy đơn hàng");
+                }
+              }}
+            >
+              <Button danger>Hủy đơn</Button>
+            </Popconfirm>
+          </Space>
+        ),
+      };
+    }
+    return col;
+  });
+
   return (
-    <div>
-      <h2 className="mb-4 text-2xl font-bold">Đơn đang xử lý</h2>
+    <div style={{ padding: isMobile ? "16px" : isTablet ? "24px" : "32px" }}>
       <Table
         rowKey="id"
         loading={loading}
         dataSource={orders}
-        columns={columns}
+        columns={responsiveColumns}
+        scroll={{ x: isMobile ? 800 : 'max-content' }}
+        size={isMobile ? "small" : "middle"}
       />
 
       <Modal
         open={detailVisible}
         onCancel={closeDetail}
         footer={null}
-        width={760}
+        width={isMobile ? '90%' : 760}
         centered
         destroyOnClose
         title={
@@ -163,7 +239,7 @@ export default function OrdersProcessing({ onAction }) {
             <Descriptions
               bordered
               size="small"
-              column={2}
+              column={isMobile ? 1 : 2}
               labelStyle={{ fontWeight: 600 }}
             >
               <Descriptions.Item label="Khách hàng">

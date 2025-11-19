@@ -19,7 +19,6 @@ const ProductImage = ({ product, isFavorite, onToggleFavorite }) => {
   const [previewVisible, setPreviewVisible] = useState(false);
   const [previewImage, setPreviewImage] = useState("");
 
-  const IMAGE_SIZE = 450;
   const THUMBNAIL_SIZE = 80; // ✅ Giảm từ 100px xuống 80px
   const MAX_VISIBLE_THUMBNAILS = 4;
 
@@ -115,13 +114,12 @@ const ProductImage = ({ product, isFavorite, onToggleFavorite }) => {
   const showThumbnailNav = totalImages > MAX_VISIBLE_THUMBNAILS;
 
   return (
-    <div style={{ width: IMAGE_SIZE }}>
+    <div className="responsive-product-image-container">
       {/* Ảnh chính */}
       <div
+        className="responsive-product-image"
         style={{
           position: "relative",
-          width: IMAGE_SIZE,
-          height: IMAGE_SIZE,
           margin: "0 auto",
           background: "#fafafa",
           borderRadius: 10,
@@ -198,7 +196,7 @@ const ProductImage = ({ product, isFavorite, onToggleFavorite }) => {
             )}
           </>
         ) : (
-          <NoImage width={IMAGE_SIZE} height={IMAGE_SIZE} text="Không có hình ảnh" />
+          <NoImage className="responsive-product-image" text="Không có hình ảnh" />
         )}
 
         {/* Nút yêu thích */}
@@ -256,12 +254,12 @@ const ProductImage = ({ product, isFavorite, onToggleFavorite }) => {
 
           {/* Grid thumbnails */}
           <div
+            className="responsive-thumbnail-grid"
             style={{
               display: "grid",
               gridTemplateColumns: `repeat(${Math.min(totalImages, MAX_VISIBLE_THUMBNAILS)}, 1fr)`,
               gap: 0, // ✅ Khoảng cách = 0
               width: "100%",
-              maxWidth: IMAGE_SIZE,
             }}
           >
             {visibleThumbnails.map((img, idx) => {

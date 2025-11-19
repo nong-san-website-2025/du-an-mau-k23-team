@@ -1,15 +1,17 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
-import { Tabs } from "antd";
+import { Tabs, Dropdown } from "antd";
+import { EllipsisOutlined } from "@ant-design/icons";
 import { toast } from "react-toastify"; // ✅ thêm
 import OrderTab from "./OrderTab";
-import "../styles/css/Order.css"
+import "../styles/css/Order.css";
 
 const { TabPane } = Tabs;
 
 const Orders = () => {
   const location = useLocation();
   const [activeTab, setActiveTab] = useState("pending");
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const hasProcessed = useRef(false);
 
   // Đồng bộ trạng thái tab với URL
@@ -48,43 +50,84 @@ const Orders = () => {
     }
   }, [location.search]);
 
+  // Handle window resize
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  const tabList = [
+    { key: "pending", label: "Chờ xác nhận" },
+    { key: "shipping", label: "Chờ lấy hàng" },
+    { key: "delivery", label: "Chờ giao hàng" },
+    { key: "completed", label: "Đã nhận hàng" },
+    { key: "cancelled", label: "Đã huỷ" },
+  ];
+
+  // Responsive tab logic
+  const getVisibleTabCount = () => {
+    if (windowWidth < 576) return 2; // Phone: 2 tabs
+    if (windowWidth < 992) return 3; // Tablet/iPad: 3 tabs
+    return 5; // Desktop: all tabs
+  };
+
+  const visibleTabCount = getVisibleTabCount();
+  const visibleTabs = tabList.slice(0, visibleTabCount);
+  const hiddenTabs = tabList.slice(visibleTabCount);
+
+  const dropdownItems = hiddenTabs.map((tab) => ({
+    key: tab.key,
+    label: tab.label,
+    onClick: () => setActiveTab(tab.key),
+  }));
+
+  const isSmallScreen = windowWidth < 480;
+  const isMobile = windowWidth < 576;
+  const isTablet = windowWidth >= 576 && windowWidth < 992;
+
   return (
     <div
-      className="flex flex-col items-center justify-start min-h-[70vh] mt-0"
-      style={{ padding: "0px 120px" }}
+      className="flex flex-col items-center justify-start min-h-[70vh] mt-0 responsive-orders-container"
+      style={{
+        padding: isSmallScreen
+          ? "0px 8px"
+          : isMobile
+            ? "0px 16px"
+            : isTablet
+              ? "0px 32px"
+              : "0px 120px",
+      }}
     >
       <div
-        className="w-full max-w-5xl bg-white rounded-xl shadow-sm p-6"
-        style={{ maxHeight: "100%" }}
+        className={`w-full bg-white rounded-xl shadow-sm responsive-orders-card ${
+          isSmallScreen ? "p-3" : isMobile ? "p-4" : "p-6"
+        }`}
+        style={{
+          maxWidth: isSmallScreen
+            ? "100%"
+            : isMobile
+              ? "100%"
+              : isTablet
+                ? "900px"
+                : "1100px",
+          maxHeight: "100%",
+        }}
       >
         <Tabs
           activeKey={activeTab}
           onChange={setActiveTab}
-          tabBarGutter={172} // giảm từ 256 xuống 48
+          tabBarGutter={isMobile ? 16 : isTablet ? 24 : 32}
           tabBarStyle={{ marginBottom: 6 }}
-          size="large"
-          centered
+          size={isMobile ? "small" : "large"}
+          centered={!isMobile}
           className="custom-tabs"
         >
-          <TabPane tab={<span>Chờ xác nhận</span>} key="pending">
-            <OrderTab status="pending" />
-          </TabPane>
-
-          <TabPane tab={<span>Chờ lấy hàng</span>} key="shipping">
-            <OrderTab status="shipping" />
-          </TabPane>
-
-          <TabPane tab={<span>Chờ giao hàng</span>} key="delivery">
-            <OrderTab status="delivery" />
-          </TabPane>
-
-          <TabPane tab={<span>Đã nhận hàng</span>} key="completed">
-            <OrderTab status="completed" />
-          </TabPane>
-
-          <TabPane tab={<span>Đã huỷ</span>} key="cancelled">
-            <OrderTab status="cancelled" />
-          </TabPane>
+          {tabList.map((tab) => (
+            <TabPane tab={tab.label} key={tab.key}>
+              <OrderTab status={tab.key} />
+            </TabPane>
+          ))}
         </Tabs>
       </div>
     </div>

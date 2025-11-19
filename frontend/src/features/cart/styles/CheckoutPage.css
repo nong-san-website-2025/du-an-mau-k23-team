@@ -1,10 +1,88 @@
-.custom-pay-btn {
-  background-color: #4CAF50;
-  color: white;
-  border: none;
+/* ==== PAGE WRAPPER ==== */
+.checkout-container {
+  padding: 24px 60px;
+  max-width: 1400px;
+  margin: auto;
 }
 
-.custom-pay-btn:hover {
-  background-color: #45A049 !important; /* màu hover */
-  color: white !important;
+/* ==== SECTION CARD ==== */
+.checkout-section {
+  background: #fff;
+  padding: 22px 26px;
+  border-radius: 12px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  margin-bottom: 28px;
+  border: 1px solid #f1f1f1;
+  transition: 0.2s;
 }
+
+.checkout-section:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+}
+
+/* ==== SECTION TITLE ==== */
+.section-title {
+  padding-left: 12px;
+  border-left: 4px solid #1677ff;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ==== ORDER SUMMARY ==== */
+.order-summary-sticky {
+  position: sticky;
+  top: 100px;
+  background: #fff;
+  padding: 24px 24px 32px;
+  border-radius: 14px;
+  border: 1px solid #eee;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.price-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  font-size: 15px;
+}
+
+.total-row {
+  font-size: 18px;
+}
+
+.total-amount {
+  font-size: 22px;
+  color: #d4380d;
+}
+
+/* ==== ERROR MESSAGE ==== */
+.error-message {
+  margin-top: 10px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: #fff2f0;
+  color: #cf1322;
+  font-size: 14px;
+}
+
+/* ==== VOUCHER PROMPT ==== */
+.voucher-login-prompt {
+  padding: 12px 14px;
+  background: #fffbe6;
+  border: 1px dashed #faad14;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #ad6800;
+}
+
+/* ==== BUTTON UPGRADE ==== */
+.confirm-order-btn,
+.custom-pay-btn {
+  font-size: 17px;
+  height: 54px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+

@@ -47,7 +47,7 @@ export default function BlogDetailPage() {
     // 👇 chỉ tăng view 1 lần mỗi session cho mỗi bài
     const viewedKey = `viewed_${slug}`;
     if (!sessionStorage.getItem(viewedKey)) {
-      sessionStorage.setItem(viewedKey, 'true');
+      sessionStorage.setItem(viewedKey, "true");
       increaseView(slug).catch(() => {});
     }
   }, [slug]);
@@ -57,14 +57,13 @@ export default function BlogDetailPage() {
     try {
       const res = await toggleLike(slug, token);
       if (res.data.status === "liked") {
-        setLiked(true);
         message.success("Đã thích bài viết ❤️");
       } else {
-        setLiked(false);
         message.info("Đã bỏ thích");
       }
       const updated = await fetchPostDetail(slug);
       setPost(updated.data);
+      setLiked(updated.data.is_liked || false);
     } catch (err) {
       message.error("Có lỗi xảy ra");
     }
@@ -75,14 +74,13 @@ export default function BlogDetailPage() {
     try {
       const res = await toggleBookmark(slug, token);
       if (res.data.status === "bookmarked") {
-        setBookmarked(true);
         message.success("Đã lưu bài viết 💾");
       } else {
-        setBookmarked(false);
         message.info("Đã bỏ lưu");
       }
       const updated = await fetchPostDetail(slug);
       setPost(updated.data);
+      setBookmarked(updated.data.is_bookmarked || false);
     } catch (err) {
       message.error("Có lỗi xảy ra");
     }
@@ -160,6 +158,11 @@ export default function BlogDetailPage() {
                 className={`like-btn ${liked ? "liked" : ""}`}
                 icon={liked ? <HeartFilled /> : <HeartOutlined />}
                 onClick={handleLike}
+                style={{
+                  background: liked ? "#ef5350" : "white",
+                  borderColor: liked ? "#ef5350" : "#e0e0e0",
+                  color: liked ? "white" : "#546e7a",
+                }}
               >
                 {post.likes_count}
               </Button>
@@ -171,6 +174,11 @@ export default function BlogDetailPage() {
                 className={`bookmark-btn ${bookmarked ? "bookmarked" : ""}`}
                 icon={bookmarked ? <BookFilled /> : <BookOutlined />}
                 onClick={handleBookmark}
+                style={{
+                  background: bookmarked ? "#4caf50" : "white",
+                  borderColor: bookmarked ? "#4caf50" : "#e0e0e0",
+                  color: bookmarked ? "white" : "#546e7a",
+                }}
               >
                 {post.bookmarks_count}
               </Button>

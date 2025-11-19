@@ -19,3 +19,8 @@ export const deleteOrder = async (id) => {
   const res = await http.delete(`/orders/${id}/`);
   return res.data;
 };
+
+export const getOrderStatistics = async () => {
+  const res = await http.get("/orders/admin/order-statistics/");
+  return res.data;
+};

@@ -44,6 +44,8 @@ class SellerDetailSerializer(serializers.ModelSerializer):
     followers_count = serializers.SerializerMethodField()
     is_following = serializers.SerializerMethodField()
     total_products = serializers.SerializerMethodField()
+    owner_username = serializers.CharField(source='user.username', read_only=True)
+    user_email = serializers.EmailField(source="user.email", read_only=True)
 
 
     class Meta:
@@ -57,10 +59,13 @@ class SellerDetailSerializer(serializers.ModelSerializer):
             'image',
             'created_at',
             'status',
+            'rejection_reason',
             'products',
             'followers_count',
             'is_following',
-            'total_products'
+            'total_products',
+            'owner_username',
+            'user_email'
         ]
 
     def get_followers_count(self, obj):
@@ -84,7 +89,7 @@ class SellerSerializer(serializers.ModelSerializer):
         model = Seller
         fields = [
             "id", "store_name", "bio", "address", "phone", "image",
-            "created_at", "user", "user_username", "user_email", 
+            "created_at", "user", "user_username", "user_email", "status", "rejection_reason"
         ]
         read_only_fields = ["created_at"]
 

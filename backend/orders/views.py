@@ -1,7 +1,8 @@
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from django.db.models import Q, Sum
+from django.db.models import Q, Sum, Count, F
+from django.db.models.functions.datetime import TruncDate
 from django.utils import timezone
 from datetime import timedelta
 from django.db import transaction
@@ -9,10 +10,9 @@ import logging
 from django.conf import settings
 from .models import Order, Complaint
 from .serializers import OrderSerializer, OrderCreateSerializer
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
 from .services import complete_order, OrderProcessingError
 from orders.models import OrderItem
-from django.db.models import Sum
 from django.utils.timezone import now, timedelta
 from rest_framework.decorators import api_view, permission_classes
 from promotions.models import Voucher, UserVoucher
@@ -129,6 +129,20 @@ def user_behavior_stats(request, user_id):
         "purchased_products": purchased_products,
         "interested_categories": interested_categories,
     })
+
+
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def user_orders(request, user_id):
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return Response({"error": "User not found"}, status=404)
+
+    orders = Order.objects.filter(user=user).order_by('-created_at')
+    serializer = OrderSerializer(orders, many=True, context={'request': request})
+    return Response(serializer.data)
+
 
 class OrderViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
@@ -560,3 +574,186 @@ class PreorderListCreateView(generics.ListCreateAPIView):
         context = super().get_serializer_context()
         context['request'] = self.request  # ✅ để build_absolute_uri hoạt động
         return context
+
+
+# 📊 Thống kê doanh thu cho admin
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def revenue_report(request):
+    """
+    Lấy dữ liệu thống kê doanh thu
+    Params: start_date, end_date (YYYY-MM-DD)
+    Bao gồm: doanh thu từ đơn hàng thành công và doanh thu sàn (commission)
+    """
+    from datetime import datetime
+    from products.models import Category
+
+    # Get date range từ query params
+    start_date = request.query_params.get('start_date')
+    end_date = request.query_params.get('end_date')
+
+    if not start_date or not end_date:
+        return Response({"error": "start_date and end_date required"}, status=400)
+
+    try:
+        start = datetime.strptime(start_date, '%Y-%m-%d')
+        end = datetime.strptime(end_date, '%Y-%m-%d')
+    except ValueError:
+        return Response({"error": "Invalid date format (use YYYY-MM-DD)"}, status=400)
+
+    # Query orders
+    orders = Order.objects.filter(
+        created_at__date__gte=start.date(),
+        created_at__date__lte=end.date()
+    )
+
+    # Tính toán stats
+    success_orders = orders.filter(status='success')
+    pending_orders = orders.filter(status__in=['pending', 'processing', 'shipping'])
+    cancelled_orders = orders.filter(status='cancelled')
+
+    total_revenue = success_orders.aggregate(total=Sum('total_price'))['total'] or 0
+
+    # Tính doanh thu sàn (commission)
+    # Duyệt qua từng order item và tính commission dựa trên category
+    platform_revenue = 0.0
+    
+    success_order_items = OrderItem.objects.filter(
+        order__status='success',
+        order__created_at__date__gte=start.date(),
+        order__created_at__date__lte=end.date()
+    ).select_related('product', 'product__category')
+    
+    for item in success_order_items:
+        if item.product and item.product.category:
+            category = item.product.category
+            commission_rate = category.commission_rate  # Lấy commission_rate từ category
+            item_amount = float(item.price) * item.quantity
+            commission = item_amount * commission_rate
+            platform_revenue += commission
+
+    # Group by date for chart
+    daily_revenue = success_orders.values(
+        date=TruncDate('created_at')
+    ).annotate(
+        revenue=Sum('total_price')
+    ).order_by('date')
+    
+    # Tính daily platform revenue (commission)
+    daily_platform_revenue = []
+    for day in daily_revenue:
+        day_items = OrderItem.objects.filter(
+            order__status='success',
+            order__created_at__date=day['date']
+        ).select_related('product', 'product__category')
+        
+        day_commission = 0.0
+        for item in day_items:
+            if item.product and item.product.category:
+                category = item.product.category
+                commission_rate = category.commission_rate
+                item_amount = float(item.price) * item.quantity
+                commission = item_amount * commission_rate
+                day_commission += commission
+        
+        daily_platform_revenue.append({
+            'date': day['date'].isoformat(),
+            'revenue': float(day['revenue'] or 0),
+            'platform_revenue': day_commission
+        })
+
+    return Response({
+        'total_revenue': float(total_revenue),
+        'platform_revenue': platform_revenue,  # Doanh thu sàn (commission)
+        'success_orders_count': success_orders.count(),
+        'pending_orders_count': pending_orders.count(),
+        'cancelled_orders_count': cancelled_orders.count(),
+        'daily_revenue': daily_platform_revenue
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def order_statistics_report(request):
+    """
+    Lấy dữ liệu thống kê đơn hàng cho báo cáo admin
+    """
+    # Tổng đơn hàng
+    total_orders = Order.objects.count()
+
+    # Tổng doanh thu (chỉ tính đơn thành công)
+    total_revenue = Order.objects.filter(
+        status__in=['success', 'delivered']
+    ).aggregate(total=Sum('total_price'))['total'] or 0
+
+    # Tỷ lệ giao đúng hẹn (giả sử đơn success/delivered là đúng hẹn)
+    successful_deliveries = Order.objects.filter(
+        status__in=['success', 'delivered']
+    ).count()
+    on_time_rate = round((successful_deliveries / total_orders * 100), 1) if total_orders > 0 else 0
+
+    # Tỷ lệ hủy
+    cancelled_orders = Order.objects.filter(status='cancelled').count()
+    cancel_rate = round((cancelled_orders / total_orders * 100), 1) if total_orders > 0 else 0
+
+    # Dữ liệu trạng thái đơn hàng cho biểu đồ tròn
+    order_status_data = Order.objects.values('status').annotate(
+        count=Count('id')
+    ).order_by('status')
+
+    # Map status to Vietnamese labels
+    status_labels = {
+        'pending': 'Chờ xử lý',
+        'shipping': 'Đang giao',
+        'success': 'Hoàn tất',
+        'delivered': 'Đã giao',
+        'cancelled': 'Đã hủy',
+        'ready_to_pick': 'Sẵn sàng lấy',
+        'picking': 'Đang lấy',
+        'out_for_delivery': 'Đang giao',
+        'delivery_failed': 'Giao thất bại',
+        'lost': 'Mất hàng',
+        'damaged': 'Hỏng hóc',
+        'returned': 'Trả lại'
+    }
+
+    order_status_chart_data = [
+        {
+            'name': status_labels.get(item['status'], item['status']),
+            'value': item['count']
+        }
+        for item in order_status_data
+    ]
+
+    # Dữ liệu hiệu suất giao hàng theo ngày trong tuần (mock data cho giờ)
+    # Trong thực tế, cần có trường thời gian giao hàng thực tế
+    delivery_time_data = [
+        {'name': 'T7', 'avg': 2.1, 'late': 15},
+        {'name': 'CN', 'avg': 2.5, 'late': 21},
+        {'name': 'T2', 'avg': 1.9, 'late': 10},
+        {'name': 'T3', 'avg': 2.2, 'late': 13},
+        {'name': 'T4', 'avg': 2.3, 'late': 18},
+        {'name': 'T5', 'avg': 2.0, 'late': 12},
+        {'name': 'T6', 'avg': 2.4, 'late': 16},
+    ]
+
+    # Dữ liệu chi phí vận chuyển theo đơn vị giao hàng (mock data)
+    # Trong thực tế, cần tích hợp với API GHN hoặc lưu trong database
+    shipping_cost_data = [
+        {'name': 'GHN', 'cost': 1200000},
+        {'name': 'GHTK', 'cost': 1500000},
+        {'name': 'Viettel Post', 'cost': 900000},
+        {'name': 'J&T', 'cost': 1100000},
+    ]
+
+    return Response({
+        'orderSummary': {
+            'totalOrders': total_orders,
+            'revenue': float(total_revenue),
+            'onTimeRate': on_time_rate,
+            'cancelRate': cancel_rate,
+        },
+        'orderStatusData': order_status_chart_data,
+        'deliveryTimeData': delivery_time_data,
+        'shippingCostData': shipping_cost_data,
+    })

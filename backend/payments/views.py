@@ -29,6 +29,8 @@ from orders.serializers import OrderCreateSerializer
 from orders.models import Order, OrderItem
 from cart.models import Cart
 from django.core.cache import cache
+from .models import Payment, SellerWallet, WalletTransaction  # ← Thêm 2 models
+from .models_withdraw import WithdrawRequest
 
 
 logger = logging.getLogger(__name__)
@@ -91,15 +93,16 @@ def wallet_balance(request):
     user = request.user
     try:
         seller = Seller.objects.get(user=user)
+        wallet = SellerWallet.objects.get(seller=seller)
     except Seller.DoesNotExist:
         return Response({"error": "Seller not found"}, status=404)
-    product_ids = Product.objects.filter(seller=seller).values_list("id", flat=True)
-    order_ids = OrderItem.objects.filter(product_id__in=product_ids).values_list("order_id", flat=True).distinct()
-    payments = Payment.objects.filter(order_id__in=order_ids, status="success")
-    total_revenue = payments.aggregate(total=Sum("amount"))['total'] or 0
-    total_withdrawn = WithdrawRequest.objects.filter(seller=seller, status__in=["paid", "approved"]).aggregate(total=Sum("amount"))['total'] or 0
-    balance = float(total_revenue) - float(total_withdrawn)
-    return Response({"balance": balance})
+    except SellerWallet.DoesNotExist:
+        return Response({"error": "Wallet not found"}, status=404)
+    
+    return Response({
+        "balance": float(wallet.balance),
+        "pending_balance": float(wallet.pending_balance)
+    })
 # API: Doanh thu theo ngày/tháng cho seller (dùng cho biểu đồ)
 from django.db.models.functions import TruncDay, TruncMonth
 from django.db.models import Sum
@@ -459,3 +462,380 @@ def vnpay_callback(request):
             return JsonResponse({"RspCode": "01", "Message": "Payment Failed"})
     else:
         return JsonResponse({"RspCode": "97", "Message": "Invalid signature"})
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_wallets(request):
+    """Get all seller wallets for admin"""
+    if not request.user.is_staff:
+        return Response({"error": "Permission denied"}, status=403)
+
+    # ✅ Select related đến seller.user để tránh N+1 query
+    wallets = SellerWallet.objects.select_related('seller__user').all()
+    
+    data = []
+    for wallet in wallets:
+        data.append({
+            "seller_id": wallet.seller.user.id,
+            "store_name": wallet.seller.store_name,
+            "email": wallet.seller.user.email,
+            "balance": float(wallet.balance),
+            "pending_balance": float(wallet.pending_balance),
+            "updated_at": wallet.updated_at.isoformat() if wallet.updated_at else None,
+        })
+    return Response(data)
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def approve_pending_balance(request, seller_id):
+    """Approve pending balance for a seller"""
+    if not request.user.is_staff:
+        return Response({"error": "Permission denied"}, status=403)
+
+    try:
+        from sellers.models import Seller
+        seller = Seller.objects.get(user_id=seller_id)
+        wallet = SellerWallet.objects.get(seller=seller)
+
+        if wallet.pending_balance > 0:
+            # Move pending to balance
+            wallet.balance += wallet.pending_balance
+            wallet.pending_balance = 0
+            wallet.last_pending_approved_at = timezone.now()
+            wallet.save()
+
+            # Update transactions from pending_add to add
+            WalletTransaction.objects.filter(
+                wallet=wallet,
+                type='pending_add'
+            ).update(type='add', note="Đã duyệt số dư chờ")
+
+            return Response({"message": "Approved pending balance"})
+        else:
+            return Response({"error": "No pending balance to approve"}, status=400)
+    except Seller.DoesNotExist:
+        return Response({"error": "Seller not found"}, status=404)
+    except SellerWallet.DoesNotExist:
+        return Response({"error": "Wallet not found"}, status=404)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_wallet_transactions(request, seller_id):
+    """Get transactions for a seller wallet"""
+    if not request.user.is_staff:
+        return Response({"error": "Permission denied"}, status=403)
+
+    try:
+        from sellers.models import Seller
+        seller = Seller.objects.get(user_id=seller_id)
+        wallet = SellerWallet.objects.get(seller=seller)
+
+        transactions = WalletTransaction.objects.filter(wallet=wallet).order_by('-created_at')
+        data = []
+        for tx in transactions:
+            data.append({
+                "id": tx.id,
+                "amount": float(tx.amount),
+                "type": tx.type,
+                "note": tx.note,
+                "created_at": tx.created_at.isoformat(),
+            })
+        return Response({"transactions": data})
+    except Seller.DoesNotExist:
+        return Response({"error": "Seller not found"}, status=404)
+    except SellerWallet.DoesNotExist:
+        return Response({"error": "Wallet not found"}, status=404)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def recalculate_pending_balance(request, seller_id):
+    """Recalculate pending_balance từ orders thực tế"""
+    if not request.user.is_staff:
+        return Response({"error": "Permission denied"}, status=403)
+
+    try:
+        from sellers.models import Seller
+        from decimal import Decimal
+        
+        seller = Seller.objects.get(user_id=seller_id)
+        wallet = SellerWallet.objects.get(seller=seller)
+
+        order_ids = (
+            OrderItem.objects.filter(product__seller=seller)
+            .values_list("order_id", flat=True)
+            .distinct()
+        )
+        
+        # Chỉ tính orders success sau lần duyệt cuối cùng
+        success_orders_query = Order.objects.filter(
+            id__in=order_ids,
+            status="success"
+        )
+        
+        if wallet.last_pending_approved_at:
+            success_orders_query = success_orders_query.filter(updated_at__gt=wallet.last_pending_approved_at)
+        
+        success_orders = success_orders_query.prefetch_related('items', 'items__product')
+
+        total_earned = Decimal('0')
+        
+        for order in success_orders:
+            order_total = Decimal(str(order.total_price or 0))
+            shipping_fee = Decimal(str(order.shipping_fee or 0))
+            
+            seller_item_total = Decimal('0')
+            commission = Decimal('0')
+            
+            for item in order.items.all():
+                if item.product and item.product.seller_id == seller.id:
+                    item_total = Decimal(str(item.price or 0)) * item.quantity
+                    seller_item_total += item_total
+                    
+                    commission_rate = (
+                        Decimal(str(item.product.category.commission_rate)) 
+                        if item.product.category else Decimal('0')
+                    )
+                    commission += item_total * commission_rate
+            
+            if order_total > 0 and seller_item_total > 0:
+                shipping_fee_seller = (seller_item_total / order_total) * shipping_fee
+            else:
+                shipping_fee_seller = Decimal('0')
+            
+            seller_share = seller_item_total - shipping_fee_seller - commission
+            total_earned += seller_share
+
+        withdrawn = (
+            WithdrawRequest.objects.filter(
+                seller=seller,
+                status__in=["paid", "approved"]
+            ).aggregate(total=Sum("amount"))["total"] or 0
+        )
+
+        pending_balance = float(total_earned) - float(withdrawn)
+        
+        wallet.pending_balance = max(pending_balance, 0)
+        wallet.save()
+
+        return Response({
+            "message": "Recalculated pending balance",
+            "total_earned": float(total_earned),
+            "total_withdrawn": float(withdrawn),
+            "new_pending_balance": float(wallet.pending_balance),
+        })
+    except Seller.DoesNotExist:
+        return Response({"error": "Seller not found"}, status=404)
+    except SellerWallet.DoesNotExist:
+        return Response({"error": "Wallet not found"}, status=404)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_withdraw_requests(request):
+    """Get all pending withdraw requests for admin"""
+    if not request.user.is_staff:
+        return Response({"error": "Permission denied"}, status=403)
+
+    status_filter = request.GET.get('status', 'pending')
+    
+    query = WithdrawRequest.objects.select_related('seller', 'seller__user').order_by('-created_at')
+    
+    if status_filter and status_filter != 'all':
+        query = query.filter(status=status_filter)
+    
+    data = []
+    for wr in query:
+        data.append({
+            "id": wr.id,
+            "seller_id": wr.seller.user.id,
+            "store_name": wr.seller.store_name,
+            "seller_email": wr.seller.user.email,
+            "amount": float(wr.amount),
+            "status": wr.status,
+            "note": wr.note,
+            "created_at": wr.created_at.isoformat(),
+            "processed_at": wr.processed_at.isoformat() if wr.processed_at else None,
+        })
+    
+    return Response({"results": data})
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def approve_withdraw_request(request, withdraw_id):
+    """Approve a withdrawal request and deduct from seller's balance"""
+    if not request.user.is_staff:
+        return Response({"error": "Permission denied"}, status=403)
+
+    try:
+        from decimal import Decimal
+        from django.db import transaction
+        
+        withdraw = WithdrawRequest.objects.get(id=withdraw_id)
+        
+        if withdraw.status != "pending":
+            return Response({"error": "Only pending requests can be approved"}, status=400)
+        
+        seller = withdraw.seller
+        amount = Decimal(str(withdraw.amount))
+        
+        with transaction.atomic():
+            wallet = SellerWallet.objects.select_for_update().get(seller=seller)
+            
+            if wallet.balance < amount:
+                return Response({
+                    "error": f"Insufficient balance. Required: {amount}, Available: {wallet.balance}"
+                }, status=400)
+            
+            if wallet.balance < 0:
+                return Response({
+                    "error": "Wallet balance is negative. Cannot process withdrawal."
+                }, status=400)
+            
+            wallet.balance -= amount
+            wallet.save()
+            
+            withdraw.status = "paid"
+            withdraw.processed_at = timezone.now()
+            withdraw.save()
+            
+            WalletTransaction.objects.create(
+                wallet=wallet,
+                amount=amount,
+                type="withdraw",
+                note=f"Approved withdrawal request #{withdraw.id}"
+            )
+        
+        return Response({
+            "message": "Withdrawal approved successfully",
+            "new_balance": float(wallet.balance)
+        })
+    
+    except WithdrawRequest.DoesNotExist:
+        return Response({"error": "Withdrawal request not found"}, status=404)
+    except SellerWallet.DoesNotExist:
+        return Response({"error": "Seller wallet not found"}, status=404)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def reject_withdraw_request(request, withdraw_id):
+    """Reject a withdrawal request"""
+    if not request.user.is_staff:
+        return Response({"error": "Permission denied"}, status=403)
+
+    try:
+        withdraw = WithdrawRequest.objects.get(id=withdraw_id)
+        
+        if withdraw.status != "pending":
+            return Response({"error": "Only pending requests can be rejected"}, status=400)
+        
+        note = request.data.get('note', 'Rejected by admin')
+        
+        withdraw.status = "rejected"
+        withdraw.processed_at = timezone.now()
+        withdraw.note = note
+        withdraw.save()
+        
+        return Response({
+            "message": "Withdrawal request rejected successfully"
+        })
+    
+    except WithdrawRequest.DoesNotExist:
+        return Response({"error": "Withdrawal request not found"}, status=404)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def wallet_balance_detail(request, seller_id):
+    """Get detailed wallet balance info for admin debugging"""
+    if not request.user.is_staff:
+        return Response({"error": "Permission denied"}, status=403)
+    
+    try:
+        from decimal import Decimal
+        
+        seller = Seller.objects.get(user_id=seller_id)
+        wallet = SellerWallet.objects.get(seller=seller)
+        
+        order_ids = (
+            OrderItem.objects.filter(product__seller=seller)
+            .values_list("order_id", flat=True)
+            .distinct()
+        )
+        
+        success_orders = Order.objects.filter(
+            id__in=order_ids,
+            status="success"
+        ).prefetch_related('items', 'items__product')
+        
+        total_earned = Decimal('0')
+        orders_breakdown = []
+        
+        for order in success_orders:
+            order_total = Decimal(str(order.total_price or 0))
+            shipping_fee = Decimal(str(order.shipping_fee or 0))
+            
+            seller_item_total = Decimal('0')
+            commission = Decimal('0')
+            
+            for item in order.items.all():
+                if item.product and item.product.seller_id == seller.id:
+                    item_total = Decimal(str(item.price or 0)) * item.quantity
+                    seller_item_total += item_total
+                    
+                    commission_rate = (
+                        Decimal(str(item.product.category.commission_rate)) 
+                        if item.product.category else Decimal('0')
+                    )
+                    commission += item_total * commission_rate
+            
+            if order_total > 0 and seller_item_total > 0:
+                shipping_fee_seller = (seller_item_total / order_total) * shipping_fee
+            else:
+                shipping_fee_seller = Decimal('0')
+            
+            seller_share = seller_item_total - shipping_fee_seller - commission
+            total_earned += seller_share
+            
+            orders_breakdown.append({
+                "order_id": order.id,
+                "seller_item_total": float(seller_item_total),
+                "shipping_fee_seller": float(shipping_fee_seller),
+                "commission": float(commission),
+                "seller_share": float(seller_share)
+            })
+        
+        withdrawn_paid = (
+            WithdrawRequest.objects.filter(
+                seller=seller,
+                status__in=["paid", "approved"]
+            ).aggregate(total=Sum("amount"))["total"] or Decimal(0)
+        )
+        
+        withdrawn_pending = (
+            WithdrawRequest.objects.filter(
+                seller=seller,
+                status="pending"
+            ).aggregate(total=Sum("amount"))["total"] or Decimal(0)
+        )
+        
+        return Response({
+            "seller_id": seller_id,
+            "store_name": seller.store_name,
+            "balance": float(wallet.balance),
+            "pending_balance": float(wallet.pending_balance),
+            "total_earned": float(total_earned),
+            "withdrawn_paid": float(withdrawn_paid),
+            "withdrawn_pending": float(withdrawn_pending),
+            "calculated_pending_balance": float(max(total_earned - withdrawn_paid, Decimal(0))),
+            "orders_count": len(orders_breakdown),
+            "orders_breakdown": orders_breakdown
+        })
+    
+    except Seller.DoesNotExist:
+        return Response({"error": "Seller not found"}, status=404)
+    except SellerWallet.DoesNotExist:
+        return Response({"error": "Seller wallet not found"}, status=404)

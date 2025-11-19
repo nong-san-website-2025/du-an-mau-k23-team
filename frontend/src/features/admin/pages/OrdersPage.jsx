@@ -4,6 +4,7 @@ import { SearchOutlined } from "@ant-design/icons";
 import adminApi from "../services/adminApi";
 import AdminPageLayout from "../components/AdminPageLayout";
 import OrderTableAntd from "../components/OrderAdmin/OrderTableAntd";
+import OrderDetailModal from "../components/OrderAdmin/OrderDetailModal";
 import { useAuth } from "../../login_register/services/AuthContext";
 
 import "../styles/OrdersPage.css";
@@ -16,15 +17,18 @@ const OrdersPage = () => {
   const [statusFilter, setStatusFilter] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
 
+  const [detailVisible, setDetailVisible] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+
   const { user, loading: authLoading } = useAuth();
 
   const statusOptions = [
     { value: "", label: "Tất cả trạng thái" },
     { value: "pending", label: "Chờ xử lý" },
-    { value: "processing", label: "Đang xử lý" },
+    { value: "shipping", label: "Đang giao hàng" },
     { value: "shipped", label: "Đã giao vận" },
     { value: "delivered", label: "Đã giao hàng" },
-    { value: "completed", label: "Hoàn thành" },
+    { value: "success", label: "Hoàn thành" },
     { value: "cancelled", label: "Đã hủy" },
     { value: "refunded", label: "Đã hoàn tiền" },
   ];
@@ -77,11 +81,17 @@ const OrdersPage = () => {
   const handleViewDetail = async (orderId) => {
     try {
       const orderDetail = await adminApi.getOrderDetail(orderId);
-      setOrders((prev) =>
-        prev.map((order) =>
-          order.id === orderId ? { ...order, ...orderDetail } : order
-        )
-      );
+      const updatedOrder = orders.find(o => o.id === orderId);
+      if (updatedOrder) {
+        const fullOrder = { ...updatedOrder, ...orderDetail };
+        setOrders((prev) =>
+          prev.map((order) =>
+            order.id === orderId ? fullOrder : order
+          )
+        );
+        setSelectedOrder(fullOrder);
+        setDetailVisible(true);
+      }
     } catch (err) {
       alert("Không thể tải chi tiết đơn hàng");
     }
@@ -159,10 +169,24 @@ const OrdersPage = () => {
         formatDate={formatDate}
         onViewDetail={handleViewDetail}
         onCancel={handleCancelOrder}
+        onRow={(record) => ({
+          onClick: () => handleViewDetail(record.id),
+        })}
       />
       <div className="d-flex justify-content-between align-items-center mt-4">
         <div className="text-muted">Hiển thị {orders.length} đơn hàng</div>
       </div>
+
+      {selectedOrder && (
+        <OrderDetailModal
+          visible={detailVisible}
+          onClose={() => setDetailVisible(false)}
+          order={selectedOrder}
+          getStatusLabel={getStatusLabel}
+          formatCurrency={formatCurrency}
+          formatDate={formatDate}
+        />
+      )}
     </AdminPageLayout>
   );
 };

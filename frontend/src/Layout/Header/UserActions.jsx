@@ -417,10 +417,6 @@ export default function UserActions({
       className="d-flex align-items-center ms-3 mb-2 "
       style={{ flexShrink: 0, flexWrap: "nowrap" }}
     >
-      {/* Mobile search button */}
-      <button className="btn btn-light rounded-circle me-2 p-2 d-md-none">
-        <Search size={22} className="text-white" />
-      </button>
 
       <Link
         to="/wishlist"

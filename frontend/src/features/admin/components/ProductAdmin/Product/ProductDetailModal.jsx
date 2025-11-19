@@ -1,6 +1,6 @@
 import React from "react";
 import {
-  Modal,
+  Drawer,
   Descriptions,
   Divider,
   Tag,
@@ -8,9 +8,11 @@ import {
   Rate,
   Image,
   Space,
+  Button,
 } from "antd";
+import { CloseOutlined } from "@ant-design/icons";
 
-export default function ProductDetailModal({ visible, product, onClose }) {
+export default function ProductDetailDrawer({ visible, product, onClose }) {
   if (!product) return null;
 
   const translateStatus = (status) => {
@@ -41,245 +43,336 @@ export default function ProductDetailModal({ visible, product, onClose }) {
     }
   };
 
+  const statusColor = {
+    approved: "green",
+    pending: "orange",
+    rejected: "red",
+    banned: "red",
+  };
+
+  const availabilityColor = {
+    available: "green",
+    out_of_stock: "volcano",
+    coming_soon: "gold",
+  };
+
   return (
-    <Modal
-      open={visible}
-      onCancel={onClose}
-      footer={null}
-      width={950}
-      centered
+    <Drawer
       title={
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span>Chi tiết sản phẩm:</span>
-          <Tooltip title={product.name}>
-            <span
-              style={{
-                maxWidth: 700,
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                color: "#1890ff",
-                fontWeight: 600,
-              }}
-            >
-              {product.name}
-            </span>
-          </Tooltip>
+        <div style={{ 
+          paddingRight: 24,
+          fontSize: 16,
+          fontWeight: 600,
+          color: '#111827'
+        }}>
+          Chi tiết sản phẩm
         </div>
       }
-      bodyStyle={{
-        maxHeight: "80vh",
-        overflowY: "auto",
-        paddingRight: 12,
+      placement="right"
+      onClose={onClose}
+      open={visible}
+      width={720}
+      closeIcon={<CloseOutlined />}
+      styles={{
+        body: {
+          paddingTop: 16,
+        }
       }}
     >
-      {/* === HEADER: Ảnh + Thông tin tóm tắt === */}
-      <div
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          gap: 20,
-          marginBottom: 20,
-          alignItems: "flex-start",
-        }}
-      >
+      {/* === HEADER: Ảnh chính + Info tổng quan === */}
+      <div style={{ marginBottom: 24 }}>
+        {/* Ảnh chính */}
         <div
           style={{
-            flex: "0 0 280px",
             background: "#fafafa",
-            border: "1px solid #f0f0f0",
-            borderRadius: 12,
-            padding: 12,
+            border: "1px solid #e5e7eb",
+            borderRadius: 8,
+            padding: 16,
+            marginBottom: 20,
             textAlign: "center",
-            boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
           }}
         >
           <img
             src={
-              product.image ||
-              "https://via.placeholder.com/300x300.png?text=No+Image"
+              product.main_image?.image ||
+              "https://via.placeholder.com/400x400.png?text=No+Image"
             }
             alt={product.name}
             style={{
               width: "100%",
-              height: 280,
+              maxHeight: 200,
               objectFit: "contain",
-              borderRadius: 8,
-              marginBottom: 10,
+              borderRadius: 6,
+              marginBottom: 12,
             }}
           />
-          <Tag
-            color={
-              product.availability_status === "available"
-                ? "green"
-                : product.availability_status === "out_of_stock"
-                  ? "volcano"
-                  : "gold"
-            }
-          >
-            {translateAvailability(product.availability_status)}
-          </Tag>
+          <Space size="small">
+            <Tag color={statusColor[product.status] || "default"}>
+              {translateStatus(product.status)}
+            </Tag>
+            <Tag color={availabilityColor[product.availability_status] || "default"}>
+              {translateAvailability(product.availability_status)}
+            </Tag>
+          </Space>
         </div>
 
-        <div style={{ flex: "1 1 60%", minWidth: 300 }}>
-          <Tooltip title={product.name}>
-            <h2
-              style={{
-                marginBottom: 6,
-                maxWidth: 700, // 🔹 Giới hạn độ rộng
-                display: "-webkit-box", // Cấu trúc để ellipsis nhiều dòng hoạt động
-                WebkitLineClamp: 3, // 🔹 Giới hạn tối đa 2 dòng (có thể đổi thành 3)
-                WebkitBoxOrient: "vertical",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                fontSize: 20,
-                fontWeight: 600,
-                color: "#333",
-                lineHeight: 1.4, // Tăng khoảng cách giữa các dòng cho dễ đọc
-              }}
-            >
-              {product.name}
-            </h2>
-          </Tooltip>
-          <div style={{ color: "#888", marginBottom: 8 }}>
+        {/* Tên + giá + rating */}
+        <div>
+          <div style={{ 
+            fontSize: 13,
+            color: '#6b7280',
+            marginBottom: 6
+          }}>
             Mã sản phẩm: #{product.id}
           </div>
-          <div style={{ fontSize: 20, fontWeight: 600, color: "#d4380d" }}>
-            {Number(product.price).toLocaleString("vi-VN")} đ{" "}
+          
+          <h2
+            style={{
+              fontSize: 20,
+              fontWeight: 600,
+              color: "#111827",
+              lineHeight: 1.4,
+              marginBottom: 12,
+              wordBreak: "break-word",
+            }}
+          >
+            {product.name}
+          </h2>
+
+          <div style={{ 
+            fontSize: 24, 
+            fontWeight: 700, 
+            color: "#dc2626",
+            marginBottom: 12
+          }}>
+            {Number(product.price).toLocaleString("vi-VN")} đ
             {product.discount_percent > 0 && (
-              <Tag color="red" style={{ marginLeft: 6 }}>
+              <Tag 
+                color="red" 
+                style={{ 
+                  marginLeft: 8,
+                  fontSize: 13
+                }}
+              >
                 -{product.discount_percent}%
               </Tag>
             )}
           </div>
-          <div style={{ marginTop: 8 }}>
+
+          <div style={{ marginBottom: 16 }}>
             <Rate disabled value={Number(product.rating)} />
-            <span style={{ marginLeft: 8, color: "#666" }}>
-              {product.rating} / 5 ({product.review_count} lượt)
+            <span style={{ marginLeft: 8, color: "#6b7280", fontSize: 14 }}>
+              {product.rating}/5 ({product.review_count} đánh giá)
             </span>
           </div>
-          <div style={{ marginTop: 12, color: "#555" }}>
-            <strong>Cửa hàng:</strong> {product.seller_name || "—"}
-            <br />
-            <strong>Thương hiệu:</strong> {product.brand || "—"}
-            <br />
-            <strong>Trạng thái:</strong>{" "}
-            <Tag color="blue">{translateStatus(product.status)}</Tag>
+
+          <div style={{ 
+            fontSize: 14,
+            color: '#374151',
+            lineHeight: 1.8
+          }}>
+            <div>
+              <span style={{ color: '#6b7280' }}>Cửa hàng:</span>{" "}
+              <span style={{ fontWeight: 500 }}>{product.seller_name || "—"}</span>
+            </div>
+            <div>
+              <span style={{ color: '#6b7280' }}>Thương hiệu:</span>{" "}
+              <span style={{ fontWeight: 500 }}>{product.brand || "—"}</span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* === BODY: Thông tin chi tiết === */}
-      <Divider orientation="left" plain>
-        Thông tin cơ bản
-      </Divider>
-      <Descriptions
-        bordered
-        column={2}
-        size="middle"
-        labelStyle={{ width: 160, fontWeight: 500 }}
-      >
-        <Descriptions.Item label="Danh mục">
-          {product.category_name}
-        </Descriptions.Item>
-        <Descriptions.Item label="Danh mục con">
-          {product.subcategory_name || "—"}
-        </Descriptions.Item>
-        <Descriptions.Item label="Đơn vị">{product.unit}</Descriptions.Item>
-        <Descriptions.Item label="Khu vực">
-          {product.location || "—"}
-        </Descriptions.Item>
-        <Descriptions.Item label="Ngày tạo">
-          {new Date(product.created_at).toLocaleString("vi-VN")}
-        </Descriptions.Item>
-        <Descriptions.Item label="Ngày cập nhật">
-          {new Date(product.updated_at).toLocaleString("vi-VN")}
-        </Descriptions.Item>
-      </Descriptions>
+      <Divider style={{ margin: '24px 0' }} />
 
-      <Divider orientation="left" plain>
-        Thông tin kinh doanh
-      </Divider>
-      <Descriptions
-        bordered
-        column={2}
-        size="middle"
-        labelStyle={{ width: 160, fontWeight: 500 }}
-      >
-        <Descriptions.Item label="Giá gốc">
-          {Number(product.original_price).toLocaleString("vi-VN")} đ
-        </Descriptions.Item>
-        <Descriptions.Item label="Giá sau giảm">
-          {Number(product.discounted_price).toLocaleString("vi-VN")} đ
-        </Descriptions.Item>
-        <Descriptions.Item label="Số lượng tồn">
-          {product.stock}
-        </Descriptions.Item>
-        <Descriptions.Item label="Còn khả dụng">
-          {product.available_quantity}
-        </Descriptions.Item>
-        <Descriptions.Item label="Đã bán">
-          {product.sold_count}
-        </Descriptions.Item>
-        <Descriptions.Item label="Đặt trước">
-          {product.total_preordered || 0}
-        </Descriptions.Item>
-      </Descriptions>
-
-      <Divider orientation="left" plain>
-        Mô tả chi tiết
-      </Divider>
-      <div
-        style={{
-          background: "#fff",
-          border: "1px solid #f0f0f0",
-          borderRadius: 8,
-          padding: 12,
-          fontSize: 14,
-          color: "#555",
-          lineHeight: 1.6,
-          marginBottom: 12,
-          maxHeight: 200,
-          overflowY: "auto",
-        }}
-      >
-        {product.description || "— Không có mô tả —"}
+      {/* === Thông tin cơ bản === */}
+      <div style={{ marginBottom: 24 }}>
+        <h3 style={{ 
+          fontSize: 15,
+          fontWeight: 600,
+          color: '#111827',
+          marginBottom: 12
+        }}>
+          Thông tin cơ bản
+        </h3>
+        <Descriptions
+          column={1}
+          size="small"
+          labelStyle={{ 
+            width: 140,
+            fontWeight: 500,
+            color: '#6b7280',
+            fontSize: 13
+          }}
+          contentStyle={{
+            color: '#111827',
+            fontSize: 13
+          }}
+        >
+          <Descriptions.Item label="Danh mục">
+            {product.category_name}
+          </Descriptions.Item>
+          <Descriptions.Item label="Danh mục con">
+            {product.subcategory_name || "—"}
+          </Descriptions.Item>
+          <Descriptions.Item label="Đơn vị">
+            {product.unit}
+          </Descriptions.Item>
+          <Descriptions.Item label="Khu vực">
+            {product.location || "—"}
+          </Descriptions.Item>
+          <Descriptions.Item label="Ngày tạo">
+            {new Date(product.created_at).toLocaleString("vi-VN")}
+          </Descriptions.Item>
+          <Descriptions.Item label="Cập nhật">
+            {new Date(product.updated_at).toLocaleString("vi-VN")}
+          </Descriptions.Item>
+        </Descriptions>
       </div>
 
+      <Divider style={{ margin: '24px 0' }} />
+
+      {/* === Thông tin kinh doanh === */}
+      <div style={{ marginBottom: 24 }}>
+        <h3 style={{ 
+          fontSize: 15,
+          fontWeight: 600,
+          color: '#111827',
+          marginBottom: 12
+        }}>
+          Thông tin kinh doanh
+        </h3>
+        <Descriptions
+          column={1}
+          size="small"
+          labelStyle={{ 
+            width: 140,
+            fontWeight: 500,
+            color: '#6b7280',
+            fontSize: 13
+          }}
+          contentStyle={{
+            color: '#111827',
+            fontSize: 13,
+            fontWeight: 500
+          }}
+        >
+          <Descriptions.Item label="Giá gốc">
+            {Number(product.original_price).toLocaleString("vi-VN")} đ
+          </Descriptions.Item>
+          <Descriptions.Item label="Giá sau giảm">
+            <span style={{ color: '#dc2626', fontWeight: 600 }}>
+              {Number(product.discounted_price).toLocaleString("vi-VN")} đ
+            </span>
+          </Descriptions.Item>
+          <Descriptions.Item label="Số lượng tồn">
+            {product.stock}
+          </Descriptions.Item>
+          <Descriptions.Item label="Còn khả dụng">
+            {product.available_quantity}
+          </Descriptions.Item>
+          <Descriptions.Item label="Đã bán">
+            {product.sold_count}
+          </Descriptions.Item>
+          <Descriptions.Item label="Đặt trước">
+            {product.total_preordered || 0}
+          </Descriptions.Item>
+        </Descriptions>
+      </div>
+
+      <Divider style={{ margin: '24px 0' }} />
+
+      {/* === Mô tả chi tiết === */}
+      <div style={{ marginBottom: 24 }}>
+        <h3 style={{ 
+          fontSize: 15,
+          fontWeight: 600,
+          color: '#111827',
+          marginBottom: 12
+        }}>
+          Mô tả sản phẩm
+        </h3>
+        <div
+          style={{
+            background: "#f9fafb",
+            border: "1px solid #e5e7eb",
+            borderRadius: 6,
+            padding: 16,
+            fontSize: 14,
+            color: "#374151",
+            lineHeight: 1.7,
+            whiteSpace: "pre-wrap",
+            wordBreak: "break-word"
+          }}
+        >
+          {product.description || "— Không có mô tả —"}
+        </div>
+      </div>
+
+      {/* === Bộ sưu tập ảnh === */}
       {product.images && product.images.length > 0 && (
         <>
-          <Divider orientation="left" plain>
-            Bộ sưu tập ảnh
-          </Divider>
-          <div
-            style={{
-              display: "flex",
-              gap: 10,
-              overflowX: "auto",
-              paddingBottom: 8,
-            }}
-          >
-            {product.images.map((img) => (
-              <Image
-                key={img.id}
-                src={img.image}
-                alt={`gallery-${img.id}`}
-                width={120}
-                height={120}
-                style={{
-                  objectFit: "cover",
-                  borderRadius: 8,
-                  border:
-                    img.is_primary === true
-                      ? "2px solid #1890ff"
-                      : "1px solid #ddd",
-                }}
-                preview
-              />
-            ))}
+          <Divider style={{ margin: '24px 0' }} />
+          <div style={{ marginBottom: 24 }}>
+            <h3 style={{ 
+              fontSize: 15,
+              fontWeight: 600,
+              color: '#111827',
+              marginBottom: 12
+            }}>
+              Bộ sưu tập ảnh ({product.images.length})
+            </h3>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(100px, 1fr))",
+                gap: 12,
+              }}
+            >
+              {product.images.map((img) => (
+                <div
+                  key={img.id}
+                  style={{
+                    position: "relative",
+                    borderRadius: 6,
+                    overflow: "hidden",
+                    border: img.is_primary === true
+                      ? "2px solid #3b82f6"
+                      : "1px solid #e5e7eb",
+                  }}
+                >
+                  <Image
+                    src={img.image}
+                    alt={`gallery-${img.id}`}
+                    width="100%"
+                    height={100}
+                    style={{
+                      objectFit: "cover",
+                    }}
+                    preview
+                  />
+                  {img.is_primary && (
+                    <Tag
+                      color="blue"
+                      style={{
+                        position: "absolute",
+                        top: 4,
+                        right: 4,
+                        fontSize: 10,
+                        margin: 0,
+                        padding: '0 4px',
+                        lineHeight: '18px'
+                      }}
+                    >
+                      Chính
+                    </Tag>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         </>
       )}
-    </Modal>
+    </Drawer>
   );
 }

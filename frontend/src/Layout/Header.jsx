@@ -93,30 +93,30 @@ export default function Header({ shouldFetchProfile = true }) {
       >
         <TopBar />
         <div
-          className="border-bottom"
+          className="border-bottom px-3 px-md-5"
           style={{
             background: "linear-gradient(to bottom, #2E7D32 0%, #4CAF50 100%)",
-            padding: "0 120px",
           }}
         >
           <div
-            className="container-fluid d-flex align-items-center justify-content-between py-1 px-1"
+            className="container-fluid d-flex flex-column flex-md-row align-items-center justify-content-between py-1 px-1"
             style={{
               minHeight: "60px",
-              flexWrap: "nowrap",
               position: "relative",
             }}
           >
-            <div style={{ paddingBottom: 10 }}>
+            <div className="w-100 d-flex justify-content-center justify-content-md-start" style={{ paddingBottom: 10 }}>
               <Logo greenText={greenText} />
             </div>
 
             <div
+              className="w-100 d-flex justify-content-center"
               style={{
                 display: "flex",
                 flexDirection: "column",
-                alignItems: "flex-start",
+                alignItems: "center",
                 position: "relative",
+                marginBottom: 10,
               }}
             >
               <SearchBoxWithSuggestions
@@ -133,8 +133,8 @@ export default function Header({ shouldFetchProfile = true }) {
 
               {popularItems.length > 0 && (
                 <div
+                  className="d-none d-md-flex"
                   style={{
-                    display: "flex",
                     flexWrap: "wrap",
                     gap: "4px",
                     marginTop: "4px",
@@ -172,23 +172,25 @@ export default function Header({ shouldFetchProfile = true }) {
               )}
             </div>
 
-            <UserActions
-              greenText={greenText}
-              cartCount={cartCount}
-              cartItems={cartItems}
-              showCartDropdown={showCartDropdown}
-              setShowCartDropdown={setShowCartDropdown}
-              userProfile={userProfile}
-              showProfileDropdown={showProfileDropdown}
-              setShowProfileDropdown={setShowProfileDropdown}
-              handleLogout={handleLogout}
-              showNotificationDropdown={showNotificationDropdown}
-              setShowNotificationDropdown={setShowNotificationDropdown}
-              hoveredDropdown={hoveredDropdown}
-              setHoveredDropdown={setHoveredDropdown}
-              storeName={storeName}
-              sellerStatus={sellerStatus}
-            />
+            <div className="w-100 d-flex justify-content-center justify-content-md-end">
+              <UserActions
+                greenText={greenText}
+                cartCount={cartCount}
+                cartItems={cartItems}
+                showCartDropdown={showCartDropdown}
+                setShowCartDropdown={setShowCartDropdown}
+                userProfile={userProfile}
+                showProfileDropdown={showProfileDropdown}
+                setShowProfileDropdown={setShowProfileDropdown}
+                handleLogout={handleLogout}
+                showNotificationDropdown={showNotificationDropdown}
+                setShowNotificationDropdown={setShowNotificationDropdown}
+                hoveredDropdown={hoveredDropdown}
+                setHoveredDropdown={setHoveredDropdown}
+                storeName={storeName}
+                sellerStatus={sellerStatus}
+              />
+            </div>
           </div>
         </div>
       </header>

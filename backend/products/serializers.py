@@ -77,6 +77,7 @@ class ProductSerializer(serializers.ModelSerializer):
     total_preordered = serializers.SerializerMethodField()
     user_preordered = serializers.SerializerMethodField()
     features = ProductFeatureSerializer(many=True, required=False)
+    sold = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
@@ -87,11 +88,11 @@ class ProductSerializer(serializers.ModelSerializer):
             'rating', 'review_count',
             'location', 'brand', 'subcategory', 'seller_name',
             'created_at', 'updated_at', 'category', 'store',
-            'status', 'seller', 'sold_count', "is_hidden",
+            'status', 'seller', 'sold_count', 'sold', "is_hidden",
             "availability_status", "season_start", "season_end",
             "estimated_quantity", "preordered_quantity", 'ordered_quantity',
             "is_coming_soon", "is_out_of_stock", "available_quantity",
-            "total_preordered", "user_preordered", "features", "main_image", 'sold'
+            "total_preordered", "user_preordered", "features", "main_image"
         ]
         read_only_fields = ["status", "seller"]
 
@@ -129,6 +130,9 @@ class ProductSerializer(serializers.ModelSerializer):
             order__status__in=['paid', 'shipped', 'delivered', 'success']
         ).aggregate(total=Sum('quantity'))['total']
         return total or 0
+
+    def get_sold(self, obj):
+        return self.get_sold_count(obj)
 
     def get_available_quantity(self, obj):
         if obj.availability_status == "coming_soon":
@@ -229,6 +233,7 @@ class ProductListSerializer(serializers.ModelSerializer):
     price = serializers.SerializerMethodField()
 
     features = ProductFeatureSerializer(many=True, required=False)
+    sold = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
@@ -282,6 +287,9 @@ class ProductListSerializer(serializers.ModelSerializer):
             product=obj,
             order__status__in=['paid', 'shipped', 'delivered', 'success']
         ).aggregate(total=Sum('quantity'))['total'] or 0
+
+    def get_sold(self, obj):
+        return self.get_sold_count(obj)
 
     def get_available_quantity(self, obj):
         if obj.availability_status == "coming_soon":

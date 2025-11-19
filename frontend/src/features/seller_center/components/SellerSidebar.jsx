@@ -10,14 +10,15 @@ import {
   DollarOutlined,
   BarChartOutlined,
   SettingOutlined,
-  WarningOutlined, // 👉 dùng cho mục Khiếu nại
-  WechatOutlined, // 👉 dùng cho mục Tin nhắn
+  WarningOutlined,
+  WechatOutlined,
+  WalletOutlined, // 👉 Icon cho Ví tiền
 } from "@ant-design/icons";
 import { useNavigate, useLocation } from "react-router-dom";
 
 const { Sider } = Layout;
 
-export default function SellerSidebar() {
+export default function SellerSidebar({ onItemClick }) {
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -33,14 +34,6 @@ export default function SellerSidebar() {
       key: "/seller-center/messages",
       icon: <WechatOutlined />,
       label: "Tin nhắn",
-    },
-    {
-      key: "store",
-      icon: <ShopOutlined />,
-      label: "Cửa hàng",
-      children: [
-        { key: "/seller-center/store/info", label: "Thông tin cửa hàng" },
-      ],
     },
     {
       key: "products",
@@ -60,6 +53,21 @@ export default function SellerSidebar() {
       ],
     },
     {
+      key: "/seller-center/finance",
+      icon: <DollarOutlined />,
+      label: "Doanh thu",
+    },
+    {
+      key: "/seller-center/wallet",
+      icon: <WalletOutlined />,
+      label: "Ví tiền",
+    },
+    {
+      key: "/seller-center/analytics",
+      icon: <BarChartOutlined />,
+      label: "Thống kê",
+    },
+    {
       key: "/seller-center/promotions",
       icon: <GiftOutlined />,
       label: "Khuyến mãi",
@@ -69,21 +77,16 @@ export default function SellerSidebar() {
       icon: <StarOutlined />,
       label: "Đánh giá",
     },
-    {
-      key: "/seller-center/finance",
-      icon: <DollarOutlined />,
-      label: "Doanh thu",
-    },
-    {
-      key: "/seller-center/analytics",
-      icon: <BarChartOutlined />,
-      label: "Thống kê",
-    },
 
     {
       key: "/seller-center/complaints",
       icon: <WarningOutlined />,
       label: "Khiếu nại",
+    },
+    {
+      key: "/seller-center/store/info",
+      icon: <ShopOutlined />,
+      label: "Cửa hàng",
     },
     {
       key: "/seller-center/settings",
@@ -95,6 +98,7 @@ export default function SellerSidebar() {
   // Hàm điều hướng
   const onClick = ({ key }) => {
     navigate(key);
+    if (onItemClick) onItemClick(); // Close drawer on mobile
   };
 
   return (
@@ -105,7 +109,7 @@ export default function SellerSidebar() {
         onClick={() => navigate("/")}
       >
         <img
-          src="/assets/logo/defaultLogo.png" // 👉 thay bằng logo thật của bạn
+          src="/assets/logo/defaultLogo.png"
           alt="Logo"
           style={{ height: "60px", width: "50px", paddingBottom: 16 }}
         />

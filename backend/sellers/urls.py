@@ -46,9 +46,14 @@ urlpatterns = [
     path('analytics/products/', views_analytics.analytics_products, name='analytics-products'),
     path('analytics/traffic/', views_analytics.analytics_traffic, name='analytics-traffic'),
     path('analytics/<int:seller_id>/', views.seller_analytics_detail, name='seller-analytics-detail'),
+    path('report/agriculture/', views.agriculture_report, name='agriculture-report'),
     
     # Activity - ĐẶT TRƯỚC <int:pk>/
     path('activity/<int:seller_id>/', views.seller_activity_history, name='seller-activity'),
+    
+    # Products and Orders
+    path('<int:seller_id>/products/', views.seller_products_list, name='seller-products'),
+    path('<int:seller_id>/orders/', views.seller_orders_list, name='seller-orders'),
     
     # Actions with ID - ĐẶT TRƯỚC <int:pk>/
     path('<int:pk>/approve/', SellerApproveAPIView.as_view(), name='seller-approve'),

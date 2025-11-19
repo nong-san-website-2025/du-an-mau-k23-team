@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Input, message, Spin, Modal, Descriptions } from "antd";
+import { Input, message, Spin } from "antd";
 import SellerTable from "../../components/SellerAdmin/SellerTable";
 import axios from "axios";
 import { useTranslation } from "react-i18next";
@@ -65,11 +65,6 @@ const ActiveLockedSellersPage = () => {
         {},
         { headers: getAuthHeaders() }
       );
-      message.success(
-        record.status === "active"
-          ? t("sellers_active_locked.locked", { name: record.store_name })
-          : t("sellers_active_locked.unlocked", { name: record.store_name })
-      );
       fetchSellers();
     } catch (err) {
       console.error(err);
@@ -112,6 +107,7 @@ const ActiveLockedSellersPage = () => {
           visible={modalVisible}
           onClose={() => setModalVisible(false)}
           seller={selectedSeller}
+          onLock={handleLock}
         />
       )}
     </AdminPageLayout>

@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import UserSideBar from "../components/UserAdmin/UserSidebar";
 import UserTable from "../components/UserAdmin/UserTable";
-import UserDetailModal from "../components/UserAdmin/UserDetailRow";
+import UserDetailModal from "../components/UserAdmin/components/UserDetail/UserDetailRow";
 import axios from "axios";
 import { useTranslation } from "react-i18next";
 import { Button, Row, Col, Input, Space } from "antd";
@@ -24,7 +24,8 @@ export default function UsersPage() {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const res = await axios.get("http://localhost:8000/api/users/", {
+      const res = await axios.get("http://localhost:8000/api/users/list/", {
+        // ✅ Thêm /list/
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
       setUsers(Array.isArray(res.data) ? res.data : []);

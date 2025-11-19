@@ -20,6 +20,7 @@ class Seller(models.Model):
         ("locked", "Đã khóa")
     ]
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
+    rejection_reason = models.TextField(blank=True, null=True, help_text="Lý do từ chối (nếu status = rejected)")
 
     def __str__(self):
         return self.store_name
