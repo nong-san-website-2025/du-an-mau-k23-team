@@ -51,7 +51,8 @@ class ReviewListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         product_id = self.kwargs["product_id"]
-        return Review.objects.filter(product_id=product_id)
+        # Exclude hidden reviews for public viewing
+        return Review.objects.filter(product_id=product_id, is_hidden=False)
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user, product_id=self.kwargs["product_id"])

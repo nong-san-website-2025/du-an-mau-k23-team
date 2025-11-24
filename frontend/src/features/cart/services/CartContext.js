@@ -390,8 +390,8 @@ export const CartProvider = ({ children }) => {
     }
     setCartItems([]);
     saveGuestCart([]);
-    notification.info({
-      message: "Giỏ hàng đã được làm trống",
+    notification.success({
+      message: "Đơn hàng đã được đặt",
       placement: "topRight",
       duration: 2,
     });

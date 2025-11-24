@@ -284,7 +284,6 @@ const ProductDetailPage = () => {
         preorder: false,
       },
       () => {
-        message.success("Đã thêm sản phẩm vào giỏ hàng!");
         setAdding(false);
         navigate("/cart");
       },

@@ -8,17 +8,17 @@ const { TabPane } = Tabs;
 
 export default function MarketingAdminPage() {
   return (
-    <AdminPageLayout title="🎯 Quản lý Quảng cáo & Banner">
+    <AdminPageLayout title="QUẢN LÝ BANNER">
       <Tabs
         defaultActiveKey="slots"
         size="large"
         tabBarGutter={40}
         style={{ marginTop: 16 }}
       >
-        <TabPane tab="🧩 Khu vực hiển thị (Slot)" key="slots">
+        <TabPane tab="Khu vực hiển thị (Slot)" key="slots">
           <AdSlotManager />
         </TabPane>
-        <TabPane tab="🖼️ Banner trong Slot" key="banners">
+        <TabPane tab="Banner trong Slot" key="banners">
           <BannerManager />
         </TabPane>
       </Tabs>

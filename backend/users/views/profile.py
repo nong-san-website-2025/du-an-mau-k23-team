@@ -163,6 +163,7 @@ class UserMeView(APIView):
     Supports both full and partial updates
     """
     permission_classes = [IsAuthenticated]
+    parser_classes = (MultiPartParser, FormParser)
 
     def get(self, request):
         """Get current user info"""

@@ -13,6 +13,7 @@ class Review(models.Model):
     rating = models.IntegerField()
     comment = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
+    is_hidden = models.BooleanField(default=False)  # Admin can hide inappropriate reviews
 
     class Meta:
         constraints = [

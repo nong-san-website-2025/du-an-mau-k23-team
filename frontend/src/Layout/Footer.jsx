@@ -1,11 +1,22 @@
-  import React from "react";
-import { Link } from "react-router-dom";
-import { Facebook, Instagram, Mail, Phone, Clock, MapPin } from "lucide-react";
-import logo from "../assets/logo/imagelogo.png";
+import React, { useState } from "react";
+import { Facebook, Instagram, Mail, Phone, Clock, MapPin, Send } from "lucide-react";
 
 export default function Footer() {
-  const linkClass =
-    "d-inline-block text-decoration-none text-dark mb-2 position-relative transition-all footer-link";
+  const [email, setEmail] = useState("");
+  const [subscribed, setSubscribed] = useState(false);
+
+  const handleSubscribe = (e) => {
+    e.preventDefault();
+    if (email) {
+      setSubscribed(true);
+      setTimeout(() => {
+        setSubscribed(false);
+        setEmail("");
+      }, 3000);
+    }
+  };
+
+  const linkClass = "footer-link";
 
   // TikTok SVG icon
   const TikTokIcon = (props) => (
@@ -25,282 +36,347 @@ export default function Footer() {
       icon: Facebook,
       url: "https://www.facebook.com/share/17DvWxB4Xp/?mibextid=wwXIfr",
       label: "Facebook",
+      color: "#1877f2",
     },
     {
       icon: Instagram,
       url: "https://www.instagram.com/greenfarm_65?igsh=MTFjb3JxaDJ6cXNxcw==",
       label: "Instagram",
+      color: "#e4405f",
     },
     {
       icon: TikTokIcon,
       url: "https://www.tiktok.com/@www.tiktok.com/@greenfarm78",
       label: "TikTok",
+      color: "#000000",
     },
   ];
 
   return (
-    <footer
-      className="bg-light border-top mt-5 pt-5 pb-0"
-      style={{ fontSize: 15 }}
-    >
-      <div className="container px-4 px-md-5">
-        {/* --- 4 CỘT CHÍNH --- */}
-        <div className="row gy-4 text-start text-md-start mb-4">
-          {/* Cột 1 - Dịch vụ khách hàng */}
-          <div className="col-12 col-md-3 px-2">
-            <h6
-              className="fw-bold mb-3 text-uppercase text-dark"
-              style={{ letterSpacing: 1 }}
-            >
-              Dịch vụ khách hàng
-            </h6>
-            <ul className="list-unstyled mb-0">
-              <li>
-                <Link to="/buying-guide" className={linkClass}>Hướng dẫn mua hàng</Link>
-                </li>
-                 <li>
-                <Link to="/selling-guide" className={linkClass}>Hướng dẫn Bán Hàng</Link>
-                </li>
+    <footer style={{ backgroundColor: "#1a1a1a", color: "#fff", marginTop: "3rem" }}>
+      {/* Newsletter Section */}
+      <div style={{ backgroundColor: "#198754", padding: "2rem 0" }}>
+        <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "0 1rem" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "1rem" }}>
+            <div style={{ flex: "1", minWidth: "300px" }}>
+              <h5 style={{ fontWeight: "700", marginBottom: "0.5rem", color: "#fff", fontSize: "1.25rem" }}>
+                🌱 Đăng ký nhận tin từ GreenFarm
+              </h5>
+              <p style={{ margin: 0, color: "rgba(255,255,255,0.8)", fontSize: "0.9rem" }}>
+                Cập nhật ưu đãi, sản phẩm mới và tips sống xanh mỗi tuần
+              </p>
+            </div>
+            <div style={{ flex: "1", minWidth: "300px", maxWidth: "500px" }}>
+              <div style={{ display: "flex", gap: "0.5rem" }}>
+                <input
+                  type="email"
+                  placeholder="Nhập email của bạn"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  style={{
+                    flex: 1,
+                    padding: "0.65rem 1rem",
+                    borderRadius: "8px",
+                    border: "2px solid rgba(255,255,255,0.3)",
+                    background: "rgba(255,255,255,0.95)",
+                    fontSize: "0.95rem",
+                  }}
+                />
+                <button
+                  onClick={handleSubscribe}
+                  disabled={subscribed}
+                  style={{
+                    padding: "0.65rem 1.5rem",
+                    backgroundColor: "#212529",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: "8px",
+                    cursor: subscribed ? "default" : "pointer",
+                    fontWeight: "500",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.5rem",
+                    whiteSpace: "nowrap",
+                    opacity: subscribed ? 0.7 : 1,
+                  }}
+                >
+                  {subscribed ? "✓ Đã gửi" : <><Send size={16} /> Đăng ký</>}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
-               <li>
-                <Link to="/contactsupport" className={linkClass}>Liên hệ hỗ trợ</Link>
-                 </li>
-              
-              <li>
-                <Link to="/returnpolicy" className={linkClass}>Chính sách đổi trả</Link>
-              </li>
-              <li>
-                <Link to="/warrantypolicy" className={linkClass}>Chính sách bảo hành</Link>
-              </li>
-                <li>
-                <Link to="/RturnmoNey" className={linkClass}>Trả Hàng/Hoàn Tiền </Link>
-              </li>
-              <li>
-                <Link to="/GreenFarmwallet" className={linkClass}>Ví GreenFarm </Link>
-              </li>
-                 <li>
-                <Link to="/faq" className={linkClass}>Câu Hỏi Thường Gặp </Link>
-              </li>
-            </ul>
+      {/* Main Footer Content */}
+      <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "3rem 1rem" }}>
+        {/* Logo & Description */}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "2rem", marginBottom: "3rem", paddingBottom: "2rem", borderBottom: "1px solid #333" }}>
+          <div style={{ flex: "1", minWidth: "300px" }}>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: "1rem" }}>
+              <img
+                src="https://images.unsplash.com/photo-1464226184884-fa280b87c399?w=80&h=80&fit=crop"
+                alt="GreenFarm"
+                style={{ width: "80px", height: "80px", borderRadius: "8px", objectFit: "cover" }}
+              />
+              <div>
+                <h4 style={{ fontWeight: "700", color: "#198754", marginBottom: "0.5rem", fontSize: "1.5rem" }}>GreenFarm</h4>
+                <p style={{ color: "#aaa", margin: 0, lineHeight: "1.7", fontSize: "0.95rem" }}>
+                  Nền tảng cung cấp nông sản sạch, an toàn và chất lượng cao
+                  cho mọi gia đình Việt Nam. Hành trình xanh – vì sức khỏe cộng
+                  đồng 🌱
+                </p>
+              </div>
+            </div>
           </div>
 
-          {/* Cột 2 - GreenFarm */}
-          <div className="col-12 col-md-3 px-2">
-            <h6
-              className="fw-bold mb-3 text-uppercase text-dark"
-              style={{ letterSpacing: 1 }}
-            >
-              GreenFarm
+          <div style={{ flex: "1", minWidth: "300px" }}>
+            {/* Social Links */}
+            <h6 style={{ fontWeight: "600", marginBottom: "1rem", color: "#198754", fontSize: "0.9rem", textTransform: "uppercase", letterSpacing: "1px" }}>
+              Kết nối với chúng tôi
             </h6>
-            <ul className="list-unstyled mb-0">
-              <li><Link to="/abouts" className={linkClass}>Về chúng tôi</Link></li>
-              <li><Link to="/recruitment" className={linkClass}>Tuyển dụng</Link></li>
-              <li><Link to="/primarysecurity" className={linkClass}>Chính sách bảo mật</Link></li>
-              <li><Link to="/terms-of-service" className={linkClass}>Điều khoản dịch vụ</Link></li>
-              <li><Link to="/featured" className={linkClass}>Sản phẩm</Link></li>
-              <li><Link to="/blog" className={linkClass}>Blog</Link></li>
-            </ul>
-          </div>
-
-          {/* Cột 3 - Liên hệ */}
-          <div className="col-12 col-md-3 px-2">
-            <h6
-              className="fw-bold mb-3 text-uppercase text-dark"
-              style={{ letterSpacing: 1 }}
-            >
-              Liên hệ
-            </h6>
-            <ul className="list-unstyled mb-3">
-              <li className="d-flex align-items-center mb-2">
-                <Phone className="me-2 text-success" size={18} />
-                <a href="tel:0123456789" className={linkClass}>
-                  0123 456 789
-                </a>
-              </li>
-              <li className="d-flex align-items-center mb-2">
-                <Mail className="me-2 text-success" size={18} />
-                <a href="mailto:info@greenfarm.vn" className={linkClass}>
-                  info@greenfarm.vn
-                </a>
-              </li>
-              <li className="d-flex align-items-center mb-2">
-                <Clock className="me-2 text-success" size={18} />
-                <span>8:00 - 20:00 (T2 - CN)</span>
-              </li>
-              <li className="d-flex align-items-center mb-3">
-                <MapPin className="me-2 text-success" size={18} />
-                <span>Cần Thơ, Việt Nam</span>
-              </li>
-            </ul>
-          </div>
-
-          {/* Cột 4 - Theo dõi & Thanh toán/Vận chuyển */}
-          <div className="col-12 col-md-3 px-2">
-            <h6
-              className="fw-bold mb-3 text-uppercase text-dark"
-              style={{ letterSpacing: 1 }}
-            >
-              Theo dõi GFarm
-            </h6>
-            <div className="d-flex gap-3 mb-4">
-              {socialLinks.map(({ icon: Icon, url, label }, i) => (
+            <div style={{ display: "flex", gap: "1rem", marginBottom: "1.5rem" }}>
+              {socialLinks.map(({ icon: Icon, url, label, color }, i) => (
                 <a
                   key={i}
                   href={url}
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={label}
-                  className="text-success bg-white border rounded-circle d-flex align-items-center justify-content-center shadow-sm"
-                  style={{ width: 38, height: 38, transition: "all 0.3s" }}
+                  className="social-icon"
+                  style={{
+                    width: "42px",
+                    height: "42px",
+                    borderRadius: "50%",
+                    background: color,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "#fff",
+                    transition: "all 0.3s ease",
+                  }}
                 >
                   <Icon size={20} />
                 </a>
               ))}
             </div>
 
-            <div className="d-flex flex-wrap justify-content-start align-items-stretch gap-4">
-              <div className="d-flex flex-column align-items-center">
-                <span
-                  className="fw-bold footer-title mb-2 text-dark"
-                  style={{ fontSize: 15 }}
-                >
+            {/* Payment & Shipping */}
+            <div style={{ display: "flex", gap: "2rem", alignItems: "center" }}>
+              <div>
+                <span style={{ display: "block", fontWeight: "600", marginBottom: "0.5rem", fontSize: "0.85rem" }}>
                   Thanh toán
                 </span>
-                <img
-                  src="/assets/images/vnpay.jpg"
-                  alt="VNPAY"
-                  width={50}
-                  className="hover-scale mb-1"
-                  style={{ background: "#fff", borderRadius: 8, padding: 4 }}
-                />
-                <span className="small text-muted">VNPAY</span>
+                <div style={{
+                  width: "50px",
+                  height: "32px",
+                  background: "#fff",
+                  borderRadius: "6px",
+                  padding: "4px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "0.7rem",
+                  fontWeight: "600",
+                  color: "#0066cc"
+                }}>
+                  VNPAY
+                </div>
               </div>
 
-              <div className="pay-ship-separator"></div>
+              <div style={{ width: "2px", height: "50px", background: "#444" }}></div>
 
-              <div className="d-flex flex-column align-items-center">
-                <span
-                  className="fw-bold footer-title mb-2 text-dark"
-                  style={{ fontSize: 15 }}
-                >
-                  Đơn vị vận chuyển
+              <div>
+                <span style={{ display: "block", fontWeight: "600", marginBottom: "0.5rem", fontSize: "0.85rem" }}>
+                  Vận chuyển
                 </span>
-                <img
-                  src="/assets/images/ghm.png"
-                  alt="GHN"
-                  width={50}
-                  className="hover-scale mb-1"
-                  style={{ background: "#fff", borderRadius: 8, padding: 4 }}
-                />
-                <span className="small text-muted">GHN</span>
+                <div style={{
+                  width: "50px",
+                  height: "32px",
+                  background: "#fff",
+                  borderRadius: "6px",
+                  padding: "4px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "0.7rem",
+                  fontWeight: "600",
+                  color: "#ff5722"
+                }}>
+                  GHN
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* --- Logo & mô tả --- */}
-        <div className="d-flex justify-content-center justify-content-md-between align-items-center">
-          <div className="row align-items-center mt-3 mb-4">
-            <div className="col-12 col-md-6 text-md-start text-center">
-              <div className="d-flex align-items-center justify-content-md-start justify-content-center gap-3">
-                <img
-                  src={logo}
-                  alt="GreenFarm"
-                  width={100}
-                  className="rounded"
-                />
-                <p
-                  className="text-muted mb-0"
-                  style={{ lineHeight: 1.6, maxWidth: "100%" }}
-                >
-                  GreenFarm là nền tảng cung cấp nông sản sạch, an toàn và chất
-                  lượng cao cho mọi gia đình Việt Nam. Hành trình xanh – vì sức
-                  khỏe cộng đồng 🌱
-                </p>
-              </div>
-            </div>
+        {/* 4 Column Links */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: "2rem", marginBottom: "3rem" }}>
+          {/* Column 1 - Customer Service */}
+          <div>
+            <h6 style={{ fontWeight: "700", marginBottom: "1rem", fontSize: "0.95rem", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+              Dịch vụ khách hàng
+            </h6>
+            <ul style={{ listStyle: "none", padding: 0, margin: 0, fontSize: "0.9rem" }}>
+              <li style={{ marginBottom: "0.5rem" }}><a href="/buying-guide" className={linkClass}>Hướng dẫn mua hàng</a></li>
+              <li style={{ marginBottom: "0.5rem" }}><a href="/selling-guide" className={linkClass}>Hướng dẫn bán hàng</a></li>
+              <li style={{ marginBottom: "0.5rem" }}><a href="/contactsupport" className={linkClass}>Liên hệ hỗ trợ</a></li>
+              <li style={{ marginBottom: "0.5rem" }}><a href="/returnpolicy" className={linkClass}>Chính sách đổi trả</a></li>
+              <li style={{ marginBottom: "0.5rem" }}><a href="/warrantypolicy" className={linkClass}>Chính sách bảo hành</a></li>
+              <li style={{ marginBottom: "0.5rem" }}><a href="/RturnmoNey" className={linkClass}>Trả hàng/Hoàn tiền</a></li>
+              <li style={{ marginBottom: "0.5rem" }}><a href="/GreenFarmwallet" className={linkClass}>Ví GreenFarm</a></li>
+              <li style={{ marginBottom: "0.5rem" }}><a href="/faq" className={linkClass}>Câu hỏi thường gặp</a></li>
+            </ul>
           </div>
 
-          {/* --- Địa chỉ + Google Map --- */}
-          <div className="text-center mt-4 mb-3">
-            <div className="d-flex align-items-center justify-content-center mb-2 text-dark fw-semibold">
-              <MapPin size={18} className="me-2 text-success" />
-              Địa chỉ: Khu vực Thạnh Thắng, phường Phú Thứ, quận Cái Răng, TP.
-              Cần Thơ
-            </div>
-            <div
-              className="rounded overflow-hidden shadow-sm border mx-auto"
-              style={{ width: "100%", height: 180 }}
-            >
+          {/* Column 2 - About GreenFarm */}
+          <div>
+            <h6 style={{ fontWeight: "700", marginBottom: "1rem", fontSize: "0.95rem", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+              Về GreenFarm
+            </h6>
+            <ul style={{ listStyle: "none", padding: 0, margin: 0, fontSize: "0.9rem" }}>
+              <li style={{ marginBottom: "0.5rem" }}><a href="/abouts" className={linkClass}>Về chúng tôi</a></li>
+              <li style={{ marginBottom: "0.5rem" }}><a href="/recruitment" className={linkClass}>Tuyển dụng</a></li>
+              <li style={{ marginBottom: "0.5rem" }}><a href="/primarysecurity" className={linkClass}>Chính sách bảo mật</a></li>
+              <li style={{ marginBottom: "0.5rem" }}><a href="/terms-of-service" className={linkClass}>Điều khoản dịch vụ</a></li>
+              <li style={{ marginBottom: "0.5rem" }}><a href="/featured" className={linkClass}>Sản phẩm</a></li>
+              <li style={{ marginBottom: "0.5rem" }}><a href="/blog" className={linkClass}>Blog</a></li>
+            </ul>
+          </div>
+
+          {/* Column 3 - Contact Info */}
+          <div>
+            <h6 style={{ fontWeight: "700", marginBottom: "1rem", fontSize: "0.95rem", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+              Liên hệ
+            </h6>
+            <ul style={{ listStyle: "none", padding: 0, margin: 0, fontSize: "0.9rem" }}>
+              <li style={{ display: "flex", alignItems: "flex-start", marginBottom: "0.5rem" }}>
+                <Phone className="me-2" size={16} style={{ color: "#198754", marginTop: "3px", flexShrink: 0 }} />
+                <a href="tel:0123456789" className={linkClass}>0123 456 789</a>
+              </li>
+              <li style={{ display: "flex", alignItems: "flex-start", marginBottom: "0.5rem" }}>
+                <Mail className="me-2" size={16} style={{ color: "#198754", marginTop: "3px", flexShrink: 0 }} />
+                <a href="mailto:greenfarmorganicvietnam@gmail.com" className={linkClass} style={{ wordBreak: "break-word" }}>
+                  greenfarmorganicvietnam@gmail.com
+                </a>
+              </li>
+              <li style={{ display: "flex", alignItems: "flex-start", marginBottom: "0.5rem" }}>
+                <Clock className="me-2" size={16} style={{ color: "#198754", marginTop: "3px", flexShrink: 0 }} />
+                <span style={{ color: "#aaa" }}>8:00 - 20:00 (T2 - CN)</span>
+              </li>
+              <li style={{ display: "flex", alignItems: "flex-start" }}>
+                <MapPin className="me-2" size={16} style={{ color: "#198754", marginTop: "3px", flexShrink: 0 }} />
+                <span style={{ color: "#aaa" }}>Cần Thơ, Việt Nam</span>
+              </li>
+            </ul>
+          </div>
+
+          {/* Column 4 - Map */}
+          <div>
+            <h6 style={{ fontWeight: "700", marginBottom: "1rem", fontSize: "0.95rem", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+              Địa chỉ
+            </h6>
+            <p style={{ color: "#aaa", marginBottom: "0.75rem", fontSize: "0.85rem" }}>
+              Khu vực Thạnh Thắng, phường Phú Thứ, quận Cái Răng, TP. Cần Thơ
+            </p>
+            <div style={{ borderRadius: "8px", overflow: "hidden", border: "1px solid #333", marginBottom: "0.75rem" }}>
               <iframe
                 title="GreenFarm - Cần Thơ"
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3919.283182759711!2d105.76583947454679!3d10.051042972694316!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x31a0882d3a5c5b05%3A0x8c8d2b3c2ccaa5b2!2zMTYwIMSQxrDhu51uZyAzMC80LCBQaMaw4budbmcgSMO5bmcgTOG7n2ksIFF14buRYyBOaW5oIEvGsMahdSwgQ8OibiBUaMahLCBWaeG7h3QgTmFt!5e0!3m2!1svi!2s!4v1696891234567!5m2!1svi!2s"
+                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3919.283182759711!2d105.76583947454679!3d10.051042972694316!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x31a0882d3a5c5b05%3A0x8c8d2b3c2ccaa5b2!2zMTYwIMSQxrDhu51uZyAzMC80LCBQaMaw4budbmcgSMO5bmcgTOG7j2ksIFF14buRYyBOaW5oIEvGsMahdSwgQ8OibiBUaMahLCBWaeG7h3QgTmFt!5e0!3m2!1svi!2s!4v1696891234567!5m2!1svi!2s"
                 width="100%"
-                height="100%"
-                style={{ border: 0 }}
-                allowFullScreen=""
+                height="180"
+                style={{ border: 0, display: "block" }}
+                allowFullScreen={true}
                 loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
               ></iframe>
             </div>
-            <div className="mt-2">
-              <a
-                href="https://www.google.com/maps/dir/?api=1&destination=Khu+v%E1%BB%B1c+Th%E1%BA%A1nh+Th%E1%BA%AFng%2C+ph%C6%B0%E1%BB%9Dng+Ph%C3%BA+Th%E1%BB%A9%2C+qu%E1%BA%ADn+C%C3%A1i+R%C4%83ng%2C+TP.+C%E1%BA%A7n+Th%C6%A1"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn btn-success btn-sm mt-2"
-              >
-                Chỉ đường tới địa chỉ này trên Google Maps
-              </a>
-            </div>
+            <a
+              href="https://www.google.com/maps/dir/?api=1&destination=Khu+v%E1%BB%B1c+Th%E1%BA%A1nh+Th%E1%BA%AFng%2C+ph%C6%B0%E1%BB%9Dng+Ph%C3%BA+Th%E1%BB%A9%2C+qu%E1%BA%ADn+C%C3%A1i+R%C4%83ng%2C+TP.+C%E1%BA%A7n+Th%C6%A1"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: "block",
+                padding: "0.5rem",
+                backgroundColor: "transparent",
+                border: "1px solid #198754",
+                color: "#198754",
+                borderRadius: "6px",
+                textAlign: "center",
+                textDecoration: "none",
+                fontSize: "0.85rem",
+                fontWeight: "500",
+                transition: "all 0.3s",
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.backgroundColor = "#198754";
+                e.target.style.color = "#fff";
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.backgroundColor = "transparent";
+                e.target.style.color = "#198754";
+              }}
+            >
+              Chỉ đường
+            </a>
           </div>
-        </div>
-
-        {/* --- Bản quyền --- */}
-        <div className="border-top mt-4 pt-3 text-center">
-          <p
-            className="mb-0 fw-semibold"
-            style={{
-              color: "#198754",
-              fontSize: 16,
-              letterSpacing: 0.3,
-              textShadow: "0 0 4px rgba(0,0,0,0.1)",
-            }}
-          >
-            © <span style={{ fontWeight: "700", color: "#0a6847" }}>2025</span>{" "}
-            <span style={{ color: "#14532d" }}>GreenFarm.vn</span> – Nông sản
-            sạch cho mọi nhà 🌿
-          </p>
         </div>
       </div>
 
-      {/* --- CSS --- */}
+      {/* Copyright */}
+      <div style={{ backgroundColor: "rgba(0,0,0,0.3)", padding: "1rem 0" }}>
+        <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "0 1rem" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
+            <p style={{ margin: 0, color: "#aaa", fontSize: "0.9rem" }}>
+              © 2025 <span style={{ color: "#198754", fontWeight: "600" }}>GreenFarm.vn</span> – Nông sản sạch cho mọi nhà 🌿
+            </p>
+            <p style={{ margin: 0, color: "#888", fontSize: "0.85rem" }}>
+              Thiết kế bởi GreenFarm Team với 💚
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Custom Styles */}
       <style>{`
+        .footer-link {
+          color: #aaa;
+          text-decoration: none;
+          display: inline-block;
+          position: relative;
+          transition: all 0.2s ease;
+        }
+        
         .footer-link::after {
           content: "";
           position: absolute;
           width: 0;
           height: 2px;
           background-color: #198754;
-          bottom: 0;
+          bottom: -2px;
           left: 0;
-          transition: width 0.3s;
+          transition: width 0.3s ease;
         }
+        
+        .footer-link:hover {
+          color: #198754 !important;
+          transform: translateX(3px);
+        }
+        
         .footer-link:hover::after {
           width: 100%;
         }
-        .footer-link:hover {
-          color: #198754 !important;
+
+        .social-icon:hover {
+          transform: translateY(-3px) scale(1.05);
+          box-shadow: 0 4px 12px rgba(0,0,0,0.3);
         }
-        .hover-scale:hover {
-          transform: scale(1.1);
-          transition: all 0.3s;
-        }
-        .pay-ship-separator {
-          width: 2px;
-          height: 40px;
-          background: #222;
-          border-radius: 1px;
-          opacity: 0.7;
+
+        @media (max-width: 768px) {
+          footer > div:first-child > div:first-child {
+            flex-direction: column;
+            text-align: center;
+          }
         }
       `}</style>
     </footer>

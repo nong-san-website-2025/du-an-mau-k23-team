@@ -2,7 +2,7 @@
 import React from "react";
 
 const NoImage = ({
-  width = "100%", // ✅ Mặc định 100%, nhưng có thể truyền số pixel
+  width = "100%",
   height = 160,
   text = "Không có hình ảnh",
   className = "",
@@ -11,16 +11,15 @@ const NoImage = ({
     className={`no-image ${className}`}
     style={{
       width: typeof width === "number" ? `${width}px` : width,
-      height: `${height}px`,
+      height: typeof height === "number" ? `${height}px` : height,
       display: "flex",
       justifyContent: "center",
       alignItems: "center",
-      background: "#f5f5f5",
-      color: "#999",
+      background: "#dfdfdf",
+      color: "#808080",
       fontWeight: "500",
       fontSize: 14,
       borderRadius: 8,
-      border: "1px dashed #ddd",
       textAlign: "center",
       userSelect: "none",
     }}

@@ -1,243 +1,196 @@
-/* src/features/cart/styles/CartPage.css */
+/* ------------------------- CSS: src/features/cart/styles/CartPage.css ------------------------- */
 
-.cart-container {
-  display: flex;
-  gap: 20px;
-}
+/* Lưu ý: file CSS này kèm theo để bạn copy vào ../styles/CartPage.css */
 
-.cart-left {
-  flex: 1;
-}
-
-.cart-global-header {
-  padding: 10px 0px;
-  background-color: #fff;
-  border: none;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  font-size: 16px;
+.cart-page .container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px 16px 120px; /* có khoảng trống cho mobile sticky */
 }
 
-.cart-item-header {
-  display: grid;
-  grid-template-columns: 50px 3fr 1fr 1fr 1fr; /* 5 cột: checkbox - tên - giá - SL - tổng */
-  align-items: center;
-  padding: 10px 20px;
-  font-weight: bold;
-  color: #888;
-  background-color: #fafafa;
+.card-elevated {
+  border-radius: 8px;
+  box-shadow: 0 1px 6px rgba(16,24,40,0.06);
 }
 
-.cart-item-header .col-checkbox {
-  grid-column: 1 / 2;
-}
-.cart-item-header .col-name {
-  grid-column: 2 / 3;
-}
-.cart-item-header .col-price {
-  grid-column: 3 / 4;
-  text-align: center;
-}
-.cart-item-header .col-quantity {
-  grid-column: 4 / 5;
-  text-align: center;
-}
-.cart-item-header .col-total {
-  grid-column: 5 / 6;
-  text-align: center;
-}
-
-.cart-item {
-  /* Use the same grid as header to keep columns aligned */
-  display: grid;
-  grid-template-columns: 50px 3fr 1fr 1fr 1fr;
-  align-items: center;
-  padding: 12px 20px;
-  border-bottom: 1px solid #f0f0f0;
-  gap: 12px;
-}
-
-.cart-item > .ant-checkbox-wrapper,
-.cart-item > input[type="checkbox"] {
-  grid-column: 1 / 2;
-}
-
-.cart-item > .item-info {
-  grid-column: 2 / 3;
-}
-
-.cart-item > .item-price {
-  grid-column: 3 / 4;
-}
-
-.cart-item > .item-quantity {
-  grid-column: 4 / 5;
-}
-
-.cart-item > .item-total {
-  grid-column: 5 / 6;
-}
-
-.col-name {
-  /* occupies the 2nd grid column (3fr) */
-  padding-left: 0; /* no extra offset needed with grid */
-}
-
-.col-price,
-.col-quantity,
-.col-total {
-  text-align: center;
-}
-
-.cart-item:last-child {
-  border-bottom: none;
-}
-
-.cart-item:last-child {
-  border-bottom: none;
-}
-
-.item-info {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.item-img {
-  width: 80px;
-  height: 80px;
-  object-fit: cover;
-  margin-right: 15px;
-  cursor: pointer;
-}
-
-.item-name {
-  font-size: 16px;
-  cursor: pointer;
-  max-width: 400px; /* ✅ Giới hạn chiều rộng text */
-  white-space: nowrap; /* Không xuống dòng */
-  overflow: hidden; /* Ẩn phần bị tràn */
-  text-overflow: ellipsis; /* Hiển thị dấu “…” */
-  display: inline-block; /* Cần để ellipsis hoạt động ổn định */
-  cursor: pointer;
-  color: #333;
-}
-
-.item-price,
-.item-quantity,
-.item-total {
-  flex: 1;
-  text-align: center;
-  font-size: 16px;
-}
-
-.item-total {
-  color: #16a34a;
-  font-weight: 500;
-}
-
-.cart-bottom-bar {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: #fff;
-  padding: 15px 20px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
-  z-index: 100;
-}
-
-.total-section {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-}
-
-.total-label {
-  font-size: 16px;
-}
-
-.total-price {
-  font-size: 24px;
-  font-weight: bold;
-  color: #16a34a;
-}
-
-.summary-row {
-  display: flex;
-  justify-content: space-between;
-  padding: 5px 0;
-}
-
-.cart-empty {
-  padding: 50px;
-  text-align: center;
-}
-
-/* Styles for store grouping */
 .store-group {
-  background-color: #fff;
-  border: 1px solid #e8e8e8;
-  border-radius: 4px;
-  margin-bottom: 12px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-  /* Remove internal padding from Card component */
-}
-
-.store-group .ant-card-body {
-  padding: 0;
+  margin-bottom: 20px;
 }
 
 .store-header {
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  padding: 0px 15px;
-  border-bottom: 1px solid #e8e8e8;
 }
 
-.store-name {
-  font-weight: 600;
-  font-size: 16px;
-  margin-left: 10px;
-  cursor: pointer;
-}
-
-.store-name:hover {
-  color: #16a34a;
-}
-
-.store-voucher {
-  padding: 10px 15px;
-  border-top: 1px dashed #e8e8e8;
+.store-meta {
   display: flex;
-  justify-content: flex-start;
+  gap: 12px;
   align-items: center;
-  background-color: #f5faff;
-}
-
-.btn-payment:hover {
-  background-color: #15803d;
 }
 
 .store-logo-wrapper {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 60px;
-  height: 40px;
-  margin-right: 0px;
-  border: 1px solid #dfdfdf;
 }
 
-.store-logo {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+.store-name {
   cursor: pointer;
-  border-radius: 2px;
 }
+
+.store-sub {
+  font-size: 12px;
+}
+
+.grid-header {
+  display: grid;
+  grid-template-columns: 48px 1fr 120px 140px 120px;
+  gap: 12px;
+  align-items: center;
+  padding: 8px 4px;
+  color: rgba(0,0,0,0.65);
+  font-weight: 600;
+}
+
+.grid-row {
+  display: grid;
+  grid-template-columns: 48px 1fr 120px 140px 120px;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 4px;
+  border-top: 1px solid #f2f2f2;
+}
+
+.cart-item {
+  align-items: center;
+}
+
+.item-img {
+  width: 90px;
+  height: 90px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.item-main {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.item-meta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.item-name {
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.item-seller {
+  margin-top: 6px;
+}
+
+.item-actions {
+  margin-top: 8px;
+}
+
+.store-footer {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 4px;
+}
+
+.related-card .related-list {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.related-item {
+  width: 140px;
+  border-radius: 8px;
+  padding: 8px;
+  text-align: left;
+}
+
+.related-thumb img {
+  width: 100%;
+  height: 96px;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+.summary-card {
+  position: relative;
+}
+
+.sticky-summary {
+  position: sticky;
+  top: 88px;
+}
+
+.summary-lines .summary-line {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+}
+
+.summary-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.summary-total {
+  text-align: right;
+}
+
+.cart-bottom-bar-mobile {
+  display: none;
+}
+
+/* Responsive */
+@media (max-width: 991px) {
+  .grid-header,
+  .grid-row {
+    grid-template-columns: 48px 1fr 120px 96px 100px;
+  }
+
+  .container {
+    padding-bottom: 140px;
+  }
+
+  .cart-right {
+    order: 2;
+  }
+
+  .cart-bottom-bar-mobile {
+    display: flex;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: #fff;
+    padding: 10px 16px;
+    border-top: 1px solid #eee;
+    align-items: center;
+    justify-content: space-between;
+    z-index: 60;
+  }
+}
+
+/* Small polish */
+.clickable { cursor: pointer; }
+.no-image { display:flex; align-items:center; justify-content:center; height:90px; }
+
+/* Accessibility focus outline */
+.clickable:focus { outline: 2px solid rgba(22,163,74,0.25); outline-offset: 3px; }
+
+/* Summary popover custom rows */
+.summary-row { display:flex; justify-content:space-between; padding:6px 0; }
+
+/* end of CartPage.css */

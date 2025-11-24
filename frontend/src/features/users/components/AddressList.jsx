@@ -12,7 +12,7 @@ const { Text, Title } = Typography;
 
 const AddressList = ({
   addresses = [],
-  addAddress,        
+  addAddress,
   deleteAddress,
   setDefaultAddress,
 }) => {
@@ -29,7 +29,7 @@ const AddressList = ({
   };
 
   const handleAddAddress = (addressData) => {
-    addAddress(addressData); 
+    addAddress(addressData);
     setShowAddForm(false);
   };
 
@@ -69,22 +69,32 @@ const AddressList = ({
       )}
 
       <Button
-        type={showAddForm ? "default" : "primary"}
-        icon={showAddForm ? null : <PlusOutlined />}
+        type="primary"
+        icon={<PlusOutlined />}
         style={{ marginTop: 16 }}
-        onClick={() => setShowAddForm(!showAddForm)}
+        onClick={() => setShowAddForm(true)}
       >
-        {showAddForm ? "✕ Hủy" : "Thêm địa chỉ mới"}
+        Thêm địa chỉ mới
       </Button>
 
-      {showAddForm && (
-        <div style={{ marginTop: 16 }}>
-          <AddressAddForm
-            onSuccess={handleAddAddress}
-            onCancel={() => setShowAddForm(false)}
-          />
-        </div>
-      )}
+      <Modal
+        title="Thêm địa chỉ mới"
+        open={showAddForm}
+        onCancel={() => setShowAddForm(false)}
+        footer={null}
+        width={800}
+        bodyStyle={{
+          maxHeight: "60vh", // Giới hạn chiều cao modal
+          overflowY: "auto",
+          padding: 10 // Cuộn khi nội dung vượt quá
+        }}
+        style={{ top: 80,  }}
+      >
+        <AddressAddForm
+          onSuccess={handleAddAddress}
+          onCancel={() => setShowAddForm(false)}
+        />
+      </Modal>
 
       <AddressDeleteModal
         show={showDeleteModal}

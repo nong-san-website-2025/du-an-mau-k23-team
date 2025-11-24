@@ -48,7 +48,7 @@ export default function SellerSidebar({ onItemClick }) {
       children: [
         { key: "/seller-center/orders/new", label: "Đơn mới" },
         { key: "/seller-center/orders/processing", label: "Đang xử lý" },
-        { key: "/seller-center/orders/delivered", label: "Đơn đã giao" },
+        { key: "/seller-center/orders/delivered", label: "Đơn hoàn tất" },
         { key: "/seller-center/orders/cancelled", label: "Đơn đã hủy" },
       ],
     },

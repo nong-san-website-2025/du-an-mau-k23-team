@@ -11,6 +11,7 @@ import {
   InboxOutlined,
   WarningOutlined,
   TagOutlined,
+  CommentOutlined,
 } from "@ant-design/icons";
 import axios from "axios";
 import "../styles/AdminSidebar.css";
@@ -86,12 +87,6 @@ const Sidebar = () => {
           <Menu.Item key="/admin/products/categories">
             <Link to="/admin/categories">Quản lý danh mục</Link>
           </Menu.Item>
-          <Menu.Item key="/admin/brands">
-            <Link to="/admin/brands">Quản lý thương hiệu</Link>
-          </Menu.Item>
-          <Menu.Item key="/admin/products/violations">
-            <Link to="/admin/products/violations">Sản phẩm vi phạm</Link>
-          </Menu.Item>
         </Menu.SubMenu>
 
         {/* Đơn hàng */}
@@ -99,24 +94,12 @@ const Sidebar = () => {
           <Menu.Item key="/admin/orders">
             <Link to="/admin/orders">Quản lý đơn hàng</Link>
           </Menu.Item>
-          <Menu.Item key="/admin/shipping">
-            <Link to="/admin/shipping">Đối tác vận chuyển</Link>
-          </Menu.Item>
         </Menu.SubMenu>
 
         {/* Thanh toán */}
         <Menu.SubMenu key="payments" icon={<DollarOutlined />} title="Thanh toán">
-          <Menu.Item key="/admin/payments/transactions">
-            <Link to="/admin/payments/transactions">Giao dịch</Link>
-          </Menu.Item>
           <Menu.Item key="/admin/payments/wallets">
             <Link to="/admin/payments/wallets">Ví tiền seller</Link>
-          </Menu.Item>
-          <Menu.Item key="/admin/payments/revenue">
-            <Link to="/admin/payments/revenue">Đối soát doanh thu</Link>
-          </Menu.Item>
-          <Menu.Item key="/admin/payments/fraud">
-            <Link to="/admin/payments/fraud">Phát hiện gian lận</Link>
           </Menu.Item>
         </Menu.SubMenu>
 
@@ -156,6 +139,13 @@ const Sidebar = () => {
         <Menu.SubMenu key="complaints" icon={<WarningOutlined />} title="Khiếu nại">
           <Menu.Item key="/admin/complaints/user-reports">
             <Link to="/admin/complaints/user-reports">Người dùng báo cáo</Link>
+          </Menu.Item>
+        </Menu.SubMenu>
+
+        {/* Đánh giá */}
+        <Menu.SubMenu key="reviews" icon={<CommentOutlined />} title="Đánh giá">
+          <Menu.Item key="/admin/reviews">
+            <Link to="/admin/reviews">Quản lý đánh giá</Link>
           </Menu.Item>
         </Menu.SubMenu>
 

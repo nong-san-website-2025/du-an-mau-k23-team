@@ -1,5 +1,5 @@
 import React from "react";
-import { Card, Button, Typography, Row, Col, Rate } from "antd";
+import { Card, Button, Typography, Row, Col, Rate, Space, Tooltip } from "antd";
 import { MessageOutlined, PlusOutlined } from "@ant-design/icons";
 import { getInitial } from "./utils/utils";
 
@@ -17,37 +17,35 @@ const StoreHeader = ({
   return (
     <Card
       style={{
-        borderRadius: 24,
-        border: "none",
-        background: "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)",
-        boxShadow: "0 10px 30px rgba(15, 23, 42, 0.06)",
+        borderRadius: 28,
+        border: "1px solid #eef1f5",
+        background: "#ffffff",
+        padding: "32px 36px",
         marginBottom: 32,
-        overflow: "hidden",
-        padding: "28px 32px",
+        boxShadow: "0 4px 20px rgba(0,0,0,0.04)",
       }}
+      bodyStyle={{ padding: 0 }}
     >
-      <Row gutter={[28, 28]} align="middle">
-        {/* Avatar & Info */}
-        <Col xs={24} md={10}>
-          <div style={{ display: "flex", alignItems: "center", gap: 28 }}>
+      <Row gutter={[36, 36]} align="middle">
+        {/* Left: Avatar + Name + Actions */}
+        <Col xs={24} md={11}>
+          <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
             {/* Avatar */}
             <div
               style={{
-                position: "relative",
-                width: 132,
-                height: 132,
+                width: 128,
+                height: 128,
                 borderRadius: "50%",
-                border: "4px solid white",
-                boxShadow: "0 8px 20px rgba(0, 0, 0, 0.08)",
                 overflow: "hidden",
-                background: "#f1f5f9",
+                background: "linear-gradient(135deg,#f0f4ff,#f6f7fb)",
+                border: "3px solid #fff",
+                boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                fontSize: 48,
+                fontSize: 40,
                 fontWeight: 700,
                 color: "#94a3b8",
-                textTransform: "uppercase",
               }}
             >
               {store.image ? (
@@ -65,22 +63,21 @@ const StoreHeader = ({
               )}
             </div>
 
-            {/* Store name & actions */}
-            <div>
+            {/* Info */}
+            <div style={{ flex: 1 }}>
               <Title
                 level={4}
                 style={{
-                  margin: 0,
-                  marginBottom: 14,
-                  fontSize: 22,
+                  marginBottom: 12,
+                  fontSize: 24,
                   fontWeight: 700,
                   color: "#0f172a",
-                  lineHeight: 1.2,
                 }}
               >
                 {store.store_name}
               </Title>
-              <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+
+              <Space wrap size={12}>
                 <Button
                   size="middle"
                   type={isFollowing ? "primary" : "default"}
@@ -88,59 +85,73 @@ const StoreHeader = ({
                   icon={!isFollowing ? <PlusOutlined /> : null}
                   style={{
                     borderRadius: 12,
-                    fontWeight: 600,
-                    padding: "0 18px",
+                    padding: "0 20px",
                     height: 38,
+                    fontWeight: 600,
                     fontSize: 14,
                   }}
                 >
                   {isFollowing ? "Đang theo dõi" : "Theo dõi"}
                 </Button>
-                <Button
-                  size="middle"
-                  icon={<MessageOutlined />}
-                  onClick={handleOpenChat} // <-- Dùng hàm này
-                  style={{
-                    borderRadius: 12,
-                    fontWeight: 600,
-                    padding: "0 18px",
-                    height: 38,
-                    fontSize: 14,
-                    borderColor: "#cbd5e1",
-                    color: "#475569",
-                    backgroundColor: "#f8fafc",
-                  }}
-                >
-                  Nhắn tin
-                </Button>
-              </div>
+
+                <Tooltip title="Nhắn tin với người bán">
+                  <Button
+                    size="middle"
+                    icon={<MessageOutlined />}
+                    onClick={handleOpenChat}
+                    style={{
+                      borderRadius: 12,
+                      padding: "0 20px",
+                      height: 38,
+                      fontWeight: 600,
+                      fontSize: 14,
+                      borderColor: "#e2e8f0",
+                      color: "#475569",
+                      background: "#f8fafc",
+                    }}
+                  >
+                    Nhắn tin
+                  </Button>
+                </Tooltip>
+              </Space>
             </div>
           </div>
         </Col>
 
-        {/* Stats & Bio */}
-        <Col xs={24} md={14}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <div>
-              <Text strong>{followingCount}</Text> Đang theo dõi
-            </div>
-            <div>
-              <Text strong>{followers}</Text> Người theo dõi
-            </div>
-            {/* DÒNG ĐÃ ĐƯỢC SỬA LỖI */}
-            <div>
-              Đánh giá: <Text strong>{(ratingStats?.avg ?? 0).toFixed(1)}</Text>{" "}
-              (<Text strong>{ratingStats?.total ?? 0}</Text>)
+        {/* Right: Stats */}
+        <Col xs={24} md={13}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ fontSize: 15 }}>
+              <Text strong style={{ fontSize: 16 }}>
+                {followingCount}
+              </Text>{" "}
+              <Text type="secondary">Đang theo dõi</Text>
             </div>
 
-            {/* Bio */}
+            <div style={{ fontSize: 15 }}>
+              <Text strong style={{ fontSize: 16 }}>
+                {followers}
+              </Text>{" "}
+              <Text type="secondary">Người theo dõi</Text>
+            </div>
+
+            <div style={{ fontSize: 15 }}>
+              <Text type="secondary">Đánh giá:</Text>{" "}
+              <Text strong style={{ fontSize: 16 }}>
+                {(ratingStats?.avg ?? 0).toFixed(1)}
+              </Text>{" "}
+              <Text type="secondary">
+                ({ratingStats?.total ?? 0} lượt đánh giá)
+              </Text>
+            </div>
+
             {store.bio && (
               <Text
                 style={{
                   fontSize: 15,
                   lineHeight: 1.6,
                   color: "#334155",
-                  marginTop: 8,
+                  marginTop: 6,
                   maxWidth: 600,
                 }}
               >

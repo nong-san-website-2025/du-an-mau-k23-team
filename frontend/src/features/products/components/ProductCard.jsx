@@ -154,7 +154,6 @@ export default function ProductCard({
               {/* Mới: Hiển thị số lượng đã bán */}
               {quantitySold > 0 && (
                 <>
-
                   <Text
                     type="secondary"
                     style={{
@@ -181,9 +180,13 @@ export default function ProductCard({
             >
               {/* Giá + discount */}
               <div>
-                <Text type="danger" strong style={{ fontSize: 14 }}>
+                <Text
+                  strong
+                  style={{ fontSize: 18, color: "#4caf50" }}
+                >
                   {formatVND(product.discounted_price)}
                 </Text>
+
                 {product.original_price && (
                   <div
                     style={{ display: "flex", alignItems: "center", gap: 6 }}

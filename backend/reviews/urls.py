@@ -8,6 +8,7 @@ from .views import (
     SellerReviewsView,
     SellerReviewsSummaryView,
     SellerRecentActivitiesView,
+    AdminReviewViewSet,
 )
 
 # Tạo router cho các viewset
@@ -15,6 +16,7 @@ router = DefaultRouter()
 router.register(r'reviews', ReviewViewSet, basename='reviews')
 router.register(r'review-replies', ReviewReplyViewSet, basename='review-replies')
 router.register(r'support', CustomerSupportViewSet, basename='support')
+router.register(r'admin/reviews', AdminReviewViewSet, basename='admin-reviews')
 
 # URL patterns chính
 urlpatterns = [

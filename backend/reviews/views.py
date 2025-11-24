@@ -1,7 +1,8 @@
-from rest_framework import viewsets, permissions, generics
+from rest_framework import viewsets, permissions, generics, status
 from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
-from django.db.models import Avg, Count
+from rest_framework.decorators import action
+from django.db.models import Avg, Count, Q
 from django.utils import timezone
 from .models import Review, ReviewReply, CustomerSupport
 from .serializers import ReviewSerializer, ReviewReplySerializer, CustomerSupportSerializer
@@ -177,3 +178,64 @@ class CustomerSupportViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+
+
+# ----------------- ADMIN REVIEWS MANAGEMENT -----------------
+class AdminReviewViewSet(viewsets.ModelViewSet):
+    """
+    Admin viewset for managing all reviews across the platform
+    """
+    queryset = Review.objects.all()
+    serializer_class = ReviewSerializer
+    permission_classes = [permissions.IsAdminUser]  # Only admins can access
+
+    def get_queryset(self):
+        queryset = Review.objects.select_related(
+            'user', 'product', 'product__seller'
+        ).prefetch_related('replies').all()
+
+        # Filtering
+        search = self.request.query_params.get('search', '')
+        rating = self.request.query_params.get('rating', '')
+        status_filter = self.request.query_params.get('status', '')
+
+        if search:
+            queryset = queryset.filter(
+                Q(user__username__icontains=search) |
+                Q(product__name__icontains=search) |
+                Q(comment__icontains=search)
+            )
+
+        if rating and rating != 'all':
+            queryset = queryset.filter(rating=int(rating))
+
+        if status_filter:
+            if status_filter == 'replied':
+                queryset = queryset.annotate(reply_count=Count('replies')).filter(reply_count__gt=0)
+            elif status_filter == 'unreplied':
+                queryset = queryset.annotate(reply_count=Count('replies')).filter(reply_count=0)
+            elif status_filter == 'hidden':
+                queryset = queryset.filter(is_hidden=True)
+
+        return queryset.order_by('-created_at')
+
+    @action(detail=True, methods=['patch'])
+    def toggle_visibility(self, request, pk=None):
+        """Toggle review visibility (hide/show)"""
+        review = self.get_object()
+        review.is_hidden = not review.is_hidden
+        review.save()
+        return Response({
+            'message': 'Review visibility updated',
+            'is_hidden': review.is_hidden
+        })
+
+    @action(detail=True, methods=['post'])
+    def reply(self, request, pk=None):
+        """Admin reply to a review"""
+        review = self.get_object()
+        serializer = ReviewReplySerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(review=review, user=request.user)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

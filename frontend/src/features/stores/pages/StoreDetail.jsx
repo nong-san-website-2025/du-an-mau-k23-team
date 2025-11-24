@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Container, Row, Spinner } from "react-bootstrap";
 import axios from "axios";
 import { message, Pagination } from "antd";
+import { useCart } from "../../cart/services/CartContext";
 
 // Import các component con với đường dẫn ĐÚNG
 import StoreHeader from "../components/StoreDetail/StoreHeder";
@@ -20,6 +21,7 @@ import {
 const StoreDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { addToCart } = useCart();
 
   // === CÁC STATE CŨ CỦA BẠN (GIỮ NGUYÊN) ===
   const [store, setStore] = useState(null);
@@ -35,6 +37,27 @@ const StoreDetail = () => {
   // === STATE MỚI ĐƯỢC THÊM VÀO ĐỂ XỬ LÝ VOUCHER ===
   const [myVoucherCodes, setMyVoucherCodes] = useState(new Set());
   const [isClaiming, setIsClaiming] = useState(null); // Dùng để hiển thị loading trên nút "Lưu"
+
+  // === ADD TO CART FUNCTION ===
+  const handleAddToCart = async (e, product) => {
+    e?.stopPropagation(); // Prevent card click if event is passed
+    try {
+      await addToCart(
+        product.id,
+        1,
+        {
+          id: product.id,
+          name: product.name,
+          price: product.discounted_price ?? product.price,
+          image: product.main_image?.image || product.image || "",
+        },
+        () => {},
+        () => {}
+      );
+    } catch (err) {
+      console.error("Thêm vào giỏ thất bại:", err);
+    }
+  };
 
   // === LOGIC CŨ CỦA BẠN (GIỮ NGUYÊN) ===
   const { filteredProducts, totalPages, paginatedProducts } = useMemo(() => {
@@ -132,7 +155,39 @@ const StoreDetail = () => {
     message.success(`Voucher ${v.code} đã được chọn, áp dụng khi thanh toán`);
   };
   const handleFollow = async () => {
-    /* ... giữ nguyên code của bạn ... */
+    if (!token) {
+      message.warning("Vui lòng đăng nhập để theo dõi cửa hàng!");
+      navigate("/login", { state: { redirectTo: `/store/${id}` } });
+      return;
+    }
+
+    try {
+      await axios.post(
+        `http://localhost:8000/api/sellers/${id}/follow/`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      // Toggle trạng thái theo dõi
+      const newIsFollowing = !isFollowing;
+      setIsFollowing(newIsFollowing);
+
+      // Cập nhật số người theo dõi
+      if (newIsFollowing) {
+        setFollowers(followers + 1);
+        message.success("Đã theo dõi cửa hàng!");
+      } else {
+        setFollowers(Math.max(followers - 1, 0));
+        message.success("Đã bỏ theo dõi cửa hàng!");
+      }
+    } catch (error) {
+      console.error("Lỗi khi theo dõi cửa hàng:", error);
+      message.error("Không thể theo dõi cửa hàng. Vui lòng thử lại!");
+    }
   };
   const handleOpenChat = () => {
     if (!store?.id) return;
@@ -212,7 +267,7 @@ const StoreDetail = () => {
       />
 
       <Row>
-        <ProductGrid products={paginatedProducts} />
+        <ProductGrid products={paginatedProducts} onAddToCart={handleAddToCart} />
       </Row>
 
       {totalPages > 1 && (

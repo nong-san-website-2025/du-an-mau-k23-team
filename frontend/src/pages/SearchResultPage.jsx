@@ -12,6 +12,7 @@ import {
   Space,
   Pagination,
   message,
+  notification,
 } from "antd";
 import { AppstoreOutlined } from "@ant-design/icons";
 import { useCart } from "../features/cart/services/CartContext";
@@ -168,27 +169,25 @@ export default function SearchResultsPage() {
         existingItem.id || existingItem.product,
         existingItem.quantity + 1
       );
-      message.success("Đã cập nhật số lượng trong giỏ hàng!");
+      notification.success({
+            message: "Đã câp nhật số lượng trong giỏ hàng!",
+            placement: "topRight",
+            duration: 2,
+          });
       return;
     }
 
     // 👉 Thêm mới
-    await addToCart(
-      product.id,
-      1,
-      {
-        id: product.id,
-        name: product.name,
-        price: product.price,
-        image: product.image?.startsWith("http")
-          ? product.image
-          : product.image?.startsWith("/")
-            ? `http://localhost:8000${product.image}`
-            : "",
-      },
-      () => message.success("Đã thêm sản phẩm vào giỏ hàng!"),
-      () => message.error("Không thể thêm vào giỏ hàng")
-    );
+    await addToCart(product.id, 1, {
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      image: product.image?.startsWith("http")
+        ? product.image
+        : product.image?.startsWith("/")
+          ? `http://localhost:8000${product.image}`
+          : "",
+    });
   };
 
   if (error) {

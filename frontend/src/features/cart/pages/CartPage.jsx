@@ -1,7 +1,20 @@
 // src/features/cart/pages/CartPage.jsx
 import React, { useState, useEffect } from "react";
 import { useCart, getItemProductId } from "../services/CartContext";
-import { Card, Button, Modal, Checkbox, Popover } from "antd";
+import {
+  Card,
+  Button,
+  Modal,
+  Checkbox,
+  Popover,
+  Row,
+  Col,
+  Avatar,
+  Typography,
+  Space,
+  Divider,
+  Tooltip,
+} from "antd";
 import { Store, Ticket, TicketIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { productApi } from "../../products/services/productApi";
@@ -10,6 +23,8 @@ import "../styles/CartPage.css";
 import Layout from "../../../Layout/LayoutDefault";
 import { getSellerDetail } from "../../sellers/services/sellerService";
 import NoImage from "../../../components/shared/NoImage";
+
+const { Text, Title } = Typography;
 
 function CartPage() {
   const { cartItems, clearCart, selectAllItems, deselectAllItems, toggleItem } =
@@ -55,6 +70,7 @@ function CartPage() {
     if (cartItems.length > 0) {
       loadSellerInfos();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cartItems]);
 
   // Load sản phẩm liên quan khi thêm sản phẩm vào giỏ
@@ -114,7 +130,7 @@ function CartPage() {
 
   // Popover content (Chi tiết đơn hàng)
   const popoverContent = (
-    <div style={{ minWidth: 200 }}>
+    <div style={{ minWidth: 240 }}>
       <div className="summary-row">
         <span>Tạm tính:</span>
         <span>{selectedTotal.toLocaleString("vi-VN")}₫</span>
@@ -143,28 +159,32 @@ function CartPage() {
 
   if (cartItems.length === 0) {
     return (
-      <>
+      <Layout>
         <div className="cart-empty text-center my-5">
-          <h2>Giỏ hàng của bạn đang trống</h2>
-          <Button
-            type="primary"
-            icon={<Store />}
-            onClick={() => navigate("/")}
-            style={{ marginTop: 20 }}
-          >
-            Đi tới chợ
-          </Button>
+          <Title level={3}>Giỏ hàng của bạn đang trống</Title>
+          <Text type="secondary">
+            Hãy thêm món ngon vào giỏ và quay lại sau nhé.
+          </Text>
+          <div style={{ marginTop: 20 }}>
+            <Button
+              type="primary"
+              icon={<Store />}
+              onClick={() => navigate("/")}
+            >
+              Đi tới chợ
+            </Button>
+          </div>
         </div>
-      </>
+      </Layout>
     );
   }
 
   return (
     <Layout>
-      <div className="cart-page">
-        <div className="cart-container">
+      <div className="cart-page container">
+        <Row gutter={[24, 24]}>
           {/* LEFT: Danh sách sản phẩm */}
-          <div className="cart-left">
+          <Col xs={24} lg={16} className="cart-left">
             {Object.entries(groupedItems).map(([storeId, { items }]) => {
               // ✅ Lấy thông tin seller từ state
               const sellerInfo = sellerInfos[storeId] || {};
@@ -172,36 +192,58 @@ function CartPage() {
               const logoUrl = sellerInfo.image || null;
 
               return (
-                <Card key={storeId} className="store-group">
-                  <div
-                    className="store-header"
-                    style={{ padding: "16px 23px" }}
-                  >
-                    <div className="store-logo-wrapper">
-                      {logoUrl ? (
-                        <img
-                          src={logoUrl}
-                          alt={displayName}
-                          className="store-logo"
+                <Card key={storeId} className="store-group card-elevated">
+                  <div className="store-header">
+                    <div className="store-meta">
+                      <div
+                        className="store-logo-wrapper clickable"
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => navigate(`/store/${storeId}`)}
+                        onKeyDown={(e) =>
+                          e.key === "Enter" && navigate(`/store/${storeId}`)
+                        }
+                      >
+                        {logoUrl ? (
+                          <Avatar src={logoUrl} size={56} />
+                        ) : (
+                          <Avatar size={56} icon={<Store />} />
+                        )}
+                      </div>
+
+                      <div className="store-info">
+                        <Title
+                          level={5}
+                          className="store-name clickable"
                           onClick={() => navigate(`/store/${storeId}`)}
-                        />
-                      ) : (
-                        <Store size={20} color="#16a34a" />
-                      )}
+                        >
+                          {displayName}
+                        </Title>
+                      </div>
                     </div>
-                    <span
-                      className="store-name"
-                      onClick={() => navigate(`/store/${storeId}`)}
-                    >
-                      {displayName}
-                    </span>
+
+                    <div className="store-actions">
+                      <Button
+                        type="link"
+                        icon={<TicketIcon />}
+                        onClick={() =>
+                          setVoucherModal({
+                            visible: true,
+                            storeId,
+                            storeName: displayName,
+                          })
+                        }
+                      >
+                        Thêm voucher
+                      </Button>
+                    </div>
                   </div>
 
-                  <div className="cart-item-header">
+                  <Divider style={{ margin: "12px 0" }} />
+
+                  <div className="cart-item-header grid-header">
                     <span className="col-checkbox" />
-                    <span style={{ paddingLeft: 16 }} className="col-name">
-                      Sản phẩm
-                    </span>
+                    <span className="col-name">Sản phẩm</span>
                     <span className="col-price">Đơn giá</span>
                     <span className="col-quantity">Số lượng</span>
                     <span className="col-total">Thành tiền</span>
@@ -212,130 +254,230 @@ function CartPage() {
                     const stableKey = item.id || item.product;
                     const itemId = getItemProductId(item);
                     return (
-                      <div key={stableKey} className="cart-item px-4">
-                        <Checkbox
-                          checked={item.selected || false}
-                          onChange={() => handleCheckItem(itemId)}
-                        />
-                        <div className="item-info">
-                          {prod.image ? (
-                            <img
-                              src={prod.image}
-                              alt={prod.name}
-                              className="item-img"
-                              onClick={() => navigate(`/products/${prod.id}`)}
-                            />
-                          ) : (
-                            <div
-                              className="item-img"
-                              onClick={() => navigate(`/products/${prod.id}`)}
-                              style={{ cursor: "pointer" }}
-                            >
-                              <NoImage
-                                width="100%"
-                                height={90}
-                                text="Không có ảnh"
-                              />
-                            </div>
-                          )}
-                          <span
-                            className="item-name"
-                            onClick={() => navigate(`/products/${prod.id}`)}
-                          >
-                            {prod.name || "---"}
-                          </span>
+                      <div key={stableKey} className="cart-item grid-row">
+                        <div className="col-checkbox">
+                          <Checkbox
+                            checked={item.selected || false}
+                            onChange={() => handleCheckItem(itemId)}
+                            aria-label={`Chọn ${prod.name || "sản phẩm"}`}
+                          />
                         </div>
 
-                        <div className="item-price" style={{ paddingLeft: 12 }}>
-                          {Number(prod.price)
-                            ?.toLocaleString("vi-VN")
-                            .replaceAll(".", ",")}
-                          ₫
+                        <div className="col-name item-main">
+                          <div
+                            className="item-thumb clickable"
+                            onClick={() => navigate(`/products/${prod.id}`)}
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(e) =>
+                              e.key === "Enter" &&
+                              navigate(`/products/${prod.id}`)
+                            }
+                          >
+                            {prod.image ? (
+                              <img
+                                src={prod.image}
+                                alt={prod.name}
+                                className="item-img"
+                              />
+                            ) : (
+                              <div className="item-img no-image">
+                                <NoImage
+                                  width="100%"
+                                  height={90}
+                                  text="Không có ảnh"
+                                />
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="item-meta">
+                            <Text
+                              className="item-name clickable"
+                              onClick={() => navigate(`/products/${prod.id}`)}
+                            >
+                              {prod.name || "---"}
+                            </Text>
+                          </div>
                         </div>
-                        <div
-                          className="item-quantity"
-                          style={{ paddingLeft: 48 }}
-                        >
+
+                        <div className="col-price">
+                          <Text strong>
+                            {Number(prod.price)
+                              ?.toLocaleString("vi-VN")
+                              .replaceAll(".", ",")}
+                            ₫
+                          </Text>
+                        </div>
+
+                        <div className="col-quantity">
                           <QuantityInput item={item} itemId={itemId} />
                         </div>
-                        <div className="item-total">
-                          {(Number(prod.price) * Number(item.quantity))
-                            .toLocaleString("vi-VN")
-                            .replaceAll(".", ",")}
-                          ₫
+
+                        <div className="col-total">
+                          <Text strong>
+                            {(Number(prod.price) * Number(item.quantity))
+                              .toLocaleString("vi-VN")
+                              .replaceAll(".", ",")}
+                            ₫
+                          </Text>
                         </div>
                       </div>
                     );
                   })}
 
-                  <div className="store-voucher" style={{ padding: "0 22px" }}>
-                    <span>
-                      <TicketIcon color="#16a34a" />
-                    </span>
-                    <Button
-                      type="link"
-                      onClick={() =>
-                        setVoucherModal({
-                          visible: true,
-                          storeId,
-                          storeName: displayName,
-                        })
-                      }
-                    >
-                      Thêm mã giảm giá
-                    </Button>
+                  <div className="store-footer">
+                    <div className="voucher-compact">
+                      <Ticket size={16} />
+                      <Button
+                        type="link"
+                        onClick={() =>
+                          setVoucherModal({
+                            visible: true,
+                            storeId,
+                            storeName: displayName,
+                          })
+                        }
+                      >
+                        Chọn mã giảm giá cho shop
+                      </Button>
+                    </div>
                   </div>
                 </Card>
               );
             })}
-          </div>
-        </div>
 
-        {/* Thanh tóm tắt đơn hàng cố định bên dưới */}
-        <div className="cart-bottom-bar" style={{ padding: "15px 140px" }}>
-          <div className="cart-global-header">
-            <Checkbox checked={allChecked} onChange={handleCheckAll} />
-            <span>Chọn tất cả ({cartItems.length} sản phẩm)</span>
-            <Button
-              danger
-              size="small"
-              onClick={() => setShowClearConfirm(true)}
-            >
-              Xóa tất cả
-            </Button>
-          </div>
+            {/* Sản phẩm liên quan */}
+            {relatedProducts && relatedProducts.length > 0 && (
+              <Card className="related-card">
+                <Title level={5}>Sản phẩm gợi ý cho bạn</Title>
+                <div className="related-list">
+                  {relatedProducts.map((p) => (
+                    <div
+                      key={p.id}
+                      className="related-item clickable"
+                      onClick={() => navigate(`/products/${p.id}`)}
+                    >
+                      <div className="related-thumb">
+                        {p.image ? (
+                          <img src={p.image} alt={p.name} />
+                        ) : (
+                          <div className="related-no-image">No image</div>
+                        )}
+                      </div>
+                      <div className="related-info">
+                        <Text ellipsis style={{ maxWidth: 140 }}>
+                          {p.name}
+                        </Text>
+                        <Text strong>
+                          {Number(p.price)
+                            ?.toLocaleString("vi-VN")
+                            .replaceAll(".", ",")}
+                          ₫
+                        </Text>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            )}
+          </Col>
 
-          <div className="d-flex align-items-center gap-4">
-            <Popover content={popoverContent} placement="topLeft">
-              <div className="total-section">
-                <span className="total-label">
-                  Tổng cộng{" "}
-                  <span style={{ fontWeight: 500 }}>
-                    ({selectedItemsData?.length || 0} sản phẩm)
-                  </span>
-                  :
-                </span>
-                <span className="total-price">
-                  {selectedTotal.toLocaleString("vi-VN").replaceAll(".", ",")}₫
-                </span>
+          {/* RIGHT: Tổng quan & hành động */}
+          <Col xs={24} lg={8} className="cart-right">
+            <Card className="summary-card card-elevated sticky-summary">
+              <div className="summary-top">
+                <Title level={4}>Tóm tắt đơn hàng</Title>
+                <Text type="secondary">
+                  Chỉ thanh toán các sản phẩm đã chọn
+                </Text>
               </div>
-            </Popover>
+
+              <Divider />
+
+              <div className="summary-lines">
+                <div className="summary-line">
+                  <span>Số sản phẩm đã chọn</span>
+                  <span>{selectedItemsData?.length || 0}</span>
+                </div>
+                <div className="summary-line">
+                  <span>Tạm tính</span>
+                  <span>
+                    {selectedTotal.toLocaleString("vi-VN").replaceAll(".", ",")}
+                    ₫
+                  </span>
+                </div>
+              </div>
+
+              <Divider />
+
+              <div className="summary-actions">
+                <Popover content={popoverContent} placement="topLeft">
+                  <Button type="text">Chi tiết</Button>
+                </Popover>
+
+                <div className="summary-total">
+                  <Text type="secondary">Tổng thanh toán</Text>
+                  <Title level={4}>
+                    {selectedTotal.toLocaleString("vi-VN").replaceAll(".", ",")}
+                    ₫
+                  </Title>
+                </div>
+              </div>
+
+              <Space
+                direction="vertical"
+                size={12}
+                style={{ width: "100%", marginTop: 8 }}
+              >
+                <Button
+                  block
+                  size="large"
+                  style={{
+                    backgroundColor: "#16a34a",
+                    color: "#fff",
+                    border: "none",
+                  }}
+                  disabled={selectedItemsData.length === 0}
+                  onClick={() => navigate("/checkout")}
+                  aria-disabled={selectedItemsData.length === 0}
+                >
+                  Thanh toán ngay
+                </Button>
+
+                <Button
+                  block
+                  size="large"
+                  onClick={() => setShowClearConfirm(true)}
+                  style={{
+                    backgroundColor: "#FF4D4F",
+                    color: "#fff",
+                    border: "none",
+                  }}
+                >
+                  Xóa tất cả
+                </Button>
+              </Space>
+            </Card>
+          </Col>
+        </Row>
+
+        {/* Thanh tóm tắt đơn hàng cố định bên dưới (mobile) */}
+        <div className="cart-bottom-bar-mobile">
+          <Checkbox checked={allChecked} onChange={handleCheckAll} />
+          <div className="mobile-summary">
+            <div>
+              <Text>Tổng: </Text>
+              <Text strong>
+                {selectedTotal.toLocaleString("vi-VN").replaceAll(".", ",")}₫
+              </Text>
+            </div>
             <Button
+              type="primary"
               disabled={selectedItemsData.length === 0}
               onClick={() => navigate("/checkout")}
-              style={{
-                height: 50,
-                minWidth: 200,
-                fontSize: "16px",
-                fontWeight: 500,
-                backgroundColor: "#16a34a",
-                color: "#fff",
-                border: "none",
-                borderRadius: 4,
-              }}
-              className="btn-payment"
             >
-              Thanh Toán
+              Thanh toán
             </Button>
           </div>
         </div>
@@ -351,8 +493,6 @@ function CartPage() {
           title="Xóa tất cả sản phẩm"
           okText="Xóa tất cả"
           cancelText="Hủy"
-          transitionName="ant-zoom-big"
-          maskTransitionName="ant-fade"
         >
           Bạn có chắc muốn xóa tất cả sản phẩm trong giỏ?
         </Modal>

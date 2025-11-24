@@ -255,7 +255,7 @@ class ChangePasswordSerializer(serializers.Serializer):
 
 class CustomUserSerializer(serializers.ModelSerializer):
     role = RoleSerializer(read_only=True)
-    role_id = serializers.PrimaryKeyRelatedField(queryset=Role.objects.all(), source='role', write_only=True)
+    role_id = serializers.PrimaryKeyRelatedField(queryset=Role.objects.all(), source='role', write_only=True, required=False)
 
     class Meta:
         model = CustomUser
@@ -263,7 +263,7 @@ class CustomUserSerializer(serializers.ModelSerializer):
 
 class EmployeeSerializer(serializers.ModelSerializer):
     role = RoleSerializer(read_only=True)
-    role_id = serializers.PrimaryKeyRelatedField(queryset=Role.objects.all(), source='role', write_only=True)
+    role_id = serializers.PrimaryKeyRelatedField(queryset=Role.objects.all(), source='role', write_only=True, required=False)
 
     class Meta:
         model = CustomUser

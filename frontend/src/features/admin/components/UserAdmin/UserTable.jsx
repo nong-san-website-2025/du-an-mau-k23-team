@@ -1,12 +1,17 @@
 // src/features/admin/components/UserTable.jsx
 import React, { useMemo, useState, useEffect } from "react";
-import { Table, Dropdown, Button, Modal, message, Tag } from "antd";
+import {
+  Table, Dropdown, Button, Modal, message, Tag, Avatar, Space,
+  Tooltip, Badge, Menu, Row, Col
+} from "antd";
 import {
   EllipsisOutlined,
   EyeOutlined,
   DeleteOutlined,
   LockOutlined,
   UnlockOutlined,
+  EditOutlined, MailOutlined, PhoneOutlined, ShoppingOutlined,
+  MoreOutlined
 } from "@ant-design/icons";
 import axios from "axios";
 import UserAddModal from "./UserAddModal";
@@ -20,6 +25,7 @@ export default function UserTable({
   setUsers,
   loading = false,
   selectedRole = "all",
+  statusFilter = "all",
   searchTerm = "",
   roles = [],
   checkedIds = [],
@@ -40,13 +46,22 @@ export default function UserTable({
     const s = norm(searchTerm);
 
     return (Array.isArray(users) ? users : [])
-      .filter(
-        (u) =>
-          u?.role?.name?.toLowerCase() === "customer" ||
-          u?.role?.name?.toLowerCase() === "seller"
-      )
-
       .filter((u) => {
+        // Filter by role
+        if (selectedRole !== "all") {
+          const roleMatch = selectedRole === "customer"
+            ? u?.role?.name?.toLowerCase() === "customer"
+            : u?.role?.name?.toLowerCase() === "seller";
+          if (!roleMatch) return false;
+        }
+
+        // Filter by status
+        if (statusFilter !== "all") {
+          const statusMatch = statusFilter === "active" ? u.is_active : !u.is_active;
+          if (!statusMatch) return false;
+        }
+
+        // Filter by search term
         const hitSearch =
           s === "" ||
           norm(u.username).includes(s) ||
@@ -56,7 +71,7 @@ export default function UserTable({
 
         return hitSearch;
       });
-  }, [users, searchTerm]);
+  }, [users, searchTerm, selectedRole, statusFilter]);
 
   const rowSelection = {
     selectedRowKeys: checkedIds,
@@ -135,122 +150,225 @@ export default function UserTable({
     setShowAddModal(false);
   };
 
+  const getActionMenu = (record) => (
+    <Menu>
+      <Menu.Item key="view" icon={<EyeOutlined />}>
+        Xem chi tiết
+      </Menu.Item>
+      <Menu.Item key="edit" icon={<EditOutlined />}>
+        Chỉnh sửa
+      </Menu.Item>
+      <Menu.Divider />
+      <Menu.Item
+        key="toggle"
+        icon={record.is_active ? <LockOutlined /> : <UnlockOutlined />}
+      >
+        {record.is_active ? 'Khóa tài khoản' : 'Mở khóa'}
+      </Menu.Item>
+      <Menu.Item key="delete" icon={<DeleteOutlined />} danger>
+        Xóa tài khoản
+      </Menu.Item>
+    </Menu>
+  );
+
   const columns = [
     {
-      title: "STT",
-      key: "index",
-      render: (_, __, index) => index + 1,
-      width: 60,
-      align: "center",
-    },
-    {
-      title: t("Tên người dùng"),
-      dataIndex: "username",
-      key: "username",
-      width: 200,
-      sorter: (a, b) => (a.username || "").localeCompare(b.username || ""),
-      render: (text, record) => (
-        <div>
-          <div className="fw-bold">{text || "—"}</div>
-          <small className="text-muted">
-            {record.full_name || t("no_name")}
-          </small>
+      title: 'Người dùng',
+      key: 'user',
+      width: 280,
+      fixed: 'left',
+      render: (_, record) => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <Avatar
+            size={40}
+            src={record.avatar}
+            style={{
+              backgroundColor: record.is_active ? '#1890ff' : '#d9d9d9',
+              flexShrink: 0
+            }}
+          >
+            {record.full_name?.charAt(0) || record.username?.charAt(0)}
+          </Avatar>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{
+              fontWeight: 600,
+              fontSize: 14,
+              color: '#262626',
+              marginBottom: 2,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap'
+            }}>
+              {record.full_name || record.username}
+            </div>
+            <div style={{
+              fontSize: 12,
+              color: '#8c8c8c',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap'
+            }}>
+              @{record.username}
+            </div>
+          </div>
         </div>
       ),
     },
     {
-      title: t("Email"),
-      dataIndex: "email",
-      key: "email",
-      width: 200,
-      sorter: (a, b) => (a.email || "").localeCompare(b.email || ""),
+      title: 'Liên hệ',
+      key: 'contact',
+      width: 250,
+      render: (_, record) => (
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+            <MailOutlined style={{ color: '#8c8c8c', fontSize: 12 }} />
+            <span style={{ fontSize: 13, color: '#595959' }}>{record.email}</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <PhoneOutlined style={{ color: '#8c8c8c', fontSize: 12 }} />
+            <span style={{ fontSize: 13, color: '#595959' }}>{record.phone || '—'}</span>
+          </div>
+        </div>
+      ),
     },
     {
-      title: t("Số điện thoại"),
-      dataIndex: "phone",
-      key: "phone",
-      width: 140,
-      sorter: (a, b) => (a.phone || "").localeCompare(b.phone || ""),
-      render: (phone) => phone || t("Chưa có"),
-    },
-
-    {
-      title: "Trạng thái",
-      key: "status",
-      width: 150,
-      align: "center",
+      title: 'Vai trò',
+      key: 'role',
+      width: 120,
+      align: 'center',
       render: (_, record) => (
         <Tag
-          color={record.is_active ? "green" : "red"}
-          style={{ fontWeight: 600, borderRadius: 8, padding: "4px 10px" }}
+          color={record.role?.name === 'Seller' ? 'orange' : 'blue'}
+          style={{
+            fontWeight: 500,
+            borderRadius: 6,
+            padding: '2px 12px'
+          }}
         >
-          {record.is_active ? "Đang hoạt động" : "Đang khóa"}
+          {record.role?.name}
         </Tag>
       ),
     },
-
     {
-      title: t("Hành động"),
-      key: "actions_detail",
+      title: 'Hoạt động',
+      key: 'activity',
       width: 180,
-      align: "center",
       render: (_, record) => (
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            gap: "8px",
-          }}
-          onClick={(e) => e.stopPropagation()} // chặn click lan ra row
-        >
-          {/* Khóa / Mở tài khoản */}
-          <Button
-            icon={record.is_active ? <LockOutlined /> : <UnlockOutlined />}
-            danger={!record.is_active}
-            type={record.is_active ? "default" : "primary"}
-            size="small"
-            onClick={() => handleToggleUser(record)}
-          />
-
-          {/* Xoá tài khoản */}
-          <Button
-            icon={<DeleteOutlined />}
-            type="primary"
-            danger
-            size="small"
-            disabled={!record.can_delete}
-            onClick={() => record.can_delete && handleDeleteUser(record)}
-          />
+        <div>
+          <div style={{ fontSize: 13, marginBottom: 4 }}>
+            <ShoppingOutlined style={{ marginRight: 6, color: '#1890ff' }} />
+            <span style={{ fontWeight: 500 }}>{record.orders_count || 0}</span> đơn hàng
+          </div>
+          <div style={{ fontSize: 12, color: '#8c8c8c' }}>
+            {record.total_spent ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(record.total_spent) : '0 VND'}
+          </div>
         </div>
+      ),
+    },
+    {
+      title: 'Trạng thái',
+      key: 'status',
+      width: 150,
+      align: 'center',
+      render: (_, record) => (
+        <div>
+          <Badge
+            status={record.is_active ? 'success' : 'error'}
+            text={
+              <span style={{
+                fontWeight: 500,
+                color: record.is_active ? '#52c41a' : '#ff4d4f'
+              }}>
+                {record.is_active ? 'Đang hoạt động' : 'Đã khóa'}
+              </span>
+            }
+          />
+          <div style={{ fontSize: 11, color: '#8c8c8c', marginTop: 2 }}>
+            {record.last_login || 'Chưa đăng nhập'}
+          </div>
+        </div>
+      ),
+    },
+    {
+      title: 'Thao tác',
+      key: 'actions',
+      width: 120,
+      fixed: 'right',
+      align: 'center',
+      render: (_, record) => (
+        <Space size={4}>
+          <Tooltip title="Xem chi tiết">
+            <Button
+              type="text"
+              icon={<EyeOutlined />}
+              size="small"
+              onClick={() => onShowDetail && onShowDetail(record)}
+            />
+          </Tooltip>
+          <Tooltip title="Chỉnh sửa">
+            <Button
+              type="text"
+              icon={<EditOutlined />}
+              size="small"
+            />
+          </Tooltip>
+          <Dropdown
+            overlay={
+              <Menu onClick={(e) => {
+                switch(e.key) {
+                  case 'view':
+                    onShowDetail && onShowDetail(record);
+                    break;
+                  case 'edit':
+                    // Handle edit
+                    break;
+                  case 'toggle':
+                    handleToggleUser(record);
+                    break;
+                  case 'delete':
+                    handleDeleteUser(record);
+                    break;
+                }
+              }}>
+                {getActionMenu(record)}
+              </Menu>
+            }
+            trigger={['click']}
+          >
+            <Button
+              type="text"
+              icon={<MoreOutlined />}
+              size="small"
+            />
+          </Dropdown>
+        </Space>
       ),
     },
   ];
 
   return (
     <>
-      <div style={{ marginBottom: 16, display: "flex", gap: 8 }}>
-        <Button type="primary" onClick={() => exportUsersToExcel(users)}>
-          Xuất Excel
-        </Button>
-        <Button onClick={() => exportUsersToPDF(users)}>Xuất PDF</Button>
-      </div>
       <Table
         columns={columns}
         dataSource={filteredUsers}
         rowKey="id"
         loading={loading}
         rowSelection={rowSelection}
-        bordered
-        pagination={{ pageSize: 10 }}
-        size="small"
-        scroll={{ x: 1000 }}
-        onRow={onRow} // 👈 THÊM DÒNG NÀY
-        rowClassName="table-row"
+        pagination={{
+          pageSize: 10,
+          showSizeChanger: true,
+          showQuickJumper: true,
+          showTotal: (total, range) => `${range[0]}-${range[1]} của ${total} người dùng`
+        }}
+        size="middle"
+        scroll={{ x: 1200 }}
+        onRow={onRow}
+        style={{ background: '#fff' }}
       />
 
       {showAddModal && (
         <UserAddModal
-          visible={showAddModal} // chỉ cần 1 state
+          visible={showAddModal}
           onClose={() => setShowAddModal(false)}
           onUserAdded={handleUserAdded}
         />

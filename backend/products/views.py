@@ -534,7 +534,8 @@ class ReviewListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         product_id = self.kwargs["product_id"]
-        return Review.objects.filter(product_id=product_id)
+        # Exclude hidden reviews for public viewing
+        return Review.objects.filter(product_id=product_id, is_hidden=False)
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user, product_id=self.kwargs["product_id"])
@@ -544,15 +545,15 @@ class ReviewListCreateView(generics.ListCreateAPIView):
 @api_view(["GET"])
 def new_products(request):
     """Lấy 6 sản phẩm mới nhất"""
-    products = Product.objects.order_by('-created_at')[:6]
-    serializer = ProductSerializer(products, many=True)
+    products = Product.objects.filter(status='approved', is_hidden=False).order_by('-created_at')[:6]
+    serializer = ProductSerializer(products, many=True, context={'request': request})
     return Response(serializer.data)
 
 @api_view(["GET"])
 def best_sellers(request):
     """Lấy 6 sản phẩm bán chạy nhất"""
-    products = Product.objects.order_by('-sold')[:6]
-    serializer = ProductSerializer(products, many=True)
+    products = Product.objects.filter(status='approved', is_hidden=False).order_by('-sold')[:6]
+    serializer = ProductSerializer(products, many=True, context={'request': request})
     return Response(serializer.data)
 # Top-Products
 

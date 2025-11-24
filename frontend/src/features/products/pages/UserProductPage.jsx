@@ -16,6 +16,7 @@ import {
   Space,
   Pagination,
   message,
+  notification,
 } from "antd";
 import { ShoppingCartOutlined, AppstoreOutlined } from "@ant-design/icons";
 import "../styles/UserProductPage.css";
@@ -129,7 +130,11 @@ const UserProductPage = () => {
     if (existingItem) {
       // ✅ LUÔN truyền product.id (productId), KHÔNG phải existingItem.id
       await updateQuantity(product.id, existingItem.quantity + 1);
-      message.success("Đã cập nhật số lượng trong giỏ hàng!");
+      notification.success({
+            message: "Đã cập nhật số lượng trong giỏ hàngF",
+            placement: "topRight",
+            duration: 2,
+          });
       return;
     }
 
@@ -147,8 +152,6 @@ const UserProductPage = () => {
               ? product.image
               : "",
       },
-      () => message.success("Đã thêm sản phẩm vào giỏ hàng!"), // ✅ sửa lại message
-      () => message.error("Không thể thêm vào giỏ hàng")
     );
   };
 

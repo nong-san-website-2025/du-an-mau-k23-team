@@ -80,12 +80,17 @@ const ReviewsSection = ({
                     }}
                   >
                     <div style={{ fontWeight: 700, marginBottom: 6 }}>
-                      {rp.user_name || rp.user?.username || rp.replier_name || "Cửa hàng"}
+                      Cửa hàng
                       <span style={{ fontWeight: 400, marginLeft: 8, color: "#4b5563", fontSize: 12 }}>
                         {rp.created_at ? new Date(rp.created_at).toLocaleString() : ""}
                       </span>
                     </div>
-                    <div style={{ whiteSpace: "pre-wrap" }}>{rp.reply_text || rp.comment || rp.detail || ""}</div>
+                    <Text
+                      ellipsis={{ rows: 3, expandable: true, symbol: 'Xem thêm' }}
+                      style={{ whiteSpace: "pre-wrap" }}
+                    >
+                      {rp.reply_text || rp.comment || rp.detail || ""}
+                    </Text>
                   </div>
                 ))}
               </div>

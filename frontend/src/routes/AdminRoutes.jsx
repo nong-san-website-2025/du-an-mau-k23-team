@@ -15,6 +15,7 @@ import OrdersPage from "../features/admin/pages/OrdersPage";
 import ComplaintsPage from "../features/admin/pages/ComplaintsPage";
 import UserReports from "../features/admin/pages/ComplaintAdmin/UserReports.jsx";
 import Coupons from "../features/admin/pages/ComplaintAdmin/Coupons.jsx";
+import ReviewsPage from "../features/admin/pages/ReviewsPage";
 
 // Vouchers & Wallet
 import VouchersPage from "../features/admin/pages/VouchersPage";
@@ -71,6 +72,7 @@ export const adminRoutes = [
       <Route path="orders" element={<OrdersPage />} />
       <Route path="complaints" element={<ComplaintsPage />} />
       <Route path="complaints/user-reports" element={<UserReports />} />
+      <Route path="reviews" element={<ReviewsPage />} />
 
       {/* Vouchers & Wallet */}
       <Route path="vouchers" element={<VouchersPage />} />
