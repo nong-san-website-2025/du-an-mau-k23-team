@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Table, Card, Button, Tag } from "antd";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { intcomma } from "./../../../../utils/format";
+import { formatVND } from "../../../stores/components/StoreDetail/utils/utils";
 
 export default function RecentOrders() {
   const [orders, setOrders] = useState([]);
@@ -58,7 +58,7 @@ export default function RecentOrders() {
       title: "Tổng tiền",
       dataIndex: "total_price",
       key: "total_price",
-     render: (val) => (val ? `${intcomma(val)} ₫` : "0 ₫"),
+     render: (val) => formatVND(val),
 
     },
     {

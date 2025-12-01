@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import API from "../../login_register/services/api";
+import { notification } from 'antd';
 
 const useProfileData = () => {
   const [searchParams] = useSearchParams();
@@ -119,9 +120,10 @@ const useProfileData = () => {
       window.dispatchEvent(
         new CustomEvent("userProfileUpdated", { detail: res.data })
       );
-      toast.info("Email xác thực đã được gửi, vui lòng kiểm tra hộp thư!", {
+      notification.info({
         theme: "light",
         autoClose: 5000,
+        message: "Cập nhật thành công",
       });
     } catch {
       setError("Cập nhật thất bại. Vui lòng thử lại!");

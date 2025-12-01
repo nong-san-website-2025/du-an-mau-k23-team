@@ -1,13 +1,24 @@
 // src/features/stores/components/StoreDetail/utils.js
 
-export const formatVND = (value) => {
+export const formatVND = (value, fontSize) => {
   const n = Number(value);
   if (Number.isNaN(n)) return "";
-  // Làm tròn và chuyển sang chuỗi với dấu phẩy thay cho dấu chấm
+
+  const formattedNumber = Math.round(n)
+    .toString()
+    .replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+
+  const baseSize = fontSize || 18;
+
   return (
-    Math.round(n)
-      .toString()
-      .replace(/\B(?=(\d{3})+(?!\d))/g, ",") + " ₫"
+    <span style={{ 
+      fontSize: baseSize,  // ← Thêm dòng này
+      color: "inherit", 
+      fontWeight: "inherit" 
+    }}>
+      {formattedNumber}
+      <sup style={{ fontSize: "0.7em" }}>₫</sup>
+    </span>
   );
 };
 

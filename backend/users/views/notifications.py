@@ -8,8 +8,11 @@ from queue import Queue
 from threading import Lock
 
 from django.apps import apps
+from django.db import models
 from django.http import StreamingHttpResponse
 from django.utils import timezone
+
+from django.views import View
 
 from rest_framework import viewsets, status
 from rest_framework.views import APIView
@@ -35,6 +38,28 @@ def send_notification_to_user(user_id, data):
                     q.put_nowait(data)
                 except:
                     user_queues[user_id].remove(q)
+
+
+def send_notification_to_admins(data):
+    """
+    Send notification to all active SSE connections for admin users
+    """
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+
+    # Get all admin users (users with role 'admin' or is_superuser)
+    admin_users = User.objects.filter(
+        models.Q(role__name='admin') | models.Q(is_superuser=True)
+    ).values_list('id', flat=True)
+
+    with queue_lock:
+        for admin_id in admin_users:
+            if admin_id in user_queues:
+                for q in user_queues[admin_id][:]:  # Copy to avoid modification during iteration
+                    try:
+                        q.put_nowait(data)
+                    except:
+                        user_queues[admin_id].remove(q)
 
 
 class NotificationViewSet(viewsets.ModelViewSet):
@@ -93,61 +118,62 @@ class NotificationViewSet(viewsets.ModelViewSet):
         return Response({'unread_count': count}, status=status.HTTP_200_OK)
 
 
-class NotificationSSEView(APIView):
+def notification_sse_view(request):
     """
     Server-Sent Events (SSE) endpoint for real-time notifications
     Clients connect via EventSource with JWT token in query params
     """
-    permission_classes = [AllowAny]  # Manual authentication via token
+    from django.http import HttpResponse
 
-    def get(self, request):
-        # Authenticate via token in query string (EventSource doesn't support headers)
-        token = request.GET.get('token')
-        if not token:
-            return Response(
-                {"error": "Token required"}, 
-                status=status.HTTP_401_UNAUTHORIZED
-            )
-        
+    # Authenticate via token in query string (EventSource doesn't support headers)
+    token = request.GET.get('token')
+    if not token:
+        return HttpResponse(
+            "Token required",
+            status=401,
+            content_type='text/plain'
+        )
+
+    try:
+        # Verify JWT token
+        jwt_auth = JWTAuthentication()
+        validated_token = jwt_auth.get_validated_token(token)
+        user = jwt_auth.get_user(validated_token)
+    except Exception as e:
+        return HttpResponse(
+            "Invalid token",
+            status=401,
+            content_type='text/plain'
+        )
+
+    # Create queue for this connection
+    q = Queue()
+    with queue_lock:
+        if user.id not in user_queues:
+            user_queues[user.id] = []
+        user_queues[user.id].append(q)
+
+    def event_stream():
+        """Generator for SSE stream"""
         try:
-            # Verify JWT token
-            jwt_auth = JWTAuthentication()
-            validated_token = jwt_auth.get_validated_token(token)
-            user = jwt_auth.get_user(validated_token)
-        except Exception as e:
-            return Response(
-                {"error": "Invalid token"}, 
-                status=status.HTTP_401_UNAUTHORIZED
-            )
-        
-        # Create queue for this connection
-        q = Queue()
-        with queue_lock:
-            if user.id not in user_queues:
-                user_queues[user.id] = []
-            user_queues[user.id].append(q)
+            while True:
+                try:
+                    # Wait up to 30 seconds for new notification
+                    data = q.get(timeout=30)
+                    yield f"data: {json.dumps(data)}\n\n"
+                except:
+                    # Timeout - send ping to keep connection alive
+                    yield f"data: {json.dumps({'type': 'ping'})}\n\n"
+        finally:
+            # Clean up on disconnect
+            with queue_lock:
+                if user.id in user_queues and q in user_queues[user.id]:
+                    user_queues[user.id].remove(q)
 
-        def event_stream():
-            """Generator for SSE stream"""
-            try:
-                while True:
-                    try:
-                        # Wait up to 30 seconds for new notification
-                        data = q.get(timeout=30)
-                        yield f"data: {json.dumps(data)}\n\n"
-                    except:
-                        # Timeout - send ping to keep connection alive
-                        yield f"data: {json.dumps({'type': 'ping'})}\n\n"
-            finally:
-                # Clean up on disconnect
-                with queue_lock:
-                    if user.id in user_queues and q in user_queues[user.id]:
-                        user_queues[user.id].remove(q)
-
-        response = StreamingHttpResponse(event_stream(), content_type='text/event-stream')
-        response['Cache-Control'] = 'no-cache'
-        response['X-Accel-Buffering'] = 'no'
-        return response
+    response = StreamingHttpResponse(event_stream(), content_type='text/event-stream')
+    response['Cache-Control'] = 'no-cache'
+    response['X-Accel-Buffering'] = 'no'
+    return response
 
 
 class TriggerNotificationView(APIView):

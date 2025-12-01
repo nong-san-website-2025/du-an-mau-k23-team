@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Facebook, Instagram, Mail, Phone, Clock, MapPin, Send } from "lucide-react";
+import logo from "../assets/logo/whitelogo1.png";
 
 export default function Footer() {
   const [email, setEmail] = useState("");
@@ -39,14 +40,8 @@ export default function Footer() {
       color: "#1877f2",
     },
     {
-      icon: Instagram,
-      url: "https://www.instagram.com/greenfarm_65?igsh=MTFjb3JxaDJ6cXNxcw==",
-      label: "Instagram",
-      color: "#e4405f",
-    },
-    {
       icon: TikTokIcon,
-      url: "https://www.tiktok.com/@www.tiktok.com/@greenfarm78",
+      url: "https://www.tiktok.com/@greenfarmorganicvn",
       label: "TikTok",
       color: "#000000",
     },
@@ -54,59 +49,6 @@ export default function Footer() {
 
   return (
     <footer style={{ backgroundColor: "#1a1a1a", color: "#fff", marginTop: "3rem" }}>
-      {/* Newsletter Section */}
-      <div style={{ backgroundColor: "#198754", padding: "2rem 0" }}>
-        <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "0 1rem" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "1rem" }}>
-            <div style={{ flex: "1", minWidth: "300px" }}>
-              <h5 style={{ fontWeight: "700", marginBottom: "0.5rem", color: "#fff", fontSize: "1.25rem" }}>
-                🌱 Đăng ký nhận tin từ GreenFarm
-              </h5>
-              <p style={{ margin: 0, color: "rgba(255,255,255,0.8)", fontSize: "0.9rem" }}>
-                Cập nhật ưu đãi, sản phẩm mới và tips sống xanh mỗi tuần
-              </p>
-            </div>
-            <div style={{ flex: "1", minWidth: "300px", maxWidth: "500px" }}>
-              <div style={{ display: "flex", gap: "0.5rem" }}>
-                <input
-                  type="email"
-                  placeholder="Nhập email của bạn"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  style={{
-                    flex: 1,
-                    padding: "0.65rem 1rem",
-                    borderRadius: "8px",
-                    border: "2px solid rgba(255,255,255,0.3)",
-                    background: "rgba(255,255,255,0.95)",
-                    fontSize: "0.95rem",
-                  }}
-                />
-                <button
-                  onClick={handleSubscribe}
-                  disabled={subscribed}
-                  style={{
-                    padding: "0.65rem 1.5rem",
-                    backgroundColor: "#212529",
-                    color: "#fff",
-                    border: "none",
-                    borderRadius: "8px",
-                    cursor: subscribed ? "default" : "pointer",
-                    fontWeight: "500",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0.5rem",
-                    whiteSpace: "nowrap",
-                    opacity: subscribed ? 0.7 : 1,
-                  }}
-                >
-                  {subscribed ? "✓ Đã gửi" : <><Send size={16} /> Đăng ký</>}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* Main Footer Content */}
       <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "3rem 1rem" }}>
@@ -115,7 +57,7 @@ export default function Footer() {
           <div style={{ flex: "1", minWidth: "300px" }}>
             <div style={{ display: "flex", alignItems: "flex-start", gap: "1rem" }}>
               <img
-                src="https://images.unsplash.com/photo-1464226184884-fa280b87c399?w=80&h=80&fit=crop"
+                src={logo}
                 alt="GreenFarm"
                 style={{ width: "80px", height: "80px", borderRadius: "8px", objectFit: "cover" }}
               />
@@ -252,7 +194,7 @@ export default function Footer() {
             <ul style={{ listStyle: "none", padding: 0, margin: 0, fontSize: "0.9rem" }}>
               <li style={{ display: "flex", alignItems: "flex-start", marginBottom: "0.5rem" }}>
                 <Phone className="me-2" size={16} style={{ color: "#198754", marginTop: "3px", flexShrink: 0 }} />
-                <a href="tel:0123456789" className={linkClass}>0123 456 789</a>
+                <a href="tel:0328002213" className={linkClass}>0328002213</a>
               </li>
               <li style={{ display: "flex", alignItems: "flex-start", marginBottom: "0.5rem" }}>
                 <Mail className="me-2" size={16} style={{ color: "#198754", marginTop: "3px", flexShrink: 0 }} />

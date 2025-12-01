@@ -1,17 +1,13 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { productApi } from "../features/products/services/productApi";
 import {
   Row,
   Col,
-  Input,
-  Select,
   Typography,
   Spin,
   Alert,
-  Space,
   Pagination,
-  message,
   notification,
 } from "antd";
 import { AppstoreOutlined } from "@ant-design/icons";
@@ -21,16 +17,19 @@ import "../features/products/styles/UserProductPage.css";
 import ProductCard from "../features/products/components/ProductCard";
 import Layout from "../Layout/LayoutDefault";
 import SellerGrid from "../features/stores/components/SellerGrid";
+import FilterSidebar from "../features/products/components/FilterSidebar";
+import { useProductFilters } from "../features/products/hooks/useProductFilters";
+import { getProductIdFromCartItem } from "../features/products/utils/productUtils";
 
 const { Title, Text } = Typography;
-const { Option } = Select;
 
 export default function SearchResultsPage() {
-  const location = useLocation(); // 👈 Khai báo trước
+  const location = useLocation();
 
   const urlParams = new URLSearchParams(location.search);
   const query = urlParams.get("query") || "";
   const initialCategory = urlParams.get("category") || "";
+  const initialSubcategory = urlParams.get("subcategory") || "";
   const { addToCart, cartItems, updateQuantity } = useCart();
 
   const [categories, setCategories] = useState([]);
@@ -39,33 +38,38 @@ export default function SearchResultsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Filters
-  const [search, setSearch] = useState(query);
-  const [selectedCategory, setSelectedCategory] = useState(initialCategory);
-  const [selectedSubcategory, setSelectedSubcategory] = useState("");
-  const [selectedBrand, setSelectedBrand] = useState("");
-  const [selectedLocation, setSelectedLocation] = useState("");
-  const [priceRange, setPriceRange] = useState([0, 1000000]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const PAGE_SIZE = 16;
+  const {
+    search,
+    setSearch,
+    selectedCategory,
+    setSelectedCategory,
+    selectedSubcategory,
+    setSelectedSubcategory,
+    selectedBrand,
+    setSelectedBrand,
+    selectedLocation,
+    setSelectedLocation,
+    priceRange,
+    setPriceRange,
+    currentPage,
+    setCurrentPage,
+    uniqueBrands,
+    uniqueLocations,
+    subcategoriesForSelected,
+    filteredProducts,
+    paginatedProducts,
+    resetFilters,
+    pageSize: PAGE_SIZE,
+  } = useProductFilters(products, categories, {
+    enableAccentRemoval: true,
+    pageSize: 16,
+  });
 
-  const getProductIdFromCartItem = (item) => {
-    // Ưu tiên product_data.id (nếu có)
-    if (item.product_data?.id != null) return item.product_data.id;
-    // Nếu product là object
-    if (item.product?.id != null) return item.product.id;
-    // Nếu product là số nguyên hoặc chuỗi
-    if (item.product != null) return item.product;
-    return null;
-  };
-
-  // Load categories + products + search
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
 
-        // Lấy categories và toàn bộ sản phẩm giống UserProductPage
         const categoriesData = await productApi.getCategoriesWithProducts();
         setCategories(categoriesData);
 
@@ -73,16 +77,15 @@ export default function SearchResultsPage() {
           (cat) => cat.subcategories?.flatMap((sub) => sub.products) || []
         );
 
-        // Lọc sản phẩm theo từ khoá query (nếu có)
-        const filteredByQuery = query
-          ? allProducts.filter((p) =>
-              p.name.toLowerCase().includes(query.toLowerCase())
-            )
-          : allProducts;
+        setProducts(allProducts);
+        setSearch(query);
+        setSelectedCategory(initialCategory);
+        
+        if (initialSubcategory) {
+          const decodedSubcategory = decodeURIComponent(initialSubcategory);
+          setSelectedSubcategory(decodedSubcategory);
+        }
 
-        setProducts(filteredByQuery);
-
-        // Lấy danh sách cửa hàng liên quan đến query
         if (query) {
           const res = await axiosInstance.get("/products/search/", {
             params: { q: query },
@@ -99,62 +102,7 @@ export default function SearchResultsPage() {
     };
 
     fetchData();
-  }, [query]);
-
-  // Subcategories khi chọn danh mục
-  const subcategoriesForSelected = useMemo(() => {
-    if (!selectedCategory) return [];
-    const cat = categories.find((c) => c.name === selectedCategory);
-    return cat?.subcategories || [];
-  }, [categories, selectedCategory]);
-
-  // Lấy brand duy nhất
-  const uniqueBrands = useMemo(() => {
-    const set = new Set();
-    products
-      .filter((p) => !selectedCategory || p.category_name === selectedCategory)
-      .forEach((p) => p.brand && set.add(p.brand.trim()));
-    return Array.from(set);
-  }, [products, selectedCategory]);
-
-  // Lấy location duy nhất
-  const uniqueLocations = useMemo(() => {
-    const set = new Set();
-    products
-      .filter((p) => !selectedCategory || p.category_name === selectedCategory)
-      .forEach((p) => p.location && set.add(p.location.trim()));
-    return Array.from(set);
-  }, [products, selectedCategory]);
-
-  // Filter sản phẩm giống UserProductPage
-  const filteredProducts = products.filter((p) => {
-    return (
-      (!selectedCategory || p.category_name === selectedCategory) &&
-      (!selectedSubcategory || p.subcategory_name === selectedSubcategory) &&
-      (!selectedBrand || p.brand === selectedBrand) &&
-      (!selectedLocation || p.location === selectedLocation) &&
-      p.price >= priceRange[0] &&
-      p.price <= priceRange[1] &&
-      p.name.toLowerCase().includes(search.toLowerCase())
-    );
-  });
-
-  // Pagination
-  const paginatedProducts = useMemo(() => {
-    const start = (currentPage - 1) * PAGE_SIZE;
-    return filteredProducts.slice(start, start + PAGE_SIZE);
-  }, [filteredProducts, currentPage]);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [
-    search,
-    selectedCategory,
-    selectedSubcategory,
-    selectedBrand,
-    selectedLocation,
-    priceRange,
-  ]);
+  }, [query, initialCategory, initialSubcategory, setSearch, setSelectedCategory, setSelectedSubcategory]);
 
   const handleAddToCart = async (e, product) => {
     e.stopPropagation();
@@ -201,86 +149,26 @@ export default function SearchResultsPage() {
   return (
     <Layout>
       <Row gutter={[16, 16]}>
-        {/* Sidebar */}
         <Col xs={24} md={6}>
-          <Space direction="vertical" style={{ width: "100%" }} size="middle">
-            <Title level={5}>Bộ lọc</Title>
-            <Select
-              placeholder="Danh mục"
-              value={selectedCategory || undefined}
-              onChange={(value) => {
-                setSelectedCategory(value);
-                setSelectedSubcategory("");
-              }}
-              style={{ width: "100%" }}
-              allowClear
-            >
-              {categories.map((cat) => (
-                <Option key={cat.id} value={cat.name}>
-                  {cat.name}
-                </Option>
-              ))}
-            </Select>
-            {selectedCategory && (
-              <Select
-                placeholder="Danh mục con"
-                value={selectedSubcategory || undefined}
-                onChange={(value) => setSelectedSubcategory(value)}
-                style={{ width: "100%" }}
-                allowClear
-              >
-                {subcategoriesForSelected.map((sub) => (
-                  <Option key={sub.id} value={sub.name}>
-                    {sub.name}
-                  </Option>
-                ))}
-              </Select>
-            )}
-            <Select
-              placeholder="Thương hiệu"
-              value={selectedBrand || undefined}
-              onChange={(value) => setSelectedBrand(value)}
-              style={{ width: "100%" }}
-              allowClear
-            >
-              {uniqueBrands.map((b) => (
-                <Option key={b} value={b}>
-                  {b}
-                </Option>
-              ))}
-            </Select>
-            <Select
-              placeholder="Vị trí"
-              value={selectedLocation || undefined}
-              onChange={(value) => setSelectedLocation(value)}
-              style={{ width: "100%" }}
-              allowClear
-            >
-              {uniqueLocations.map((l) => (
-                <Option key={l} value={l}>
-                  {l}
-                </Option>
-              ))}
-            </Select>
-            <Space>
-              <Input
-                type="number"
-                placeholder="Min"
-                value={priceRange[0]}
-                onChange={(e) =>
-                  setPriceRange([Number(e.target.value), priceRange[1]])
-                }
-              />
-              <Input
-                type="number"
-                placeholder="Max"
-                value={priceRange[1]}
-                onChange={(e) =>
-                  setPriceRange([priceRange[0], Number(e.target.value)])
-                }
-              />
-            </Space>
-          </Space>
+          <FilterSidebar
+            categories={categories}
+            selectedCategory={selectedCategory}
+            onCategoryChange={setSelectedCategory}
+            selectedSubcategory={selectedSubcategory}
+            onSubcategoryChange={setSelectedSubcategory}
+            subcategoriesForSelected={subcategoriesForSelected}
+            uniqueBrands={uniqueBrands}
+            selectedBrand={selectedBrand}
+            onBrandChange={setSelectedBrand}
+            uniqueLocations={uniqueLocations}
+            selectedLocation={selectedLocation}
+            onLocationChange={setSelectedLocation}
+            priceRange={priceRange}
+            onPriceChange={setPriceRange}
+            onReset={resetFilters}
+            search={search}
+            onSearchChange={setSearch}
+          />
         </Col>
 
         {/* Main Content */}

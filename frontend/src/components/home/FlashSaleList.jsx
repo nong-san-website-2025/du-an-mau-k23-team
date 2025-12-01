@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState } from "react";
 import { Carousel } from "antd";
+import { ThunderboltOutlined } from "@ant-design/icons";
 import FlashSaleItem from "./FlashSaleItem";
 import CountdownTimer from "./CountdownTimer";
 import api from "../../features/login_register/services/api";
@@ -38,7 +39,7 @@ export default function FlashSaleList() {
         {/* Header */}
         <div className="flash-sale-header">
           <div className="left">
-            <img src="/assets/icons/flash.svg" alt="flash" className="flash-icon" />
+            <ThunderboltOutlined className="flash-icon" style={{ color: '#ff4d4f', fontSize: '24px' }} />
             <h2>FLASH SALE HÔM NAY</h2>
           </div>
           <div className="right d-flex align-items-center gap-3">

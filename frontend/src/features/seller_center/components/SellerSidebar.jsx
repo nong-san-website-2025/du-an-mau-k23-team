@@ -9,10 +9,9 @@ import {
   StarOutlined,
   DollarOutlined,
   BarChartOutlined,
-  SettingOutlined,
   WarningOutlined,
   WechatOutlined,
-  WalletOutlined, // 👉 Icon cho Ví tiền
+  WalletOutlined, // 
 } from "@ant-design/icons";
 import { useNavigate, useLocation } from "react-router-dom";
 
@@ -87,11 +86,6 @@ export default function SellerSidebar({ onItemClick }) {
       key: "/seller-center/store/info",
       icon: <ShopOutlined />,
       label: "Cửa hàng",
-    },
-    {
-      key: "/seller-center/settings",
-      icon: <SettingOutlined />,
-      label: "Cài đặt",
     },
   ];
 

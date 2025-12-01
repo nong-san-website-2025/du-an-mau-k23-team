@@ -242,7 +242,7 @@ const SmallProductCard = ({ product, badgeText, badgeColor }) => {
             </div>
           </div>
         }
-        bodyStyle={{ padding: "12px 16px" }}
+        styles={{ body: { padding: "12px 16px" } }}
       >
         {/* Tên sản phẩm */}
         <div

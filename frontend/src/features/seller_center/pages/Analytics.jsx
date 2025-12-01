@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { Card, Tabs, Select, DatePicker, Row, Col, Statistic, Table, Progress, Tag, Typography, Button, Space } from "antd";
-import { 
-  ArrowUpOutlined, 
+import { Card, Tabs, Row, Col, Statistic, Table, Progress, Tag, Typography, Button, Space } from "antd";
+import {
+  ArrowUpOutlined,
   ArrowDownOutlined,
   DollarOutlined,
   ContainerOutlined,
@@ -30,9 +30,8 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import axios from "axios";
+import AnalyticsBaseLayout from "../components/AnalyticsSeller/AnalyticsBaseLayout";
 
-const { Option } = Select;
-const { RangePicker } = DatePicker;
 const { Title, Text } = Typography;
 
 // --- Bảng màu chủ đề "Chợ Nông Sản" ---
@@ -222,29 +221,26 @@ export default function Analytics() {
 
     return (
       <div>
-        {/* ĐÃ SỬA LỖI: Xóa xl, thêm flex={1} để các cột có chiều rộng bằng nhau */}
-        <Row gutter={[24, 24]} style={{ marginBottom: 24 }} align="stretch">
-          <Col xs={24} sm={12} lg={8} flex={1}>{renderThemedKPICard("Doanh thu", formatCurrency(kpis.revenue.value), kpis.revenue.growth, <DollarOutlined />, THEME_COLORS.primary)}</Col>
-          <Col xs={24} sm={12} lg={8} flex={1}>{renderThemedKPICard("Đơn hàng", kpis.orders.value, kpis.orders.growth, <ContainerOutlined />, THEME_COLORS.accent)}</Col>
-          <Col xs={24} sm={12} lg={8} flex={1}>{renderThemedKPICard("Lượt truy cập", kpis.visits.value, kpis.visits.growth, <EyeOutlined />, THEME_COLORS.secondary)}</Col>
-          <Col xs={24} sm={12} lg={8} flex={1}>{renderThemedKPICard("Tỷ lệ chuyển đổi", `${kpis.conversion_rate.value}%`, kpis.conversion_rate.growth, <PercentageOutlined />, THEME_COLORS.danger)}</Col>
-          <Col xs={24} sm={12} lg={8} flex={1}>{renderThemedKPICard("Giá trị đơn TB", formatCurrency(kpis.aov.value), kpis.aov.growth, <GiftOutlined />, THEME_COLORS.primary)}</Col>
+        {/* KPI Cards - Responsive layout */}
+        <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+          <Col xs={24} sm={12} md={8} lg={6} xl={4}>
+            {renderThemedKPICard("Doanh thu", formatCurrency(kpis.revenue.value), kpis.revenue.growth, <DollarOutlined />, THEME_COLORS.primary)}
+          </Col>
+          <Col xs={24} sm={12} md={8} lg={6} xl={4}>
+            {renderThemedKPICard("Đơn hàng", kpis.orders.value, kpis.orders.growth, <ContainerOutlined />, THEME_COLORS.accent)}
+          </Col>
+          <Col xs={24} sm={12} md={8} lg={6} xl={4}>
+            {renderThemedKPICard("Lượt truy cập", kpis.visits.value, kpis.visits.growth, <EyeOutlined />, THEME_COLORS.secondary)}
+          </Col>
+          <Col xs={24} sm={12} md={8} lg={6} xl={4}>
+            {renderThemedKPICard("Tỷ lệ chuyển đổi", `${kpis.conversion_rate.value}%`, kpis.conversion_rate.growth, <PercentageOutlined />, THEME_COLORS.danger)}
+          </Col>
+          <Col xs={24} sm={12} md={8} lg={6} xl={4}>
+            {renderThemedKPICard("Giá trị đơn TB", formatCurrency(kpis.aov.value), kpis.aov.growth, <GiftOutlined />, THEME_COLORS.primary)}
+          </Col>
         </Row>
 
         <Space direction="vertical" size={24} style={{ width: "100%" }}>
-          <Space direction="horizontal" size={16} align="center">
-            <Button type="primary" onClick={() => fetchData()} loading={loading}>
-              Làm mới số liệu
-            </Button>
-            <Button onClick={() => setAutoRefreshEnabled(!autoRefreshEnabled)}>
-              {autoRefreshEnabled ? "Tắt tự động làm mới" : "Bật tự động làm mới"}
-            </Button>
-            {lastUpdated && (
-              <Text type="secondary" style={{ fontSize: 12 }}>
-                Cập nhật gần nhất: {lastUpdated.toLocaleString("vi-VN")}
-              </Text>
-            )}
-          </Space>
           <Card title={<Title level={5}>Xu Hướng Tăng Trưởng</Title>} style={{ borderRadius: '12px' }}>
             <ResponsiveContainer width="100%" height={300}>
               <AreaChart data={trend_chart} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
@@ -350,19 +346,6 @@ export default function Analytics() {
 
     return (
       <div>
-        <Space direction="horizontal" size={16} align="center" style={{ marginBottom: 16 }}>
-          <Button type="primary" onClick={() => fetchData()} loading={loading}>
-            Làm mới số liệu
-          </Button>
-          <Button onClick={() => setAutoRefreshEnabled(!autoRefreshEnabled)}>
-            {autoRefreshEnabled ? "Tắt tự động làm mới" : "Bật tự động làm mới"}
-          </Button>
-          {lastUpdated && (
-            <Text type="secondary" style={{ fontSize: 12 }}>
-              Cập nhật gần nhất: {lastUpdated.toLocaleString("vi-VN")}
-            </Text>
-          )}
-        </Space>
         <Card title={<Title level={5}>{period === "today" ? "Doanh thu theo giờ vàng" : "Doanh thu theo ngày"}</Title>} style={{ marginBottom: 24, borderRadius: '12px' }}>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={revenue_by_time}>
@@ -521,7 +504,7 @@ export default function Analytics() {
     const trafficPieData = (traffic_sources || []).map(item => ({ name: item.source, value: item.visits }));
     const customerPieData = [
       { name: "Khách mới", value: customer_analysis?.new_customers || 0 },
-      { name: "Khách quay lại", value: customer_analysis  ?.returning_customers || 0 }
+      { name: "Khách quay lại", value: customer_analysis?.returning_customers || 0 }
     ];
 
     return (
@@ -581,55 +564,44 @@ export default function Analytics() {
   
   // --- Component chính ---
   return (
-    <div style={{ padding: '24px', backgroundColor: THEME_COLORS.background }}>
-      <Row justify="space-between" align="middle" style={{ marginBottom: 24 }}>
-        <Col>
-          <Title level={3} style={{ color: THEME_COLORS.text, margin: 0 }}>
-            Phân Tích Gian Hàng Nông Sản
-          </Title>
-          <Text type="secondary">Dữ liệu được cập nhật theo thời gian thực để giúp bạn ra quyết định.</Text>
-        </Col>
-        <Col>
-          <div style={{ display: "flex", gap: 16 }}>
-            <Select value={period} onChange={setPeriod} style={{ width: 150 }}>
-              <Option value="today">Hôm nay</Option>
-              <Option value="7days">7 ngày qua</Option>
-              <Option value="30days">30 ngày qua</Option>
-              <Option value="custom">Tùy chỉnh</Option>
-            </Select>
-            {period === "custom" && (
-              <RangePicker value={dateRange} onChange={setDateRange} format="YYYY-MM-DD" />
-            )}
-          </div>
-        </Col>
-      </Row>
-
+    <AnalyticsBaseLayout
+      title="THỐNG KÊ"
+      period={period}
+      setPeriod={setPeriod}
+      dateRange={dateRange}
+      setDateRange={setDateRange}
+      onRefresh={() => fetchData()}
+      loading={loading}
+      lastUpdated={lastUpdated}
+      autoRefreshEnabled={autoRefreshEnabled}
+      setAutoRefreshEnabled={setAutoRefreshEnabled}
+    >
       <Tabs activeKey={activeTab} onChange={setActiveTab} type="card" size="large">
-        <Tabs.TabPane 
-          tab={<span><DashboardOutlined /> Tổng quan</span>} 
+        <Tabs.TabPane
+          tab={<span><DashboardOutlined /> Tổng quan</span>}
           key="overview"
         >
           {renderOverview()}
         </Tabs.TabPane>
-        <Tabs.TabPane 
-          tab={<span><RiseOutlined /> Bán hàng</span>} 
+        <Tabs.TabPane
+          tab={<span><RiseOutlined /> Bán hàng</span>}
           key="sales"
         >
           {renderSales()}
         </Tabs.TabPane>
-        <Tabs.TabPane 
-          tab={<span><AppstoreOutlined /> Sản phẩm</span>} 
+        <Tabs.TabPane
+          tab={<span><AppstoreOutlined /> Sản phẩm</span>}
           key="products"
         >
           {renderProducts()}
         </Tabs.TabPane>
-        <Tabs.TabPane 
-          tab={<span><TeamOutlined /> Khách hàng</span>} 
+        <Tabs.TabPane
+          tab={<span><TeamOutlined /> Khách hàng</span>}
           key="traffic"
         >
           {renderTraffic()}
         </Tabs.TabPane>
       </Tabs>
-    </div>
+    </AnalyticsBaseLayout>
   );
 }

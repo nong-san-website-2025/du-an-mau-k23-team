@@ -78,9 +78,24 @@ const ProductCard = ({ product }) => {
                 marginTop: 8,
               }}
             >
-              <Text type="danger" strong>
-                {formatVND(product.discounted_price ?? product.price)} đ
-              </Text>
+              <div>
+                <Text type="danger" style={{ fontSize: 16 }}>
+                  {formatVND(product.discounted_price ?? product.price)} đ
+                </Text>
+                {product.price && product.discounted_price && product.price > product.discounted_price && (
+                  <div
+                    style={{
+                      marginTop: 2,
+                      color: "rgba(0, 0, 0, 0.45)",
+                      opacity: 0.7,
+                    }}
+                  >
+                    <span style={{ textDecoration: "line-through" }}>
+                      {formatVND(product.price, 10)}
+                    </span>
+                  </div>
+                )}
+              </div>
 
               <Button
                 size="small"

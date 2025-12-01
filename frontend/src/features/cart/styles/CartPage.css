@@ -45,7 +45,7 @@
 
 .grid-header {
   display: grid;
-  grid-template-columns: 48px 1fr 120px 140px 120px;
+  grid-template-columns: 48px 1fr 120px 180px 120px;
   gap: 12px;
   align-items: center;
   padding: 8px 4px;
@@ -55,7 +55,7 @@
 
 .grid-row {
   display: grid;
-  grid-template-columns: 48px 1fr 120px 140px 120px;
+  grid-template-columns: 48px 1fr 120px 180px 120px;
   gap: 12px;
   align-items: center;
   padding: 12px 4px;
@@ -157,7 +157,7 @@
 @media (max-width: 991px) {
   .grid-header,
   .grid-row {
-    grid-template-columns: 48px 1fr 120px 96px 100px;
+    grid-template-columns: 48px 1fr 100px 140px 80px;
   }
 
   .container {
@@ -194,3 +194,7 @@
 .summary-row { display:flex; justify-content:space-between; padding:6px 0; }
 
 /* end of CartPage.css */
+
+.normal-font {
+  font-weight: lighter !important;
+}

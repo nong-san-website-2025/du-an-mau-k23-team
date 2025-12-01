@@ -30,6 +30,7 @@ import PaymentButton from "../components/PaymnentButton";
 import AddressSelector from "../components/AddressSelector"; // Cần update AddressSelector để nhận thêm props
 import VoucherSection from "../components/VoucherSection";
 import ProductList from "../components/ProductList";
+import { formatVND } from "../../stores/components/StoreDetail/utils/utils";
 import "../styles/CheckoutPage.css"; // Đảm bảo có CSS cho sticky và layout
 
 const { Title, Text } = Typography;
@@ -273,7 +274,7 @@ const CheckoutPage = () => {
               disabled={!isReadyToOrder}
               style={{backgroundColor: "#4caf50"}}
             >
-              Xác nhận Đặt hàng (COD)
+              Xác nhận Đặt hàng
             </Button>
           )}
 

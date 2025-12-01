@@ -52,6 +52,11 @@ export const AuthProvider = ({ children }) => {
         token: data.access,
       });
 
+      // Store username in localStorage for seller status checking
+      if (meRes.data?.username) {
+        localStorage.setItem("username", meRes.data.username);
+      }
+
       // 👇 GỬI SỰ KIỆN ĐĂNG NHẬP THÀNH CÔNG
       window.dispatchEvent(new CustomEvent("user-logged-in"));
 

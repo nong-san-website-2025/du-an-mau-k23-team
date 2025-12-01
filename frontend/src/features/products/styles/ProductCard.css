@@ -1,6 +1,6 @@
 .product-card.ant-card {
   border: 1px solid #dfdfdf !important;
-  overflow: hidden !important; /* ← NGĂN phần cover tràn ra ngoài border */
+  overflow: hidden !important;
 }
 
 .product-card.ant-card:hover {
@@ -8,5 +8,22 @@
 }
 
 .product-card .ant-card-body {
-  padding: 8px 10px; /* ← Giảm padding trong card */
+  padding: 8px 10px;
+}
+
+.product-price-discount {
+  color: #4caf50;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.product-price-original {
+  color: rgba(0, 0, 0, 0.45);
+  opacity: 0.8;
+  line-height: 1;
+  margin-top: 1px;
+}
+
+.product-price-original span {
+  text-decoration: line-through;
 }

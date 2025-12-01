@@ -16,8 +16,10 @@ import {
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { formatVND } from "../../stores/components/StoreDetail/utils/utils";
+
 import "../styles/ProductDetailPage.css";
+import { intcomma } from "../../../utils/format";
+import { formatVND } from "../../stores/components/StoreDetail/utils/utils";
 
 const { Title, Text } = Typography;
 
@@ -132,28 +134,44 @@ const ProductInfo = ({
 
       {/* 💰 Giá sản phẩm */}
       <div style={{ marginBottom: 16 }}>
-        <Title level={3} style={{ color: "#52c41a", margin: 0 }}>
-          {product.discount > 0
-            ? `${Math.round(
-                product.price * (1 - product.discount / 100)
-              ).toLocaleString("vi-VN")} VNĐ`
-            : `${Math.round(product.price)?.toLocaleString("vi-VN")} VNĐ`}
-        </Title>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "baseline",
+            gap: 12,
+            marginBottom: 8,
+          }}
+        >
+          <div style={{ fontSize: 30, fontWeight: 600, color: "#52c41a" }}>
+            {formatVND(product.discounted_price ?? product.price, 24)}
+          </div>
 
-        {product.discount > 0 && (
-          <>
-            <Text delete type="secondary" style={{ marginLeft: 8 }}>
-              {Math.round(product.price)?.toLocaleString("vi-VN")} VNĐ
-            </Text>
-            <Tag color="red" style={{ marginLeft: 8 }}>
+          {product.discount > 0 && (
+            <Tag color="red">
               -{product.discount_percent || product.discount}%
             </Tag>
-          </>
-        )}
+          )}
 
-        <Text type="secondary" style={{ marginLeft: 8 }}>
-          / {product.unit}
-        </Text>
+          {product.original_price &&
+            product.original_price >
+              (product.discounted_price ?? product.price) && (
+              <div style={{ marginBottom: 8 }}>
+                <span
+                  style={{
+                    display: "inline-block",
+                    fontSize: 14,
+                    color: "rgba(0, 0, 0, 0.45)",
+                    textDecoration: "line-through",
+                    opacity: 0.7,
+                  }}
+                >
+                  {formatVND(product.original_price, 14)}
+                </span>
+              </div>
+            )}
+        </div>
+
+        <Text type="secondary">/ {product.unit}</Text>
       </div>
 
       {/* 🔹 Số lượng */}

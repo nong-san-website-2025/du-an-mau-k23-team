@@ -20,7 +20,9 @@ const ReviewsSection = ({
     <Card title="Đánh giá & Bình luận" style={{ marginTop: 24 }}>
       {user ? (
         myReview ? (
-          <Card style={{ backgroundColor: "#f6ffed", border: "1px solid #b7eb8f" }}>
+          <Card
+            style={{ backgroundColor: "#f6ffed", border: "1px solid #b7eb8f" }}
+          >
             <Text type="success">✅ Bạn đã đánh giá sản phẩm này</Text>
             <div style={{ marginTop: 8 }}>
               <Rate disabled value={myReview.rating} />
@@ -43,9 +45,11 @@ const ReviewsSection = ({
                 value={newComment}
                 onChange={(e) => onNewCommentChange(e.target.value)}
               />
-              <Button type="primary" onClick={onSubmitReview}>
-                Gửi đánh giá
-              </Button>
+              <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                <Button type="primary" onClick={onSubmitReview}>
+                  Gửi đánh giá
+                </Button>
+              </div>
             </Space>
           </div>
         )
@@ -55,14 +59,19 @@ const ReviewsSection = ({
 
       <List
         dataSource={reviews}
+        locale={{ emptyText: "Chưa có đánh giá nào" }} // <-- Thay text mặc định
         renderItem={(r) => (
-          <List.Item style={{ padding: "12px 0", borderBottom: "1px solid #f0f0f0" }}>
+          <List.Item
+            style={{ padding: "12px 0", borderBottom: "1px solid #f0f0f0" }}
+          >
             <div>
               <Text strong>{r.user_name}</Text>
               <Rate disabled value={r.rating} style={{ marginLeft: 8 }} />
             </div>
             <p>{r.comment}</p>
-            <Text type="secondary">{new Date(r.created_at).toLocaleString()}</Text>
+            <Text type="secondary">
+              {new Date(r.created_at).toLocaleString()}
+            </Text>
 
             {/* Render seller / admin replies if present */}
             {Array.isArray(r.replies) && r.replies.length > 0 && (
@@ -81,12 +90,25 @@ const ReviewsSection = ({
                   >
                     <div style={{ fontWeight: 700, marginBottom: 6 }}>
                       Cửa hàng
-                      <span style={{ fontWeight: 400, marginLeft: 8, color: "#4b5563", fontSize: 12 }}>
-                        {rp.created_at ? new Date(rp.created_at).toLocaleString() : ""}
+                      <span
+                        style={{
+                          fontWeight: 400,
+                          marginLeft: 8,
+                          color: "#4b5563",
+                          fontSize: 12,
+                        }}
+                      >
+                        {rp.created_at
+                          ? new Date(rp.created_at).toLocaleString()
+                          : ""}
                       </span>
                     </div>
                     <Text
-                      ellipsis={{ rows: 3, expandable: true, symbol: 'Xem thêm' }}
+                      ellipsis={{
+                        rows: 3,
+                        expandable: true,
+                        symbol: "Xem thêm",
+                      }}
                       style={{ whiteSpace: "pre-wrap" }}
                     >
                       {rp.reply_text || rp.comment || rp.detail || ""}

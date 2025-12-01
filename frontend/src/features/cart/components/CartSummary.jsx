@@ -1,5 +1,6 @@
 import React from 'react';
 import { useCart } from '../CartContext';
+import { formatVND } from '../../stores/components/StoreDetail/utils/utils';
 
 const CartSummary = () => {
   const { cartItems, loading } = useCart();
@@ -9,7 +10,7 @@ const CartSummary = () => {
   return (
     <div className="cart-summary">
       <h3>Tổng số lượng: {totalQuantity}</h3>
-      <h2>Tổng tiền: {total.toLocaleString()}₫</h2>
+      <h2>Tổng tiền: {formatVND(total)}</h2>
       <button disabled={loading || cartItems.length === 0} onClick={() => alert('Chuyển đến trang thanh toán')}>Thanh toán</button>
     </div>
   );

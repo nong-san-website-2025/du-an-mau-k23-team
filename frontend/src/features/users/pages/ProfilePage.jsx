@@ -130,8 +130,6 @@ function ProfilePage() {
               <>
                 <ProfileInfo
                   form={{ ...form, followingCount, followersCount }}
-                  editMode={editMode}
-                  setEditMode={setEditMode}
                   handleChange={handleChange}
                   handleSave={handleSave}
                   saving={saving}

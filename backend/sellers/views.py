@@ -92,13 +92,7 @@ class SellerApproveAPIView(APIView):
         seller.save()
 
         # 🔥 Đổi role user sang "seller"
-        try:
-            seller_role = Role.objects.get(name="seller")
-        except Role.DoesNotExist:
-            return Response(
-                {"detail": "Role 'seller' chưa tồn tại."},
-                status=drf_status.HTTP_400_BAD_REQUEST,
-            )
+        seller_role, created = Role.objects.get_or_create(name="seller")
 
         user = seller.user
         user.role = seller_role
@@ -297,12 +291,9 @@ class SellerActivateAPIView(APIView):
 
         # 🔥 Đổi role user sang seller (nếu chưa đổi ở bước approve)
         from users.models import Role
-        try:
-            seller_role = Role.objects.get(name="seller")
-            request.user.role = seller_role
-            request.user.save(update_fields=["role"])
-        except Role.DoesNotExist:
-            return Response({"detail": "Role 'seller' chưa tồn tại"}, status=400)
+        seller_role, created = Role.objects.get_or_create(name="seller")
+        request.user.role = seller_role
+        request.user.save(update_fields=["role"])
 
         return Response({"detail": "Cửa hàng đã được mở và hoạt động", "role": "seller"}, status=200)
 

@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Search, Heart, ShoppingCart, User, Bell } from "lucide-react";
 import "../../styles/layouts/header/UserActions.css";
 import { Avatar, Button, Dropdown, Menu } from "antd";
-import sseManager from "../../services/sseService";
+import sseManager from "../../utils/sseService";
 
 export default function UserActions({
   greenText,
@@ -998,10 +998,10 @@ export default function UserActions({
                 onMouseLeave={() => setHoveredDropdown(null)}
               >
                 <Link
-                  to={storeName ? "/seller-center" : "/register-seller"}
+                  to={(sellerStatus === "approved" || sellerStatus === "active") ? "/seller-center" : "/register-seller"}
                   style={{ color: "#fff", textDecoration: "none" }}
                 >
-                  {storeName
+                  {(sellerStatus === "approved" || sellerStatus === "active")
                     ? "Cửa hàng của tôi"
                     : sellerStatus === "pending"
                       ? "Đang chờ duyệt"

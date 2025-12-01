@@ -26,7 +26,7 @@ from .points import UserPointsView
 from .wallet import WalletBalanceView
 from .notifications import (
     NotificationViewSet,
-    NotificationSSEView,
+    notification_sse_view,
     TriggerNotificationView,
     send_notification_to_user,
 )

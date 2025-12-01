@@ -15,18 +15,25 @@ import {
   Tag,
   Tooltip,
   Typography,
+  Spin,
+  Alert,
 } from "antd";
 import {
   DownloadOutlined,
   InfoCircleOutlined,
   ReloadOutlined,
   SearchOutlined,
+  DollarOutlined,
+  WalletOutlined,
+  SwapOutlined,
+  LineChartOutlined,
+  CalendarOutlined,
+  BankOutlined,
 } from "@ant-design/icons";
 import { Line } from "@ant-design/plots";
 import dayjs from "dayjs";
 import isBetween from "dayjs/plugin/isBetween";
 
-// Bổ sung plugin hỗ trợ so sánh ngày tháng
 const isSameOrBefore = (dateA, dateB, unit = "day") => !dayjs(dateA).isAfter(dateB, unit);
 const isSameOrAfter = (dateA, dateB, unit = "day") => !dayjs(dateA).isBefore(dateB, unit);
 
@@ -830,330 +837,503 @@ const Finance = () => {
   }
 
   return (
-    <div style={{ background: "#fafbfc", minHeight: "100vh", padding: 32 }}>
-      <Space direction="vertical" size={32} style={{ width: "100%" }}>
-        <Row justify="space-between" align="middle">
-          <Col>
-            <Title level={2} style={{ margin: 0 }}>
-              Doanh thu (Revenue)
-            </Title>
-            <Text type="secondary">
-              Trung tâm quản trị dòng tiền và lợi nhuận cho cửa hàng của bạn
-            </Text>
-          </Col>
-          <Col>
-            <Space>
-              <Button icon={<ReloadOutlined />} onClick={loadFinanceData}>
-                Tải lại dữ liệu
-              </Button>
-              <Button icon={<DownloadOutlined />} type="primary" onClick={() =>
-                exportTransactionsToCsv(filteredTransactions, {
-                  dateRange: filters.dateRange?.map((date) => date?.format("YYYYMMDD")),
-                })
-              }>
-                Xuất sao kê
-              </Button>
-            </Space>
-          </Col>
-        </Row>
+    <Spin spinning={loading}>
+      <div style={{ background: "#f5f7fa", minHeight: "100vh", padding: "24px" }}>
+        <Space direction="vertical" size={24} style={{ width: "100%" }}>
+          
+          {/* Header Section */}
+          <div style={{
+            background: "linear-gradient(135deg, #1890ff 0%, #0050b3 100%)",
+            borderRadius: "12px",
+            padding: "32px",
+            color: "white",
+            boxShadow: "0 4px 16px rgba(24, 144, 255, 0.15)"
+          }}>
+            <Row justify="space-between" align="middle">
+              <Col>
+                <Space direction="vertical" size={8}>
+                  <Space size={12} align="center">
+                    <DollarOutlined style={{ fontSize: 32 }} />
+                    <Title level={2} style={{ margin: 0, color: "white" }}>
+                      Quản lý tài chính
+                    </Title>
+                  </Space>
+                  <Text style={{ color: "rgba(255,255,255,0.8)", fontSize: 14 }}>
+                    Theo dõi doanh thu, chi phí và dòng tiền của cửa hàng
+                  </Text>
+                </Space>
+              </Col>
+              <Col>
+                <Space>
+                  <Button icon={<ReloadOutlined />} onClick={loadFinanceData} style={{ color: "white", borderColor: "rgba(255,255,255,0.3)" }}>
+                    Tải lại
+                  </Button>
+                  <Button 
+                    icon={<DownloadOutlined />} 
+                    type="primary"
+                    style={{ background: "white", color: "#1890ff", border: "none" }}
+                    onClick={() =>
+                      exportTransactionsToCsv(filteredTransactions, {
+                        dateRange: filters.dateRange?.map((date) => date?.format("YYYYMMDD")),
+                      })
+                    }
+                  >
+                    Xuất sao kê
+                  </Button>
+                </Space>
+              </Col>
+            </Row>
+          </div>
 
-        {/* Phần 1: Dashboard Overview */}
-        <Row gutter={24}>
-          <Col xs={24} md={6}>
-            <Card
-              style={{ borderRadius: 16, boxShadow: "0 2px 8px rgba(15, 23, 42, 0.06)" }}
-              bodyStyle={{ padding: 24 }}
-            >
-              <Space direction="vertical" size={16} style={{ width: "100%" }}>
-                <Text type="secondary">Số dư khả dụng</Text>
-                <Statistic
-                  value={summary.availableBalance}
-                  valueStyle={{ color: "#16a34a", fontSize: 36, fontWeight: 700 }}
-                  formatter={formatCurrency}
-                />
-                <Space direction="vertical" style={{ width: "100%" }}>
+          {/* Main Statistics Cards */}
+          <Row gutter={[16, 16]}>
+            {/* Available Balance */}
+            <Col xs={24} sm={12} lg={6}>
+              <Card
+                style={{
+                  borderRadius: "12px",
+                  border: "none",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+                  height: "100%",
+                  overflow: "hidden",
+                }}
+                bodyStyle={{ padding: "20px", position: "relative" }}
+              >
+                <div style={{
+                  position: "absolute",
+                  top: 0,
+                  right: 0,
+                  width: "80px",
+                  height: "80px",
+                  background: "linear-gradient(135deg, rgba(22, 163, 74, 0.1) 0%, rgba(22, 163, 74, 0) 100%)",
+                  borderRadius: "0 0 0 80px"
+                }} />
+                <Space direction="vertical" size={12} style={{ width: "100%", position: "relative", zIndex: 1 }}>
+                  <Space align="center">
+                    <div style={{
+                      width: "40px",
+                      height: "40px",
+                      background: "rgba(22, 163, 74, 0.1)",
+                      borderRadius: "8px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "#16a34a"
+                    }}>
+                      <WalletOutlined style={{ fontSize: 20 }} />
+                    </div>
+                    <Text type="secondary" style={{ fontSize: 13 }}>Số dư khả dụng</Text>
+                  </Space>
+                  <div>
+                    <Statistic
+                      value={summary.availableBalance}
+                      formatter={formatCurrency}
+                      valueStyle={{ color: "#16a34a", fontSize: 24, fontWeight: 700 }}
+                    />
+                  </div>
                   <Input
                     type="number"
                     min={10000}
                     step={10000}
                     value={withdrawAmount}
-                    placeholder="Nhập số tiền muốn rút"
+                    placeholder="Nhập số tiền rút"
                     onChange={(event) => setWithdrawAmount(toNumber(event.target.value))}
-                    style={{ borderRadius: 8, padding: 10 }}
+                    style={{ borderRadius: "8px" }}
+                    size="small"
                   />
                   <Button
                     type="primary"
-                    icon={<DownloadOutlined />}
+                    icon={<BankOutlined />}
                     loading={withdrawLoading}
                     block
-                    size="large"
-                    style={{ fontWeight: 600, borderRadius: 8, background: withdrawDisabled ? "#cbd5f5" : "#1677ff" }}
+                    size="small"
                     onClick={handleWithdraw}
                     disabled={withdrawDisabled}
+                    style={{ borderRadius: "8px", background: "#16a34a", borderColor: "#16a34a" }}
                   >
-                    Yêu cầu rút tiền
+                    Rút tiền
                   </Button>
                   {withdrawDisabled && (
-                    <Text type="danger" style={{ fontSize: 12 }}>
-                      Số tiền vượt quá số dư khả dụng
-                    </Text>
+                    <Alert
+                      message="Vượt quá số dư"
+                      type="error"
+                      showIcon
+                      style={{ marginTop: "8px" }}
+                    />
                   )}
                 </Space>
-              </Space>
-            </Card>
-          </Col>
+              </Card>
+            </Col>
 
-          <Col xs={24} md={6}>
-            <Card
-              style={{ borderRadius: 16, boxShadow: "0 2px 8px rgba(15, 23, 42, 0.06)" }}
-              bodyStyle={{ padding: 24 }}
-            >
-              <Space direction="vertical" size={16} style={{ width: "100%" }}>
-                <Space align="start">
-                  <Text type="secondary">Số dư đang chờ xử lý</Text>
-                  <Tooltip title="Doanh thu đã ghi nhận nhưng đang tạm giữ do chính sách đối soát hoặc thời gian khiếu nại">
-                    <InfoCircleOutlined style={{ color: "#a855f7" }} />
-                  </Tooltip>
-                </Space>
-                <Statistic
-                  value={summary.pendingBalance}
-                  valueStyle={{ color: "#f97316", fontSize: 30, fontWeight: 600 }}
-                  formatter={formatCurrency}
-                />
-                <Text type="secondary" style={{ fontSize: 12 }}>
-                  Sẽ được chuyển sang số dư khả dụng sau khi hoàn tất đối soát.
-                </Text>
-              </Space>
-            </Card>
-          </Col>
-
-          <Col xs={24} md={6}>
-            <Card
-              style={{ borderRadius: 16, boxShadow: "0 2px 8px rgba(15, 23, 42, 0.06)" }}
-              bodyStyle={{ padding: 24 }}
-            >
-              <Space direction="vertical" size={16} style={{ width: "100%" }}>
-                <Text type="secondary">Tổng doanh thu (tháng này)</Text>
-                <Statistic
-                  value={summary.monthlyRevenue}
-                  valueStyle={{ color: "#0ea5e9", fontSize: 30, fontWeight: 600 }}
-                  formatter={formatCurrency}
-                />
-                <Text type="secondary" style={{ fontSize: 12 }}>
-                  Theo dõi xu hướng doanh thu 30 ngày gần nhất
-                </Text>
-              </Space>
-            </Card>
-          </Col>
-
-          <Col xs={24} md={6}>
-            <Card
-              style={{ borderRadius: 16, boxShadow: "0 2px 8px rgba(15, 23, 42, 0.06)" }}
-              bodyStyle={{ padding: 24 }}
-            >
-              <Space direction="vertical" size={16} style={{ width: "100%" }}>
-                <Text type="secondary">Số tiền đã rút (tháng này)</Text>
-                <Statistic
-                  value={summary.monthlyWithdrawn}
-                  valueStyle={{ color: "#6366f1", fontSize: 30, fontWeight: 600 }}
-                  formatter={formatCurrency}
-                />
-                <Text type="secondary" style={{ fontSize: 12 }}>
-                  Theo dõi các lệnh rút tiền thành công trong tháng
-                </Text>
-              </Space>
-            </Card>
-          </Col>
-        </Row>
-
-        {/* Phần phân tích lợi nhuận gộp */}
-        <Row gutter={24}>
-          <Col xs={24} md={14}>
-            <Card
-              style={{ borderRadius: 16, boxShadow: "0 2px 8px rgba(15, 23, 42, 0.06)" }}
-              bodyStyle={{ padding: 24 }}
-              title="Tổng quan doanh thu & lợi nhuận"
-            >
-              <Line {...chartConfig} />
-            </Card>
-          </Col>
-          <Col xs={24} md={10}>
-            <Card
-              style={{ borderRadius: 16, boxShadow: "0 2px 8px rgba(15, 23, 42, 0.06)" }}
-              bodyStyle={{ padding: 24 }}
-              title="Phân tích dòng tiền"
-            >
-              <Space direction="vertical" size={16} style={{ width: "100%" }}>
-                <Space direction="vertical" size={8}>
-                  {cashFlowForecast.map((item) => (
-                    <Card
-                      key={item.key}
-                      size="small"
-                      style={{
-                        borderRadius: 12,
-                        background: "#f8fafc",
-                        border: "1px solid #e2e8f0",
-                      }}
-                      bodyStyle={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: 12 }}
-                    >
-                      <Text>{item.label}</Text>
-                      <Text style={{ fontWeight: 600, color: "#0f172a" }}>
-                        {formatCurrency(item.expected)}
-                      </Text>
-                    </Card>
-                  ))}
-                </Space>
-                <Space direction="vertical" size={8}>
+            {/* Pending Balance */}
+            <Col xs={24} sm={12} lg={6}>
+              <Card
+                style={{
+                  borderRadius: "12px",
+                  border: "none",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+                  height: "100%",
+                  overflow: "hidden",
+                }}
+                bodyStyle={{ padding: "20px", position: "relative" }}
+              >
+                <div style={{
+                  position: "absolute",
+                  top: 0,
+                  right: 0,
+                  width: "80px",
+                  height: "80px",
+                  background: "linear-gradient(135deg, rgba(249, 115, 22, 0.1) 0%, rgba(249, 115, 22, 0) 100%)",
+                  borderRadius: "0 0 0 80px"
+                }} />
+                <Space direction="vertical" size={12} style={{ width: "100%", position: "relative", zIndex: 1 }}>
+                  <Space align="center">
+                    <div style={{
+                      width: "40px",
+                      height: "40px",
+                      background: "rgba(249, 115, 22, 0.1)",
+                      borderRadius: "8px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "#f97316"
+                    }}>
+                      <SwapOutlined style={{ fontSize: 20 }} />
+                    </div>
+                    <Space size={4}>
+                      <Text type="secondary" style={{ fontSize: 13 }}>Số dư chờ xử lý</Text>
+                      <Tooltip title="Doanh thu đã ghi nhận nhưng đang tạm giữ">
+                        <InfoCircleOutlined style={{ color: "#f97316", fontSize: 12 }} />
+                      </Tooltip>
+                    </Space>
+                  </Space>
+                  <Statistic
+                    value={summary.pendingBalance}
+                    formatter={formatCurrency}
+                    valueStyle={{ color: "#f97316", fontSize: 24, fontWeight: 700 }}
+                  />
                   <Text type="secondary" style={{ fontSize: 12 }}>
-                    Dự báo dựa trên các giao dịch đang chờ hoàn tất.
+                    Chuyển sang khả dụng sau khi hoàn tất đối soát
                   </Text>
                 </Space>
+              </Card>
+            </Col>
+
+            {/* Monthly Revenue */}
+            <Col xs={24} sm={12} lg={6}>
+              <Card
+                style={{
+                  borderRadius: "12px",
+                  border: "none",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+                  height: "100%",
+                  overflow: "hidden",
+                }}
+                bodyStyle={{ padding: "20px", position: "relative" }}
+              >
+                <div style={{
+                  position: "absolute",
+                  top: 0,
+                  right: 0,
+                  width: "80px",
+                  height: "80px",
+                  background: "linear-gradient(135deg, rgba(14, 165, 233, 0.1) 0%, rgba(14, 165, 233, 0) 100%)",
+                  borderRadius: "0 0 0 80px"
+                }} />
+                <Space direction="vertical" size={12} style={{ width: "100%", position: "relative", zIndex: 1 }}>
+                  <Space align="center">
+                    <div style={{
+                      width: "40px",
+                      height: "40px",
+                      background: "rgba(14, 165, 233, 0.1)",
+                      borderRadius: "8px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "#0ea5e9"
+                    }}>
+                      <LineChartOutlined style={{ fontSize: 20 }} />
+                    </div>
+                    <Text type="secondary" style={{ fontSize: 13 }}>Doanh thu tháng này</Text>
+                  </Space>
+                  <Statistic
+                    value={summary.monthlyRevenue}
+                    formatter={formatCurrency}
+                    valueStyle={{ color: "#0ea5e9", fontSize: 24, fontWeight: 700 }}
+                  />
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    Tính từ đầu tháng đến nay
+                  </Text>
+                </Space>
+              </Card>
+            </Col>
+
+            {/* Monthly Withdrawn */}
+            <Col xs={24} sm={12} lg={6}>
+              <Card
+                style={{
+                  borderRadius: "12px",
+                  border: "none",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+                  height: "100%",
+                  overflow: "hidden",
+                }}
+                bodyStyle={{ padding: "20px", position: "relative" }}
+              >
+                <div style={{
+                  position: "absolute",
+                  top: 0,
+                  right: 0,
+                  width: "80px",
+                  height: "80px",
+                  background: "linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(99, 102, 241, 0) 100%)",
+                  borderRadius: "0 0 0 80px"
+                }} />
+                <Space direction="vertical" size={12} style={{ width: "100%", position: "relative", zIndex: 1 }}>
+                  <Space align="center">
+                    <div style={{
+                      width: "40px",
+                      height: "40px",
+                      background: "rgba(99, 102, 241, 0.1)",
+                      borderRadius: "8px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "#6366f1"
+                    }}>
+                      <BankOutlined style={{ fontSize: 20 }} />
+                    </div>
+                    <Text type="secondary" style={{ fontSize: 13 }}>Đã rút tháng này</Text>
+                  </Space>
+                  <Statistic
+                    value={summary.monthlyWithdrawn}
+                    formatter={formatCurrency}
+                    valueStyle={{ color: "#6366f1", fontSize: 24, fontWeight: 700 }}
+                  />
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    Các lệnh rút đã thành công
+                  </Text>
+                </Space>
+              </Card>
+            </Col>
+          </Row>
+
+          {/* Charts Section */}
+          <Row gutter={[16, 16]}>
+            <Col xs={24} lg={14}>
+              <Card
+                style={{
+                  borderRadius: "12px",
+                  border: "none",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+                }}
+                bodyStyle={{ padding: "20px" }}
+                title={
+                  <Space>
+                    <LineChartOutlined style={{ color: "#1890ff" }} />
+                    <span>Biểu đồ doanh thu & lợi nhuận</span>
+                  </Space>
+                }
+              >
+                {chartData.length > 0 ? (
+                  <Line {...chartConfig} />
+                ) : (
+                  <Alert message="Chưa có dữ liệu để hiển thị" type="info" />
+                )}
+              </Card>
+            </Col>
+
+            {/* Cash Flow Forecast */}
+            <Col xs={24} lg={10}>
+              <Card
+                style={{
+                  borderRadius: "12px",
+                  border: "none",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+                }}
+                bodyStyle={{ padding: "20px" }}
+                title={
+                  <Space>
+                    <CalendarOutlined style={{ color: "#1890ff" }} />
+                    <span>Dự báo dòng tiền</span>
+                  </Space>
+                }
+              >
+                <Space direction="vertical" size={12} style={{ width: "100%" }}>
+                  {cashFlowForecast.map((item) => (
+                    <div key={item.key} style={{
+                      padding: "12px",
+                      background: "#f5f7fa",
+                      borderRadius: "8px",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      border: "1px solid #e5e7eb"
+                    }}>
+                      <Text>{item.label}</Text>
+                      <Text strong style={{ color: "#1890ff", fontSize: 16 }}>
+                        {formatCurrency(item.expected)}
+                      </Text>
+                    </div>
+                  ))}
+                  <Alert
+                    message="Dự báo dựa trên giao dịch đang chờ hoàn tất"
+                    type="info"
+                    showIcon
+                    style={{ marginTop: "8px" }}
+                  />
+                </Space>
+              </Card>
+            </Col>
+          </Row>
+
+          {/* Fee Analysis */}
+          <Card
+            style={{
+              borderRadius: "12px",
+              border: "none",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+            }}
+            bodyStyle={{ padding: "20px" }}
+            title={
+              <Space>
+                <DollarOutlined style={{ color: "#1890ff" }} />
+                <span>Phân tích chi phí</span>
               </Space>
-            </Card>
-          </Col>
-        </Row>
-
-        {/* Phân tích chi phí */}
-        <Card
-          style={{ borderRadius: 16, boxShadow: "0 2px 8px rgba(15, 23, 42, 0.06)" }}
-          bodyStyle={{ padding: 24 }}
-          title="Phân tích chi phí chìm"
-        >
-          <Table
-            columns={feeColumns}
-            dataSource={feeData}
-            pagination={false}
-            rowKey="key"
-            size="small"
-          />
-        </Card>
-
-        {/* Phần 2: Lịch sử giao dịch */}
-        <Card
-          style={{ borderRadius: 16, boxShadow: "0 2px 8px rgba(15, 23, 42, 0.06)" }}
-          bodyStyle={{ padding: 24 }}
-          title="Lịch sử giao dịch chi tiết"
-        >
-          <Space direction="vertical" size={24} style={{ width: "100%" }}>
-            <Row gutter={16}>
-              <Col xs={24} md={8}>
-                <Segmented
-                  block
-                  options={QUICK_RANGE_OPTIONS}
-                  value={filters.quickRange}
-                  onChange={handleQuickRangeChange}
-                />
-              </Col>
-              <Col xs={24} md={8}>
-                <RangePicker
-                  style={{ width: "100%" }}
-                  value={filters.dateRange}
-                  format="DD/MM/YYYY"
-                  onChange={handleDateChange}
-                  allowClear={false}
-                />
-              </Col>
-              <Col xs={24} md={8}>
-                <Select
-                  mode="multiple"
-                  allowClear
-                  style={{ width: "100%" }}
-                  placeholder="Chọn loại giao dịch"
-                  value={filters.types}
-                  onChange={handleTypeChange}
-                  options={TRANSACTION_TYPE_OPTIONS}
-                />
-              </Col>
-            </Row>
-            <Row gutter={16}>
-              <Col xs={24} md={12}>
-                <Input
-                  placeholder="Tìm kiếm theo mã đơn hàng / giao dịch"
-                  prefix={<SearchOutlined style={{ color: "#94a3b8" }} />}
-                  value={filters.searchText}
-                  onChange={handleSearch}
-                  allowClear
-                />
-              </Col>
-              <Col xs={24} md={12} style={{ display: "flex", justifyContent: "flex-end" }}>
-                <Button onClick={handleResetFilters}>Đặt lại bộ lọc</Button>
-              </Col>
-            </Row>
+            }
+          >
             <Table
-              columns={tableColumns}
-              dataSource={filteredTransactions}
-              loading={loading}
-              pagination={{ pageSize: 10, showSizeChanger: true }}
+              columns={feeColumns}
+              dataSource={feeData}
+              pagination={false}
               rowKey="key"
-              size="middle"
-              scroll={{ x: "max-content" }}
-              summary={(pageData) => {
-                let sumAmount = 0;
-                let sumGrossProfit = 0;
-                let sumFees = 0;
-                pageData.forEach(({ amount, grossProfit, platformFee, shippingFee, paymentFee, serviceFee, advertisementFee, tax }) => {
-                  sumAmount += toNumber(amount);
-                  sumGrossProfit += toNumber(grossProfit);
-                  sumFees +=
-                    toNumber(platformFee) +
-                    toNumber(shippingFee) +
-                    toNumber(paymentFee) +
-                    toNumber(serviceFee) +
-                    toNumber(advertisementFee) +
-                    toNumber(tax);
-                });
-                return (
-                  <Table.Summary.Row>
-                    <Table.Summary.Cell index={0} colSpan={4}>
-                      <Text style={{ fontWeight: 600 }}>Tổng cộng trang hiện tại</Text>
-                    </Table.Summary.Cell>
-                    <Table.Summary.Cell index={1} align="right">
-                      <Space direction="vertical" size={0} align="end">
-                        <Text style={{ fontWeight: 600 }}>{formatCurrency(sumAmount)}</Text>
-                        <Text type="secondary" style={{ fontSize: 12 }}>
-                          Tổng phí: {formatCurrency(sumFees)}
-                        </Text>
-                      </Space>
-                    </Table.Summary.Cell>
-                    <Table.Summary.Cell index={2} align="right">
-                      <Text style={{ fontWeight: 600 }}>{formatCurrency(sumGrossProfit)}</Text>
-                    </Table.Summary.Cell>
-                  </Table.Summary.Row>
-                );
-              }}
+              size="small"
+              style={{ borderRadius: "8px" }}
             />
-          </Space>
-        </Card>
+          </Card>
 
-        {/* Phần 3: Báo cáo & đối soát */}
-        <Card
-          style={{ borderRadius: 16, boxShadow: "0 2px 8px rgba(15, 23, 42, 0.06)" }}
-          bodyStyle={{ padding: 24 }}
-          title="Đối soát & Báo cáo"
-        >
-          <Space direction="vertical" size={16} style={{ width: "100%" }}>
-            <Text>
-              Xuất dữ liệu giao dịch dưới dạng CSV để nhập vào phần mềm kế toán (MISA, SAP, ...).
-            </Text>
-            <Button
-              icon={<DownloadOutlined />}
-              type="primary"
-              onClick={() =>
-                exportTransactionsToCsv(filteredTransactions, {
-                  dateRange: filters.dateRange?.map((date) => date?.format("YYYYMMDD")),
-                })
-              }
-              style={{ alignSelf: "flex-start" }}
-            >
-              Xuất file sao kê CSV
-            </Button>
-            <Text type="secondary" style={{ fontSize: 12 }}>
-              File bao gồm đầy đủ thông tin chi tiết: giá trị sản phẩm, các khoản phí, chiết khấu, thuế, giá vốn...
-            </Text>
-          </Space>
-        </Card>
-      </Space>
-    </div>
+          {/* Transaction History */}
+          <Card
+            style={{
+              borderRadius: "12px",
+              border: "none",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+            }}
+            bodyStyle={{ padding: "20px" }}
+            title={
+              <Space>
+                <SwapOutlined style={{ color: "#1890ff" }} />
+                <span>Lịch sử giao dịch</span>
+              </Space>
+            }
+          >
+            <Space direction="vertical" size={16} style={{ width: "100%" }}>
+              {/* Filters */}
+              <Row gutter={[12, 12]}>
+                <Col xs={24} sm={12} md={6}>
+                  <Segmented
+                    block
+                    options={QUICK_RANGE_OPTIONS}
+                    value={filters.quickRange}
+                    onChange={handleQuickRangeChange}
+                    size="small"
+                  />
+                </Col>
+                <Col xs={24} sm={12} md={6}>
+                  <RangePicker
+                    style={{ width: "100%" }}
+                    value={filters.dateRange}
+                    format="DD/MM/YYYY"
+                    onChange={handleDateChange}
+                    allowClear={false}
+                    size="small"
+                  />
+                </Col>
+                <Col xs={24} sm={12} md={6}>
+                  <Select
+                    mode="multiple"
+                    allowClear
+                    style={{ width: "100%" }}
+                    placeholder="Loại giao dịch"
+                    value={filters.types}
+                    onChange={handleTypeChange}
+                    options={TRANSACTION_TYPE_OPTIONS}
+                    size="small"
+                  />
+                </Col>
+                <Col xs={24} sm={12} md={6}>
+                  <Input
+                    placeholder="Tìm kiếm..."
+                    prefix={<SearchOutlined />}
+                    value={filters.searchText}
+                    onChange={handleSearch}
+                    allowClear
+                    size="small"
+                  />
+                </Col>
+              </Row>
+              <Row justify="space-between">
+                <Col>
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    Tìm thấy {filteredTransactions.length} giao dịch
+                  </Text>
+                </Col>
+                <Col>
+                  <Button type="text" size="small" onClick={handleResetFilters}>
+                    Đặt lại bộ lọc
+                  </Button>
+                </Col>
+              </Row>
+
+              {/* Table */}
+              <Table
+                columns={tableColumns}
+                dataSource={filteredTransactions}
+                loading={loading}
+                pagination={{ pageSize: 15, showSizeChanger: true }}
+                rowKey="key"
+                size="middle"
+                scroll={{ x: "max-content" }}
+                summary={(pageData) => {
+                  let sumAmount = 0;
+                  let sumGrossProfit = 0;
+                  let sumFees = 0;
+                  pageData.forEach(({ amount, grossProfit, platformFee, shippingFee, paymentFee, serviceFee, advertisementFee, tax }) => {
+                    sumAmount += toNumber(amount);
+                    sumGrossProfit += toNumber(grossProfit);
+                    sumFees +=
+                      toNumber(platformFee) +
+                      toNumber(shippingFee) +
+                      toNumber(paymentFee) +
+                      toNumber(serviceFee) +
+                      toNumber(advertisementFee) +
+                      toNumber(tax);
+                  });
+                  return (
+                    <Table.Summary.Row>
+                      <Table.Summary.Cell index={0} colSpan={4}>
+                        <Text strong>Tổng trang hiện tại</Text>
+                      </Table.Summary.Cell>
+                      <Table.Summary.Cell index={1} align="right">
+                        <Space direction="vertical" size={0} align="end">
+                          <Text strong>{formatCurrency(sumAmount)}</Text>
+                          <Text type="secondary" style={{ fontSize: 12 }}>
+                            Phí: {formatCurrency(sumFees)}
+                          </Text>
+                        </Space>
+                      </Table.Summary.Cell>
+                      <Table.Summary.Cell index={2} align="right">
+                        <Text strong>{formatCurrency(sumGrossProfit)}</Text>
+                      </Table.Summary.Cell>
+                    </Table.Summary.Row>
+                  );
+                }}
+              />
+            </Space>
+          </Card>
+        </Space>
+      </div>
+    </Spin>
   );
 };
 

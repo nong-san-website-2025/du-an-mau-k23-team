@@ -19,6 +19,7 @@ from .views import (
     wallet,
     # Notifications
     notifications,
+    notification_sse_view,
     # Admin
     admin,
     # Social Auth
@@ -46,6 +47,7 @@ urlpatterns = [
     
     # Password Reset
     path('password-reset/', auth.PasswordResetRequestView.as_view(), name='password-reset'),
+    path('password-reset-request/', auth.PasswordResetRequestView.as_view(), name='password-reset-request'),
     path('password-reset-confirm/<str:uidb64>/<str:token>/', 
          auth.PasswordResetConfirmView.as_view(), name='password-reset-confirm'),
     
@@ -74,8 +76,8 @@ urlpatterns = [
     path('wallet/withdraw/', wallet.WalletWithdrawView.as_view(), name='wallet-withdraw'),
     
     # ==================== NOTIFICATIONS ====================
-    path('notifications/sse/', 
-         notifications.NotificationSSEView.as_view(), name='notifications-sse'),
+    # path('notifications/sse/',
+    #       notification_sse_view, name='notifications-sse'),
     path('notifications/trigger/', 
          notifications.TriggerNotificationView.as_view(), name='trigger-notification'),
     

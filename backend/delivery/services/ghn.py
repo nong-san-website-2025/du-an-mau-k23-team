@@ -32,13 +32,13 @@ class GHNClient:
         # 🔥 FIX: Đảm bảo URL đúng
         url = f"{cls.BASE_URL}/v2/shipping-order/fee"
 
-        print("📦 GHN Payload:", payload)
-        print("🔑 Headers:", cls._headers())
-        print("🔗 Full URL:", url)
+        print("GHN Payload:", payload)
+        print("Headers:", cls._headers())
+        print("Full URL:", url)
 
         # Kiểm tra token và shop_id
         if not cls.TOKEN or not cls.SHOP_ID or cls.TOKEN == '' or cls.SHOP_ID == '':
-            print("❌ Missing GHN credentials")
+            print("Missing GHN credentials")
             return {
                 'success': False,
                 'fee': 0,
@@ -50,8 +50,8 @@ class GHNClient:
 
         try:
             response = requests.post(url, json=payload, headers=headers, timeout=10)
-            print("📡 GHN Status Code:", response.status_code)
-            print("📡 GHN Response Text:", response.text)
+            print("GHN Status Code:", response.status_code)
+            print("GHN Response Text:", response.text)
 
             # Luôn cố gắng parse JSON (kể cả khi status 4xx)
             try:
@@ -70,7 +70,7 @@ class GHNClient:
 
             # Trả về lỗi chi tiết từ GHN (không raise để không bị che lỗi)
             if isinstance(data, dict):
-                print("❌ GHN Error Message:", data.get('message'))
+                print("GHN Error Message:", data.get('message'))
                 return {
                     'success': False,
                     'fee': 0,
@@ -87,7 +87,7 @@ class GHNClient:
             }
 
         except requests.exceptions.Timeout:
-            print("⏰ Request timeout")
+            print("Request timeout")
             return {
                 'success': False,
                 'fee': 0,
@@ -96,14 +96,14 @@ class GHNClient:
         except requests.exceptions.RequestException as e:
             # Cố gắng lấy nội dung phản hồi nếu có
             err_text = getattr(e.response, 'text', str(e)) if hasattr(e, 'response') and e.response is not None else str(e)
-            print("🌐 Network error:", err_text)
+            print("Network error:", err_text)
             return {
                 'success': False,
                 'fee': 0,
                 'message': f"Network error: {err_text[:300]}"
             }
         except Exception as e:
-            print("💥 Unexpected error:", str(e))
+            print("Unexpected error:", str(e))
             return {
                 'success': False,
                 'fee': 0,

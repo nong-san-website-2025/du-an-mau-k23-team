@@ -170,23 +170,37 @@ def analytics_overview(request):
         product_id__in=product_ids
     ).values(
         "product__id",
-        "product__name",
-        "product__image"
+        "product__name"
     ).annotate(
         revenue=Sum(F("price") * F("quantity")),
         units_sold=Sum("quantity")
     ).order_by("-revenue")[:5]
-    
-    top_products = [
-        {
+
+    top_products = []
+    for item in top_products_data:
+        # Get first image for each product
+        from products.models import ProductImage
+        first_image = ProductImage.objects.filter(
+            product_id=item["product__id"],
+            is_primary=True
+        ).first()
+
+        if not first_image:
+            first_image = ProductImage.objects.filter(
+                product_id=item["product__id"]
+            ).first()
+
+        image_url = None
+        if first_image and first_image.image:
+            image_url = request.build_absolute_uri(first_image.image.url)
+
+        top_products.append({
             "id": item["product__id"],
             "name": item["product__name"],
-            "image": request.build_absolute_uri(f"/media/{item['product__image']}") if item["product__image"] else None,
+            "image": image_url,
             "revenue": float(item["revenue"] or 0),
             "units_sold": item["units_sold"]
-        }
-        for item in top_products_data
-    ]
+        })
     
     # Sales funnel (simplified)
     product_views = current_visits  # Mock data
@@ -380,10 +394,24 @@ def analytics_products(request):
         
         conversion_rate = (units_sold / views * 100) if views > 0 else 0
         
+        # Get first image for product
+        from products.models import ProductImage
+        first_image = ProductImage.objects.filter(
+            product=product,
+            is_primary=True
+        ).first()
+
+        if not first_image:
+            first_image = ProductImage.objects.filter(product=product).first()
+
+        image_url = None
+        if first_image and first_image.image:
+            image_url = request.build_absolute_uri(first_image.image.url)
+
         product_performance.append({
             "id": product.id,
             "name": product.name,
-            "image": request.build_absolute_uri(product.image.url) if product.image else None,
+            "image": image_url,
             "views": views,
             "cart_adds": cart_adds,
             "units_sold": units_sold,

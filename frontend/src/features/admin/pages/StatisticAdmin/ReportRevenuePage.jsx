@@ -11,6 +11,10 @@ import {
   Skeleton,
   Segmented,
   Tooltip,
+  Dropdown,
+  Table,
+  Progress,
+  Statistic,
 } from "antd";
 import {
   WalletOutlined,
@@ -21,6 +25,12 @@ import {
   ArrowUpOutlined,
   ArrowDownOutlined,
   PercentageOutlined,
+  DownloadOutlined,
+  FileExcelOutlined,
+  CalendarOutlined,
+  DollarCircleOutlined,
+  ShoppingOutlined,
+  RiseOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 import api from "../../../login_register/services/api";
@@ -129,6 +139,51 @@ export default function ReportRevenuePage() {
     fetchReport(newRange[0], newRange[1]);
     message.success("Bộ lọc đã được đặt lại");
   };
+
+  // === EXPORT FUNCTIONS ===
+  const exportToCSV = () => {
+    if (!stats.daily_revenue?.length) {
+      message.warning("Không có dữ liệu để xuất");
+      return;
+    }
+
+    const csvData = stats.daily_revenue.map(item => ({
+      'Ngày': item.date,
+      'Doanh thu tổng': item.revenue || 0,
+      'Doanh thu sàn': item.platform_revenue || 0,
+    }));
+
+    const csvContent = [
+      Object.keys(csvData[0]).join(','),
+      ...csvData.map(row => Object.values(row).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `bao-cao-doanh-thu-${dateRange[0].format('YYYY-MM-DD')}-${dateRange[1].format('YYYY-MM-DD')}.csv`;
+    link.click();
+    message.success("Đã xuất file CSV thành công");
+  };
+
+  const exportToExcel = () => {
+    message.info("Tính năng xuất Excel đang được phát triển");
+  };
+
+  const exportMenu = [
+    {
+      key: 'csv',
+      icon: <FileExcelOutlined />,
+      label: 'Xuất CSV',
+      onClick: exportToCSV,
+    },
+    {
+      key: 'excel',
+      icon: <FileExcelOutlined />,
+      label: 'Xuất Excel',
+      onClick: exportToExcel,
+    },
+  ];
 
   // === EFFECTS ===
   useEffect(() => {
@@ -266,20 +321,31 @@ export default function ReportRevenuePage() {
     <AdminPageLayout
       title={
         <Space size={12}>
+          <DollarCircleOutlined style={{ fontSize: "24px", color: "#0ea5e9" }} />
           <Title level={2} style={{ margin: 0, color: "#1f2937" }}>
             BÁO CÁO DOANH THU
           </Title>
         </Space>
       }
       extra={
-        <Tooltip title="Làm mới dữ liệu">
-          <Button
-            icon={<ReloadOutlined />}
-            onClick={() => fetchReport(dateRange[0], dateRange[1])}
-            shape="circle"
-            className="shadow hover:shadow-md"
-          />
-        </Tooltip>
+        <Space>
+          <Dropdown menu={{ items: exportMenu }} placement="bottomRight">
+            <Button
+              icon={<DownloadOutlined />}
+              className="shadow hover:shadow-md"
+            >
+              Xuất dữ liệu
+            </Button>
+          </Dropdown>
+          <Tooltip title="Làm mới dữ liệu">
+            <Button
+              icon={<ReloadOutlined />}
+              onClick={() => fetchReport(dateRange[0], dateRange[1])}
+              shape="circle"
+              className="shadow hover:shadow-md"
+            />
+          </Tooltip>
+        </Space>
       }
     >
       {/* Bộ lọc */}
@@ -405,6 +471,180 @@ export default function ReportRevenuePage() {
             Không có dữ liệu trong khoảng thời gian đã chọn.
           </div>
         )}
+      </Card>
+
+      {/* Thống kê tổng quan */}
+      <Row gutter={[16, 16]} className="mt-6">
+        <Col xs={24} lg={12}>
+          <Card
+            title={
+              <Space>
+                <RiseOutlined />
+                <Text strong>Phân tích hiệu suất</Text>
+              </Space>
+            }
+            className="rounded-lg"
+          >
+            <Space direction="vertical" size={16} style={{ width: '100%' }}>
+              <div>
+                <Text type="secondary">Tổng doanh thu kỳ này</Text>
+                <br />
+                <Text strong style={{ fontSize: '24px', color: '#0ea5e9' }}>
+                  {formatCurrency(stats.total_revenue)}
+                </Text>
+              </div>
+
+              <div>
+                <Text type="secondary">Doanh thu trung bình/ngày</Text>
+                <br />
+                <Text strong style={{ fontSize: '18px', color: '#52c41a' }}>
+                  {stats.daily_revenue?.length > 0
+                    ? formatCurrency(stats.total_revenue / stats.daily_revenue.length)
+                    : formatCurrency(0)
+                  }
+                </Text>
+              </div>
+
+              <div>
+                <Text type="secondary">Ngày có doanh thu cao nhất</Text>
+                <br />
+                <Text strong>
+                  {stats.daily_revenue?.length > 0
+                    ? (() => {
+                        const maxDay = stats.daily_revenue.reduce((max, day) =>
+                          (day.revenue || 0) > (max.revenue || 0) ? day : max
+                        );
+                        return `${dayjs(maxDay.date).format('DD/MM/YYYY')} (${formatCurrency(maxDay.revenue)})`;
+                      })()
+                    : 'N/A'
+                  }
+                </Text>
+              </div>
+            </Space>
+          </Card>
+        </Col>
+
+        <Col xs={24} lg={12}>
+          <Card
+            title={
+              <Space>
+                <ShoppingOutlined />
+                <Text strong>Chỉ số đơn hàng</Text>
+              </Space>
+            }
+            className="rounded-lg"
+          >
+            <Row gutter={[16, 16]}>
+              <Col span={12}>
+                <Statistic
+                  title="Tổng đơn hàng"
+                  value={stats.success_orders_count + stats.cancelled_orders_count}
+                  prefix={<ShoppingOutlined />}
+                  valueStyle={{ color: '#3f8600' }}
+                />
+              </Col>
+              <Col span={12}>
+                <Statistic
+                  title="Đơn thành công"
+                  value={stats.success_orders_count}
+                  prefix={<CheckCircleOutlined />}
+                  valueStyle={{ color: '#52c41a' }}
+                />
+              </Col>
+              <Col span={12}>
+                <Statistic
+                  title="Đơn đang xử lý"
+                  value={stats.pending_orders_count}
+                  prefix={<ClockCircleOutlined />}
+                  valueStyle={{ color: '#faad14' }}
+                />
+              </Col>
+              <Col span={12}>
+                <Statistic
+                  title="Tỷ lệ chuyển đổi"
+                  value={`${conversionRate}%`}
+                  prefix={<PercentageOutlined />}
+                  valueStyle={{ color: '#722ed1' }}
+                />
+              </Col>
+            </Row>
+          </Card>
+        </Col>
+      </Row>
+
+      {/* Chi tiết dữ liệu */}
+      <Card className="mt-6 rounded-lg" title="Chi tiết doanh thu theo ngày">
+        <Table
+          dataSource={stats.daily_revenue?.map((item, index) => ({
+            key: index,
+            date: dayjs(item.date).format('DD/MM/YYYY'),
+            revenue: item.revenue || 0,
+            platform_revenue: item.platform_revenue || 0,
+            day: dayjs(item.date).format('dddd'),
+          })) || []}
+          columns={[
+            {
+              title: 'Ngày',
+              dataIndex: 'date',
+              key: 'date',
+              render: (text, record) => (
+                <Space>
+                  <CalendarOutlined />
+                  <span>{text}</span>
+                  <Text type="secondary" style={{ fontSize: '12px' }}>
+                    ({record.day})
+                  </Text>
+                </Space>
+              ),
+            },
+            {
+              title: 'Doanh thu tổng',
+              dataIndex: 'revenue',
+              key: 'revenue',
+              render: (value) => (
+                <Text strong style={{ color: '#0ea5e9' }}>
+                  {formatCurrency(value)}
+                </Text>
+              ),
+              sorter: (a, b) => a.revenue - b.revenue,
+            },
+            {
+              title: 'Doanh thu sàn',
+              dataIndex: 'platform_revenue',
+              key: 'platform_revenue',
+              render: (value) => (
+                <Text style={{ color: '#722ed1' }}>
+                  {formatCurrency(value)}
+                </Text>
+              ),
+              sorter: (a, b) => a.platform_revenue - b.platform_revenue,
+            },
+            {
+              title: 'Tỷ lệ hoa hồng',
+              key: 'commission_rate',
+              render: (_, record) => {
+                const rate = record.revenue > 0 ? (record.platform_revenue / record.revenue * 100) : 0;
+                return (
+                  <Progress
+                    percent={rate.toFixed(1)}
+                    size="small"
+                    strokeColor="#722ed1"
+                    format={(percent) => `${percent}%`}
+                  />
+                );
+              },
+            },
+          ]}
+          pagination={{
+            pageSize: 10,
+            showSizeChanger: true,
+            showQuickJumper: true,
+            showTotal: (total, range) =>
+              `${range[0]}-${range[1]} của ${total} ngày`,
+          }}
+          loading={loading}
+          scroll={{ x: 600 }}
+        />
       </Card>
     </AdminPageLayout>
   );

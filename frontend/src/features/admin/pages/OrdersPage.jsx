@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { message, Input, Select, Space } from "antd";
 import { SearchOutlined } from "@ant-design/icons";
 import adminApi from "../services/adminApi";
@@ -21,6 +21,7 @@ const OrdersPage = () => {
   const [selectedOrder, setSelectedOrder] = useState(null);
 
   const { user, loading: authLoading } = useAuth();
+  const eventSourceRef = useRef(null);
 
   const statusOptions = [
     { value: "", label: "Tất cả trạng thái" },
@@ -76,6 +77,58 @@ const OrdersPage = () => {
     statusFilter,
     searchTerm,
   ]);
+
+  // SSE for real-time order notifications
+  useEffect(() => {
+    const userRoleName = user?.role?.name;
+    const isAdmin = !authLoading && user?.isAuthenticated && userRoleName === "admin";
+
+    if (isAdmin && !eventSourceRef.current) {
+      const token = localStorage.getItem("token");
+      const eventSource = new EventSource(
+        `${process.env.REACT_APP_API_URL}/orders/admin/notifications/sse/?token=${token}`
+      );
+
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'new_order') {
+            message.info(`Đơn hàng mới: ${data.customer_name} - ${data.total_price.toLocaleString()} VND`);
+            // Refresh orders list
+            const fetchOrders = async () => {
+              try {
+                const params = {};
+                if (statusFilter) params.status = statusFilter;
+                if (searchTerm.trim()) params.search = searchTerm.trim();
+                const newOrders = await adminApi.getOrders(params);
+                setOrders(Array.isArray(newOrders) ? newOrders : []);
+              } catch (err) {
+                console.error('Error refreshing orders:', err);
+              }
+            };
+            fetchOrders();
+          }
+        } catch (err) {
+          console.error('Error parsing SSE data:', err);
+        }
+      };
+
+      eventSource.onerror = (error) => {
+        console.error('SSE error:', error);
+        eventSource.close();
+        eventSourceRef.current = null;
+      };
+
+      eventSourceRef.current = eventSource;
+    }
+
+    return () => {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
+    };
+  }, [authLoading, user?.isAuthenticated, user?.role, statusFilter, searchTerm]);
 
   // ---------- Actions ----------
   const handleViewDetail = async (orderId) => {

@@ -180,24 +180,13 @@ export default function ProductCard({
             >
               {/* Giá + discount */}
               <div>
-                <Text
-                  strong
-                  style={{ fontSize: 18, color: "#4caf50" }}
-                >
-                  {formatVND(product.discounted_price)}
-                </Text>
+                <div style={{ fontWeight: 400}} className="product-price-discount">
+                  {formatVND(product.discounted_price, 18)}
+                </div>
 
                 {product.original_price && (
-                  <div
-                    style={{ display: "flex", alignItems: "center", gap: 6 }}
-                  >
-                    <Text
-                      delete
-                      type="secondary"
-                      style={{ fontSize: 12, opacity: 0.8 }}
-                    >
-                      {formatVND(product.original_price)}
-                    </Text>
+                  <div className="product-price-original">
+                    {formatVND(product.original_price, 12)}
                   </div>
                 )}
               </div>

@@ -9,6 +9,7 @@ import {
   EyeOutlined,
 } from "@ant-design/icons";
 import { fetchPosts } from "../../features/blog/api/blogApi.js";
+import "../../styles/home/FeaturedBlogs.css";
 
 const { Title, Paragraph, Text } = Typography;
 const { Meta } = Card;
@@ -246,21 +247,7 @@ export default function FeaturedBlogs() {
         </div>
       </div>
 
-      {/* CSS cho hover effects */}
-      <style jsx>{`
-        .blog-title:hover {
-          color: #52c41a !important;
-        }
-        .read-more {
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          transition: gap 0.3s ease;
-        }
-        .read-more:hover {
-          gap: 10px;
-        }
-      `}</style>
+
     </div>
   );
 }

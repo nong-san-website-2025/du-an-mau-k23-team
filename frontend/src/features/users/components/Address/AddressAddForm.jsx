@@ -4,6 +4,13 @@ import { getProvinces, getDistricts, getWards } from "../../../../services/api/g
 
 const { Option } = Select;
 
+const isValidProvinceName = (name) => {
+  if (!name || typeof name !== 'string') return false;
+  if (/[0-9!@#$%^&*()_+=\[\]{};:'"\\|,.<>?/`~]/.test(name)) return false;
+  if (/test/i.test(name)) return false;
+  return true;
+};
+
 const AddressAddForm = ({ onSuccess, onCancel }) => {
   const [form] = Form.useForm();
   const [provinces, setProvinces] = useState([]);
@@ -15,7 +22,12 @@ const AddressAddForm = ({ onSuccess, onCancel }) => {
   const selectedDistrict = Form.useWatch("district_id", form);
 
   useEffect(() => {
-    getProvinces().then(setProvinces).catch(console.error);
+    getProvinces()
+      .then(data => {
+        const filteredProvinces = data.filter(p => isValidProvinceName(p.ProvinceName));
+        setProvinces(filteredProvinces);
+      })
+      .catch(console.error);
   }, []);
 
   useEffect(() => {

@@ -68,14 +68,17 @@ const AddressList = ({
         />
       )}
 
-      <Button
-        type="primary"
-        icon={<PlusOutlined />}
-        style={{ marginTop: 16 }}
-        onClick={() => setShowAddForm(true)}
+      <div
+        style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}
       >
-        Thêm địa chỉ mới
-      </Button>
+        <Button
+          type="primary"
+          icon={<PlusOutlined />}
+          onClick={() => setShowAddForm(true)}
+        >
+          Thêm địa chỉ mới
+        </Button>
+      </div>
 
       <Modal
         title="Thêm địa chỉ mới"
@@ -86,9 +89,9 @@ const AddressList = ({
         bodyStyle={{
           maxHeight: "60vh", // Giới hạn chiều cao modal
           overflowY: "auto",
-          padding: 10 // Cuộn khi nội dung vượt quá
+          padding: 10, // Cuộn khi nội dung vượt quá
         }}
-        style={{ top: 80,  }}
+        style={{ top: 80 }}
       >
         <AddressAddForm
           onSuccess={handleAddAddress}

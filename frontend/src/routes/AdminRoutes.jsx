@@ -89,7 +89,9 @@ export const adminRoutes = [
 
       {/* Reports */}
       <Route path="reports" element={<ReportsPage />} />
-      <Route path="reports/revenue" element={<ReportRevenuePage />} />
+
+      {/* Revenue */}
+      <Route path="revenue" element={<ReportRevenuePage />} />
       <Route path="reports/products" element={<ReportProductsPage />} />
       <Route path="reports/cancel-rate" element={<ReportCancelRatePage />} />
       <Route path="reports/customers" element={<ReportCustomersPage />} />

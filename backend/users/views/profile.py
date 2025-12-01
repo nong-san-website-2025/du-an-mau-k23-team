@@ -174,16 +174,56 @@ class UserMeView(APIView):
         """Full update of user info"""
         serializer = CustomUserSerializer(request.user, data=request.data, partial=False)
         if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
+            user = serializer.save()
+            messages = []
+
+            # Handle pending email change
+            if user.pending_email and user.pending_email != user.email:
+                try:
+                    send_email_change_verification(user, user.pending_email)
+                    messages.append("Đã gửi email xác nhận thay đổi email.")
+                except Exception as e:
+                    messages.append("Không thể gửi email xác nhận. Vui lòng thử lại sau.")
+
+            # Handle pending phone change
+            if user.pending_phone and user.pending_phone != (user.phone or ""):
+                try:
+                    send_phone_otp_email(user, user.phone_otp)
+                    messages.append("Đã gửi OTP xác nhận thay đổi số điện thoại qua email.")
+                except Exception:
+                    messages.append("OTP đã được tạo cho số điện thoại mới.")
+
+            data = CustomUserSerializer(user).data
+            data["messages"] = messages
+            return Response(data)
         return Response(serializer.errors, status=400)
 
     def patch(self, request):
         """Partial update of user info"""
         serializer = CustomUserSerializer(request.user, data=request.data, partial=True)
         if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
+            user = serializer.save()
+            messages = []
+
+            # Handle pending email change
+            if user.pending_email and user.pending_email != user.email:
+                try:
+                    send_email_change_verification(user, user.pending_email)
+                    messages.append("Đã gửi email xác nhận thay đổi email.")
+                except Exception as e:
+                    messages.append("Không thể gửi email xác nhận. Vui lòng thử lại sau.")
+
+            # Handle pending phone change
+            if user.pending_phone and user.pending_phone != (user.phone or ""):
+                try:
+                    send_phone_otp_email(user, user.phone_otp)
+                    messages.append("Đã gửi OTP xác nhận thay đổi số điện thoại qua email.")
+                except Exception:
+                    messages.append("OTP đã được tạo cho số điện thoại mới.")
+
+            data = CustomUserSerializer(user).data
+            data["messages"] = messages
+            return Response(data)
         return Response(serializer.errors, status=400)
 
 

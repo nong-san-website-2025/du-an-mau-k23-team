@@ -47,6 +47,13 @@ const useAddressLogic = (activeTab, navigate) => {
       setShowAddressForm(false);
       setNewAddress({ recipient_name: "", phone: "", location: "" });
       toast.success("✅ Thêm địa chỉ thành công!");
+      
+      const redirect = new URLSearchParams(window.location.search).get(
+        "redirect"
+      );
+      if (redirect === "checkout") {
+        navigate("/checkout");
+      }
     } catch (error) {
       console.error("Lỗi thêm địa chỉ:", error.response?.data || error.message);
       toast.error("❌ Thêm địa chỉ thất bại!");

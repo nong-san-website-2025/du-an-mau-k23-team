@@ -18,6 +18,7 @@ import {
 import { Store, Ticket, TicketIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { productApi } from "../../products/services/productApi";
+import { formatVND } from "../../stores/components/StoreDetail/utils/utils";
 import QuantityInput from "./QuantityInput";
 import "../styles/CartPage.css";
 import Layout from "../../../Layout/LayoutDefault";
@@ -133,7 +134,7 @@ function CartPage() {
     <div style={{ minWidth: 240 }}>
       <div className="summary-row">
         <span>Tạm tính:</span>
-        <span>{selectedTotal.toLocaleString("vi-VN")}₫</span>
+        <span>{formatVND(selectedTotal)}</span>
       </div>
       <div className="summary-row">
         <span>Phí vận chuyển:</span>
@@ -141,7 +142,7 @@ function CartPage() {
       </div>
       <div className="summary-row">
         <span>Khuyến mãi:</span>
-        <span>-0₫</span>
+        <span>{formatVND(0)}</span>
       </div>
     </div>
   );
@@ -293,6 +294,7 @@ function CartPage() {
 
                           <div className="item-meta">
                             <Text
+                              style={{ fontSize: 14, fontWeight: 400 }}
                               className="item-name clickable"
                               onClick={() => navigate(`/products/${prod.id}`)}
                             >
@@ -302,11 +304,9 @@ function CartPage() {
                         </div>
 
                         <div className="col-price">
-                          <Text strong>
-                            {Number(prod.price)
-                              ?.toLocaleString("vi-VN")
-                              .replaceAll(".", ",")}
-                            ₫
+                          {/* Chuyển fontWeight thành 'normal' hoặc 400 */}
+                          <Text style={{fontWeight: 400}} >
+                            {formatVND(prod.price)}
                           </Text>
                         </div>
 
@@ -315,11 +315,10 @@ function CartPage() {
                         </div>
 
                         <div className="col-total">
-                          <Text strong>
-                            {(Number(prod.price) * Number(item.quantity))
-                              .toLocaleString("vi-VN")
-                              .replaceAll(".", ",")}
-                            ₫
+                          <Text style={{ color: '#4caf50', fontWeight: 400 }}>
+                            {formatVND(
+                              Number(prod.price) * Number(item.quantity)
+                            )}
                           </Text>
                         </div>
                       </div>
@@ -369,12 +368,7 @@ function CartPage() {
                         <Text ellipsis style={{ maxWidth: 140 }}>
                           {p.name}
                         </Text>
-                        <Text strong>
-                          {Number(p.price)
-                            ?.toLocaleString("vi-VN")
-                            .replaceAll(".", ",")}
-                          ₫
-                        </Text>
+                        <Text strong>{formatVND(p.price)}</Text>
                       </div>
                     </div>
                   ))}
@@ -402,10 +396,7 @@ function CartPage() {
                 </div>
                 <div className="summary-line">
                   <span>Tạm tính</span>
-                  <span>
-                    {selectedTotal.toLocaleString("vi-VN").replaceAll(".", ",")}
-                    ₫
-                  </span>
+                  <span>{formatVND(selectedTotal)}</span>
                 </div>
               </div>
 
@@ -418,10 +409,7 @@ function CartPage() {
 
                 <div className="summary-total">
                   <Text type="secondary">Tổng thanh toán</Text>
-                  <Title level={4}>
-                    {selectedTotal.toLocaleString("vi-VN").replaceAll(".", ",")}
-                    ₫
-                  </Title>
+                  <Title style={{ color: '#4caf50'}}  level={4}>{formatVND(selectedTotal)}</Title>
                 </div>
               </div>
 
@@ -468,9 +456,7 @@ function CartPage() {
           <div className="mobile-summary">
             <div>
               <Text>Tổng: </Text>
-              <Text strong>
-                {selectedTotal.toLocaleString("vi-VN").replaceAll(".", ",")}₫
-              </Text>
+              <Text strong>{formatVND(selectedTotal)}</Text>
             </div>
             <Button
               type="primary"

@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django_extensions',
+    'django_rest_passwordreset',
 
 
     # Third party
@@ -76,7 +77,7 @@ EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'khoahuynhminh2005@gmail.com'
-EMAIL_HOST_PASSWORD = 'szqpkfjifpcyxwlq'
+EMAIL_HOST_PASSWORD = 'pmdv ikrs pglq etfh'
 
 # --- Facebook
 
@@ -149,11 +150,16 @@ if os.environ.get("DATABASE_URL"):
     }
 else:
     DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
-        }
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'ecom_db',               # tên database
+        'USER': 'postgres',             # user
+        'PASSWORD': '12345',     # mật khẩu
+        'HOST': 'localhost',          # hoặc IP server
+        'PORT': '5432',               # port mặc định
     }
+}
+
 # --- Auth
 AUTH_USER_MODEL = "users.CustomUser"
 AUTHENTICATION_BACKENDS = [
@@ -221,6 +227,7 @@ CORS_ALLOW_HEADERS = [
     'user-agent',
     'x-csrftoken',
     'x-requested-with',
+    'accept',
 ]
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",

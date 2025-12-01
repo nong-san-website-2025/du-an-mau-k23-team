@@ -330,7 +330,7 @@ const ProductDetailPage = () => {
     },
     {
       title: subcategoryName,
-      href: `/products?subcategory=${encodeURIComponent(subcategoryName)}`,
+      href: `/products?category=${encodeURIComponent(categoryName)}&subcategory=${encodeURIComponent(subcategoryName)}`,
     },
     { title: product.name },
   ];

@@ -1,16 +1,13 @@
 // pages/UsersPage.jsx
 import React, { useEffect, useState, useMemo } from "react";
-import UserSideBar from "../components/UserAdmin/UserSidebar";
+import { Button, Row, Col, Input, Space, Card, Statistic, Select } from "antd";
+import { SearchOutlined, FilterOutlined, UserOutlined, ShoppingOutlined, TeamOutlined, PlusOutlined } from '@ant-design/icons';
+import AdminPageLayout from "../components/AdminPageLayout";
 import UserTable from "../components/UserAdmin/UserTable";
 import UserDetailModal from "../components/UserAdmin/components/UserDetail/UserDetailRow";
 import axios from "axios";
 import { useTranslation } from "react-i18next";
-import {
-  Button, Row, Col, Input, Space, Card, Statistic, Select
-} from "antd";
-import {
-  SearchOutlined, FilterOutlined, UserOutlined, ShoppingOutlined, TeamOutlined
-} from '@ant-design/icons';
+import '../styles/UsersPage.css';
 
 export default function UsersPage() {
   const [users, setUsers] = useState([]);
@@ -40,7 +37,6 @@ export default function UsersPage() {
     setLoading(true);
     try {
       const res = await axios.get("http://localhost:8000/api/users/list/", {
-        // ✅ Thêm /list/
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
       setUsers(Array.isArray(res.data) ? res.data : []);
@@ -83,40 +79,14 @@ export default function UsersPage() {
     setShowDetailModal(true);
   };
 
-  return (
-    <div style={{
-      padding: 24,
-      background: '#f5f5f5',
-      minHeight: '100vh'
-    }}>
-      {/* Header */}
-      <div style={{ marginBottom: 24 }}>
-        <h1 style={{
-          fontSize: 24,
-          fontWeight: 600,
-          margin: 0,
-          color: '#262626'
-        }}>
-          {t("QUẢN LÝ NGƯỜI DÙNG")}
-        </h1>
-        <p style={{
-          color: '#8c8c8c',
-          margin: '4px 0 0 0',
-          fontSize: 14
-        }}>
-          Quản lý tài khoản khách hàng và người bán
-        </p>
-      </div>
-
-      {/* Statistics Cards */}
-      <Row gutter={16} style={{ marginBottom: 24 }}>
+  // Create statistics cards
+  const StatisticsSection = () => (
+    <div className="users-page-statistics">
+      <Row gutter={16}>
         <Col xs={24} sm={12} lg={6}>
           <Card
             bordered={false}
-            style={{
-              borderRadius: 8,
-              boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
-            }}
+            className="statistic-card"
           >
             <Statistic
               title="Tổng người dùng"
@@ -129,10 +99,7 @@ export default function UsersPage() {
         <Col xs={24} sm={12} lg={6}>
           <Card
             bordered={false}
-            style={{
-              borderRadius: 8,
-              boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
-            }}
+            className="statistic-card"
           >
             <Statistic
               title="Đang hoạt động"
@@ -149,10 +116,7 @@ export default function UsersPage() {
         <Col xs={24} sm={12} lg={6}>
           <Card
             bordered={false}
-            style={{
-              borderRadius: 8,
-              boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
-            }}
+            className="statistic-card"
           >
             <Statistic
               title="Khách hàng"
@@ -165,10 +129,7 @@ export default function UsersPage() {
         <Col xs={24} sm={12} lg={6}>
           <Card
             bordered={false}
-            style={{
-              borderRadius: 8,
-              boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
-            }}
+            className="statistic-card"
           >
             <Statistic
               title="Người bán"
@@ -179,74 +140,66 @@ export default function UsersPage() {
           </Card>
         </Col>
       </Row>
+    </div>
+  );
 
-      {/* Main Card */}
-      <Card
-        bordered={false}
-        style={{
-          borderRadius: 8,
-          boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
-        }}
+  // Create toolbar with filters and add button
+  const toolbar = (
+    <Space wrap>
+      <Input
+        placeholder="Tìm kiếm theo tên, email, số điện thoại..."
+        prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+        allowClear
+        style={{ width: 280, borderRadius: 6 }}
+      />
+
+      <Select
+        placeholder="Vai trò"
+        value={selectedRole}
+        onChange={setSelectedRole}
+        style={{ width: 150, borderRadius: 6 }}
+        suffixIcon={<FilterOutlined />}
       >
-        {/* Toolbar */}
-        <div style={{ marginBottom: 16 }}>
-          <Row gutter={[12, 12]} align="middle">
-            <Col xs={24} sm={24} md={10} lg={8}>
-              <Input
-                placeholder="Tìm kiếm theo tên, email, số điện thoại..."
-                prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                allowClear
-                size="large"
-                style={{ borderRadius: 6 }}
-              />
-            </Col>
+        <Select.Option value="all">Tất cả vai trò</Select.Option>
+        <Select.Option value="customer">Khách hàng</Select.Option>
+        <Select.Option value="seller">Người bán</Select.Option>
+      </Select>
 
-            <Col xs={12} sm={8} md={4} lg={3}>
-              <Select
-                placeholder="Vai trò"
-                value={selectedRole}
-                onChange={setSelectedRole}
-                size="large"
-                style={{ width: '100%', borderRadius: 6 }}
-                suffixIcon={<FilterOutlined />}
-              >
-                <Select.Option value="all">Tất cả vai trò</Select.Option>
-                <Select.Option value="customer">Khách hàng</Select.Option>
-                <Select.Option value="seller">Người bán</Select.Option>
-              </Select>
-            </Col>
+      <Select
+        placeholder="Trạng thái"
+        value={statusFilter}
+        onChange={setStatusFilter}
+        style={{ width: 150, borderRadius: 6 }}
+        suffixIcon={<FilterOutlined />}
+      >
+        <Select.Option value="all">Tất cả</Select.Option>
+        <Select.Option value="active">Hoạt động</Select.Option>
+        <Select.Option value="inactive">Đã khóa</Select.Option>
+      </Select>
 
-            <Col xs={12} sm={8} md={4} lg={3}>
-              <Select
-                placeholder="Trạng thái"
-                value={statusFilter}
-                onChange={setStatusFilter}
-                size="large"
-                style={{ width: '100%', borderRadius: 6 }}
-                suffixIcon={<FilterOutlined />}
-              >
-                <Select.Option value="all">Tất cả</Select.Option>
-                <Select.Option value="active">Hoạt động</Select.Option>
-                <Select.Option value="inactive">Đã khóa</Select.Option>
-              </Select>
-            </Col>
+      <Button
+        type="primary"
+        icon={<PlusOutlined />}
+        onClick={() => setTriggerAddUser(true)}
+        style={{ borderRadius: 6 }}
+      >
+        {t("Thêm người dùng")}
+      </Button>
+    </Space>
+  );
 
-            <Col xs={24} sm={8} md={6} lg={10} style={{ textAlign: 'right' }}>
-              <Button
-                type="primary"
-                onClick={() => setTriggerAddUser(true)}
-                size="large"
-                style={{ borderRadius: 6 }}
-              >
-                + {t("Thêm người dùng")}
-              </Button>
-            </Col>
-          </Row>
-        </div>
+  return (
+    <AdminPageLayout 
+      title="QUẢN LÝ NGƯỜI DÙNG" 
+      extra={toolbar}
+    >
+      {/* Statistics Cards */}
+      <StatisticsSection />
 
-        {/* Bảng danh sách người dùng */}
+      {/* Table */}
+      <div className="users-page-content">
         <UserTable
           users={users}
           setUsers={setUsers}
@@ -264,7 +217,7 @@ export default function UsersPage() {
             onClick: () => handleShowDetail(record),
           })}
         />
-      </Card>
+      </div>
 
       {/* Modal chi tiết người dùng */}
       {selectedUser && (
@@ -275,6 +228,6 @@ export default function UsersPage() {
           onUserUpdated={handleUserUpdated}
         />
       )}
-    </div>
+    </AdminPageLayout>
   );
 }

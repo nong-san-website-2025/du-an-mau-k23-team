@@ -43,23 +43,25 @@ class UserSerializer(serializers.ModelSerializer):
         required=False,
         allow_null=True
     )
-    
+
     # Expose Django's date_joined as created_at for frontend compatibility
     created_at = serializers.DateTimeField(source='date_joined', read_only=True)
 
     # ✅ BỎ write_only=True để có thể đọc được email/phone
     email = serializers.EmailField(required=False, allow_blank=True, allow_null=True)
     phone = serializers.CharField(required=False, allow_blank=True, allow_null=True)
-    
+
     avatar = serializers.ImageField(required=False, allow_null=True)
     can_delete = serializers.SerializerMethodField()
+    orders_count = serializers.SerializerMethodField()
+    total_spent = serializers.SerializerMethodField()
 
     class Meta:
         model = CustomUser
         fields = [
             "id", "username", "default_address",
             "full_name", "points", "role", "role_id", "created_at", "can_delete", "is_active",
-            "email", "phone", "avatar"  # ✅ Bỏ email_masked và phone_masked
+            "email", "phone", "avatar", "orders_count", "total_spent"  # ✅ Bỏ email_masked và phone_masked
         ]
 
     def get_default_address(self, obj):
@@ -87,6 +89,24 @@ class UserSerializer(serializers.ModelSerializer):
         except Exception as e:
             print("[DEBUG] get_can_delete error:", e)
             return True
+
+    def get_orders_count(self, obj):
+        try:
+            return obj.orders.count()
+        except Exception as e:
+            print("[DEBUG] get_orders_count error:", e)
+            return 0
+
+    def get_total_spent(self, obj):
+        try:
+            from django.db.models import Sum
+            total = obj.orders.filter(status='success').aggregate(
+                total_spent=Sum('total_price')
+            )['total_spent'] or 0
+            return float(total)
+        except Exception as e:
+            print("[DEBUG] get_total_spent error:", e)
+            return 0.0
 
     def create(self, validated_data):
         password = validated_data.pop("password", None)
@@ -256,10 +276,43 @@ class ChangePasswordSerializer(serializers.Serializer):
 class CustomUserSerializer(serializers.ModelSerializer):
     role = RoleSerializer(read_only=True)
     role_id = serializers.PrimaryKeyRelatedField(queryset=Role.objects.all(), source='role', write_only=True, required=False)
+    email = serializers.EmailField(required=False, allow_blank=True, allow_null=True)
+    phone = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    pending_email = serializers.EmailField(read_only=True, allow_null=True)
+    pending_phone = serializers.CharField(read_only=True, allow_null=True)
+    created_at = serializers.DateTimeField(source='date_joined', read_only=True)
 
     class Meta:
         model = CustomUser
-        fields = ['id', 'username', 'email', 'role', 'role_id', "phone", "avatar", "full_name", "status"]
+        fields = ['id', 'username', 'email', 'role', 'role_id', "phone", "avatar", "full_name", "status", "pending_email", "pending_phone", "created_at"]
+
+    def update(self, instance, validated_data):
+        import random
+        from django.utils import timezone
+
+        # Xử lý email change với pending verification
+        if "email" in validated_data:
+            email_val = validated_data.get("email")
+            if email_val and email_val != instance.email and '*' not in str(email_val):
+                instance.pending_email = email_val
+                validated_data.pop("email", None)
+
+        # Xử lý phone change với OTP
+        if "phone" in validated_data:
+            phone_val = validated_data.get("phone")
+            if phone_val and phone_val != (instance.phone or "") and '*' not in str(phone_val):
+                instance.pending_phone = phone_val
+                otp = f"{random.randint(0, 999999):06d}"
+                instance.phone_otp = otp
+                instance.phone_otp_expires = timezone.now() + timezone.timedelta(minutes=10)
+                validated_data.pop("phone", None)
+
+        # Cập nhật các trường còn lại
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        instance.save()
+        return instance
 
 class EmployeeSerializer(serializers.ModelSerializer):
     role = RoleSerializer(read_only=True)

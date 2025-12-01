@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { useCart } from "../services/CartContext";
-import { Modal, Button } from "antd";
+import { Modal, Button, Tooltip } from "antd";
 import {
   ExclamationCircleOutlined,
   InfoCircleOutlined,
+  DeleteOutlined,
 } from "@ant-design/icons";
 import "../styles/QuantityInput.css";
 
@@ -78,6 +79,10 @@ function QuantityInput({ item }) {
     }
   };
 
+  const handleDeleteClick = () => {
+    setShowConfirm(true);
+  };
+
   return (
     <div className="quantity-input">
       <button
@@ -101,6 +106,15 @@ function QuantityInput({ item }) {
       >
         +
       </button>
+      <Tooltip title="Xóa sản phẩm">
+        <button
+          className="qty-delete-btn"
+          onClick={handleDeleteClick}
+          aria-label="Xóa sản phẩm"
+        >
+          <DeleteOutlined />
+        </button>
+      </Tooltip>
 
       {/* ✅ Modal xác nhận xóa sản phẩm */}
       <Modal

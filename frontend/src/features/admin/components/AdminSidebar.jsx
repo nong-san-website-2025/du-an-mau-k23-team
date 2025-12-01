@@ -12,6 +12,7 @@ import {
   WarningOutlined,
   TagOutlined,
   CommentOutlined,
+  BankOutlined,
 } from "@ant-design/icons";
 import axios from "axios";
 import "../styles/AdminSidebar.css";
@@ -52,7 +53,6 @@ const Sidebar = () => {
         onClick={({ key }) => key.startsWith("/") && navigate(key)}
         style={{ borderRight: 0 }}
       >
-
         {/* Tổng quan */}
         <Menu.Item key="/admin" icon={<HomeOutlined />}>
           <Link to="/admin">Tổng quan</Link>
@@ -80,7 +80,11 @@ const Sidebar = () => {
         </Menu.SubMenu>
 
         {/* Sản phẩm */}
-        <Menu.SubMenu key="products" icon={<InboxOutlined />} title="Sản phẩm & Danh mục">
+        <Menu.SubMenu
+          key="products"
+          icon={<InboxOutlined />}
+          title="Sản phẩm & Danh mục"
+        >
           <Menu.Item key="/admin/products/approval">
             <Link to="/admin/products/approval">Duyệt sản phẩm</Link>
           </Menu.Item>
@@ -90,24 +94,38 @@ const Sidebar = () => {
         </Menu.SubMenu>
 
         {/* Đơn hàng */}
-        <Menu.SubMenu key="orders" icon={<ShoppingCartOutlined />} title="Đơn hàng & Vận chuyển">
+        <Menu.SubMenu
+          key="orders"
+          icon={<ShoppingCartOutlined />}
+          title="Đơn hàng"
+        >
           <Menu.Item key="/admin/orders">
             <Link to="/admin/orders">Quản lý đơn hàng</Link>
           </Menu.Item>
         </Menu.SubMenu>
 
         {/* Thanh toán */}
-        <Menu.SubMenu key="payments" icon={<DollarOutlined />} title="Thanh toán">
+        <Menu.SubMenu
+          key="payments"
+          icon={<BankOutlined />}
+          title="Thanh toán"
+        >
           <Menu.Item key="/admin/payments/wallets">
             <Link to="/admin/payments/wallets">Ví tiền seller</Link>
           </Menu.Item>
         </Menu.SubMenu>
 
+        {/* Doanh thu */}
+        <Menu.Item key="/admin/revenue" icon={<DollarOutlined />}>
+          <Link to="/admin/revenue">Doanh thu</Link>
+        </Menu.Item>
+
         {/* Báo cáo */}
-        <Menu.SubMenu key="reports" icon={<BarChartOutlined />} title="Thống kê & Báo cáo">
-          <Menu.Item key="/admin/reports/revenue">
-            <Link to="/admin/reports/revenue">Doanh thu</Link>
-          </Menu.Item>
+        <Menu.SubMenu
+          key="reports"
+          icon={<BarChartOutlined />}
+          title="Thống kê & Báo cáo"
+        >
           <Menu.Item key="/admin/reports/products">
             <Link to="/admin/reports/products">Sản phẩm</Link>
           </Menu.Item>
@@ -123,7 +141,11 @@ const Sidebar = () => {
         </Menu.SubMenu>
 
         {/* Marketing */}
-        <Menu.SubMenu key="marketing" icon={<NotificationOutlined />} title="Marketing">
+        <Menu.SubMenu
+          key="marketing"
+          icon={<NotificationOutlined />}
+          title="Marketing"
+        >
           <Menu.Item key="/admin/marketing/banners">
             <Link to="/admin/marketing/banners">Quản lý Banner</Link>
           </Menu.Item>
@@ -136,7 +158,11 @@ const Sidebar = () => {
         </Menu.SubMenu>
 
         {/* Khiếu nại */}
-        <Menu.SubMenu key="complaints" icon={<WarningOutlined />} title="Khiếu nại">
+        <Menu.SubMenu
+          key="complaints"
+          icon={<WarningOutlined />}
+          title="Khiếu nại"
+        >
           <Menu.Item key="/admin/complaints/user-reports">
             <Link to="/admin/complaints/user-reports">Người dùng báo cáo</Link>
           </Menu.Item>
@@ -150,12 +176,15 @@ const Sidebar = () => {
         </Menu.SubMenu>
 
         {/* Khuyến mãi */}
-        <Menu.SubMenu key="promotions" icon={<TagOutlined />} title="Khuyến mãi">
+        <Menu.SubMenu
+          key="promotions"
+          icon={<TagOutlined />}
+          title="Khuyến mãi"
+        >
           <Menu.Item key="/admin/promotions">
             <Link to="/admin/promotions">Quản lý khuyến mãi</Link>
           </Menu.Item>
         </Menu.SubMenu>
-
       </Menu>
     </Sider>
   );

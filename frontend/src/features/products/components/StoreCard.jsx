@@ -1,6 +1,7 @@
 import React from "react";
 import { Card, Button, Image, Statistic, Row, Col, Typography } from "antd";
 import { useNavigate } from "react-router-dom";
+import NoImage from "../../../components/shared/NoImage"; // import component NoImage
 
 const { Text } = Typography;
 
@@ -12,13 +13,17 @@ const StoreCard = ({ store, productId }) => {
       {/* Hàng đầu: Avatar + Tên shop + Nút */}
       <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 16 }}>
         {/* Avatar */}
-        <Image
-          src={store.image || "https://via.placeholder.com/80x80"}
-          width={60}
-          height={60}
-          preview={false}
-          style={{ borderRadius: "50%", objectFit: "cover", flexShrink: 0 }}
-        />
+        {store.image ? (
+          <Image
+            src={store.image}
+            width={60}
+            height={60}
+            preview={false}
+            style={{ borderRadius: "50%", objectFit: "cover", flexShrink: 0 }}
+          />
+        ) : (
+          <NoImage width={60} height={60} text="Không có ảnh" className="avatar-no-image" />
+        )}
 
         {/* Tên shop và nút */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flex: 1, minWidth: 0 }}>
