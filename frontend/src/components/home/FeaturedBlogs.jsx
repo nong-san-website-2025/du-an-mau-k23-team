@@ -126,9 +126,8 @@ export default function FeaturedBlogs() {
                         >
                           <Tag
                             color="green"
-                            icon={<FolderOpenOutlined />}
                             style={{
-                              borderRadius: 20,
+                              borderRadius: 8,
                               padding: "4px 12px",
                               fontSize: 12,
                               fontWeight: 600,

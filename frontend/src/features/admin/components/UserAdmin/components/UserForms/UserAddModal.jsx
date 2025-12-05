@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Modal, Form, Input, Select, Button, message } from "antd";
 import { createUser, fetchRoles } from "../../api/userApi";
+import { roleLabel } from "../../roleUtils";
 
 const { Option } = Select;
 
@@ -113,7 +114,7 @@ export default function UserAddModal({ visible, onClose, onUserAdded }) {
           <Select placeholder="Chọn vai trò">
             {roles.map((role) => (
               <Option key={role.id} value={String(role.id)}>
-                {role.name}
+                {roleLabel(role.name)}
               </Option>
             ))}
           </Select>

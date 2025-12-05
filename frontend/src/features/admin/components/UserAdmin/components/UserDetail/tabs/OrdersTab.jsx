@@ -1,7 +1,7 @@
-// Tab 4: Lịch sử mua hàng
+// Tab 2: Lịch sử mua hàng
 import React, { useEffect } from "react";
-import { Table, Tag, Empty, Skeleton, Card, Statistic, Row, Col } from "antd";
-import { ShoppingCart } from "lucide-react";
+import { Table, Tag, Empty, Skeleton, Card, Statistic, Row, Col, Space } from "antd";
+import { ShoppingCart, TrendingUp, DollarSign } from "lucide-react";
 import { intcomma } from "../../../../../../../utils/format";
 
 export default function OrdersTab({ userId, onLoad, loading, data }) {
@@ -12,42 +12,64 @@ export default function OrdersTab({ userId, onLoad, loading, data }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
-  if (!data && loading) return <Skeleton active />;
+  if (!data && loading) return <Skeleton active style={{ padding: "20px" }} />;
 
-  if (loading) return <Skeleton active />;
+  if (loading) return <Skeleton active style={{ padding: "20px" }} />;
+
+  const getOrderTotal = (order) => {
+    const amount = order.total_amount || order.totalAmount || order.total || 0;
+    return parseFloat(amount) || 0;
+  };
+
+  const getOrderStatus = (order) => {
+    return (order.status || order.order_status || "pending").toLowerCase();
+  };
 
   const columns = [
     {
       title: "Mã đơn",
-      dataIndex: "order_id",
-      key: "order_id",
-      render: (text) => <strong>#{text}</strong>,
+      dataIndex: "id",
+      key: "id",
+      width: 100,
+      render: (text) => <strong style={{ color: "#1890ff" }}>#{text}</strong>,
     },
     {
       title: "Ngày đặt",
       dataIndex: "created_at",
       key: "created_at",
+      width: 120,
       render: (date) => new Date(date).toLocaleDateString("vi-VN"),
     },
     {
       title: "Tổng tiền",
       dataIndex: "total_amount",
       key: "total_amount",
-      render: (amount) => <span>{intcomma(amount)} ₫</span>,
+      width: 130,
+      render: (amount, record) => (
+        <span style={{ color: "#52c41a", fontWeight: 600 }}>
+          {intcomma(getOrderTotal(record) || 0)} đ
+        </span>
+      ),
     },
     {
       title: "Trạng thái",
       dataIndex: "status",
       key: "status",
-      render: (status) => {
+      width: 130,
+      render: (status, record) => {
         const statusMap = {
+          success: { color: "green", label: "Thành công" },
           pending: { color: "orange", label: "Chờ xác nhận" },
           confirmed: { color: "blue", label: "Đã xác nhận" },
-          shipped: { color: "cyan", label: "Đang giao" },
+          shipping: { color: "cyan", label: "Đang giao" },
           delivered: { color: "green", label: "Đã giao" },
           cancelled: { color: "red", label: "Huỷ" },
+          preparing: { color: "blue", label: "Đang chuẩn bị" },
+          ready_for_pickup: { color: "cyan", label: "Sẵn sàng lấy" },
+          failed: { color: "red", label: "Thất bại" },
         };
-        const s = statusMap[status] || { color: "default", label: status };
+        const orderStatus = getOrderStatus(record);
+        const s = statusMap[orderStatus] || { color: "default", label: orderStatus || "N/A" };
         return <Tag color={s.color}>{s.label}</Tag>;
       },
     },
@@ -55,69 +77,87 @@ export default function OrdersTab({ userId, onLoad, loading, data }) {
 
   if (!Array.isArray(data) || data.length === 0) {
     return (
-      <div style={{ padding: "20px" }}>
+      <div style={{ padding: "12px", background: "#f5f5f5" }}>
         <Card>
           <Empty
-            description="Không có đơn hàng"
+            description="Người dùng này chưa có đơn hàng"
             image={Empty.PRESENTED_IMAGE_SIMPLE}
-            style={{ marginTop: "40px" }}
+            style={{ marginTop: "40px", marginBottom: "40px" }}
           />
         </Card>
       </div>
     );
   }
 
-  const totalSpent = data.reduce((sum, order) => sum + (order.total_amount || 0), 0);
-  const avgOrder = totalSpent / data.length;
+  const totalSpent = data.reduce((sum, order) => sum + getOrderTotal(order), 0);
+  const avgOrder = data.length > 0 ? totalSpent / data.length : 0;
+  const completedOrders = data.filter((o) => getOrderStatus(o) === "success").length;
 
   return (
-    <div style={{ padding: "20px" }}>
+    <div style={{ padding: "12px", background: "#f5f5f5", minHeight: "100vh" }}>
       {/* Statistics */}
-      <Row gutter={[16, 16]} style={{ marginBottom: "20px" }}>
+      <Row gutter={[16, 16]} style={{ marginBottom: "24px" }}>
         <Col xs={24} sm={12} md={6}>
-          <Card>
-            <Statistic title="Tổng đơn hàng" value={data.length} />
+          <Card bodyStyle={{ padding: "16px" }}>
+            <Statistic
+              title="Tổng đơn hàng"
+              value={data.length}
+              prefix={<ShoppingCart size={16} style={{ marginRight: "8px" }} />}
+              valueStyle={{ color: "#1890ff", fontSize: "18px", fontWeight: 600 }}
+            />
           </Card>
         </Col>
         <Col xs={24} sm={12} md={6}>
-          <Card>
+          <Card bodyStyle={{ padding: "16px" }}>
             <Statistic
               title="Tổng chi tiêu"
               value={totalSpent}
-              suffix="₫"
-              formatter={(value) => intcomma(Number(value))}
+              formatter={(value) => `${intcomma(value)} đ`}
+              valueStyle={{ color: "#52c41a", fontSize: "18px", fontWeight: 600 }}
             />
           </Card>
         </Col>
         <Col xs={24} sm={12} md={6}>
-          <Card>
+          <Card bodyStyle={{ padding: "16px" }}>
             <Statistic
-              title="Trung bình/đơn"
+              title="TB/đơn"
               value={avgOrder}
-              suffix="₫"
-              formatter={(value) => intcomma(Number(value))}
-              precision={0}
+              formatter={(value) =>
+                `${intcomma(value)} đ`
+              }
+              valueStyle={{ color: "#722ed1", fontSize: "18px", fontWeight: 600 }}
             />
           </Card>
         </Col>
         <Col xs={24} sm={12} md={6}>
-          <Card>
+          <Card bodyStyle={{ padding: "16px" }}>
             <Statistic
-              title="Hoàn thành"
-              value={data.filter((o) => o.status === "delivered").length}
-              suffix={`/${data.length}`}
+              title="Đã giao"
+              value={`${completedOrders}/${data.length}`}
+              prefix={<TrendingUp size={16} style={{ marginRight: "8px" }} />}
+              valueStyle={{ color: "#52c41a", fontSize: "18px", fontWeight: 600 }}
             />
           </Card>
         </Col>
       </Row>
 
       {/* Orders Table */}
-      <Card title={<><ShoppingCart size={16} style={{ marginRight: "8px" }} /> Danh sách đơn hàng</>}>
+      <Card
+        title={
+          <Space>
+            <ShoppingCart size={18} style={{ color: "#1890ff" }} />
+            <span style={{ fontSize: "16px", fontWeight: 600 }}>Danh sách đơn hàng</span>
+          </Space>
+        }
+        bodyStyle={{ padding: "16px" }}
+      >
         <Table
           columns={columns}
           dataSource={data.map((item, idx) => ({ ...item, key: idx }))}
-          pagination={{ pageSize: 10 }}
-          scroll={{ x: 900 }}
+          pagination={{ pageSize: 10, showSizeChanger: true, showQuickJumper: true }}
+          scroll={{ x: 600 }}
+          size="middle"
+          bordered
         />
       </Card>
     </div>

@@ -16,6 +16,7 @@ export default function UserTable({
   setUsers,
   loading = false,
   selectedRole = "all",
+  statusFilter = "all",
   searchTerm = "",
   roles = [],
   checkedIds = [],
@@ -36,11 +37,17 @@ export default function UserTable({
     const s = norm(searchTerm);
 
     return (Array.isArray(users) ? users : [])
-      .filter(
-        (u) =>
-          u?.role?.name?.toLowerCase() === "customer" ||
-          u?.role?.name?.toLowerCase() === "seller"
-      )
+      .filter((u) => {
+        if (selectedRole === "all") return true;
+        const roleMatch = selectedRole === "customer"
+          ? u?.role?.name?.toLowerCase() === "customer"
+          : u?.role?.name?.toLowerCase() === "seller";
+        return roleMatch;
+      })
+      .filter((u) => {
+        if (statusFilter === "all") return true;
+        return statusFilter === "active" ? u.is_active : !u.is_active;
+      })
       .filter((u) => {
         const hitSearch =
           s === "" ||
@@ -50,7 +57,7 @@ export default function UserTable({
           norm(u.phone).includes(s);
         return hitSearch;
       });
-  }, [users, searchTerm]);
+  }, [users, searchTerm, selectedRole, statusFilter]);
 
   const rowSelection = {
     selectedRowKeys: checkedIds,

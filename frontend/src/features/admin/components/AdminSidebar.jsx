@@ -1,5 +1,5 @@
 import { Badge, Layout, Menu } from "antd";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   HomeOutlined,
   UserOutlined,
@@ -45,147 +45,180 @@ const Sidebar = () => {
     return () => clearInterval(interval);
   }, []);
 
+  const menuItems = [
+    {
+      key: "/admin",
+      icon: <HomeOutlined />,
+      label: "Tổng quan",
+    },
+    {
+      type: "divider",
+    },
+    {
+      key: "users",
+      icon: <UserOutlined />,
+      label: "Người dùng",
+      children: [
+        {
+          key: "/admin/users",
+          label: "Quản lý người dùng",
+        },
+      ],
+    },
+    {
+      key: "sellers",
+      icon: <ShopOutlined />,
+      label: "Cửa hàng",
+      children: [
+        {
+          key: "/admin/sellers/business",
+          label: "Quản lý cửa hàng",
+        },
+        {
+          key: "/admin/sellers/approval",
+          label: (
+            <div className="menu-badge-item" style={{ justifyContent: "space-between", display: "flex", alignItems: "center" }}>
+              <span>Duyệt cửa hàng</span>
+              <Badge count={pendingSellers} size="small" overflowCount={99}  />
+            </div>
+          ),
+        },
+      ],
+    },
+    {
+      key: "products",
+      icon: <InboxOutlined />,
+      label: "Sản phẩm & Danh mục",
+      children: [
+        {
+          key: "/admin/products/approval",
+          label: "Duyệt sản phẩm",
+        },
+        {
+          key: "/admin/categories",
+          label: "Quản lý danh mục",
+        },
+      ],
+    },
+    {
+      key: "orders",
+      icon: <ShoppingCartOutlined />,
+      label: "Đơn hàng",
+      children: [
+        {
+          key: "/admin/orders",
+          label: "Quản lý đơn hàng",
+        },
+      ],
+    },
+    {
+      key: "payments",
+      icon: <BankOutlined />,
+      label: "Thanh toán",
+      children: [
+        {
+          key: "/admin/payments/wallets",
+          label: "Ví tiền seller",
+        },
+      ],
+    },
+    {
+      key: "/admin/revenue",
+      icon: <DollarOutlined />,
+      label: "Doanh thu",
+    },
+    {
+      key: "reports",
+      icon: <BarChartOutlined />,
+      label: "Thống kê & Báo cáo",
+      children: [
+        {
+          key: "/admin/reports/products",
+          label: "Sản phẩm",
+        },
+        {
+          key: "/admin/reports/orders",
+          label: "Đơn hàng",
+        },
+        {
+          key: "/admin/reports/customers",
+          label: "Khách hàng",
+        },
+        {
+          key: "/admin/reports/agriculture",
+          label: "Cửa hàng",
+        },
+      ],
+    },
+    {
+      key: "marketing",
+      icon: <NotificationOutlined />,
+      label: "Marketing",
+      children: [
+        {
+          key: "/admin/marketing/banners",
+          label: "Quản lý Banner",
+        },
+        {
+          key: "/admin/marketing/blogs",
+          label: "Quản lý Bài Viết",
+        },
+        {
+          key: "/admin/promotions/flashsale",
+          label: "Quản lý Flash Sale",
+        },
+      ],
+    },
+    {
+      key: "complaints",
+      icon: <WarningOutlined />,
+      label: "Khiếu nại",
+      children: [
+        {
+          key: "/admin/complaints/user-reports",
+          label: "Người dùng báo cáo",
+        },
+      ],
+    },
+    {
+      key: "reviews",
+      icon: <CommentOutlined />,
+      label: "Đánh giá",
+      children: [
+        {
+          key: "/admin/reviews",
+          label: "Quản lý đánh giá",
+        },
+      ],
+    },
+    {
+      key: "promotions",
+      icon: <TagOutlined />,
+      label: "Khuyến mãi",
+      children: [
+        {
+          key: "/admin/promotions",
+          label: "Quản lý khuyến mãi",
+        },
+      ],
+    },
+  ];
+
+  const onClick = ({ key }) => {
+    navigate(key);
+  };
+
   return (
     <Sider width={250} className="sidebar">
       <Menu
         mode="inline"
         selectedKeys={[location.pathname]}
-        onClick={({ key }) => key.startsWith("/") && navigate(key)}
-        style={{ borderRight: 0 }}
-      >
-        {/* Tổng quan */}
-        <Menu.Item key="/admin" icon={<HomeOutlined />}>
-          <Link to="/admin">Tổng quan</Link>
-        </Menu.Item>
-
-        {/* Người dùng */}
-        <Menu.SubMenu key="users" icon={<UserOutlined />} title="Người dùng">
-          <Menu.Item key="/admin/users">
-            <Link to="/admin/users">Quản lý người dùng</Link>
-          </Menu.Item>
-        </Menu.SubMenu>
-
-        {/* Cửa hàng */}
-        <Menu.SubMenu key="sellers" icon={<ShopOutlined />} title="Cửa hàng">
-          <Menu.Item key="/admin/sellers/business">
-            <Link to="/admin/sellers/business">Quản lý cửa hàng</Link>
-          </Menu.Item>
-
-          <Menu.Item key="/admin/sellers/approval">
-            <div className="menu-badge-item">
-              <Link to="/admin/sellers/approval">Duyệt cửa hàng</Link>
-              <Badge count={pendingSellers} size="small" overflowCount={99} />
-            </div>
-          </Menu.Item>
-        </Menu.SubMenu>
-
-        {/* Sản phẩm */}
-        <Menu.SubMenu
-          key="products"
-          icon={<InboxOutlined />}
-          title="Sản phẩm & Danh mục"
-        >
-          <Menu.Item key="/admin/products/approval">
-            <Link to="/admin/products/approval">Duyệt sản phẩm</Link>
-          </Menu.Item>
-          <Menu.Item key="/admin/products/categories">
-            <Link to="/admin/categories">Quản lý danh mục</Link>
-          </Menu.Item>
-        </Menu.SubMenu>
-
-        {/* Đơn hàng */}
-        <Menu.SubMenu
-          key="orders"
-          icon={<ShoppingCartOutlined />}
-          title="Đơn hàng"
-        >
-          <Menu.Item key="/admin/orders">
-            <Link to="/admin/orders">Quản lý đơn hàng</Link>
-          </Menu.Item>
-        </Menu.SubMenu>
-
-        {/* Thanh toán */}
-        <Menu.SubMenu
-          key="payments"
-          icon={<BankOutlined />}
-          title="Thanh toán"
-        >
-          <Menu.Item key="/admin/payments/wallets">
-            <Link to="/admin/payments/wallets">Ví tiền seller</Link>
-          </Menu.Item>
-        </Menu.SubMenu>
-
-        {/* Doanh thu */}
-        <Menu.Item key="/admin/revenue" icon={<DollarOutlined />}>
-          <Link to="/admin/revenue">Doanh thu</Link>
-        </Menu.Item>
-
-        {/* Báo cáo */}
-        <Menu.SubMenu
-          key="reports"
-          icon={<BarChartOutlined />}
-          title="Thống kê & Báo cáo"
-        >
-          <Menu.Item key="/admin/reports/products">
-            <Link to="/admin/reports/products">Sản phẩm</Link>
-          </Menu.Item>
-          <Menu.Item key="/admin/reports/orders">
-            <Link to="/admin/reports/orders">Đơn hàng</Link>
-          </Menu.Item>
-          <Menu.Item key="/admin/reports/customers">
-            <Link to="/admin/reports/customers">Khách hàng</Link>
-          </Menu.Item>
-          <Menu.Item key="/admin/reports/agriculture">
-            <Link to="/admin/reports/agriculture">Cửa hàng</Link>
-          </Menu.Item>
-        </Menu.SubMenu>
-
-        {/* Marketing */}
-        <Menu.SubMenu
-          key="marketing"
-          icon={<NotificationOutlined />}
-          title="Marketing"
-        >
-          <Menu.Item key="/admin/marketing/banners">
-            <Link to="/admin/marketing/banners">Quản lý Banner</Link>
-          </Menu.Item>
-          <Menu.Item key="/admin/marketing/blogs">
-            <Link to="/admin/marketing/blogs">Quản lý Bài Viết</Link>
-          </Menu.Item>
-          <Menu.Item key="/admin/promotions/flashsale">
-            <Link to="/admin/promotions/flashsale">Quản lý Flash Sale</Link>
-          </Menu.Item>
-        </Menu.SubMenu>
-
-        {/* Khiếu nại */}
-        <Menu.SubMenu
-          key="complaints"
-          icon={<WarningOutlined />}
-          title="Khiếu nại"
-        >
-          <Menu.Item key="/admin/complaints/user-reports">
-            <Link to="/admin/complaints/user-reports">Người dùng báo cáo</Link>
-          </Menu.Item>
-        </Menu.SubMenu>
-
-        {/* Đánh giá */}
-        <Menu.SubMenu key="reviews" icon={<CommentOutlined />} title="Đánh giá">
-          <Menu.Item key="/admin/reviews">
-            <Link to="/admin/reviews">Quản lý đánh giá</Link>
-          </Menu.Item>
-        </Menu.SubMenu>
-
-        {/* Khuyến mãi */}
-        <Menu.SubMenu
-          key="promotions"
-          icon={<TagOutlined />}
-          title="Khuyến mãi"
-        >
-          <Menu.Item key="/admin/promotions">
-            <Link to="/admin/promotions">Quản lý khuyến mãi</Link>
-          </Menu.Item>
-        </Menu.SubMenu>
-      </Menu>
+        onClick={onClick}
+        items={menuItems}
+        inlineIndent={24}
+        style={{ borderRight: 0, height: "100%" }}
+        className="custom-menu"
+      />
     </Sider>
   );
 };

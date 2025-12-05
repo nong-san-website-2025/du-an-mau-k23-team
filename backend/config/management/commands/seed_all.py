@@ -13,6 +13,7 @@ class Command(BaseCommand):
             ("Seed Sellers từ Users", "seed_sellers"),
             ("Reset & Seed Products", "seed_products"),
             ("Seed Vouchers", "seed_vouchers"),
+            ("Seed Blog Posts", "seed_blog"),
         ]
 
         for step_name, command_name in steps:

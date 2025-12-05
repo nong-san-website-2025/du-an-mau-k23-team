@@ -1,6 +1,6 @@
-// Tab 5: Hoạt động gần đây
+// Tab 3: Hoạt động gần đây
 import React, { useEffect } from "react";
-import { Timeline, Empty, Skeleton, Card } from "antd";
+import { Timeline, Empty, Skeleton, Card, Space } from "antd";
 import {
   ShoppingCart,
   MessageCircle,
@@ -22,18 +22,18 @@ export default function ActivityTab({ userId, onLoad, loading, data }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
-  if (!data && loading) return <Skeleton active />;
+  if (!data && loading) return <Skeleton active style={{ padding: "20px" }} />;
 
-  if (loading) return <Skeleton active />;
+  if (loading) return <Skeleton active style={{ padding: "20px" }} />;
 
   if (!Array.isArray(data) || data.length === 0) {
     return (
-      <div style={{ padding: "20px" }}>
+      <div style={{ padding: "24px", background: "#f5f5f5", minHeight: "100vh" }}>
         <Card>
           <Empty
             description="Không có hoạt động"
             image={Empty.PRESENTED_IMAGE_SIMPLE}
-            style={{ marginTop: "40px" }}
+            style={{ marginTop: "40px", marginBottom: "40px" }}
           />
         </Card>
       </div>
@@ -74,19 +74,46 @@ export default function ActivityTab({ userId, onLoad, loading, data }) {
     return colorMap[type] || "default";
   };
 
+  const getActivityLabel = (type) => {
+    const labelMap = {
+      order_created: "Tạo đơn hàng",
+      order_confirmed: "Xác nhận đơn hàng",
+      order_shipped: "Giao hàng",
+      order_delivered: "Giao hàng thành công",
+      payment: "Thanh toán",
+      review: "Đánh giá",
+      login: "Đăng nhập",
+      view: "Xem sản phẩm",
+      favorite: "Thêm yêu thích",
+      profile_update: "Cập nhật hồ sơ",
+      activity: "Hoạt động",
+    };
+    return labelMap[type] || type;
+  };
+
   return (
-    <div style={{ padding: "20px" }}>
-      <Card title={<><Activity size={16} style={{ marginRight: "8px" }} /> Nhật ký hoạt động</>}>
+    <div style={{ padding: "24px", background: "#f5f5f5", minHeight: "100vh" }}>
+      <Card 
+        title={
+          <Space>
+            <Activity size={18} style={{ color: "#1890ff" }} />
+            <span style={{ fontSize: "16px", fontWeight: 600 }}>Nhật ký hoạt động</span>
+          </Space>
+        }
+        bodyStyle={{ padding: "20px" }}
+      >
         <Timeline
           items={data.map((item, idx) => ({
             dot: getActivityIcon(item.activity_type),
             color: getActivityColor(item.activity_type),
             children: (
-              <div key={idx}>
+              <div key={idx} style={{ marginBottom: idx !== data.length - 1 ? "16px" : 0 }}>
                 <p style={{ marginBottom: "4px" }}>
-                  <strong>{item.description || item.title}</strong>
+                  <strong style={{ color: "#262626", fontSize: "14px" }}>
+                    {item.description || item.title || getActivityLabel(item.activity_type)}
+                  </strong>
                 </p>
-                <p style={{ fontSize: "12px", color: "#999", marginBottom: 0 }}>
+                <p style={{ fontSize: "12px", color: "#8c8c8c", marginBottom: 0 }}>
                   {new Date(item.created_at).toLocaleString("vi-VN")}
                 </p>
               </div>

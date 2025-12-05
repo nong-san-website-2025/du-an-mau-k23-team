@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { Form, Input, Select, Button, Card, message } from "antd";
 import axios from "axios";
+import { roleLabel } from "./roleUtils";
 
 const API_BASE_URL = "http://localhost:8000/api";
 const { Option } = Select;
@@ -13,28 +14,70 @@ export default function UserEditForm({ editUser, onCancel, onSave }) {
 
   const getToken = () => localStorage.getItem("token") || "";
 
-  // ✅ Load roles + fill data
+  // Load roles once on mount (so Select always has full list)
   useEffect(() => {
-    if (!editUser) return;
     const token = getToken();
 
-    axios
-      .get(`${API_BASE_URL}/users/roles/list/`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      .then((res) => setRoles(res.data || []))
-      .catch((err) => console.error("❌ Lỗi load roles:", err));
+    const tryLoadRoles = async () => {
+      const endpoints = [
+        `${API_BASE_URL}/users/roles/list/`,
+        `${API_BASE_URL}/users/roles/`,
+        `${API_BASE_URL}/roles/list/`,
+        `${API_BASE_URL}/roles/`,
+      ];
 
-    // Đổ dữ liệu ban đầu vào form
+      for (const url of endpoints) {
+        try {
+          const res = await axios.get(url, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (res && res.status >= 200 && res.status < 300) {
+            // Normalize possible wrapper (results/data)
+            let data = res.data;
+            if (data && data.results) data = data.results;
+            if (data && data.data) data = data.data;
+            setRoles(Array.isArray(data) ? data : []);
+            return;
+          }
+        } catch (err) {
+          // continue to next endpoint on 404 or other errors
+          // but log only if it's the last endpoint
+          console.warn(
+            `Tried roles endpoint ${url}:`,
+            err?.response?.status || err.message
+          );
+          continue;
+        }
+      }
+
+      console.error(
+        "❌ Không tải được danh sách roles từ server (404/Not found)"
+      );
+    };
+
+    tryLoadRoles();
+  }, []);
+
+  // Fill form whenever editUser changes
+  useEffect(() => {
+    if (!editUser) return;
+    // Set all fields except role_id — we set role_id only after roles list is loaded
     form.setFieldsValue({
       username: editUser.username || "",
       email: editUser.email || "",
       full_name: editUser.full_name || "",
       phone: editUser.phone || "",
-      role_id: editUser.role ? String(editUser.role.id) : "",
       is_active: editUser.is_active,
     });
   }, [editUser, form]);
+
+  // When roles are available, set the role_id so Select can match an Option
+  useEffect(() => {
+    if (!editUser) return;
+    if (!roles || roles.length === 0) return;
+    const roleId = editUser.role ? String(editUser.role.id) : "";
+    form.setFieldsValue({ role_id: roleId });
+  }, [roles, editUser, form]);
 
   const handleSubmit = async (values) => {
     if (!editUser?.id) return;
@@ -42,25 +85,46 @@ export default function UserEditForm({ editUser, onCancel, onSave }) {
     setLoading(true);
     try {
       const payload = {
+        // include username so backend that requires it won't error
+        username: values.username || editUser.username,
         full_name: values.full_name,
         phone: values.phone,
         role_id: values.role_id ? Number(values.role_id) : null,
-        is_active: editUser.is_active,
+        // prefer form value if present, otherwise keep current
+        is_active: typeof values.is_active !== "undefined" ? values.is_active : editUser.is_active,
       };
 
+      // Use admin management endpoint (registered as 'management')
       const response = await axios.patch(
-        `${API_BASE_URL}/users/${editUser.id}/`,
+        `${API_BASE_URL}/users/management/${editUser.id}/`,
         payload,
         {
           headers: { Authorization: `Bearer ${getToken()}` },
         }
       );
 
-      message.success("✅ Cập nhật thông tin thành công");
-      if (onSave) onSave(response.data);
+      // Refetch full user from management endpoint to ensure nested `role` is present
+      let updatedUser = response.data;
+      try {
+        const full = await axios.get(
+          `${API_BASE_URL}/users/management/${editUser.id}/`,
+          {
+            headers: { Authorization: `Bearer ${getToken()}` },
+          }
+        );
+        if (full && full.data) updatedUser = full.data;
+      } catch (e) {
+        console.warn(
+          "Không thể fetch user sau khi cập nhật:",
+          e?.response?.status || e.message
+        );
+      }
+
+      message.success("Cập nhật thông tin thành công");
+      if (onSave) onSave(updatedUser);
     } catch (err) {
-      console.error("❌ Cập nhật user thất bại:", err.response?.data || err);
-      message.error("❌ Lưu thay đổi thất bại");
+      console.error("Cập nhật user thất bại:", err.response?.data || err);
+      message.error("Lưu thay đổi thất bại");
     } finally {
       setLoading(false);
     }
@@ -75,14 +139,9 @@ export default function UserEditForm({ editUser, onCancel, onSave }) {
       style={{
         borderRadius: 12,
         boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
-        padding: 24,
+        padding: 12,
       }}
     >
-      <h3 style={{ marginBottom: 20 }}>
-        ✏️ Đang chỉnh sửa tài khoản:{" "}
-        <b style={{ color: "#1890ff" }}>{editUser.username}</b>
-      </h3>
-
       <Form
         layout="vertical"
         form={form}
@@ -99,36 +158,23 @@ export default function UserEditForm({ editUser, onCancel, onSave }) {
         </Form.Item>
 
         {/* Editable fields */}
-        <Form.Item
-          label="Họ và tên"
-          name="full_name"
-          rules={[{ required: true, message: "Vui lòng nhập họ tên" }]}
-        >
+        <Form.Item label="Họ và tên" name="full_name">
           <Input placeholder="Nhập họ và tên" />
         </Form.Item>
 
-        <Form.Item
-          label="Số điện thoại"
-          name="phone"
-          rules={[
-            {
-              pattern: /^[0-9]{9,11}$/,
-              message: "Số điện thoại không hợp lệ",
-            },
-          ]}
-        >
-          <Input placeholder="Nhập số điện thoại" />
+        <Form.Item label="Số điện thoại" name="phone">
+          <Input type="email" disabled />
         </Form.Item>
 
         <Form.Item
-          label="Quyền (Role)"
+          label="Vai trò"
           name="role_id"
           rules={[{ required: true, message: "Vui lòng chọn quyền" }]}
         >
           <Select placeholder="Chọn quyền">
             {roles.map((r) => (
               <Option key={r.id} value={String(r.id)}>
-                {r.name}
+                {roleLabel(r.name)}
               </Option>
             ))}
           </Select>

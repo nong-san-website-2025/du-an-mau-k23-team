@@ -11,9 +11,10 @@ import {
   BarChartOutlined,
   WarningOutlined,
   WechatOutlined,
-  WalletOutlined, // 
+  WalletOutlined, //
 } from "@ant-design/icons";
 import { useNavigate, useLocation } from "react-router-dom";
+import "../styles/SellerSidebar.css";
 
 const { Sider } = Layout;
 
@@ -27,6 +28,10 @@ export default function SellerSidebar({ onItemClick }) {
       key: "/seller-center/dashboard",
       icon: <DashboardOutlined />,
       label: "Tổng quan",
+    },
+
+    {
+      type: "divider",
     },
 
     {
@@ -122,6 +127,7 @@ export default function SellerSidebar({ onItemClick }) {
         onClick={onClick}
         items={menuItems}
         style={{ height: "100%" }}
+        className="custom-menu"
       />
     </Sider>
   );

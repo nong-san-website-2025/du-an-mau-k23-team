@@ -62,7 +62,7 @@ export const userApi = {
 
   // Xóa user
   deleteUser: async (id) => {
-    return await fetchWithAuth(`http://localhost:8000/api/users/${id}/`, {
+    return await fetchWithAuth(`http://localhost:8000/api/users/management/${id}/`, {
       method: "DELETE",
     });
   },

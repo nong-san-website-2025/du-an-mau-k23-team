@@ -9,6 +9,7 @@ import {
 } from "@ant-design/icons";
 import { intcomma } from "../../../../utils/format";
 import "../../styles/Table.css";
+import ButtonAction from "../../../../components/ButtonAction";
 
 const ProductTable = ({
   data,
@@ -224,76 +225,50 @@ const ProductTable = ({
       width: 120,
       align: "center",
       className: "compact-action-column",
-
       render: (_, record) => {
         const isSelfRejected = record.status === "self_rejected";
 
-        return (
-          <Space size="small" onClick={(e) => e.stopPropagation()}>
-            {/* Quản lý ảnh */}
-            <Tooltip title="Quản lý ảnh sản phẩm">
-              <Button
-                type="text"
-                icon={<PictureOutlined style={{ color: "#1890ff" }} />}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onManageImages(record);
-                }}
-              />
-            </Tooltip>
+        const actions = [
+          {
+            show: true,
+            icon: <PictureOutlined style={{ color: "#1890ff" }} />,
+            tooltip: "Quản lý ảnh sản phẩm",
+            onClick: onManageImages,
+          },
+          {
+            show: !isSelfRejected,
+            icon: <StopOutlined />,
+            tooltip: "Huỷ yêu cầu đăng sản phẩm",
+            onClick: onSelfReject,
+            confirm: {
+              title: "Bạn có chắc muốn huỷ thêm sản phẩm này?",
+              okText: "Xác nhận",
+              cancelText: "Hủy",
+            },
+            buttonProps: { danger: true },
+          },
+          {
+            show: true,
+            icon: <EditOutlined style={{ color: "#52c41a" }} />,
+            tooltip: "Chỉnh sửa sản phẩm",
+            onClick: onEdit,
+          },
+          {
+            show: isSelfRejected,
+            icon: <DeleteOutlined />,
+            tooltip: "Xóa sản phẩm khỏi danh sách",
+            onClick: (record) => onDelete(record.id),
+            confirm: {
+              title: "Bạn có chắc chắn muốn xóa sản phẩm này?",
+              okText: "Xóa",
+              cancelText: "Hủy",
+              okButtonProps: { danger: true },
+            },
+            buttonProps: { danger: true },
+          },
+        ];
 
-            {/* Huỷ sản phẩm */}
-            {!isSelfRejected && (
-              <Tooltip title="Huỷ yêu cầu đăng sản phẩm">
-                <Popconfirm
-                  title="Bạn có chắc muốn huỷ thêm sản phẩm này?"
-                  okText="Xác nhận"
-                  cancelText="Hủy"
-                  onConfirm={() => onSelfReject(record)}
-                >
-                  <Button
-                    type="text"
-                    danger
-                    icon={<StopOutlined />}
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                </Popconfirm>
-              </Tooltip>
-            )}
-
-            {/* Sửa */}
-            <Tooltip title="Chỉnh sửa sản phẩm">
-              <Button
-                type="text"
-                icon={<EditOutlined style={{ color: "#52c41a" }} />}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onEdit(record);
-                }}
-              />
-            </Tooltip>
-
-            {/* Xoá nếu đã tự huỷ */}
-            {isSelfRejected && (
-              <Tooltip title="Xóa sản phẩm khỏi danh sách">
-                <Popconfirm
-                  title="Bạn có chắc chắn muốn xóa sản phẩm này?"
-                  okText="Xóa"
-                  cancelText="Hủy"
-                  okButtonProps={{ danger: true }}
-                  onConfirm={() => onDelete(record.id)}
-                >
-                  <Button
-                    type="text"
-                    danger
-                    icon={<DeleteOutlined />}
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                </Popconfirm>
-              </Tooltip>
-            )}
-          </Space>
-        );
+        return <ButtonAction actions={actions} record={record} />;
       },
     },
   ];

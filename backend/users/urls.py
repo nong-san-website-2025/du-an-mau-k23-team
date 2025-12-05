@@ -90,15 +90,15 @@ urlpatterns = [
     path('verify-admin/', admin.VerifyAdminView.as_view(), name='verify-admin'),
     
     # User Management
-    path('toggle-active/<int:pk>/', admin.toggle_user_active, name='toggle-user-active'),
+   path('toggle-active/<int:pk>/', admin.toggle_user_active, name='toggle-user-active'),
     path('delete/<int:pk>/', admin.delete_user, name='delete-user'),
-    path('list/', admin.UserListView.as_view(), name='user-list'),
+    path('list/', admin.UserListView.as_view(), name='user-list'), # Cẩn thận path này nếu nó trùng prefix
     
-    # Statistics
-    path('statistics/customers/', 
-         admin.customer_statistics_report, name='customer-statistics'),
-    
-    # Roles
+    # Roles Custom Paths (Sửa lỗi 404 roles/list)
     path('roles/create/', admin.RoleCreateView.as_view(), name='role-create'),
     path('roles/list/', admin.RoleListView.as_view(), name='role-list'),
+
+    # Statistics
+    path('statistics/customers/', admin.customer_statistics_report, name='customer-statistics'),
+path('', include(router.urls)),
 ]

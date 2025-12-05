@@ -1,7 +1,6 @@
 import React from "react";
 import { Table } from "antd";
-import SellerStatusTag from "./SellerStatusTag";
-import SellerActions from "./SellerActions";
+import SellerStatusTag from "../../../../components/StatusTag.jsx";
 import dayjs from "dayjs";
 import "../../styles/AdminPageLayout.css";
 import ActionButtons from "../ActionButtons";
@@ -43,9 +42,9 @@ const SellerTable = ({ data, onApprove, onReject, onView, onLock, onRow }) => {
       dataIndex: "status",
       key: "status",
       width: 120,
+      align: "center",
       render: (status) => <SellerStatusTag status={status} />,
       sorter: (a, b) => (a.status || "").localeCompare(b.status || ""),
-      align: "center",
     },
     {
       title: "Ngày đăng ký",

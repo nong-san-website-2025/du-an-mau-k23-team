@@ -161,11 +161,11 @@ export default function SellerDetailDrawer({
 
   const getStatusLabel = (status) => {
     const statusMap = {
-      pending: "CHỜ DUYỆT",
-      approved: "ĐÃ DUYỆT",
-      rejected: "BỊ TỪ CHỐI",
-      active: "ĐANG HOẠT ĐỘNG",
-      locked: "ĐÃ KHOÁ",
+      pending: "Chờ duyệt",
+      approved: "Đẫ duyệt",
+      rejected: "Từ chối",
+      active: "Đang hoạt động",
+      locked: "Đã khoá",
     };
     return statusMap[status] || status;
   };

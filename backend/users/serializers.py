@@ -43,6 +43,11 @@ class UserSerializer(serializers.ModelSerializer):
         required=False,
         allow_null=True
     )
+    # Include full addresses list for admin views
+    addresses = serializers.SerializerMethodField()
+
+    # Wallet balance present on CustomUser model
+    wallet_balance = serializers.SerializerMethodField()
 
     # Expose Django's date_joined as created_at for frontend compatibility
     created_at = serializers.DateTimeField(source='date_joined', read_only=True)
@@ -61,12 +66,40 @@ class UserSerializer(serializers.ModelSerializer):
         fields = [
             "id", "username", "default_address",
             "full_name", "points", "role", "role_id", "created_at", "can_delete", "is_active",
+            "wallet_balance", "addresses",
             "email", "phone", "avatar", "orders_count", "total_spent"  # ✅ Bỏ email_masked và phone_masked
         ]
 
     def get_default_address(self, obj):
         default = obj.addresses.filter(is_default=True).first()
         return default.location if default else None
+
+    def get_addresses(self, obj):
+        # Return serialized addresses for this user (only for admin/detail views)
+        try:
+            AddressSerializer = globals().get('AddressSerializer')
+            if AddressSerializer:
+                return AddressSerializer(obj.addresses.all(), many=True).data
+            # Fallback: simple dict list
+            return [
+                {
+                    'id': a.id,
+                    'recipient_name': a.recipient_name,
+                    'phone': a.phone,
+                    'location': a.location,
+                    'is_default': a.is_default,
+                }
+                for a in obj.addresses.all()
+            ]
+        except Exception:
+            return []
+
+    def get_wallet_balance(self, obj):
+        try:
+            # CustomUser has wallet_balance field
+            return float(obj.wallet_balance or 0)
+        except Exception:
+            return 0.0
 
     def get_history(self, obj):
         histories = obj.point_histories.order_by('-date')

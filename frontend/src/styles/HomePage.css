@@ -14,7 +14,7 @@
 }
 
 /* Nền trắng cho từng section để tách biệt */
-.home-section > div,
+.home-section > div:not([class*="promotionWrapper"]),
 .home-section .category-scroll-container,
 .home-section .row {
   background: #fff;

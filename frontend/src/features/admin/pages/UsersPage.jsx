@@ -1,12 +1,13 @@
 // pages/UsersPage.jsx
 import React, { useEffect, useState, useMemo } from "react";
 import { Button, Row, Col, Input, Space, Card, Statistic, Select } from "antd";
-import { SearchOutlined, FilterOutlined, UserOutlined, ShoppingOutlined, TeamOutlined, PlusOutlined } from '@ant-design/icons';
+import { SearchOutlined, FilterOutlined, UserOutlined, ShoppingOutlined, TeamOutlined, PlusOutlined, LockFilled, LockOutlined } from '@ant-design/icons';
 import AdminPageLayout from "../components/AdminPageLayout";
 import UserTable from "../components/UserAdmin/UserTable";
 import UserDetailModal from "../components/UserAdmin/components/UserDetail/UserDetailRow";
 import axios from "axios";
 import { useTranslation } from "react-i18next";
+import { STATUS_LABELS, STATUS } from '../../../constants/statusConstants';
 import '../styles/UsersPage.css';
 
 export default function UsersPage() {
@@ -27,10 +28,10 @@ export default function UsersPage() {
     const total = users.length;
     const active = users.filter(user => user.is_active).length;
     const inactive = total - active;
-    const customers = users.filter(user => user.role?.name?.toLowerCase() === 'customer').length;
+    const locked = users.filter(user => user.status?.toLowerCase() === STATUS.LOCKED.toLowerCase()).length;
     const sellers = users.filter(user => user.role?.name?.toLowerCase() === 'seller').length;
 
-    return { total, active, inactive, customers, sellers };
+    return { total, active, inactive, locked, sellers };
   }, [users]);
 
   const fetchUsers = async () => {
@@ -102,7 +103,7 @@ export default function UsersPage() {
             className="statistic-card"
           >
             <Statistic
-              title="Đang hoạt động"
+              title={STATUS_LABELS.active}
               value={userStats.active}
               valueStyle={{ color: '#52c41a', fontSize: 24 }}
               suffix={
@@ -119,10 +120,10 @@ export default function UsersPage() {
             className="statistic-card"
           >
             <Statistic
-              title="Khách hàng"
-              value={userStats.customers}
-              prefix={<UserOutlined />}
-              valueStyle={{ fontSize: 24 }}
+              title="Tạm ngưng hoạt động"
+              value={userStats.inactive}
+              prefix={<LockOutlined />}
+              valueStyle={{ fontSize: 24, color: '#faad14' }}
             />
           </Card>
         </Col>
@@ -165,6 +166,7 @@ export default function UsersPage() {
         <Select.Option value="all">Tất cả vai trò</Select.Option>
         <Select.Option value="customer">Khách hàng</Select.Option>
         <Select.Option value="seller">Người bán</Select.Option>
+        <Select.Option value="admin">Quản trị viên</Select.Option>
       </Select>
 
       <Select
@@ -175,8 +177,8 @@ export default function UsersPage() {
         suffixIcon={<FilterOutlined />}
       >
         <Select.Option value="all">Tất cả</Select.Option>
-        <Select.Option value="active">Hoạt động</Select.Option>
-        <Select.Option value="inactive">Đã khóa</Select.Option>
+        <Select.Option value="active">{STATUS_LABELS.active}</Select.Option>
+        <Select.Option value="locked">{STATUS_LABELS.locked}</Select.Option>
       </Select>
 
       <Button
@@ -191,8 +193,8 @@ export default function UsersPage() {
   );
 
   return (
-    <AdminPageLayout 
-      title="QUẢN LÝ NGƯỜI DÙNG" 
+    <AdminPageLayout
+      title="QUẢN LÝ NGƯỜI DÙNG"
       extra={toolbar}
     >
       {/* Statistics Cards */}
