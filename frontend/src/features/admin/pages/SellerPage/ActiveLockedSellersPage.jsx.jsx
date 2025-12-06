@@ -1,10 +1,12 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { Input, message, Spin } from "antd";
 import SellerTable from "../../components/SellerAdmin/SellerTable";
 import axios from "axios";
 import { useTranslation } from "react-i18next";
-import AdminPageLayout from "../../components/AdminPageLayout"; // ← Đảm bảo đường dẫn đúng
+import AdminPageLayout from "../../components/AdminPageLayout";
 import SellerDetailModal from "../../components/SellerAdmin/SellerDetailModal";
+import StatsSection from "../../components/common/StatsSection";
+import { CheckCircleOutlined, LockOutlined, RiseOutlined, ShopOutlined } from "@ant-design/icons";
 
 const api = axios.create({
   baseURL: process.env.REACT_APP_API_URL,
@@ -22,6 +24,44 @@ const ActiveLockedSellersPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedSeller, setSelectedSeller] = useState(null);
+
+  const statsItems = useMemo(() => {
+    const totalSellers = data.length;
+    const activeSellers = data.filter(item => item.status === 'active').length;
+    const lockedSellers = data.filter(item => item.status === 'locked').length;
+    const newSellersThisMonth = data.filter(item => {
+      const createdDate = new Date(item.created_at);
+      const now = new Date();
+      return createdDate.getMonth() === now.getMonth() && createdDate.getFullYear() === now.getFullYear();
+    }).length;
+
+    return [
+      {
+        title: t("Tổng cửa hàng"),
+        value: totalSellers,
+        icon: <ShopOutlined />,
+        style: { color: '#1890ff' }
+      },
+      {
+        title: t("Đang hoạt động"),
+        value: activeSellers,
+        icon: <CheckCircleOutlined />,
+        style: { color: '#52c41a' }
+      },
+      {
+        title: t("Tạm ngưng hoạt động"),
+        value: lockedSellers,
+        icon: <LockOutlined />,
+        style: { color: '#faad14'}
+      },
+      {
+        title: t("Mới tháng này"),
+        value: newSellersThisMonth,
+        icon: <RiseOutlined />,
+        style: { color: '#722ed1' }
+      }
+    ];
+  }, [data, t]);
 
   const fetchSellers = async () => {
     try {
@@ -77,7 +117,6 @@ const ActiveLockedSellersPage = () => {
     setModalVisible(true);
   };
 
-  // ✅ Toolbar cho extra
   const toolbar = (
     <Input
       placeholder={t("Tìm kiếm theo tên cửa hàng hoặc email...")}
@@ -88,7 +127,11 @@ const ActiveLockedSellersPage = () => {
   );
 
   return (
-    <AdminPageLayout title={t("CỬA HÀNG HOẠT ĐỘNG")} extra={toolbar}>
+    <AdminPageLayout 
+      title={t("CỬA HÀNG HOẠT ĐỘNG")} 
+      extra={toolbar} 
+      topContent={<StatsSection items={statsItems} loading={loading} />}
+    >
       {loading ? (
         <Spin />
       ) : (
@@ -97,7 +140,7 @@ const ActiveLockedSellersPage = () => {
           onView={handleView}
           onLock={handleLock}
           onRow={(record) => ({
-            onClick: () => handleView(record), // 👈 click dòng để mở chi tiết
+            onClick: () => handleView(record),
           })}
         />
       )}

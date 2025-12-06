@@ -58,8 +58,9 @@ const SellerTable = ({ data, onApprove, onReject, onView, onLock, onRow }) => {
     {
       title: "Hành động",
       key: "action",
-      width: 90,
+      width: 120,
       align: "center",
+      fixed: "right",
       render: (_, record) => (
         <ActionButtons
           record={record}
@@ -67,7 +68,7 @@ const SellerTable = ({ data, onApprove, onReject, onView, onLock, onRow }) => {
           onApprove={onApprove}
           onReject={onReject}
           onView={onView}
-          onToggleBan={onLock} // vì Seller dùng onLock
+          onToggleBan={onLock}
         />
       ),
     },

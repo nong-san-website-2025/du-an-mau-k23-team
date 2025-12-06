@@ -7,9 +7,9 @@ import {
   EditOutlined,
   MailOutlined,
   PhoneOutlined,
-  ShoppingOutlined,
   ExclamationCircleOutlined,
   LoadingOutlined,
+  CalendarOutlined,
 } from "@ant-design/icons";
 import axios from "axios";
 import { useTranslation } from "react-i18next";
@@ -269,83 +269,38 @@ export default function UserTable({
     {
       title: "Người dùng",
       key: "user",
-      width: 280,
+      width: 250,
       fixed: "left",
       render: (_, record) => (
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <Avatar
-            size={40}
-            src={record.avatar}
-            style={{
-              backgroundColor: record.is_active ? "#1890ff" : "#d9d9d9",
-              flexShrink: 0,
-            }}
-          >
-            {record.full_name?.charAt(0) || record.username?.charAt(0)}
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <Avatar src={record.avatar} size={40}>
+            {record.full_name?.[0]}
           </Avatar>
-          <div style={{ minWidth: 0, flex: 1 }}>
-            <div
-              style={{
-                fontWeight: 600,
-                fontSize: 14,
-                color: "#262626",
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-              }}
-            >
-              {record.full_name || record.username}
-            </div>
-            <div
-              style={{
-                fontSize: 12,
-                color: "#8c8c8c",
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-              }}
-            >
-              @{record.username}
-            </div>
+          <div>
+            <div style={{ fontWeight: 600 }}>{record.full_name}</div>
+            <div style={{ fontSize: 12, color: "#888" }}>@{record.username}</div>
           </div>
         </div>
       ),
     },
+    // Cột 2: Liên hệ (Contact) - Tách riêng ra
     {
       title: "Liên hệ",
       key: "contact",
-      width: 250,
+      width: 220,
       render: (_, record) => (
-        <div>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              marginBottom: 4,
-            }}
-          >
-            <MailOutlined style={{ color: "#8c8c8c", fontSize: 12 }} />
-            <span
-              style={{
-                fontSize: 13,
-                color: "#595959",
-                display: "inline-block",
-                maxWidth: 180,
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-              }}
-              title={record.email}
-            >
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          {/* Email */}
+          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13 }}>
+            <MailOutlined style={{ color: "#1890ff" }} />
+            <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 200 }} title={record.email}>
               {record.email || "—"}
             </span>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <PhoneOutlined style={{ color: "#8c8c8c", fontSize: 12 }} />
-            <span style={{ fontSize: 13, color: "#595959" }}>
-              {record.phone || "—"}
-            </span>
+          {/* Phone */}
+          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13 }}>
+            <PhoneOutlined style={{ color: "#52c41a" }} />
+            <span>{record.phone || "—"}</span>
           </div>
         </div>
       ),
@@ -358,65 +313,55 @@ export default function UserTable({
       render: (_, record) => {
         const rawRole = record.role?.name ?? "";
         const roleKey = rawRole.toString().toLowerCase();
-        const displayRole =
-          roleKey === "seller"
-            ? "Người bán"
-            : roleKey === "customer"
-              ? "Khách hàng"
-              : rawRole || "—";
-        const color =
-          roleKey === "seller"
-            ? "orange"
-            : roleKey === "customer"
-              ? "blue"
-              : "default";
+
+        let displayRole = rawRole || "—";
+        let color = "default";
+
+        if (roleKey === "seller") {
+          displayRole = "Người bán";
+          color = "orange";
+        } else if (roleKey === "customer") {
+          displayRole = "Khách hàng";
+          color = "blue";
+        } else if (roleKey === "admin") {
+          displayRole = "Admin";
+          color = "red";
+        }
+
         return (
-          <Tag
-            color={color}
-            style={{ fontWeight: 500, borderRadius: 6, padding: "2px 12px" }}
-          >
+          <Tag color={color} style={{ borderRadius: 4, minWidth: 80, textAlign: 'center' }}>
             {displayRole}
           </Tag>
         );
       },
     },
     {
-      title: "Hoạt động",
-      key: "activity",
-      width: 180,
-      render: (_, record) => (
-        <div>
-          <div style={{ fontSize: 13, marginBottom: 4 }}>
-            <ShoppingOutlined style={{ marginRight: 6, color: "#1890ff" }} />
-            <span style={{ fontWeight: 500 }}>
-              {record.orders_count || 0}
-            </span>{" "}
-            đơn hàng
+      title: "Ngày tham gia", // Cột mới thay thế cho Activity
+      key: "created_at",
+      width: 150,
+      align: "center",
+      render: (_, record) => {
+        // Lưu ý: Kiểm tra lại tên trường ngày tháng từ API của bạn (date_joined hoặc created_at)
+        const dateVal = record.date_joined || record.created_at;
+        return (
+          <div style={{ color: "#595959" }}>
+            {dateVal ? (
+              <>
+                <CalendarOutlined style={{ marginRight: 6, color: "#8c8c8c" }} />
+                {new Date(dateVal).toLocaleDateString("vi-VN")}
+              </>
+            ) : "—"}
           </div>
-          <div style={{ fontSize: 12, color: "#8c8c8c" }}>
-            {record.total_spent
-              ? new Intl.NumberFormat("vi-VN", {
-                  style: "currency",
-                  currency: "VND",
-                }).format(record.total_spent)
-              : "0 VND"}
-          </div>
-        </div>
-      ),
+        );
+      }
     },
     {
       title: "Trạng thái",
       key: "status",
-      width: 150,
+      width: 120,
       align: "center",
       render: (_, record) => (
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-          }}
-        >
+        <div style={{ display: "flex", justifyContent: "center" }}>
           <StatusTag status={record.is_active ? "active" : "locked"} />
         </div>
       ),
@@ -424,7 +369,7 @@ export default function UserTable({
     {
       title: "Thao tác",
       key: "actions",
-      width: 180,
+      width: 100,
       fixed: "right",
       align: "center",
       render: (_, record) => (
@@ -466,9 +411,8 @@ export default function UserTable({
 
       {/* Drawer Edit User */}
       <Drawer
-        title={`Sửa thông tin: ${
-          editingUser?.full_name || editingUser?.username || "..."
-        }`}
+        title={`Sửa thông tin: ${editingUser?.full_name || editingUser?.username || "..."
+          }`}
         placement="right"
         width={Math.min(800, window.innerWidth)}
         onClose={() => setEditingUser(null)}

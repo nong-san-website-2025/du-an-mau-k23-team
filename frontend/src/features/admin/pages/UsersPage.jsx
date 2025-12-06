@@ -1,7 +1,7 @@
 // pages/UsersPage.jsx
 import React, { useEffect, useState, useMemo } from "react";
 import { Button, Row, Col, Input, Space, Card, Statistic, Select } from "antd";
-import { SearchOutlined, FilterOutlined, UserOutlined, ShoppingOutlined, TeamOutlined, PlusOutlined, LockFilled, LockOutlined } from '@ant-design/icons';
+import { SearchOutlined, FilterOutlined, UserOutlined, ShoppingOutlined, TeamOutlined, PlusOutlined, LockFilled, LockOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import AdminPageLayout from "../components/AdminPageLayout";
 import UserTable from "../components/UserAdmin/UserTable";
 import UserDetailModal from "../components/UserAdmin/components/UserDetail/UserDetailRow";
@@ -106,11 +106,7 @@ export default function UsersPage() {
               title={STATUS_LABELS.active}
               value={userStats.active}
               valueStyle={{ color: '#52c41a', fontSize: 24 }}
-              suffix={
-                <span style={{ fontSize: 14, color: '#8c8c8c' }}>
-                  /{userStats.total}
-                </span>
-              }
+              prefix={<CheckCircleOutlined/>}
             />
           </Card>
         </Col>

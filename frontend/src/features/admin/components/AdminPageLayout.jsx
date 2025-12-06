@@ -1,17 +1,16 @@
-// src/layouts/AdminPageLayout.jsx
 import React from "react";
 import { Card, Typography } from "antd";
-import AdminSidebar from "./AdminSidebar";
 import "../styles/AdminPageLayout.css";
 const { Title } = Typography;
 
-export default function AdminPageLayout({ title, children, extra, sidebar }) {
+export default function AdminPageLayout({ title, children, extra, sidebar, topContent }) {
+  
   if (sidebar === null) {
-    // No sidebar layout - used for pages like SellersPage
     return (
       <div className="admin-shell bg-light">
         <div className="admin-main" style={{ marginLeft: 0 }}>
-          <main className="admin-content" style={{ marginLeft: 0 }}>
+          <main className="admin-content" style={{ marginLeft: 0, padding: "12px 16px" }}>
+            {topContent && <div style={{ marginBottom: 20 }}>{topContent}</div>}
             {children}
           </main>
         </div>
@@ -19,9 +18,8 @@ export default function AdminPageLayout({ title, children, extra, sidebar }) {
     );
   }
 
-  // Default layout with sidebar
   return (
-    <div style={{ paddingLeft: 10, borderRadius: "0px" }}>
+    <div style={{ padding: "12px 16px", borderRadius: "0px" }}>
       <Card>
         <div
           style={{
@@ -35,6 +33,13 @@ export default function AdminPageLayout({ title, children, extra, sidebar }) {
           <Title level={2}>{title}</Title>
           {extra && <div>{extra}</div>}
         </div>
+        
+        {topContent && (
+          <div style={{ marginBottom: 24 }}>
+            {topContent}
+          </div>
+        )}
+        
         {children}
       </Card>
     </div>

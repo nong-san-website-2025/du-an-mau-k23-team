@@ -10,7 +10,7 @@ const COLORS = {
 
 const ButtonAction = ({ actions, record }) => {
   return (
-    <Space size="small" onClick={(e) => e.stopPropagation()}>
+    <Space size={1} onClick={(e) => e.stopPropagation()}>
       {actions.map((action, index) => {
         if (!action.show) return null;
 
