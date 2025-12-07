@@ -1,13 +1,23 @@
 // src/pages/admin/ApprovalSellersPage.jsx
-import React, { useEffect, useState } from "react";
-import { Input, Select, message, Spin, Space } from "antd";
-import SellerTable from "../../components/SellerAdmin/SellerTable";
+import React, { useEffect, useState, useMemo } from "react";
+import { Input, Select, message, Space } from "antd";
+import { 
+  SearchOutlined, 
+  FilterOutlined, 
+  ClockCircleOutlined, // Icon cho Chờ duyệt
+  CheckCircleOutlined, // Icon cho Đã duyệt
+  CloseCircleOutlined, // Icon cho Từ chối
+  ShopOutlined         // Icon Tổng
+} from '@ant-design/icons';
 import axios from "axios";
 import { useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import AdminPageLayout from "../../components/AdminPageLayout";
-import SellerDetailModal from "../../components/SellerAdmin/SellerDetailModal"; // ✅ Dùng modal mới
 
+// Components
+import AdminPageLayout from "../../components/AdminPageLayout";
+import SellerTable from "../../components/SellerAdmin/SellerTable";
+import SellerDetailModal from "../../components/SellerAdmin/SellerDetailModal";
+import StatsSection from "../../components/common/StatsSection"; 
 const { Option } = Select;
 
 const api = axios.create({
@@ -23,6 +33,7 @@ const ApprovalSellersPage = () => {
   const { t } = useTranslation();
   const location = useLocation();
 
+  // --- State ---
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -30,7 +41,47 @@ const ApprovalSellersPage = () => {
   const [detailVisible, setDetailVisible] = useState(false);
   const [selectedSeller, setSelectedSeller] = useState(null);
 
-  // 🧠 Lấy danh sách sellers
+  // --- 1. Logic tính toán Stats ---
+  const statsItems = useMemo(() => {
+    const total = data.length;
+    const pending = data.filter(item => item.status === 'pending').length;
+    const approved = data.filter(item => item.status === 'approved').length;
+    const rejected = data.filter(item => item.status === 'rejected').length;
+
+    // Tính % Chờ duyệt so với tổng (Ví dụ để Admin biết khối lượng việc tồn đọng)
+    // Nếu không có dữ liệu trend thực tế, ta có thể bỏ qua hoặc hiển thị tỉ lệ
+    const pendingRate = total > 0 ? ((pending / total) * 100).toFixed(1) : 0;
+
+    return [
+      {
+        title: t("Tổng hồ sơ"),
+        value: total,
+        icon: <ShopOutlined />,
+        color: '#1890ff', // Xanh dương
+      },
+      {
+        title: t("Đang chờ duyệt"),
+        value: pending,
+        icon: <ClockCircleOutlined />, // Đồng hồ báo hiệu cần xử lý
+        color: '#faad14', // Màu Cam (Cảnh báo/Chờ đợi)
+        // Hoặc bạn có thể dùng một note nhỏ thay vì trend nếu muốn
+      },
+      {
+        title: t("Đã phê duyệt"),
+        value: approved,
+        icon: <CheckCircleOutlined />,
+        color: '#52c41a', // Xanh lá
+      },
+      {
+        title: t("Đã từ chối"),
+        value: rejected,
+        icon: <CloseCircleOutlined />,
+        color: '#ff4d4f', // Đỏ (Từ chối)
+      }
+    ];
+  }, [data, t]);
+
+  // --- 2. Fetch Data ---
   const fetchSellers = async () => {
     try {
       setLoading(true);
@@ -58,16 +109,15 @@ const ApprovalSellersPage = () => {
     fetchSellers();
   }, []);
 
-  // 🔍 Lọc dữ liệu
+  // --- 3. Handlers ---
   const filteredData = data.filter((item) => {
     const matchesSearch =
-      item.store_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.user_email.toLowerCase().includes(searchTerm.toLowerCase());
+      item.store_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.user_email?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter ? item.status === statusFilter : true;
     return matchesSearch && matchesStatus;
   });
 
-  // ✅ Duyệt / từ chối
   const handleApprove = async (record) => {
     try {
       await api.post(
@@ -75,9 +125,7 @@ const ApprovalSellersPage = () => {
         {},
         { headers: getAuthHeaders() }
       );
-      message.success(
-        t("approval_sellers.approved", { name: record.store_name })
-      );
+      message.success(t("approval_sellers.approved", { name: record.store_name }));
       fetchSellers();
     } catch (err) {
       console.error(err);
@@ -86,11 +134,9 @@ const ApprovalSellersPage = () => {
   };
 
   const handleReject = async (record) => {
-    // Modal sẽ xử lý việc gọi API, đây chỉ là callback để reload data
     fetchSellers();
   };
 
-  // 👁 Xem chi tiết
   const handleView = (record) => {
     setSelectedSeller(record);
     setDetailVisible(true);
@@ -98,20 +144,23 @@ const ApprovalSellersPage = () => {
 
   const pendingCount = data.filter((item) => item.status === "pending").length;
 
-  // 🔧 Toolbar lọc + tìm kiếm
+  // --- 4. UI Toolbar ---
   const toolbar = (
     <Space>
       <Input
-        placeholder={t("Tìm kiếm theo tên cửa hàng hoặc email...")}
+        placeholder={t("Tìm kiếm tên cửa hàng, email...")}
+        prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
-        style={{ width: 300 }}
+        style={{ width: 300, borderRadius: 6 }}
+        allowClear
       />
       <Select
         placeholder={t("Lọc trạng thái")}
         value={statusFilter || undefined}
         onChange={(value) => setStatusFilter(value)}
-        style={{ width: 200 }}
+        style={{ width: 180, borderRadius: 6 }}
+        suffixIcon={<FilterOutlined />}
         allowClear
       >
         <Option value="pending">{t("Chờ duyệt")}</Option>
@@ -125,23 +174,26 @@ const ApprovalSellersPage = () => {
     <AdminPageLayout
       title={t("DUYỆT CỬA HÀNG")}
       extra={toolbar}
-      pendingSellers={pendingCount} // 👈 Thêm dòng này
+      // pendingSellers={pendingCount} // Bạn có thể bỏ prop này nếu AdminPageLayout không dùng badge nữa
     >
-      {loading ? (
-        <Spin />
-      ) : (
+      {/* 5. Thêm StatsSection vào đây */}
+      <StatsSection items={statsItems} loading={loading} />
+
+      {/* Bảng dữ liệu */}
+      <div style={{ marginTop: 24 }}>
         <SellerTable
           data={filteredData}
+          loading={loading} // Truyền prop loading vào table để hiển thị spin/skeleton
           onApprove={handleApprove}
           onReject={handleReject}
           onView={handleView}
           onRow={(record) => ({
-            onClick: () => handleView(record), // 👈 click dòng để mở chi tiết
+            onClick: () => handleView(record),
           })}
         />
-      )}
+      </div>
 
-      {/* 🪟 Dùng SellerDetailModal thay cho Modal cũ */}
+      {/* Modal chi tiết */}
       {selectedSeller && (
         <SellerDetailModal
           visible={detailVisible}

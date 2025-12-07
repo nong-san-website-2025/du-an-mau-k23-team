@@ -95,7 +95,7 @@ const Sidebar = () => {
           label: "Duyệt sản phẩm",
         },
         {
-          key: "/admin/categories",
+          key: "/admin/products/categories",
           label: "Quản lý danh mục",
         },
       ],

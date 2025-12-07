@@ -1,12 +1,20 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { Input, message, Spin } from "antd";
-import SellerTable from "../../components/SellerAdmin/SellerTable";
+import {
+  CheckCircleOutlined,
+  LockOutlined,
+  RiseOutlined,
+  ShopOutlined,
+  SearchOutlined
+} from "@ant-design/icons";
 import axios from "axios";
 import { useTranslation } from "react-i18next";
+
+// Components
 import AdminPageLayout from "../../components/AdminPageLayout";
+import SellerTable from "../../components/SellerAdmin/SellerTable";
 import SellerDetailModal from "../../components/SellerAdmin/SellerDetailModal";
-import StatsSection from "../../components/common/StatsSection";
-import { CheckCircleOutlined, LockOutlined, RiseOutlined, ShopOutlined } from "@ant-design/icons";
+import StatsSection from "../../components/common/StatsSection"; // Đảm bảo đường dẫn đúng đến file mới
 
 const api = axios.create({
   baseURL: process.env.REACT_APP_API_URL,
@@ -25,44 +33,50 @@ const ActiveLockedSellersPage = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedSeller, setSelectedSeller] = useState(null);
 
+  // --- Logic tính toán Stats ---
   const statsItems = useMemo(() => {
     const totalSellers = data.length;
     const activeSellers = data.filter(item => item.status === 'active').length;
     const lockedSellers = data.filter(item => item.status === 'locked').length;
+
+    // Tính số cửa hàng mới trong tháng này
     const newSellersThisMonth = data.filter(item => {
+      if (!item.created_at) return false;
       const createdDate = new Date(item.created_at);
       const now = new Date();
       return createdDate.getMonth() === now.getMonth() && createdDate.getFullYear() === now.getFullYear();
     }).length;
 
+    // Cấu hình theo format mới của StatsSection
     return [
       {
         title: t("Tổng cửa hàng"),
         value: totalSellers,
         icon: <ShopOutlined />,
-        style: { color: '#1890ff' }
+        color: '#1890ff', // Xanh dương
       },
       {
         title: t("Đang hoạt động"),
         value: activeSellers,
         icon: <CheckCircleOutlined />,
-        style: { color: '#52c41a' }
+        color: '#52c41a', // Xanh lá
       },
       {
         title: t("Tạm ngưng hoạt động"),
         value: lockedSellers,
         icon: <LockOutlined />,
-        style: { color: '#faad14'}
+        color: '#faad14', // Cam
       },
       {
         title: t("Mới tháng này"),
         value: newSellersThisMonth,
         icon: <RiseOutlined />,
-        style: { color: '#722ed1' }
+        color: '#722ed1', // Tím
       }
     ];
   }, [data, t]);
 
+  // --- Logic Fetch API ---
   const fetchSellers = async () => {
     try {
       setLoading(true);
@@ -91,10 +105,11 @@ const ActiveLockedSellersPage = () => {
     fetchSellers();
   }, []);
 
+  // --- Handlers ---
   const filteredData = data.filter((item) => {
     return (
-      item.store_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.user_email.toLowerCase().includes(searchTerm.toLowerCase())
+      item.store_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.user_email?.toLowerCase().includes(searchTerm.toLowerCase())
     );
   });
 
@@ -106,6 +121,7 @@ const ActiveLockedSellersPage = () => {
         { headers: getAuthHeaders() }
       );
       fetchSellers();
+      message.success(t("Thao tác thành công"));
     } catch (err) {
       console.error(err);
       message.error(t("sellers_active_locked.action_failed"));
@@ -117,34 +133,40 @@ const ActiveLockedSellersPage = () => {
     setModalVisible(true);
   };
 
+  // --- Toolbar UI ---
   const toolbar = (
     <Input
-      placeholder={t("Tìm kiếm theo tên cửa hàng hoặc email...")}
+      placeholder={t("Tìm kiếm tên cửa hàng, email...")}
+      prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
       value={searchTerm}
       onChange={(e) => setSearchTerm(e.target.value)}
-      style={{ width: 300 }}
+      style={{ width: 300, borderRadius: 6 }}
+      allowClear
     />
   );
 
   return (
-    <AdminPageLayout 
-      title={t("CỬA HÀNG HOẠT ĐỘNG")} 
-      extra={toolbar} 
-      topContent={<StatsSection items={statsItems} loading={loading} />}
+    <AdminPageLayout
+      title={t("QUẢN LÝ CỬA HÀNG")}
+      extra={toolbar}
     >
-      {loading ? (
-        <Spin />
-      ) : (
+      {/* 1. Phần StatsSection đặt ở đây thay vì prop topContent (linh hoạt hơn) */}
+      <StatsSection items={statsItems} loading={loading} />
+
+      {/* 2. Phần Bảng dữ liệu */}
+      <div style={{ marginTop: 24 }}>
         <SellerTable
           data={filteredData}
+          loading={loading} // Truyền loading vào table
           onView={handleView}
           onLock={handleLock}
           onRow={(record) => ({
             onClick: () => handleView(record),
           })}
         />
-      )}
+      </div>
 
+      {/* 3. Modal chi tiết */}
       {selectedSeller && (
         <SellerDetailModal
           visible={modalVisible}

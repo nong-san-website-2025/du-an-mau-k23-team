@@ -4,7 +4,6 @@ import unicodedata
 class Category(models.Model):
     name = models.CharField(max_length=100, db_index=True)
     key = models.CharField(max_length=50, unique=True)
-    icon = models.CharField(max_length=50, default='Package')
     created_at = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=20, default="active")
     image = models.ImageField(upload_to='categories/', blank=True, null=True)
@@ -12,7 +11,7 @@ class Category(models.Model):
     commission_rate = models.FloatField(default=0.05)  # 5% mặc định
     
     def __str__(self):
-        return self.name
+        return f"{self.name} ({self.subcategories.count()} danh mục con)"
 
 class Subcategory(models.Model):
     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='subcategories')

@@ -163,7 +163,7 @@ export default function UserEditForm({ editUser, onCancel, onSave }) {
         </Form.Item>
 
         <Form.Item label="Số điện thoại" name="phone">
-          <Input type="email" disabled />
+          <Input disabled />
         </Form.Item>
 
         <Form.Item
@@ -178,13 +178,6 @@ export default function UserEditForm({ editUser, onCancel, onSave }) {
               </Option>
             ))}
           </Select>
-        </Form.Item>
-
-        <Form.Item label="Trạng thái tài khoản">
-          <Input
-            value={editUser.is_active ? "Đang hoạt động" : "Bị khóa"}
-            disabled
-          />
         </Form.Item>
 
         {/* Nút hành động */}

@@ -1,9 +1,16 @@
 import React from "react";
 import { Table } from "antd";
-import SellerStatusTag from "../../../../components/StatusTag.jsx";
+import {
+  EyeOutlined,
+  CheckOutlined,
+  CloseOutlined,
+  LockOutlined,
+  UnlockOutlined,
+} from "@ant-design/icons";
+import SellerStatusTag from "../../../../components/StatusTag.jsx"; // Giữ nguyên đường dẫn của bạn
 import dayjs from "dayjs";
-import "../../styles/AdminPageLayout.css";
-import ActionButtons from "../ActionButtons";
+import "../../styles/AdminPageLayout.css"; // Giữ nguyên đường dẫn của bạn
+import ButtonAction from "../../../../components/ButtonAction"; // Đảm bảo import đúng đường dẫn file ButtonAction bạn vừa tạo
 
 const SellerTable = ({ data, onApprove, onReject, onView, onLock, onRow }) => {
   const columns = [
@@ -56,21 +63,80 @@ const SellerTable = ({ data, onApprove, onReject, onView, onLock, onRow }) => {
       align: "center",
     },
     {
-      title: "Hành động",
+      title: "Thao tác",
       key: "action",
-      width: 120,
+      width: 100, // Tăng nhẹ width để đủ chỗ cho các nút
       align: "center",
       fixed: "right",
-      render: (_, record) => (
-        <ActionButtons
-          record={record}
-          type="cửa hàng"
-          onApprove={onApprove}
-          onReject={onReject}
-          onView={onView}
-          onToggleBan={onLock}
-        />
-      ),
+      render: (_, record) => {
+        // Cấu hình các nút hành động tại đây
+        const actions = [
+          // 1. Nút Xem chi tiết (Luôn hiện)
+          {
+            icon: <EyeOutlined />,
+            actionType: "view",
+            tooltip: "Xem chi tiết",
+            show: true,
+            onClick: onView, // ButtonAction sẽ gọi onView(record)
+          },
+          // 2. Nút Duyệt (Chỉ hiện khi trạng thái là 'pending')
+          {
+            icon: <CheckOutlined />,
+            actionType: "approve",
+            tooltip: "Duyệt cửa hàng",
+            show: record.status === "pending", // LƯU Ý: Kiểm tra lại giá trị status trong DB của bạn
+            onClick: onApprove,
+            confirm: {
+              title: "Duyệt cửa hàng",
+              description: `Bạn có chắc muốn duyệt cửa hàng "${record.store_name}"?`,
+              okText: "Duyệt",
+              cancelText: "Hủy",
+            },
+          },
+          // 3. Nút Từ chối (Chỉ hiện khi trạng thái là 'pending')
+          {
+            icon: <CloseOutlined />,
+            actionType: "reject",
+            tooltip: "Từ chối đăng ký",
+            show: record.status === "pending",
+            onClick: onReject,
+            confirm: {
+              title: "Từ chối đăng ký",
+              description: "Bạn có chắc muốn từ chối cửa hàng này?",
+              okText: "Từ chối",
+              cancelText: "Hủy",
+            },
+          },
+          // 4. Nút Khóa (Hiện khi đang hoạt động)
+          {
+            icon: <LockOutlined />,
+            actionType: "lock",
+            tooltip: "Khóa cửa hàng",
+            show: record.status === "active", // LƯU Ý: Kiểm tra lại giá trị status active
+            onClick: onLock,
+            confirm: {
+              title: "Khóa cửa hàng",
+              description: "Cửa hàng này sẽ bị vô hiệu hóa?",
+              okText: "Khóa",
+            },
+          },
+          // 5. Nút Mở khóa (Hiện khi đang bị khóa/banned)
+          {
+            icon: <UnlockOutlined />,
+            actionType: "unlock",
+            tooltip: "Mở khóa hoạt động",
+            show: record.status === "banned" || record.status === "inactive", // LƯU Ý: Kiểm tra lại giá trị status banned
+            onClick: onLock, // Dùng chung hàm onLock hoặc onUnlock tùy logic của bạn
+            confirm: {
+              title: "Mở khóa",
+              description: "Kích hoạt lại cửa hàng này?",
+              okText: "Mở khóa",
+            },
+          },
+        ];
+
+        return <ButtonAction actions={actions} record={record} />;
+      },
     },
   ];
 

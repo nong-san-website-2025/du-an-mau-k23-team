@@ -183,11 +183,6 @@ export default function ReviewStats({ analytics }) {
                 color: "#065f46",
               }}
             />
-            <div
-              style={{ fontSize: "12px", color: "#6b7280", marginTop: "8px" }}
-            >
-              {respondedCount} phản hồi / {reviews.total_reviews || 0} đánh giá
-            </div>
           </Card>
         </Col>
       </Row>
@@ -248,56 +243,6 @@ export default function ReviewStats({ analytics }) {
         </Col>
       </Row>
 
-      {/* Từ khóa tích cực / tiêu cực */}
-      <Row gutter={[16, 16]} style={{ marginBottom: "24px" }}>
-        <Col span={12}>
-          <Card
-            title={
-              <Space>
-                <LikeOutlined style={{ color: "#16a34a" }} />
-                <span>Từ khóa tích cực</span>
-              </Space>
-            }
-            style={{ borderRadius: "8px" }}
-          >
-            {positiveKeywords.length > 0 ? (
-              <Space wrap>
-                {positiveKeywords.map((keyword, i) => (
-                  <Tag key={i} color="green-inverse">
-                    {keyword.word} ({keyword.count})
-                  </Tag>
-                ))}
-              </Space>
-            ) : (
-              <Empty description="Chưa có từ khóa tích cực" />
-            )}
-          </Card>
-        </Col>
-
-        <Col span={12}>
-          <Card
-            title={
-              <Space>
-                <DislikeOutlined style={{ color: "#dc2626" }} />
-                <span>Từ khóa tiêu cực</span>
-              </Space>
-            }
-            style={{ borderRadius: "8px" }}
-          >
-            {negativeKeywords.length > 0 ? (
-              <Space wrap>
-                {negativeKeywords.map((keyword, i) => (
-                  <Tag key={i} color="red-inverse">
-                    {keyword.word} ({keyword.count})
-                  </Tag>
-                ))}
-              </Space>
-            ) : (
-              <Empty description="Chưa có từ khóa tiêu cực" />
-            )}
-          </Card>
-        </Col>
-      </Row>
 
       {/* Danh sách đánh giá gần đây */}
       <Row gutter={[16, 16]}>

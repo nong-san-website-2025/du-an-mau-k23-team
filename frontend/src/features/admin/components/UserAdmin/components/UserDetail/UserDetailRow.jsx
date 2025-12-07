@@ -154,6 +154,19 @@ export default function UserDetailRow({ visible, onClose, user }) {
         open={visible && isEditing}
         width={Math.min(800, window.innerWidth)}
         bodyStyle={{ padding: 0 }}
+
+        // 1. Tắt nút X mặc định để tránh nó hiện lung tung
+        closable={false}
+
+        // 2. Thêm nút X thủ công vào khu vực extra (luôn nằm bên phải)
+        extra={
+          <Button
+            type="text"
+            icon={<X size={20} />} // Icon X từ 'lucide-react'
+            onClick={handleEditCancel}
+            style={{ color: 'rgba(0, 0, 0, 0.45)' }} // Màu xám nhẹ
+          />
+        }
       >
         <UserEditForm
           editUser={userDetail || user}
@@ -188,27 +201,25 @@ export default function UserDetailRow({ visible, onClose, user }) {
         />
       ),
     },
-    {
-      key: "3",
-      label: "Hoạt động",
-      children: (
-        <ActivityTab
-          userId={user?.id}
-          onLoad={memoFetchActivities}
-          loading={loadingActivities}
-          data={activities}
-        />
-      ),
-    },
+    // {
+    //   key: "3",
+    //   label: "Hoạt động",
+    //   children: (
+    //     <ActivityTab
+    //       userId={user?.id}
+    //       onLoad={memoFetchActivities}
+    //       loading={loadingActivities}
+    //       data={activities}
+    //     />
+    //   ),
+    // },
   ];
 
   return (
     <Drawer
       title={
         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          {/* 2. TÊN USER ĐỂ RA SAU */}
           <span>{`Chi tiết - ${displayUser?.full_name || displayUser?.username}`}</span>
-          {/* 1. ĐƯA LOGIC HIỂN THỊ MÀU LÊN TRƯỚC */}
           {displayUser?.is_active ? (
             <span
               style={{
@@ -217,7 +228,6 @@ export default function UserDetailRow({ visible, onClose, user }) {
                 height: "8px",
                 borderRadius: "50%",
                 backgroundColor: "#52c41a",
-                // Đã xóa marginLeft: "auto" để nó nằm sát tên bên trái
               }}
               title="Đang hoạt động"
             />
@@ -229,7 +239,6 @@ export default function UserDetailRow({ visible, onClose, user }) {
                 height: "8px",
                 borderRadius: "50%",
                 backgroundColor: "#f5222d",
-                // Đã xóa marginLeft: "auto"
               }}
               title="Bị khóa"
             />
@@ -241,11 +250,14 @@ export default function UserDetailRow({ visible, onClose, user }) {
       open={visible}
       width={Math.min(800, window.innerWidth)}
       bodyStyle={{ padding: 0 }}
+
+      // 1. ẨN NÚT CLOSE MẶC ĐỊNH
+      closable={false}
+
       extra={
         <Space size="small">
           {/* Nút KHÓA/MỞ KHÓA */}
           {displayUser?.is_active ? (
-            // TRƯỜNG HỢP ĐANG HOẠT ĐỘNG -> HIỂN THỊ NÚT KHÓA (MÀU ĐỎ)
             <Popconfirm
               title="Khóa tài khoản này?"
               description="Người dùng sẽ không thể đăng nhập sau khi khóa."
@@ -255,8 +267,8 @@ export default function UserDetailRow({ visible, onClose, user }) {
               okButtonProps={{ danger: true }}
             >
               <Button
-                danger // Antd danger type tự động làm nút màu đỏ
-                type="primary" // Kết hợp primary danger để nổi bật
+                danger
+                type="primary"
                 size="small"
                 loading={detailLoading}
                 icon={<Lock size={16} />}
@@ -265,30 +277,37 @@ export default function UserDetailRow({ visible, onClose, user }) {
               </Button>
             </Popconfirm>
           ) : (
-            // TRƯỜNG HỢP ĐÃ KHÓA -> HIỂN THỊ NÚT MỞ KHÓA (MÀU XANH)
             <Button
               type="primary"
               size="small"
               loading={detailLoading}
               icon={<Unlock size={16} />}
               onClick={handleToggleStatus}
-              style={{ backgroundColor: "#52c41a", borderColor: "#52c41a" }} // Màu xanh success
+              style={{ backgroundColor: "#52c41a", borderColor: "#52c41a" }}
             >
               Mở khóa
             </Button>
           )}
 
-          {/* Nút SỬA - Dùng Ghost hoặc Default để bớt tranh chấp với nút hành động chính */}
+          {/* Nút SỬA */}
           <Tooltip title="Chỉnh sửa thông tin">
             <Button
               size="small"
               icon={<Edit size={16} />}
               onClick={() => setIsEditing(true)}
-              style={{ borderColor: "#1890ff", color: "#1890ff" }} // Style kiểu outline
+              style={{ borderColor: "#1890ff", color: "#1890ff" }}
             >
               Sửa
             </Button>
           </Tooltip>
+
+          {/* 2. THÊM NÚT CLOSE TỰ CHẾ VÀO CUỐI CÙNG (BÊN PHẢI NGOÀI CÙNG) */}
+          <Button
+            type="text" // Dùng type text để giống nút X mặc định
+            icon={<X size={20} />} // Icon X từ lucide-react (bạn đã import)
+            onClick={onClose}
+            style={{ color: 'rgba(0, 0, 0, 0.45)' }} // Màu xám nhẹ cho giống chuẩn
+          />
 
         </Space>
       }

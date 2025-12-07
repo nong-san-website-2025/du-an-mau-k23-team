@@ -1,11 +1,19 @@
-// src/features/admin/components/ProductTable.jsx
 import React, { useState } from "react";
-import { Table, Tooltip, Image } from "antd";
-import ProductStatusTag from "./ProductStatusTag";
-import ProductActions from "./ProductActions";
+import { Table, Tooltip, Image, Skeleton } from "antd";
+import {
+  EyeOutlined,
+  CheckOutlined,
+  CloseOutlined,
+  LockOutlined,
+  UnlockOutlined,
+} from "@ant-design/icons";
 import dayjs from "dayjs";
+import ProductStatusTag from "./ProductStatusTag";
 import "../../../styles/AdminPageLayout.css";
-import ActionButtons from "../../ActionButtons";
+
+// Import file ButtonAction từ đường dẫn của bạn
+import ButtonAction from "../../../../../components/ButtonAction";
+import { intcomma } from "../../../../../utils/format";
 
 const ProductTable = ({
   data,
@@ -30,57 +38,58 @@ const ProductTable = ({
   ]);
 
   const columns = [
+    // --- Cột Ảnh (có Skeleton) ---
     {
       title: "Ảnh",
       key: "image",
       dataIndex: "image",
-      width: 60,
+      width: 70,
       align: "center",
       render: (_, record) => {
-        // Lấy URL ảnh từ main_image.image hoặc ảnh đầu tiên trong mảng images
         const productImage =
           record.main_image?.image ||
           (record.images?.length > 0 ? record.images[0].image : null);
+        const imgWidth = 60;
+        const imgHeight = 40;
 
         return (
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
-              width: 50,
-              height: 30,
+              width: imgWidth,
+              height: imgHeight,
               borderRadius: 4,
-              backgroundColor: productImage ? "transparent" : "#f5f5f5",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              border: "1px solid #e8e8e8",
+              margin: "0 auto",
             }}
           >
             {productImage ? (
               <Image
-                src={productImage} // URL ảnh đã đầy đủ, không cần thêm API base
+                src={productImage}
                 alt={record.name}
-                width={60}
-                height={40}
-                style={{
-                  objectFit: "cover",
-                  borderRadius: 4,
-                }}
+                width={imgWidth}
+                height={imgHeight}
+                style={{ objectFit: "cover", borderRadius: 4 }}
                 onError={(e) => {
                   e.target.onerror = null;
-                  e.target.src =
-                    "https://placehold.co/60x40/f5f5f5/999999?text=No+Image";
+                  e.target.src = "https://placehold.co/60x40/f5f5f5/999999?text=No+Image";
                 }}
                 fallback="https://placehold.co/60x40/f5f5f5/999999?text=Error"
                 preview={true}
               />
             ) : (
-              <span style={{ color: "#999", fontSize: 12 }}>Chưa có ảnh</span>
+              <Skeleton.Image
+                active={false}
+                style={{ width: imgWidth, height: imgHeight, borderRadius: 4 }}
+              />
             )}
           </div>
         );
       },
     },
+    // --- Các cột thông tin cơ bản ---
     {
       title: "Tên sản phẩm",
       dataIndex: "name",
@@ -89,19 +98,7 @@ const ProductTable = ({
       ellipsis: { showTitle: false },
       render: (text) => (
         <Tooltip title={text}>
-          <span
-            style={{
-              display: "inline-block",
-              maxWidth: 220,
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              verticalAlign: "middle",
-              fontWeight: 500,
-            }}
-          >
-            {text}
-          </span>
+          <span style={{ fontWeight: 500 }}>{text}</span>
         </Tooltip>
       ),
       sorter: (a, b) => (a.name || "").localeCompare(b.name || ""),
@@ -112,45 +109,35 @@ const ProductTable = ({
       width: 160,
       align: "center",
       render: (_, record) => record.category_name || "—",
-      sorter: (a, b) =>
-        (a.category_name || "").localeCompare(b.category_name || ""),
+      sorter: (a, b) => (a.category_name || "").localeCompare(b.category_name || ""),
     },
     {
       title: "Người bán",
       key: "seller",
       dataIndex: "seller",
-      width: 80,
+      width: 150,
       align: "center",
       render: (_, record) => {
         const text = record.seller?.store_name || record.seller_name || "—";
         return (
           <Tooltip title={text}>
-            <span
-              style={{
-                display: "inline-block",
-                maxWidth: 160,
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                verticalAlign: "middle",
-              }}
-            >
+            <span style={{ display: "inline-block", maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {text}
             </span>
           </Tooltip>
         );
       },
     },
-
     {
-      title: "Giá",
+      title: "Giá bán",
       dataIndex: "price",
       key: "price",
       width: 120,
       align: "right",
-      render: (price) => (price ? `${Number(price).toLocaleString()} đ` : "—"),
+      render: (price) => (price ? `${intcomma(price)} đ` : "—"),
       sorter: (a, b) => a.price - b.price,
-    },
+    }
+    ,
     {
       title: "Trạng thái",
       key: "status",
@@ -162,27 +149,70 @@ const ProductTable = ({
       title: "Ngày tạo",
       dataIndex: "created_at",
       key: "created_at",
-      width: 180, // ✅ Tăng từ 160 lên 180
+      width: 180,
       align: "center",
       render: (date) => (date ? dayjs(date).format("DD/MM/YYYY HH:mm") : "—"),
       sorter: (a, b) => new Date(a.created_at) - new Date(b.created_at),
     },
+    // --- CỘT HÀNH ĐỘNG (Cấu hình nút ở đây) ---
     {
       title: "Hành động",
       key: "action",
       width: 100,
       align: "center",
       fixed: "right",
-      render: (_, record) => (
-        <ActionButtons
-          record={record}
-          type="sản phẩm"
-          onApprove={onApprove}
-          onReject={onReject}
-          onView={onView}
-          onToggleBan={onToggleBan}
-        />
-      ),
+      render: (_, record) => {
+        // Cấu hình danh sách nút dựa trên record hiện tại
+        const actions = [
+          {
+            actionType: "view",
+            icon: <EyeOutlined />,
+            tooltip: "Xem chi tiết",
+            onClick: onView,
+            show: true,
+          },
+          {
+            actionType: "approve",
+            icon: <CheckOutlined />,
+            tooltip: "Duyệt sản phẩm",
+            // Chỉ cho phép duyệt nếu trạng thái là pending
+            show: record.status === "pending",
+            confirm: {
+              title: "Duyệt sản phẩm này?",
+              okText: "Duyệt",
+            },
+            onClick: onApprove,
+          },
+          {
+            actionType: "reject",
+            icon: <CloseOutlined />,
+            tooltip: "Từ chối sản phẩm",
+            // Chỉ cho phép từ chối nếu trạng thái là pending
+            show: record.status === "pending",
+            confirm: {
+              title: "Từ chối sản phẩm này?",
+              okText: "Từ chối",
+            },
+            onClick: onReject,
+          },
+          {
+            actionType: record.status === "banned" ? "unlock" : "lock",
+            icon: record.status === "banned" ? <UnlockOutlined /> : <LockOutlined />,
+            tooltip: record.status === "banned" ? "Mở khóa" : "Khóa sản phẩm",
+            // Chỉ cho phép khoá/mở khoá nếu sản phẩm đã duyệt
+            show: record.status === "approved" || record.status === "banned",
+            confirm: {
+              title: record.status === "banned"
+                ? "Mở khóa sản phẩm này?"
+                : "Khóa sản phẩm này?",
+              okText: "Đồng ý",
+            },
+            onClick: onToggleBan,
+          },
+        ];
+
+        return <ButtonAction actions={actions} record={record} />;
+      },
     },
   ];
 
@@ -201,9 +231,7 @@ const ProductTable = ({
       rowSelection={rowSelection}
       onRow={onRow}
       pagination={{ pageSize: 10 }}
-      scroll={{
-        x: "max-content",
-      }}
+      scroll={{ x: "max-content" }}
       sticky
       rowClassName="table-row"
     />

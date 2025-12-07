@@ -40,7 +40,7 @@ class CategorySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Category
-        fields = ['id', 'name', 'key', 'icon', 'status', 'subcategories', 'image', 'is_featured']
+        fields = ['id', 'name', 'key', 'status', 'subcategories', 'image', 'is_featured']
 
     def get_image_url(self, obj):
         request = self.context.get('request')
@@ -79,6 +79,7 @@ class ProductSerializer(serializers.ModelSerializer):
     features = ProductFeatureSerializer(many=True, required=False)
     sold = serializers.SerializerMethodField()
 
+    commission_rate = serializers.SerializerMethodField()
     class Meta:
         model = Product
         fields = [
@@ -92,9 +93,15 @@ class ProductSerializer(serializers.ModelSerializer):
             "availability_status", "season_start", "season_end",
             "estimated_quantity", "preordered_quantity", 'ordered_quantity',
             "is_coming_soon", "is_out_of_stock", "available_quantity",
-            "total_preordered", "user_preordered", "features", "main_image"
+            "total_preordered", "user_preordered", "features", "main_image",
+            "commission_rate"
         ]
         read_only_fields = ["status", "seller"]
+
+    def get_commission_rate(self, obj):
+        if obj.category and hasattr(obj.category, 'commission_rate'):
+            return obj.category.commission_rate
+        return None
 
     def get_main_image(self, obj):
         primary_image = obj.images.filter(is_primary=True).first()
@@ -235,6 +242,7 @@ class ProductListSerializer(serializers.ModelSerializer):
     features = ProductFeatureSerializer(many=True, required=False)
     sold = serializers.SerializerMethodField()
 
+    commission_rate = serializers.SerializerMethodField()
     class Meta:
         model = Product
         fields = [
@@ -248,9 +256,15 @@ class ProductListSerializer(serializers.ModelSerializer):
             "availability_status", "season_start", "season_end",
             "estimated_quantity", "preordered_quantity",
             "is_coming_soon", "is_out_of_stock", "available_quantity",
-            "total_preordered", "user_preordered", "features", "store", "main_image"
+            "total_preordered", "user_preordered", "features", "store", "main_image",
+            "commission_rate"
         ]
         read_only_fields = ["id", "created_at", "updated_at", "seller"]
+
+    def get_commission_rate(self, obj):
+        if obj.category and hasattr(obj.category, 'commission_rate'):
+            return obj.category.commission_rate
+        return None
 
     def get_main_image(self, obj):
         primary_image = obj.images.filter(is_primary=True).first()
@@ -336,7 +350,7 @@ class CategoryCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Category
-        fields = ['name', 'key', 'icon', 'status', 'subcategories']
+        fields = ['name', 'key', 'status', 'subcategories']
 
     def create(self, validated_data):
         subcategories_data = validated_data.pop('subcategories', [])

@@ -1,39 +1,50 @@
 // pages/UsersPage.jsx
 import React, { useEffect, useState, useMemo } from "react";
-import { Button, Row, Col, Input, Space, Card, Statistic, Select } from "antd";
-import { SearchOutlined, FilterOutlined, UserOutlined, ShoppingOutlined, TeamOutlined, PlusOutlined, LockFilled, LockOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import { Button, Input, Space, Select, message } from "antd";
+import {
+  SearchOutlined,
+  FilterOutlined,
+  TeamOutlined,
+  PlusOutlined,
+  LockOutlined,
+  CheckCircleOutlined,
+  ShoppingOutlined
+} from '@ant-design/icons';
+import axios from "axios";
+import { useTranslation } from "react-i18next";
+
+// Components
 import AdminPageLayout from "../components/AdminPageLayout";
 import UserTable from "../components/UserAdmin/UserTable";
 import UserDetailModal from "../components/UserAdmin/components/UserDetail/UserDetailRow";
-import axios from "axios";
-import { useTranslation } from "react-i18next";
+import StatsSection from "../components/common/StatsSection"; // Component tái sử dụng mới
+
+// Constants & Styles
 import { STATUS_LABELS, STATUS } from '../../../constants/statusConstants';
 import '../styles/UsersPage.css';
 
+const { Option } = Select;
+
 export default function UsersPage() {
+  // --- 1. State Management ---
   const [users, setUsers] = useState([]);
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Filter & Search States
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedRole, setSelectedRole] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+
+  // Selection & Modal States
   const [checkedIds, setCheckedIds] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
-  const [triggerAddUser, setTriggerAddUser] = useState(false);
-  const { t } = useTranslation();
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [triggerAddUser, setTriggerAddUser] = useState(false);
 
-  // Calculate statistics from users data
-  const userStats = useMemo(() => {
-    const total = users.length;
-    const active = users.filter(user => user.is_active).length;
-    const inactive = total - active;
-    const locked = users.filter(user => user.status?.toLowerCase() === STATUS.LOCKED.toLowerCase()).length;
-    const sellers = users.filter(user => user.role?.name?.toLowerCase() === 'seller').length;
+  const { t } = useTranslation();
 
-    return { total, active, inactive, locked, sellers };
-  }, [users]);
-
+  // --- 2. Data Fetching ---
   const fetchUsers = async () => {
     setLoading(true);
     try {
@@ -42,7 +53,8 @@ export default function UsersPage() {
       });
       setUsers(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
-      console.error(err);
+      console.error("Error fetching users:", err);
+      message.error("Không thể tải danh sách người dùng");
       setUsers([]);
     } finally {
       setLoading(false);
@@ -51,16 +63,12 @@ export default function UsersPage() {
 
   const fetchRoles = async () => {
     try {
-      const res = await axios.get(
-        "http://localhost:8000/api/users/roles/list/",
-        {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-        }
-      );
+      const res = await axios.get("http://localhost:8000/api/users/roles/list/", {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      });
       setRoles(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
-      console.error(err);
-      setRoles([]);
+      console.error("Error fetching roles:", err);
     }
   };
 
@@ -69,6 +77,43 @@ export default function UsersPage() {
     fetchRoles();
   }, []);
 
+  // --- 3. Computed Statistics (Logic tính toán) ---
+  const statItems = useMemo(() => {
+    const total = users.length;
+    const active = users.filter(user => user.is_active).length;
+    const inactive = total - active;
+    const sellers = users.filter(user => user.role?.name?.toLowerCase() === 'seller').length;
+
+    // Cấu hình hiển thị cho StatsSection
+    return [
+      {
+        title: "Tổng người dùng",
+        value: total,
+        icon: <TeamOutlined />,
+        color: "#1890ff", // Blue
+      },
+      {
+        title: STATUS_LABELS.active,
+        value: active,
+        icon: <CheckCircleOutlined />,
+        color: "#52c41a", // Green
+      },
+      {
+        title: "Tạm ngưng hoạt động",
+        value: inactive,
+        icon: <LockOutlined />,
+        color: "#faad14", // Orange/Yellow
+      },
+      {
+        title: "Đối tác người bán",
+        value: sellers,
+        icon: <ShoppingOutlined />,
+        color: "#722ed1", // Purple
+      }
+    ];
+  }, [users]);
+
+  // --- 4. Event Handlers ---
   const handleUserUpdated = (updatedUser) => {
     setUsers((prev) =>
       prev.map((u) => (u.id === updatedUser.id ? { ...u, ...updatedUser } : u))
@@ -80,108 +125,50 @@ export default function UsersPage() {
     setShowDetailModal(true);
   };
 
-  // Create statistics cards
-  const StatisticsSection = () => (
-    <div className="users-page-statistics">
-      <Row gutter={16}>
-        <Col xs={24} sm={12} lg={6}>
-          <Card
-            bordered={false}
-            className="statistic-card"
-          >
-            <Statistic
-              title="Tổng người dùng"
-              value={userStats.total}
-              prefix={<TeamOutlined />}
-              valueStyle={{ color: '#1890ff', fontSize: 24 }}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card
-            bordered={false}
-            className="statistic-card"
-          >
-            <Statistic
-              title={STATUS_LABELS.active}
-              value={userStats.active}
-              valueStyle={{ color: '#52c41a', fontSize: 24 }}
-              prefix={<CheckCircleOutlined/>}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card
-            bordered={false}
-            className="statistic-card"
-          >
-            <Statistic
-              title="Tạm ngưng hoạt động"
-              value={userStats.inactive}
-              prefix={<LockOutlined />}
-              valueStyle={{ fontSize: 24, color: '#faad14' }}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card
-            bordered={false}
-            className="statistic-card"
-          >
-            <Statistic
-              title="Người bán"
-              value={userStats.sellers}
-              prefix={<ShoppingOutlined />}
-              valueStyle={{ fontSize: 24 }}
-            />
-          </Card>
-        </Col>
-      </Row>
-    </div>
-  );
+  // --- 5. Render Components ---
 
-  // Create toolbar with filters and add button
+  // Toolbar Component (Thanh tìm kiếm và bộ lọc)
   const toolbar = (
     <Space wrap>
       <Input
-        placeholder="Tìm kiếm theo tên, email, số điện thoại..."
+        placeholder="Tìm kiếm tên, email, sđt..."
         prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
         allowClear
-        style={{ width: 280, borderRadius: 6 }}
+        style={{ width: 260, borderRadius: 6 }}
       />
 
       <Select
         placeholder="Vai trò"
         value={selectedRole}
         onChange={setSelectedRole}
-        style={{ width: 150, borderRadius: 6 }}
+        style={{ width: 140, borderRadius: 6 }}
         suffixIcon={<FilterOutlined />}
       >
-        <Select.Option value="all">Tất cả vai trò</Select.Option>
-        <Select.Option value="customer">Khách hàng</Select.Option>
-        <Select.Option value="seller">Người bán</Select.Option>
-        <Select.Option value="admin">Quản trị viên</Select.Option>
+        <Option value="all">Tất cả vai trò</Option>
+        <Option value="customer">Khách hàng</Option>
+        <Option value="seller">Người bán</Option>
+        <Option value="admin">Quản trị viên</Option>
       </Select>
 
       <Select
         placeholder="Trạng thái"
         value={statusFilter}
         onChange={setStatusFilter}
-        style={{ width: 150, borderRadius: 6 }}
+        style={{ width: 140, borderRadius: 6 }}
         suffixIcon={<FilterOutlined />}
       >
-        <Select.Option value="all">Tất cả</Select.Option>
-        <Select.Option value="active">{STATUS_LABELS.active}</Select.Option>
-        <Select.Option value="locked">{STATUS_LABELS.locked}</Select.Option>
+        <Option value="all">Tất cả trạng thái</Option>
+        <Option value="active">{STATUS_LABELS.active}</Option>
+        <Option value="locked">{STATUS_LABELS.locked}</Option>
       </Select>
 
       <Button
         type="primary"
         icon={<PlusOutlined />}
         onClick={() => setTriggerAddUser(true)}
-        style={{ borderRadius: 6 }}
+        style={{ borderRadius: 6, fontWeight: 500 }}
       >
         {t("Thêm người dùng")}
       </Button>
@@ -193,11 +180,11 @@ export default function UsersPage() {
       title="QUẢN LÝ NGƯỜI DÙNG"
       extra={toolbar}
     >
-      {/* Statistics Cards */}
-      <StatisticsSection />
+      {/* Phần thống kê chuyên nghiệp (Tái sử dụng) */}
+      <StatsSection items={statItems} loading={loading} />
 
-      {/* Table */}
-      <div className="users-page-content">
+      {/* Bảng danh sách người dùng */}
+      <div className="users-page-content" style={{ marginTop: 24 }}>
         <UserTable
           users={users}
           setUsers={setUsers}
@@ -217,7 +204,7 @@ export default function UsersPage() {
         />
       </div>
 
-      {/* Modal chi tiết người dùng */}
+      {/* Modal chi tiết */}
       {selectedUser && (
         <UserDetailModal
           user={selectedUser}

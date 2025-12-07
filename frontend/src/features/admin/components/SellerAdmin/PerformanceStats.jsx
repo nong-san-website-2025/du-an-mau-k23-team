@@ -204,23 +204,6 @@ export default function PerformanceStats({ analytics }) {
         </Col>
       </Row>
 
-      {/* Biểu đồ đơn hàng */}
-      <Row gutter={[16, 16]} style={{ marginBottom: "24px" }}>
-        <Col span={24}>
-          <Card
-            title={
-              <span>
-                <LineChartOutlined style={{ marginRight: 8, color: "#1890ff" }} />
-                Số đơn hàng theo ngày (Tuần này)
-              </span>
-            }
-            style={{ borderRadius: "8px", boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)" }}
-          >
-            <Line {...orderConfig} height={300} />
-          </Card>
-        </Col>
-      </Row>
-
       {/* Top sản phẩm bán chạy */}
       <Row gutter={[16, 16]} style={{ marginBottom: "24px" }}>
         <Col span={24}>
@@ -277,66 +260,6 @@ export default function PerformanceStats({ analytics }) {
             ) : (
               <Empty description="Chưa có sản phẩm bán chạy" />
             )}
-          </Card>
-        </Col>
-      </Row>
-
-      {/* Tỷ lệ hủy & hoàn trả */}
-      <Row gutter={[16, 16]}>
-        <Col span={12}>
-          <Card
-            title={
-              <span>
-                <SyncOutlined style={{ marginRight: 8, color: "#ff4d4f" }} />
-                Tỷ lệ hủy đơn
-              </span>
-            }
-            style={{ borderRadius: "8px", boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)" }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-              <div>
-                <SyncOutlined style={{ fontSize: "32px", color: "#ff4d4f" }} />
-              </div>
-              <div>
-                <div style={{ fontSize: "14px", color: "#6b7280" }}>
-                  Tỷ lệ hủy đơn
-                </div>
-                <div style={{ fontSize: "32px", fontWeight: 600, color: "#ff4d4f" }}>
-                  {performanceData.cancel_rate || 0}%
-                </div>
-                <Tag color="red-inverse">
-                  {performanceData.cancel_count || 0} đơn hủy
-                </Tag>
-              </div>
-            </div>
-          </Card>
-        </Col>
-        <Col span={12}>
-          <Card
-            title={
-              <span>
-                <WarningOutlined style={{ marginRight: 8, color: "#faad14" }} />
-                Tỷ lệ hoàn trả
-              </span>
-            }
-            style={{ borderRadius: "8px", boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)" }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-              <div>
-                <WarningOutlined style={{ fontSize: "32px", color: "#faad14" }} />
-              </div>
-              <div>
-                <div style={{ fontSize: "14px", color: "#6b7280" }}>
-                  Tỷ lệ hoàn trả
-                </div>
-                <div style={{ fontSize: "32px", fontWeight: 600, color: "#faad14" }}>
-                  {performanceData.return_rate || 0}%
-                </div>
-                <Tag color="orange-inverse">
-                  {performanceData.return_count || 0} đơn hoàn trả
-                </Tag>
-              </div>
-            </div>
           </Card>
         </Col>
       </Row>

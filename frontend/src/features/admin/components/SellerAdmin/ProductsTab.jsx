@@ -486,6 +486,7 @@ export default function ProductsTab({ sellerId }) {
           {filteredProducts.length > 0 ? (
             <Table
               columns={columns}
+              size="small"
               dataSource={filteredProducts}
               rowKey="id"
               pagination={{

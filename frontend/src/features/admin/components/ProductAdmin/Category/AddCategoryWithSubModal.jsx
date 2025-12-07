@@ -15,7 +15,6 @@ const CategoryWithSubModal = ({ visible, onClose, onSuccess, category }) => {
       form.setFieldsValue({
         name: category.name,
         key: category.key,
-        icon: category.icon,
         status: category.status,
         subcategories: category.subcategories || [],
       });
@@ -61,7 +60,7 @@ const CategoryWithSubModal = ({ visible, onClose, onSuccess, category }) => {
   return (
     <Modal
       open={visible}
-      title={category ? "Chỉnh sửa danh mục và subcategory" : "+ Thêm danh mục và danh mục con"}
+      title={category ? "Chỉnh sửa danh mục" : "Thêm danh mục và danh mục con"}
       onCancel={onClose}
       onOk={() => form.submit()}
       confirmLoading={loading}
@@ -82,10 +81,6 @@ const CategoryWithSubModal = ({ visible, onClose, onSuccess, category }) => {
           rules={[{ required: true, message: "Nhập key duy nhất" }]}
         >
           <Input />
-        </Form.Item>
-
-        <Form.Item label="Icon" name="icon">
-          <Input placeholder="Ví dụ: Apple, Carrot" />
         </Form.Item>
 
         <Form.Item label="Trạng thái" name="status" initialValue="active">
