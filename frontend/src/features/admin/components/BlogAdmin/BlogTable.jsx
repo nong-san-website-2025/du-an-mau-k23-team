@@ -1,8 +1,11 @@
 import React from "react";
-import { Table, Button, Switch, Popconfirm, Tag, Space, message, Typography, Image, Tooltip, Skeleton } from "antd";
-// Thêm UserOutlined cho tác giả để dành EyeOutlined cho lượt xem
+import { Table, Switch, Tag, Space, message, Typography, Image, Tooltip, Skeleton } from "antd";
 import { EditOutlined, DeleteOutlined, EyeOutlined, UserOutlined } from "@ant-design/icons";
 import { adminDeleteBlog, adminTogglePublish } from "../../../blog/api/blogApi";
+
+// Giả sử ButtonAction nằm cùng thư mục hoặc trong thư mục components chung
+// Bạn nhớ sửa đường dẫn import cho đúng với project nhé
+import ButtonAction from "../../../../components/ButtonAction"; 
 
 const { Text } = Typography;
 
@@ -74,25 +77,23 @@ export default function BlogTable({ blogs, loading, pagination, onChange, fetchB
       width: 150,
       render: (name) => <Tag color="cyan">{name}</Tag>
     },
-    // --- CỘT LƯỢT XEM MỚI ---
     {
       title: "Lượt xem",
-      dataIndex: "views", // Đảm bảo key này khớp với API trả về (vd: views, view_count)
+      dataIndex: "views", 
       width: 100,
       align: "center",
       render: (count) => (
         <Space>
+          <EyeOutlined style={{ color: "#1890ff" }} />
           <Text strong>{count ? count.toLocaleString() : 0}</Text>
         </Space>
       ),
     },
-    // ------------------------
     {
       title: "Tác giả",
       dataIndex: "author_name",
       align: "center",
       width: 150,
-      // Đổi icon sang UserOutlined cho đúng ngữ cảnh
       render: (name) => <Tag icon={<UserOutlined />} color="default">{name}</Tag> 
     },
     {
@@ -123,35 +124,40 @@ export default function BlogTable({ blogs, loading, pagination, onChange, fetchB
       key: "action",
       width: 100,
       fixed: "right",
-      render: (_, r) => (
-        <Space>
-          <Tooltip title="Chỉnh sửa">
-            <Button
-              type="text"
-              icon={<EditOutlined style={{ color: '#1890ff' }} />}
-              onClick={() => { setEditing(r); setDrawerVisible(true); }}
-            />
-          </Tooltip>
-          <Popconfirm
-            title="Bạn có chắc muốn xóa?"
-            description="Hành động này không thể hoàn tác"
-            onConfirm={() => handleDelete(r.slug)}
-            okText="Xóa"
-            cancelText="Hủy"
-            okButtonProps={{ danger: true }}
-          >
-            <Tooltip title="Xóa">
-              <Button type="text" danger icon={<DeleteOutlined />} />
-            </Tooltip>
-          </Popconfirm>
-        </Space>
+      render: (_, record) => (
+        <ButtonAction
+          record={record}
+          actions={[
+            {
+              actionType: "edit",
+              tooltip: "Chỉnh sửa",
+              icon: <EditOutlined />,
+              onClick: (r) => {
+                setEditing(r);
+                setDrawerVisible(true);
+              },
+            },
+            {
+              actionType: "delete",
+              tooltip: "Xóa",
+              icon: <DeleteOutlined />,
+              confirm: {
+                title: "Bạn có chắc muốn xóa?",
+                description: "Hành động này không thể hoàn tác",
+                okText: "Xóa",
+                cancelText: "Hủy",
+              },
+              onClick: (r) => handleDelete(r.slug),
+            },
+          ]}
+        />
       ),
     },
   ];
 
   return (
     <Table
-      rowKey="id" // Hoặc rowKey="slug" nếu id không duy nhất
+      rowKey="id"
       loading={loading}
       columns={columns}
       dataSource={blogs}

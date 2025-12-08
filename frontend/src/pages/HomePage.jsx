@@ -35,7 +35,7 @@ export default function HomePage() {
         const [catRes, modalRes] = await Promise.all([
           fetchCategories(),
           // Cập nhật slotCode đúng với backend
-          getBannersBySlot("homepage_popup"), 
+          getBannersBySlot("homepage_popup"),
         ]);
 
         setCategories(catRes.data || []);
@@ -53,7 +53,7 @@ export default function HomePage() {
         });
 
         setPopupAds(activeModals);
-        
+
         // TODO: Logic hiển thị Modal popupAds ở đây (nếu bạn có component Modal)
 
       } catch (error) {
@@ -83,7 +83,7 @@ export default function HomePage() {
         <title>GreenFarm - Trang chủ</title>
         <meta name="description" content="Mua sắm nông sản sạch tại GreenFarm." />
       </Helmet>
-      
+
       <div className="container">
         {/* === Section 1: Hero Slider & Side Banners === */}
         <section className="home-section hero-section">
@@ -111,7 +111,10 @@ export default function HomePage() {
 
         {/* Banner: Dưới Quick Access */}
         <DynamicAdSlot slotCode="homepage_below_quick_access" maxHeight="200px" />
-
+        <section className="home-section">
+          <FlashSaleList />
+        </section>
+        
         {/* === Section 3: Danh mục === */}
         <section className="home-section">
           <CategorySection categories={categories} />
@@ -126,9 +129,7 @@ export default function HomePage() {
         <DynamicAdSlot slotCode="homepage_above_flash_sale" maxHeight="400px" />
 
         {/* === Section 5: Flash Sale === */}
-        <section className="home-section">
-          <FlashSaleList />
-        </section>
+
 
         {/* Banner: Dưới Flash Sale */}
         <DynamicAdSlot slotCode="homepage_below_flash_sale" maxHeight="400px" />
@@ -140,8 +141,8 @@ export default function HomePage() {
           </Suspense>
         </section>
 
-         {/* Banner: Trước Blogs */}
-         <DynamicAdSlot slotCode="homepage_above_blogs" maxHeight="400px" />
+        {/* Banner: Trước Blogs */}
+        <DynamicAdSlot slotCode="homepage_above_blogs" maxHeight="400px" />
 
         {/* === Section 7: Tin tức === */}
         <section className="home-section">

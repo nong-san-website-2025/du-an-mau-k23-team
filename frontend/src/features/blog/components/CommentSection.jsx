@@ -103,9 +103,6 @@ export default function CommentSection({ postId, initialComments = [] }) {
     <div className="max-w-3xl mx-auto mt-12 bg-white rounded-2xl p-6 shadow-sm border border-gray-100 p-3">
       {/* Header */}
       <div className="flex items-center gap-2 mb-6 border-b border-gray-100 pb-4">
-        <div className="bg-blue-50 p-2 rounded-lg text-blue-600">
-          <MessageOutlined style={{ fontSize: "1.2rem" }} />
-        </div>
         <h3 className="text-xl font-bold text-gray-800 m-0">
           Bình luận <span className="text-gray-400 font-normal text-base">({comments.length})</span>
         </h3>

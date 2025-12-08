@@ -93,7 +93,7 @@ class VoucherDetailSerializer(serializers.ModelSerializer):
 
 class FlashSaleSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source='product.name', read_only=True)
-    product_image = serializers.CharField(source='product.thumbnail_url', read_only=True)
+    product_image = serializers.SerializerMethodField()
     remaining_time = serializers.SerializerMethodField()
     remaining_stock = serializers.SerializerMethodField()
 
@@ -109,7 +109,21 @@ class FlashSaleSerializer(serializers.ModelSerializer):
         return obj.product.name if obj.product else ""
 
     def get_product_image(self, obj):
-        return obj.product.thumbnail_url if obj.product else ""
+        product = obj.product
+        if product:
+            primary_image = product.images.filter(is_primary=True).first()
+            if primary_image:
+                request = self.context.get('request')
+                if request:
+                    return request.build_absolute_uri(primary_image.image.url)
+                return primary_image.image.url
+            first_image = product.images.first()
+            if first_image:
+                request = self.context.get('request')
+                if request:
+                    return request.build_absolute_uri(first_image.image.url)
+                return first_image.image.url
+        return None
 
     def get_remaining_time(self, obj):
         return obj.remaining_time
@@ -156,14 +170,20 @@ class FlashSaleProductSerializer(serializers.ModelSerializer):
     
 
     def get_product_image(self, obj):
-        if obj.product.image:
-            # Trả về URL đầy đủ (kể cả khi dùng localhost)
-            request = self.context.get('request')
-            if request:
-                return request.build_absolute_uri(obj.product.image.url)
-            else:
-                # Fallback: dùng MEDIA_URL (chỉ hoạt động nếu FE và BE cùng domain)
-                return f"{settings.MEDIA_URL}{obj.product.image.name}"
+        product = obj.product
+        if product:
+            primary_image = product.images.filter(is_primary=True).first()
+            if primary_image:
+                request = self.context.get('request')
+                if request:
+                    return request.build_absolute_uri(primary_image.image.url)
+                return primary_image.image.url
+            first_image = product.images.first()
+            if first_image:
+                request = self.context.get('request')
+                if request:
+                    return request.build_absolute_uri(first_image.image.url)
+                return first_image.image.url
         return None
 
 class FlashSaleSerializer(serializers.ModelSerializer):
