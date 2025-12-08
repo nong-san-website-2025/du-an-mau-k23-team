@@ -22,7 +22,7 @@ import SellingGuide from '../pages/CustomerService/SellingGuide';
 import ContactSupport from '../pages/CustomerService/ContactSupport';
 import FAQPage from '../pages/CustomerService/FAQ';
 import GreenFarmwallet from '../pages/CustomerService/GreenFarmwallet'; // Đổi tên file nếu cần
-import PrivacyPolicyCompact from '../pages/CustomerService/PrimarySecurity';
+import PrivacyPolicyCompact from './CustomerService/PrimarySecurity';
 import RecruitmentMinimal from '../pages/CustomerService/Recruitment';
 import ReturnPolicy from '../pages/CustomerService/ReturnPolicy';
 
