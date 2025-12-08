@@ -1,104 +1,104 @@
 import React, { useEffect, useState } from "react";
-import { Modal, Form, message, Divider } from "antd";
-import { FileAddOutlined, EditOutlined, InfoCircleOutlined } from "@ant-design/icons";
+import { Drawer, Form, message, Button, Space } from "antd";
+import { EditOutlined, FileAddOutlined } from "@ant-design/icons";
 import BlogFormFields from "./BlogFormFields";
 import { adminCreateBlog, adminUpdateBlog } from "../../../blog/api/blogApi";
 
-export default function BlogFormModal({ visible, onClose, editing, fetchBlogs, pagination, categories }) {
+export default function BlogFormDrawer({ visible, onClose, editing, fetchBlogs, categories }) {
   const [form] = Form.useForm();
   const [fileList, setFileList] = useState([]);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (editing) {
-      form.setFieldsValue({ ...editing, category: editing.category?.id });
-      setFileList(
-        editing.image
-          ? [{ uid: "-1", name: editing.image.split("/").pop(), url: editing.image, status: "done" }]
-          : []
-      );
-    } else {
-      form.resetFields();
-      setFileList([]);
+    if (visible) {
+      if (editing) {
+        form.setFieldsValue({ 
+          ...editing, 
+          category: editing.category?.id || editing.category 
+        });
+        setFileList(
+          editing.image
+            ? [{ uid: "-1", name: "current-image.png", url: editing.image, status: "done" }]
+            : []
+        );
+      } else {
+        form.resetFields();
+        setFileList([]);
+      }
     }
-  }, [editing, form]);
+  }, [visible, editing, form]);
 
   const onFinish = async (values) => {
+    setSubmitting(true);
     try {
-      // Form validation
-      if (!values.category) {
-        message.error("Vui lòng chọn danh mục");
-        return;
-      }
-
       const formData = new FormData();
-
-      // Append form values
+      
+      // Xử lý các field cơ bản
       Object.entries(values).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
           formData.append(key, value);
         }
       });
 
-      // Add image if exists
-      if (fileList[0]?.originFileObj) {
+      // Xử lý ảnh: Nếu có file mới (originFileObj) thì gửi file, nếu không thì giữ nguyên
+      if (fileList.length > 0 && fileList[0].originFileObj) {
         formData.append("image", fileList[0].originFileObj);
+      } else if (fileList.length === 0 && !editing) {
+        // Nếu tạo mới mà không có ảnh (tuỳ logic backend có bắt buộc không)
       }
 
-      // Send to backend
       if (editing) {
         await adminUpdateBlog(editing.slug, formData);
+        message.success("Cập nhật bài viết thành công!");
       } else {
         await adminCreateBlog(formData);
+        message.success("Đăng bài viết mới thành công!");
       }
 
-      message.success(editing ? "Cập nhật thành công" : "Đã thêm bài mới");
       onClose();
-      fetchBlogs(pagination.current, pagination.pageSize);
+      fetchBlogs();
     } catch (error) {
       console.error("Error:", error);
-      message.error("Thao tác thất bại: " + error.message);
+      message.error(error.response?.data?.detail || "Có lỗi xảy ra, vui lòng thử lại.");
+    } finally {
+      setSubmitting(false);
     }
   };
 
   return (
-    <Modal
+    <Drawer
       title={
-        <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <Space>
           {editing ? <EditOutlined /> : <FileAddOutlined />}
-          {editing ? "Chỉnh sửa bài viết" : "Viết bài mới"}
-        </span>
+          {editing ? `Chỉnh sửa: ${editing.title}` : "Soạn bài viết mới"}
+        </Space>
       }
+      width={900} // Rộng hơn để viết bài thoải mái
+      onClose={onClose}
       open={visible}
-      onCancel={onClose}
-      footer={null}
-      width={1200}
-      destroyOnClose
-      styles={{
-        body: { maxHeight: "75vh", overflowY: "auto", background: "#fafafa", borderRadius: 8 }
-      }}
-      style={{ top: 20 }}
+      styles={{ body: { paddingBottom: 80 } }} // Chừa chỗ cho footer
+      extra={
+        <Space>
+          <Button onClick={onClose}>Hủy</Button>
+          <Button onClick={() => form.submit()} type="primary" loading={submitting}>
+            {editing ? "Lưu thay đổi" : "Xuất bản ngay"}
+          </Button>
+        </Space>
+      }
     >
       <Form
         form={form}
         layout="vertical"
         onFinish={onFinish}
-        onSubmit={e => e.preventDefault()}
-        preserve={false}
-        style={{ background: "#fff", padding: 24, borderRadius: 12 }}
+        requiredMark="optional"
       >
-        <Divider orientation="left">
-          <InfoCircleOutlined style={{ marginRight: 6, color: "#1890ff" }} />
-          Thông tin bài viết
-        </Divider>
         <BlogFormFields
           form={form}
           fileList={fileList}
           setFileList={setFileList}
           categories={categories}
-          onClose={onClose}
-          editing={editing}
         />
       </Form>
-    </Modal>
+    </Drawer>
   );
 }

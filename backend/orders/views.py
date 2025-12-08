@@ -34,6 +34,16 @@ from products.models import ProductImage
 from django.http import StreamingHttpResponse
 import json
 import time
+from datetime import datetime, timedelta
+from django.utils import timezone
+
+from django.db.models import Sum, Count, F, Q
+from django.db.models.functions import TruncDate, Coalesce
+from django.db import models
+
+
+
+
 
 User = get_user_model()
 
@@ -810,3 +820,171 @@ def order_notifications_sse(request):
     response['Cache-Control'] = 'no-cache'
     response['Connection'] = 'keep-alive'
     return response
+
+
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def dashboard_stats(request):
+    """
+    API tổng hợp dữ liệu cho Dashboard Báo cáo Doanh thu
+    Params: start_date (YYYY-MM-DD), end_date (YYYY-MM-DD)
+    """
+    # 1. Xử lý tham số ngày tháng
+    today = timezone.now().date()
+    start_str = request.query_params.get('start_date')
+    end_str = request.query_params.get('end_date')
+
+    if start_str and end_str:
+        try:
+            start_date = datetime.strptime(start_str, '%Y-%m-%d').date()
+            end_date = datetime.strptime(end_str, '%Y-%m-%d').date()
+            # Thêm thời gian để bao gồm cả ngày cuối cùng (23:59:59)
+            end_datetime = datetime.combine(end_date, datetime.max.time())
+            end_datetime = timezone.make_aware(end_datetime)
+            start_datetime = datetime.combine(start_date, datetime.min.time())
+            start_datetime = timezone.make_aware(start_datetime)
+        except ValueError:
+             return Response({"error": "Invalid date format"}, status=400)
+    else:
+        # Mặc định 7 ngày qua
+        end_datetime = timezone.now()
+        start_datetime = end_datetime - timedelta(days=7)
+
+    # 2. Queryset cơ bản (Lọc theo ngày và không bị xóa mềm)
+    orders = Order.objects.filter(
+        created_at__range=(start_datetime, end_datetime),
+        is_deleted=False
+    )
+
+    # 3. Tính toán KPI Stats
+    total_orders = orders.count()
+    
+    # Doanh thu chỉ tính các đơn thành công/đã giao
+    revenue_orders = orders.filter(status__in=['success', 'delivered', 'completed'])
+    total_revenue = revenue_orders.aggregate(
+        total=Coalesce(Sum('total_price'), 0.0, output_field=models.DecimalField())
+    )['total']
+
+    # Tỷ lệ hủy và hoàn trả
+    cancelled_count = orders.filter(status='cancelled').count()
+    returned_count = orders.filter(status='returned').count()
+
+    cancel_rate = round((cancelled_count / total_orders * 100), 2) if total_orders > 0 else 0
+    return_rate = round((returned_count / total_orders * 100), 2) if total_orders > 0 else 0
+    
+    # AOV (Average Order Value)
+    avg_order_value = round(total_revenue / revenue_orders.count()) if revenue_orders.exists() else 0
+
+    # 4. Biểu đồ Trend (Area Chart) - Group by Date
+    trend_data = (
+        orders
+        .annotate(date=TruncDate('created_at'))
+        .values('date')
+        .annotate(
+            orders=Count('id'),
+            # Chỉ cộng doanh thu nếu đơn đó thành công (sử dụng Case/When hoặc filter trước đó rồi merge - ở đây tính tổng orders created để xem traffic)
+            # Để đơn giản cho biểu đồ overview: Revenue lấy theo ngày của các đơn ĐÃ THÀNH CÔNG trong khoảng đó
+        )
+        .order_by('date')
+    )
+
+    # Query riêng cho revenue theo ngày (chỉ tính đơn success)
+    revenue_trend = (
+        revenue_orders
+        .annotate(date=TruncDate('created_at'))
+        .values('date')
+        .annotate(revenue=Sum('total_price'))
+        .order_by('date')
+    )
+    
+    # Merge 2 list trend
+    chart_trend = []
+    # Tạo dict để lookup nhanh
+            # 8. Thống kê phương thức thanh toán
+    payment_methods_qs = (
+        orders
+        .values('payment_method')
+        .annotate(count=Count('id'))
+    )
+
+    payment_methods = []
+    for item in payment_methods_qs:
+        payment_methods.append({
+            "name": item['payment_method'] or "Khác",
+            "value": item['count']
+        })
+    rev_dict = {item['date']: item['revenue'] for item in revenue_trend}
+    
+    for item in trend_data:
+        chart_trend.append({
+            "date": item['date'].strftime('%d/%m'),
+            "orders": item['orders'],
+            "revenue": rev_dict.get(item['date'], 0)
+        })
+
+    # 5. Biểu đồ Status (Pie Chart)
+    status_map = {
+        'pending': 'Chờ xác nhận', 'shipping': 'Đang giao', 
+        "paymentMethods": payment_methods,
+        'success': 'Hoàn thành', 'cancelled': 'Đã hủy', 
+        'returned': 'Hoàn trả', 'delivered': 'Đã giao'
+    }
+    
+    status_data_qs = orders.values('status').annotate(value=Count('id'))
+    chart_status = []
+    for item in status_data_qs:
+        # Gom các trạng thái nhỏ lẻ vào 'Khác' hoặc hiển thị hết
+        label = status_map.get(item['status'], item['status'])
+        chart_status.append({"name": label, "value": item['value']})
+
+    # 6. Top Products (Lấy từ OrderItem của các orders trong range)
+    # Lưu ý: cần import models ở đầu file hoặc bên trong function
+    top_products_qs = (
+        OrderItem.objects
+        .filter(order__in=revenue_orders) # Chỉ tính sản phẩm trong đơn thành công
+        .values('product__id', 'product__name', 'product_image')
+        .annotate(
+            sold=Sum('quantity'),
+            revenue=Sum(F('quantity') * F('price'))
+        )
+        .order_by('-sold')[:5]
+    )
+
+    top_products = []
+    for p in top_products_qs:
+        top_products.append({
+            "id": p['product__id'],
+            "name": p['product__name'],
+            "sold": p['sold'],
+            "revenue": p['revenue'],
+            "img": p['product_image'] if p['product_image'] else "https://via.placeholder.com/40"
+        })
+
+    # 7. Recent Orders (Lấy 10 đơn gần đây nhất)
+    recent_orders_qs = orders.select_related('user').order_by('-created_at')[:10]
+    
+    recent_orders = []
+    for order in recent_orders_qs:
+        recent_orders.append({
+            "id": order.id,
+            "customer": (order.user.full_name or order.user.username) if order.user else 'N/A',    
+            "total": float(order.total_price) if order.total_price else 0,
+            "status": order.status,
+            "date": order.created_at.strftime('%Y-%m-%d')
+        })
+
+    return Response({
+        "stats": {
+            "totalOrders": total_orders,
+            "revenue": total_revenue,
+            "avgOrderValue": avg_order_value,
+            "cancelRate": cancel_rate,
+            "returnRate": return_rate
+        },
+        "chartData": {
+            "trend": chart_trend,
+            "status": chart_status
+        },
+        "topProducts": top_products,
+        "recentOrders": recent_orders
+    })

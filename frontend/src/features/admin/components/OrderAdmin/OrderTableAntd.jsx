@@ -1,140 +1,90 @@
 import React from "react";
-import { Table, Tag, Button, Popconfirm, Space } from "antd";
+import { Table } from "antd";
 import dayjs from "dayjs";
+import { Eye, XCircle, Printer } from "lucide-react"; // Dùng Lucide icons cho đẹp và đồng bộ
+import ButtonAction from "../../../../components/ButtonAction"; // Giả sử cùng thư mục
+import StatusTag from "../../../../components/StatusTag";       // Giả sử cùng thư mục
+import { intcomma } from './../../../../utils/format';
 
-// Ant Design table for Orders - Optimized color scheme for admin interface
 export default function OrderTableAntd({
   orders,
   loading,
   getStatusLabel,
   formatCurrency,
-  formatDate,
+  formatDate, // Tuy nhiên ở dưới bạn dùng dayjs trực tiếp, nên mình sẽ giữ logic cũ
   onViewDetail,
   onCancel,
   onRow,
 }) {
-  // Chỉ dùng màu cho status - quan trọng nhất
-  const statusColors = {
-    pending: "orange",
-    processing: "blue",
-    shipping: "geekblue",
-    delivered: "green",
-    success: "green",
-    cancelled: "red",
-    refunded: "default",
-  };
 
   const columns = [
     {
       title: "Mã đơn",
       dataIndex: "id",
       key: "id",
-      width: 100,
+      width: 70,
       align: "center",
       sorter: (a, b) => a.id - b.id,
       render: (id) => (
-        <span style={{ 
-          fontWeight: 600,
-          color: '#111827'
-        }}>
-          #{id}
-        </span>
+        <span style={{ fontWeight: 700, color: '#374151' }}>#{id}</span>
       ),
     },
     {
       title: "Khách hàng",
       dataIndex: "customer_name",
       key: "customer_name",
-      width: 150,
-      align: "left",
-      sorter: (a, b) => (a.customer_name || '').localeCompare(b.customer_name || ''),
-      render: (name) => (
-        <div style={{ 
-          fontWeight: 500, 
-          color: '#111827' 
-        }}>
-          {name || "Khách vãng lai"}
+      width: 160,
+      render: (name, record) => (
+        <div>
+          <div style={{ fontWeight: 500, color: '#111827' }}>
+            {name || "Khách vãng lai"}
+          </div>
+          {record.customer_phone && (
+            <div style={{ fontSize: '12px', color: '#9ca3af' }}>
+              {record.customer_phone}
+            </div>
+          )}
         </div>
       ),
     },
     {
       title: "Sản phẩm",
       key: "items_count",
-      width: 120,
+      width: 100,
       align: "center",
-      render: (_, record) => {
-        const count = record.items?.length || 0;
-        return (
-          <span style={{ 
-            color: '#6b7280',
-            fontSize: '13px'
-          }}>
-            {count} sản phẩm
-          </span>
-        );
-      },
+      render: (_, record) => (
+        <span style={{ color: '#6b7280', fontSize: '13px' }}>
+          {record.items?.length || 0} món
+        </span>
+      ),
     },
     {
       title: "Tổng tiền",
       dataIndex: "total_price",
       key: "total_price",
-      width: 140,
+      width: 100,
       align: "right",
       sorter: (a, b) => (a.total_price || 0) - (b.total_price || 0),
       render: (value) => (
-        <div style={{ 
-          fontWeight: 700,
-          fontSize: '14px',
-          color: '#111827',
-          textAlign: 'right'
-        }}>
-          {value != null ? formatCurrency(value) : "—"}
+        <div style={{ fontWeight: 700, color: '#111827' }}>
+          {value != null ? intcomma(value) : "—"}
         </div>
       ),
     },
     {
-      title: "Phí sàn",
+      title: "Lợi nhuận sàn", // Đổi tên cột Phí sàn cho chuyên nghiệp hơn
       key: "platform_commission",
-      width: 120,
+      width: 100,
       align: "right",
       render: (_, record) => {
         const total = (record.items || []).reduce((sum, item) => {
           const itemAmount = (item.price || 0) * (item.quantity || 0);
           return sum + itemAmount * (item.commission_rate || 0);
         }, 0);
-        
+
         return (
-          <div style={{ 
-            color: "#9ca3af",
-            fontWeight: 500,
-            fontSize: '13px',
-            textAlign: 'right'
-          }}>
-            {formatCurrency(total)}
-          </div>
-        );
-      },
-    },
-    {
-      title: "Doanh thu",
-      key: "seller_amount",
-      width: 120,
-      align: "right",
-      render: (_, record) => {
-        const total = (record.items || []).reduce((sum, item) => {
-          const itemAmount = (item.price || 0) * (item.quantity || 0);
-          const commission = itemAmount * (item.commission_rate || 0);
-          return sum + (itemAmount - commission);
-        }, 0);
-        
-        return (
-          <div style={{ 
-            color: "#111827",
-            fontWeight: 600,
-            fontSize: '14px',
-            textAlign: 'right'
-          }}>
-            {formatCurrency(total)}
+          <div style={{ color: "#d97706", fontWeight: 500, fontSize: '13px' }}>
+            +{intcomma(total)}
           </div>
         );
       },
@@ -143,45 +93,59 @@ export default function OrderTableAntd({
       title: "Trạng thái",
       dataIndex: "status",
       key: "status",
-      width: 130,
+      width: 140,
       align: "center",
-      filters: Object.keys(statusColors).map(status => ({
-        text: getStatusLabel(status),
-        value: status,
-      })),
+      filters: [
+        { text: 'Chờ xử lý', value: 'pending' },
+        { text: 'Đang giao', value: 'shipping' },
+        { text: 'Hoàn thành', value: 'success' },
+        { text: 'Đã hủy', value: 'cancelled' },
+      ],
       onFilter: (value, record) => record.status === value,
+      // SỬ DỤNG COMPONENT STATUS TAG
       render: (status) => (
-        <Tag 
-          color={statusColors[status] || "default"}
-          style={{ 
-            fontWeight: 500,
-            fontSize: '12px',
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px',
-            margin: 0
-          }}
-        >
-          {getStatusLabel(status)}
-        </Tag>
+        <StatusTag
+          status={status}
+          label={getStatusLabel(status)}
+        />
       ),
     },
     {
       title: "Ngày tạo",
       dataIndex: "created_at",
       key: "created_at",
-      width: 160,
+      width: 140,
       align: "center",
       sorter: (a, b) => new Date(a.created_at) - new Date(b.created_at),
       render: (date) => (
-        <div style={{ 
-          fontSize: '12px', 
-          color: '#6b7280' 
-        }}>
-          {date ? dayjs(date).format("DD/MM/YYYY HH:mm") : "—"}
+        <div style={{ fontSize: '12px', color: '#6b7280' }}>
+          {date ? dayjs(date).format("DD/MM/YYYY") : "—"}
+          <div style={{ fontSize: '11px', color: '#9ca3af' }}>
+            {date ? dayjs(date).format("HH:mm") : ""}
+          </div>
         </div>
       ),
     },
-  
+    {
+      title: "Thao tác", // Cột mới sử dụng ButtonAction
+      key: "action",
+      width: 100,
+      fixed: "right",
+      align: "center",
+      render: (_, record) => {
+        // Định nghĩa các hành động cho từng dòng
+        const actions = [
+          {
+            actionType: "view",
+            tooltip: "Xem chi tiết",
+            icon: <Eye />, // Lucide Icon
+            onClick: () => onViewDetail(record.id),
+          },
+        ];
+
+        return <ButtonAction actions={actions} record={record} />;
+      },
+    },
   ];
 
   return (
@@ -189,26 +153,25 @@ export default function OrderTableAntd({
       columns={columns}
       dataSource={orders}
       rowKey="id"
-      bordered
+      bordered={true} // Bỏ border dọc nhìn sẽ hiện đại hơn
       loading={loading}
-      pagination={{ 
+      pagination={{
         pageSize: 10,
         showSizeChanger: true,
-        showQuickJumper: true,
         showTotal: (total) => `Tổng ${total} đơn hàng`,
-        pageSizeOptions: ['10', '20', '50', '100']
+        pageSizeOptions: ['10', '20', '50']
       }}
-      size="middle"
+      size="small"
       onRow={onRow}
-      scroll={{ x: 1400 }}
+      scroll={{ x: 1300 }}
       rowClassName={(record) => {
-        // Subtle highlighting cho pending orders
-        return record.status === 'pending' ? 'row-pending' : '';
+        // Highlight nhẹ các đơn hàng mới
+        return record.status === 'pending' ? 'bg-orange-50' : '';
       }}
-      style={{ 
-        background: '#fff', 
+      style={{
+        background: '#fff',
         borderRadius: '8px',
-        overflow: 'hidden'
+        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)' // Thêm bóng nhẹ cho bảng
       }}
     />
   );

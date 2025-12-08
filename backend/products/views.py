@@ -159,7 +159,12 @@ class ProductViewSet(viewsets.ModelViewSet):
             pass
         else:
             # ✅ Tất cả role khác (seller, customer, guest) chỉ thấy approved và không bị ẩn
-            queryset = queryset.filter(status='approved', is_hidden=False)
+            queryset = queryset.filter(
+                status='approved', 
+                is_hidden=False,
+                subcategory__status='active',           # Check danh mục con
+                subcategory__category__status='active'  # Check danh mục cha
+            )
 
         # ----- Filter theo query params -----
         params = self.request.query_params
@@ -253,8 +258,9 @@ class ProductViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def featured(self, request):
-        # Return latest approved and visible products as "featured"
-        products = self.get_queryset().filter(status='approved', is_hidden=False).order_by('-created_at')[:12]
+        # Return latest approved and visible products
+        # Dùng get_queryset() thì nó đã áp dụng logic filter ở trên rồi, nên an toàn.
+        products = self.get_queryset().order_by('-created_at')[:12]
         serializer = ProductListSerializer(products, many=True, context={'request': request})
         return Response(serializer.data)
     
@@ -388,6 +394,22 @@ class CategoryViewSet(viewsets.ModelViewSet):
         if self.action in ['create', 'update', 'partial_update']:
             return CategoryCreateSerializer
         return CategorySerializer
+    
+    def perform_update(self, serializer):
+        """
+        Khi update Category, nếu trạng thái (status) thay đổi,
+        thì cập nhật luôn status của tất cả Subcategory con.
+        """
+        # 1. Lưu thay đổi của cha trước
+        instance = serializer.save()
+
+        # 2. Kiểm tra xem request có gửi lên field 'status' không
+        if 'status' in serializer.validated_data:
+            new_status = serializer.validated_data['status']
+            
+            # 3. Cập nhật tất cả danh mục con (subcategories) theo trạng thái mới
+            # Lệnh này chạy 1 câu SQL update hàng loạt, rất nhanh
+            instance.subcategories.all().update(status=new_status)
 
     @action(detail=True, methods=['get'], url_path='subcategories')
     def get_subcategories(self, request, pk=None):
@@ -400,13 +422,19 @@ class CategoryViewSet(viewsets.ModelViewSet):
         user = request.user
         role = getattr(user, 'role', None)
 
+        # Lấy sản phẩm thuộc category này
         products = Product.objects.filter(subcategory__category=category)
 
-        if role == 'seller':
-            products = products.filter(status='approved').exclude(status='banned')
-        elif role == 'customer' or role is None:
-            products = products.filter(status='approved').exclude(status='banned')
-        # admin thấy tất cả
+        # ✅ Admin thấy hết, User thường phải check status
+        if not (user.is_authenticated and user.is_staff):
+            products = products.filter(
+                status='approved', 
+                is_hidden=False, # (nếu bạn muốn ẩn sp hidden)
+                subcategory__status='active', # Check luôn subcategory active
+                # Không cần check category status vì logic là nếu category inactive
+                # thì user không click vào đây được, nhưng check thêm cũng không sao:
+                subcategory__category__status='active' 
+            ).exclude(status='banned')
 
         serializer = ProductListSerializer(products, many=True, context={'request': request})
         return Response(serializer.data)
@@ -471,8 +499,10 @@ class SearchAPIView(APIView):
 
         # ✅ Lọc sản phẩm chỉ lấy approved và không bị ẩn
         products_qs = Product.objects.filter(
-            Q(status="approved"),
-            Q(is_hidden=False),
+            status="approved",
+            is_hidden=False,
+            subcategory__status='active',          # <-- Thêm
+            subcategory__category__status='active' # <-- Thêm
         ).filter(
             Q(normalized_name__icontains=norm_query) | Q(description__icontains=query)
         ).select_related('subcategory__category')
@@ -544,18 +574,29 @@ class ReviewListCreateView(generics.ListCreateAPIView):
 
 @api_view(["GET"])
 def new_products(request):
-    """Lấy 8 sản phẩm mới nhất"""
-    products = Product.objects.filter(status='approved', is_hidden=False).order_by('-created_at')[:8]
+    """Lấy 8 sản phẩm mới nhất (Check cả parent status)"""
+    products = Product.objects.filter(
+        status='approved', 
+        is_hidden=False,
+        subcategory__status='active',
+        subcategory__category__status='active'
+    ).order_by('-created_at')[:8]
+    
     serializer = ProductSerializer(products, many=True, context={'request': request})
     return Response(serializer.data)
 
 @api_view(["GET"])
 def best_sellers(request):
-    """Lấy 8 sản phẩm bán chạy nhất"""
-    products = Product.objects.filter(status='approved', is_hidden=False).order_by('-sold')[:8]
+    """Lấy 8 sản phẩm bán chạy nhất (Check cả parent status)"""
+    products = Product.objects.filter(
+        status='approved', 
+        is_hidden=False,
+        subcategory__status='active',
+        subcategory__category__status='active'
+    ).order_by('-sold')[:8]
+    
     serializer = ProductSerializer(products, many=True, context={'request': request})
     return Response(serializer.data)
-# Top-Products
 
 @api_view(["GET"])
 @permission_classes([AllowAny])

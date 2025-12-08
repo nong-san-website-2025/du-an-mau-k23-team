@@ -1,5 +1,4 @@
-// ./src/features/blog/components/CommentSection.jsx
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   List,
   Avatar,
@@ -8,65 +7,59 @@ import {
   message,
   Spin,
   Typography,
-  Space,
 } from "antd";
-import { UserOutlined, MessageOutlined } from "@ant-design/icons";
+import { UserOutlined, SendOutlined, MessageOutlined } from "@ant-design/icons";
 import { addComment } from "../api/blogApi";
 
 const { TextArea } = Input;
-const { Text, Paragraph } = Typography;
+const { Text } = Typography;
 
-// Component bình luận tùy chỉnh
-const CustomComment = ({
-  author,
-  content,
-  datetime,
-  avatar,
-  avatarColor = "#667eea",
-}) => {
+// Hàm tạo màu cố định dựa trên tên (Consistent Hashing)
+// Giúp avatar không bị đổi màu khi re-render
+const stringToColor = (str) => {
+  if (!str) return "#667eea";
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const c = (hash & 0x00ffffff).toString(16).toUpperCase();
+  return "#" + "00000".substring(0, 6 - c.length) + c;
+};
+
+const CommentItem = ({ author, content, datetime, avatar }) => {
+  const avatarColor = useMemo(() => stringToColor(author), [author]);
+
   return (
-    <div className="comment-item">
-      <Space direction="vertical" size={8} style={{ width: "100%" }}>
-        <Space size="middle">
-          <Avatar
-            size={44}
-            src={avatar}
-            icon={<UserOutlined />}
-            style={{
-              backgroundColor: avatarColor,
-              background: `linear-gradient(135deg, ${avatarColor} 0%, #764ba2 100%)`,
-            }}
-          />
-          <div>
-            <Text className="comment-author">{author}</Text>
-            <br />
-            <Text className="comment-datetime">{datetime}</Text>
-          </div>
-        </Space>
-        <Paragraph className="comment-content">{content}</Paragraph>
-      </Space>
+    <div className="flex gap-4 p-4 mb-2 bg-gray-50/50 rounded-xl hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-100">
+      <div className="flex-shrink-0">
+        <Avatar
+          size={40}
+          src={avatar}
+          icon={<UserOutlined />}
+          style={{ backgroundColor: avatarColor }}
+          className="shadow-sm border-2 border-white"
+        />
+      </div>
+      <div className="flex-1">
+        <div className="flex items-center justify-between mb-1">
+          <Text strong className="text-gray-800 text-sm">
+            {author}
+          </Text>
+          <Text type="secondary" className="text-xs">
+            {datetime}
+          </Text>
+        </div>
+        <div className="text-gray-600 text-sm leading-relaxed whitespace-pre-wrap">
+          {content}
+        </div>
+      </div>
     </div>
   );
 };
 
-// Hàm tạo màu ngẫu nhiên cho avatar
-const getRandomColor = () => {
-  const colors = [
-    "#667eea",
-    "#f093fb",
-    "#4facfe",
-    "#43e97b",
-    "#fa709a",
-    "#feca57",
-    "#ff6b6b",
-    "#5f27cd",
-  ];
-  return colors[Math.floor(Math.random() * colors.length)];
-};
-
 export default function CommentSection({ postId, initialComments = [] }) {
   const [comments, setComments] = useState(initialComments);
-  const [visibleCount, setVisibleCount] = useState(10);
+  const [visibleCount, setVisibleCount] = useState(5); // Show 5 first looks cleaner
   const [newComment, setNewComment] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -78,22 +71,27 @@ export default function CommentSection({ postId, initialComments = [] }) {
 
     const token = localStorage.getItem("token");
     if (!token) {
-      message.warning("Vui lòng đăng nhập để bình luận!");
+      message.error("Vui lòng đăng nhập để bình luận!");
       return;
     }
 
     setLoading(true);
     try {
-      const res = await addComment(
-        { post: postId, content: newComment },
-        token
-      );
-      setComments((prev) => [res.data, ...prev]);
+      const res = await addComment({ post: postId, content: newComment }, token);
+      // Giả lập response cấu trúc nếu API trả về khác
+      const newCommentData = res.data || {
+        id: Date.now(),
+        content: newComment,
+        author_name: "Bạn (Mới)",
+        created_at: new Date().toISOString(),
+      };
+
+      setComments((prev) => [newCommentData, ...prev]);
       setNewComment("");
-      message.success("Bình luận của bạn đã được gửi! 🎉");
+      message.success("Đã gửi bình luận!");
     } catch (error) {
-      console.error("Lỗi khi gửi bình luận:", error);
-      message.error("Gửi bình luận thất bại, vui lòng thử lại.");
+      console.error(error);
+      message.error("Gửi thất bại, thử lại sau.");
     } finally {
       setLoading(false);
     }
@@ -101,103 +99,85 @@ export default function CommentSection({ postId, initialComments = [] }) {
 
   const visibleComments = comments.slice(0, visibleCount);
 
-  const handleLoadMore = () => {
-    setVisibleCount((prev) => prev + 10);
-  };
-
-  const handleKeyPress = (e) => {
-    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-      handleSubmit();
-    }
-  };
-
   return (
-    <div className="comment-section">
-      <h2 className="comment-section-title">
-        <MessageOutlined style={{ fontSize: "1.5rem" }} />
-        Bình luận ({comments.length})
-      </h2>
+    <div className="max-w-3xl mx-auto mt-12 bg-white rounded-2xl p-6 shadow-sm border border-gray-100 p-3">
+      {/* Header */}
+      <div className="flex items-center gap-2 mb-6 border-b border-gray-100 pb-4">
+        <div className="bg-blue-50 p-2 rounded-lg text-blue-600">
+          <MessageOutlined style={{ fontSize: "1.2rem" }} />
+        </div>
+        <h3 className="text-xl font-bold text-gray-800 m-0">
+          Bình luận <span className="text-gray-400 font-normal text-base">({comments.length})</span>
+        </h3>
+      </div>
 
-      {/* Form thêm bình luận - đặt lên đầu */}
-      <div className="comment-form">
-        <h3 className="comment-form-title">💬 Viết bình luận của bạn</h3>
+      {/* Input Form */}
+      <div className="mb-8 relative group">
         <TextArea
-          rows={4}
-          placeholder="Chia sẻ suy nghĩ của bạn về bài viết này... (Ctrl/Cmd + Enter để gửi)"
+          rows={3}
+          placeholder="Bạn đang nghĩ gì về bài viết này?..."
           value={newComment}
           onChange={(e) => setNewComment(e.target.value)}
-          onKeyDown={handleKeyPress}
+          onKeyDown={(e) => e.key === "Enter" && (e.ctrlKey || e.metaKey) && handleSubmit()}
           maxLength={500}
-          showCount
-          className="comment-textarea"
+          className="!resize-none !bg-gray-50 hover:!bg-white focus:!bg-white !border-gray-200 focus:!border-blue-400 !rounded-xl !text-sm !p-4 !shadow-inner focus:!shadow-md transition-all"
         />
-        <div style={{ textAlign: "right", marginTop: "1rem" }}>
-          <Button
-            type="primary"
-            onClick={handleSubmit}
-            disabled={loading}
-            className="comment-submit-btn"
-            icon={loading ? <Spin size="small" /> : null}
-          >
-            {loading ? "Đang gửi..." : "Gửi bình luận"}
-          </Button>
+
+        <div className="flex justify-between items-center mt-2 mb-2">
+          <span className="text-xs text-gray-400">
+            Mẹo: Nhấn <kbd className="bg-gray-100 px-1 rounded border">Ctrl</kbd> + <kbd className="bg-gray-100 px-1 rounded border">Enter</kbd> để gửi
+          </span>
+          <div style={{display: 'flex', justifyContent: 'flex-end'}}>
+            <Button
+              type="primary"
+              onClick={handleSubmit}
+              loading={loading}
+              disabled={!newComment.trim()}
+              icon={<SendOutlined />}
+              className="bg-blue-600 hover:bg-blue-500 border-none shadow-md shadow-blue-200 rounded-lg h-9 px-6 font-medium"
+            >
+              Gửi
+            </Button>
+          </div>
         </div>
       </div>
 
-      {/* Danh sách bình luận */}
-      <div style={{ marginTop: "2.5rem" }}>
+      {/* Comment List */}
+      <div className="space-y-2">
         {comments.length === 0 ? (
-          <div
-            style={{
-              textAlign: "center",
-              padding: "3rem",
-              color: "#94a3b8",
-              fontSize: "1rem",
-            }}
-          >
-            <MessageOutlined
-              style={{ fontSize: "3rem", marginBottom: "1rem", opacity: 0.3 }}
-            />
-            <p>Chưa có bình luận nào. Hãy là người đầu tiên bình luận! 🚀</p>
+          <div className="text-center py-10 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+            <MessageOutlined className="text-4xl text-gray-300 mb-3" />
+            <p className="text-gray-500 font-medium">Chưa có thảo luận nào.</p>
+            <p className="text-gray-400 text-sm">Hãy là người đầu tiên chia sẻ ý kiến!</p>
           </div>
         ) : (
-          <>
-            <List
-              itemLayout="horizontal"
-              dataSource={visibleComments}
-              renderItem={(c, index) => (
-                <li key={c.id || `${c.created_at}-${index}`}>
-                  <CustomComment
-                    author={c.author_name || "Khách"}
-                    content={c.content}
-                    datetime={new Date(c.created_at).toLocaleString("vi-VN", {
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                    avatar={c.author_avatar}
-                    avatarColor={getRandomColor()}
-                  />
-                </li>
-              )}
-            />
-
-            {/* Nút xem thêm */}
-            {comments.length > visibleCount && (
-              <div style={{ textAlign: "center", marginTop: "1.5rem" }}>
-                <Button
-                  type="default"
-                  onClick={handleLoadMore}
-                  className="comment-load-more"
-                >
-                  Xem thêm {Math.min(10, comments.length - visibleCount)} bình
-                  luận
-                </Button>
-              </div>
+          <List
+            dataSource={visibleComments}
+            split={false} // Tắt đường gạch ngang mặc định của Antd để tự style
+            renderItem={(c) => (
+              <CommentItem
+                author={c.author_name || "Người dùng ẩn danh"}
+                content={c.content}
+                avatar={c.author_avatar}
+                datetime={new Date(c.created_at).toLocaleString("vi-VN", {
+                  day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit"
+                })}
+              />
             )}
-          </>
+          />
+        )}
+
+        {/* Load More Button */}
+        {comments.length > visibleCount && (
+          <div className="text-center mt-6">
+            <Button
+              type="text"
+              onClick={() => setVisibleCount((p) => p + 5)}
+              className="text-gray-500 hover:text-blue-600 hover:bg-blue-50 font-medium"
+            >
+              Xem thêm bình luận cũ hơn
+            </Button>
+          </div>
         )}
       </div>
     </div>

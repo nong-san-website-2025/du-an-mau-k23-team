@@ -2,7 +2,8 @@
 
 // Hàm gọi API chung có xử lý refresh token
 export async function fetchWithAuth(url, options = {}) {
-  let token = localStorage.getItem("token") || localStorage.getItem("access_token");
+  let token =
+    localStorage.getItem("token") || localStorage.getItem("access_token");
   let refresh = localStorage.getItem("refresh_token");
 
   options.headers = {
@@ -30,13 +31,13 @@ export async function fetchWithAuth(url, options = {}) {
       res = await fetch(url, options);
     } else {
       // Refresh thất bại => logout
-  localStorage.removeItem("token");
-  localStorage.removeItem("access_token");
-  localStorage.removeItem("refresh_token");
-  localStorage.removeItem("username");
-  localStorage.removeItem("role");
-  localStorage.removeItem("first_name");
-  window.location.href = "/login";
+      localStorage.removeItem("token");
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("refresh_token");
+      localStorage.removeItem("username");
+      localStorage.removeItem("role");
+      localStorage.removeItem("first_name");
+      window.location.href = "/login";
       throw new Error("Phiên đăng nhập hết hạn, vui lòng đăng nhập lại");
     }
   }
@@ -55,6 +56,13 @@ export async function fetchWithAuth(url, options = {}) {
 
 // API user
 export const userApi = {
+  getDashboardStats: async (params) => {
+    // params là object { start_date: 'YYYY-MM-DD', end_date: 'YYYY-MM-DD' }
+    const queryString = new URLSearchParams(params).toString();
+    return await fetchWithAuth(
+      `http://localhost:8000/api/orders/dashboard-stats/?${queryString}`
+    );
+  },
   // Lấy danh sách user
   getUsers: async () => {
     return await fetchWithAuth("http://localhost:8000/api/users/");
@@ -62,9 +70,12 @@ export const userApi = {
 
   // Xóa user
   deleteUser: async (id) => {
-    return await fetchWithAuth(`http://localhost:8000/api/users/management/${id}/`, {
-      method: "DELETE",
-    });
+    return await fetchWithAuth(
+      `http://localhost:8000/api/users/management/${id}/`,
+      {
+        method: "DELETE",
+      }
+    );
   },
 
   // Cập nhật user

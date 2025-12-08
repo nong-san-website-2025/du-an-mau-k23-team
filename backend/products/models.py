@@ -28,8 +28,8 @@ class Product(models.Model):
         ("pending", "Pending"),
         ("approved", "Approved"),
         ("rejected", "Rejected"),
-        ("self_rejected", "Self Rejected"),
         ("banned", "Banned"),
+        ("hidden", "Hidden"),
     ]
 
     AVAILABILITY_CHOICES = [

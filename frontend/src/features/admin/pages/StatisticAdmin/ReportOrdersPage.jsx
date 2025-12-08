@@ -1,238 +1,311 @@
 // src/features/admin/pages/reports/ReportOrdersPage.jsx
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Row,
   Col,
   Card,
-  Statistic,
-  Table,
   Space,
-  Divider,
-  Spin,
-  Alert,
+  Button,
+  Typography,
+  DatePicker,
+  Select,
+  message,
+  Table,
+  Tag,
+  Avatar
 } from "antd";
 import {
   ShoppingCartOutlined,
+  ClockCircleOutlined,
+  CloseCircleOutlined,
+  ReloadOutlined,
+  DownloadOutlined,
+  RiseOutlined,
   DollarOutlined,
+  UserOutlined,
+  RightOutlined
 } from "@ant-design/icons";
 
 import {
-  PieChart,
-  Pie,
-  Cell,
-  Tooltip,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  ResponsiveContainer,
-  CartesianGrid,
+  PieChart, Pie, Cell, Tooltip as RechartsTooltip,
+  XAxis, YAxis, ResponsiveContainer, CartesianGrid, Legend,
+  AreaChart, Area
 } from "recharts";
 
 import AdminPageLayout from "../../components/AdminPageLayout";
-import { fetchWithAuth } from "../../services/userApi";
+import StatsSection from "../../components/common/StatsSection"; // Đảm bảo đường dẫn đúng tới file StatsSection của bạn
+import { userApi } from "../../services/userApi";
+import dayjs from "dayjs";
+import { intcomma } from "../../../../utils/format";
 
-const COLORS = ["#36A2EB", "#FFB347", "#4CAF50", "#FF6B6B"];
-const API_BASE_URL = "http://localhost:8000/api";
+const { Title, Text } = Typography;
+const { RangePicker } = DatePicker;
+const { Option } = Select;
 
-// Default empty state
-const defaultOrderSummary = {
-  totalOrders: 0,
-  revenue: 0,
-  onTimeRate: 0,
-  cancelRate: 0,
-};
+// --- CONFIG ---
+const PIE_COLORS = ["#36A2EB", "#FFCE56", "#4CAF50", "#FF6384", "#9966FF"];
 
-// Columns for Shipping Table
-const columns = [
-  {
-    title: "Đơn vị giao hàng",
-    dataIndex: "name",
-  },
-  {
-    title: "Chi phí (VNĐ)",
-    dataIndex: "cost",
-    render: (val) => val.toLocaleString() + " đ",
-  },
-];
-
-// Component
 export default function ReportOrdersPage() {
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [orderSummary, setOrderSummary] = useState(defaultOrderSummary);
-  const [orderStatusData, setOrderStatusData] = useState([]);
-  const [deliveryTimeData, setDeliveryTimeData] = useState([]);
-  const [shippingCostData, setShippingCostData] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [dateRange, setDateRange] = useState([dayjs().subtract(7, 'd'), dayjs()]);
+  const [timeFilter, setTimeFilter] = useState('week');
 
-  useEffect(() => {
-    fetchOrderStatistics();
-  }, []);
+  // State tổng hợp
+  const [stats, setStats] = useState({
+    totalOrders: 0,
+    successOrders: 0,
+    pendingOrders: 0,
+    cancelRate: 0,
+    totalRevenue: 0,
+    avgOrderValue: 0
+  });
 
-  const fetchOrderStatistics = async () => {
+  const [chartData, setChartData] = useState({
+    trend: [],
+    status: [],
+    paymentMethods: [],
+  });
+
+  const [recentOrders, setRecentOrders] = useState([]);
+
+  // --- FETCH DATA ---
+  const fetchData = useCallback(async () => {
+    if (!dateRange || dateRange.length !== 2) return;
+
+    setLoading(true);
     try {
-      setLoading(true);
-      setError(null);
+      const params = {
+        start_date: dateRange[0].format('YYYY-MM-DD'),
+        end_date: dateRange[1].format('YYYY-MM-DD')
+      };
 
-      const data = await fetchWithAuth(
-        `${API_BASE_URL}/orders/admin/order-statistics/`
-      );
+      const data = await userApi.getDashboardStats(params);
 
-      setOrderSummary(data.orderSummary || defaultOrderSummary);
-      setOrderStatusData(data.orderStatusData || []);
-      setDeliveryTimeData(data.deliveryTimeData || []);
-      setShippingCostData(data.shippingCostData || []);
-    } catch (err) {
-      console.error("Error fetching order statistics:", err);
-      setError(err.message || "Không thể tải dữ liệu");
+      if (data) {
+        // --- 1. Xử lý Stats cơ bản ---
+        const total = data.stats.totalOrders || 0;
+        const revenue = data.stats.revenue || 0;
+
+        const statusMap = {};
+        data.chartData.status.forEach(item => statusMap[item.name] = item.value);
+
+        const pendingCount = (statusMap['Chờ xác nhận'] || 0) + (statusMap['Đang giao'] || 0);
+        const successCount = (statusMap['Hoàn thành'] || 0);
+
+        setStats({
+          totalOrders: total,
+          successOrders: successCount,
+          pendingOrders: pendingCount,
+          cancelRate: data.stats.cancelRate || 0,
+          totalRevenue: revenue,
+          avgOrderValue: data.stats.avgOrderValue || 0
+        });
+
+        // --- 2. Chart Data ---
+        setChartData({
+          trend: data.chartData.trend || [],
+          status: data.chartData.status || [],
+          paymentMethods: data.chartData.paymentMethods || []
+        });
+
+        // --- 4. Recent Orders ---
+        setRecentOrders(data.recentOrders || []);
+      }
+    } catch (error) {
+      console.error("Lỗi tải báo cáo:", error);
+      message.error("Không thể tải dữ liệu báo cáo.");
     } finally {
       setLoading(false);
     }
+  }, [dateRange]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // --- HELPER RENDER ---
+  const renderStatusTag = (status) => {
+    let color = 'default';
+    let label = 'Không rõ';
+    switch (status) {
+      case 'completed': color = 'success'; label = 'Hoàn thành'; break;
+      case 'shipping': color = 'processing'; label = 'Đang giao'; break;
+      case 'pending': color = 'warning'; label = 'Chờ xử lý'; break;
+      case 'cancelled': color = 'error'; label = 'Đã hủy'; break;
+      default: break;
+    }
+    return <Tag color={color}>{label}</Tag>;
   };
 
-  if (loading) {
-    return (
-      <AdminPageLayout title="BÁO CÁO ĐƠN HÀNG">
-        <div style={{ textAlign: "center", padding: "50px" }}>
-          <Spin size="large" />
-        </div>
-      </AdminPageLayout>
-    );
-  }
+  const columnsRecentOrders = [
+    { title: 'Mã đơn', dataIndex: 'id', render: (text) => <span style={{ cursor: 'pointer', color: '#1890ff' }}>{text}</span> },
+    { title: 'Khách hàng', dataIndex: 'customer', render: (text) => <Space><Avatar size="small" icon={<UserOutlined />} /> {text}</Space> },
+    { title: 'Ngày đặt', dataIndex: 'date' },
+    {
+      title: 'Tổng tiền',
+      dataIndex: 'total',
+      render: (val) => <Text strong>{intcomma(val)} đ</Text>
+    },
+    { title: 'Trạng thái', dataIndex: 'status', render: (status) => renderStatusTag(status) },
+  ];
+
+  // --- HANDLERS ---
+  const handleTimeChange = (val) => {
+    setTimeFilter(val);
+    const today = dayjs();
+    switch (val) {
+      case 'today': setDateRange([today, today]); break;
+      case 'week': setDateRange([today.subtract(7, 'd'), today]); break;
+      case 'month': setDateRange([today.startOf('month'), today]); break;
+      default: break;
+    }
+  };
+
+  // --- PREPARE DATA FOR STATS SECTION ---
+  // Chuyển đổi state stats thành mảng items cho StatsSection
+  const statsItems = [
+    {
+      title: "Tổng Doanh Thu",
+      value: intcomma(stats.totalRevenue) + " đ",
+      icon: <DollarOutlined />,
+      color: "#1890ff",
+    },
+    {
+      title: "Tổng Đơn Hàng",
+      value: intcomma(stats.totalOrders),
+      icon: <ShoppingCartOutlined />,
+      color: "#722ed1",
+    },
+    {
+      title: "Đang Xử Lý",
+      value: intcomma(stats.pendingOrders),
+      icon: <ClockCircleOutlined />,
+      color: "#faad14",
+    },
+    {
+      title: "Tỷ Lệ Hủy",
+      value: stats.cancelRate + "%",
+      icon: <CloseCircleOutlined />,
+      color: "#ff4d4f",
+      trend: -2,
+    }
+  ];
 
   return (
-    <AdminPageLayout title="BÁO CÁO ĐƠN HÀNG">
-      <Space direction="vertical" size={20} style={{ width: "100%" }}>
-        {error && (
-          <Alert
-            message="Lỗi"
-            description={`Không thể tải dữ liệu: ${error}`}
-            type="error"
-            showIcon
-            closable
+    <AdminPageLayout
+      title={<Title level={2} style={{ margin: 0 }}>THỐNG KÊ ĐƠN HÀNG</Title>}
+      extra={
+        <Space wrap>
+          <Select value={timeFilter} onChange={handleTimeChange} style={{ width: 120 }}>
+            <Option value="today">Hôm nay</Option>
+            <Option value="week">7 ngày qua</Option>
+            <Option value="month">Tháng này</Option>
+            <Option value="custom">Tùy chọn</Option>
+          </Select>
+          <RangePicker
+            value={dateRange}
+            onChange={(dates) => { setDateRange(dates); setTimeFilter('custom'); }}
+            format="DD/MM/YYYY"
+            allowClear={false}
           />
-        )}
+          <Button icon={<ReloadOutlined />} onClick={fetchData} loading={loading} />
+          <Button icon={<DownloadOutlined />} type="primary">Xuất Báo Cáo</Button>
+        </Space>
+      }
+    >
+      <Space direction="vertical" size={24} style={{ width: "100%", paddingBottom: 24 }}>
 
-        {/* TOP SUMMARY CARDS */}
-        <Row gutter={16}>
-          <Col span={6}>
-            <Card>
-              <Statistic
-                title="Tổng đơn hàng"
-                value={orderSummary.totalOrders}
-                prefix={<ShoppingCartOutlined />}
-              />
+        {/* --- SECTION 1: KEY METRICS (REPLACED WITH STATS SECTION) --- */}
+        <StatsSection items={statsItems} loading={loading} />
+
+        {/* --- SECTION 2: CHARTS MAIN --- */}
+        <Row gutter={[24, 24]}>
+          {/* Chart 1: Xu hướng đơn hàng & Doanh thu */}
+          <Col xs={24} lg={16}>
+            <Card
+              title={<Space><RiseOutlined /><span>Phân tích xu hướng</span></Space>}
+              bordered={false} className="shadow-sm" loading={loading}
+            >
+              <div style={{ height: 350 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={chartData.trend} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorOrders" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#1890ff" stopOpacity={0.8} />
+                        <stop offset="95%" stopColor="#1890ff" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+                    <YAxis tick={{ fontSize: 12 }} />
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.2} />
+                    <RechartsTooltip
+                      contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}
+                    />
+                    <Legend verticalAlign="top" height={36} />
+                    <Area
+                      type="monotone"
+                      dataKey="orders"
+                      name="Số lượng đơn"
+                      stroke="#1890ff"
+                      strokeWidth={2}
+                      fillOpacity={1}
+                      fill="url(#colorOrders)"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
             </Card>
           </Col>
 
-          <Col span={6}>
-            <Card>
-              <Statistic
-                title="Tổng doanh thu"
-                value={orderSummary.revenue}
-                prefix={<DollarOutlined />}
-                valueStyle={{ color: "#3f8600" }}
-                formatter={(value) =>
-                  `${(value / 1000000).toFixed(1)}M`
-                }
-              />
+          {/* Chart 2: Trạng thái đơn hàng */}
+          <Col xs={24} lg={8}>
+            <Card
+              title="Trạng thái đơn hàng"
+              bordered={false} className="shadow-sm" loading={loading}
+              style={{ height: '100%' }}
+            >
+              <div style={{ height: 350 }}>
+                <ResponsiveContainer>
+                  <PieChart>
+                    <Pie
+                      data={chartData.status}
+                      innerRadius={60}
+                      outerRadius={100}
+                      paddingAngle={3}
+                      dataKey="value"
+                    >
+                      {chartData.status.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <RechartsTooltip />
+                    <Legend layout="vertical" verticalAlign="middle" align="right" />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
             </Card>
           </Col>
+        </Row>
 
-          <Col span={6}>
-            <Card>
-              <Statistic
-                title="Tỷ lệ giao đúng hẹn"
-                value={orderSummary.onTimeRate}
-                suffix="%"
-                valueStyle={{ color: "#4CAF50" }}
-              />
-            </Card>
-          </Col>
-
-          <Col span={6}>
-            <Card>
-              <Statistic
-                title="Tỷ lệ hủy"
-                value={orderSummary.cancelRate}
-                suffix="%"
-                valueStyle={{ color: "#FF6B6B" }}
+        {/* --- SECTION 3: RECENT ORDERS --- */}
+        <Row>
+          <Col span={24}>
+            <Card
+              title="Đơn hàng gần đây"
+              bordered={false} className="shadow-sm" loading={loading}
+              extra={<Button type="link">Đến quản lý đơn hàng <RightOutlined /></Button>}
+            >
+              <Table
+                dataSource={recentOrders}
+                columns={columnsRecentOrders}
+                pagination={false}
+                rowKey="id"
               />
             </Card>
           </Col>
         </Row>
 
-        <Divider />
-
-        {/* Order Status PieChart */}
-        {orderStatusData.length > 0 && (
-          <Card title="Trạng thái đơn hàng">
-            <div style={{ width: "100%", height: 350 }}>
-              <ResponsiveContainer>
-                <PieChart>
-                  <Pie
-                    data={orderStatusData}
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={120}
-                    dataKey="value"
-                    label={({ name, percent }) =>
-                      `${name} ${(percent * 100).toFixed(0)}%`
-                    }
-                  >
-                    {orderStatusData.map((entry, i) => (
-                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </Card>
-        )}
-
-        {/* Delivery Performance */}
-        {deliveryTimeData.length > 0 && (
-          <Card title="⏱ Hiệu suất giao hàng">
-            <div style={{ width: "100%", height: 360 }}>
-              <ResponsiveContainer>
-                <BarChart data={deliveryTimeData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis yAxisId="left" />
-                  <YAxis yAxisId="right" orientation="right" />
-                  <Tooltip />
-
-                  <Bar
-                    yAxisId="left"
-                    dataKey="avg"
-                    name="TG giao trung bình (ngày)"
-                    fill="#36A2EB"
-                  />
-                  <Bar
-                    yAxisId="right"
-                    dataKey="late"
-                    name="Tỷ lệ giao trễ (%)"
-                    fill="#FF6B6B"
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </Card>
-        )}
-
-        {/* Shipping Cost Table */}
-        {shippingCostData.length > 0 && (
-          <Card title="🚚 Chi phí vận chuyển theo đơn vị giao hàng">
-            <Table
-              columns={columns}
-              dataSource={shippingCostData}
-              pagination={false}
-              rowKey="name"
-            />
-          </Card>
-        )}
       </Space>
     </AdminPageLayout>
   );

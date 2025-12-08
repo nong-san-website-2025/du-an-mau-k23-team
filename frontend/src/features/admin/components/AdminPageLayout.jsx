@@ -19,7 +19,7 @@ export default function AdminPageLayout({ title, children, extra, sidebar, topCo
   }
 
   return (
-    <div style={{ padding: "12px 16px", borderRadius: "0px" }}>
+    <div style={{ padding: "0px 12px", borderRadius: "0px" }}>
       <Card>
         <div
           style={{

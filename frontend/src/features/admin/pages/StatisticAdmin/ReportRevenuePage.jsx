@@ -15,6 +15,7 @@ import {
   Table,
   Progress,
   Statistic,
+  Tag, // Thêm Tag để làm nổi bật trạng thái
 } from "antd";
 import {
   WalletOutlined,
@@ -31,8 +32,10 @@ import {
   DollarCircleOutlined,
   ShoppingOutlined,
   RiseOutlined,
+  LineChartOutlined, // Icon phù hợp hơn cho biểu đồ đường
 } from "@ant-design/icons";
 import dayjs from "dayjs";
+import vi from 'dayjs/locale/vi'; // Import locale Việt Nam cho dayjs
 import api from "../../../login_register/services/api";
 import AdminPageLayout from "../../components/AdminPageLayout";
 import {
@@ -44,22 +47,18 @@ import {
   Tooltip as ReTooltip,
   ResponsiveContainer,
 } from "recharts";
+import { intcomma } from "../../../../utils/format";
 
+dayjs.locale(vi); // Thiết lập ngôn ngữ Việt Nam
 const { RangePicker } = DatePicker;
 const { Title, Text } = Typography;
 
-// Helper: định dạng tiền VNĐ
-const formatCurrency = (value) =>
-  value == null
-    ? "0 ₫"
-    : value?.toLocaleString("vi-VN", { maximumFractionDigits: 0 }) + " ₫";
-
-// Helper: định dạng ngày biểu đồ
+// Helper: định dạng ngày biểu đồ (Giữ nguyên)
 const formatDate = (dateStr) => dayjs(dateStr).format("DD/MM");
 
 // Thời gian mặc định
-const endOfToday = dayjs();
-const startDaysAgo = (days) => dayjs().subtract(days - 1, "day");
+const endOfToday = dayjs().endOf("day"); // Đảm bảo lấy cuối ngày
+const startDaysAgo = (days) => dayjs().subtract(days - 1, "day").startOf("day"); // Đảm bảo lấy đầu ngày
 
 export default function ReportRevenuePage() {
   const [dateRange, setDateRange] = useState([startDaysAgo(30), endOfToday]);
@@ -71,18 +70,19 @@ export default function ReportRevenuePage() {
     cancelled_orders_count: 0,
     daily_revenue: [],
     prev_total_revenue: 0,
-    conversion_rate: 0,
+    conversion_rate: 0, // Đã bị loại bỏ vì tính lại bên dưới
   });
   const [loading, setLoading] = useState(false);
   const [quickRange, setQuickRange] = useState("30d");
   const applyTimeoutRef = useRef(null);
 
-  // === FETCH DATA ===
+  // === FETCH DATA === (Giữ nguyên)
   const fetchReport = useCallback(async (from, to) => {
     try {
       setLoading(true);
       const res = await api.get(`/orders/admin/revenue-report/`, {
         params: {
+          // Gửi ngày với format chính xác
           start_date: from.format("YYYY-MM-DD"),
           end_date: to.format("YYYY-MM-DD"),
         },
@@ -101,6 +101,7 @@ export default function ReportRevenuePage() {
     if (!dateRange || !dateRange[0] || !dateRange[1]) {
       return message.warn("Vui lòng chọn khoảng thời gian hợp lệ");
     }
+    // UX: Dùng setTimeout để tránh gọi API liên tục khi RangePicker thay đổi
     if (applyTimeoutRef.current) clearTimeout(applyTimeoutRef.current);
     applyTimeoutRef.current = setTimeout(() => {
       fetchReport(dateRange[0], dateRange[1]);
@@ -109,7 +110,7 @@ export default function ReportRevenuePage() {
 
   const onQuickRangeChange = (val) => {
     setQuickRange(val);
-    const to = endOfToday;
+    const to = dayjs().endOf("day");
     let from;
     switch (val) {
       case "7d":
@@ -122,9 +123,10 @@ export default function ReportRevenuePage() {
         from = startDaysAgo(90);
         break;
       case "ytd":
-        from = dayjs().startOf("year");
+        from = dayjs().startOf("year").startOf("day"); // Lấy từ đầu năm
         break;
       case "custom":
+        // Khi chọn "Tùy chỉnh", không tự động gọi API, chờ người dùng chọn xong và nhấn Áp dụng
         return;
       default:
         return;
@@ -136,17 +138,21 @@ export default function ReportRevenuePage() {
     setQuickRange("30d");
     const newRange = [startDaysAgo(30), endOfToday];
     setDateRange(newRange);
+    // Gọi fetchReport ngay lập tức sau khi reset
     fetchReport(newRange[0], newRange[1]);
-    message.success("Bộ lọc đã được đặt lại");
+    message.success("Bộ lọc đã được đặt lại về 30 ngày gần nhất");
   };
 
   // === EXPORT FUNCTIONS ===
   const exportToCSV = () => {
+    // ... (Giữ nguyên logic CSV, nhưng dùng Blob chuẩn hơn)
     if (!stats.daily_revenue?.length) {
       message.warning("Không có dữ liệu để xuất");
       return;
     }
 
+    // Thêm Byte Order Mark (BOM) để đảm bảo hiển thị tiếng Việt có dấu trong Excel/Sheets
+    const BOM = "\uFEFF"; 
     const csvData = stats.daily_revenue.map(item => ({
       'Ngày': item.date,
       'Doanh thu tổng': item.revenue || 0,
@@ -154,11 +160,15 @@ export default function ReportRevenuePage() {
     }));
 
     const csvContent = [
-      Object.keys(csvData[0]).join(','),
-      ...csvData.map(row => Object.values(row).join(','))
+      Object.keys(csvData[0]).map(header => `"${header}"`).join(','),
+      ...csvData.map(row => 
+        Object.values(row).map(value => 
+          `"${String(value).replace(/"/g, '""')}"`
+        ).join(',')
+      )
     ].join('\n');
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = `bao-cao-doanh-thu-${dateRange[0].format('YYYY-MM-DD')}-${dateRange[1].format('YYYY-MM-DD')}.csv`;
@@ -167,7 +177,7 @@ export default function ReportRevenuePage() {
   };
 
   const exportToExcel = () => {
-    message.info("Tính năng xuất Excel đang được phát triển");
+    message.info("Tính năng xuất Excel (.xlsx) đang được phát triển");
   };
 
   const exportMenu = [
@@ -180,38 +190,68 @@ export default function ReportRevenuePage() {
     {
       key: 'excel',
       icon: <FileExcelOutlined />,
-      label: 'Xuất Excel',
+      label: 'Xuất Excel (Sắp ra mắt)',
       onClick: exportToExcel,
+      disabled: true, // Tắt tính năng đang phát triển
     },
   ];
 
-  // === EFFECTS ===
+  // === EFFECTS === (Giữ nguyên)
   useEffect(() => {
     fetchReport(dateRange[0], dateRange[1]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    if (quickRange !== "custom") {
+    // Chỉ tự động gọi applyFilter khi người dùng chọn QuickRange (không phải Custom)
+    if (quickRange !== "custom" && dateRange.every(d => d)) {
       applyFilter();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dateRange]);
 
-  // === TÍNH TOÁN TĂNG TRƯỞNG ===
+
+  // === TÍNH TOÁN CÁC CHỈ SỐ KPI ĐỘNG ===
   const revenueChangePercent = stats.prev_total_revenue
     ? ((stats.total_revenue - stats.prev_total_revenue) /
-        stats.prev_total_revenue) *
+        Math.abs(stats.prev_total_revenue)) * // Sử dụng Math.abs để tránh chia cho 0 hoặc giá trị âm nếu có lỗi data
       100
-    : 0;
+    : stats.total_revenue > 0 ? 100 : 0; // Nếu kỳ trước bằng 0, tăng 100% (hoặc 0 nếu kỳ này cũng bằng 0)
 
-  const totalOrders = stats.success_orders_count + stats.cancelled_orders_count;
+  const totalOrders = stats.success_orders_count + stats.cancelled_orders_count + stats.pending_orders_count;
   const conversionRate =
     totalOrders > 0
-      ? ((stats.success_orders_count / totalOrders) * 100).toFixed(1)
+      ? ((stats.success_orders_count / totalOrders) * 100)
       : 0;
 
-  // === BIỂU ĐỒ ===
+  const getConversionTag = (rate) => {
+    if (rate >= 50) return { color: "success", text: "Tuyệt vời" };
+    if (rate >= 20) return { color: "processing", text: "Tốt" };
+    return { color: "error", text: "Cần cải thiện" };
+  };
+
+  // === BIỂU ĐỒ === (Tối ưu hóa UX của Tooltip)
+  const CustomReTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+      return (
+        <Card size="small" className="shadow-lg border-none">
+          <Text strong className="block mb-1">
+            Ngày: {label}
+          </Text>
+          {payload.map((item, index) => (
+            <div key={index} className="flex justify-between">
+              <span style={{ color: item.stroke }}>{item.name}:</span>
+              <Text strong style={{ color: item.stroke }} className="ml-4">
+                {intcomma(item.value)}
+              </Text>
+            </div>
+          ))}
+        </Card>
+      );
+    }
+    return null;
+  };
+
   const RevenueChart = ({ data }) => (
     <ResponsiveContainer width="100%" height={360}>
       <AreaChart
@@ -220,110 +260,129 @@ export default function ReportRevenuePage() {
             ? data.map((d) => ({ ...d, date: formatDate(d.date) }))
             : []
         }
+        margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
       >
         <defs>
+          {/* Tối ưu màu gradient (màu xanh dương đậm hơn) */}
           <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.7} />
-            <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0.1} />
+            <stop offset="5%" stopColor="#2563eb" stopOpacity={0.7} />
+            <stop offset="95%" stopColor="#2563eb" stopOpacity={0.1} />
           </linearGradient>
+          {/* Tối ưu màu gradient (màu tím/magenta đậm hơn) */}
           <linearGradient id="platformGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="#722ed1" stopOpacity={0.7} />
-            <stop offset="95%" stopColor="#722ed1" stopOpacity={0.1} />
+            <stop offset="5%" stopColor="#c026d3" stopOpacity={0.7} />
+            <stop offset="95%" stopColor="#c026d3" stopOpacity={0.1} />
           </linearGradient>
         </defs>
         <CartesianGrid
-          strokeDasharray="4 4"
-          stroke="#f0f0f0"
+          strokeDasharray="3 3" // Dùng dash array tinh tế hơn
+          stroke="#e0e0e0"
           vertical={false}
         />
-        <XAxis dataKey="date" tick={{ fontSize: 12, fill: "#666" }} />
+        <XAxis
+          dataKey="date"
+          tick={{ fontSize: 12, fill: "#666" }}
+          tickLine={false} // Loại bỏ tick line
+          axisLine={{ stroke: "#e0e0e0" }} // Thêm axis line nhẹ
+        />
         <YAxis
           tickFormatter={(v) => {
-            if (v >= 1e6) return `${(v / 1e6).toFixed(0)}M`;
+            if (v >= 1e9) return `${(v / 1e9).toFixed(1)}B`; // B cho Tỷ (Billion)
+            if (v >= 1e6) return `${(v / 1e6).toFixed(1)}M`; // M cho Triệu (Million)
             if (v >= 1e3) return `${(v / 1e3).toFixed(0)}k`;
             return v;
           }}
           tick={{ fontSize: 12, fill: "#666" }}
+          tickLine={false}
+          axisLine={false}
           domain={[0, "auto"]}
         />
-        <ReTooltip
-          formatter={(value) => [formatCurrency(value)]}
-          labelFormatter={(label) => `Ngày: ${label}`}
-          contentStyle={{
-            borderRadius: "8px",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-            border: "none",
-          }}
-        />
+        {/* Sử dụng CustomReTooltip */}
+        <ReTooltip content={<CustomReTooltip />} />
         <Area
           type="monotone"
           dataKey="revenue"
-          stroke="#0ea5e9"
+          stroke="#2563eb"
           strokeWidth={2}
           fill="url(#revenueGradient)"
           dot={false}
-          activeDot={{ r: 5, fill: "#0ea5e9" }}
+          activeDot={{ r: 6, fill: "#fff", stroke: "#2563eb", strokeWidth: 2 }}
           name="Tổng doanh thu"
         />
         <Area
           type="monotone"
           dataKey="platform_revenue"
-          stroke="#722ed1"
+          stroke="#c026d3"
           strokeWidth={2}
           fill="url(#platformGradient)"
           dot={false}
-          activeDot={{ r: 5, fill: "#722ed1" }}
+          activeDot={{ r: 6, fill: "#fff", stroke: "#c026d3", strokeWidth: 2 }}
           name="Doanh thu sàn"
         />
       </AreaChart>
     </ResponsiveContainer>
   );
 
-  // === CARD METRIC CHUẨN PRO ===
-  const MetricCard = ({ title, value, icon, color, trend, suffix }) => (
-    <Card
-      size="small"
-      bodyStyle={{ padding: "16px" }}
-      className="hover:shadow-md transition-shadow duration-200"
-    >
-      <Space direction="vertical" size={4}>
-        <div className="flex items-center gap-2">
-          <Text type="secondary" className="text-sm">
-            {title}
-          </Text>
-          {icon}
-        </div>
-        <div className="flex items-baseline gap-2">
-          <Text strong style={{ fontSize: "20px", color: "#1f2937" }}>
-            {value}
-          </Text>
-          {suffix && <Text type="secondary">{suffix}</Text>}
-        </div>
+  // === CARD METRIC CHUẨN PRO (Tối ưu hóa: dùng Statistic của Ant Design cho các chỉ số chính) ===
+  const MetricCard = ({ title, value, icon, color, trend, suffix }) => {
+    const trendText = Math.abs(trend).toFixed(1);
+    const TrendIcon = trend > 0 ? ArrowUpOutlined : ArrowDownOutlined;
+    const trendColor = trend > 0 ? "#52c41a" : trend < 0 ? "#ff4d4f" : "#666";
+
+    return (
+      <Card
+        size="small"
+        bordered={false} // Loại bỏ border để hiện đại hơn
+        className="shadow-sm hover:shadow-lg transition-shadow duration-300 rounded-lg"
+      >
+        <Statistic
+          title={
+            <Space size={6}>
+              <span className="text-sm font-medium text-gray-500">{title}</span>
+              {React.cloneElement(icon, { style: { color: color } })}
+            </Space>
+          }
+          value={value}
+          suffix={suffix}
+          valueStyle={{ fontSize: "24px", fontWeight: "600", color: "#1f2937" }}
+        />
         {trend !== undefined && (
-          <div className="flex items-center gap-1">
-            {trend >= 0 ? (
-              <ArrowUpOutlined style={{ color: "#52c41a", fontSize: "12px" }} />
-            ) : (
-              <ArrowDownOutlined
-                style={{ color: "#ff4d4f", fontSize: "12px" }}
-              />
-            )}
-            <Text type={trend >= 0 ? "success" : "danger"} className="text-xs">
-              {Math.abs(trend).toFixed(1)}% so với kỳ trước
+          <div className="mt-2 flex items-center gap-1">
+            <TrendIcon style={{ color: trendColor, fontSize: "14px" }} />
+            <Text
+              style={{ color: trendColor, fontSize: "12px" }}
+              className="font-medium"
+            >
+              {trendText}% so với kỳ trước
             </Text>
           </div>
         )}
-      </Space>
-    </Card>
-  );
+      </Card>
+    );
+  };
 
+  // === TÍNH TOÁN THÔNG SỐ PHỤ ===
+  const maxRevenueDay = stats.daily_revenue?.length > 0
+    ? stats.daily_revenue.reduce((max, day) =>
+        (day.revenue || 0) > (max.revenue || 0) ? day : max
+      )
+    : null;
+
+  const avgDailyRevenue = stats.daily_revenue?.length > 0
+    ? stats.total_revenue / stats.daily_revenue.length
+    : 0;
+
+  const conversionTag = getConversionTag(conversionRate);
+
+
+  // === RENDER COMPONENT ===
   return (
     <AdminPageLayout
       title={
         <Space size={12}>
-          <DollarCircleOutlined style={{ fontSize: "24px", color: "#0ea5e9" }} />
-          <Title level={2} style={{ margin: 0, color: "#1f2937" }}>
-            BÁO CÁO DOANH THU
+          <DollarCircleOutlined style={{ fontSize: "28px", color: "#2563eb" }} />
+          <Title level={2} style={{ margin: 0, color: "#1f2937", fontWeight: '700' }}>
+            THỐNG KÊ DOANH THU
           </Title>
         </Space>
       }
@@ -332,7 +391,7 @@ export default function ReportRevenuePage() {
           <Dropdown menu={{ items: exportMenu }} placement="bottomRight">
             <Button
               icon={<DownloadOutlined />}
-              className="shadow hover:shadow-md"
+              className="shadow-sm hover:shadow-md rounded-md"
             >
               Xuất dữ liệu
             </Button>
@@ -342,17 +401,19 @@ export default function ReportRevenuePage() {
               icon={<ReloadOutlined />}
               onClick={() => fetchReport(dateRange[0], dateRange[1])}
               shape="circle"
-              className="shadow hover:shadow-md"
+              className="shadow-sm hover:shadow-md"
+              loading={loading} // Thêm loading cho nút Reload
             />
           </Tooltip>
         </Space>
       }
     >
       {/* Bộ lọc */}
-      <Card className="mb-6 rounded-lg" bodyStyle={{ padding: "16px" }}>
+      <Card className="mb-6 rounded-lg shadow-sm" bodyStyle={{ padding: "16px" }}>
         <Row gutter={[16, 16]} align="middle">
-          <Col flex="auto">
-            <Space wrap>
+          <Col xs={24} lg={18}>
+            <Space wrap size={16}>
+              {/* Segmented Control nổi bật hơn */}
               <Segmented
                 value={quickRange}
                 onChange={onQuickRangeChange}
@@ -363,8 +424,9 @@ export default function ReportRevenuePage() {
                   { label: "Năm nay", value: "ytd" },
                   { label: "Tùy chỉnh", value: "custom" },
                 ]}
-                className="rounded-md"
+                className="rounded-lg bg-gray-50 p-1"
               />
+              {/* RangePicker trực quan hơn */}
               <RangePicker
                 value={dateRange}
                 onChange={(dates) => {
@@ -373,11 +435,12 @@ export default function ReportRevenuePage() {
                 }}
                 format="DD/MM/YYYY"
                 allowClear={false}
-                style={{ width: 240 }}
+                style={{ width: 260 }}
+                popupStyle={{ zIndex: 1100 }}
               />
             </Space>
           </Col>
-          <Col>
+          <Col xs={24} lg={6} style={{ textAlign: 'right' }}>
             <Space>
               <Button onClick={resetFilter} className="rounded-md">
                 Đặt lại
@@ -386,8 +449,9 @@ export default function ReportRevenuePage() {
                 type="primary"
                 onClick={applyFilter}
                 className="rounded-md"
+                disabled={quickRange !== "custom" || loading} // Chỉ cho phép áp dụng khi ở Custom và không loading
               >
-                Áp dụng
+                {quickRange === "custom" ? "Áp dụng" : "Đã chọn"}
               </Button>
             </Space>
           </Col>
@@ -396,52 +460,46 @@ export default function ReportRevenuePage() {
 
       {/* Tổng quan KPI */}
       <Skeleton active loading={loading} paragraph={{ rows: 0 }}>
-        <Row gutter={[16, 16]}>
+        <Row gutter={[24, 24]}>
           {/* Tổng doanh thu */}
-          <Col xs={24} sm={12} md={6}>
+          <Col xs={24} sm={12} lg={6}>
             <MetricCard
               title="Tổng doanh thu"
-              value={formatCurrency(stats.total_revenue)}
-              icon={<WalletOutlined style={{ color: "#0ea5e9" }} />}
+              value={intcomma(stats.total_revenue)}
+              icon={<WalletOutlined />}
+              color="#2563eb"
               trend={revenueChangePercent}
             />
           </Col>
 
           {/* Doanh thu sàn (Commission) */}
-          <Col xs={24} sm={12} md={6}>
+          <Col xs={24} sm={12} lg={6}>
             <MetricCard
               title="Doanh thu sàn"
-              value={formatCurrency(stats.platform_revenue)}
-              icon={<WalletOutlined style={{ color: "#722ed1" }} />}
-              suffix="hoa hồng"
+              value={intcomma(stats.platform_revenue)}
+              icon={<DollarCircleOutlined />}
+              color="#c026d3"
+              // Không hiển thị trend nếu không có prev_platform_revenue
             />
           </Col>
 
           {/* Đơn hoàn tất */}
-          <Col xs={24} sm={12} md={6}>
+          <Col xs={24} sm={12} lg={6}>
             <MetricCard
               title="Đơn hoàn tất"
               value={stats.success_orders_count}
-              icon={<CheckCircleOutlined style={{ color: "#52c41a" }} />}
+              icon={<CheckCircleOutlined />}
+              color="#52c41a"
             />
           </Col>
 
           {/* Đơn đang xử lý */}
-          <Col xs={24} sm={12} md={6}>
+          <Col xs={24} sm={12} lg={6}>
             <MetricCard
-              title="Đang xử lý"
-              value={stats.pending_orders_count}
-              icon={<ClockCircleOutlined style={{ color: "#faad14" }} />}
-            />
-          </Col>
-
-          {/* Tỷ lệ chuyển đổi */}
-          <Col xs={24} sm={12} md={6}>
-            <MetricCard
-              title="Tỷ lệ chuyển đổi"
-              value={`${conversionRate}%`}
-              icon={<PercentageOutlined style={{ color: "#722ed1" }} />}
-              suffix="đơn thành công"
+              title="Đang xử lý / Hủy"
+              value={stats.pending_orders_count + stats.cancelled_orders_count}
+              icon={<ClockCircleOutlined />}
+              color="#faad14"
             />
           </Col>
         </Row>
@@ -449,22 +507,21 @@ export default function ReportRevenuePage() {
 
       {/* Biểu đồ doanh thu */}
       <Card
-        className="mt-6 rounded-lg"
+        className="mt-6 rounded-lg shadow-sm"
         title={
           <Space size={8}>
-            <BarChartOutlined className="text-sky-500" />
-            <Text strong>Xu hướng doanh thu</Text>
+            <LineChartOutlined className="text-blue-600" />
+            <Text strong className="text-base">
+              Xu hướng doanh thu
+            </Text>
+            <Tag color="blue" className="ml-2">
+              {dayjs(dateRange[0]).format('DD/MM/YYYY')} - {dayjs(dateRange[1]).format('DD/MM/YYYY')}
+            </Tag>
           </Space>
         }
+        loading={loading}
       >
-        {loading ? (
-          <div
-            style={{ height: 360 }}
-            className="flex items-center justify-center"
-          >
-            <Skeleton active paragraph={{ rows: 4, width: "100%" }} />
-          </div>
-        ) : stats.daily_revenue?.length > 0 ? (
+        {stats.daily_revenue?.length > 0 ? (
           <RevenueChart data={stats.daily_revenue} />
         ) : (
           <div className="text-center py-12 text-gray-500">
@@ -472,55 +529,52 @@ export default function ReportRevenuePage() {
           </div>
         )}
       </Card>
+      
 
       {/* Thống kê tổng quan */}
-      <Row gutter={[16, 16]} className="mt-6">
+      <Row gutter={[24, 24]} className="mt-6">
         <Col xs={24} lg={12}>
           <Card
             title={
               <Space>
-                <RiseOutlined />
-                <Text strong>Phân tích hiệu suất</Text>
+                <RiseOutlined className="text-green-600" />
+                <Text strong className="text-base">Phân tích hiệu suất</Text>
               </Space>
             }
-            className="rounded-lg"
+            className="rounded-lg shadow-sm"
+            loading={loading}
           >
-            <Space direction="vertical" size={16} style={{ width: '100%' }}>
-              <div>
-                <Text type="secondary">Tổng doanh thu kỳ này</Text>
-                <br />
-                <Text strong style={{ fontSize: '24px', color: '#0ea5e9' }}>
-                  {formatCurrency(stats.total_revenue)}
-                </Text>
-              </div>
-
-              <div>
-                <Text type="secondary">Doanh thu trung bình/ngày</Text>
-                <br />
-                <Text strong style={{ fontSize: '18px', color: '#52c41a' }}>
-                  {stats.daily_revenue?.length > 0
-                    ? formatCurrency(stats.total_revenue / stats.daily_revenue.length)
-                    : formatCurrency(0)
-                  }
-                </Text>
-              </div>
-
-              <div>
-                <Text type="secondary">Ngày có doanh thu cao nhất</Text>
-                <br />
-                <Text strong>
-                  {stats.daily_revenue?.length > 0
-                    ? (() => {
-                        const maxDay = stats.daily_revenue.reduce((max, day) =>
-                          (day.revenue || 0) > (max.revenue || 0) ? day : max
-                        );
-                        return `${dayjs(maxDay.date).format('DD/MM/YYYY')} (${formatCurrency(maxDay.revenue)})`;
-                      })()
-                    : 'N/A'
-                  }
-                </Text>
-              </div>
-            </Space>
+            <Row gutter={[16, 16]}>
+              <Col span={12}>
+                <Statistic
+                  title="Tổng doanh thu kỳ này"
+                  value={intcomma(stats.total_revenue)}
+                  valueStyle={{ color: '#2563eb', fontSize: '22px' }}
+                />
+              </Col>
+              <Col span={12}>
+                <Statistic
+                  title="Doanh thu kỳ trước"
+                  value={intcomma(stats.prev_total_revenue)}
+                  valueStyle={{ color: '#4b5563', fontSize: '22px' }}
+                />
+              </Col>
+              <Col span={12}>
+                <Statistic
+                  title="Doanh thu trung bình/ngày"
+                  value={intcomma(avgDailyRevenue)}
+                  valueStyle={{ color: '#52c41a', fontSize: '18px' }}
+                />
+              </Col>
+              <Col span={12}>
+                <Statistic
+                  title="Ngày doanh thu cao nhất"
+                  value={maxRevenueDay ? dayjs(maxRevenueDay.date).format('DD/MM/YYYY') : 'N/A'}
+                  suffix={maxRevenueDay ? `(${intcomma(maxRevenueDay.revenue)})` : ''}
+                  valueStyle={{ color: '#ff4d4f', fontSize: '18px' }}
+                />
+              </Col>
+            </Row>
           </Card>
         </Col>
 
@@ -528,43 +582,47 @@ export default function ReportRevenuePage() {
           <Card
             title={
               <Space>
-                <ShoppingOutlined />
-                <Text strong>Chỉ số đơn hàng</Text>
+                <ShoppingOutlined className="text-purple-600" />
+                <Text strong className="text-base">Chỉ số đơn hàng</Text>
               </Space>
             }
-            className="rounded-lg"
+            className="rounded-lg shadow-sm"
+            loading={loading}
           >
             <Row gutter={[16, 16]}>
               <Col span={12}>
                 <Statistic
                   title="Tổng đơn hàng"
-                  value={stats.success_orders_count + stats.cancelled_orders_count}
-                  prefix={<ShoppingOutlined />}
-                  valueStyle={{ color: '#3f8600' }}
+                  value={totalOrders}
+                  valueStyle={{ color: '#3f8600', fontSize: '22px' }}
                 />
               </Col>
               <Col span={12}>
                 <Statistic
                   title="Đơn thành công"
                   value={stats.success_orders_count}
-                  prefix={<CheckCircleOutlined />}
-                  valueStyle={{ color: '#52c41a' }}
+                  valueStyle={{ color: '#52c41a', fontSize: '22px' }}
                 />
               </Col>
               <Col span={12}>
                 <Statistic
-                  title="Đơn đang xử lý"
-                  value={stats.pending_orders_count}
-                  prefix={<ClockCircleOutlined />}
-                  valueStyle={{ color: '#faad14' }}
+                  title="Đơn bị hủy"
+                  value={stats.cancelled_orders_count}
+                  valueStyle={{ color: '#ff4d4f', fontSize: '18px' }}
                 />
               </Col>
               <Col span={12}>
                 <Statistic
-                  title="Tỷ lệ chuyển đổi"
-                  value={`${conversionRate}%`}
-                  prefix={<PercentageOutlined />}
-                  valueStyle={{ color: '#722ed1' }}
+                  title={
+                    <Space>
+                      Tỷ lệ chuyển đổi
+                      <Tag color={conversionTag.color} className="font-semibold">
+                        {conversionTag.text}
+                      </Tag>
+                    </Space>
+                  }
+                  value={`${conversionRate.toFixed(1)}%`}
+                  valueStyle={{ color: '#722ed1', fontSize: '18px' }}
                 />
               </Col>
             </Row>
@@ -573,48 +631,67 @@ export default function ReportRevenuePage() {
       </Row>
 
       {/* Chi tiết dữ liệu */}
-      <Card className="mt-6 rounded-lg" title="Chi tiết doanh thu theo ngày">
+      <Card
+        className="mt-6 rounded-lg shadow-sm"
+        title={
+          <Space>
+            <CalendarOutlined className="text-gray-600" />
+            <Text strong>Chi tiết doanh thu theo ngày</Text>
+          </Space>
+        }
+        extra={
+            <Text type="secondary">
+                Khoảng thời gian: {dayjs(dateRange[0]).format('DD/MM')} - {dayjs(dateRange[1]).format('DD/MM/YYYY')}
+            </Text>
+        }
+      >
         <Table
           dataSource={stats.daily_revenue?.map((item, index) => ({
             key: index,
-            date: dayjs(item.date).format('DD/MM/YYYY'),
+            date: item.date, // Giữ nguyên để dễ sort và format
             revenue: item.revenue || 0,
             platform_revenue: item.platform_revenue || 0,
-            day: dayjs(item.date).format('dddd'),
           })) || []}
           columns={[
             {
               title: 'Ngày',
               dataIndex: 'date',
               key: 'date',
-              render: (text, record) => (
-                <Space>
-                  <CalendarOutlined />
-                  <span>{text}</span>
-                  <Text type="secondary" style={{ fontSize: '12px' }}>
-                    ({record.day})
-                  </Text>
-                </Space>
-              ),
+              width: 150,
+              render: (value) => {
+                const day = dayjs(value);
+                // Hiển thị ngày và thứ trong tuần rõ ràng hơn
+                return (
+                  <Space direction="vertical" size={0}>
+                    <Text strong>{day.format('DD/MM/YYYY')}</Text>
+                    <Text type="secondary" style={{ fontSize: '12px' }}>
+                      ({day.format('dddd')})
+                    </Text>
+                  </Space>
+                );
+              },
+              sorter: (a, b) => dayjs(a.date).valueOf() - dayjs(b.date).valueOf(),
             },
             {
               title: 'Doanh thu tổng',
               dataIndex: 'revenue',
               key: 'revenue',
+              align: 'right', // Căn phải cho số
               render: (value) => (
-                <Text strong style={{ color: '#0ea5e9' }}>
-                  {formatCurrency(value)}
+                <Text strong style={{ color: '#2563eb' }}>
+                  {intcomma(value)}
                 </Text>
               ),
               sorter: (a, b) => a.revenue - b.revenue,
             },
             {
-              title: 'Doanh thu sàn',
+              title: 'Doanh thu sàn (Commission)',
               dataIndex: 'platform_revenue',
               key: 'platform_revenue',
+              align: 'right',
               render: (value) => (
-                <Text style={{ color: '#722ed1' }}>
-                  {formatCurrency(value)}
+                <Text style={{ color: '#c026d3' }}>
+                  {intcomma(value)}
                 </Text>
               ),
               sorter: (a, b) => a.platform_revenue - b.platform_revenue,
@@ -622,16 +699,25 @@ export default function ReportRevenuePage() {
             {
               title: 'Tỷ lệ hoa hồng',
               key: 'commission_rate',
+              width: 150,
               render: (_, record) => {
                 const rate = record.revenue > 0 ? (record.platform_revenue / record.revenue * 100) : 0;
+                const percent = parseFloat(rate.toFixed(1));
                 return (
-                  <Progress
-                    percent={rate.toFixed(1)}
-                    size="small"
-                    strokeColor="#722ed1"
-                    format={(percent) => `${percent}%`}
-                  />
+                  <Tooltip title={`${percent}% hoa hồng`}>
+                    <Progress
+                      percent={percent}
+                      size="small"
+                      strokeColor="#c026d3"
+                      format={(p) => `${p}%`}
+                    />
+                  </Tooltip>
                 );
+              },
+              sorter: (a, b) => {
+                const rateA = a.revenue > 0 ? (a.platform_revenue / a.revenue) : 0;
+                const rateB = b.revenue > 0 ? (b.platform_revenue / b.revenue) : 0;
+                return rateA - rateB;
               },
             },
           ]}
@@ -639,11 +725,14 @@ export default function ReportRevenuePage() {
             pageSize: 10,
             showSizeChanger: true,
             showQuickJumper: true,
+            // Thêm total vào cuối bảng
             showTotal: (total, range) =>
               `${range[0]}-${range[1]} của ${total} ngày`,
           }}
           loading={loading}
-          scroll={{ x: 600 }}
+          scroll={{ x: 700 }} // Đảm bảo responsive trên màn hình nhỏ
+          locale={{ emptyText: 'Không có dữ liệu chi tiết trong khoảng thời gian này' }}
+          size="small"
         />
       </Card>
     </AdminPageLayout>

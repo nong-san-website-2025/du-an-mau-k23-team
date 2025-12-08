@@ -1,31 +1,38 @@
 import React, { useState, useEffect } from "react";
 import AdminPageLayout from "../../components/AdminPageLayout";
-import { 
-  DatePicker, 
-  Select, 
-  Card, 
-  Table, 
-  Tag, 
-  Divider, 
-  Row, 
-  Col, 
-  Space, 
-  Statistic,
+import StatsSection from "../../components/common/StatsSection"; // Đảm bảo đường dẫn đúng
+import API from "../../../login_register/services/api";
+
+import {
+  DatePicker,
+  Select,
+  Card,
+  Table,
+  Tag,
+  Row,
+  Col,
+  Space,
   Typography,
-  Badge,
-  Spin,
-  message
+  Button,
+  Avatar,
+  Progress,
+  List,
+  message,
+  Empty,
+  Skeleton
 } from "antd";
+
 import {
   ShopOutlined,
   DollarCircleOutlined,
   WarningOutlined,
   StarOutlined,
-  BarChartOutlined,
-  RiseOutlined,
-  FallOutlined,
-  ReloadOutlined
+  DownloadOutlined,
+  EnvironmentOutlined,
+  SafetyCertificateOutlined,
+  UserOutlined,
 } from "@ant-design/icons";
+
 import {
   BarChart,
   Bar,
@@ -34,29 +41,104 @@ import {
   CartesianGrid,
   Tooltip as RechartsTooltip,
   ResponsiveContainer,
-  Cell
+  PieChart,
+  Pie,
+  Cell,
+  Legend
 } from "recharts";
-import API from "../../../login_register/services/api";
+import { intcomma } from "../../../../utils/format";
+import { FireOutlined, ThunderboltOutlined } from "@ant-design/icons";
 
 const { RangePicker } = DatePicker;
 const { Option } = Select;
 const { Title, Text } = Typography;
 
+const COLORS = ["#52c41a", "#faad14", "#1890ff", "#ff4d4f", "#722ed1"];
+
 export default function ReportAgriculturePage() {
   const [filter, setFilter] = useState("month");
   const [loading, setLoading] = useState(true);
   const [suppliersData, setSuppliersData] = useState([]);
+  const [statsData, setStatsData] = useState([]);
+  const [categoryData, setCategoryData] = useState([]);
 
-  // Fetch dữ liệu từ API
   useEffect(() => {
     fetchAgricultureReport();
-  }, []);
+  }, [filter]);
+
+
+  const calculateServiceQuality = (supplier) => {
+    const cancelPenalty = (supplier.cancelRate || 0) * 5;
+    const delayPenalty = (supplier.delayRate || 0) * 5;
+    return Math.max(0, 100 - cancelPenalty - delayPenalty);
+  };
 
   const fetchAgricultureReport = async () => {
     try {
       setLoading(true);
-      const res = await API.get('sellers/report/agriculture/');
-      setSuppliersData(res.data?.data || []);
+
+      // 1. Gọi song song 2 API:
+      // - sellersRes: Lấy danh sách nhà cung cấp và chỉ số hoạt động
+      // - categoriesRes: Lấy biểu đồ phân bố ngành hàng (API mới bạn vừa thêm ở Backend)
+      const [sellersRes, categoriesRes] = await Promise.all([
+        API.get('sellers/report/agriculture/'),
+        API.get('sellers/report/categories/')
+      ]);
+
+      // --- XỬ LÝ DỮ LIỆU NHÀ CUNG CẤP (Table & Stats) ---
+      const rawSellerData = sellersRes.data?.data || [];
+      setSuppliersData(rawSellerData);
+
+      // Tính toán các chỉ số tổng hợp để hiển thị lên 4 ô thống kê đầu trang
+      const totalSuppliers = rawSellerData.length;
+
+      // Tính tổng doanh thu toàn sàn nông sản
+      const totalRevenue = rawSellerData.reduce((sum, item) => sum + (item.revenue || 0), 0);
+
+      // Tính đánh giá trung bình
+      const avgRating = totalSuppliers > 0
+        ? (rawSellerData.reduce((sum, item) => sum + (item.rating || 0), 0) / totalSuppliers).toFixed(1)
+        : 0;
+
+      // Tính chất lượng dịch vụ trung bình
+      const avgServiceQuality = totalSuppliers > 0
+        ? (rawSellerData.reduce((sum, item) => sum + calculateServiceQuality(item), 0) / totalSuppliers).toFixed(1)
+        : 0;
+
+      // Cập nhật State cho StatsSection
+      const stats = [
+        {
+          title: "Tổng nhà cung cấp",
+          value: totalSuppliers,
+          icon: <ShopOutlined style={{ fontSize: "24px" }} />,
+          color: "#52c41a",
+        },
+        {
+          title: "Tổng doanh thu",
+          value: `${intcomma(totalRevenue)} đ`,
+          icon: <DollarCircleOutlined style={{ fontSize: "24px" }} />,
+          color: "#1890ff",
+        },
+        {
+          title: "Đánh giá trung bình",
+          value: `${avgRating}/5.0`,
+          icon: <StarOutlined style={{ fontSize: "24px" }} />,
+          color: "#faad14",
+        },
+        {
+          title: "Chất lượng dịch vụ",
+          value: `${avgServiceQuality}%`,
+          icon: <FireOutlined style={{ fontSize: "24px" }} />,
+          color: "#ff7a45",
+        },
+      ];
+      setStatsData(stats);
+
+      // --- XỬ LÝ DỮ LIỆU BIỂU ĐỒ TRÒN (Pie Chart) ---
+      // Lấy trực tiếp từ API mới, không cần tính toán thủ công nữa
+      const chartData = categoriesRes.data?.data || [];
+      setCategoryData(chartData);
+
     } catch (err) {
       console.error('Lỗi khi tải báo cáo:', err);
       message.error('Không thể tải dữ liệu báo cáo');
@@ -65,56 +147,35 @@ export default function ReportAgriculturePage() {
     }
   };
 
-  const handleRefresh = () => {
-    fetchAgricultureReport();
-  };
-  const totalSuppliers = suppliersData.length;
-  const totalRevenue = suppliersData.reduce((sum, item) => sum + item.revenue, 0);
-  const avgCancelRate = (suppliersData.reduce((sum, item) => sum + item.cancelRate, 0) / totalSuppliers).toFixed(1);
-  const avgRating = (suppliersData.reduce((sum, item) => sum + item.rating, 0) / totalSuppliers).toFixed(1);
-
-  // Custom Recharts tooltip
-  const CustomTooltip = ({ active, payload, label }) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="custom-tooltip" style={{
-          backgroundColor: '#fff',
-          padding: '10px',
-          border: '1px solid #ddd',
-          borderRadius: '4px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
-        }}>
-          <p className="label" style={{ margin: 0, fontWeight: 'bold' }}>{label}</p>
-          <p className="intro" style={{ margin: 0, color: '#1677ff' }}>
-            Doanh thu: {payload[0].value.toLocaleString('vi-VN')}đ
-          </p>
-        </div>
-      );
-    }
-    return null;
-  };
-
-  // ===============================
-  // TABLE COLUMNS CONFIGURATION
-  // ===============================
+  // --- Cấu hình cột Table ---
   const columns = [
     {
-      title: "Nhà cung cấp",
+      title: "Cửa hàng",
       dataIndex: "name",
       key: "name",
-      width: 200,
-      sorter: (a, b) => a.name.localeCompare(b.name),
+      fixed: 'left',
+      width: 250,
       render: (text, record) => (
         <Space>
-          <Badge 
-            status={record.trend === 'up' ? 'success' : 'error'} 
-            text={text}
-          />
-          {record.trend === 'up' ? (
-            <RiseOutlined style={{ color: '#52c41a' }} />
+          {loading ? (
+            <Skeleton.Avatar active shape="square" size={40} />
           ) : (
-            <FallOutlined style={{ color: '#ff4d4f' }} />
+            <Avatar
+              shape="square"
+              size={40}
+              src={record.logo || record.avatar || null}
+              icon={!record.logo && !record.avatar ? <UserOutlined /> : null}
+              style={
+                !record.logo && !record.avatar
+                  ? { backgroundColor: record.revenue > 100000000 ? "#52c41a" : "#87d068" }
+                  : {}
+              }
+            />
           )}
+
+          <div>
+            <Text strong>{text}</Text>
+          </div>
         </Space>
       )
     },
@@ -124,302 +185,166 @@ export default function ReportAgriculturePage() {
       key: "revenue",
       sorter: (a, b) => a.revenue - b.revenue,
       render: (value) => (
+        // SỬ DỤNG intcomma
         <Text strong style={{ color: '#1677ff' }}>
-          {value.toLocaleString('vi-VN')}đ
+          {intcomma(value)} đ
         </Text>
       )
     },
     {
-      title: "Tỷ lệ hủy",
-      dataIndex: "cancelRate",
-      key: "cancelRate",
-      sorter: (a, b) => a.cancelRate - b.cancelRate,
-      render: (value) => (
-        <Tag color={value > 3 ? "error" : value > 1 ? "warning" : "success"}>
-          {value}%
-        </Tag>
-      )
-    },
-    {
-      title: "Giao chậm",
-      dataIndex: "delayRate",
-      key: "delayRate",
-      sorter: (a, b) => a.delayRate - b.delayRate,
-      render: (value) => (
-        <Tag color={value > 4 ? "error" : value > 2 ? "warning" : "processing"}>
-          {value}%
-        </Tag>
-      )
+      title: "Vận hành",
+      key: "operation",
+      width: 200,
+      render: (_, record) => {
+        const score = Math.max(0, 100 - (record.cancelRate * 5) - (record.delayRate * 5));
+        let status = "active";
+        if (score < 50) status = "exception";
+
+        return (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+              <span>Điểm chất lượng</span>
+              <span>{score.toFixed(0)}/100</span>
+            </div>
+            <Progress percent={score} size="small" status={status} strokeColor={score > 80 ? '#52c41a' : undefined} />
+          </div>
+        );
+      }
     },
     {
       title: "Đánh giá",
       dataIndex: "rating",
       key: "rating",
-      sorter: (a, b) => a.rating - b.rating,
-      render: (value) => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <StarOutlined style={{ color: "#fadb14" }} />
-          <Text strong>{value}</Text>
-        </div>
-      )
+      align: 'center',
+      render: (value) => <Tag color="gold" icon={<StarOutlined />}>{value}</Tag>
     },
     {
       title: "Sản phẩm",
       dataIndex: "products",
       key: "products",
-      sorter: (a, b) => a.products - b.products,
-      render: (value) => (
-        <Tag color="default">{value} sản phẩm</Tag>
-      )
-    },
-    {
-      title: "Tổng đơn",
-      dataIndex: "totalOrders",
-      key: "totalOrders",
-      sorter: (a, b) => a.totalOrders - b.totalOrders,
-      render: (value) => (
-        <Text type="secondary">{value} đơn</Text>
-      )
-    },
-    {
-      title: "TB Giao hàng",
-      dataIndex: "avgDeliveryTime",
-      key: "avgDeliveryTime",
-      sorter: (a, b) => a.avgDeliveryTime - b.avgDeliveryTime,
-      render: (value) => (
-        <Text type="secondary">{value} ngày</Text>
-      )
+      align: 'center',
+      render: (val) => <Tag>{val} loại</Tag>
     }
   ];
 
-  // ===============================
-  // FILTER HANDLERS
-  // ===============================
-  const handleFilterChange = (value) => {
-    setLoading(true);
-    setFilter(value);
-    
-    // Simulate API call delay
-    setTimeout(() => {
-      setLoading(false);
-    }, 500);
-  };
-
-  const handleDateRangeChange = (dates) => {
-    if (dates) {
-      setLoading(true);
-      // Handle date range filtering logic here
-      setTimeout(() => {
-        setLoading(false);
-      }, 500);
-    }
-  };
-
-  // ===============================
-  // MAIN RENDER
-  // ===============================
   return (
-    <AdminPageLayout title="BÁO CÁO NHÀ CUNG CẤP NÔNG SẢN ">
-      <Spin spinning={loading} size="large">
-        <div style={{ padding: 20 }}>
-        {/* Filter Section */}
-        <div style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: 24,
-          flexWrap: "wrap",
-          gap: 16
-        }}>
-          <Title level={4} style={{ margin: 0 }}>
-            <BarChartOutlined /> Báo cáo tổng quan
-          </Title>
-          
-          <Space>
-            <RangePicker 
-              onChange={handleDateRangeChange}
-              placeholder={["Từ ngày", "Đến ngày"]}
-            />
-            <Select 
-              value={filter} 
-              onChange={handleFilterChange} 
-              style={{ minWidth: 120 }}
-              disabled={loading}
+    <AdminPageLayout title="THỐNG KÊ CỬA HÀNG">
+      <Space direction="vertical" size={24} style={{ width: "100%" }}>
+
+        {/* --- Toolbar --- */}
+        <Card bordered={false} bodyStyle={{ padding: "16px 24px" }}>
+          <Row justify="space-between" align="middle" gutter={[16, 16]}>
+            <Col xs={24} md={16}>
+              <Space wrap>
+                <Text strong>Bộ lọc:</Text>
+                <RangePicker style={{ width: 250 }} />
+                <Select value={filter} onChange={setFilter} style={{ width: 140 }}>
+                  <Option value="month">Tháng này</Option>
+                  <Option value="quarter">Quý này</Option>
+                  <Option value="year">Năm nay</Option>
+                </Select>
+              </Space>
+            </Col>
+            <Col xs={24} md={8} style={{ textAlign: "right" }}>
+              <Button type="primary" icon={<DownloadOutlined />} style={{ backgroundColor: '#237804', borderColor: '#237804' }}>
+                Xuất Excel
+              </Button>
+            </Col>
+          </Row>
+        </Card>
+
+        {/* --- Stats Section --- */}
+        <StatsSection items={statsData} loading={loading} />
+
+        {/* --- Charts Row --- */}
+        <Row gutter={[24, 24]}>
+          {/* Chart 1: Doanh thu theo nhà cung cấp (Bar Chart) */}
+          <Col xs={24} lg={14}>
+            <Card
+              loading={loading}
+              title="Top Nhà cung cấp theo Doanh thu"
+              bordered={false}
             >
-              <Option value="day">Theo ngày</Option>
-              <Option value="week">Theo tuần</Option>
-              <Option value="month">Theo tháng</Option>
-              <Option value="quarter">Theo quý</Option>
-              <Option value="year">Theo năm</Option>
-            </Select>
-            <Card.Meta 
-              style={{ cursor: 'pointer', padding: '4px 12px' }}
-            >
-              <ReloadOutlined 
-                onClick={handleRefresh}
-                spin={loading}
-                style={{ fontSize: '18px', cursor: 'pointer' }}
-              />
-            </Card.Meta>
-          </Space>
-        </div>
-
-        {/* Summary Cards */}
-        <Row gutter={[24, 24]} style={{ marginBottom: 24 }}>
-          <Col xs={24} sm={12} md={6}>
-            <Card>
-              <Statistic
-                title={
-                  <Space>
-                    <ShopOutlined style={{ color: "#52c41a" }} />
-                    <Text strong>Nhà cung cấp</Text>
-                  </Space>
-                }
-                value={totalSuppliers}
-                valueStyle={{ color: '#52c41a', fontSize: '24px' }}
-                prefix={<span style={{ color: '#52c41a', fontSize: '16px' }}>+0</span>}
-              />
+              <div style={{ width: "100%", height: 350 }}>
+                <ResponsiveContainer>
+                  <BarChart data={suppliersData.slice(0, 10)} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="name" tick={{ fontSize: 12 }} interval={0} angle={-15} textAnchor="end" height={60} />
+                    {/* YAxis giữ nguyên M format cho gọn biểu đồ, hoặc có thể custom nếu muốn */}
+                    <YAxis tickFormatter={(val) => `${val / 1000000}M`} />
+                    <RechartsTooltip
+                      // SỬ DỤNG intcomma
+                      formatter={(value) => `${intcomma(value)} đ`}
+                      cursor={{ fill: 'transparent' }}
+                    />
+                    <Bar dataKey="revenue" name="Doanh thu" radius={[4, 4, 0, 0]}>
+                      {suppliersData.slice(0, 10).map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={index < 3 ? '#52c41a' : '#bae7ff'} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </Card>
           </Col>
 
-          <Col xs={24} sm={12} md={6}>
-            <Card>
-              <Statistic
-                title={
-                  <Space>
-                    <DollarCircleOutlined style={{ color: "#1677ff" }} />
-                    <Text strong>Tổng doanh thu</Text>
-                  </Space>
-                }
-                value={totalRevenue}
-                precision={0}
-                valueStyle={{ color: '#1677ff', fontSize: '24px' }}
-                formatter={(value) => `${value.toLocaleString('vi-VN')}đ`}
-                prefix={<span style={{ color: '#52c41a', fontSize: '16px' }}>+5.2%</span>}
-              />
-            </Card>
-          </Col>
+          {/* Chart 2: Phân bố danh mục (Pie Chart) & Top Products List */}
+          <Col xs={24} lg={10}>
+            <Space direction="vertical" size={24} style={{ width: '100%' }}>
 
-          <Col xs={24} sm={12} md={6}>
-            <Card>
-              <Statistic
-                title={
-                  <Space>
-                    <WarningOutlined style={{ color: "#faad14" }} />
-                    <Text strong>Tỷ lệ hủy TB</Text>
-                  </Space>
-                }
-                value={avgCancelRate}
-                suffix="%"
-                valueStyle={{ color: avgCancelRate > 3 ? '#ff4d4f' : '#52c41a', fontSize: '24px' }}
-                prefix={avgCancelRate > 3 ? 
-                  <FallOutlined style={{ color: '#ff4d4f' }} /> : 
-                  <RiseOutlined style={{ color: '#52c41a' }} />
-                }
-              />
-            </Card>
-          </Col>
-
-          <Col xs={24} sm={12} md={6}>
-            <Card>
-              <Statistic
-                title={
-                  <Space>
-                    <StarOutlined style={{ color: "#fadb14" }} />
-                    <Text strong>Đánh giá TB</Text>
-                  </Space>
-                }
-                value={avgRating}
-                precision={1}
-                valueStyle={{ color: '#fadb14', fontSize: '24px' }}
-                prefix={<StarOutlined style={{ color: '#fadb14' }} />}
-              />
-            </Card>
+              {/* Phân bố danh mục */}
+              <Card title="Phân bố ngành hàng" bordered={false} loading={loading}>
+                {categoryData && categoryData.length > 0 ? (
+                  <div style={{ width: "100%", height: 220, display: 'flex' }}>
+                    <ResponsiveContainer>
+                      <PieChart>
+                        <Pie
+                          data={categoryData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={60}
+                          outerRadius={80}
+                          paddingAngle={5}
+                          dataKey="value"
+                        >
+                          {categoryData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <RechartsTooltip formatter={(value) => `${intcomma(value)}`} />
+                        <Legend layout="vertical" verticalAlign="middle" align="right" />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <Empty description="Chưa có dữ liệu danh mục" style={{ marginTop: 50 }} />
+                )}
+              </Card>
+            </Space>
           </Col>
         </Row>
 
-        <Divider style={{ margin: '24px 0' }} />
-
-        {/* Revenue Chart */}
-        <Card 
+        {/* --- Data Table --- */}
+        <Card
           title={
             <Space>
-              <BarChartOutlined />
-              <Text strong>Biểu đồ doanh thu theo nhà cung cấp</Text>
+              <ShopOutlined style={{ color: '#52c41a' }} />
+              <span>Chi tiết hiệu quả hoạt động Nhà cung cấp</span>
             </Space>
           }
-          style={{ marginBottom: 24 }}
-        >
-          <div style={{ height: 400 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={suppliersData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                  dataKey="name" 
-                  angle={-45} 
-                  textAnchor="end"
-                  height={80}
-                  tick={{ fontSize: 12 }}
-                />
-                <YAxis 
-                  tickFormatter={(value) => `${(value / 1000000).toFixed(0)}M`}
-                  tick={{ fontSize: 12 }}
-                />
-                <RechartsTooltip content={<CustomTooltip />} />
-                <Bar 
-                  dataKey="revenue" 
-                  name="Doanh thu"
-                  fill="#1677ff"
-                  radius={[4, 4, 0, 0]}
-                >
-                  {suppliersData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill="#1677ff" />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
-
-        {/* Suppliers Table */}
-        <Card 
-          title={
-            <Space>
-              <ShopOutlined />
-              <Text strong>Chi tiết nhà cung cấp</Text>
-            </Space>
-          }
+          bordered={false}
+          loading={loading}
         >
           <Table
             columns={columns}
             dataSource={suppliersData}
             rowKey="id"
-            loading={loading}
-            scroll={{ x: 1200 }}
-            pagination={{
-              pageSize: 10,
-              showSizeChanger: true,
-              showQuickJumper: true,
-              showTotal: (total) => `Tổng ${total} nhà cung cấp`,
-              pageSizeOptions: ['5', '10', '20', '50']
-            }}
-            size="middle"
-            rowClassName={(record, index) => 
-              index % 2 === 0 ? 'table-row-even' : 'table-row-odd'
-            }
+            pagination={{ pageSize: 5, showTotal: (total) => `Tổng ${total} NCC` }}
+            scroll={{ x: 1000 }}
           />
         </Card>
-        </div>
-      </Spin>
 
-      <style jsx>{`
-        .table-row-even {
-          background-color: #fafafa;
-        }
-        .table-row-odd {
-          background-color: #fff;
-        }
-      `}</style>
+      </Space>
     </AdminPageLayout>
   );
 }

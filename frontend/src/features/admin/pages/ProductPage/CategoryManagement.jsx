@@ -238,34 +238,34 @@ const CategoryManagementPage = () => {
             show: record.type === 'Category',
             onClick: (r) => handleEdit(r),
           },
-            {
-              actionType: "lock",
-              icon: record.status === 'active' ? <LockOutlined /> : <UnlockOutlined />,
-              tooltip: record.status === 'active' ? 'Ngưng hoạt động' : 'Kích hoạt lại', // Đã có (rút gọn text cho đẹp)
-              show: true,
-              buttonProps: {
-                type: 'text',
-                style: { color: record.status === 'active' ? '#faad14' : '#52c41a' }
-              },
-              confirm: {
-                title: 'Xác nhận chuyển trạng thái?',
-                description: `Bạn có chắc chắn muốn chuyển trạng thái của "${record.name}" sang ${record.status === 'active' ? 'ngưng hoạt động' : 'hoạt động'}?`,
-                okText: 'Chuyển',
-                cancelText: 'Hủy',
-              },
-              onClick: async (r) => {
-                try {
-                  const endpoint = r.type === 'Subcategory'
-                    ? `${process.env.REACT_APP_API_URL}/products/subcategories/${r.id}/`
-                    : `${process.env.REACT_APP_API_URL}/products/categories/${r.id}/`;
-                  await axios.patch(endpoint, { status: r.status === 'active' ? 'inactive' : 'active' }, { headers: getAuthHeaders() });
-                  message.success('Đã chuyển trạng thái thành công');
-                  fetchCategories();
-                } catch (err) {
-                  message.error('Chuyển trạng thái thất bại');
-                }
-              },
+          {
+            actionType: record.status === 'active' ? "lock" : "unlock", // <--- SỬA DÒNG NÀY
+            icon: record.status === 'active' ? <LockOutlined /> : <UnlockOutlined />,
+            tooltip: record.status === 'active' ? 'Ngưng hoạt động' : 'Kích hoạt lại', // Đã có (rút gọn text cho đẹp)
+            show: true,
+            buttonProps: {
+              type: 'text',
+              style: { color: record.status === 'active' ? '#faad14' : '#52c41a' }
             },
+            confirm: {
+              title: 'Xác nhận chuyển trạng thái?',
+              description: `Bạn có chắc chắn muốn chuyển trạng thái của "${record.name}" sang ${record.status === 'active' ? 'ngưng hoạt động' : 'hoạt động'}?`,
+              okText: 'Chuyển',
+              cancelText: 'Hủy',
+            },
+            onClick: async (r) => {
+              try {
+                const endpoint = r.type === 'Subcategory'
+                  ? `${process.env.REACT_APP_API_URL}/products/subcategories/${r.id}/`
+                  : `${process.env.REACT_APP_API_URL}/products/categories/${r.id}/`;
+                await axios.patch(endpoint, { status: r.status === 'active' ? 'inactive' : 'active' }, { headers: getAuthHeaders() });
+                message.success('Đã chuyển trạng thái thành công');
+                fetchCategories();
+              } catch (err) {
+                message.error('Chuyển trạng thái thất bại');
+              }
+            },
+          },
           {
             actionType: "delete",
             icon: <DeleteOutlined />,
@@ -313,7 +313,7 @@ const CategoryManagementPage = () => {
         <Option value="active">Hoạt động</Option>
         <Option value="inactive">Ngưng hoạt động</Option>
       </Select>
-      
+
       {/* 2. Thêm Tooltip cho nút Thêm Danh Mục */}
       <Tooltip title="Tạo mới một danh mục cha">
         <Button

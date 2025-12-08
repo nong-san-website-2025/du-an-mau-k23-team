@@ -130,7 +130,7 @@ const Sidebar = () => {
     {
       key: "reports",
       icon: <BarChartOutlined />,
-      label: "Thống kê & Báo cáo",
+      label: "Thống kê",
       children: [
         {
           key: "/admin/reports/products",

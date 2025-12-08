@@ -1,4 +1,3 @@
-// src/features/admin/components/OrderAdmin/OrderDetailDrawer.jsx
 import React from "react";
 import {
   Drawer,
@@ -11,20 +10,31 @@ import {
   Card,
   Typography,
   Space,
+  Steps,
+  Button,
+  Statistic,
+  Popconfirm,
+  Tooltip,
 } from "antd";
 
 import {
   User,
   MapPin,
   Phone,
-  FileText,
-  CreditCard,
-  CalendarClock,
   Store,
-  PackageSearch,
+  Printer,
+  XCircle,
+  Copy,
+  CheckCircle2,
+  Truck,
+  Package,
+  Clock,
 } from "lucide-react";
 
-const { Title, Text } = Typography;
+import StatusTag from "../../../../components/StatusTag"; // Import component StatusTag bạn đã tạo
+import { intcomma } from "../../../../utils/format";
+
+const { Title, Text, Paragraph } = Typography;
 
 export default function OrderDetailDrawer({
   visible,
@@ -33,309 +43,262 @@ export default function OrderDetailDrawer({
   getStatusLabel,
   formatCurrency,
   formatDate,
+  onCancelOrder, // Nhận hàm hủy từ cha
 }) {
   if (!order) return null;
 
-  const statusColors = {
-    pending: "orange",
-    shipping: "blue",
-    shipped: "geekblue",
-    delivered: "green",
-    success: "green",
-    cancelled: "red",
-    refunded: "default",
+  // --- 1. LOGIC TÍNH TOÁN (Đưa ra ngoài để tái sử dụng) ---
+  const productTotal = (order.items || []).reduce(
+    (sum, item) => sum + (item.price || 0) * (item.quantity || 0),
+    0
+  );
+
+  const totalPlatformCommission = (order.items || []).reduce(
+    (sum, item) => {
+      const itemTotal = (item.price || 0) * (item.quantity || 0);
+      return sum + itemTotal * (item.commission_rate || 0);
+    },
+    0
+  );
+
+  const shippingFee = order.shipping_fee || 0;
+  const sellerRevenue = productTotal - totalPlatformCommission;
+
+  // --- 2. LOGIC UI STEPS (Tiến trình đơn hàng) ---
+  const getStepCurrent = (status) => {
+    switch (status) {
+      case "pending": return 0;
+      case "processing": return 1;
+      case "shipping": return 2;
+      case "shipped": return 2;
+      case "delivered": return 3;
+      case "success": return 3;
+      default: return 0; // Cancelled/Refunded xử lý riêng
+    }
   };
 
+  const stepsItems = [
+    { title: "Đặt hàng", icon: <Clock size={20} /> },
+    { title: "Xử lý", icon: <Package size={20} /> },
+    { title: "Vận chuyển", icon: <Truck size={20} /> },
+    { title: "Hoàn thành", icon: <CheckCircle2 size={20} /> },
+  ];
+
+  // --- 3. TABLE COLUMNS ---
   const orderColumns = [
     {
       title: "Sản phẩm",
       dataIndex: "product_name",
       key: "product_name",
-      render: (name) => <Text strong>{name || "N/A"}</Text>,
-    },
-    {
-      title: "Danh mục",
-      dataIndex: "category_name",
-      key: "category_name",
-      render: (name) => <Tag color="blue">{name || "N/A"}</Tag>,
-    },
-    {
-      title: "Số lượng",
-      dataIndex: "quantity",
-      key: "quantity",
-      align: "center",
-      width: 100,
-      render: (q) => <Text>{q}</Text>,
+      render: (name, record) => (
+        <Space direction="vertical" size={0}>
+          <Text strong>{name}</Text>
+          <Text type="secondary" style={{ fontSize: 12 }}>{record.category_name}</Text>
+        </Space>
+      ),
     },
     {
       title: "Đơn giá",
       dataIndex: "price",
-      key: "price",
       align: "right",
-      width: 140,
-      render: (price) => <Text>{formatCurrency(price)}</Text>,
+      render: (price) => intcomma(price),
+    },
+    {
+      title: "SL",
+      dataIndex: "quantity",
+      align: "center",
     },
     {
       title: "Thành tiền",
-      key: "total",
       align: "right",
-      width: 140,
       render: (_, item) => (
-        <Text strong>{formatCurrency(item.price * item.quantity)}</Text>
+        <Text strong>{intcomma(item.price * item.quantity)}</Text>
       ),
     },
     {
       title: "Phí sàn",
-      key: "platform_commission",
       align: "right",
-      width: 140,
       render: (_, item) => {
         const itemTotal = (item.price || 0) * (item.quantity || 0);
         const commission = itemTotal * (item.commission_rate || 0);
         return (
-          <div>
-            <Text style={{ color: "#f97316", fontWeight: 500, fontSize: "14px" }}>
-              {formatCurrency(commission)}
-            </Text>
-            <br />
-            <Text type="secondary" style={{ fontSize: "12px" }}>
-              ({((item.commission_rate || 0) * 100).toFixed(1)}%)
-            </Text>
-          </div>
-        );
-      },
-    },
-    {
-      title: "Doanh thu",
-      key: "seller_amount",
-      align: "right",
-      width: 140,
-      render: (_, item) => {
-        const itemTotal = (item.price || 0) * (item.quantity || 0);
-        const commission = itemTotal * (item.commission_rate || 0);
-        const sellerAmount = itemTotal - commission;
-        return (
-          <Text style={{ color: "#059669", fontWeight: 500, fontSize: "14px" }}>
-            {formatCurrency(sellerAmount)}
-          </Text>
+          <Tooltip title={`Tỉ lệ: ${(item.commission_rate * 100)}%`}>
+            <Text style={{
+              fontSize: 13,
+              color: '#08979c', // Màu xanh Teal - trung lập, chuyên nghiệp hơn
+              fontWeight: 500
+            }}>-{intcomma(commission)}</Text>
+          </Tooltip>
         );
       },
     },
   ];
 
+  // --- 4. RENDER LAYOUT ---
   return (
     <Drawer
       title={
-        <Title level={4} style={{ margin: 0 }}>
-          Chi tiết đơn hàng #{order.id}
-        </Title>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Space>
+            <Title level={4} style={{ margin: 0 }}>#{order.id}</Title>
+            <StatusTag status={order.status} label={getStatusLabel(order.status)} />
+          </Space>
+          <Text type="secondary" style={{ fontSize: 13, fontWeight: 400 }}>
+            Ngày tạo: {formatDate(order.created_at)}
+          </Text>
+        </div>
       }
       placement="right"
-      open={visible}
+      width={1000} // Giảm width một chút cho gọn
       onClose={onClose}
-      width={1100}
-      bodyStyle={{ padding: 24 }}
-    >
-      {/* ----------- CUSTOMER INFORMATION ----------- */}
-      <Card
-        title={
-          <Space>
-            <User size={18} /> Thông tin khách hàng
-          </Space>
-        }
-        bordered={false}
-        style={{ borderRadius: 12, marginBottom: 24 }}
-      >
-        <Descriptions column={2}>
-          <Descriptions.Item label="Tên khách hàng">
-            {order.customer_name || "N/A"}
-          </Descriptions.Item>
-
-          <Descriptions.Item label="Số điện thoại">
-            <Space>
-              <Phone size={16} />
-              {order.customer_phone || "N/A"}
-            </Space>
-          </Descriptions.Item>
-
-          <Descriptions.Item label="Địa chỉ" span={2}>
-            <Space>
-              <MapPin size={16} />
-              {order.address || "N/A"}
-            </Space>
-          </Descriptions.Item>
-
-          <Descriptions.Item label="Ghi chú" span={2}>
-            {order.note || "Không có"}
-          </Descriptions.Item>
-        </Descriptions>
-      </Card>
-
-      {/* ----------- ORDER INFORMATION ----------- */}
-      <Card
-        title={
-          <Space>
-            <FileText size={18} /> Thông tin đơn hàng
-          </Space>
-        }
-        bordered={false}
-        style={{ borderRadius: 12, marginBottom: 24 }}
-      >
-        <Descriptions column={2}>
-          <Descriptions.Item label="Trạng thái">
-            <Tag
-              color={statusColors[order.status] || "default"}
-              style={{ fontSize: 14 }}
-            >
-              {getStatusLabel(order.status)}
-            </Tag>
-          </Descriptions.Item>
-
-          <Descriptions.Item label="Phương thức thanh toán">
-            <Space>
-              <CreditCard size={16} />
-              {order.payment_method || "N/A"}
-            </Space>
-          </Descriptions.Item>
-
-          <Descriptions.Item label="Tổng tiền">
-            <Text strong>{formatCurrency(order.total_price)}</Text>
-          </Descriptions.Item>
-
-          <Descriptions.Item label="Phí vận chuyển">
-            <Text strong style={{ color: "#faad14" }}>
-              {formatCurrency(order.shipping_fee || 0)}
-            </Text>
-          </Descriptions.Item>
-
-          <Descriptions.Item label="Ngày tạo">
-            <Space>
-              <CalendarClock size={16} />
-              {formatDate(order.created_at)}
-            </Space>
-          </Descriptions.Item>
-
-          <Descriptions.Item label="Shop" span={2}>
-            <Space>
-              <Store size={16} />
-              {order.shop_name || "N/A"}{" "}
-              {order.shop_phone ? `- ${order.shop_phone}` : ""}
-            </Space>
-          </Descriptions.Item>
-        </Descriptions>
-      </Card>
-
-      <Divider />
-
-      {/* ----------- ORDER ITEMS LIST ----------- */}
-      <Card
-        title={
-          <Space>
-            <PackageSearch size={18} /> Sản phẩm trong đơn hàng
-          </Space>
-        }
-        bordered={false}
-        style={{ borderRadius: 12 }}
-      >
-        {order.items?.length > 0 ? (
-          <>
-            <Table
-              columns={orderColumns}
-              dataSource={order.items}
-              pagination={false}
-              rowKey={(record, index) => index}
-              size="middle"
-              style={{ marginTop: 12 }}
-              scroll={{ x: 1000 }}
-              footer={() => {
-                const productTotal = (order.items || []).reduce(
-                  (sum, item) => sum + ((item.price || 0) * (item.quantity || 0)),
-                  0
-                );
-                const shippingFee = order.shipping_fee || 0;
-                const totalPlatformCommission = (order.items || []).reduce(
-                  (sum, item) => {
-                    const itemTotal = (item.price || 0) * (item.quantity || 0);
-                    const commission = itemTotal * (item.commission_rate || 0);
-                    return sum + commission;
-                  },
-                  0
-                );
-                const sellerRevenue = productTotal - totalPlatformCommission;
-
-                return (
-                  <div
-                    style={{
-                      padding: "20px 16px",
-                      borderTop: "2px solid #e5e7eb",
-                      background: "#fafafa",
-                    }}
-                  >
-                    <Row style={{ marginBottom: "12px" }}>
-                      <Col span={12}>
-                        <Text style={{ fontSize: "14px", color: "#6b7280" }}>
-                          Tổng giá trị sản phẩm:
-                        </Text>
-                      </Col>
-                      <Col span={12} style={{ textAlign: "right" }}>
-                        <Text strong style={{ fontSize: "15px", color: "#1f2937" }}>
-                          {formatCurrency(productTotal)}
-                        </Text>
-                      </Col>
-                    </Row>
-                    <Row style={{ marginBottom: "12px" }}>
-                      <Col span={12}>
-                        <Text style={{ fontSize: "14px", color: "#6b7280" }}>
-                          Phí vận chuyển:
-                        </Text>
-                      </Col>
-                      <Col span={12} style={{ textAlign: "right" }}>
-                        <Text strong style={{ fontSize: "15px", color: "#faad14" }}>
-                          {formatCurrency(shippingFee)}
-                        </Text>
-                      </Col>
-                    </Row>
-                    <Row style={{ marginBottom: "12px" }}>
-                      <Col span={12}>
-                        <Text style={{ fontSize: "14px", color: "#6b7280" }}>
-                          Tổng phí sàn đã khấu trừ:
-                        </Text>
-                      </Col>
-                      <Col span={12} style={{ textAlign: "right" }}>
-                        <Text strong style={{ fontSize: "15px", color: "#f97316" }}>
-                          -{formatCurrency(totalPlatformCommission)}
-                        </Text>
-                      </Col>
-                    </Row>
-                    <Row
-                      style={{
-                        borderTop: "2px solid #d1d5db",
-                        paddingTop: "12px",
-                        marginTop: "8px",
-                      }}
-                    >
-                      <Col span={12}>
-                        <Text strong style={{ fontSize: "15px", color: "#1f2937" }}>
-                          Doanh thu cửa hàng:
-                        </Text>
-                      </Col>
-                      <Col span={12} style={{ textAlign: "right" }}>
-                        <Text strong style={{ fontSize: "17px", color: "#059669" }}>
-                          {formatCurrency(sellerRevenue)}
-                        </Text>
-                      </Col>
-                    </Row>
-                  </div>
-                );
+      open={visible}
+      // FOOTER ACTIONS - QUAN TRỌNG CHO UX
+      footer={
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, padding: '10px 0' }}>
+          <Button onClick={onClose}>Đóng</Button>
+          <Button icon={<Printer size={16} />}>In hóa đơn</Button>
+          {["pending", "processing"].includes(order.status) && (
+            <Popconfirm
+              title="Hủy đơn hàng này?"
+              description="Hành động này sẽ hoàn tiền (nếu có) và không thể khôi phục."
+              onConfirm={() => {
+                onCancelOrder(order);
+                onClose();
               }}
-            />
-          </>
-        ) : (
-          <div style={{ textAlign: "center", padding: 20, opacity: 0.6 }}>
-            Chưa có thông tin chi tiết sản phẩm
-          </div>
-        )}
-      </Card>
+              okText="Đồng ý hủy"
+              cancelText="Không"
+              okButtonProps={{ danger: true }}
+            >
+              <Button danger icon={<XCircle size={16} />}>Hủy đơn hàng</Button>
+            </Popconfirm>
+          )}
+        </div>
+      }
+    >
+      {/* SECTION 1: TIẾN TRÌNH ĐƠN HÀNG */}
+      {/* Chỉ hiện Steps nếu đơn không bị hủy/lỗi */}
+      {!["cancelled", "refunded", "rejected"].includes(order.status) && (
+        <div style={{ marginBottom: 32, padding: '0 24px' }}>
+          <Steps
+            current={getStepCurrent(order.status)}
+            items={stepsItems}
+            size="small"
+          />
+        </div>
+      )}
+
+      {["cancelled", "refunded", "rejected"].includes(order.status) && (
+        <div style={{ marginBottom: 24, textAlign: 'center', background: '#fff1f0', padding: 16, borderRadius: 8, border: '1px solid #ffccc7' }}>
+          <Text type="danger" strong><XCircle size={16} style={{ verticalAlign: 'middle', marginRight: 8 }} /> Đơn hàng đã bị hủy hoặc từ chối</Text>
+        </div>
+      )}
+
+      <Row gutter={24}>
+        {/* CỘT TRÁI: THÔNG TIN LIÊN HỆ */}
+        <Col span={9}>
+          <Card title="Thông tin khách hàng" size="small" bordered={false} className="shadow-sm mb-4" style={{ background: '#f9fafb' }}>
+            <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+              <div style={{ display: 'flex', gap: 12 }}>
+                <User size={18} className="text-gray-400" />
+                <div>
+                  <Text strong display="block">{order.customer_name}</Text>
+                  {/* UX: Thêm nút copy SĐT */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                    <Phone size={14} className="text-gray-400" />
+                    <Text>{order.customer_phone}</Text>
+                    <Paragraph copyable={{ text: order.customer_phone }} style={{ margin: 0 }} />
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: 12 }}>
+                <MapPin size={18} className="text-gray-400" style={{ flexShrink: 0 }} />
+                <Text style={{ fontSize: 13 }}>{order.address}</Text>
+              </div>
+
+              {order.note && (
+                <div style={{ background: '#fff7ed', padding: 8, borderRadius: 6, border: '1px dashed #fdba74' }}>
+                  <Text type="warning" style={{ fontSize: 12 }}>Note: {order.note}</Text>
+                </div>
+              )}
+            </Space>
+          </Card>
+
+          <Card title="Thông tin cửa hàng" size="small" bordered={false} className="shadow-sm" style={{ background: '#f9fafb' }}>
+            <Space align="center">
+              <Store size={18} className="text-gray-400" />
+              <Text strong>{order.shop_name}</Text>
+            </Space>
+          </Card>
+        </Col>
+
+        {/* CỘT PHẢI: CHI TIẾT ĐƠN HÀNG & TÀI CHÍNH */}
+        <Col span={15}>
+          {/* Bảng sản phẩm */}
+          <Table
+            columns={orderColumns}
+            dataSource={order.items}
+            pagination={false}
+            rowKey="id"
+            size="small"
+            bordered
+            style={{ marginBottom: 24 }}
+          />
+
+          {/* SECTION 3: TỔNG KẾT TÀI CHÍNH (THIẾT KẾ CARD RIÊNG) */}
+          <Card
+            size="small"
+            title="Tổng kết tài chính"
+            bordered={false}
+            style={{ background: '#f0fdf4', border: '1px solid #bbf7d0' }}
+            styles={{ header: { borderBottom: '1px solid #bbf7d0' } }}
+          >
+            <Row gutter={[16, 16]}>
+              {/* Bên trái: Khách trả tiền */}
+              <Col span={12} style={{ borderRight: '1px dashed #d1d5db' }}>
+                <Statistic
+                  title="Tổng tiền khách trả (COD)"
+                  value={order.total_price}
+                  precision={0}
+                  formatter={(val) => intcomma(val)}
+                  valueStyle={{ fontSize: 18, fontWeight: 700, color: '#111827' }}
+                />
+                <Space direction="vertical" size={0} style={{ marginTop: 8 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                    <Text type="secondary">Tiền hàng:</Text>
+                    <Text>{intcomma(productTotal)}</Text>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', width: '200px' }}>
+                    <Text type="secondary">Phí ship:</Text>
+                    <Text>{intcomma(shippingFee)}</Text>
+                  </div>
+                </Space>
+              </Col>
+
+              {/* Bên phải: Shop thực nhận (Highlight) */}
+              <Col span={12} style={{ paddingLeft: 24 }}>
+                <Statistic
+                  title="Doanh thu thực nhận của Shop"
+                  value={sellerRevenue}
+                  precision={0}
+                  formatter={(val) => intcomma(val)}
+                  valueStyle={{ fontSize: 20, fontWeight: 700, color: '#16a34a' }} // Màu xanh lá đậm
+                  prefix={<span>+</span>}
+                />
+                <div style={{ marginTop: 8, padding: '4px 8px', background: 'rgba(255,255,255,0.6)', borderRadius: 4 }}>
+                  <Text style={{
+                    fontSize: 13,
+                    color: '#08979c', // Màu xanh Teal - trung lập, chuyên nghiệp hơn
+                    fontWeight: 500
+                  }}>
+                    Đã trừ phí sàn: -{intcomma(totalPlatformCommission)}
+                  </Text>
+                </div>
+              </Col>
+            </Row>
+          </Card>
+        </Col>
+      </Row>
     </Drawer>
   );
 }

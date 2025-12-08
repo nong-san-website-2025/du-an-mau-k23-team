@@ -1,53 +1,75 @@
-// src/pages/Admin/Marketing/BannerForm.jsx
 import React, { useState, useEffect } from "react";
 import {
   Form,
   Input,
   Select,
   Switch,
-  Upload,
   DatePicker,
   InputNumber,
   Button,
   message,
   Space,
+  Upload,
+  Row,
+  Col,
+  Divider,
+  Typography
 } from "antd";
-import { UploadOutlined } from "@ant-design/icons";
+import { InboxOutlined, LinkOutlined, SaveOutlined } from "@ant-design/icons";
 import moment from "moment";
 import API from "../../../login_register/services/api";
 
-const { Option } = Select;
+const { Dragger } = Upload;
+const { RangePicker } = DatePicker;
+const { Text } = Typography;
 
-const BannerForm = ({ bannerId, onSuccess }) => {
+const BannerForm = ({ bannerId, onSuccess, onCancel }) => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [slots, setSlots] = useState([]);
+  const [fileList, setFileList] = useState([]);
 
+  // Fetch Slots
   useEffect(() => {
     API.get("/marketing/slots/")
       .then((res) => setSlots(res.data))
-      .catch(() => message.error("Không tải được danh sách vị trí quảng cáo"));
+      .catch(() => message.error("Không tải được danh sách vị trí"));
   }, []);
-  // Load dữ liệu nếu đang sửa
+
+  // Fetch Detail Data
   useEffect(() => {
     if (bannerId) {
       API.get(`/marketing/banners/${bannerId}/`)
         .then((res) => {
           const data = res.data;
+          
+          // Set fileList cho Upload component hiển thị ảnh cũ
+          if (data.image) {
+             setFileList([{
+                uid: '-1',
+                name: 'current-banner.png',
+                status: 'done',
+                url: data.image,
+             }]);
+          }
+
           form.setFieldsValue({
-            title: data.title || undefined,
-            position: data.position,
+            title: data.title,
+            slot: data.slot?.id || data.slot, // Handle object or ID
             priority: data.priority,
             is_active: data.is_active,
-            click_url: data.click_url || undefined,
-            target_category: data.target_category?.id || undefined,
-            start_at: data.start_at ? moment(data.start_at) : null,
-            end_at: data.end_at ? moment(data.end_at) : null,
+            click_url: data.click_url,
+            // Gom 2 ngày thành 1 mảng cho RangePicker
+            date_range: [
+                data.start_at ? moment(data.start_at) : null,
+                data.end_at ? moment(data.end_at) : null
+            ],
           });
         })
-        .catch(() => message.error("Không tải được banner"));
+        .catch(() => message.error("Không tải được dữ liệu banner"));
     } else {
       form.resetFields();
+      setFileList([]);
     }
   }, [bannerId, form]);
 
@@ -55,45 +77,51 @@ const BannerForm = ({ bannerId, onSuccess }) => {
     setLoading(true);
     const formData = new FormData();
 
-    // Thêm các trường
-    if (values.title) formData.append("title", values.title);
+    formData.append("title", values.title || "");
     formData.append("slot_id", values.slot);
-
-    formData.append("priority", String(values.priority));
+    formData.append("priority", values.priority || 0);
     formData.append("is_active", values.is_active ? "true" : "false");
+    formData.append("click_url", values.click_url || "");
 
-    if (values.click_url) formData.append("click_url", values.click_url);
-    if (values.target_category)
-      formData.append("target_category", values.target_category);
-    if (values.start_at)
-      formData.append("start_at", values.start_at.toISOString());
-    if (values.end_at) formData.append("end_at", values.end_at.toISOString());
+    // Xử lý ngày tháng từ RangePicker
+    if (values.date_range && values.date_range[0]) {
+        formData.append("start_at", values.date_range[0].toISOString());
+    }
+    if (values.date_range && values.date_range[1]) {
+        formData.append("end_at", values.date_range[1].toISOString());
+    }
 
-    // Xử lý ảnh
-    const fileList = values.image || [];
+    // Xử lý file ảnh
     if (fileList.length > 0 && fileList[0].originFileObj) {
       formData.append("image", fileList[0].originFileObj);
+    } 
+    // Nếu tạo mới mà không có ảnh
+    else if (!bannerId && fileList.length === 0) {
+        message.error("Vui lòng tải lên ảnh banner!");
+        setLoading(false);
+        return;
     }
+
     try {
       if (bannerId) {
-        await API.put(`/marketing/banners/${bannerId}/`, formData, {});
+        await API.put(`/marketing/banners/${bannerId}/`, formData);
         message.success("Cập nhật banner thành công!");
       } else {
-        await API.post("/marketing/banners/", formData, {});
-        message.success("Tạo banner thành công!");
+        await API.post("/marketing/banners/", formData);
+        message.success("Tạo banner mới thành công!");
       }
       onSuccess();
     } catch (err) {
       console.error(err);
-      message.error("Lưu banner thất bại. Vui lòng thử lại.");
+      message.error("Có lỗi xảy ra, vui lòng thử lại.");
     } finally {
       setLoading(false);
     }
   };
 
-  const normFile = (e) => {
-    if (Array.isArray(e)) return e;
-    return e?.fileList || [];
+  const handleUploadChange = ({ fileList: newFileList }) => {
+    // Giới hạn chỉ 1 file, file mới nhất sẽ thay thế
+    setFileList(newFileList.slice(-1));
   };
 
   return (
@@ -102,102 +130,117 @@ const BannerForm = ({ bannerId, onSuccess }) => {
       layout="vertical"
       onFinish={onFinish}
       initialValues={{
-        position: "carousel",
         priority: 0,
-        is_active: false,
+        is_active: true,
       }}
     >
-      <Form.Item label="Tiêu đề" name="title">
-        <Input
-          placeholder="VD: Flash Sale 50% - Chỉ hôm nay!"
-          maxLength={200}
-        />
-      </Form.Item>
+      <Row gutter={24}>
+        {/* CỘT TRÁI: Ảnh & Vị trí quan trọng */}
+        <Col span={10}>
+          <Form.Item
+            label="Hình ảnh Banner"
+            required
+            tooltip="Tỉ lệ ảnh phụ thuộc vào vị trí hiển thị (VD: Carousel 1200x400)"
+          >
+            <Dragger
+              fileList={fileList}
+              onChange={handleUploadChange}
+              beforeUpload={() => false} // Chặn auto upload
+              listType="picture"
+              maxCount={1}
+              height={180}
+              style={{ padding: 20, background: '#fafafa' }}
+            >
+              <p className="ant-upload-drag-icon">
+                <InboxOutlined style={{ color: '#1890ff' }} />
+              </p>
+              <p className="ant-upload-text">Kéo thả hoặc click để tải ảnh</p>
+              <p className="ant-upload-hint">Hỗ trợ .png, .jpg, .webp</p>
+            </Dragger>
+          </Form.Item>
 
-      <Form.Item
-        label="Vị trí hiển thị"
-        name="slot"
-        rules={[{ required: true, message: "Vui lòng chọn vị trí quảng cáo" }]}
-      >
-        <Select placeholder="Chọn vị trí hiển thị">
-          {slots.map((s) => (
-            <Option key={s.id} value={s.id}>
-              {s.name}
-            </Option>
-          ))}
-        </Select>
-      </Form.Item>
+          <Form.Item
+            label="Vị trí hiển thị (Slot)"
+            name="slot"
+            rules={[{ required: true, message: "Vui lòng chọn vị trí" }]}
+          >
+            <Select placeholder="Chọn vị trí xuất hiện" size="large">
+              {slots.map((s) => (
+                <Select.Option key={s.id} value={s.id}>
+                  {s.name} ({s.code})
+                </Select.Option>
+              ))}
+            </Select>
+          </Form.Item>
+        </Col>
 
-      <Form.Item
-        label="Ảnh banner"
-        name="image"
-        valuePropName="fileList"
-        getValueFromEvent={normFile}
-      >
-        <Upload
-          listType="picture"
-          maxCount={1}
-          beforeUpload={() => false} // Ngăn upload tự động
-        >
-          <Button icon={<UploadOutlined />}>
-            Chọn ảnh (tỷ lệ đề xuất: 1200x400)
-          </Button>
-        </Upload>
-      </Form.Item>
+        {/* CỘT PHẢI: Thông tin chi tiết */}
+        <Col span={14}>
+          <Form.Item
+            label="Tiêu đề Banner"
+            name="title"
+            rules={[{ required: true, message: "Nhập tiêu đề để quản lý" }]}
+          >
+            <Input placeholder="VD: Khuyến mãi Mùa hè 2024" maxLength={150} size="large" />
+          </Form.Item>
 
-      <Form.Item label="URL khi click (tùy chọn)" name="click_url">
-        <Input placeholder="https://yourshop.com/sale" />
-      </Form.Item>
+          <Form.Item 
+            label="Đường dẫn khi click (URL)" 
+            name="click_url"
+            tooltip="Người dùng sẽ được chuyển đến trang này khi bấm vào banner"
+          >
+            <Input prefix={<LinkOutlined />} placeholder="https://..." />
+          </Form.Item>
 
-      {/* Nếu bạn có API danh mục, có thể fetch và hiển thị ở đây */}
-      {/* <Form.Item label="Áp dụng cho danh mục" name="target_category">
-        <Select allowClear placeholder="Tất cả danh mục">
-          {categories.map(cat => (
-            <Option key={cat.id} value={cat.id}>{cat.name}</Option>
-          ))}
-        </Select>
-      </Form.Item> */}
+          <Row gutter={16}>
+             <Col span={12}>
+                <Form.Item
+                    label="Thời gian áp dụng"
+                    name="date_range"
+                    help="Để trống nếu muốn hiển thị ngay và vô thời hạn"
+                >
+                    <RangePicker 
+                        showTime={{ format: 'HH:mm' }} 
+                        format="DD/MM/YYYY HH:mm" 
+                        style={{ width: '100%' }}
+                        placeholder={['Bắt đầu', 'Kết thúc']}
+                    />
+                </Form.Item>
+             </Col>
+             <Col span={12}>
+                <Form.Item
+                    label="Độ ưu tiên"
+                    name="priority"
+                    tooltip="Số càng lớn, banner càng xuất hiện ở đầu danh sách"
+                >
+                    <InputNumber min={0} max={999} style={{ width: "100%" }} />
+                </Form.Item>
+             </Col>
+          </Row>
 
-      <Form.Item
-        label="Độ ưu tiên"
-        name="priority"
-        tooltip="Số càng lớn, banner càng hiện trước"
-      >
-        <InputNumber min={0} style={{ width: "100%" }} />
-      </Form.Item>
+          <Divider style={{ margin: "12px 0" }} />
 
-      <Form.Item label="Kích hoạt" name="is_active" valuePropName="checked">
-        <Switch />
-      </Form.Item>
+          <Form.Item label="Trạng thái hiển thị" name="is_active" valuePropName="checked" style={{ marginBottom: 0 }}>
+             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Text type="secondary">Kích hoạt banner này ngay sau khi lưu?</Text>
+                <Switch checkedChildren="Bật" unCheckedChildren="Tắt" />
+             </div>
+          </Form.Item>
+        </Col>
+      </Row>
 
-      <Form.Item label="Thời gian bắt đầu" name="start_at">
-        <DatePicker
-          showTime
-          format="DD/MM/YYYY HH:mm"
-          style={{ width: "100%" }}
-          placeholder="Ngay lập tức nếu để trống"
-        />
-      </Form.Item>
+      <Divider />
 
-      <Form.Item label="Thời gian kết thúc" name="end_at">
-        <DatePicker
-          showTime
-          format="DD/MM/YYYY HH:mm"
-          style={{ width: "100%" }}
-          placeholder="Không giới hạn nếu để trống"
-        />
-      </Form.Item>
-
-      <Form.Item>
+      <div style={{ textAlign: "right" }}>
         <Space>
-          <Button type="primary" htmlType="submit" loading={loading}>
-            {bannerId ? "Cập nhật" : "Tạo banner"}
+          <Button onClick={onCancel} size="large">
+            Hủy bỏ
           </Button>
-          <Button htmlType="button" onClick={onSuccess}>
-            Hủy
+          <Button type="primary" htmlType="submit" icon={<SaveOutlined />} loading={loading} size="large">
+            {bannerId ? "Lưu Thay Đổi" : "Hoàn Tất"}
           </Button>
         </Space>
-      </Form.Item>
+      </div>
     </Form>
   );
 };

@@ -89,50 +89,7 @@ const CategoryWithSubModal = ({ visible, onClose, onSuccess, category }) => {
             <Option value="inactive">Ngưng</Option>
           </Select>
         </Form.Item>
-
-        {/* Dynamic subcategories */}
-        <Form.List name="subcategories">
-          {(fields, { add, remove }) => (
-            <>
-              {fields.map(({ key, name, ...restField }) => (
-                <Space
-                  key={key}
-                  style={{ display: "flex", marginBottom: 8 }}
-                  align="baseline"
-                >
-                  <Form.Item
-                    {...restField}
-                    name={[name, "name"]}
-                    rules={[{ required: true, message: "Nhập tên subcategory" }]}
-                  >
-                    <Input placeholder="Tên danh mục con" />
-                  </Form.Item>
-                  <Form.Item
-                    {...restField}
-                    name={[name, "status"]}
-                    initialValue="active"
-                  >
-                    <Select style={{ width: 120 }}>
-                      <Option value="active">Hoạt động</Option>
-                      <Option value="inactive">Ngưng</Option>
-                    </Select>
-                  </Form.Item>
-                  <MinusCircleOutlined onClick={() => remove(name)} />
-                </Space>
-              ))}
-              <Form.Item>
-                <Button
-                  type="dashed"
-                  onClick={() => add()}
-                  block
-                  icon={<PlusOutlined />}
-                >
-                  Thêm danh mục con
-                </Button>
-              </Form.Item>
-            </>
-          )}
-        </Form.List>
+      
       </Form>
     </Modal>
   );

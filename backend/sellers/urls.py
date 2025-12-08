@@ -47,6 +47,7 @@ urlpatterns = [
     path('analytics/traffic/', views_analytics.analytics_traffic, name='analytics-traffic'),
     path('analytics/<int:seller_id>/', views.seller_analytics_detail, name='seller-analytics-detail'),
     path('report/agriculture/', views.agriculture_report, name='agriculture-report'),
+    path('report/categories/', views.category_report_api, name='category_report'),
     
     # Activity - ĐẶT TRƯỚC <int:pk>/
     path('activity/<int:seller_id>/', views.seller_activity_history, name='seller-activity'),

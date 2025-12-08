@@ -4,8 +4,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status as drf_status
 from datetime import date
-
-from django.db.models import Sum, F, DecimalField, ExpressionWrapper
+from django.db.models import Sum, F, FloatField
 
 from rest_framework import generics
 from django.db import models
@@ -695,6 +694,38 @@ def seller_products_list(request, seller_id):
         'store_name': seller.store_name,
         'results': serializer.data,
         'count': products.count()
+    })
+
+@api_view(["GET"])
+@permission_classes([IsAdminUser])
+def category_report_api(request):
+    """
+    API thống kê doanh thu và số lượng theo danh mục sản phẩm (Ngành hàng)
+    Dùng cho biểu đồ tròn (Pie Chart)
+    """
+    # Lấy các OrderItem thuộc đơn hàng thành công (hoặc status phù hợp logic của bạn)
+    # Group by (nhóm) theo tên danh mục (product__category__name)
+    category_stats = OrderItem.objects.filter(
+        order__status='success'
+    ).values(
+        name=F('product__category__name') # Lấy tên danh mục làm key
+    ).annotate(
+        # Tính tổng doanh thu của từng danh mục
+        value=Sum(F('price') * F('quantity'), output_field=FloatField()),
+        # Đếm số lượng sản phẩm đã bán (nếu cần)
+        total_sold=Sum('quantity')
+    ).order_by('-value') # Sắp xếp doanh thu từ cao xuống thấp
+
+    # Xử lý trường hợp sản phẩm không có danh mục (None)
+    results = []
+    for item in category_stats:
+        if item['name'] is None:
+            item['name'] = 'Chưa phân loại'
+        results.append(item)
+
+    return Response({
+        'data': results,
+        'timestamp': timezone.now()
     })
 
 

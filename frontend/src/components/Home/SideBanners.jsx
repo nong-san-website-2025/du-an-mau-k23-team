@@ -52,6 +52,7 @@ export default function DynamicAdSlot({
             objectFit: "cover",
             objectPosition: "center",
             cursor: "pointer",
+            borderRadius: "0px",
           }}
           loading="lazy"
         />
@@ -69,6 +70,7 @@ export default function DynamicAdSlot({
                 objectFit: "cover",
                 objectPosition: "center",
                 cursor: "pointer",
+                borderRadius: "0px",
               }}
               loading="lazy"
             />

@@ -117,15 +117,25 @@ export const productApi = {
   async getCategoriesWithProducts() {
     const categories = await this.getCategories();
 
+    // 1. Lọc Categories: Chỉ lấy những cái Active
+    const activeCategories = categories.filter(
+      (cat) => cat.status === "active"
+    );
+
     return Promise.all(
-      categories.map(async (category) => {
+      activeCategories.map(async (category) => {
         try {
           const [subcategories, allProducts] = await Promise.all([
             this.getSubcategories(category.id),
             this.getProductsByCategory(category.id),
           ]);
 
-          const subcategoriesWithProducts = subcategories.map((sub) => ({
+          // 2. Lọc Subcategories: Chỉ lấy những cái Active
+          const activeSubcategories = subcategories.filter(
+            (sub) => sub.status === "active"
+          );
+
+          const subcategoriesWithProducts = activeSubcategories.map((sub) => ({
             name: sub.name,
             products: allProducts.filter(
               (p) => p.subcategory_name === sub.name

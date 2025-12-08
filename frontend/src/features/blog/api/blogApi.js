@@ -37,6 +37,19 @@ export const increaseView = (slug) => axios.post(`${API_BASE}/blogs/${slug}/incr
 // 🏷️ Danh mục
 export const fetchCategories = () => axios.get(`${API_BASE}/categories/`);
 
+export const createCategory = (data) =>
+  axios.post(`${API_BASE}/admin/categories/`, data, { 
+    headers: { ...authHeader(), "Content-Type": "application/json" } 
+  });
+
+export const updateCategory = (id, data) =>
+  axios.patch(`${API_BASE}/admin/categories/${id}/`, data, { 
+    headers: authHeader() 
+  });
+
+export const deleteCategory = (id) =>
+  axios.delete(`${API_BASE}/admin/categories/${id}/`, { headers: authHeader() });
+
 // 💬 Bình luận
 export const fetchComments = (postId) => axios.get(`${API_BASE}/comments/?post=${postId}`);
 export const addComment = (data) =>
