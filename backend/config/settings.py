@@ -1,3 +1,9 @@
+# --- Fix Unicode encoding for Vietnamese characters on Windows
+import sys
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')
+    sys.stderr.reconfigure(encoding='utf-8')
+
 # --- File upload limits (tăng giới hạn để upload video)
 DATA_UPLOAD_MAX_MEMORY_SIZE = 104857600  # 100MB
 FILE_UPLOAD_MAX_MEMORY_SIZE = 104857600  # 100MB
@@ -148,6 +154,8 @@ if os.environ.get("DATABASE_URL"):
             ssl_require=True
         )
     }
+    DATABASES['default']['OPTIONS'] = DATABASES['default'].get('OPTIONS', {})
+    DATABASES['default']['OPTIONS']['client_encoding'] = 'UTF8'
 else:
     DATABASES = {
     'default': {
@@ -157,6 +165,9 @@ else:
         'PASSWORD': '12345',     # mật khẩu
         'HOST': 'localhost',          # hoặc IP server
         'PORT': '5432',               # port mặc định
+        'OPTIONS': {
+            'client_encoding': 'UTF8',
+        }
     }
 }
 
@@ -245,10 +256,7 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 
 # --- Others
-LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'UTC'
-USE_I18N = True
-USE_TZ = True
+LANGUAGE_CODE = 'vi'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 

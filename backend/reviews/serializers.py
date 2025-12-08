@@ -34,13 +34,11 @@ class ReviewSerializer(serializers.ModelSerializer):
         return ReviewReplySerializer(obj.replies.all(), many=True, context=self.context).data
 
     def validate(self, data):
-        # Chỉ dùng khi tạo review theo route products/<product_id>/reviews/
-        view = self.context.get("view")
         request = self.context.get("request")
-        if request and view:
+        if request and request.user:
             user = request.user
-            product_id = view.kwargs.get("product_id")
-            if product_id and Review.objects.filter(user=user, product_id=product_id).exists():
+            product = data.get("product")
+            if product and Review.objects.filter(user=user, product=product).exists():
                 raise serializers.ValidationError("Bạn đã đánh giá sản phẩm này rồi.")
         return data
 

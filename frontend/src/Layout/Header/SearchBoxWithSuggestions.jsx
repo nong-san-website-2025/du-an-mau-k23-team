@@ -167,9 +167,9 @@ export default function SearchBoxWithSuggestions({
               {/* Danh mục */}
               {categories.length > 0 && (
                 <div className="search-section">
-                  <div className="section-title">
+                  <div className="section-title d-flex" >
                     <FolderOpen size={14} className="icon-blue" />
-                    DANH MỤC
+                    <div style={{ fontSize: '12px' }}>DANH MỤC</div>
                   </div>
                   {categories.map((cat) => (
                     <div key={cat.id} className="suggestion-item" onClick={() => handleSelectKeyword(cat.name)}>
@@ -183,9 +183,9 @@ export default function SearchBoxWithSuggestions({
               {/* Sản phẩm */}
               {products.length > 0 && (
                 <div className="search-section">
-                  <div className="section-title">
+                  <div className="section-title d-flex">
                     <Package size={14} className="icon-green" />
-                    SẢN PHẨM GỢI Ý
+                    <div style={{ fontSize: '12px' }}>SẢN PHẨM GỢI Ý</div>
                   </div>
                   {products.map((product) => (
                     <div key={product.id} className="product-item" onClick={() => handleProductClick(product)}>

@@ -9,6 +9,7 @@ from .views import (
     SellerReviewsSummaryView,
     SellerRecentActivitiesView,
     AdminReviewViewSet,
+    CreateReviewView, # <--- Nhớ import cái này
 )
 
 # Tạo router cho các viewset
@@ -28,7 +29,7 @@ urlpatterns = [
     path("seller/reviews/summary/", SellerReviewsSummaryView.as_view(), name="seller-reviews-summary"),
     # Hoạt động gần đây (tối đa 5)
     path("seller/reviews/recent-activities/", SellerRecentActivitiesView.as_view(), name="seller-reviews-recent"),
-
+    path("add/", CreateReviewView.as_view(), name="add-review"),
     # Các route của viewset
     path("", include(router.urls)),
 ]

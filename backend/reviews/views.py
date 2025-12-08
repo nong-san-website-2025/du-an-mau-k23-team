@@ -15,8 +15,17 @@ class ReviewViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
     def perform_create(self, serializer):
+        
         serializer.save(user=self.request.user)
 
+class CreateReviewView(generics.CreateAPIView):
+    queryset = Review.objects.all()
+    serializer_class = ReviewSerializer
+    permission_classes = [permissions.IsAuthenticated] # Bắt buộc đăng nhập mới được gọi
+
+    def perform_create(self, serializer):
+        # Tự động gán user hiện tại
+        serializer.save(user=self.request.user)
 
 class MyReviewView(generics.RetrieveAPIView):
     serializer_class = ReviewSerializer

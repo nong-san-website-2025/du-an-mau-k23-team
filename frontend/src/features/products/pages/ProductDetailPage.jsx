@@ -16,9 +16,9 @@ import {
 } from "antd";
 import ProductImage from "../components/ProductImage";
 import ProductInfo from "../components/ProductInfo";
-import ReviewsSection from "../components/ReviewsSection";
 import RelatedProducts from "../components/RelatedProducts";
 import StoreCard from "../components/StoreCard";
+import ReviewsSection from "../components/ReviewsSection";
 import { productApi } from "../services/productApi";
 import { reviewApi } from "../services/reviewApi";
 import { useAuth } from "../../login_register/services/AuthContext";
@@ -201,7 +201,7 @@ const ProductDetailPage = () => {
     const isComingSoon =
       status.includes("coming_soon") ||
       status.includes("comingsoon") ||
-      status.includes("sắp") || 
+      status.includes("sắp") ||
       status.includes("sap");
 
     const preorder = isComingSoon || product.stock <= 0;
@@ -211,7 +211,7 @@ const ProductDetailPage = () => {
       quantity,
       { ...product, preorder },
       () => setQuantity(1),
-      () => {}
+      () => { }
     );
   };
 
@@ -306,7 +306,7 @@ const ProductDetailPage = () => {
   // ✅ Hiển thị thông báo lỗi nếu không có quyền truy cập
   if (error || !product) {
     return (
-      <div className="product-detail-container"> 
+      <div className="product-detail-container">
         <Alert
           message="Không thể truy cập"
           description={error || "Sản phẩm không tồn tại hoặc đã bị khóa."}
@@ -385,153 +385,152 @@ const ProductDetailPage = () => {
           </div>
           {(product.status === "coming_soon" ||
             product.status === "sắp có") && (
-            <div
-              style={{
-                marginTop: 12,
-                color: "#444",
-                fontSize: 15,
-                background: "#fffbe6",
-                padding: "14px 16px",
-                borderRadius: 8,
-                border: "1px solid #ffe58f",
-              }}
-            >
-              <p style={{ marginBottom: 6 }}>
-                <strong>Đã đặt trước:</strong>{" "}
-                <b style={{ color: "#1890ff" }}>
-                  {product.ordered_quantity || 0}
-                </b>{" "}
-                sản phẩm
-              </p>
+              <div
+                style={{
+                  marginTop: 12,
+                  color: "#444",
+                  fontSize: 15,
+                  background: "#fffbe6",
+                  padding: "14px 16px",
+                  borderRadius: 8,
+                  border: "1px solid #ffe58f",
+                }}
+              >
+                <p style={{ marginBottom: 6 }}>
+                  <strong>Đã đặt trước:</strong>{" "}
+                  <b style={{ color: "#1890ff" }}>
+                    {product.ordered_quantity || 0}
+                  </b>{" "}
+                  sản phẩm
+                </p>
 
-              <p style={{ marginBottom: 8 }}>
-                <strong>Cần đặt:</strong>{" "}
-                <b style={{ color: "#faad14" }}>
-                  {Math.max(
-                    (product.expected_quantity ||
-                      product.estimated_quantity ||
-                      0) - (product.ordered_quantity || 0),
-                    0
-                  ).toLocaleString("vi-VN")}
-                </b>{" "}
-                sản phẩm
-              </p>
-
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <Input
-                  type="number"
-                  min={1}
-                  value={quantity}
-                  onChange={(e) => setQuantity(Number(e.target.value))}
-                  style={{ width: 100 }}
-                />
-                <Button
-                  type="primary"
-                  onClick={async () => {
-                    try {
-                      const maxQty =
-                        product.expected_quantity ||
+                <p style={{ marginBottom: 8 }}>
+                  <strong>Cần đặt:</strong>{" "}
+                  <b style={{ color: "#faad14" }}>
+                    {Math.max(
+                      (product.expected_quantity ||
                         product.estimated_quantity ||
-                        product.stock ||
-                        0;
+                        0) - (product.ordered_quantity || 0),
+                      0
+                    ).toLocaleString("vi-VN")}
+                  </b>{" "}
+                  sản phẩm
+                </p>
 
-                      const ordered = product.ordered_quantity || 0;
-                      const remaining = Math.max(maxQty - ordered, 0);
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={quantity}
+                    onChange={(e) => setQuantity(Number(e.target.value))}
+                    style={{ width: 100 }}
+                  />
+                  <Button
+                    type="primary"
+                    onClick={async () => {
+                      try {
+                        const maxQty =
+                          product.expected_quantity ||
+                          product.estimated_quantity ||
+                          product.stock ||
+                          0;
 
-                      if (remaining <= 0) {
-                        toast.warning("⚠️ Sản phẩm đã hết lượt đặt trước!", {
-                          position: "bottom-right",
-                        });
-                        return;
-                      }
+                        const ordered = product.ordered_quantity || 0;
+                        const remaining = Math.max(maxQty - ordered, 0);
 
-                      if (quantity > remaining) {
-                        toast.error(
-                          `Bạn chỉ có thể đặt trước tối đa ${remaining} sản phẩm nữa!`,
-                          { position: "bottom-right" }
-                        );
-                        return;
-                      }
-
-                      if (user) {
-                        await productApi.preorderProduct(product.id, quantity);
-                        toast.success(
-                          `✅ Đặt trước ${quantity} sản phẩm thành công!`,
-                          {
+                        if (remaining <= 0) {
+                          toast.warning("⚠️ Sản phẩm đã hết lượt đặt trước!", {
                             position: "bottom-right",
-                          }
-                        );
-
-                        setProduct((prev) => ({
-                          ...prev,
-                          ordered_quantity:
-                            (prev.ordered_quantity || 0) + Number(quantity),
-                        }));
-                        setQuantity(1);
-                        navigate("/preorders");
-                      } else {
-                        const stored = JSON.parse(
-                          localStorage.getItem("preorders") || "[]"
-                        );
-                        const exists = stored.find(
-                          (p) => String(p.id) === String(product.id)
-                        );
-
-                        if (exists) {
-                          const newQty = (exists.quantity || 0) + quantity;
-                          if (newQty > remaining) {
-                            toast.error(
-                              `Bạn chỉ có thể đặt thêm tối đa ${
-                                remaining - (exists.quantity || 0)
-                              } sản phẩm nữa!`,
-                              { position: "bottom-right" }
-                            );
-                            return;
-                          }
-                          exists.quantity = newQty;
-                          exists.date = new Date().toISOString();
-                        } else {
-                          stored.push({
-                            id: product.id,
-                            name: product.name,
-                            image:
-                              product.image && product.image.startsWith("/")
-                                ? `http://localhost:8000${product.image}`
-                                : product.image,
-                            price:
-                              Number(
-                                product.discounted_price ?? product.price
-                              ) || 0,
-                            quantity: quantity,
-                            date: new Date().toISOString(),
                           });
+                          return;
                         }
 
-                        localStorage.setItem(
-                          "preorders",
-                          JSON.stringify(stored)
-                        );
-                        toast.success(
-                          `✅ Đã lưu ${quantity} sản phẩm vào danh sách đặt trước!`,
-                          {
-                            position: "bottom-right",
+                        if (quantity > remaining) {
+                          toast.error(
+                            `Bạn chỉ có thể đặt trước tối đa ${remaining} sản phẩm nữa!`,
+                            { position: "bottom-right" }
+                          );
+                          return;
+                        }
+
+                        if (user) {
+                          await productApi.preorderProduct(product.id, quantity);
+                          toast.success(
+                            `✅ Đặt trước ${quantity} sản phẩm thành công!`,
+                            {
+                              position: "bottom-right",
+                            }
+                          );
+
+                          setProduct((prev) => ({
+                            ...prev,
+                            ordered_quantity:
+                              (prev.ordered_quantity || 0) + Number(quantity),
+                          }));
+                          setQuantity(1);
+                          navigate("/preorders");
+                        } else {
+                          const stored = JSON.parse(
+                            localStorage.getItem("preorders") || "[]"
+                          );
+                          const exists = stored.find(
+                            (p) => String(p.id) === String(product.id)
+                          );
+
+                          if (exists) {
+                            const newQty = (exists.quantity || 0) + quantity;
+                            if (newQty > remaining) {
+                              toast.error(
+                                `Bạn chỉ có thể đặt thêm tối đa ${remaining - (exists.quantity || 0)
+                                } sản phẩm nữa!`,
+                                { position: "bottom-right" }
+                              );
+                              return;
+                            }
+                            exists.quantity = newQty;
+                            exists.date = new Date().toISOString();
+                          } else {
+                            stored.push({
+                              id: product.id,
+                              name: product.name,
+                              image:
+                                product.image && product.image.startsWith("/")
+                                  ? `http://localhost:8000${product.image}`
+                                  : product.image,
+                              price:
+                                Number(
+                                  product.discounted_price ?? product.price
+                                ) || 0,
+                              quantity: quantity,
+                              date: new Date().toISOString(),
+                            });
                           }
-                        );
-                        setQuantity(1);
-                        navigate("/preorders");
+
+                          localStorage.setItem(
+                            "preorders",
+                            JSON.stringify(stored)
+                          );
+                          toast.success(
+                            `✅ Đã lưu ${quantity} sản phẩm vào danh sách đặt trước!`,
+                            {
+                              position: "bottom-right",
+                            }
+                          );
+                          setQuantity(1);
+                          navigate("/preorders");
+                        }
+                      } catch (err) {
+                        toast.error("Không thể đặt trước sản phẩm này!", {
+                          position: "bottom-right",
+                        });
                       }
-                    } catch (err) {
-                      toast.error("Không thể đặt trước sản phẩm này!", {
-                        position: "bottom-right",
-                      });
-                    }
-                  }}
-                >
-                  Đặt trước
-                </Button>
+                    }}
+                  >
+                    Đặt trước
+                  </Button>
+                </div>
               </div>
-            </div>
-          )}
+            )}
         </div>
       </Card>
 
@@ -590,6 +589,7 @@ const ProductDetailPage = () => {
         onNewRatingChange={setNewRating}
         onSubmitReview={handleSubmitReview}
       />
+
 
       <RelatedProducts products={relatedProducts} />
     </div>
