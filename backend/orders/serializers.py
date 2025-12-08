@@ -1,5 +1,55 @@
 from rest_framework import serializers
 from .models import Order, OrderItem, Complaint
+from .models import Preorder
+
+class PreOrderSerializer(serializers.ModelSerializer):
+    product_name = serializers.CharField(source='product.name', read_only=True)
+    product_price = serializers.SerializerMethodField()
+    product_image = serializers.SerializerMethodField()
+    total_price = serializers.SerializerMethodField()
+    created_at = serializers.DateTimeField(source='preorder_date', read_only=True)
+
+    class Meta:
+        model = Preorder
+        fields = [
+            'id',
+            'product',
+            'product_name',
+            'product_price',
+            'product_image',
+            'quantity',
+            'total_price',
+            'created_at',
+        ]
+
+    def get_product_price(self, obj):
+        """Lấy giá ưu đãi (discounted_price) nếu có, ngược lại lấy giá gốc."""
+        try:
+            product = obj.product
+            if not product:
+                return 0
+            # Ưu tiên lấy giá khuyến mãi
+            price = product.discounted_price or product.original_price or 0
+            return float(price)
+        except Exception:
+            return 0
+
+    def get_product_image(self, obj):
+        request = self.context.get('request')
+        if obj.product and obj.product.image:
+            if request:
+                return request.build_absolute_uri(obj.product.image.url)
+            return obj.product.image.url
+        return None
+
+    def get_total_price(self, obj):
+        """Tính tổng = giá * số lượng"""
+        price = self.get_product_price(obj)
+        qty = obj.quantity or 0
+        return round(price * qty, 2)
+
+
+
 
 
 
@@ -10,6 +60,10 @@ class OrderItemSerializer(serializers.ModelSerializer):
     seller_name = serializers.CharField(source='product.seller.store_name', read_only=True)
     seller_phone = serializers.CharField(source='product.seller.phone', read_only=True)
     seller_id = serializers.IntegerField(source='product.seller.id', read_only=True)
+    category_name = serializers.CharField(source='product.category.name', read_only=True)
+    commission_rate = serializers.FloatField(source='product.category.commission_rate', read_only=True)
+    platform_commission = serializers.SerializerMethodField()
+    seller_amount = serializers.SerializerMethodField()
 
     class Meta:
         model = OrderItem
@@ -17,12 +71,29 @@ class OrderItemSerializer(serializers.ModelSerializer):
 
     def get_product_image(self, obj):
         request = self.context.get('request')
-        if obj.product and obj.product.image:
-            if hasattr(obj.product.image, 'url'):
-                if request:
-                    return request.build_absolute_uri(obj.product.image.url)
-                return obj.product.image.url
+        first_image = obj.product.images.first()  # ✅ Lấy ảnh đầu tiên
+        if first_image and hasattr(first_image.image, 'url'):
+            if request:
+                return request.build_absolute_uri(first_image.image.url)
+            return first_image.image.url
         return None
+
+    def get_platform_commission(self, obj):
+        """Tính phí sàn = (giá × số lượng) × commission_rate"""
+        if not obj.product or not obj.product.category:
+            return 0
+        item_amount = float(obj.price) * obj.quantity
+        commission_rate = obj.product.category.commission_rate or 0
+        return round(item_amount * commission_rate, 2)
+
+    def get_seller_amount(self, obj):
+        """Tính doanh thu nhà cung cấp = tổng tiền - phí sàn"""
+        if not obj.product or not obj.product.category:
+            return round(float(obj.price) * obj.quantity, 2)
+        item_amount = float(obj.price) * obj.quantity
+        commission_rate = obj.product.category.commission_rate or 0
+        commission = item_amount * commission_rate
+        return round(item_amount - commission, 2)
 
 
 
@@ -79,7 +150,9 @@ class OrderCreateSerializer(serializers.ModelSerializer):
 
                 try:
                     product = Product.objects.get(id=product_id)
-                    item_data_copy['product_image'] = product.image.name if product.image else ""
+                    first_image = product.images.first()
+                    item_data_copy['product_image'] = first_image.image.name if first_image else ""
+
                     item_data_copy['unit'] = product.unit
                     # Đảm bảo có giá sản phẩm
                     if 'price' not in item_data_copy or not item_data_copy['price']:
@@ -110,8 +183,17 @@ class OrderCreateSerializer(serializers.ModelSerializer):
 
                 # Tạo order data
                 order_data = validated_data.copy()
-                order_data['total_price'] = total_price
                 order_data.pop('user', None)  # Xóa user khỏi validated_data nếu có
+                
+                # Get shipping_fee from validated_data first, fallback to initial_data
+                if 'shipping_fee' not in order_data or order_data['shipping_fee'] is None:
+                    shipping_fee = self.initial_data.get('shipping_fee', 0)
+                    order_data['shipping_fee'] = shipping_fee
+                else:
+                    shipping_fee = order_data['shipping_fee']
+                
+                # Set total_price including shipping_fee
+                order_data['total_price'] = total_price + float(shipping_fee or 0)
 
                 # Tạo đơn hàng
                 order = Order.objects.create(user=user, **order_data)
@@ -153,6 +235,8 @@ class OrderSerializer(serializers.ModelSerializer):
     # Shop info derived from the first item's seller (orders can include multiple sellers theoretically)
     shop_name = serializers.SerializerMethodField()
     shop_phone = serializers.SerializerMethodField()
+    total_amount = serializers.DecimalField(source='total_price', max_digits=10, decimal_places=2, read_only=True)
+    order_id = serializers.IntegerField(source='id', read_only=True)
 
     class Meta:
         model = Order
@@ -179,7 +263,9 @@ class OrderSerializer(serializers.ModelSerializer):
                 float(item.price) * int(item.quantity) 
                 for item in instance.items.all()
             )
-            representation['total_price'] = str(total)
+            # Add shipping_fee to total
+            shipping_fee = float(instance.shipping_fee or 0)
+            representation['total_price'] = str(total + shipping_fee)
         return representation
     
 

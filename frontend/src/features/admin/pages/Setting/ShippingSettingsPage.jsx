@@ -11,23 +11,29 @@ export default function ShippingSettingsPage() {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
 
+  const token = localStorage.getItem("token");
+
   const fetchSettings = async () => {
     try {
-      const res = await axios.get(`${API_BASE_URL}/settings/shipping/`);
+      const res = await axios.get(`${API_BASE_URL}/settings/shipping/`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
       form.setFieldsValue(res.data);
     } catch (err) {
       message.error("Không tải được cài đặt vận chuyển.");
     }
   };
 
-  useEffect(() => {
-    fetchSettings();
-  }, []);
-
   const handleSave = async (values) => {
     setLoading(true);
     try {
-      await axios.put(`${API_BASE_URL}/settings/shipping/`, values);
+      await axios.put(`${API_BASE_URL}/settings/shipping/`, values, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
       message.success("Lưu cài đặt vận chuyển thành công ✅");
     } catch (err) {
       message.error("Lưu thất bại.");
@@ -37,7 +43,10 @@ export default function ShippingSettingsPage() {
   };
 
   return (
-    <Card title="Cấu hình vận chuyển thông minh" style={{ maxWidth: 800, margin: "0 auto" }}>
+    <Card
+      title="Cấu hình vận chuyển thông minh"
+      style={{ maxWidth: 800, margin: "0 auto" }}
+    >
       <Form form={form} layout="vertical" onFinish={handleSave}>
         <Form.Item label="Đối tác vận chuyển" name="provider">
           <Select placeholder="Chọn đối tác">
@@ -48,7 +57,10 @@ export default function ShippingSettingsPage() {
         </Form.Item>
 
         <Form.Item label="Quy tắc phí ship" name="fee_rule">
-          <Input.TextArea rows={3} placeholder="Ví dụ: miễn phí > 500k, tính theo km/trọng lượng..." />
+          <Input.TextArea
+            rows={3}
+            placeholder="Ví dụ: miễn phí > 500k, tính theo km/trọng lượng..."
+          />
         </Form.Item>
 
         <Form.Item label="Thời gian giao hàng dự kiến" name="delivery_time">
@@ -57,8 +69,15 @@ export default function ShippingSettingsPage() {
 
         <Form.Item style={{ textAlign: "right" }}>
           <Space>
-            <Button icon={<ReloadOutlined />} onClick={fetchSettings}>Tải lại</Button>
-            <Button type="primary" htmlType="submit" icon={<SaveOutlined />} loading={loading}>
+            <Button icon={<ReloadOutlined />} onClick={fetchSettings}>
+              Tải lại
+            </Button>
+            <Button
+              type="primary"
+              htmlType="submit"
+              icon={<SaveOutlined />}
+              loading={loading}
+            >
               Lưu cài đặt
             </Button>
           </Space>

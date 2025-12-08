@@ -60,24 +60,24 @@ export default function NotificationsPage() {
   };
 
   return (
-    <div style={{ padding: 16 }}>
-      <div className="flex items-center justify-between" style={{ marginBottom: 12 }}>
-        <Space>
-          <h2 style={{ margin: 0 }}>Quản lý Thông báo & Hệ thống</h2>
+    <div className="container px-2 px-md-4 py-3">
+      <div className="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between" style={{ marginBottom: 12 }}>
+        <div className="d-flex align-items-center mb-3 mb-md-0">
+          <h2 className="mb-0 me-2 fs-4 fs-md-3">Thông báo</h2>
           <Badge count={unreadCount} overflowCount={99} />
-        </Space>
-        <Space>
-          <Button onClick={markAllRead} disabled={!items.length}>
+        </div>
+        <div className="d-flex flex-column flex-md-row gap-2">
+          <Button onClick={markAllRead} disabled={!items.length} block className="d-md-inline">
             Đánh dấu tất cả đã đọc
           </Button>
-          <Button danger onClick={clearAll} disabled={!items.length}>
+          <Button danger onClick={clearAll} disabled={!items.length} block className="d-md-inline">
             Xoá tất cả
           </Button>
-        </Space>
+        </div>
       </div>
 
       {!items.length ? (
-        <div className="flex justify-center items-center min-h-[200px]">
+        <div className="d-flex justify-content-center align-items-center" style={{ minHeight: "200px" }}>
           <Empty description="Chưa có thông báo" />
         </div>
       ) : (
@@ -86,27 +86,39 @@ export default function NotificationsPage() {
           dataSource={items}
           renderItem={(item) => (
             <List.Item
+              className="px-2 px-md-3"
               actions={[
                 !item.read ? (
-                  <Button key="read" type="link" onClick={() => markRead(item.id)}>
-                    Đánh dấu đã đọc
+                  <Button
+                    key="read"
+                    type="link"
+                    onClick={() => markRead(item.id)}
+                    className="p-0 d-inline d-md-inline"
+                  >
+                    <span className="d-inline d-md-none">Đọc</span>
+                    <span className="d-none d-md-inline">Đánh dấu đã đọc</span>
                   </Button>
                 ) : (
-                  <Text key="readed" type="secondary">Đã đọc</Text>
+                  <Text key="readed" type="secondary" className="d-inline d-md-inline">
+                    <span className="d-inline d-md-none">✓</span>
+                    <span className="d-none d-md-inline">Đã đọc</span>
+                  </Text>
                 ),
               ]}
             >
               <List.Item.Meta
                 title={
-                  <Space>
-                    {typeToTag(item.type)}
-                    <Text strong>{item.title}</Text>
-                    <Text type="secondary" style={{ fontSize: 12 }}>
+                  <div className="d-flex flex-column flex-md-row align-items-start align-items-md-center gap-2">
+                    <div className="d-flex align-items-center gap-2">
+                      {typeToTag(item.type)}
+                      <Text strong className="mb-0">{item.title}</Text>
+                    </div>
+                    <Text type="secondary" style={{ fontSize: 12 }} className="ms-md-auto">
                       {new Date(item.created_at).toLocaleString("vi-VN")}
                     </Text>
-                  </Space>
+                  </div>
                 }
-                description={<Text>{item.message}</Text>}
+                description={<Text className="mt-1">{item.message}</Text>}
               />
             </List.Item>
           )}

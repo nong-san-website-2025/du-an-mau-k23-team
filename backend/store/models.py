@@ -1,7 +1,7 @@
 from django.db import models
 
 class Store(models.Model):
-    name = models.CharField(max_length=255)
+    name = models.CharField(max_length=255, db_index=True)
     address = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     image = models.ImageField(upload_to='stores/', blank=True, null=True)

@@ -1,22 +1,34 @@
-// pages/AdminFlashSalePage.jsx
 import React, { useState, useEffect } from "react";
 import {
   Table,
   Button,
-  Space,
   Tag,
-  Popconfirm,
   message,
   Typography,
   Card,
+  Badge,
+  Tooltip,
+  Input,
+  DatePicker,
+  Row,
+  Col,
+  Space,
 } from "antd";
-import { PlusOutlined, EditOutlined, DeleteOutlined } from "@ant-design/icons";
+import {
+  PlusOutlined,
+  SearchOutlined,
+  EditOutlined,
+  DeleteOutlined,
+} from "@ant-design/icons";
 import FlashSaleModal from "../../components/FlashSaleAdmin/FlashSaleModal";
 import { getFlashSales, deleteFlashSale } from "../../services/flashsaleApi";
 import moment from "moment";
-import { intcomma } from "../../../../utils/format";
+import { intcomma } from "../../../../utils/format"; // Đảm bảo đường dẫn đúng
+import AdminPageLayout from "../../components/AdminPageLayout";
+import ButtonAction from "../../../../components/ButtonAction"; // ✅ Import component tái sử dụng
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
+const { RangePicker } = DatePicker;
 
 const FlashSalePage = () => {
   const [data, setData] = useState([]);
@@ -29,17 +41,14 @@ const FlashSalePage = () => {
     try {
       const res = await getFlashSales();
       if (Array.isArray(res.data)) {
-        // ✅ GIỮ NGUYÊN CẤU TRÚC — KHÔNG FLATTEN
-        setData(res.data);
+        // Sắp xếp theo mới nhất
+        const sortedData = res.data.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        setData(sortedData);
       } else {
-        console.error("Dữ liệu không phải mảng:", res.data);
         setData([]);
-        message.error("Dữ liệu Flash Sale không hợp lệ");
       }
     } catch (err) {
-      console.error("Lỗi khi tải Flash Sale:", err);
       message.error("Không tải được danh sách Flash Sale");
-      setData([]);
     } finally {
       setLoading(false);
     }
@@ -49,41 +58,63 @@ const FlashSalePage = () => {
     loadData();
   }, []);
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (record) => {
     try {
-      await deleteFlashSale(id);
-      message.success("Xóa Flash Sale thành công");
+      await deleteFlashSale(record.id);
+      message.success("Đã xóa chương trình Flash Sale");
       loadData();
     } catch (err) {
       message.error("Xóa thất bại");
     }
   };
 
+  // Cấu hình Action Buttons
+  const getActions = (record) => [
+    {
+      actionType: "edit",
+      tooltip: "Chỉnh sửa chương trình",
+      icon: <EditOutlined />,
+      onClick: (r) => {
+        setEditingRecord(r);
+        setModalVisible(true);
+      },
+    },
+    {
+      actionType: "delete",
+      tooltip: "Xóa chương trình",
+      icon: <DeleteOutlined />,
+      confirm: {
+        title: "Xóa Flash Sale?",
+        description: "Hành động này không thể hoàn tác.",
+        okText: "Xóa ngay",
+        cancelText: "Hủy",
+      },
+      onClick: (r) => handleDelete(r),
+    },
+  ];
+
   const columns = [
     {
-      title: "ID",
-      dataIndex: "id",
-      key: "id",
-      width: 80,
-    },
-    {
-      title: "Thời gian",
+      title: "Khung giờ",
       key: "time",
-      render: (_, record) => (
-        <div>
-          <div>
-            {moment(record.start_time).local().format("DD/MM HH:mm")}→{" "}
-            {moment(record.end_time).local().format("DD/MM HH:mm")}
-          </div>
-        </div>
-      ),
-      width: 200,
+      width: 250,
+      render: (_, record) => {
+         const start = moment(record.start_time);
+         const end = moment(record.end_time);
+         return (
+             <div style={{ display: 'flex', flexDirection: 'column' }}>
+                 <Text strong>{start.format("HH:mm DD/MM")} - {end.format("HH:mm DD/MM")}</Text>
+                 <Text type="secondary" style={{ fontSize: 12 }}>{end.diff(start, 'hours')} giờ diễn ra</Text>
+             </div>
+         )
+      }
     },
     {
-      title: "Sản phẩm",
+      title: "Số lượng sản phẩm",
       key: "product_count",
+      align: 'center',
       render: (_, record) => (
-        <Tag color="blue">
+        <Tag color="geekblue" style={{ fontSize: 13, padding: "4px 10px" }}>
           {record.flashsale_products?.length || 0} sản phẩm
         </Tag>
       ),
@@ -92,140 +123,136 @@ const FlashSalePage = () => {
       title: "Trạng thái",
       dataIndex: "is_active",
       key: "status",
+      width: 180,
       render: (isActive, record) => {
         const now = moment();
         const start = moment(record.start_time);
         const end = moment(record.end_time);
-        const isOngoing = now.isBetween(start, end, null, "[]");
+        
+        let statusConfig = { color: "default", text: "Đã kết thúc", status: "default" };
 
-        if (!isActive) return <Tag>Chưa kích hoạt</Tag>;
-        if (isOngoing) return <Tag color="green">Đang diễn ra</Tag>;
-        if (now.isBefore(start)) return <Tag color="blue">Sắp diễn ra</Tag>;
-        return <Tag color="default">Đã kết thúc</Tag>;
+        if (!isActive) {
+            statusConfig = { color: "error", text: "Đang ẩn", status: "error" };
+        } else if (now.isBetween(start, end)) {
+            statusConfig = { color: "processing", text: "Đang diễn ra", status: "processing" };
+        } else if (now.isBefore(start)) {
+            statusConfig = { color: "warning", text: "Sắp diễn ra", status: "warning" };
+        }
+
+        return <Badge status={statusConfig.status} text={statusConfig.text} />;
       },
     },
     {
-      title: "Hành động",
+      title: "Thao tác",
       key: "action",
-      width: 180,
+      width: 100,
+      fixed: "right",
       render: (_, record) => (
-        <Space>
-          <Button
-            icon={<EditOutlined />}
-            onClick={() => {
-              setEditingRecord(record);
-              setModalVisible(true);
-            }}
-          >
-            Sửa
-          </Button>
-          <Popconfirm
-            title="Xóa toàn bộ Flash Sale này?"
-            onConfirm={() => handleDelete(record.id)}
-            okText="Xóa"
-            cancelText="Hủy"
-          >
-            <Button danger icon={<DeleteOutlined />}>
-              Xóa
-            </Button>
-          </Popconfirm>
-        </Space>
+        <ButtonAction actions={getActions(record)} record={record} />
       ),
     },
   ];
 
-  return (
-    <div style={{ padding: "24px" }}>
-      <Card>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: 24,
-          }}
-        >
-          <Title level={3}>Quản lý Flash Sale</Title>
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => {
-              setEditingRecord(null);
-              setModalVisible(true);
-            }}
-          >
-            Tạo Flash Sale
-          </Button>
-        </div>
+  // Render bảng con (Nested Table) chuyên nghiệp hơn
+  const expandedRowRender = (record) => {
+    const productColumns = [
+        { title: 'Sản phẩm', dataIndex: 'product_name', key: 'name', render: (text) => <Text strong>{text}</Text> },
+        { title: 'Giá gốc', dataIndex: 'original_price', key: 'original', render: (val) => <Text delete type="secondary">{intcomma(val)}đ</Text> },
+        { 
+            title: 'Giá Flash', 
+            dataIndex: 'flash_price', 
+            key: 'flash',
+            render: (val, r) => (
+                <Space>
+                    <Text type="danger" strong>{intcomma(val)}đ</Text>
+                    <Tag color="red">-{Math.round(((r.original_price - val) / r.original_price) * 100)}%</Tag>
+                </Space>
+            )
+        },
+        { 
+            title: 'Đã bán / Tổng', 
+            key: 'stock',
+            render: (_, r) => {
+                const sold = r.stock - r.remaining_stock;
+                const percent = Math.round((sold / r.stock) * 100);
+                return (
+                    <div style={{ width: 150 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                            <span>Đã bán: {sold}</span>
+                            <span>Tổng: {r.stock}</span>
+                        </div>
+                        <div style={{ height: 6, background: '#f0f0f0', borderRadius: 3, marginTop: 4, overflow: 'hidden' }}>
+                             <div style={{ width: `${percent}%`, background: '#faad14', height: '100%' }}></div>
+                        </div>
+                    </div>
+                )
+            }
+        }
+    ];
+    return (
+        <Table 
+            columns={productColumns} 
+            dataSource={record.flashsale_products} 
+            pagination={false} 
+            size="small"
+            rowKey="id"
+            bordered
+        />
+    );
+  };
 
-        {/* ✅ Đóng thẻ Table đúng cú pháp */}
+  return (
+    <AdminPageLayout title="QUẢN LÝ FLASH SALE">
+      <Card bordered={false} className="c-shadow">
+        {/* Thanh công cụ lọc */}
+        <Row gutter={16} style={{ marginBottom: 20 }}>
+            <Col span={6}>
+                <Input prefix={<SearchOutlined />} placeholder="Tìm kiếm theo mã..." />
+            </Col>
+            <Col span={6}>
+                 <RangePicker style={{ width: '100%' }} placeholder={['Từ ngày', 'Đến ngày']} />
+            </Col>
+            <Col span={12} style={{ textAlign: 'right' }}>
+                <Button
+                    type="primary"
+                    icon={<PlusOutlined />}
+                    onClick={() => {
+                        setEditingRecord(null);
+                        setModalVisible(true);
+                    }}
+                    size="large"
+                >
+                    Tạo chương trình mới
+                </Button>
+            </Col>
+        </Row>
+
         <Table
           columns={columns}
           dataSource={data}
           rowKey="id"
           loading={loading}
-          pagination={{ pageSize: 10 }}
           expandable={{
-            expandedRowRender: (record) => (
-              <div style={{ padding: "16px 24px" }}>
-                <Title level={5} style={{ marginBottom: 16 }}>
-                  Danh sách sản phẩm ({record.flashsale_products?.length || 0})
-                </Title>
-                <Table
-                  dataSource={record.flashsale_products || []}
-                  rowKey="id"
-                  pagination={false}
-                  showHeader={false}
-                  size="small"
-                >
-                  <Table.Column
-                    title="Sản phẩm"
-                    render={(product) => (
-                      <div>
-                        <strong>{product.product_name}</strong>
-                        <div>
-                          {product.original_price?.toLocaleString()}đ →{" "}
-                          <Tag color="red">
-                            {intcomma(product.flash_price)}đ
-                          </Tag>
-                        </div>
-                      </div>
-                    )}
-                  />
-                  <Table.Column
-                    title="Số lượng"
-                    render={(product) =>
-                      `${product.stock - (product.remaining_stock || 0)} / ${product.stock}`
-                    }
-                  />
-                  <Table.Column
-                    title="Còn lại"
-                    render={(product) => (
-                      <Tag
-                        color={product.remaining_stock <= 0 ? "red" : "green"}
-                      >
-                        {product.remaining_stock || product.stock} còn
-                      </Tag>
-                    )}
-                  />
-                </Table>
-              </div>
-            ),
+            expandedRowRender,
             rowExpandable: (record) => record.flashsale_products?.length > 0,
           }}
-        />
-
-        <FlashSaleModal
-          visible={modalVisible}
-          onCancel={() => setModalVisible(false)}
-          onSuccess={() => {
-            setModalVisible(false);
-            loadData();
-          }}
-          record={editingRecord}
+          pagination={{ pageSize: 10, showSizeChanger: true }}
+          bordered
+          size="small"
         />
       </Card>
-    </div>
+
+      <FlashSaleModal
+        visible={modalVisible}
+        onCancel={() => setModalVisible(false)}
+        onSuccess={() => {
+          setModalVisible(false);
+          loadData();
+        }}
+        record={editingRecord}
+        existingSales={data}
+      />
+    </AdminPageLayout>
   );
 };
 

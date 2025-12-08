@@ -9,13 +9,13 @@ import DashboardPage from "../features/admin/pages/DashboardPage";
 import UsersPage from "../features/admin/pages/UsersPage";
 import ProfilePage from "../features/admin/pages/Users/ProfilePage";
 import ChangePasswordPage from "../features/admin/pages/Users/ChangePasswordPage";
-import StaffPage from "../features/admin/pages/StaffPage";
 
 // Orders & Complaints
 import OrdersPage from "../features/admin/pages/OrdersPage";
 import ComplaintsPage from "../features/admin/pages/ComplaintsPage";
 import UserReports from "../features/admin/pages/ComplaintAdmin/UserReports.jsx";
 import Coupons from "../features/admin/pages/ComplaintAdmin/Coupons.jsx";
+import ReviewsPage from "../features/admin/pages/ReviewsPage";
 
 // Vouchers & Wallet
 import VouchersPage from "../features/admin/pages/VouchersPage";
@@ -26,25 +26,22 @@ import NotificationsPage from "../pages/NotificationsPage.jsx";
 
 // Reports
 import ReportsPage from "../features/admin/pages/ReportsPage";
-import ReportRevenuePage from "../features/admin/pages/ReportRevenuePage";
-import ReportProductsPage from "../features/admin/pages/ReportProductsPage";  
-import ReportCancelRatePage from "../features/admin/pages/ReportCancelRatePage";
-import ReportCustomersPage from "../features/admin/pages/ReportCustomersPage";
-import ReportAgriculturePage from "../features/admin/pages/ReportAgriculturePage";
-import ReportOrdersPage from "../features/admin/pages/ReportOrdersPage";
+import ReportRevenuePage from "../features/admin/pages/StatisticAdmin/ReportRevenuePage.jsx";
+import ReportProductsPage from "../features/admin/pages/StatisticAdmin/ReportProductsPage.jsx";  
+import ReportCancelRatePage from "../features/admin/pages/StatisticAdmin/ReportCancelRatePage.jsx";
+import ReportCustomersPage from "../features/admin/pages/StatisticAdmin/ReportCustomersPage.jsx";
+import ReportAgriculturePage from "../features/admin/pages/StatisticAdmin/ReportAgriculturePage.jsx";
+import ReportOrdersPage from "../features/admin/pages/StatisticAdmin/ReportOrdersPage.jsx";
 
 
 
 
-
-// Support & Statistics
-import SupportPage from "../features/admin/pages/SupportPage";
 import StatisticsPage from "../features/admin/pages/StatisticsPage";
 
 // Shop management
 import SellersPage from "../features/admin/pages/Sellers/SellersPage";
-import ActiveLockedSellersPage from "../features/admin/pages/ShopPage/ActiveLockedSellersPage.jsx"; // ✅ bỏ .jsx thừa
-import ApprovalSellersPage from "../features/admin/pages/ShopPage/ApprovalSellersPage.jsx";
+import ActiveLockedSellersPage from "../features/admin/pages/SellerPage/ActiveLockedSellersPage.jsx"; // ✅ bỏ .jsx thừa
+import ApprovalSellersPage from "../features/admin/pages/SellerPage/ApprovalSellersPage.jsx";
 import ApprovalProductsPage from "../features/admin/pages/ProductPage/ApprovalProductsPage.jsx";
 import CategoryManagementPage from "../features/admin/pages/ProductPage/CategoryManagement.jsx";
 import Promotions from "../features/admin/pages/Promotions/PromotionsPage.jsx";
@@ -57,6 +54,7 @@ import MarketingAutomationPage from "../features/admin/pages/Setting/MarketingAu
 import LoyaltySettingsPage from "../features/admin/pages/Setting/LoyaltySettingsPage";
 import ThemeSettingsPage from "../features/admin/pages/Setting/ThemeSettingsPage";
 import MarketingAdminPage from './../features/admin/pages/MarketingAdmin/AdminMarketingPage';
+import AdminBlogs from "../features/admin/pages/BlogAdmin/AdminBlogs.jsx";
 
 export const adminRoutes = [
   <Route element={<AdminPrivateRoute />} key="admin-protect">
@@ -70,28 +68,30 @@ export const adminRoutes = [
       <Route path="profile" element={<ProfilePage />} />
       <Route path="change-password" element={<ChangePasswordPage />} />
 
-      {/* Staff */}
-      <Route path="staff" element={<StaffPage />} />
-
       {/* Orders & Complaints */}
       <Route path="orders" element={<OrdersPage />} />
       <Route path="complaints" element={<ComplaintsPage />} />
       <Route path="complaints/user-reports" element={<UserReports />} />
+      <Route path="reviews" element={<ReviewsPage />} />
 
       {/* Vouchers & Wallet */}
       <Route path="vouchers" element={<VouchersPage />} />
-      <Route path="wallet" element={<WalletPage />} />
+      <Route path="payments/wallets" element={<WalletPage />} />
+
 
       {/* Marketing & Promotions */}
       <Route path="notifications" element={<NotificationsPage />} />
       <Route path="promotions" element={<Promotions />} />
       <Route path="promotions/flashsale" element={<FlashSale />} />
       <Route path="marketing/banners" element={<MarketingAdminPage />} />
+      <Route path="marketing/blogs" element={<AdminBlogs />} />
       <Route path="promotions/coupons" element={<Coupons />} />
 
       {/* Reports */}
       <Route path="reports" element={<ReportsPage />} />
-      <Route path="reports/revenue" element={<ReportRevenuePage />} />
+
+      {/* Revenue */}
+      <Route path="revenue" element={<ReportRevenuePage />} />
       <Route path="reports/products" element={<ReportProductsPage />} />
       <Route path="reports/cancel-rate" element={<ReportCancelRatePage />} />
       <Route path="reports/customers" element={<ReportCustomersPage />} />
@@ -100,7 +100,6 @@ export const adminRoutes = [
 
 
       {/* Support & Statistics */}
-      <Route path="supports" element={<SupportPage />} />
       <Route path="statistics" element={<StatisticsPage />} />
 
       {/* Shop management */}

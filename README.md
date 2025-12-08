@@ -76,3 +76,5 @@ Nó sẽ tạo ra mẫu customer, selle
     - Mở app Expo trên điện thoại, quét cái mã này, nó sẽ hiển thị giao diện App ra
     - Khi làm việc với app thì chỉ cần chạy backend với app thôi, ko cần chạy frontend nữa
 
+ionic cap run android -l --external
+

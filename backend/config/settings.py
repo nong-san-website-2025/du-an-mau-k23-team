@@ -1,3 +1,9 @@
+# --- Fix Unicode encoding for Vietnamese characters on Windows
+import sys
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')
+    sys.stderr.reconfigure(encoding='utf-8')
+
 # --- File upload limits (tăng giới hạn để upload video)
 DATA_UPLOAD_MAX_MEMORY_SIZE = 104857600  # 100MB
 FILE_UPLOAD_MAX_MEMORY_SIZE = 104857600  # 100MB
@@ -13,6 +19,9 @@ load_dotenv()  # Load biến môi trường từ .env nếu có
 USE_TZ = True  # Django dùng timezone chuẩn UTC, nên giữ nguyên True
 TIME_ZONE = "Asia/Ho_Chi_Minh"  # Múi giờ Việt Nam
 
+USE_I18N = True
+USE_L10N = True
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # ⚠️ Lấy SECRET_KEY từ env để bảo mật khi deploy
@@ -24,7 +33,6 @@ SECRET_KEY = os.environ.get(
 DEBUG = os.environ.get("DEBUG", "True") == "True"
 
 ALLOWED_HOSTS = [
-    "127.0.0.1", "localhost", "10.0.2.2", "192.168.1.173", "10.10.9.177",
     "*"
 ]
 
@@ -38,6 +46,9 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django_extensions',
+    'django_rest_passwordreset',
+
 
     # Third party
     "rest_framework",
@@ -49,7 +60,7 @@ INSTALLED_APPS = [
 
     # Local apps
     "users", "sellers", "products", "reviews",
-    "cart", "orders", "payments", "store", "wallet",'complaints', "marketing", "promotions", "delivery", "chat", 'config',
+    "cart", "orders", "payments", "store", "wallet",'complaints', "marketing", "promotions", "delivery", "chat", 'config', 'search', 'blog',
 
     # Cloudinary
 
@@ -59,7 +70,11 @@ INSTALLED_APPS = [
     "dashboard",
 
     # "system_logs",
-    "system"
+    "system",
+
+    'system_settings',
+
+    
 ]
 
 # --- Email
@@ -68,7 +83,7 @@ EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'khoahuynhminh2005@gmail.com'
-EMAIL_HOST_PASSWORD = 'szqpkfjifpcyxwlq'
+EMAIL_HOST_PASSWORD = 'pmdv ikrs pglq etfh'
 
 # --- Facebook
 
@@ -139,13 +154,23 @@ if os.environ.get("DATABASE_URL"):
             ssl_require=True
         )
     }
+    DATABASES['default']['OPTIONS'] = DATABASES['default'].get('OPTIONS', {})
+    DATABASES['default']['OPTIONS']['client_encoding'] = 'UTF8'
 else:
     DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'ecom_db',               # tên database
+        'USER': 'postgres',             # user
+        'PASSWORD': '12345',     # mật khẩu
+        'HOST': 'localhost',          # hoặc IP server
+        'PORT': '5432',               # port mặc định
+        'OPTIONS': {
+            'client_encoding': 'UTF8',
         }
     }
+}
+
 # --- Auth
 AUTH_USER_MODEL = "users.CustomUser"
 AUTHENTICATION_BACKENDS = [
@@ -160,17 +185,13 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticatedOrReadOnly",
     ),
-    "DEFAULT_PERMISSION_CLASSES": [
-        "rest_framework.permissions.IsAuthenticated",
-    ],
     "DEFAULT_FILTER_BACKENDS": (
         "django_filters.rest_framework.DjangoFilterBackend",
         "rest_framework.filters.OrderingFilter",
         "rest_framework.filters.SearchFilter",
     ),
-    "DEFAULT_PERMISSION_CLASSES": (
-        "rest_framework.permissions.IsAuthenticated", ),
 }
+
 
 # --- Static & Media
 STATIC_URL = "/static/"
@@ -194,21 +215,48 @@ CLOUDINARY_STORAGE = {
 # --- CORS & CSRF
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",  # Vite dev server
+    "http://localhost:3000",  # Alternative React port
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:3000",
+]
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+    'accept',
+]
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:5173",
     "http://localhost:3000",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:3000",
 ]
 
 CSRF_TRUSTED_ORIGINS = [
+    "http://*.localhost",
+    "http://*.127.0.0.1",
+    "http://*.192.168.*.*",
     "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "http://localhost:8000",
-    "http://127.0.0.1:8000",
+
 ]
 
 # --- Others
-LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'UTC'
-USE_I18N = True
-USE_TZ = True
+LANGUAGE_CODE = 'vi'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 

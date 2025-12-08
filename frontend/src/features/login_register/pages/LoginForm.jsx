@@ -20,7 +20,6 @@ import {
 import { useCart } from "../../cart/services/CartContext";
 import { useAuth } from "../services/AuthContext";
 import ModalWrapper from "../components/ModalWrapper";
-import RegisterForm from "../components/RegisterForm";
 import ForgotPasswordForm from "../components/ForgotPasswordForm";
 import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
 import { jwtDecode } from "jwt-decode";
@@ -34,26 +33,38 @@ const GOOGLE_CLIENT_ID =
 export default function LoginForm() {
   const navigate = useNavigate();
   const { fetchCart } = useCart();
-  const { login } = useAuth();
+  const { login, register } = useAuth();
   const location = useLocation();
 
-  // State quản lý form
+  // State quản lý form đăng nhập
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   // State quản lý modal
-  const [showRegister, setShowRegister] = useState(false);
   const [showForgot, setShowForgot] = useState(false);
+
+  // State quản lý chế độ login/register
+  const [isRegisterMode, setIsRegisterMode] = useState(false);
+
+  // State quản lý form đăng ký
+  const [registerForm, setRegisterForm] = useState({
+    username: "",
+    email: "",
+    password: "",
+    password2: "",
+  });
 
   const { googleLogin } = useAuth();
 
   // Điều hướng theo vai trò
   const navigateByRole = (role) => {
-    switch (role) {
+    if (!role) return navigate("/");
+
+    switch (role.name) {
       case "admin":
-        navigate("/admin");
+        navigate("/admin/dashboard");
         break;
       case "seller":
         navigate("/seller-center");
@@ -65,7 +76,6 @@ export default function LoginForm() {
 
   const handleGoogleLogin = async (response) => {
     try {
-      console.log("Google OAuth raw response:", response);
 
       if (!response || !response.credential) {
         throw new Error("Không nhận được Google credential token");
@@ -73,7 +83,7 @@ export default function LoginForm() {
 
       // Gửi token Google lên Django để xác thực
       const res = await fetch(
-        "http://localhost:8000/api/users/auth/google-login/",
+        "http://localhost:8000/api/users/auth/google/",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -82,7 +92,6 @@ export default function LoginForm() {
       );
 
       const data = await res.json();
-      console.log("Google backend response:", data);
 
       if (!res.ok) {
         throw new Error(data.error || "Google login thất bại");
@@ -114,7 +123,7 @@ export default function LoginForm() {
   const handleFacebookLogin = async (accessToken) => {
     try {
       const res = await fetch(
-        "http://localhost:8000/api/users/auth/facebook-login/",
+        "http://localhost:8000/api/users/auth/facebook/",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -123,7 +132,6 @@ export default function LoginForm() {
       );
 
       const data = await res.json();
-      console.log("Facebook backend response:", data);
 
       if (!res.ok) {
         throw new Error(data.error || "Đăng nhập Facebook thất bại");
@@ -146,6 +154,22 @@ export default function LoginForm() {
     }
   };
 
+  const handleLoginSuccess = async (data) => {
+    // data.role phải có: 'admin', 'seller', 'user'
+    await fetchCart();
+
+    const params = new URLSearchParams(location.search);
+    const redirectPath = params.get("redirect");
+
+    if (redirectPath) {
+      navigate(redirectPath);
+    } else if (data.role) {
+      navigateByRole(data.role);
+    } else {
+      navigate("/"); // fallback
+    }
+  };
+
   // Xử lý đăng nhập
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -155,22 +179,71 @@ export default function LoginForm() {
     try {
       const result = await login(username, password);
       if (result.success) {
-        await fetchCart();
-
-        // 👇 Lấy redirect từ URL
-        const params = new URLSearchParams(location.search);
-        const redirectPath = params.get("redirect");
-
-        if (redirectPath) {
-          navigate(redirectPath); // Chuyển đến trang yêu cầu
-        } else {
-          navigateByRole(result.role); // Điều hướng theo vai trò
-        }
+        await handleLoginSuccess(result);
       } else {
         setError(result.error || "Đăng nhập thất bại, vui lòng thử lại.");
       }
     } catch (err) {
       setError("Có lỗi xảy ra, vui lòng thử lại sau.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Xử lý thay đổi form đăng ký
+  const handleRegisterChange = (e) => {
+    const { name, value } = e.target;
+    setRegisterForm((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  // Xử lý đăng ký
+  const handleRegisterSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+
+    if (
+      !registerForm.username ||
+      !registerForm.email ||
+      !registerForm.password ||
+      !registerForm.password2
+    ) {
+      setError("Vui lòng điền đầy đủ thông tin!");
+      return;
+    }
+
+    if (registerForm.password !== registerForm.password2) {
+      setError("Mật khẩu nhập lại không khớp!");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await register({
+        username: registerForm.username,
+        email: registerForm.email,
+        password: registerForm.password,
+        password2: registerForm.password2,
+      });
+
+      if (res?.success) {
+        await fetchCart();
+
+        const params = new URLSearchParams(location.search);
+        const redirectPath = params.get("redirect");
+
+        if (redirectPath) {
+          navigate(redirectPath);
+        } else {
+          navigate("/");
+        }
+      } else {
+        setError(res?.error || "Đăng ký thất bại, vui lòng thử lại!");
+      }
+    } catch (err) {
+      setError(err.response?.data?.detail || "Lỗi kết nối server!");
     } finally {
       setLoading(false);
     }
@@ -189,13 +262,14 @@ export default function LoginForm() {
         >
           {/* Bên trái: Logo + Tiêu đề */}
 
-          <Link
-            to="/"
+          <a
+            href="/"
             style={{
               textDecoration: "none",
               display: "flex",
               alignItems: "center",
-              gap: "12px",
+              gap: "0px",
+              cursor: "pointer",
             }}
           >
             <img
@@ -205,16 +279,15 @@ export default function LoginForm() {
                 width: 40,
                 height: 40,
                 objectFit: "cover",
-                cursor: "pointer",
               }}
             />
             <Typography
               variant="h6"
-              sx={{ fontWeight: "bold", color: "#4caf50", cursor: "pointer" }}
+              sx={{ fontWeight: "bold", color: "#195a34" }}
             >
               GreenFarm
             </Typography>
-          </Link>
+          </a>
 
           {/* Bên phải: Các icon hỗ trợ */}
           <div className="d-flex align-items-center gap-3">
@@ -311,7 +384,7 @@ export default function LoginForm() {
                 align="center"
                 sx={{ color: "black", mb: 2 }}
               >
-                Đăng nhập
+                {isRegisterMode ? "Đăng ký" : "Đăng nhập"}
               </Typography>
 
               <Typography
@@ -320,78 +393,184 @@ export default function LoginForm() {
                 color="text.secondary"
                 mb={3}
               >
-                Chào mừng bạn trở lại với GreenFarm
+                {isRegisterMode
+                  ? "Tạo tài khoản GreenFarm"
+                  : "Chào mừng bạn trở lại với GreenFarm"}
               </Typography>
 
               {/* Form đăng nhập */}
-              <form onSubmit={handleSubmit}>
-                <TextField
-                  label="Tên đăng nhập"
-                  variant="outlined"
-                  fullWidth
-                  margin="normal"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  autoFocus
-                  required
-                />
+              {!isRegisterMode ? (
+                <form onSubmit={handleSubmit}>
+                  <TextField
+                    label="Tên đăng nhập"
+                    variant="outlined"
+                    fullWidth
+                    margin="normal"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    autoFocus
+                    required
+                  />
 
-                <TextField
-                  label="Mật khẩu"
-                  type="password"
-                  variant="outlined"
-                  fullWidth
-                  margin="normal"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
+                  <TextField
+                    label="Mật khẩu"
+                    type="password"
+                    variant="outlined"
+                    fullWidth
+                    margin="normal"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
 
-                {error && (
-                  <Typography color="error" variant="body2" mt={1} mb={2}>
-                    {error}
-                  </Typography>
-                )}
-
-                <Button
-                  type="submit"
-                  variant="contained"
-                  fullWidth
-                  sx={{
-                    mt: 2,
-                    py: 1.2,
-                    fontWeight: "bold",
-                    backgroundColor: "#4caf50",
-                    "&:hover": { backgroundColor: "#43a047" },
-                  }}
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <CircularProgress size={24} color="inherit" />
-                  ) : (
-                    "Đăng nhập"
+                  {error && (
+                    <Typography color="error" variant="body2" mt={1} mb={2}>
+                      {error}
+                    </Typography>
                   )}
-                </Button>
-              </form>
+
+                  <Button
+                    type="submit"
+                    variant="contained"
+                    fullWidth
+                    sx={{
+                      mt: 2,
+                      py: 1.2,
+                      fontWeight: "bold",
+                      backgroundColor: "#4caf50",
+                      "&:hover": { backgroundColor: "#43a047" },
+                    }}
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <CircularProgress size={24} color="inherit" />
+                    ) : (
+                      "Đăng nhập"
+                    )}
+                  </Button>
+                </form>
+              ) : (
+                <form onSubmit={handleRegisterSubmit}>
+                  <TextField
+                    label="Tên đăng nhập"
+                    name="username"
+                    variant="outlined"
+                    fullWidth
+                    margin="normal"
+                    value={registerForm.username}
+                    onChange={handleRegisterChange}
+                    required
+                  />
+
+                  <TextField
+                    label="Email"
+                    name="email"
+                    type="email"
+                    variant="outlined"
+                    fullWidth
+                    margin="normal"
+                    value={registerForm.email}
+                    onChange={handleRegisterChange}
+                    required
+                  />
+
+                  <TextField
+                    label="Mật khẩu"
+                    name="password"
+                    type="password"
+                    variant="outlined"
+                    fullWidth
+                    margin="normal"
+                    value={registerForm.password}
+                    onChange={handleRegisterChange}
+                    required
+                  />
+
+                  <TextField
+                    label="Nhập lại mật khẩu"
+                    name="password2"
+                    type="password"
+                    variant="outlined"
+                    fullWidth
+                    margin="normal"
+                    value={registerForm.password2}
+                    onChange={handleRegisterChange}
+                    required
+                  />
+
+                  {error && (
+                    <Typography color="error" variant="body2" mt={1} mb={2}>
+                      {error}
+                    </Typography>
+                  )}
+
+                  <Button
+                    type="submit"
+                    variant="contained"
+                    fullWidth
+                    sx={{
+                      mt: 2,
+                      py: 1.2,
+                      fontWeight: "bold",
+                      backgroundColor: "#4caf50",
+                      "&:hover": { backgroundColor: "#43a047" },
+                    }}
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <CircularProgress size={24} color="inherit" />
+                    ) : (
+                      "Đăng ký"
+                    )}
+                  </Button>
+                </form>
+              )}
 
               {/* Quên mật khẩu + Đăng ký */}
               <Box display="flex" justifyContent="space-between" mt={2}>
-                <Link
-                  component="button"
-                  variant="body2"
-                  underline="hover"
-                  onClick={() => setShowForgot(true)}
-                >
-                  Quên mật khẩu?
-                </Link>
-                <Link
-                  component="button"
-                  variant="body2"
-                  underline="hover"
-                  onClick={() => setShowRegister(true)}
-                >
-                  Đăng ký
-                </Link>
+                {!isRegisterMode ? (
+                  <>
+                    <Link
+                      component="button"
+                      variant="body2"
+                      underline="hover"
+                      onClick={() => setShowForgot(true)}
+                    >
+                      Quên mật khẩu?
+                    </Link>
+                    <Link
+                      component="button"
+                      variant="body2"
+                      underline="hover"
+                      onClick={() => {
+                        setIsRegisterMode(true);
+                        setError("");
+                      }}
+                    >
+                      Đăng ký
+                    </Link>
+                  </>
+                ) : (
+                  <Link
+                    component="button"
+                    variant="body2"
+                    underline="hover"
+                    onClick={() => {
+                      setIsRegisterMode(false);
+                      setError("");
+                      setRegisterForm({
+                        username: "",
+                        email: "",
+                        password: "",
+                        password2: "",
+                      });
+                    }}
+                    fullWidth
+                    sx={{ textAlign: "center" }}
+                  >
+                    Quay lại đăng nhập
+                  </Link>
+                )}
               </Box>
 
               {/* Divider */}
@@ -424,13 +603,6 @@ export default function LoginForm() {
             </Paper>
           </div>
         </div>
-
-        {/* Modal Đăng ký */}
-        {showRegister && (
-          <ModalWrapper title="Đăng ký" onClose={() => setShowRegister(false)}>
-            <RegisterForm onClose={() => setShowRegister(false)} />
-          </ModalWrapper>
-        )}
 
         {/* Modal Quên mật khẩu */}
         {showForgot && (

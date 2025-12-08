@@ -52,6 +52,13 @@ class CustomUser(AbstractUser):
         blank=True,
         null=True
     )
+    
+    wallet_balance = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+        help_text="Số dư ví tiền của người dùng"
+    )
 
     def save(self, *args, **kwargs):
         # Nếu superuser thì auto gán role=admin
@@ -121,3 +128,88 @@ class PointHistory(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.points} điểm - {self.date}"
+
+
+class UserWalletTransaction(models.Model):
+    TRANSACTION_TYPE_CHOICES = [
+        ('deposit', 'Nạp tiền'),
+        ('withdraw', 'Rút tiền'),
+        ('payment', 'Chi tiêu'),
+        ('refund', 'Hoàn tiền'),
+        ('adjustment', 'Điều chỉnh'),
+    ]
+    
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="wallet_transactions")
+    amount = models.DecimalField(max_digits=12, decimal_places=2, help_text="Số tiền giao dịch")
+    transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPE_CHOICES)
+    
+    description = models.TextField(blank=True, null=True, help_text="Mô tả giao dịch")
+    reference_id = models.CharField(
+        max_length=100, 
+        blank=True, 
+        null=True,
+        help_text="ID đơn hàng, hoàn tiền, v.v."
+    )
+    
+    balance_before = models.DecimalField(
+        max_digits=12, 
+        decimal_places=2,
+        help_text="Số dư trước giao dịch"
+    )
+    balance_after = models.DecimalField(
+        max_digits=12, 
+        decimal_places=2,
+        help_text="Số dư sau giao dịch"
+    )
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', '-created_at']),
+        ]
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.transaction_type} - {self.amount} - {self.created_at}"
+
+
+class Notification(models.Model):
+    """
+    Model to store user notifications
+    """
+    TYPE_CHOICES = (
+        ('order_created', 'Đơn hàng mới'),
+        ('order_status_changed', 'Cập nhật đơn hàng'),
+        ('review_reply', 'Phản hồi đánh giá'),
+        ('complaint', 'Khiếu nại'),
+        ('wallet', 'Ví tiền'),
+        ('voucher', 'Voucher'),
+        ('system', 'Hệ thống'),
+    )
+    
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="notifications")
+    type = models.CharField(max_length=50, choices=TYPE_CHOICES, default='system')
+    title = models.CharField(max_length=255)
+    message = models.TextField()
+    detail = models.TextField(blank=True, null=True)
+    
+    # Metadata (JSON format for flexible data)
+    metadata = models.JSONField(blank=True, null=True, help_text="Additional data like order_id, status, etc.")
+    
+    # Read status
+    is_read = models.BooleanField(default=False)
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    read_at = models.DateTimeField(blank=True, null=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', '-created_at']),
+            models.Index(fields=['user', 'is_read']),
+        ]
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.title} - {self.created_at}"

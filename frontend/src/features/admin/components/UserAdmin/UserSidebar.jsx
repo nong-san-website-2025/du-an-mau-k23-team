@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { Select, Modal, Input } from "antd";
 import { useTranslation } from "react-i18next";
+import { roleLabel } from "./roleUtils";
 
 export default function UserSidebar({
   roles,
@@ -63,7 +64,7 @@ export default function UserSidebar({
         </Select.Option>
         {roles.map((role) => (
           <Select.Option key={role.id} value={String(role.id)}>
-            {role.name}
+            {roleLabel(role.name)}
           </Select.Option>
         ))}
       </Select>

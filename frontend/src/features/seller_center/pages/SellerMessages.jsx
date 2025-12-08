@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { List, Avatar, Layout, Input, Button, Typography, Empty, Spin, message as antdMessage } from "antd";
-import { PictureOutlined } from "@ant-design/icons";
+import { List, Avatar, Layout, Input, Button, Typography, Empty, Spin, message as antdMessage, Drawer } from "antd";
+import { PictureOutlined, MenuOutlined } from "@ant-design/icons";
 
 const { Sider, Content } = Layout;
 const { Title, Text } = Typography;
@@ -20,6 +20,16 @@ export default function SellerMessages() {
   const [input, setInput] = useState("");
   const wsRef = useRef(null);
   const listRef = useRef(null);
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+  const [drawerVisible, setDrawerVisible] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const isMobile = windowWidth < 576;
 
   // Buyer profile resolved from users/<id>/ to ensure latest avatar + name
   const [buyerProfile, setBuyerProfile] = useState(null);
@@ -112,6 +122,7 @@ export default function SellerMessages() {
 
   const handleSelectConversation = (conv) => {
     setSelectedConv(conv);
+    if (isMobile) setDrawerVisible(false);
   };
 
   // Resolve buyer profile via users/<id>/ when a conversation is selected
@@ -379,41 +390,50 @@ export default function SellerMessages() {
 
   return (
     <Layout style={{ background: "#fff", height: "100%", minHeight: "80vh" }}>
-      <Sider width={320} style={{ background: "#fff", borderRight: "1px solid #eee" }}>
-        <div style={{ padding: 16 }}>
-          <Title level={4} style={{ marginBottom: 12 }}>
-            Hộp thư
-          </Title>
-          <Button onClick={fetchConversations}>Làm mới</Button>
-        </div>
-        {loadingConvs ? (
+      {!isMobile && (
+        <Sider width={320} style={{ background: "#fff", borderRight: "1px solid #eee" }}>
           <div style={{ padding: 16 }}>
-            <Spin /> Đang tải cuộc hội thoại...
+            <Title level={4} style={{ marginBottom: 12 }}>
+              Hộp thư
+            </Title>
+            <Button onClick={fetchConversations}>Làm mới</Button>
           </div>
-        ) : conversations.length === 0 ? (
-          <div style={{ padding: 16 }}>
-            <Empty description="Chưa có cuộc hội thoại" />
-          </div>
-        ) : (
-          <List
-            itemLayout="horizontal"
-            dataSource={conversations}
-            renderItem={(item) => (
-              <List.Item
-                onClick={() => handleSelectConversation(item)}
-                style={{ cursor: "pointer", background: selectedConv?.id === item.id ? "#f5faff" : "transparent", paddingLeft: 16, paddingRight: 16 }}
-              >
-                <List.Item.Meta
-                  avatar={<Avatar src={buyerAvatar(item)} alt={buyerName(item)}>{buyerName(item).charAt(0)}</Avatar>}
-                  title={<span>{buyerName(item)}</span>}
-                  description={<Text type="secondary">#{item.id}</Text>}
-                />
-              </List.Item>
-            )}
-          />
-        )}
-      </Sider>
+          {loadingConvs ? (
+            <div style={{ padding: 16 }}>
+              <Spin /> Đang tải cuộc hội thoại...
+            </div>
+          ) : conversations.length === 0 ? (
+            <div style={{ padding: 16 }}>
+              <Empty description="Chưa có cuộc hội thoại" />
+            </div>
+          ) : (
+            <List
+              itemLayout="horizontal"
+              dataSource={conversations}
+              renderItem={(item) => (
+                <List.Item
+                  onClick={() => handleSelectConversation(item)}
+                  style={{ cursor: "pointer", background: selectedConv?.id === item.id ? "#f5faff" : "transparent", paddingLeft: 16, paddingRight: 16 }}
+                >
+                  <List.Item.Meta
+                    avatar={<Avatar src={buyerAvatar(item)} alt={buyerName(item)}>{buyerName(item).charAt(0)}</Avatar>}
+                    title={<span>{buyerName(item)}</span>}
+                    description={<Text type="secondary">#{item.id}</Text>}
+                  />
+                </List.Item>
+              )}
+            />
+          )}
+        </Sider>
+      )}
       <Content style={{ padding: 16 }}>
+        {isMobile && (
+          <div style={{ marginBottom: 16 }}>
+            <Button icon={<MenuOutlined />} onClick={() => setDrawerVisible(true)}>
+              Chọn cuộc hội thoại
+            </Button>
+          </div>
+        )}
         {!selectedConv ? (
           <Empty description="Chọn một cuộc hội thoại để xem chi tiết" />
         ) : (
@@ -525,6 +545,43 @@ export default function SellerMessages() {
           </div>
         )}
       </Content>
+      <Drawer
+        title="Chọn cuộc hội thoại"
+        placement="left"
+        onClose={() => setDrawerVisible(false)}
+        open={drawerVisible}
+        width={320}
+      >
+        <div style={{ padding: 16 }}>
+          <Button onClick={fetchConversations}>Làm mới</Button>
+        </div>
+        {loadingConvs ? (
+          <div style={{ padding: 16 }}>
+            <Spin /> Đang tải cuộc hội thoại...
+          </div>
+        ) : conversations.length === 0 ? (
+          <div style={{ padding: 16 }}>
+            <Empty description="Chưa có cuộc hội thoại" />
+          </div>
+        ) : (
+          <List
+            itemLayout="horizontal"
+            dataSource={conversations}
+            renderItem={(item) => (
+              <List.Item
+                onClick={() => handleSelectConversation(item)}
+                style={{ cursor: "pointer", background: selectedConv?.id === item.id ? "#f5faff" : "transparent", paddingLeft: 16, paddingRight: 16 }}
+              >
+                <List.Item.Meta
+                  avatar={<Avatar src={buyerAvatar(item)} alt={buyerName(item)}>{buyerName(item).charAt(0)}</Avatar>}
+                  title={<span>{buyerName(item)}</span>}
+                  description={<Text type="secondary">#{item.id}</Text>}
+                />
+              </List.Item>
+            )}
+          />
+        )}
+      </Drawer>
     </Layout>
   );
 }

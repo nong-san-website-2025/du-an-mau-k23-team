@@ -15,6 +15,28 @@ const buildHeaders = (isAuth = false, isFormData = false) => {
   return headers;
 };
 
+function normalizeStatus(product) {
+  const status = (product.status || "").toLowerCase().trim();
+  const stock = Number(product.stock ?? 0);
+
+  // Ưu tiên nhận diện "sắp có"
+  if (
+    ["comingsoon", "coming_soon", "sắp có", "sap co", "sắpcó", "sapco"].some(
+      (s) => status.includes(s)
+    )
+  ) {
+    return "coming_soon";
+  }
+
+  // Nếu tồn kho hết → hết hàng
+  if (stock <= 0) {
+    return "out_of_stock";
+  }
+
+  // Còn lại → có sẵn
+  return "in_stock";
+}
+
 // ===== Helper: Refresh Token =====
 async function refreshToken() {
   const refresh = getRefreshToken();
@@ -46,20 +68,10 @@ async function request(endpoint, options = {}, { auth = false } = {}) {
 
   let response = await fetch(url, config);
 
-  // Nếu token hết hạn, thử refresh
-  if (response.status === 401 && auth) {
-    try {
-      const newToken = await refreshToken();
-      config.headers.Authorization = `Bearer ${newToken}`;
-      response = await fetch(url, config);
-    } catch {
-      throw new Error("Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại");
-    }
-  }
-
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || "Có lỗi xảy ra");
+    const text = await response.text(); // ✅ đọc lỗi chi tiết
+    console.error("❌ API Error:", response.status, text); // ✅ in log
+    throw new Error("Có lỗi xảy ra");
   }
 
   return response.json();
@@ -69,11 +81,21 @@ async function request(endpoint, options = {}, { auth = false } = {}) {
 export const productApi = {
   // ===== Public APIs =====
   getAllProducts() {
-    return request("/products/");
+    return request("/products/").then((data) =>
+      data.map((p) => ({
+        ...p,
+        availability_status: normalizeStatus(p),
+      }))
+    );
   },
 
   getProduct(id) {
-    return request(`/products/${id}/`, {}, { auth: true });
+    return request(`/products/${id}/`, {}, { auth: true }).then((p) => ({
+      ...p,
+      // ✅ Giữ nguyên p.status (là "approved", "pending", v.v.)
+      // ✅ Thêm field mới: availability_status hoặc displayStatus
+      availability_status: normalizeStatus(p), // hoặc displayStatus
+    }));
   },
 
   getCategories() {
@@ -95,17 +117,29 @@ export const productApi = {
   async getCategoriesWithProducts() {
     const categories = await this.getCategories();
 
+    // 1. Lọc Categories: Chỉ lấy những cái Active
+    const activeCategories = categories.filter(
+      (cat) => cat.status === "active"
+    );
+
     return Promise.all(
-      categories.map(async (category) => {
+      activeCategories.map(async (category) => {
         try {
           const [subcategories, allProducts] = await Promise.all([
             this.getSubcategories(category.id),
             this.getProductsByCategory(category.id),
           ]);
 
-          const subcategoriesWithProducts = subcategories.map((sub) => ({
+          // 2. Lọc Subcategories: Chỉ lấy những cái Active
+          const activeSubcategories = subcategories.filter(
+            (sub) => sub.status === "active"
+          );
+
+          const subcategoriesWithProducts = activeSubcategories.map((sub) => ({
             name: sub.name,
-            products: allProducts.filter((p) => p.subcategory_name === sub.name),
+            products: allProducts.filter(
+              (p) => p.subcategory_name === sub.name
+            ),
           }));
 
           return {
@@ -121,6 +155,17 @@ export const productApi = {
           };
         }
       })
+    );
+  },
+
+  preorderProduct(productId, quantity) {
+    return request(
+      `/products/${productId}/preorder/`,
+      {
+        method: "POST",
+        body: JSON.stringify({ quantity }),
+      },
+      { auth: true }
     );
   },
 
@@ -150,7 +195,10 @@ export const productApi = {
       "/products/",
       {
         method: "POST",
-        body: productData instanceof FormData ? productData : JSON.stringify(productData),
+        body:
+          productData instanceof FormData
+            ? productData
+            : JSON.stringify(productData),
       },
       { auth: true }
     );
@@ -161,7 +209,10 @@ export const productApi = {
       `/products/${id}/`,
       {
         method: "PUT",
-        body: productData instanceof FormData ? productData : JSON.stringify(productData),
+        body:
+          productData instanceof FormData
+            ? productData
+            : JSON.stringify(productData),
       },
       { auth: true }
     );
@@ -170,4 +221,13 @@ export const productApi = {
   deleteProduct(id) {
     return request(`/products/${id}/`, { method: "DELETE" }, { auth: true });
   },
+  getAll() {
+    return this.getAllProducts();
+  },
 };
+
+export const fetchNewProducts = () =>
+  fetch(`${API_URL}/products/new-products/`).then((res) => res.json());
+
+export const fetchBestSellers = () =>
+  fetch(`${API_URL}/products/best-sellers/`).then((res) => res.json());

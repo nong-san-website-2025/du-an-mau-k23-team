@@ -1,0 +1,71 @@
+/* components/Common/StatsSection.css */
+.common-stats-section {
+  margin-bottom: 24px;
+}
+
+/* Trong file StatsSection.css */
+.stat-card {
+  border-radius: 12px;
+  /* Thêm dòng này: Viền xám nhạt */
+  border: 1px solid #d9d9d9; 
+  /* Giữ bóng nhẹ hoặc bỏ đi tùy ý */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06); 
+  transition: all 0.3s ease;
+  height: 100%;
+}
+
+.stat-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+}
+
+.stat-card .ant-card-body {
+  padding: 24px;
+}
+
+.stat-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.stat-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: #8c8c8c;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.stat-value {
+  margin: 0 !important;
+  font-weight: 700;
+  font-family: 'Roboto', sans-serif;
+}
+
+.stat-trend {
+  margin-top: 8px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 500;
+}
+
+.trend-up { color: #52c41a; }
+.trend-down { color: #cf1322; }
+
+.stat-icon-wrapper {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+}

@@ -7,7 +7,7 @@
 .main-container {
   margin: 0 auto;
   width: 100%;
-  background-color: #e0ebeb;
+  background-color: #f5f5f5;
 }
 /* Reset cơ bản */
 html,
@@ -16,7 +16,6 @@ body {
   margin: 0;
   padding: 0;
   overflow-x: hidden; /* tránh scroll ngang */
-  
 
   /* Font chung */
   font-family:
@@ -63,7 +62,7 @@ code {
 
 /* Chỉ hiện thanh cuộn khi cần */
 body {
-  overflow-y: auto;
+  overflow-y: scroll !important;
 }
 
 header {

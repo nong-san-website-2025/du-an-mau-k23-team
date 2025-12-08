@@ -8,7 +8,6 @@ export default function GoogleLoginButton({ onSuccess }) {
       window.google.accounts.id.initialize({
         client_id: "359567482339-sbb0fd027fl35meo6prc9rbfpnl7b1e7.apps.googleusercontent.com",
         callback: (response) => {
-          console.log("Google credential:", response);
           onSuccess(response); // gửi toàn bộ object response về LoginForm
         },
       });

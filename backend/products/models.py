@@ -1,14 +1,17 @@
 from django.db import models
+from django.conf import settings    
+import unicodedata
 class Category(models.Model):
-    name = models.CharField(max_length=100)
+    name = models.CharField(max_length=100, db_index=True)
     key = models.CharField(max_length=50, unique=True)
-    icon = models.CharField(max_length=50, default='Package')
     created_at = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=20, default="active")
     image = models.ImageField(upload_to='categories/', blank=True, null=True)
+    is_featured = models.BooleanField(default=False)
+    commission_rate = models.FloatField(default=0.05)  # 5% mặc định
     
     def __str__(self):
-        return self.name
+        return f"{self.name} ({self.subcategories.count()} danh mục con)"
 
 class Subcategory(models.Model):
     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='subcategories')
@@ -25,48 +28,140 @@ class Product(models.Model):
         ("pending", "Pending"),
         ("approved", "Approved"),
         ("rejected", "Rejected"),
-        ("self_rejected", "Self Rejected"),
         ("banned", "Banned"),
+        ("hidden", "Hidden"),
     ]
+
+    AVAILABILITY_CHOICES = [
+        ("available", "Có sẵn"),
+        ("coming_soon", "Sắp có"),
+    ]
+
+    UNIT_CHOICES = [
+        ("kg", "Kilogram"),
+        ("g", "Gram"),
+        ("l", "Lít"),
+        ("ml", "Milliliter"),
+        ("unit", "Cái / Chiếc"),
+    ]
+
 
     seller = models.ForeignKey("sellers.Seller", on_delete=models.CASCADE, related_name="products")
     subcategory = models.ForeignKey(Subcategory, on_delete=models.CASCADE, related_name='products', null=True, blank=True)
     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='products', null=True, blank=True)
-    name = models.CharField(max_length=255)
+    name = models.CharField(max_length=255, db_index=True)
+    normalized_name = models.CharField(max_length=255, blank=True, db_index=True)
+
     description = models.TextField()
-    price = models.DecimalField(max_digits=10, decimal_places=2)
-    discount_percent = models.DecimalField(max_digits=5, decimal_places=2, default=0)
-    unit = models.CharField(max_length=20, default='kg')
+    original_price = models.DecimalField(max_digits=10, decimal_places=0)
+    discounted_price = models.DecimalField(max_digits=10, decimal_places=0, default=0)
+    unit = models.CharField(max_length=10, choices=UNIT_CHOICES, default="kg")
     stock = models.PositiveIntegerField(default=0)
-    image = models.ImageField(upload_to='products/', blank=True, null=True)
+    sold = models.IntegerField(default=0, blank=True)
+
+    # image = models.ImageField(upload_to='products/', blank=True, null=True)
     rating = models.DecimalField(max_digits=3, decimal_places=1, default=0)
     review_count = models.PositiveIntegerField(default=0)
     location = models.CharField(max_length=100, blank=True)
     brand = models.CharField(max_length=100, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-
+    estimated_quantity = models.PositiveIntegerField(default=10)  # Số lượng dự kiến có thể đặt trước
+    ordered_quantity = models.PositiveIntegerField(default=0) 
+    availability_status = models.CharField(max_length=50, default='available')  
     # Visibility and status
-    is_hidden = models.BooleanField(default=False)  # seller ẩn khỏi storefront
-    status = models.CharField(
+    is_hidden = models.BooleanField(default=False)
+    status = models.CharField(  # trạng thái kiểm duyệt (admin)
         max_length=20,
         choices=STATUS_CHOICES,
-        default="pending",  # khi seller tạo sản phẩm thì mặc định là pending
+        default="pending",
     )
-    
+
+    availability_status = models.CharField(  # trạng thái seller chọn
+        max_length=20,
+        choices=AVAILABILITY_CHOICES,   
+        default="available",
+    )
+
+    season_start = models.DateField(null=True, blank=True)
+    season_end = models.DateField(null=True, blank=True)
+    estimated_quantity = models.PositiveIntegerField(null=True, blank=True)
+
     def __str__(self):
         return self.name
     
+    def save(self, *args, **kwargs):
+        self.normalized_name = unicodedata.normalize('NFD', self.name)
+        self.normalized_name = ''.join(ch for ch in self.normalized_name if unicodedata.category(ch) != 'Mn')
+        self.normalized_name = self.normalized_name.lower().strip()
+        super().save(*args, **kwargs)
+
     @property
-    def discounted_price(self):
-        # Nếu có discount field trong DB (không thấy trong model, nhưng serializer dùng), xử lý an toàn
-        try:
-            if getattr(self, "discount", 0) > 0:
-                return self.price * (100 - getattr(self, "discount", 0)) / 100
-        except Exception:
-            pass
-        return self.price
+    def discount_percent(self):
+        """Tính phần trăm giảm giá từ giá gốc và giá giảm"""
+        if self.original_price and self.discounted_price:
+            try:
+                discount = 100 * (1 - self.discounted_price / self.original_price)
+                return round(discount, 2)
+            except Exception:
+                return 0
+        return 0
+
+    @property
+    def preordered_quantity(self):
+        """
+        Tính tổng số lượng khách đã đặt trước cho sản phẩm này
+        (áp dụng với trạng thái coming_soon).
+        """
+        return sum(item.quantity for item in self.order_items.all())
+    
+
+    @property
+    def sold_quantity(self):
+        from orders.models import OrderItem
+        total = OrderItem.objects.filter(product=self).aggregate(models.Sum("quantity"))["quantity__sum"]
+        return total or 0
+    
+    @property
+    def preordered_quantity(self):
+        """Tổng số lượng đặt trước cho sản phẩm này (chưa bị hủy)"""
+        total = self.preorders.filter(status="pending").aggregate(models.Sum("quantity"))["quantity__sum"]
+        return total or 0
+
+
 
 class ProductFeature(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="features")
     name = models.CharField(max_length=50)
+
+class ProductImage(models.Model):
+    product = models.ForeignKey(
+        Product, 
+        on_delete=models.CASCADE, 
+        related_name='images'
+    )
+    image = models.ImageField(upload_to='products/gallery/')
+    is_primary = models.BooleanField(default=False)
+    order = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['order', 'created_at']
+    
+    def __str__(self):
+        return f"{self.product.name} - Image {self.id}"
+
+
+# class Preorder(models.Model):
+#     user = models.ForeignKey(
+#         settings.AUTH_USER_MODEL,
+#         on_delete=models.CASCADE,
+#         related_name="preorders"
+#     )
+#     product = models.ForeignKey(
+#         Product,
+#         on_delete=models.CASCADE,
+#         related_name="preorders"  # 👈 thêm dòng này
+#     )
+#     quantity = models.PositiveIntegerField()
+#     created_at = models.DateTimeField(auto_now_add=True)

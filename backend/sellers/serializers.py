@@ -2,7 +2,11 @@ from rest_framework import serializers
 from .models import Seller
 from products.models import Product
 from rest_framework import serializers
-from .models import Seller, Shop, Order, Voucher, SellerFollow
+from .models import Seller, Shop, SellerFollow
+from orders.models import Order
+from promotions.models import Voucher
+from sellers.models import SellerActivityLog
+
 
 class ProductMiniSerializer(serializers.ModelSerializer):
     discounted_price = serializers.SerializerMethodField()
@@ -17,16 +21,19 @@ class ProductMiniSerializer(serializers.ModelSerializer):
 class SellerListSerializer(serializers.ModelSerializer):
     owner_username = serializers.CharField(source='user.username', read_only=True)
     user_email = serializers.EmailField(source="user.email", read_only=True)
-    created_at = serializers.DateTimeField(format="%d/%m/%Y %H:%M", read_only=True)
+    created_at = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%S.%fZ")
     followers_count = serializers.SerializerMethodField()
-
+    total_products = serializers.SerializerMethodField()
+    
     class Meta:
         model = Seller
-        fields = ['id', 'store_name', 'image', 'address', 'status', 'bio', 'owner_username', 'phone', 'user_email', 'created_at', 'followers_count']
+        fields = ['id', 'store_name', 'image', 'address', 'status', 'bio', 'owner_username', 'phone', 'user_email', 'created_at', 'followers_count', 'total_products']
 
     def get_followers_count(self, obj):
         return obj.followers.count()
 
+    def get_total_products(self, obj):
+        return obj.products.count()  # hoặc Product.objects.filter(store=obj).count()
 class SellerRegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = Seller
@@ -36,6 +43,10 @@ class SellerDetailSerializer(serializers.ModelSerializer):
     products = ProductMiniSerializer(many=True, read_only=True, source='product_set')
     followers_count = serializers.SerializerMethodField()
     is_following = serializers.SerializerMethodField()
+    total_products = serializers.SerializerMethodField()
+    owner_username = serializers.CharField(source='user.username', read_only=True)
+    user_email = serializers.EmailField(source="user.email", read_only=True)
+
 
     class Meta:
         model = Seller
@@ -48,13 +59,20 @@ class SellerDetailSerializer(serializers.ModelSerializer):
             'image',
             'created_at',
             'status',
+            'rejection_reason',
             'products',
             'followers_count',
             'is_following',
+            'total_products',
+            'owner_username',
+            'user_email'
         ]
 
     def get_followers_count(self, obj):
         return obj.followers.count()
+    
+    def get_total_products(self, obj):
+        return obj.products.count()  # hoặc Product.objects.filter(store=obj).count()
 
     def get_is_following(self, obj):
         request = self.context.get('request')
@@ -71,7 +89,7 @@ class SellerSerializer(serializers.ModelSerializer):
         model = Seller
         fields = [
             "id", "store_name", "bio", "address", "phone", "image",
-            "created_at", "user", "user_username", "user_email", 
+            "created_at", "user", "user_username", "user_email", "status", "rejection_reason"
         ]
         read_only_fields = ["created_at"]
 
@@ -109,3 +127,9 @@ class SellerFollowSerializer(serializers.ModelSerializer):
         model = SellerFollow
         fields = ["id", "user", "seller", "created_at"]
         read_only_fields = ["id", "created_at", "user"]
+
+class SellerActivityLogSerializer(serializers.ModelSerializer):
+    action_display = serializers.CharField(source="get_action_display", read_only=True)
+    class Meta:
+        model = SellerActivityLog
+        fields = ["id", "action", "action_display", "description", "created_at"]

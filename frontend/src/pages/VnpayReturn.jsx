@@ -19,7 +19,6 @@ const VnpayReturn = () => {
           vnpParams[key] = value;
         }
 
-        console.log('VNPAY Return Params:', vnpParams);
 
         // Gọi backend để xử lý VNPAY return
         const response = await API.post('payments/vnpay/return-api/', vnpParams);

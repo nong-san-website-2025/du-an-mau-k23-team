@@ -9,7 +9,9 @@ export default function OrderTableRow({
   formatCurrency,
   formatDate,
   expanded,
-  onCancel
+  onCancel,
+  platformCommission = 0,
+  sellerAmount = 0
 }) {
 
 
@@ -34,6 +36,12 @@ export default function OrderTableRow({
       </td>
       <td className="border-0 py-3 fw-bold">
         {formatCurrency(order.total_price)}
+      </td>
+      <td className="border-0 py-3 text-danger fw-semibold">
+        {formatCurrency(platformCommission)}
+      </td>
+      <td className="border-0 py-3 text-success fw-semibold">
+        {formatCurrency(sellerAmount)}
       </td>
       <td className="border-0 py-3">
         <span className={getStatusBadgeClass(order.status)}>

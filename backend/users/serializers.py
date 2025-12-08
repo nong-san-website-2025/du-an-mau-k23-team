@@ -43,100 +43,67 @@ class UserSerializer(serializers.ModelSerializer):
         required=False,
         allow_null=True
     )
+    # Include full addresses list for admin views
+    addresses = serializers.SerializerMethodField()
+
+    # Wallet balance present on CustomUser model
+    wallet_balance = serializers.SerializerMethodField()
+
     # Expose Django's date_joined as created_at for frontend compatibility
     created_at = serializers.DateTimeField(source='date_joined', read_only=True)
 
-    # Write-only input for changing; masked fields for display
-    email = serializers.EmailField(write_only=True, required=False)
-    phone = serializers.CharField(write_only=True, required=False, allow_blank=True, allow_null=True)
-    email_masked = serializers.SerializerMethodField(read_only=True)
-    phone_masked = serializers.SerializerMethodField(read_only=True)
+    # ✅ BỎ write_only=True để có thể đọc được email/phone
+    email = serializers.EmailField(required=False, allow_blank=True, allow_null=True)
+    phone = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+
     avatar = serializers.ImageField(required=False, allow_null=True)
+    can_delete = serializers.SerializerMethodField()
+    orders_count = serializers.SerializerMethodField()
+    total_spent = serializers.SerializerMethodField()
 
     class Meta:
         model = CustomUser
         fields = [
             "id", "username", "default_address",
             "full_name", "points", "role", "role_id", "created_at", "can_delete", "is_active",
-            "email", "phone", "email_masked", "phone_masked", "avatar"
+            "wallet_balance", "addresses",
+            "email", "phone", "avatar", "orders_count", "total_spent"  # ✅ Bỏ email_masked và phone_masked
         ]
 
     def get_default_address(self, obj):
         default = obj.addresses.filter(is_default=True).first()
         return default.location if default else None
 
+    def get_addresses(self, obj):
+        # Return serialized addresses for this user (only for admin/detail views)
+        try:
+            AddressSerializer = globals().get('AddressSerializer')
+            if AddressSerializer:
+                return AddressSerializer(obj.addresses.all(), many=True).data
+            # Fallback: simple dict list
+            return [
+                {
+                    'id': a.id,
+                    'recipient_name': a.recipient_name,
+                    'phone': a.phone,
+                    'location': a.location,
+                    'is_default': a.is_default,
+                }
+                for a in obj.addresses.all()
+            ]
+        except Exception:
+            return []
+
+    def get_wallet_balance(self, obj):
+        try:
+            # CustomUser has wallet_balance field
+            return float(obj.wallet_balance or 0)
+        except Exception:
+            return 0.0
+
     def get_history(self, obj):
         histories = obj.point_histories.order_by('-date')
         return UserPointsHistorySerializer(histories, many=True).data
-
-    # Mask helpers
-    def get_email_masked(self, obj):
-        if not obj.email:
-            return None
-        try:
-            local, domain = obj.email.split('@', 1)
-            if len(local) <= 2:
-                masked_local = local[0:1] + '*' * max(0, len(local)-1)
-            else:
-                masked_local = local[:2] + '*' * (len(local)-2)
-            return f"{masked_local}@{domain}"
-        except Exception:
-            return None
-
-    def get_phone_masked(self, obj):
-        if not obj.phone:
-            return None
-        return '*' * max(0, len(obj.phone)-2) + obj.phone[-2:]
-
-    def create(self, validated_data):
-        password = validated_data.pop("password", None)
-        user = CustomUser(**validated_data)
-        if password:
-            user.set_password(password)
-        else:
-            user.set_password("123456")  # gán default password nếu không có
-        user.save()
-        return user
-
-    def update(self, instance, validated_data):
-        password = validated_data.pop("password", None)
-        # Lấy role object nếu có
-        role_obj = validated_data.pop("role", None)
-        if role_obj is not None:
-            instance.role = role_obj
-
-        # Nếu FE gửi chuỗi mask (có '*'), bỏ qua cập nhật
-        if "email" in validated_data:
-            email_val = validated_data.get("email")
-            if email_val in ("", None) or '*' in str(email_val):
-                validated_data.pop("email", None)
-            else:
-                # Không đổi ngay: lưu pending_email để xác nhận qua link
-                instance.pending_email = email_val
-        if "phone" in validated_data:
-            phone_val = validated_data.get("phone")
-            if phone_val in ("", None) or '*' in str(phone_val):
-                validated_data.pop("phone", None)
-            else:
-                # Không đổi ngay: tạo OTP và lưu pending_phone (sẽ gửi OTP ở view)
-                instance.pending_phone = phone_val
-
-        # Chuẩn hoá các trường khác
-        for attr in list(validated_data.keys()):
-            if attr in ("email", "phone"):
-                validated_data.pop(attr, None)
-
-        # Cập nhật các trường còn lại (full_name, avatar, ...)
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-
-        if password:
-            instance.set_password(password)
-
-        instance.save()
-        return instance
-
-    can_delete = serializers.SerializerMethodField()
 
     def get_can_delete(self, obj):
         try:
@@ -156,7 +123,78 @@ class UserSerializer(serializers.ModelSerializer):
             print("[DEBUG] get_can_delete error:", e)
             return True
 
+    def get_orders_count(self, obj):
+        try:
+            return obj.orders.count()
+        except Exception as e:
+            print("[DEBUG] get_orders_count error:", e)
+            return 0
 
+    def get_total_spent(self, obj):
+        try:
+            from django.db.models import Sum
+            total = obj.orders.filter(status='success').aggregate(
+                total_spent=Sum('total_price')
+            )['total_spent'] or 0
+            return float(total)
+        except Exception as e:
+            print("[DEBUG] get_total_spent error:", e)
+            return 0.0
+
+    def create(self, validated_data):
+        password = validated_data.pop("password", None)
+        user = CustomUser(**validated_data)
+        if password:
+            user.set_password(password)
+        else:
+            user.set_password("123456")  # gán default password nếu không có
+        user.save()
+        return user
+
+    def update(self, instance, validated_data):
+        password = validated_data.pop("password", None)
+        
+        # Lấy role object nếu có
+        role_obj = validated_data.pop("role", None)
+        if role_obj is not None:
+            instance.role = role_obj
+
+        # Xử lý email change với pending verification
+        if "email" in validated_data:
+            email_val = validated_data.get("email")
+            if email_val and email_val != instance.email and '*' not in str(email_val):
+                # Không đổi ngay: lưu pending_email để xác nhận qua link
+                instance.pending_email = email_val
+            validated_data.pop("email", None)
+        
+        # Xử lý phone change với OTP
+        if "phone" in validated_data:
+            phone_val = validated_data.get("phone")
+            if phone_val and phone_val != instance.phone and '*' not in str(phone_val):
+                # Không đổi ngay: tạo OTP và lưu pending_phone
+                instance.pending_phone = phone_val
+            validated_data.pop("phone", None)
+
+        # Cập nhật các trường còn lại (full_name, avatar, ...)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        if password:
+            instance.set_password(password)
+
+        instance.save()
+        return instance
+
+    def to_representation(self, instance):
+        """
+        Return all fields including real email/phone for all users
+        """
+        data = super().to_representation(instance)
+        
+        # ✅ Luôn trả về email/phone thật, không mask
+        # Không cần logic kiểm tra quyền
+        
+        return data
 
 class RegisterSerializer(serializers.ModelSerializer):
     password2 = serializers.CharField(write_only=True)
@@ -270,15 +308,48 @@ class ChangePasswordSerializer(serializers.Serializer):
 
 class CustomUserSerializer(serializers.ModelSerializer):
     role = RoleSerializer(read_only=True)
-    role_id = serializers.PrimaryKeyRelatedField(queryset=Role.objects.all(), source='role', write_only=True)
+    role_id = serializers.PrimaryKeyRelatedField(queryset=Role.objects.all(), source='role', write_only=True, required=False)
+    email = serializers.EmailField(required=False, allow_blank=True, allow_null=True)
+    phone = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    pending_email = serializers.EmailField(read_only=True, allow_null=True)
+    pending_phone = serializers.CharField(read_only=True, allow_null=True)
+    created_at = serializers.DateTimeField(source='date_joined', read_only=True)
 
     class Meta:
         model = CustomUser
-        fields = ['id', 'username', 'email', 'role', 'role_id', "phone", "avatar", "full_name", "status"]
+        fields = ['id', 'username', 'email', 'role', 'role_id', "phone", "avatar", "full_name", "status", "pending_email", "pending_phone", "created_at"]
+
+    def update(self, instance, validated_data):
+        import random
+        from django.utils import timezone
+
+        # Xử lý email change với pending verification
+        if "email" in validated_data:
+            email_val = validated_data.get("email")
+            if email_val and email_val != instance.email and '*' not in str(email_val):
+                instance.pending_email = email_val
+                validated_data.pop("email", None)
+
+        # Xử lý phone change với OTP
+        if "phone" in validated_data:
+            phone_val = validated_data.get("phone")
+            if phone_val and phone_val != (instance.phone or "") and '*' not in str(phone_val):
+                instance.pending_phone = phone_val
+                otp = f"{random.randint(0, 999999):06d}"
+                instance.phone_otp = otp
+                instance.phone_otp_expires = timezone.now() + timezone.timedelta(minutes=10)
+                validated_data.pop("phone", None)
+
+        # Cập nhật các trường còn lại
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        instance.save()
+        return instance
 
 class EmployeeSerializer(serializers.ModelSerializer):
     role = RoleSerializer(read_only=True)
-    role_id = serializers.PrimaryKeyRelatedField(queryset=Role.objects.all(), source='role', write_only=True)
+    role_id = serializers.PrimaryKeyRelatedField(queryset=Role.objects.all(), source='role', write_only=True, required=False)
 
     class Meta:
         model = CustomUser
@@ -308,3 +379,21 @@ class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
         fields = ['id', 'username', 'email', 'full_name', 'phone']
+
+
+class UserWalletTransactionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = apps.get_model('users', 'UserWalletTransaction')
+        fields = [
+            'id', 'amount', 'transaction_type', 'description', 
+            'reference_id', 'balance_before', 'balance_after', 'created_at'
+        ]
+        read_only_fields = ['id', 'created_at']
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    """Serializer for Notification model"""
+    class Meta:
+        model = apps.get_model('users', 'Notification')
+        fields = ['id', 'type', 'title', 'message', 'detail', 'metadata', 'is_read', 'created_at', 'read_at']
+        read_only_fields = ['id', 'created_at']

@@ -2,7 +2,7 @@ import api from "../../../login_register/services/api";
 
 const sellerService = {
   getMe: async () => {
-    const res = await api.get("/sellers/me/");
+    const res = await api.get("/sellers/me");  
     return res.data;
   },
   update: async (id, data) => {

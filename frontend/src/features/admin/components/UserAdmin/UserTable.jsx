@@ -1,59 +1,101 @@
-// src/features/admin/components/UserTable.jsx
 import React, { useMemo, useState, useEffect } from "react";
-import { Table, Dropdown, Button, Modal, message } from "antd";
+import { Table, Modal, message, Tag, Avatar, Drawer, Spin } from "antd";
 import {
-  EllipsisOutlined,
-  EyeOutlined,
   DeleteOutlined,
+  LockOutlined,
+  UnlockOutlined,
+  EditOutlined,
+  MailOutlined,
+  PhoneOutlined,
+  ExclamationCircleOutlined,
+  LoadingOutlined,
+  CalendarOutlined,
 } from "@ant-design/icons";
 import axios from "axios";
-import UserAddModal from "./UserAddModal";
 import { useTranslation } from "react-i18next";
-import { exportUsersToExcel, exportUsersToPDF } from "./Utils/exportUtils";
 
-import { ExclamationCircleOutlined } from "@ant-design/icons";
+// Import các component con
+import UserAddModal from "./UserAddModal";
+import ButtonAction from "../../../../components/ButtonAction";
+import StatusTag from "../../../../components/StatusTag";
+
+// Import Form Sửa
+import UserEditForm from "../../components/UserAdmin/components/UserForms/UserEditForm";
+import { fetchRoles } from "./api/userApi";
 
 export default function UserTable({
   users = [],
   setUsers,
   loading = false,
   selectedRole = "all",
+  statusFilter = "all",
   searchTerm = "",
-  roles = [],
   checkedIds = [],
   setCheckedIds,
-  onShowDetail,
   triggerAddUser,
   setTriggerAddUser,
+  onRow,
 }) {
   const { t } = useTranslation();
   const { confirm } = Modal;
 
+  // --- STATE QUẢN LÝ ---
+  const [editingUser, setEditingUser] = useState(null); // User đang được chọn để sửa
+  const [isFetchingDetail, setIsFetchingDetail] = useState(false); // Loading khi đang lấy chi tiết user
+  const [roles, setRoles] = useState([]);
+  const [rolesLoading, setRolesLoading] = useState(false);
+
+  // Preload roles so edit can show role select immediately
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      setRolesLoading(true);
+      try {
+        const data = await fetchRoles();
+        if (mounted) setRoles(data || []);
+      } catch (err) {
+        console.error("Lỗi preload roles:", err);
+      } finally {
+        if (mounted) setRolesLoading(false);
+      }
+    };
+    load();
+    return () => (mounted = false);
+  }, []);
+
+  // --- LOGIC SEARCH & FILTER ---
   const norm = (v) =>
     (v ?? "").toString().normalize("NFC").toLowerCase().trim();
-  const sameId = (a, b) => String(a ?? "") === String(b ?? "");
 
   const filteredUsers = useMemo(() => {
     const s = norm(searchTerm);
-    const roleKey =
-      selectedRole === "all" || selectedRole === ""
-        ? null
-        : String(selectedRole);
-
-    return (Array.isArray(users) ? users : [])
-      .filter((u) => u?.role?.name?.toLowerCase() !== "admin")
-      .filter((u) => {
-        const hitSearch =
-          s === "" ||
-          norm(u.username).includes(s) ||
-          norm(u.full_name).includes(s) ||
-          norm(u.email).includes(s) ||
-          norm(u.phone).includes(s);
-
-        const hitRole = !roleKey || sameId(roleKey, u?.role?.id);
-        return hitSearch && hitRole;
-      });
-  }, [users, searchTerm, selectedRole]);
+    return (Array.isArray(users) ? users : []).filter((u) => {
+      if (selectedRole !== "all") {
+        let roleMatch = false;
+        const roleName = u?.role?.name?.toLowerCase();
+        if (selectedRole === "customer") {
+          roleMatch = roleName === "customer";
+        } else if (selectedRole === "seller") {
+          roleMatch = roleName === "seller";
+        } else if (selectedRole === "admin") {
+          roleMatch = roleName === "admin";
+        }
+        if (!roleMatch) return false;
+      }
+      if (statusFilter !== "all") {
+        const statusMatch =
+          statusFilter === "active" ? u.is_active : !u.is_active;
+        if (!statusMatch) return false;
+      }
+      const hitSearch =
+        s === "" ||
+        norm(u.username).includes(s) ||
+        norm(u.full_name).includes(s) ||
+        norm(u.email).includes(s) ||
+        norm(u.phone).includes(s);
+      return hitSearch;
+    });
+  }, [users, searchTerm, selectedRole, statusFilter]);
 
   const rowSelection = {
     selectedRowKeys: checkedIds,
@@ -62,25 +104,55 @@ export default function UserTable({
       disabled: record?.role?.name?.toLowerCase() === "admin",
     }),
   };
+
+  // --- LOGIC 1: LẤY CHI TIẾT USER ĐỂ SỬA (FIX LỖI HIỂN THỊ ID) ---
+  const handleEditClick = async (record) => {
+    // Bật trạng thái loading
+    setIsFetchingDetail(true);
+    try {
+      const token = localStorage.getItem("token");
+      // Gọi API lấy dữ liệu đầy đủ của user (đảm bảo Role object chuẩn)
+      const response = await axios.get(
+        `http://localhost:8000/api/users/management/${record.id}/`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      // Mở Drawer với dữ liệu đầy đủ vừa tải về
+      setEditingUser(response.data);
+    } catch (error) {
+      console.error("Lỗi lấy chi tiết user:", error);
+
+      // Fallback: Nếu lỗi mạng, dùng tạm dữ liệu từ bảng (dù có thể hiển thị chưa đẹp)
+      setEditingUser(record);
+    } finally {
+      setIsFetchingDetail(false);
+    }
+  };
+
+  const handleEditSave = (updatedUser) => {
+    // Cập nhật lại danh sách sau khi lưu thành công
+    setUsers((prev) =>
+      prev.map((u) => (u.id === updatedUser.id ? updatedUser : u))
+    );
+    setEditingUser(null);
+  };
+
+  // --- LOGIC 2: KHÓA/MỞ KHÓA TÀI KHOẢN ---
   const handleToggleUser = async (user) => {
-    console.log("Trạng thái hiện tại:", user.is_active);
     try {
       const res = await axios.patch(
-        `http://localhost:8000/api/users/${user.id}/toggle-active/`,
+        `http://localhost:8000/api/users/toggle-active/${user.id}/`,
         {},
         {
           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
         }
       );
-
-      console.log("Trạng thái sau khi toggle:", res.data.is_active);
-
       setUsers((prev) =>
         prev.map((u) =>
           u.id === user.id ? { ...u, is_active: res.data.is_active } : u
         )
       );
-
       message.success(
         res.data.is_active ? "Đã mở khóa tài khoản" : "Đã khóa tài khoản"
       );
@@ -90,9 +162,9 @@ export default function UserTable({
     }
   };
 
+  // --- LOGIC 3: XÓA USER ---
   const handleDeleteUser = (user) => {
     if (!user?.id) return;
-
     confirm({
       title: `Bạn có chắc chắn muốn xóa người dùng "${user.username}"?`,
       icon: <ExclamationCircleOutlined />,
@@ -101,16 +173,13 @@ export default function UserTable({
       cancelText: "Hủy",
       onOk: async () => {
         try {
-          await axios.delete(`http://localhost:8000/api/users/${user.id}/`, {
+          await axios.delete(`http://localhost:8000/api/users/management/${user.id}/`, {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("token")}`,
             },
           });
-
-          // Cập nhật danh sách users
           setUsers((prev) => prev.filter((u) => u.id !== user.id));
           setCheckedIds((prev) => prev.filter((id) => id !== user.id));
-
           message.success("Xóa người dùng thành công!");
         } catch (err) {
           console.error(err);
@@ -120,6 +189,7 @@ export default function UserTable({
     });
   };
 
+  // --- LOGIC 4: THÊM USER MỚI ---
   const [showAddModal, setShowAddModal] = useState(false);
   useEffect(() => {
     if (triggerAddUser) {
@@ -133,167 +203,235 @@ export default function UserTable({
     setShowAddModal(false);
   };
 
-  const columns = [
+  // --- CẤU HÌNH ACTIONS ---
+  const getActions = (record) => [
     {
-      title: "STT",
-      key: "index",
-      render: (_, __, index) => index + 1,
-      width: 60,
-      align: "center",
+      show: true,
+      actionType: "edit",
+      // Nếu đang loading đúng dòng này thì hiển thị icon loading
+      icon: isFetchingDetail ? <LoadingOutlined /> : <EditOutlined />,
+      tooltip: "Chỉnh sửa",
+      // SỬ DỤNG HÀM FETCH CHI TIẾT
+      onClick: () => handleEditClick(record),
     },
     {
-      title: t("Tên người dùng"),
-      dataIndex: "username",
-      key: "username",
-      width: 200,
-      sorter: (a, b) => (a.username || "").localeCompare(b.username || ""),
-      render: (text, record) => (
-        <div>
-          <div className="fw-bold">{text || "—"}</div>
-          <small className="text-muted">
-            {record.full_name || t("no_name")}
-          </small>
+      show: true,
+      actionType: "lock",
+      icon: record.is_active ? <LockOutlined /> : <UnlockOutlined />,
+      tooltip: record.is_active ? "Khóa tài khoản" : "Mở khóa tài khoản",
+      onClick: () => handleToggleUser(record),
+      confirm: {
+        title: record.is_active
+          ? "Bạn có chắc muốn khóa?"
+          : "Bạn có chắc muốn mở khóa?",
+        okText: "Xác nhận",
+        cancelText: "Hủy",
+        okButtonProps: { danger: record.is_active },
+      },
+    },
+    (() => {
+      // Determine why delete should be disabled, prefer explicit server-side `can_delete`
+      const cannotDeleteReason = (() => {
+        if (record?.role?.name && String(record.role.name).toLowerCase() === "admin")
+          return "Không thể xóa: tài khoản quản trị";
+        if (record?.can_delete === false)
+          return "Không thể xóa: người dùng đã có hoạt động trong hệ thống";
+        if (record?.orders_count && Number(record.orders_count) > 0)
+          return "Không thể xóa: đã phát sinh đơn hàng";
+        if (record?.wallet_balance && Number(record.wallet_balance) > 0)
+          return "Không thể xóa: còn số dư trong ví";
+        if (record?.total_spent && Number(record.total_spent) > 0)
+          return "Không thể xóa: đã phát sinh giao dịch";
+        return null;
+      })();
+
+      const disabled = Boolean(cannotDeleteReason);
+
+      return {
+        show: true,
+        actionType: "delete",
+        icon: <DeleteOutlined />,
+        tooltip: disabled ? (cannotDeleteReason || "Không thể xóa") : "Xóa tài khoản",
+        onClick: () => handleDeleteUser(record),
+        // Provide disabled flag and reason for ButtonAction to render nicer UI
+        buttonProps: {
+          danger: true,
+          disabled,
+          style: disabled ? { opacity: 0.65, cursor: "not-allowed" } : {},
+        },
+        disabledReason: cannotDeleteReason,
+      };
+    })(),
+  ];
+
+  // --- CẤU HÌNH CỘT ---
+  const columns = [
+    {
+      title: "Người dùng",
+      key: "user",
+      width: 250,
+      fixed: "left",
+      render: (_, record) => (
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <Avatar src={record.avatar} size={40}>
+            {record.full_name?.[0]}
+          </Avatar>
+          <div>
+            <div style={{ fontWeight: 600 }}>{record.full_name}</div>
+            <div style={{ fontSize: 12, color: "#888" }}>@{record.username}</div>
+          </div>
+        </div>
+      ),
+    },
+    // Cột 2: Liên hệ (Contact) - Tách riêng ra
+    {
+      title: "Liên hệ",
+      key: "contact",
+      width: 220,
+      render: (_, record) => (
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          {/* Email */}
+          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13 }}>
+            <MailOutlined style={{ color: "#1890ff" }} />
+            <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 200 }} title={record.email}>
+              {record.email || "—"}
+            </span>
+          </div>
+          {/* Phone */}
+          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13 }}>
+            <PhoneOutlined style={{ color: "#52c41a" }} />
+            <span>{record.phone || "—"}</span>
+          </div>
         </div>
       ),
     },
     {
-      title: t("Vai trò"),
+      title: "Vai trò",
       key: "role",
-      dataIndex: ["role", "name"],
       width: 120,
       align: "center",
-      sorter: (a, b) => (a.role?.name || "").localeCompare(b.role?.name || ""),
-      render: (role) => {
-        const roleName = role?.toLowerCase();
-        if (roleName === "seller")
-          return <span className="badge bg-success">{t("seller")}</span>;
-        if (roleName === "support")
-          return <span className="badge bg-warning">{t("support")}</span>;
-        return <span className="badge bg-secondary">{role || t("user")}</span>;
+      render: (_, record) => {
+        const rawRole = record.role?.name ?? "";
+        const roleKey = rawRole.toString().toLowerCase();
+
+        let displayRole = rawRole || "—";
+        let color = "default";
+
+        if (roleKey === "seller") {
+          displayRole = "Người bán";
+          color = "orange";
+        } else if (roleKey === "customer") {
+          displayRole = "Khách hàng";
+          color = "blue";
+        } else if (roleKey === "admin") {
+          displayRole = "Admin";
+          color = "red";
+        }
+
+        return (
+          <Tag color={color} style={{ borderRadius: 4, minWidth: 80, textAlign: 'center' }}>
+            {displayRole}
+          </Tag>
+        );
       },
     },
     {
-      title: t("Email"),
-      dataIndex: "email",
-      key: "email",
-      width: 200,
-      sorter: (a, b) => (a.email || "").localeCompare(b.email || ""),
+      title: "Ngày tham gia", // Cột mới thay thế cho Activity
+      key: "created_at",
+      width: 150,
+      align: "center",
+      render: (_, record) => {
+        // Lưu ý: Kiểm tra lại tên trường ngày tháng từ API của bạn (date_joined hoặc created_at)
+        const dateVal = record.date_joined || record.created_at;
+        return (
+          <div style={{ color: "#595959" }}>
+            {dateVal ? (
+              <>
+                <CalendarOutlined style={{ marginRight: 6, color: "#8c8c8c" }} />
+                {new Date(dateVal).toLocaleDateString("vi-VN")}
+              </>
+            ) : "—"}
+          </div>
+        );
+      }
     },
-    {
-      title: t("Số điện thoại"),
-      dataIndex: "phone",
-      key: "phone",
-      width: 140,
-      sorter: (a, b) => (a.phone || "").localeCompare(b.phone || ""),
-      render: (phone) => phone || t("no_phone"),
-    },
-
     {
       title: "Trạng thái",
       key: "status",
       width: 120,
       align: "center",
       render: (_, record) => (
-        <span
-          className={`badge ${record.is_active ? "bg-success" : "bg-danger"}`}
-        >
-          {record.is_active ? "Đang hoạt động" : "Đang khóa"}
-        </span>
+        <div style={{ display: "flex", justifyContent: "center" }}>
+          <StatusTag status={record.is_active ? "active" : "locked"} />
+        </div>
       ),
     },
     {
-      title: t("Hành động / Chi tiết"),
-      key: "actions_detail",
-      width: 140,
+      title: "Thao tác",
+      key: "actions",
+      width: 100,
+      fixed: "right",
       align: "center",
       render: (_, record) => (
-        <Dropdown
-          menu={{
-            items: [
-              {
-                key: "toggle",
-                label: (
-                  <span
-                    style={{
-                      color: record.is_active ? "orange" : "green",
-                      fontWeight: 500,
-                    }}
-                  >
-                    {record.is_active ? "Khóa tài khoản" : "Mở khóa tài khoản"}
-                  </span>
-                ),
-                onClick: () => handleToggleUser(record),
-              },
-              {
-                key: "delete",
-                label: (
-                  <span
-                    style={{
-                      color: record.can_delete ? "red" : "gray",
-                      cursor: record.can_delete ? "pointer" : "not-allowed",
-                      opacity: record.can_delete ? 1 : 0.5,
-                    }}
-                  >
-                    <DeleteOutlined className="me-2" />
-                    {t("Delete")}
-                  </span>
-                ),
-                disabled: !record.can_delete,
-                onClick: () => record.can_delete && handleDeleteUser(record),
-              },
-              {
-                key: "detail",
-                label: (
-                  <span
-                    style={{
-                      color: "blue",
-                      fontWeight: 500,
-                      cursor: "pointer",
-                    }}
-                    onClick={() => onShowDetail(record)}
-                  >
-                    <EyeOutlined className="me-2" />
-                    {t("Chi tiết")}
-                  </span>
-                ),
-              },
-            ],
-          }}
-          trigger={["click"]}
-        >
-          <Button icon={<EllipsisOutlined />} />
-        </Dropdown>
+        <ButtonAction actions={getActions(record)} record={record} />
       ),
     },
   ];
 
   return (
     <>
-      <div style={{ marginBottom: 16, display: "flex", gap: 8 }}>
-        <Button type="primary" onClick={() => exportUsersToExcel(users)}>
-          Xuất Excel
-        </Button>
-        <Button onClick={() => exportUsersToPDF(users)}>Xuất PDF</Button>
-      </div>
       <Table
         columns={columns}
         dataSource={filteredUsers}
         rowKey="id"
         loading={loading}
         rowSelection={rowSelection}
+        pagination={{
+          pageSize: 10,
+          showSizeChanger: true,
+          showQuickJumper: true,
+          showTotal: (total, range) =>
+            `${range[0]}-${range[1]} của ${total} người dùng`,
+        }}
         bordered
-        pagination={{ pageSize: 10 }}
-        size="small"
-        scroll={{ x: 1000 }}
+        size="middle"
+        scroll={{ x: 1200 }}
+        onRow={onRow}
+        style={{ background: "#fff" }}
       />
 
+      {/* Modal Thêm User */}
       {showAddModal && (
         <UserAddModal
-          visible={showAddModal} // chỉ cần 1 state
+          visible={showAddModal}
           onClose={() => setShowAddModal(false)}
           onUserAdded={handleUserAdded}
         />
       )}
+
+      {/* Drawer Edit User */}
+      <Drawer
+        title={`Sửa thông tin: ${editingUser?.full_name || editingUser?.username || "..."
+          }`}
+        placement="right"
+        width={Math.min(800, window.innerWidth)}
+        onClose={() => setEditingUser(null)}
+        open={!!editingUser}
+        destroyOnClose={true} // Reset form khi đóng
+        bodyStyle={{ padding: 0 }}
+        // Hiển thị thêm loading overlay nếu đang fetch (phòng hờ)
+        extra={isFetchingDetail && <Spin size="small" />}
+      >
+        {editingUser && (
+          <UserEditForm
+            editUser={editingUser}
+            roles={roles}
+            rolesLoading={rolesLoading}
+            onCancel={() => setEditingUser(null)}
+            onSave={handleEditSave}
+          />
+        )}
+      </Drawer>
     </>
   );
 }

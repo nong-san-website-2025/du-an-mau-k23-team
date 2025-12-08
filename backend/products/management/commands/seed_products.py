@@ -15,11 +15,8 @@ class Command(BaseCommand):
         with transaction.atomic():
             # 1. Tạo seller mẫu nếu chưa có
             if not Seller.objects.exists():
-                user = None
-                # Nếu bạn có model User liên kết, hãy tạo user trước
-                # Ví dụ: user = User.objects.create(username="seller1", ...)
                 seller = Seller.objects.create(
-                    user=user,
+                    user=None,
                     store_name="Nông Trại Xanh",
                     phone="0909123456",
                     address="Đà Lạt, Lâm Đồng"
@@ -87,7 +84,7 @@ class Command(BaseCommand):
                 )
                 subcategories.append(sub)
 
-            # 4. Dữ liệu mẫu
+            # 4. Dữ liệu tên sản phẩm mẫu
             product_names = [
                 "Táo Fuji", "Cam Sành", "Chuối Tiêu", "Xoài Cát", "Dưa Hấu", "Nho Đỏ",
                 "Dưa Chuột", "Cà Chua", "Cà Rốt", "Khoai Tây", "Bí Đỏ", "Ớt Chuông",
@@ -110,21 +107,7 @@ class Command(BaseCommand):
                 "Rau muống", "Rau ngót", "Rau dền", "Rau mồng tơi", "Rau sam",
             ]
 
-            # Làm sạch URL: loại bỏ khoảng trắng thừa
-            image_urls = [
-                "https://images.unsplash.com/photo-1567306226416-28f0efdc88ce",
-                "https://images.unsplash.com/photo-1572745590581-5c13a470b223",
-                "https://images.unsplash.com/photo-1574226516831-e1dff420e43e",
-                "https://images.unsplash.com/photo-1589923188900-4ae74f6e637d",
-                "https://images.unsplash.com/photo-1506806732259-39c2d0268443",
-                "https://images.unsplash.com/photo-1592928302807-83d8c6cf2c02",
-                "https://images.unsplash.com/photo-1601004890684-d8cbf643f5f2",
-                "https://images.unsplash.com/photo-1600195077073-2d6bbd330f4b",
-                "https://images.unsplash.com/photo-1604908177520-56b76a238a6a",
-                "https://images.unsplash.com/photo-1603079550014-bfcb8c7c0f4f",
-            ]
-
-            # 5. Tạo sản phẩm (chỉ khi chưa có)
+            # 5. Tạo sản phẩm (chỉ khi chưa có đủ 100)
             existing_count = Product.objects.count()
             if existing_count >= 100:
                 self.stdout.write(
@@ -138,9 +121,9 @@ class Command(BaseCommand):
             for i in range(num_to_create):
                 name = f"{random.choice(product_names)} ({i + 1})"
                 sub = random.choice(subcategories)
-                price = Decimal(random.randint(10, 300) * 1000)  # 10k → 300k
+                original_price = Decimal(random.randint(20, 500) * 1000)  # Giá gốc 20k - 500k
+                discounted_price = original_price * Decimal(random.uniform(0.7, 1.0))  # Giảm 0-30%
                 description = f"Sản phẩm {name} chất lượng cao, được chọn lọc kỹ lưỡng."
-                image_url = random.choice(image_urls)
 
                 Product.objects.create(
                     seller=seller,
@@ -148,16 +131,17 @@ class Command(BaseCommand):
                     subcategory=sub,
                     name=name,
                     description=description,
-                    price=price,
+                    original_price=original_price,
+                    discounted_price=discounted_price,
                     unit="kg",
                     stock=random.randint(5, 100),
-                    image=image_url,
                     rating=round(random.uniform(3.0, 5.0), 1),
                     review_count=random.randint(0, 200),
                     location="Đà Lạt",
                     brand="Nông sản Việt",
                     status="approved",
                 )
+
 
             self.stdout.write(
                 self.style.SUCCESS(f"✅ Đã tạo {num_to_create} sản phẩm nông sản mẫu.")

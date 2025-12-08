@@ -5,7 +5,13 @@ import { useNavigate } from "react-router-dom";
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000/api";
 // hoặc define lại nếu cần
 
-const RecommendedSection = ({ recommended, moreByUserPage, suggestLimit, onShowMore, loading }) => {
+const RecommendedSection = ({
+  recommended,
+  moreByUserPage,
+  suggestLimit,
+  onShowMore,
+  loading,
+}) => {
   const navigate = useNavigate();
 
   const renderProductCard = (product) => {
@@ -59,9 +65,21 @@ const RecommendedSection = ({ recommended, moreByUserPage, suggestLimit, onShowM
     <>
       {Object.keys(recommended).map((sub) => (
         <div key={sub} style={{ marginBottom: 24 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: 12,
+            }}
+          >
             <h4 style={{ margin: 0, color: "#52c41a" }}>{sub}</h4>
-            <Button type="link" onClick={() => navigate(`/search?subcategory=${encodeURIComponent(sub)}`)}>
+            <Button
+              type="link"
+              onClick={() =>
+                navigate(`/search?subcategory=${encodeURIComponent(sub)}`)
+              }
+            >
               Xem thêm
             </Button>
           </div>
@@ -81,7 +99,11 @@ const RecommendedSection = ({ recommended, moreByUserPage, suggestLimit, onShowM
                   size="small"
                 >
                   <Card.Meta
-                    title={<div className="text-truncate" style={{ minHeight: 40 }}>{p.name}</div>}
+                    title={
+                      <div className="text-truncate" style={{ minHeight: 40 }}>
+                        {p.name}
+                      </div>
+                    }
                     description={
                       <div style={{ color: "#d32f2f", fontWeight: "bold" }}>
                         {Number(p.price).toLocaleString()} đ

@@ -2,7 +2,6 @@ import React from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import Header from "./Header";
 import Footer from "./Footer";
-
 import GlobalChat from "../features/stores/components/GlobalChat.jsx";
 
 export default function Layout() {
@@ -25,6 +24,7 @@ export default function Layout() {
 
   return (
     <>
+      {/* <ScrollToTop /> */}
       <Header shouldFetchProfile={shouldFetchProfile} />
       <main className="py-0">
         <Outlet />

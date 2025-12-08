@@ -8,11 +8,14 @@ import {
   Descriptions,
   Button,
   Popconfirm,
+  Space,
 } from "antd";
 import ProductTable from "../../components/ProductAdmin/Product/ProductTable";
 import SellerSelect from "../../components/ProductAdmin/Product/SellerSelect";
-import axios from "axios";
 import CategorySelect from "../../components/ProductAdmin/Product/CategorySelect";
+import axios from "axios";
+import AdminPageLayout from "../../components/AdminPageLayout"; // ← Đường dẫn đúng
+import ProductDetailModal from "../../components/ProductAdmin/Product/ProductDetailModal";
 
 const { Option } = Select;
 
@@ -28,16 +31,13 @@ function getAuthHeaders() {
 const ApprovalProductsPage = () => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
-
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [sellerFilter, setSellerFilter] = useState("");
-
   const [sellers, setSellers] = useState([]);
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
-
   const [categoryFilter, setCategoryFilter] = useState("");
   const [categories, setCategories] = useState([]);
 
@@ -53,13 +53,16 @@ const ApprovalProductsPage = () => {
     }
   };
 
-  useEffect(() => {
-    fetchProducts();
-    fetchSellers();
-    fetchCategories();
-  }, []);
+  const fetchSellers = async () => {
+    try {
+      const res = await api.get("/sellers/", { headers: getAuthHeaders() });
+      setSellers(res.data);
+    } catch (err) {
+      console.error(err);
+      message.error("Không tải được danh sách cửa hàng");
+    }
+  };
 
-  // Lấy dữ liệu sản phẩm
   const fetchProducts = async () => {
     try {
       setLoading(true);
@@ -74,28 +77,16 @@ const ApprovalProductsPage = () => {
     }
   };
 
-  // Lấy danh sách cửa hàng
-  const fetchSellers = async () => {
-    try {
-      const res = await api.get("/sellers/", { headers: getAuthHeaders() });
-      setSellers(res.data);
-    } catch (err) {
-      console.error(err);
-      message.error("Không tải được danh sách cửa hàng");
-    }
-  };
-
   useEffect(() => {
     fetchProducts();
     fetchSellers();
+    fetchCategories();
   }, []);
 
-  // Bộ lọc dữ liệu
   const filteredData = data.filter((item) => {
     const matchesSearch =
       item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (item.seller_name || "").toLowerCase().includes(searchTerm.toLowerCase());
-
     const matchesStatus = statusFilter ? item.status === statusFilter : true;
     const matchesSeller = sellerFilter
       ? String(item.seller) === String(sellerFilter)
@@ -103,11 +94,9 @@ const ApprovalProductsPage = () => {
     const matchesCategory = categoryFilter
       ? String(item.category_id) === String(categoryFilter)
       : true;
-
     return matchesSearch && matchesStatus && matchesSeller && matchesCategory;
   });
 
-  // Các hành động đơn lẻ
   const handleApprove = async (record) => {
     try {
       await api.post(
@@ -164,7 +153,6 @@ const ApprovalProductsPage = () => {
     setModalVisible(true);
   };
 
-  // Hành động hàng loạt
   const handleBatchAction = async (action) => {
     if (!selectedRowKeys.length) return;
     try {
@@ -210,121 +198,92 @@ const ApprovalProductsPage = () => {
     }
   };
 
-  return (
-    <div style={{ padding: 20, background: "#fff", minHeight: "100vh" }}>
-      <h2 style={{ padding: 10 }}>
-        Quản lý duyệt sản phẩm
-        {selectedRowKeys.length > 0 && (
-          <span style={{ marginLeft: 16, fontSize: 14, color: "#1890ff" }}>
-            ({selectedRowKeys.length} sản phẩm đã chọn)
-          </span>
-        )}
-      </h2>
-
-      {/* Toolbar */}
-      <div
-        style={{ display: "flex", gap: 16, marginBottom: 16, flexWrap: "wrap" }}
+  // ✅ Toolbar cho AdminPageLayout
+  const toolbar = (
+    <Space wrap>
+      <Input
+        placeholder="Tìm kiếm theo tên sản phẩm"
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+        style={{ width: 200 }}
+      />
+      <Select
+        placeholder="Lọc theo trạng thái"
+        onChange={(value) => setStatusFilter(value)}
+        style={{ width: 200 }}
+        allowClear
       >
-        <Input
-          placeholder="Tìm kiếm theo tên sản phẩm"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          style={{ width: 300 }}
-        />
-        <Select
-          placeholder="Lọc theo trạng thái"
-          onChange={(value) => setStatusFilter(value)}
-          style={{ width: 200 }}
-          allowClear
-        >
-          <Option value="pending">Chờ duyệt</Option>
-          <Option value="approved">Đã duyệt</Option>
-          <Option value="rejected">Bị từ chối</Option>
-          <Option value="banned">Bị khóa</Option>
-        </Select>
-        <SellerSelect onChange={(value) => setSellerFilter(value)} />
-        <CategorySelect onChange={(value) => setCategoryFilter(value)} />
+        <Option value="pending">Chờ duyệt</Option>
+        <Option value="approved">Đã duyệt</Option>
+        <Option value="rejected">Bị từ chối</Option>
+        <Option value="banned">Bị khóa</Option>
+      </Select>
+      <SellerSelect onChange={(value) => setSellerFilter(value)} />
+      <CategorySelect onChange={(value) => setCategoryFilter(value)} />
 
-        {/* Action hàng loạt */}
-        {selectedRowKeys.length > 1 && (
-          <div style={{ display: "flex", gap: 8 }}>
-            <Popconfirm
-              title="Duyệt tất cả sản phẩm đã chọn?"
-              onConfirm={() => handleBatchAction("approve")}
-            >
-              <Button type="primary">Duyệt tất cả</Button>
-            </Popconfirm>
-            <Popconfirm
-              title="Từ chối tất cả sản phẩm đã chọn?"
-              onConfirm={() => handleBatchAction("reject")}
-            >
-              <Button danger>Từ chối tất cả</Button>
-            </Popconfirm>
-            <Popconfirm
-              title="Đổi trạng thái khoá/mở khoá tất cả sản phẩm đã chọn?"
-              onConfirm={() => handleBatchAction("toggleBan")}
-            >
-              <Button>Khoá/Mở khoá tất cả</Button>
-            </Popconfirm>
-          </div>
-        )}
-      </div>
+      {/* Hành động hàng loạt */}
+      {selectedRowKeys.length > 1 && (
+        <Space>
+          <Popconfirm
+            title="Duyệt tất cả sản phẩm đã chọn?"
+            onConfirm={() => handleBatchAction("approve")}
+          >
+            <Button type="primary">Duyệt tất cả</Button>
+          </Popconfirm>
+          <Popconfirm
+            title="Từ chối tất cả sản phẩm đã chọn?"
+            onConfirm={() => handleBatchAction("reject")}
+          >
+            <Button danger>Từ chối tất cả</Button>
+          </Popconfirm>
+          <Popconfirm
+            title="Đổi trạng thái khoá/mở khoá tất cả sản phẩm đã chọn?"
+            onConfirm={() => handleBatchAction("toggleBan")}
+          >
+            <Button>Khoá/Mở khoá tất cả</Button>
+          </Popconfirm>
+        </Space>
+      )}
+    </Space>
+  );
 
+  return (
+    <AdminPageLayout
+      title={
+        <>
+          QUẢN LÝ SẢN PHẨM
+          {selectedRowKeys.length > 0 && (
+            <span style={{ marginLeft: 16, fontSize: 14, color: "#1890ff" }}>
+              ({selectedRowKeys.length} sản phẩm đã chọn)
+            </span>
+          )}
+        </>
+      }
+      extra={toolbar}
+    >
       {loading ? (
         <Spin />
       ) : (
         <ProductTable
           data={filteredData}
-          selectedRowKeys={selectedRowKeys} // ✅ phải truyền
+          selectedRowKeys={selectedRowKeys}
           setSelectedRowKeys={setSelectedRowKeys}
           onApprove={handleApprove}
           onReject={handleReject}
           onView={handleView}
           onToggleBan={handleToggleBan}
+          onRow={(record) => ({
+            onClick: () => handleView(record),
+          })}
         />
       )}
 
-      {/* Modal chi tiết */}
-      {selectedProduct && (
-        <Modal
-          open={modalVisible}
-          title={`Chi tiết sản phẩm: ${selectedProduct.name}`}
-          onCancel={() => setModalVisible(false)}
-          footer={null}
-          width={800}
-        >
-          <Descriptions column={1} bordered size="middle">
-            <Descriptions.Item label="ID">
-              {selectedProduct.id}
-            </Descriptions.Item>
-            <Descriptions.Item label="Tên sản phẩm">
-              {selectedProduct.name}
-            </Descriptions.Item>
-            <Descriptions.Item label="Danh mục">
-              {selectedProduct.category_name || "-"}
-            </Descriptions.Item>
-            <Descriptions.Item label="Shop">
-              {selectedProduct.seller_name || "—"}
-            </Descriptions.Item>
-            <Descriptions.Item label="Giá">
-              {Number(selectedProduct.price).toLocaleString("vi-VN")} đ
-            </Descriptions.Item>
-            <Descriptions.Item label="Số lượng">
-              {selectedProduct.stock}
-            </Descriptions.Item>
-            <Descriptions.Item label="Trạng thái">
-              {selectedProduct.status}
-            </Descriptions.Item>
-            <Descriptions.Item label="Ngày tạo">
-              {selectedProduct.created_at}
-            </Descriptions.Item>
-            <Descriptions.Item label="Mô tả">
-              {selectedProduct.description || "-"}
-            </Descriptions.Item>
-          </Descriptions>
-        </Modal>
-      )}
-    </div>
+      <ProductDetailModal
+        visible={modalVisible}
+        product={selectedProduct}
+        onClose={() => setModalVisible(false)}
+      />
+    </AdminPageLayout>
   );
 };
 

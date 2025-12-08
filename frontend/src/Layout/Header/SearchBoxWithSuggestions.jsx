@@ -1,6 +1,25 @@
-import React, { useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { Search } from "lucide-react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import { Search, Package, FolderOpen, Clock, X, ArrowUpLeft } from "lucide-react";
+import "../styles/css/SearchBox.css"; // File CSS ở phần dưới
+
+// Helper: Highlight text khớp với từ khóa (UX Feature)
+const HighlightText = ({ text = "", highlight = "" }) => {
+  if (!highlight.trim()) return <span>{text}</span>;
+  const regex = new RegExp(`(${highlight})`, "gi");
+  const parts = text.split(regex);
+  return (
+    <span>
+      {parts.map((part, index) =>
+        part.toLowerCase() === highlight.toLowerCase() ? (
+          <span key={index} className="search-highlight">{part}</span>
+        ) : (
+          part
+        )
+      )}
+    </span>
+  );
+};
 
 export default function SearchBoxWithSuggestions({
   search,
@@ -10,256 +29,194 @@ export default function SearchBoxWithSuggestions({
   searchResults,
   handleSearchChange,
   handleSearchSubmit,
-  greenText,
   containerRef,
 }) {
   const navigate = useNavigate();
+  const [history, setHistory] = useState([]);
+  const inputRef = useRef(null);
 
-  // Load giá trị search từ localStorage khi component mount
+  const shouldShowDropdown = showSuggestions && (search.trim().length > 0 || history.length > 0);
+
+  // Load lịch sử từ LocalStorage khi mount
   useEffect(() => {
-    const savedSearch = localStorage.getItem("searchValue");
-    if (savedSearch) {
-      setSearch(savedSearch);
-    }
-  }, [setSearch]);
+    const savedHistory = JSON.parse(localStorage.getItem("searchHistory") || "[]");
+    setHistory(savedHistory);
 
-  // Hàm khi click nút search
-  const handleSearchClick = () => {
-    if (!search.trim()) return;
+    // Check saved last search value if needed (optional)
+    const savedValue = localStorage.getItem("searchValue");
+    if (savedValue && !search) setSearch(savedValue);
+  }, []);
 
-    // Lưu giá trị search vào localStorage
-    localStorage.setItem("searchValue", search);
+  // Xử lý Click Outside chuyên nghiệp hơn
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [containerRef, setShowSuggestions]);
 
-    // Thực hiện tìm kiếm
-    handleSearchSubmit(search);
+  // Logic ghi log và lưu history
+  const saveSearchHistory = (keyword) => {
+    if (!keyword.trim()) return;
 
-    // Điều hướng đến trang kết quả tìm kiếm
-    navigate(`/search?query=${encodeURIComponent(search)}`);
+    // Lưu vào LocalStorage (UI)
+    let newHistory = [keyword, ...history.filter((h) => h !== keyword)].slice(0, 5);
+    setHistory(newHistory);
+    localStorage.setItem("searchHistory", JSON.stringify(newHistory));
+    localStorage.setItem("searchValue", keyword);
+
+    // Gửi Log lên Server (Logic tách biệt)
+    logSearchKeyword(keyword);
   };
 
-  // Bộ lọc thông minh - chỉ loại bỏ kết quả không liên quan
-  const smartFilter = (items, query, type = "product") => {
-    if (!query) return [];
-
-    const queryLower = query.toLowerCase().trim();
-    const results = [];
-
-    for (const item of items) {
-      let textToSearch = "";
-
-      if (type === "product") {
-        textToSearch = `${item.name || ""} ${item.description || ""}`;
-      } else {
-        textToSearch = `${item.title || ""} ${item.content || ""} ${item.excerpt || ""}`;
-      }
-
-      const textLower = textToSearch.toLowerCase();
-
-      // Kiểm tra xem từ khóa có thực sự tồn tại trong văn bản không
-      if (textLower.includes(queryLower)) {
-        // Tính điểm độ liên quan
-        const relevanceScore = calculateRelevance(item, queryLower, textLower);
-        results.push({ ...item, relevanceScore });
-      }
-    }
-
-    // Sắp xếp theo độ liên quan và giới hạn kết quả
-    return results
-      .sort((a, b) => b.relevanceScore - a.relevanceScore)
-      .slice(0, 5)
-      .map(({ relevanceScore, ...item }) => item);
+  const handleSelectKeyword = (keyword) => {
+    setSearch(keyword);
+    saveSearchHistory(keyword);
+    handleSearchSubmit(keyword);
+    navigate(`/search?query=${encodeURIComponent(keyword)}`);
+    setShowSuggestions(false);
+    inputRef.current?.blur();
   };
 
-  // Hàm tính độ liên quan
-  const calculateRelevance = (item, query, text) => {
-    let score = 0;
-
-    // Ưu tiên tên sản phẩm/bài viết
-    const name = item.name || item.title || "";
-    const nameLower = name.toLowerCase();
-
-    if (nameLower.includes(query)) {
-      score += 100; // Rất liên quan nếu tên chứa từ khóa
-    }
-
-    // Ưu tiên từ khóa nguyên vẹn
-    if (text.includes(query)) {
-      score += 50;
-    }
-
-    // Trừ điểm nếu từ khóa quá ngắn và kết quả quá dài
-    if (query.length < 3 && text.length > 50) {
-      // Nhưng vẫn cho qua nếu từ khóa nằm trong tên
-      if (nameLower.includes(query)) {
-        score += 20; // Bù lại điểm nếu từ khóa trong tên
-      } else {
-        score -= 30; // Tránh kết quả quá rộng nếu không ở tên
-      }
-    }
-
-    return score;
+  const handleProductClick = (product) => {
+    saveSearchHistory(product.name); // Vẫn lưu lịch sử dù click sản phẩm
+    navigate(`/products/${product.id}`);
+    setShowSuggestions(false);
   };
 
-  // Áp dụng bộ lọc
-  const filteredProducts = smartFilter(
-    searchResults?.products || [],
-    search,
-    "product"
-  );
+  const clearHistory = (e) => {
+    e.stopPropagation();
+    setHistory([]);
+    localStorage.removeItem("searchHistory");
+  };
+
+  // API Log (Tách ra để dễ tái sử dụng hoặc đưa vào services)
+  const logSearchKeyword = async (keyword) => {
+    try {
+      const token = localStorage.getItem("access_token"); // Chỉ cần lấy 1 key chuẩn
+      const headers = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      await fetch("/api/search/search-log/", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ keyword: keyword.trim() }),
+      });
+    } catch (err) {
+      console.error("Log search error:", err);
+    }
+  };
+
+  // Memoize data để tránh render lại không cần thiết
+  const { categories, products, total } = useMemo(() => ({
+    categories: (searchResults?.categories || []).slice(0, 3),
+    products: (searchResults?.products || []).slice(0, 5),
+    total: searchResults?.products?.length || 0
+  }), [searchResults]);
+
+  const hasResults = products.length > 0 || categories.length > 0;
+  const isTyping = search.trim().length > 0;
 
   return (
-    <div
-      className="position-relative me-0 d-none d-md-block"
-      ref={containerRef}
-      style={{ zIndex: 3000 }}
-    >
-      {/* Nút search */}
-      <div style={{ position: "relative" }}>
-        <button
-          className="btn btn-link position-absolute end-0 top-50 translate-middle-y"
-          style={{
-            right: 10,
-            color: "#16a34a",
-            backgroundColor: "#4CAF50",
-            padding: "3px 16px",
-            borderRadius: "4px",
-            margin: "1px 3px 1px 1px",
-            border: "none",
-            cursor: "pointer",
-          }}
-          onClick={handleSearchClick}
-        >
-          <Search size={24} style={{ color: "#FFFFFF" }} />
-        </button>
-
+    <div className="search-container" ref={containerRef}>
+      {/* Input Group */}
+      <div className={`search-input-wrapper ${showSuggestions ? "active" : ""}`}>
         <input
+          ref={inputRef}
           type="text"
-          placeholder="Tìm kiếm sản phẩm ..."
-          className="form-control ps-3 pe-5"
-          style={{
-            width: 700,
-            height: 40,
-            fontSize: 16,
-            fontFamily: "Roboto",
-            borderRadius: "8px",
-            border: "1px solid #ddd",
-            paddingLeft: "16px",
-          }}
+          placeholder="Tìm sản phẩm, thương hiệu..."
+          className="search-input"
           value={search}
           onChange={handleSearchChange}
-          onFocus={() => search && setShowSuggestions(true)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              handleSearchSubmit(); // Nhấn Enter để search
-            }
-          }}
+          onFocus={() => setShowSuggestions(true)}
+          onKeyDown={(e) => e.key === "Enter" && handleSelectKeyword(search)}
         />
+        <button className="search-btn" onClick={() => handleSelectKeyword(search)}>
+          <Search size={20} color="white" />
+        </button>
       </div>
 
-      {/* Danh sách gợi ý */}
-      {showSuggestions && filteredProducts.length > 0 && (
-        <div
-          className="shadow-lg bg-white rounded position-absolute mt-2"
-          style={{
-            left: 0,
-            top: "100%",
-            minWidth: 700,
-            maxWidth: 1200,
-            zIndex: 3000,
-            boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
-            padding: "16px",
-            maxHeight: "400px",
-            overflowY: "auto",
-            border: "1px solid #e0e0e0",
-          }}
-        >
-          {filteredProducts.length > 0 && (
-            <div style={{ marginBottom: "16px" }}>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  marginBottom: "8px",
-                  paddingBottom: "4px",
-                  borderBottom: "1px solid #eee",
-                }}
-              >
-                <strong style={{ color: "#16a34a", fontSize: "14px" }}>
-                  Sản phẩm ({filteredProducts.length})
-                </strong>
+      {/* Dropdown Suggestions */}
+      {showSuggestions && (
+        <div className="search-dropdown">
+
+          {/* CASE 1: Chưa nhập gì -> Hiện Lịch sử tìm kiếm (Best Practice UX) */}
+          {!isTyping && (
+            <div className="search-section">
+              <div className="section-header">
+                <span>Lịch sử tìm kiếm</span>
+                <span className="clear-history" onClick={clearHistory}>Xóa</span>
               </div>
-              <ul style={{ listStyle: "none", paddingLeft: 0, margin: 0 }}>
-                {filteredProducts.map((product) => (
-                  <li
-                    key={product.id}
-                    style={{
-                      padding: "8px 12px",
-                      borderRadius: "6px",
-                      marginBottom: "4px",
-                      transition: "background-color 0.2s",
-                      cursor: "pointer",
-                      border: "1px solid #f0f0f0",
-                    }}
-                    onMouseDown={() => {
-                      // Sử dụng onMouseDown để tránh lỗi khi mất focus
-                      navigate(`/products/${product.id}`);
-                      setShowSuggestions(false);
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "12px",
-                      }}
-                    >
-                      <div style={{ flex: 1 }}>
-                        <div
-                          style={{
-                            fontWeight: 500,
-                            color: "#333",
-                            fontSize: "14px",
-                            lineHeight: 1.4,
-                          }}
-                        >
-                          {product.name}
-                        </div>
-                        <div
-                          style={{
-                            fontSize: "12px",
-                            color: "#666",
-                            marginTop: "2px",
-                            display: "-webkit-box",
-                            WebkitLineClamp: 1,
-                            WebkitBoxOrient: "vertical",
-                            overflow: "hidden",
-                          }}
-                        >
-                          {product.description || "Không có mô tả"}
-                        </div>
-                      </div>
-                    </div>
-                  </li>
+              <div className="history-list">
+                {history.map((item, idx) => (
+                  <div key={idx} className="history-item" onClick={() => handleSelectKeyword(item)}>
+                    <Clock size={14} className="icon-grey" />
+                    <span>{item}</span>
+                  </div>
                 ))}
-              </ul>
+              </div>
             </div>
           )}
 
-          {/* Hiển thị thông báo nếu có kết quả bị ẩn */}
-          {searchResults.products.length > 5 && (
-            <div
-              style={{
-                textAlign: "center",
-                padding: "8px 0",
-                fontSize: "12px",
-                color: "#999",
-                borderTop: "1px solid #eee",
-                marginTop: "8px",
-              }}
-            >
-              +{searchResults.products.length - 5} sản phẩm khác...
-            </div>
+          {/* CASE 2: Đang nhập -> Hiện kết quả gợi ý */}
+          {isTyping && (
+            <>
+              {/* Danh mục */}
+              {categories.length > 0 && (
+                <div className="search-section">
+                  <div className="section-title d-flex" >
+                    <FolderOpen size={14} className="icon-blue" />
+                    <div style={{ fontSize: '12px' }}>DANH MỤC</div>
+                  </div>
+                  {categories.map((cat) => (
+                    <div key={cat.id} className="suggestion-item" onClick={() => handleSelectKeyword(cat.name)}>
+                      <span>Tìm trong danh mục <span className="highlight-cat">{cat.name}</span></span>
+                      <ArrowUpLeft size={14} className="icon-jump" />
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Sản phẩm */}
+              {products.length > 0 && (
+                <div className="search-section">
+                  <div className="section-title d-flex">
+                    <Package size={14} className="icon-green" />
+                    <div style={{ fontSize: '12px' }}>SẢN PHẨM GỢI Ý</div>
+                  </div>
+                  {products.map((product) => (
+                    <div key={product.id} className="product-item" onClick={() => handleProductClick(product)}>
+                      <div className="product-info">
+                        <div className="product-name">
+                          <HighlightText text={product.name} highlight={search} />
+                        </div>
+                        {/* Nếu có giá, hiển thị ở đây sẽ rất tốt */}
+                        {product.price && <div className="product-price">{product.price.toLocaleString()}đ</div>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* View All */}
+              {total > 5 && (
+                <div className="view-all-btn" onClick={() => handleSelectKeyword(search)}>
+                  Xem thêm {total - 5} sản phẩm
+                </div>
+              )}
+
+              {/* No Results */}
+              {!hasResults && (
+                <div className="no-results">
+                  <div className="no-res-icon">🔍</div>
+                  <p>Không tìm thấy kết quả cho "<strong>{search}</strong>"</p>
+                  <span>Hãy thử từ khóa khác xem sao nhé</span>
+                </div>
+              )}
+            </>
           )}
         </div>
       )}

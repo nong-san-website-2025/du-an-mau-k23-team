@@ -1,0 +1,95 @@
+/* ----- (Chung) Định nghĩa cho 1 khu vực (section) ----- */
+.section-block {
+  margin-bottom: 40px;
+}
+
+/* ----- Card "Hero" bên trái ----- */
+.hero-product-card {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  height: 100%; /* Đảm bảo nó lấp đầy Col */
+  min-height: 400px; /* Chiều cao tối thiểu cho card hero */
+  cursor: pointer;
+  background: #f0f2f5; /* Nền xám nhạt phòng khi ảnh load chậm */
+}
+
+.hero-product-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.4s ease-out;
+}
+
+.hero-product-card:hover img {
+  transform: scale(1.05); /* Phóng to ảnh khi hover */
+}
+
+.hero-product-card-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 24px;
+  /* Tạo dải mờ gradient từ trong suốt sang đen, che 1/3 ảnh */
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0) 0%,
+    rgba(0, 0, 0, 0.7) 60%,
+    rgba(0, 0, 0, 0.9) 100%
+  );
+  color: #fff;
+}
+
+.hero-product-card-overlay .ant-typography {
+  color: #fff; /* Đảm bảo title có màu trắng */
+  margin-bottom: 8px;
+}
+
+/* ----- Card "Grid" bên phải ----- */
+.small-product-card {
+  border-radius: 8px;
+  overflow: hidden; /* Đây là trick để giữ ảnh trong khung */
+}
+
+/* (FIX) CSS cho ảnh bên trong card nhỏ */
+.small-product-card .ant-card-cover {
+  padding: 0 !important;
+  border: none !important;
+  line-height: 0; /* Loại bỏ khoảng trắng thừa */
+  overflow: hidden; /* Cần thiết cho hiệu ứng zoom ảnh */
+}
+
+.small-product-card .ant-card-cover img {
+  /* Kích thước được kiểm soát bởi div bọc (100% của 160px) */
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* Đảm bảo ảnh không méo */
+  transition: transform 0.4s ease-out;
+  display: block; /* Loại bỏ khoảng trắng dưới ảnh */
+}
+
+.small-product-card:hover .ant-card-cover img {
+  transform: scale(1.1); /* Phóng to ảnh khi hover */
+}
+
+/* Ẩn CTA "Xem chi tiết" ban đầu */
+.small-product-card .cta-on-hover {
+  opacity: 0;
+  transform: translateY(10px);
+  transition: all 0.3s ease-out;
+  height: 0; /* Co lại */
+}
+
+/* Hiển thị CTA khi hover vào card */
+.small-product-card:hover .cta-on-hover {
+  opacity: 1;
+  transform: translateY(0);
+  height: auto; /* Mở ra */
+  margin-top: 8px; /* Thêm khoảng cách khi nó xuất hiện */
+}
+
+/* (FIX) Đảm bảo Antd List Item không phá vỡ layout */
+.ant-list-grid .ant-list-item {
+  margin-bottom: 16px !important; /* Đảm bảo gutter của List được áp dụng */
+}

@@ -42,3 +42,9 @@ export async function rejectSeller(sellerId) {
   if (!res.ok) throw new Error("Từ chối cửa hàng thất bại");
   return await res.json();
 }
+
+export async function getSellerDetail(sellerId) {
+  const res = await fetch(`http://localhost:8000/api/sellers/${sellerId}/`);
+  if (!res.ok) throw new Error("Không lấy được thông tin cửa hàng");
+  return await res.json();
+}

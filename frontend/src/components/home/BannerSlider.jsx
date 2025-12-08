@@ -1,32 +1,30 @@
 import React, { useEffect, useState } from "react";
 import Slider from "react-slick";
-import { getBannersByPosition } from "../../features/admin/services/marketingApi.js";
+import { getBannersBySlot } from "../../features/admin/services/marketingApi.js";
 import { LeftOutlined, RightOutlined } from "@ant-design/icons";
-import "../../styles/home/BannerSlider.css"; // nhớ import CSS
+import NoImage from "../shared/NoImage.jsx"; // ✅ Import NoImage
+import "../../styles/home/BannerSlider.css";
 
-const defaultBanner = {
-  id: "default",
-  image: "https://via.placeholder.com/1200x400?text=Loading...",
-  title: "Banner đang tải...",
-  click_url: null,
+// Hàm kiểm tra URL ảnh hợp lệ
+const isValidImageUrl = (url) => {
+  if (!url || typeof url !== "string") return false;
+  return url.startsWith("http") || url.startsWith("/");
 };
 
 export default function BannerSlider() {
-  const [banners, setBanners] = useState([defaultBanner]);
-
-  const [loadedImages, setLoadedImages] = useState({});
+  const [banners, setBanners] = useState([]);
   const sliderRef = React.useRef(null);
 
   useEffect(() => {
-    getBannersByPosition("carousel")
+    getBannersBySlot("banner_hero")
       .then((res) => {
         const activeBanners = res.data.filter((b) => b.is_active);
-        if (activeBanners.length > 0) {
-          setBanners(activeBanners);
-        }
-        // nếu backend trả rỗng thì giữ default banner
+        setBanners(activeBanners.length > 0 ? activeBanners : []);
       })
-      .catch((err) => console.error("Lỗi khi tải banner carousel:", err));
+      .catch((err) => {
+        console.error("Lỗi khi tải banner carousel:", err);
+        setBanners([]); // hoặc giữ trống
+      });
   }, []);
 
   const settings = {
@@ -45,35 +43,49 @@ export default function BannerSlider() {
   return (
     <div className="position-relative mb-4">
       <Slider ref={sliderRef} {...settings}>
-        {banners.map((banner) => (
-          <div
-            key={banner.id}
-            className="d-flex justify-content-center align-items-center"
-          >
-            {!loadedImages[banner.id] && <div className="banner-placeholder" />}
+        {banners.map((banner) => {
+          const hasValidImage = isValidImageUrl(banner.image);
+          const imgSrc = hasValidImage
+            ? banner.image.startsWith("/")
+              ? `http://localhost:8000${banner.image}`
+              : banner.image
+            : null;
 
-            <img
-              src={banner.image}
-              alt={banner.title || "Banner"}
-              fetchpriority={banner.id === banners[0].id ? "high" : "auto"}
-              loading={banner.id === banners[0].id ? "eager" : "lazy"}
+          return (
+            <div
+              key={banner.id}
+              className="d-flex justify-content-center align-items-center"
               onClick={() =>
                 banner.click_url && window.open(banner.click_url, "_blank")
               }
-              className="shadow"
-              style={{
-                width: "100%",
-                height: "300px",
-                objectFit: "cover",
-                cursor: "pointer",
-                display: loadedImages[banner.id] ? "block" : "none",
-              }}
-              onLoad={() =>
-                setLoadedImages((prev) => ({ ...prev, [banner.id]: true }))
-              }
-            />
-          </div>
-        ))}
+              style={{ cursor: banner.click_url ? "pointer" : "default"}}
+            >
+              {hasValidImage ? (
+                <img
+                  src={imgSrc}
+                  alt={banner.title || "Banner"}
+                  fetchpriority={banner.id === banners[0].id ? "high" : "auto"}
+                  loading={banner.id === banners[0].id ? "eager" : "lazy"}
+                  className="shadow"
+                  style={{
+                    width: "100%",
+                    height: "300px",
+                    objectFit: "cover",
+                    objectPosition: "center",
+                    borderRadius: "8px",
+
+                  }}
+                  // Không cần onLoad/onError phức tạp nữa
+                />
+              ) : (
+                // ✅ Dùng NoImage khi không có ảnh hợp lệ
+                <div style={{ width: "100%", height: "300px" }}>
+                  <NoImage height={300} text="Banner không khả dụng" />
+                </div>
+              )}
+            </div>
+          );
+        })}
       </Slider>
 
       {banners.length > 1 && (
@@ -85,7 +97,6 @@ export default function BannerSlider() {
           >
             <LeftOutlined />
           </button>
-
           <button
             className="btn btn-light position-absolute top-50 end-0 translate-middle-y shadow"
             style={{ zIndex: 10 }}

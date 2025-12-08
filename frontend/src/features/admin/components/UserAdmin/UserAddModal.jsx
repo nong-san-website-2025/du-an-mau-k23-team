@@ -21,7 +21,6 @@ export default function UserAddModal({ visible, onClose, onUserAdded }) {
         headers: { Authorization: `Bearer ${token}` },
       })
       .then((res) => {
-        console.log("Roles response (add):", res.data);
         setRoles(res.data || []);
       })
       .catch((err) => console.error("❌ Lỗi load roles:", err));
@@ -124,25 +123,6 @@ export default function UserAddModal({ visible, onClose, onUserAdded }) {
           <Input.Password placeholder="Để trống nếu muốn tạo mặc định" />
         </Form.Item>
 
-        {roles.length >= 0 && (
-          <Form.Item
-            label="Vai trò"
-            name="role_id"
-            rules={[{ required: true, message: "Vui lòng chọn quyền!" }]}
-          >
-            <Select
-              placeholder="-- Chọn quyền --"
-              loading={roles.length === 0}
-              notFoundContent="Không có role nào"
-            >
-              {roles.map((r) => (
-                <Option key={r.id} value={String(r.id)}>
-                  {r.name}
-                </Option>
-              ))}
-            </Select>
-          </Form.Item>
-        )}
 
         <Form.Item style={{ textAlign: "right", marginTop: 20 }}>
           <Button onClick={onClose} style={{ marginRight: 8 }}>

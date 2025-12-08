@@ -1,137 +1,182 @@
-import React, { useEffect, useState } from 'react';
-import FlashSaleItem from './FlashSaleItem';
-import api from '../../features/login_register/services/api';
-import { Carousel } from 'antd';
-import CountdownTimer from './CountdownTimer';
-import '../../styles/home/FlashSaleList.css';
+import React, { useRef, useEffect, useState } from "react";
+import { Carousel } from "antd";
+import { ThunderboltFilled, RightOutlined, LeftOutlined } from "@ant-design/icons";
+import FlashSaleItem from "./FlashSaleItem";
+import CountdownTimer from "./CountdownTimer";
+import api from "../../features/login_register/services/api"; // Giữ nguyên import của bạn
 
-const FlashSaleItemSkeleton = () => (
-  <div
-    className="flash-sale-item-skeleton"
-    style={{
-      width: '100%',
-      height: '200px',
-      borderRadius: 8,
-      background: 'linear-gradient(90deg, #e0e0e0 25%, #f0f0f0 50%, #e0e0e0 75%)',
-      backgroundSize: '200% 100%',
-      animation: 'shimmer 1.5s infinite',
-    }}
-  />
-);
-
-const FlashSaleList = () => {
+export default function FlashSaleList() {
+  const carouselRef = useRef();
   const [flashItems, setFlashItems] = useState([]);
   const [endTime, setEndTime] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Giả lập data để test giao diện (bạn có thể xóa và dùng api call như cũ)
   useEffect(() => {
-    const fetchFlashSales = async () => {
+    const fetchData = async () => {
       try {
-        const res = await api.get('/promotions/flash-sales/');
-        const sales = res.data || [];
-        if (!sales.length) {
-          setFlashItems([]);
-          setEndTime(null);
-          return;
+        const res = await api.get("/promotions/flash-sales/");
+        const data = res.data || [];
+        if (data.length > 0) {
+          const current = data[0];
+          setFlashItems(current.flashsale_products || []);
+          setEndTime(current.end_time);
         }
-
-        const currentFlash = sales[0];
-        const items = (currentFlash.flashsale_products || []).map(p => ({
-          ...p,
-          flash_sale_id: currentFlash.id,
-        }));
-
-        setFlashItems(prev => {
-          const prevIds = prev.map(i => i.product_id).join(',');
-          const newIds = items.map(i => i.product_id).join(',');
-          if (prevIds === newIds) return prev;
-          return items;
-        });
-
-        setEndTime(currentFlash.end_time);
-      } catch (err) {
-        console.error('Failed to load flash sales', err);
-        setFlashItems([]);
-        setEndTime(null);
+      } catch (e) {
+        console.error(e);
       } finally {
         setLoading(false);
       }
     };
-
-    fetchFlashSales();
-    const interval = setInterval(fetchFlashSales, 30000);
-    return () => clearInterval(interval);
+    fetchData();
   }, []);
 
-  const slidesToShow = Math.min(6, flashItems.length);
+  if (!loading && flashItems.length === 0) return null;
 
   return (
-    <div className="flash-sale-section py-3">
+    <div className="flash-sale-container">
       <div className="container">
-        {/* Header */}
-        <div className="flash-sale-header d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 p-3 rounded-3 bg-white shadow-sm">
-          <h2 className="mb-2 mb-md-0 text-primary fw-bold">
-            ⚡ ĐẠI HẠ GIÁ — GIẢM SỐC TRONG VÀI GIỜ
-          </h2>
-          {endTime && (
-            <div className="mt-2 mt-md-0">
-              <div className="d-flex align-items-center">
-                <span className="me-2 text-muted fw-medium">Kết thúc sau:</span>
-                <CountdownTimer endTime={endTime} />
-              </div>
+        {/* Header Section */}
+        <div className="flash-header">
+          <div className="header-title-group">
+            <div className="flash-icon-box">
+               <ThunderboltFilled />
             </div>
-          )}
+            <h2 className="title">FLASH SALE</h2>
+            {endTime && <CountdownTimer endTime={endTime} />}
+          </div>
+          
+          <a href="/flash-sale" className="view-all-link">
+            Xem tất cả <RightOutlined style={{ fontSize: '10px' }} />
+          </a>
         </div>
 
-        {/* Carousel */}
-        {loading ? (
-          <Carousel dots slidesToShow={6} slidesToScroll={1} arrows>
-            {Array.from({ length: 6 }).map((_, idx) => (
-              <FlashSaleItemSkeleton key={idx} />
-            ))}
-          </Carousel>
-        ) : flashItems.length > 0 ? (
+        {/* Carousel Section */}
+        <div className="carousel-wrapper">
           <Carousel
-            dots
-            arrows={flashItems.length > slidesToShow}
-            infinite={flashItems.length > slidesToShow}
-            slidesToShow={slidesToShow}
+            ref={carouselRef}
+            infinite
+            dots={false}
+            slidesToShow={5} // Chỉnh số lượng mặc định phù hợp
             slidesToScroll={1}
             responsive={[
-              { breakpoint: 1200, settings: { slidesToShow: Math.min(3, flashItems.length), arrows: flashItems.length > 3 } },
-              { breakpoint: 992, settings: { slidesToShow: Math.min(2, flashItems.length), arrows: flashItems.length > 2 } },
-              { breakpoint: 576, settings: { slidesToShow: 1, arrows: flashItems.length > 1 } },
+              { breakpoint: 1200, settings: { slidesToShow: 4 } },
+              { breakpoint: 992, settings: { slidesToShow: 3 } },
+              { breakpoint: 576, settings: { slidesToShow: 2 } },
             ]}
           >
-            {flashItems.map(item => (
-              <div key={`${item.flash_sale_id}-${item.product_id}`} className="px-1">
+            {flashItems.map((item) => (
+              <div key={item.product_id} className="slide-padding">
                 <FlashSaleItem flash={item} />
               </div>
             ))}
           </Carousel>
-        ) : (
-          <p className="text-center text-muted">Không có flash sale hiện tại</p>
-        )}
+
+          {/* Navigation Arrows */}
+          <button className="nav-btn prev-btn" onClick={() => carouselRef.current.prev()}>
+            <LeftOutlined />
+          </button>
+          <button className="nav-btn next-btn" onClick={() => carouselRef.current.next()}>
+            <RightOutlined />
+          </button>
+        </div>
       </div>
 
       <style jsx>{`
-        @keyframes shimmer {
-          0% { background-position: -200% 0; }
-          100% { background-position: 200% 0; }
+        .flash-sale-container {
+          background-color: #fff;
+          margin: 20px 0;
+          padding: 20px 0;
         }
-        .flash-sale-section {
-          background: linear-gradient(135deg, #f9f7f0 0%, #fff 100%);
+
+        /* Header Styling */
+        .flash-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 20px;
+          border-bottom: 1px solid #f0f0f0;
+          padding-bottom: 12px;
         }
-        .flash-sale-header {
-          border: 1px solid #e0e0e0;
-          background: white;
+        .header-title-group {
+          display: flex;
+          align-items: center;
+          gap: 12px;
         }
-        .flash-sale-item-skeleton {
-          display: block;
+        .flash-icon-box {
+            font-size: 24px;
+            color: #ff4d4f;
+            animation: flash 1.5s infinite;
+        }
+        .title {
+          margin: 0;
+          color: #ff4d4f;
+          font-weight: 800;
+          font-size: 1.5rem;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          margin-right: 12px;
+        }
+        .view-all-link {
+          color: #666;
+          font-size: 14px;
+          text-decoration: none;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          transition: color 0.3s;
+        }
+        .view-all-link:hover {
+          color: #ff4d4f;
+        }
+
+        /* Carousel Styling */
+        .carousel-wrapper {
+          position: relative;
+        }
+        .slide-padding {
+          padding: 0 6px; /* Khoảng cách giữa các card */
+          height: 100%;
+        }
+        
+        /* Custom Navigation Buttons */
+        .nav-btn {
+          position: absolute;
+          top: 40%;
+          transform: translateY(-50%);
+          width: 40px;
+          height: 40px;
+          border-radius: 50%;
+          background: #fff;
+          border: 1px solid #eee;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+          color: #333;
+          font-size: 16px;
+          cursor: pointer;
+          z-index: 10;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.3s ease;
+          opacity: 0; /* Ẩn mặc định */
+        }
+        .carousel-wrapper:hover .nav-btn {
+          opacity: 1; /* Hiện khi hover vùng carousel */
+        }
+        .nav-btn:hover {
+          background: #ff4d4f;
+          color: #fff;
+          border-color: #ff4d4f;
+        }
+        .prev-btn { left: -20px; }
+        .next-btn { right: -20px; }
+
+        @keyframes flash {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.1); }
+            100% { opacity: 1; transform: scale(1); }
         }
       `}</style>
     </div>
   );
-};
-
-export default FlashSaleList;
+}

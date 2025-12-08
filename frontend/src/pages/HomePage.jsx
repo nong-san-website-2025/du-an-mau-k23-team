@@ -1,19 +1,29 @@
+// src/pages/HomePage.jsx
 import { useState, useEffect, Suspense } from "react";
-import { Spin, Modal } from "antd"; // TODO: nâng cấp props theo khuyến cáo: dùng styles.body thay cho bodyStyle
-import BannerSlider from "../components/home/BannerSlider.jsx";
-import CategorySection from "../components/home/CategorySection.jsx";
-import PersonalizedSection from "../components/home/PersonalizedSection.jsx";
+import { Spin } from "antd";
 import { Helmet } from "react-helmet";
 
-import {
-  // fetchUserRecommendations,
-  fetchCategories,
-} from "../services/api/homepageApi.js";
+// Components
+import QuickAccessBar from "../components/home/QuickAccessBar.jsx";
+import CategorySection from "../components/home/CategorySection.jsx";
 import FlashSaleList from "../components/home/FlashSaleList.jsx";
-import { getBannersByPosition } from "../features/admin/services/marketingApi.js";
+import PersonalizedSection from "../components/home/PersonalizedSection.jsx";
+import BannerSlider from "../components/home/BannerSlider.jsx";
+import FeaturedBlogs from "../components/home/FeaturedBlogs.jsx";
+import PromotionSection from "../components/home/PromotionSection.jsx";
+import DynamicAdSlot from "../features/admin/components/MarketingAdmin/DynamicAdSlot.jsx";
+import Layout from "../Layout/LayoutDefault.js";
+
+// APIs
+import { fetchCategories } from "../services/api/homepageApi.js";
+import { getBannersBySlot } from "../features/admin/services/marketingApi.js";
+
+import "../styles/HomePage.css";
+
 export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState([]);
+  // eslint-disable-next-line no-unused-vars
   const [popupAds, setPopupAds] = useState([]);
 
   const username = localStorage.getItem("username") || "Khách";
@@ -21,17 +31,18 @@ export default function HomePage() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        // Gọi song song
+        // Gọi song song 2 API: categories và banner popup
         const [catRes, modalRes] = await Promise.all([
           fetchCategories(),
-          getBannersByPosition("modal"),
+          // Cập nhật slotCode đúng với backend
+          getBannersBySlot("homepage_popup"),
         ]);
 
         setCategories(catRes.data || []);
 
-        // Lọc banner modal đang active và trong thời gian hợp lệ
+        // Lọc modal active
+        const now = new Date();
         const activeModals = (modalRes.data || []).filter((banner) => {
-          const now = new Date();
           const start = banner.start_at
             ? new Date(banner.start_at)
             : new Date(0);
@@ -42,6 +53,9 @@ export default function HomePage() {
         });
 
         setPopupAds(activeModals);
+
+        // TODO: Logic hiển thị Modal popupAds ở đây (nếu bạn có component Modal)
+
       } catch (error) {
         console.error("❌ Lỗi khi gọi API:", error);
       } finally {
@@ -64,108 +78,77 @@ export default function HomePage() {
   }
 
   return (
-    <div className="container" style={{ padding: "0 16px" }}>
+    <Layout>
       <Helmet>
-        <title>GreenFarm</title>
-        <meta name="description" content="Đây là trang chủ của website." />
+        <title>GreenFarm - Trang chủ</title>
+        <meta name="description" content="Mua sắm nông sản sạch tại GreenFarm." />
       </Helmet>
 
-      {/* Banner Carousel */}
-      <div className="d-flex gap-0 mt-3 ">
-        {/* Bên trái: Carousel lớn */}
-        <div style={{ flex: 7 }}>
-          <BannerSlider />
-        </div>
+      <div className="container">
+        {/* === Section 1: Hero Slider & Side Banners === */}
+        <section className="home-section hero-section">
+          <div className="d-flex gap-0 mt-3 note">
+            <div style={{ flex: 7 }}>
+              {/* Slider chính */}
+              <BannerSlider slotCode="homepage_hero_carousel" />
+            </div>
+            <div style={{ flex: 3 }}>
+              {/* 2 Banner bên cạnh slider */}
+              <DynamicAdSlot
+                slotCode="homepage_hero_side"
+                maxHeight="150px"
+                limit={2}
+                className="side-banners-container"
+              />
+            </div>
+          </div>
+        </section>
 
-        {/* Bên phải: 2 banner nhỏ */}
-        <div
-          style={{
-            flex: 3,
-            display: "flex",
-            flexDirection: "column",
-            gap: "0px",
-          }}
-        >
-          <img
-            src=""
-            alt=""
-            style={{
-              width: "100%",
-              height: "150px",
-              objectFit: "cover",
-              borderRadius: 8,
-              cursor: "pointer",
-            }}
-            onClick={() => window.open("#", "_blank")}
-          />
-          <img
-            src=""
-            alt=""
-            style={{
-              width: "100%",
-              height: "150px",
-              objectFit: "cover",
-              borderRadius: 8,
-              cursor: "pointer",
-            }}
-            onClick={() => window.open("#", "_blank")}
-          />
-        </div>
+        {/* === Section 2: Quick Access === */}
+        <section className="home-section">
+          <QuickAccessBar />
+        </section>
+
+        {/* Banner: Dưới Quick Access */}
+        <DynamicAdSlot slotCode="homepage_below_quick_access" maxHeight="200px" />
+        <section className="home-section">
+          <FlashSaleList />
+        </section>
+        
+        {/* === Section 3: Danh mục === */}
+        <section className="home-section">
+          <CategorySection categories={categories} />
+        </section>
+
+        {/* === Section 4: Khuyến mãi === */}
+        <section className="home-section">
+          <PromotionSection />
+        </section>
+
+        {/* Banner: Trước Flash Sale */}
+        <DynamicAdSlot slotCode="homepage_above_flash_sale" maxHeight="400px" />
+
+        {/* === Section 5: Flash Sale === */}
+
+
+        {/* Banner: Dưới Flash Sale */}
+        <DynamicAdSlot slotCode="homepage_below_flash_sale" maxHeight="400px" />
+
+        {/* === Section 6: Gợi ý cho bạn === */}
+        <section className="home-section">
+          <Suspense fallback={<Spin />}>
+            <PersonalizedSection username={username} />
+          </Suspense>
+        </section>
+
+        {/* Banner: Trước Blogs */}
+        <DynamicAdSlot slotCode="homepage_above_blogs" maxHeight="400px" />
+
+        {/* === Section 7: Tin tức === */}
+        <section className="home-section">
+          <FeaturedBlogs />
+        </section>
       </div>
-
-      {/* Danh Mục Nổi Bật */}
-      <CategorySection categories={categories} />
-
-      <FlashSaleList />
-
-      {/* Personalized Section */}
-      <Suspense fallback={<Spin />}>
-        <PersonalizedSection username={username} />
-      </Suspense>
-
-      {/* Popup Modal */}
-      {popupAds.length > 0 && (
-        <Modal
-          key={popupAds[0]?.id}
-          open={true} // modal chỉ render khi có banner active
-          footer={null}
-          closable
-          onCancel={() => setPopupAds([])}
-          centered
-          width="60vw"
-          style={{ top: 0, padding: 0, margin: 0 }}
-          styles={{
-            body: {
-              padding: 0,
-              margin: 0,
-              height: "60vh",
-              overflow: "hidden",
-              background: "transparent",
-            },
-          }}
-          className="full-screen-modal"
-        >
-          {popupAds[0]?.image && (
-            <img
-              src={popupAds[0].image}
-              alt={popupAds[0].title || "Popup Banner"}
-              loading="lazy" // <-- lazy load ảnh
-              onClick={() =>
-                popupAds[0].redirect_link &&
-                window.open(popupAds[0].redirect_link, "_blank")
-              }
-              style={{
-                width: "100%",
-                height: "100%",
-                objectFit: "cover",
-                display: "block",
-                borderRadius: 8,
-                cursor: "pointer",
-              }}
-            />
-          )}
-        </Modal>
-      )}
-    </div>
+    </Layout>
   );
 }

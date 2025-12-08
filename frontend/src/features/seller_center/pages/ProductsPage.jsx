@@ -1,363 +1,320 @@
-import React, { useEffect, useState } from "react";
-import {
-  Button,
-  message,
-  Modal,
-  Form,
-  Input,
-  Col,
-  Row,
-  Select,
-  Upload,
-} from "antd";
-import axios from "axios";
+import React, { useEffect, useMemo, useState } from "react";
+import { message, Modal, Spin, Upload, Typography } from "antd";
+
+import { debounce } from "lodash";
+import { productApi } from "../services/api/productApi";
+import ProductBaseLayout from "../../seller_center/components/ProductSeller/ProductBaseLayout";
 import ProductTable from "../../seller_center/components/ProductSeller/ProductTable";
+import ProductForm from "../../seller_center/components/ProductSeller/ProductForm";
+import ProductDetailModal from "../../seller_center/components/ProductSeller/ProductDetailModal";
+import "../../seller_center/styles/OrderPage.css";
 import { UploadOutlined } from "@ant-design/icons";
-
-const { Search } = Input;
-
-const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL,
-});
-
-function getAuthHeaders() {
-  const token = localStorage.getItem("token");
-  return { Authorization: `Bearer ${token}` };
-}
 
 export default function ProductsPage() {
   const [products, setProducts] = useState([]);
+  const [filtered, setFiltered] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
-  const [categories, setCategories] = useState([]);
-  const [subcategories, setSubcategories] = useState([]);
   const [statusFilter, setStatusFilter] = useState("");
-  const [form] = Form.useForm();
-
-
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [isDetailModalVisible, setIsDetailModalVisible] = useState(false);
+  const [galleryVisible, setGalleryVisible] = useState(false);
+  const [galleryProduct, setGalleryProduct] = useState(null);
+  const [galleryFileList, setGalleryFileList] = useState([]);
+  const [galleryLoading, setGalleryLoading] = useState(false);
 
-  const fetchProducts = async (status = "", keyword = "") => {
+  // 👉 Hàm map màu và text trạng thái
+  const getStatusConfig = (status) =>
+    ({
+      pending: { text: "Chờ duyệt", color: "gold" },
+      approved: { text: "Đã duyệt", color: "green" },
+      rejected: { text: "Bị từ chối", color: "red" },
+      self_rejected: { text: "Tự từ chối", color: "volcano" },
+    })[status] || { text: status, color: "default" };
+
+  const getAvailabilityConfig = (availability) =>
+    ({
+      available: { text: "Có sẵn", color: "blue" },
+      coming_soon: { text: "Sắp có", color: "purple" },
+    })[availability] || { text: availability, color: "default" };
+
+  // 🔹 Fetch dữ liệu sản phẩm & danh mục
+  const fetchData = async () => {
     setLoading(true);
     try {
-      const res = await api.get("/sellers/productseller/", {
-        headers: getAuthHeaders(),
-        params: {
-          status: status || undefined,
-          search: keyword || undefined, // backend hỗ trợ query ?search=
-        },
-      });
-      setProducts(res.data.results || res.data);
-    } catch (err) {
-      console.error(err);
-      message.error("Không thể tải sản phẩm");
-    }
-    setLoading(false);
-  };
+      const [catRes, prodRes] = await Promise.all([
+        productApi.getCategories(),
+        productApi.getSellerProducts({
+          status: statusFilter || undefined,
+          search: searchTerm || undefined,
+        }),
+      ]);
 
-  const fetchCategories = async () => {
-    try {
-      const res = await api.get("/products/categories/", {
-        headers: getAuthHeaders(),
+      const categoriesData = catRes.data.results || catRes.data;
+      const productsData = prodRes.data.results || prodRes.data;
+
+      const mapped = productsData.map((p) => {
+        const cat = categoriesData.find((c) =>
+          c.subcategories.some((s) => s.id === p.subcategory)
+        );
+        const sub = cat?.subcategories.find((s) => s.id === p.subcategory);
+        return {
+          ...p,
+          category_name: cat?.name || "",
+          subcategory_name: sub?.name || "",
+        };
       });
-      setCategories(res.data.results || res.data);
+
+      setCategories(categoriesData);
+      setProducts(mapped.sort((a, b) => b.id - a.id));
+      setFiltered(mapped);
     } catch (err) {
+      message.error("Không thể tải dữ liệu");
       console.error(err);
-      message.error("Không thể tải danh mục");
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchProducts();
-    fetchCategories();
-  }, []);
+    fetchData();
+  }, [statusFilter, searchTerm]);
 
+  // 🔎 Lọc theo từ khóa + trạng thái
+  const applyFilters = (products, keyword, status) =>
+    products.filter((p) => {
+      const matchesKeyword = keyword
+        ? p.name?.toLowerCase().includes(keyword.toLowerCase()) ||
+          String(p.id).includes(keyword)
+        : true;
+      const matchesStatus = status ? p.status === status : true;
+      return matchesKeyword && matchesStatus;
+    });
+
+  const handleSearch = (value) => {
+    setSearchTerm(value);
+    setFiltered(applyFilters(products, value, statusFilter));
+  };
+
+  const handleFilterStatus = (status) => {
+    setStatusFilter(status);
+    setFiltered(applyFilters(products, searchTerm, status));
+  };
+
+  const debouncedSearch = useMemo(
+    () => debounce(handleSearch, 400),
+    [products, statusFilter]
+  );
+
+  // 🟩 Mở form thêm / sửa
   const openModal = (product = null) => {
     setEditingProduct(product);
-
-    if (product) {
-      // tìm category chứa subcategory
-      const category = categories.find((cat) =>
-        cat.subcategories.some((sub) => sub.id === product.subcategory)
-      );
-
-      if (category) {
-        setSubcategories(category.subcategories);
-        form.setFieldsValue({
-          ...product,
-          category: category.id,
-        });
-      } else {
-        form.setFieldsValue(product);
-      }
-    } else {
-      form.resetFields();
-      form.setFieldsValue({ stock: 0 });
-      setSubcategories([]);
-    }
-
     setModalVisible(true);
   };
 
-  const handleSubmit = async (values) => {
+  // 🟦 Submit form
+  const handleSubmit = async (formData) => {
     try {
-      const formData = new FormData();
-
-      // Append các trường cần thiết
-      Object.keys(values).forEach((key) => {
-        if (values[key] !== undefined && values[key] !== null) {
-          if (key === "image" && Array.isArray(values[key])) {
-            formData.append("image", values[key][0].originFileObj);
-          }
-          // bỏ qua seller & category
-          else if (key !== "seller" && key !== "category") {
-            formData.append(key, values[key]);
-          }
-        }
-      });
-
-      // nếu thêm mới thì set status = pending
       if (!editingProduct) {
+        // 🟢 Tạo mới: đảm bảo có ảnh
         formData.append("status", "pending");
-      }
-
-      if (editingProduct) {
-        await api.put(`/products/${editingProduct.id}/`, formData, {
-          headers: {
-            ...getAuthHeaders(),
-            "Content-Type": "multipart/form-data",
-          },
-        });
-        message.success("Cập nhật sản phẩm thành công");
-      } else {
-        await api.post("/products/", formData, {
-          headers: {
-            ...getAuthHeaders(),
-            "Content-Type": "multipart/form-data",
-          },
-        });
+        await productApi.createProduct(formData);
         message.success("Thêm sản phẩm thành công (chờ duyệt)");
+      } else {
+        // 🔵 Cập nhật: kiểm tra xem có ảnh mới không
+        const hasNewImages = Array.from(formData.entries()).some(
+          ([key]) => key === "images"
+        );
+
+        if (!hasNewImages) {
+          // ❗ Không có ảnh mới → gửi JSON thay vì FormData (nếu backend hỗ trợ)
+          // Nhưng nếu backend bắt buộc multipart, thì vẫn gửi FormData không có images
+          const plainData = {};
+          for (let [key, value] of formData.entries()) {
+            if (key !== "images" && key !== "primary_image_index") {
+              plainData[key] = value;
+            }
+          }
+
+          // 👇 Gửi JSON nếu API hỗ trợ PATCH/PUT với JSON
+          await productApi.updateProduct(editingProduct.id, plainData, {
+            headers: {
+              "Content-Type": "application/json",
+            },
+          });
+        } else {
+          // Có ảnh mới → gửi FormData như bình thường
+          await productApi.updateProduct(editingProduct.id, formData);
+        }
+
+        message.success("Cập nhật thành công");
       }
 
       setModalVisible(false);
-      fetchProducts(statusFilter, searchTerm);
+      fetchData();
     } catch (err) {
-      console.error(err.response?.data || err);
-      message.error("Có lỗi xảy ra");
+      console.error(err);
+      message.error("Có lỗi khi lưu sản phẩm");
     }
   };
 
   const handleDelete = async (id) => {
     try {
-      await api.delete(`/sellers/products/${id}/`, {
-        headers: getAuthHeaders(),
-      });
+      await productApi.deleteProduct(id);
       message.success("Xóa sản phẩm thành công");
-      fetchProducts(statusFilter, searchTerm);
-    } catch (err) {
-      console.error(err);
+      fetchData();
+    } catch {
       message.error("Không thể xóa sản phẩm");
     }
   };
 
-  const handleToggleHide = async (product) => {
+  const handleToggleHide = async (p) => {
     try {
-      await api.post(`/products/${product.id}/toggle-hide/`, {}, { headers: getAuthHeaders() });
-      message.success(product.is_hidden ? "Đã hiện sản phẩm" : "Đã ẩn sản phẩm");
-      fetchProducts(statusFilter, searchTerm);
-    } catch (err) {
-      console.error(err);
+      await productApi.toggleHide(p.id);
+      message.success(p.is_hidden ? "Đã hiện sản phẩm" : "Đã ẩn sản phẩm");
+      fetchData();
+    } catch {
       message.error("Không thể thay đổi trạng thái ẩn/hiện");
     }
   };
 
-  const handleSelfReject = async (product) => {
+  const handleSelfReject = async (p) => {
     try {
-      await api.post(`/products/${product.id}/self-reject/`, {}, { headers: getAuthHeaders() });
-      message.success("Đã chuyển sản phẩm sang trạng thái tự từ chối");
-      fetchProducts(statusFilter, searchTerm);
-    } catch (err) {
-      console.error(err);
+      await productApi.selfReject(p.id);
+      message.success("Đã chuyển sang trạng thái tự từ chối");
+      fetchData();
+    } catch {
       message.error("Không thể tự từ chối sản phẩm");
     }
   };
 
+  const openGallery = (product) => {
+    setGalleryProduct(product);
+    const existing =
+      product.images?.map((img) => ({
+        uid: String(img.id),
+        name: `Ảnh ${img.id}`,
+        status: "done",
+        url: img.image,
+        is_primary: img.is_primary,
+      })) || [];
+    setGalleryFileList(existing);
+    setGalleryVisible(true);
+  };
+
+  const handleGalleryUpload = async () => {
+    const newFiles = galleryFileList.filter((f) => f.originFileObj);
+    if (newFiles.length === 0) {
+      message.warning("Không có ảnh mới để tải lên");
+      return;
+    }
+
+    const formData = new FormData();
+    newFiles.forEach((file) => {
+      formData.append("images", file.originFileObj);
+    });
+
+    setGalleryLoading(true);
+    try {
+      await productApi.uploadProductImages(galleryProduct.id, formData);
+      message.success("Tải ảnh thành công");
+      setGalleryVisible(false);
+      fetchData(); // refresh để thấy ảnh mới
+    } catch (err) {
+      console.error(err);
+      message.error("Tải ảnh thất bại");
+    } finally {
+      setGalleryLoading(false);
+    }
+  };
+
   return (
-    <div style={{ padding: 20, background: "#fff", minHeight: "100vh" }}>
-      <h2 style={{ marginBottom: 16 }}>Quản lý sản phẩm</h2>
-
-      {/* Thanh công cụ: Thêm sản phẩm + Tìm kiếm + Lọc */}
-      <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
-        <Button type="primary" onClick={() => openModal()}>
-          Thêm sản phẩm
-        </Button>
-
-        {/* Search bar */}
-        <Search
-          placeholder="Tìm sản phẩm theo tên hoặc mã"
-          allowClear
-          onSearch={(value) => {
-            setSearchTerm(value);
-            fetchProducts(statusFilter, value);
-          }}
-          style={{ width: 300 }}
-        />
-
-        {/* Lọc trạng thái */}
-        <Select
-          placeholder="Lọc trạng thái"
-          style={{ width: 150 }}
-          value={statusFilter || undefined}
-          onChange={(value) => {
-            setStatusFilter(value);
-            fetchProducts(value, searchTerm);
-          }}
-        >
-          <Select.Option value="">Tất cả</Select.Option>
-          <Select.Option value="pending">Chờ duyệt</Select.Option>
-          <Select.Option value="approved">Đã duyệt</Select.Option>
-          <Select.Option value="rejected">Bị từ chối</Select.Option>
-        </Select>
-      </div>
-
-      <ProductTable
-        data={products}
-        onEdit={openModal}
-        onDelete={handleDelete}
-        onToggleHide={handleToggleHide}
-        onSelfReject={handleSelfReject}
+    <>
+      <ProductBaseLayout
+        title="QUẢN LÝ SẢN PHẨM"
+        loading={loading}
+        data={filtered}
+        onSearch={debouncedSearch}
+        onFilterStatus={handleFilterStatus}
+        onAddNew={() => openModal()}
+        customTable={
+          <ProductTable
+            data={filtered}
+            onEdit={openModal}
+            onDelete={handleDelete}
+            onToggleHide={handleToggleHide}
+            onSelfReject={handleSelfReject}
+            onManageImages={openGallery}
+            onRow={(record) => ({
+              className: "order-item-row-hover",
+              onClick: () => {
+                setSelectedProduct(record);
+                setIsDetailModalVisible(true);
+              },
+            })}
+          />
+        }
       />
 
-      <Modal
-        title={editingProduct ? "Sửa sản phẩm" : "Thêm sản phẩm"}
-        open={modalVisible}
+      {/* Chi tiết sản phẩm */}
+      <ProductDetailModal
+        visible={isDetailModalVisible}
+        onClose={() => setIsDetailModalVisible(false)}
+        product={selectedProduct}
+        getStatusConfig={getStatusConfig}
+        getAvailabilityConfig={getAvailabilityConfig}
+      />
+
+      {/* Form thêm/sửa sản phẩm */}
+      <ProductForm
+        visible={modalVisible}
         onCancel={() => setModalVisible(false)}
-        footer={null}
-        centered
-        style={{ top: 40 }}
+        onSubmit={handleSubmit}
+        initialValues={editingProduct}
+        categories={categories}
+      />
+
+      {/* Modal quản lý gallery */}
+      <Modal
+        open={galleryVisible}
+        title="Quản lý ảnh sản phẩm"
+        onCancel={() => setGalleryVisible(false)}
+        onOk={handleGalleryUpload}
+        confirmLoading={galleryLoading}
+        okText="Tải lên ảnh mới"
+        width={800}
       >
-        <Form
-          form={form}
-          layout="vertical"
-          onFinish={handleSubmit}
-          initialValues={{ stock: 0 }}
+        <Upload
+          listType="picture-card"
+          fileList={galleryFileList}
+          beforeUpload={() => false}
+          onChange={({ fileList }) => {
+            if (fileList.length <= 6) {
+              setGalleryFileList(fileList);
+            } else {
+              message.warning("Tối đa 6 ảnh");
+            }
+          }}
+          multiple
         >
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item
-                name="name"
-                label="Tên sản phẩm"
-                rules={[{ required: true, message: "Nhập tên sản phẩm" }]}
-              >
-                <Input />
-              </Form.Item>
-            </Col>
-
-            <Col span={12}>
-              <Form.Item
-                name="price"
-                label="Giá"
-                rules={[{ required: true, message: "Nhập giá sản phẩm" }]}
-              >
-                <Input type="number" min={0} />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item
-                name="category"
-                label="Danh mục"
-                rules={[{ required: true, message: "Chọn danh mục" }]}
-              >
-                <Select
-                  placeholder="Chọn danh mục"
-                  onChange={(categoryId) => {
-                    const selected = categories.find(
-                      (c) => c.id === categoryId
-                    );
-                    setSubcategories(selected ? selected.subcategories : []);
-                    form.setFieldsValue({ subcategory: undefined });
-                  }}
-                >
-                  {categories.map((cat) => (
-                    <Select.Option key={cat.id} value={cat.id}>
-                      {cat.name}
-                    </Select.Option>
-                  ))}
-                </Select>
-              </Form.Item>
-            </Col>
-
-            <Col span={12}>
-              <Form.Item
-                name="subcategory"
-                label="Danh mục con"
-                rules={[{ required: true, message: "Chọn danh mục con" }]}
-              >
-                <Select
-                  showSearch
-                  placeholder="Chọn danh mục con"
-                  optionFilterProp="children"
-                  disabled={!subcategories.length}
-                  filterOption={(input, option) =>
-                    option?.children
-                      ?.toLowerCase()
-                      .includes(input.toLowerCase())
-                  }
-                >
-                  {subcategories.map((sub) => (
-                    <Select.Option key={sub.id} value={sub.id}>
-                      {sub.name}
-                    </Select.Option>
-                  ))}
-                </Select>
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item
-                name="stock"
-                label="Số lượng"
-                rules={[{ required: true, message: "Nhập số lượng" }]}
-              >
-                <Input type="number" min={0} />
-              </Form.Item>
-            </Col>
-
-            <Col span={12}>
-              <Form.Item
-                name="image"
-                label="Ảnh sản phẩm"
-                valuePropName="fileList"
-                getValueFromEvent={(e) => e.fileList}
-              >
-                <Upload
-                  beforeUpload={() => false}
-                  maxCount={1}
-                  listType="picture"
-                >
-                  <Button icon={<UploadOutlined />}>Chọn ảnh</Button>
-                </Upload>
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Form.Item name="description" label="Mô tả">
-            <Input.TextArea rows={4} placeholder="Nhập mô tả sản phẩm" />
-          </Form.Item>
-
-          <Form.Item>
-            <Button type="primary" htmlType="submit" block loading={loading}>
-              {editingProduct ? "Cập nhật" : "Thêm mới"}
-            </Button>
-          </Form.Item>
-        </Form>
+          {galleryFileList.length < 6 && (
+            <div>
+              <UploadOutlined style={{ fontSize: 20 }} />
+              <div style={{ marginTop: 8 }}>Tải ảnh</div>
+            </div>
+          )}
+        </Upload>
+        <Typography.Text
+          type="secondary"
+          style={{ display: "block", marginTop: 12 }}
+        >
+          • Ảnh cũ sẽ được giữ nguyên.
+          <br />• Chỉ ảnh mới (có dấu +) sẽ được tải lên.
+        </Typography.Text>
       </Modal>
-    </div>
+    </>
   );
 }

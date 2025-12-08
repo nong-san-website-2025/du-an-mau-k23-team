@@ -7,33 +7,49 @@ import { adminRoutes } from "./routes/AdminRoutes";
 import { sellerRoutes } from "./routes/SellerRoutes.jsx";
 import VerifyEmailPage from "./features/login_register/components/VerifyEmailPage.jsx";
 import VnpayReturn from "./pages/VnpayReturn";
-
+import ScrollToTop from "./utils/ScrollToTop.js";
+import { useEffect } from "react";
+// 👇 Import component cầu nối vừa tạo (hoặc copy code vào file này)
+import SSEConnectionHandler from "./components/SSEConnectionHandler"; 
 
 function App() {
+  useEffect(() => {
+    const navigationEntries = performance.getEntriesByType("navigation");
+    const isReload =
+      navigationEntries.length > 0 && navigationEntries[0].type === "reload";
+
+    if (isReload) {
+      localStorage.removeItem("searchValue");
+    }
+  }, []);
+
+
   return (
     <div className="main-container">
       <BrowserRouter>
         <AuthProvider>
+          {/* 👇 ĐẶT Ở ĐÂY: Nằm trong AuthProvider để dùng được useAuth */}
+          <SSEConnectionHandler />
+          
           <CartProvider>
-              <Routes>
-                <Route path="/login" element={<LoginForm />} />
-                {userRoutes}
-                {adminRoutes}
-                {sellerRoutes}
-                {/* Handle backend redirect with tokens as query params */}
-                <Route path="/verify-email" element={<VerifyEmailPage />} />
-                {/* Optional legacy route (if ever linked directly from email) */}
-                <Route path="/verify-email/:uid/:token" element={<VerifyEmailPage />} />
-                {/* VNPAY return handler */}
-                <Route path="/vnpay-return" element={<VnpayReturn />} />
-                
-              </Routes>
-        </CartProvider>
-      </AuthProvider>
-    </BrowserRouter>
+            <ScrollToTop />
+            <Routes>
+              <Route path="/login" element={<LoginForm />} />
+              {userRoutes}
+              {adminRoutes}
+              {sellerRoutes}
+              <Route path="/verify-email" element={<VerifyEmailPage />} />
+              <Route
+                path="/verify-email/:uid/:token"
+                element={<VerifyEmailPage />}
+              />
+              <Route path="/vnpay-return" element={<VnpayReturn />} />
+            </Routes>
+          </CartProvider>
+        </AuthProvider>
+      </BrowserRouter>
     </div>
   );
 }
-
 
 export default App;

@@ -8,6 +8,10 @@ from django.utils.timezone import now
 from django.utils import timezone
 from django.db import transaction
 from django.contrib.auth import get_user_model
+from .serializers import SellerVoucherSerializer # Serializer cho seller mà chúng ta đã định nghĩa
+from sellers.models import Seller # Model Seller để liên kết
+from rest_framework import filters
+from django_filters.rest_framework import DjangoFilterBackend
 
 from .models import Voucher, FlashSale, UserVoucher
 from .serializers import (
@@ -182,7 +186,7 @@ def promotions_overview(request):
     data = []
     for v in vouchers:
         data.append({
-            "id": f"voucher-{v.id}",
+            "id": v.id,    
             "code": v.code,
             "name": v.title or v.code,
             "type": "voucher",
@@ -320,3 +324,73 @@ class FlashSaleAdminViewSet(viewsets.ModelViewSet):
     queryset = FlashSale.objects.all().prefetch_related('products')  # ✅ Sửa ở đây
     serializer_class = FlashSaleAdminSerializer
     permission_classes = [IsAdminUser]
+
+
+# promotions/views.py
+
+# ... Dán đoạn code này vào cuối file ...
+
+# --- BẮT ĐẦU CODE THÊM MỚI CHO SELLER ---
+
+# Permission để kiểm tra user có phải là seller không
+class IsSellerUser(permissions.BasePermission):
+    """
+    Chỉ cho phép truy cập nếu user đã được xác thực và có liên kết đến một Seller profile.
+    """
+    def has_permission(self, request, view):
+        # Dựa trên model của bạn, user có một related_name là "seller"
+        return request.user.is_authenticated and hasattr(request.user, 'seller')
+
+# ViewSet dành riêng cho Seller để quản lý voucher
+class SellerVoucherViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint cho phép Seller quản lý (CRUD) các voucher của riêng họ.
+    """
+    serializer_class = SellerVoucherSerializer
+    permission_classes = [IsSellerUser] # Chỉ seller mới được truy cập
+
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['active'] # Lọc chính xác theo Trạng thái (active=true, active=false)
+    search_fields = ['title', 'code'] # Cho phép tìm kiếm theo Tên (title) và Mã (code)
+
+    def get_queryset(self):
+        # Chỉ trả về các voucher thuộc về cửa hàng của user đang đăng nhập
+        user_seller = self.request.user.seller
+        return Voucher.objects.filter(seller=user_seller).order_by('-created_at')
+
+    def perform_create(self, serializer):
+        # Tự động gán các giá trị khi Seller tạo voucher
+        user_seller = self.request.user.seller
+        serializer.save(
+            created_by=self.request.user,
+            seller=user_seller,
+            scope=Voucher.Scope.SELLER # Luôn là voucher của seller
+        )
+
+# --- KẾT THÚC CODE THÊM MỚI ---
+
+@api_view(['GET'])
+@permission_classes([AllowAny])  # Cho phép mọi người xem
+def public_seller_vouchers(request, seller_id):
+    """
+    Lấy danh sách voucher HOẠT ĐỘNG và CÒN HẠN của một seller cụ thể (dùng cho trang StoreDetail).
+    """
+    try:
+        seller = Seller.objects.get(id=seller_id)
+    except Seller.DoesNotExist:
+        return Response({"error": "Seller không tồn tại"}, status=404)
+
+    now = timezone.now()
+    vouchers = Voucher.objects.filter(
+        seller=seller,
+        active=True,
+        scope=Voucher.Scope.SELLER
+    ).filter(
+        Q(start_at__isnull=True) | Q(start_at__lte=now)
+    ).filter(
+        Q(end_at__isnull=True) | Q(end_at__gte=now)
+    ).order_by('-created_at')
+
+    # Serialize dữ liệu (dùng VoucherDetailSerializer hoặc tạo serializer đơn giản hơn)
+    serializer = VoucherDetailSerializer(vouchers, many=True)
+    return Response(serializer.data)

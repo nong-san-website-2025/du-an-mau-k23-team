@@ -10,6 +10,17 @@ const API_BASE_URL = "http://localhost:8000/api";
 export default function ThemeSettingsPage() {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
+  const [logoFile, setLogoFile] = useState(null);
+  const [bannerFile, setBannerFile] = useState(null);
+
+  const token = localStorage.getItem("token");
+
+  const axiosConfig = {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "multipart/form-data",
+    },
+  };
 
   const fetchSettings = async () => {
     try {
@@ -26,10 +37,18 @@ export default function ThemeSettingsPage() {
 
   const handleSave = async (values) => {
     setLoading(true);
+
+    const formData = new FormData();
+    if (logoFile) formData.append("logo", logoFile);
+    if (bannerFile) formData.append("banner", bannerFile);
+    formData.append("brand_color", values.brand_color || "#ffffff");
+    formData.append("theme_event", values.theme_event || "default");
+
     try {
-      await axios.put(`${API_BASE_URL}/settings/theme/`, values);
+      await axios.put(`${API_BASE_URL}/settings/theme/`, formData, axiosConfig);
       message.success("Lưu cài đặt giao diện thành công ✅");
     } catch (err) {
+      console.error(err);
       message.error("Lưu thất bại.");
     } finally {
       setLoading(false);
@@ -40,13 +59,25 @@ export default function ThemeSettingsPage() {
     <Card title="Tùy biến giao diện" style={{ maxWidth: 800, margin: "0 auto" }}>
       <Form form={form} layout="vertical" onFinish={handleSave}>
         <Form.Item label="Logo" name="logo">
-          <Upload beforeUpload={() => false} maxCount={1}>
+          <Upload
+            beforeUpload={(file) => {
+              setLogoFile(file);
+              return false;
+            }}
+            maxCount={1}
+          >
             <Button icon={<UploadOutlined />}>Tải logo lên</Button>
           </Upload>
         </Form.Item>
 
         <Form.Item label="Banner" name="banner">
-          <Upload beforeUpload={() => false} maxCount={1}>
+          <Upload
+            beforeUpload={(file) => {
+              setBannerFile(file);
+              return false;
+            }}
+            maxCount={1}
+          >
             <Button icon={<UploadOutlined />}>Tải banner lên</Button>
           </Upload>
         </Form.Item>
@@ -66,8 +97,15 @@ export default function ThemeSettingsPage() {
 
         <Form.Item style={{ textAlign: "right" }}>
           <Space>
-            <Button icon={<ReloadOutlined />} onClick={fetchSettings}>Tải lại</Button>
-            <Button type="primary" htmlType="submit" icon={<SaveOutlined />} loading={loading}>
+            <Button icon={<ReloadOutlined />} onClick={fetchSettings}>
+              Tải lại
+            </Button>
+            <Button
+              type="primary"
+              htmlType="submit"
+              icon={<SaveOutlined />}
+              loading={loading}
+            >
               Lưu cài đặt
             </Button>
           </Space>

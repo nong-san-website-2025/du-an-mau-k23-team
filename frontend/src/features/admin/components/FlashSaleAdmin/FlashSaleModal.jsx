@@ -1,18 +1,18 @@
-// components/flashsale/FlashSaleModal.jsx
-import React from "react";
-import { Modal, Form, Button, message } from "antd";
+import React, { useEffect, useState } from "react";
+import { Modal, Form, message } from "antd";
 import FlashSaleForm from "./FlashSaleForm";
 import { createFlashSale, updateFlashSale } from "../../services/flashsaleApi";
 import moment from "moment";
 
-const FlashSaleModal = ({ visible, onCancel, onSuccess, record }) => {
+const FlashSaleModal = ({ visible, onCancel, onSuccess, record, existingSales }) => {
   const [form] = Form.useForm();
-  const [loading, setLoading] = React.useState(false);
+  const [loading, setLoading] = useState(false);
 
-  React.useEffect(() => {
+  // Reset form khi mở/đóng modal
+  useEffect(() => {
     if (visible) {
       if (record) {
-        // record là flash sale đầy đủ: { id, start_time, ..., flashsale_products: [...] }
+        // Prepare data for Edit
         const productIds = record.flashsale_products.map((p) => p.product);
         const flashItems = {};
         record.flashsale_products.forEach((p) => {
@@ -27,36 +27,36 @@ const FlashSaleModal = ({ visible, onCancel, onSuccess, record }) => {
           flash_items: flashItems,
           is_active: record.is_active,
           time_range: [
-            record.start_time ? moment(record.start_time).local() : null,
-            record.end_time ? moment(record.end_time).local() : null,
+            record.start_time ? moment(record.start_time) : null,
+            record.end_time ? moment(record.end_time) : null,
           ],
         });
       } else {
+        // Reset for Create
         form.resetFields();
+        form.setFieldsValue({ is_active: true });
       }
     }
   }, [visible, record, form]);
+
   const handleOk = async () => {
     try {
       const values = await form.validateFields();
       const [start_time, end_time] = values.time_range;
 
-      // ✅ Build flashsale_products
+      // Transform data for API
       const flashsale_products = values.products.map((productId) => {
         return {
           product: productId,
-          flash_price: Number(
-            values.flash_items?.[productId]?.flash_price || 0
-          ),
+          flash_price: Number(values.flash_items?.[productId]?.flash_price || 0),
           stock: Number(values.flash_items?.[productId]?.stock || 0),
         };
       });
 
-      // Gửi payload đầy đủ cho backend
       const payload = {
         flashsale_products,
-        start_time: start_time.toDate().toISOString(),
-        end_time: end_time.toDate().toISOString(),
+        start_time: start_time.toISOString(),
+        end_time: end_time.toISOString(),
         is_active: values.is_active,
       };
 
@@ -72,11 +72,13 @@ const FlashSaleModal = ({ visible, onCancel, onSuccess, record }) => {
 
       onSuccess();
     } catch (err) {
-      if (err.response?.data) {
-        message.error(JSON.stringify(err.response.data));
-      } else {
-        message.error("Có lỗi xảy ra, vui lòng thử lại!");
+      console.error(err);
+      if (err.errorFields) {
+        // Lỗi validate form
+        return;
       }
+      const errorMsg = err.response?.data ? JSON.stringify(err.response.data) : "Có lỗi xảy ra!";
+      message.error(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -84,23 +86,21 @@ const FlashSaleModal = ({ visible, onCancel, onSuccess, record }) => {
 
   return (
     <Modal
-      title={record ? "Chỉnh sửa Flash Sale" : "Tạo Flash Sale Mới"}
+      title={record ? "CHỈNH SỬA FLASH SALE" : "TẠO FLASH SALE MỚI"}
       open={visible}
       onCancel={onCancel}
       onOk={handleOk}
       confirmLoading={loading}
-      width={1200}
-      okText={record ? "Cập nhật" : "Tạo"}
-      cancelText="Hủy"
-      style={{ top: '60px' }}
-      // 👇 Thêm bodyStyle để kiểm soát cuộn
-      bodyStyle={{
-        maxHeight: "70vh", // Giới hạn chiều cao body
-        overflowY: "auto", // Cho phép cuộn dọc
-        paddingRight: "12px", // Đảm bảo thanh cuộn không che nội dung
-      }}
+      width={1000} // Tăng chiều rộng để hiển thị bảng rõ hơn
+      centered
+      okText={record ? "Lưu thay đổi" : "Tạo chương trình"}
+      cancelText="Đóng"
+      destroyOnClose
+      maskClosable={false}
+      style={{ top: 20 }}
     >
-      <FlashSaleForm form={form} isEdit={!!record} />
+      <FlashSaleForm form={form} isEdit={!!record} currentId={record?.id} // <--- Truyền ID để biết đường trừ nó ra khi check trùng
+        existingSales={existingSales} />
     </Modal>
   );
 };

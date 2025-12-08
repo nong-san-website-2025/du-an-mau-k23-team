@@ -1,345 +1,439 @@
-// components/flashsale/FlashSaleForm.jsx
-import React from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Form,
-  Input,
+  InputNumber,
   DatePicker,
   Switch,
+  Card,
+  Table,
+  Button,
+  Select,
   Row,
   Col,
-  message,
-  Card,
-  Select,
+  Space,
+  Typography,
   Divider,
-  Spin,
-  Empty,
-  Pagination,
+  message,
+  Avatar,
+  Input,
+  Skeleton,
+  Tooltip,
+  Alert,
 } from "antd";
-import moment from "moment";
+import { DeleteOutlined, PlusOutlined, SearchOutlined } from "@ant-design/icons";
 import { getProducts } from "../../services/products";
-import { CheckOutlined } from "@ant-design/icons";
 import { intcomma } from "./../../../../utils/format";
+import moment from "moment";
 
-const { Option } = Select;
+const { Text } = Typography;
 const { RangePicker } = DatePicker;
 
-const ProductGrid = ({ products, selectedIds, onToggle }) => {
-  if (products.length === 0) {
-    return <Empty description="Không có sản phẩm nào" />;
-  }
+// Hàm kiểm tra trùng lịch (Logic cốt lõi)
+const checkOverlap = (start, end, existingSales, currentId = null) => {
+  return existingSales.some((sale) => {
+    // 1. Bỏ qua chính nó (khi đang Edit)
+    if (currentId && sale.id === currentId) return false;
+    // 2. Bỏ qua các sale đã bị hủy/ẩn (tùy logic business của bạn)
+    if (!sale.is_active) return false;
 
-  return (
-    <div
-      style={{ display: "flex", flexWrap: "wrap", gap: 16, marginBottom: 16 }}
-    >
-      {products.map((product) => (
-        <Card
-          key={product.id}
-          hoverable
-          style={{
-            width: 200,
-            cursor: "pointer",
-            borderColor: selectedIds.includes(product.id)
-              ? "#1890ff"
-              : "#f0f0f0",
-            position: "relative",
-          }}
-          onClick={() => onToggle(product.id)}
-          cover={
-            product.image ? (
-              <img
-                alt={product.name}
-                src={
-                  product.image && product.image.startsWith("/")
-                    ? `http://localhost:8000${product.image}`
-                    : product.image?.startsWith("http")
-                      ? product.image
-                      : "https://via.placeholder.com/400x300?text=No+Image"
-                }
-                style={{ height: 160, objectFit: "cover" }}
-              />
-            ) : (
-              <div
-                style={{
-                  height: 140,
-                  backgroundColor: "#f5f5f5",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                Không có ảnh
-              </div>
-            )
-          }
-        >
-          <div style={{ minHeight: 60 }}>
-            <div style={{ fontWeight: "bold", fontSize: 14, marginBottom: 4 }}>
-              {product.name.length > 30
-                ? product.name.slice(0, 30) + "..."
-                : product.name}
-            </div>
-            <div style={{ color: "#ff4d4f", fontWeight: "bold" }}>
-              {intcomma(product.price)}đ
-            </div>
-            <div style={{ color: "#0008fbff", fontWeight: "normal" }}>
-              SL: {product.stock.toLocaleString()}
-            </div>
-          </div>
-          {selectedIds.includes(product.id) && (
-            <div
-              style={{
-                position: "absolute",
-                top: 8,
-                right: 8,
-                background: "#1890ff",
-                borderRadius: "50%",
-                width: 24,
-                height: 24,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <CheckOutlined style={{ color: "white", fontSize: 14 }} />
-            </div>
-          )}
-        </Card>
-      ))}
-    </div>
-  );
+    const s1 = moment(start);
+    const e1 = moment(end);
+    const s2 = moment(sale.start_time);
+    const e2 = moment(sale.end_time);
+
+    // 3. Công thức kiểm tra trùng khoảng thời gian: (StartA < EndB) && (StartB < EndA)
+    return s1.isBefore(e2) && s2.isBefore(e1);
+  });
 };
 
-const FlashSaleForm = ({ form, isEdit = false }) => {
-  const [products, setProducts] = React.useState([]);
-  const [categories, setCategories] = React.useState([]);
-  const [loading, setLoading] = React.useState(false);
-  const [selectedCategory, setSelectedCategory] = React.useState("all");
-  const [currentPage, setCurrentPage] = React.useState(1);
-  const pageSize = 10;
+const FlashSaleForm = ({ form, isEdit = false, existingSales = [], currentId = null }) => {
+  const [allProducts, setAllProducts] = useState([]);
+  const [selectedProducts, setSelectedProducts] = useState([]);
+  const [loadingProducts, setLoadingProducts] = useState(false);
+  const [showSkeletonAnimation, setShowSkeletonAnimation] = useState(false);
 
-  const selectedProductIds = Form.useWatch("products", form) || [];
+  // State cho UI Timeline
+  const [timelineDate, setTimelineDate] = useState(moment()); // Ngày đang xem trên thanh timeline
 
-  // Lọc theo danh mục
-  const filteredProducts = React.useMemo(() => {
-    if (selectedCategory === "all") return products;
-    return products.filter((p) => p.category?.id === selectedCategory);
-  }, [products, selectedCategory]);
+  const [isSelectorOpen, setIsSelectorOpen] = useState(false);
+  const [selectorCategory, setSelectorCategory] = useState("all");
+  const [selectorSearch, setSelectorSearch] = useState("");
 
-  // Phân trang
-  const paginatedProducts = React.useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
-    return filteredProducts.slice(start, start + pageSize);
-  }, [filteredProducts, currentPage]);
-
-  // Tổng số trang
-  const total = filteredProducts.length;
-
-  // Trích xuất danh mục
-  React.useEffect(() => {
-    if (products.length > 0) {
-      const catMap = new Map();
-      products.forEach((p) => {
-        if (p.category && p.category.id) {
-          catMap.set(p.category.id, p.category.name);
-        }
-      });
-      const cats = Array.from(catMap, ([id, name]) => ({ id, name }));
-      setCategories(cats);
-    }
-  }, [products]);
-
-  React.useEffect(() => {
-    loadProducts();
+  // --- Load Products (Giữ nguyên logic cũ) ---
+  useEffect(() => {
+    const fetchProducts = async () => {
+      setLoadingProducts(true);
+      setShowSkeletonAnimation(true);
+      try {
+        const res = await getProducts();
+        const list = Array.isArray(res) ? res : res.results || [];
+        setAllProducts(list);
+      } catch (error) {
+        message.error("Lỗi tải sản phẩm");
+      } finally {
+        setLoadingProducts(false);
+      }
+    };
+    fetchProducts();
   }, []);
 
-  // Khi thay đổi danh mục, reset về trang 1
-  React.useEffect(() => {
-    setCurrentPage(1);
-  }, [selectedCategory]);
+  useEffect(() => {
+    if (showSkeletonAnimation) {
+      const timer = setTimeout(() => setShowSkeletonAnimation(false), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [showSkeletonAnimation]);
 
-  const loadProducts = async () => {
-    try {
-      setLoading(true);
-      const data = await getProducts();
-      let productList = [];
-      if (Array.isArray(data)) {
-        productList = data;
-      } else if (Array.isArray(data.results)) {
-        productList = data.results;
+  // --- Sync Form Data (Giữ nguyên logic cũ) ---
+  useEffect(() => {
+    const currentProductIds = form.getFieldValue("products") || [];
+    if (currentProductIds.length > 0 && allProducts.length > 0 && selectedProducts.length === 0) {
+      const initialSelected = currentProductIds.map(id => allProducts.find(p => p.id === id)).filter(Boolean).filter(p => p.stock > 0);
+      setSelectedProducts(initialSelected);
+      updateFormValues(initialSelected);
+    }
+  }, [allProducts, form]);
+
+  const updateFormValues = (list) => {
+    const productIds = list.map((p) => p.id);
+    form.setFieldsValue({ products: productIds });
+    const currentFlashItems = form.getFieldValue("flash_items") || {};
+    list.forEach((p) => {
+      const latestProduct = allProducts.find(prod => prod.id === p.id) || p;
+      if (!currentFlashItems[p.id]) {
+        currentFlashItems[p.id] = {
+          flash_price: p.original_price * 0.9,
+          stock: latestProduct.stock
+        };
       } else {
-        message.error("Dữ liệu sản phẩm không hợp lệ");
+        // Giữ nguyên stock nếu đã nhập, hoặc cập nhật nếu muốn logic khác
       }
-      setProducts(productList);
-    } catch (err) {
-      message.error("Không tải được danh sách sản phẩm");
-      console.error("Lỗi API:", err);
-      setProducts([]);
-    } finally {
-      setLoading(false);
-    }
+    });
+    form.setFieldsValue({ flash_items: currentFlashItems });
   };
 
-  const toggleProduct = (id) => {
-    const newSelected = [...selectedProductIds];
-    const index = newSelected.indexOf(id);
-    if (index >= 0) {
-      newSelected.splice(index, 1);
-    } else {
-      newSelected.push(id);
-    }
-    form.setFieldsValue({ products: newSelected });
+  const handleSelectProducts = (selectedRowKeys) => {
+    const newItems = allProducts.filter((p) => selectedRowKeys.includes(p.id) && p.stock > 0);
+    const updatedList = [...selectedProducts, ...newItems];
+    setSelectedProducts(updatedList);
+    updateFormValues(updatedList);
   };
+
+  const handleRemoveProduct = (id) => {
+    const updatedList = selectedProducts.filter((p) => p.id !== id);
+    setSelectedProducts(updatedList);
+    updateFormValues(updatedList);
+  };
+
+  const filteredProducts = useMemo(() => {
+    return allProducts.filter((p) => {
+      const matchSearch = p.name.toLowerCase().includes(selectorSearch.toLowerCase());
+      const notSelected = !selectedProducts.find((sp) => sp.id === p.id);
+      return matchSearch && notSelected && p.stock > 0;
+    });
+  }, [allProducts, selectorSearch, selectedProducts]);
+
+  // --- RENDER TIMELINE UI (Phần mới thêm) ---
+  const renderTimeline = () => {
+    // Lấy các sale diễn ra trong ngày đang xem (timelineDate)
+    const salesInDay = existingSales.filter(sale => {
+      if (currentId && sale.id === currentId) return false; // Không vẽ chính nó (cũ) lên timeline
+      if (!sale.is_active) return false;
+
+      const s = moment(sale.start_time);
+      const e = moment(sale.end_time);
+      // Check nếu sale dính dáng đến ngày này
+      return s.isSame(timelineDate, 'day') || e.isSame(timelineDate, 'day') || (s.isBefore(timelineDate) && e.isAfter(timelineDate));
+    });
+
+    return (
+      <div style={{ marginTop: 12, padding: "10px 15px", background: "#f0f2f5", borderRadius: 8, border: "1px solid #d9d9d9" }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+          <span style={{ fontSize: 12, fontWeight: 600, color: '#555' }}>
+            Lịch trình ngày: {timelineDate.format("DD/MM/YYYY")}
+          </span>
+          <span style={{ fontSize: 10, color: '#888' }}>(Kéo chuột trên lịch để thay đổi ngày xem)</span>
+        </div>
+
+        {/* Thanh Bar 24h */}
+        <div style={{ position: "relative", height: 28, background: "#fff", border: "1px solid #ccc", borderRadius: 4, overflow: "hidden", display: "flex" }}>
+          {/* Vạch chia giờ */}
+          {[...Array(24)].map((_, i) => (
+            <div key={i} style={{ flex: 1, borderRight: "1px dashed #eee", height: "100%", position: 'relative' }}>
+              {i % 4 === 0 && <span style={{ position: 'absolute', bottom: 1, left: 2, fontSize: 8, color: '#ccc' }}>{i}h</span>}
+            </div>
+          ))}
+
+          {/* Render Existing Sales (Màu Đỏ) */}
+          {salesInDay.map((sale) => {
+            const start = moment(sale.start_time);
+            const end = moment(sale.end_time);
+
+            // Tính toán vị trí start/end trong ngày timelineDate (0h -> 24h)
+            let startHour = 0;
+            let endHour = 24;
+
+            if (start.isSame(timelineDate, 'day')) startHour = start.hour() + start.minute() / 60;
+            if (end.isSame(timelineDate, 'day')) endHour = end.hour() + end.minute() / 60;
+
+            const left = (startHour / 24) * 100;
+            const width = ((endHour - startHour) / 24) * 100;
+
+            return (
+              <Tooltip key={sale.id} title={`Đã có lịch: ${start.format("HH:mm")} - ${end.format("HH:mm")}`}>
+                <div
+                  style={{
+                    position: "absolute",
+                    left: `${left}%`,
+                    width: `${width}%`,
+                    height: "100%",
+                    background: "#ff4d4f", // Đỏ
+                    opacity: 0.6,
+                    zIndex: 2,
+                    cursor: "not-allowed",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 10,
+                    color: "white",
+                    fontWeight: "bold"
+                  }}
+                >Đầy</div>
+              </Tooltip>
+            );
+          })}
+
+          {/* Render Selection (Màu Xanh - Realtime) */}
+          <Form.Item shouldUpdate noStyle>
+            {({ getFieldValue }) => {
+              const range = getFieldValue("time_range");
+              if (!range || !range[0] || !range[1]) return null;
+              const start = range[0];
+              const end = range[1];
+
+              // Nếu khoảng chọn không dính dáng ngày timeline thì không vẽ
+              if (!start.isSame(timelineDate, 'day') && !end.isSame(timelineDate, 'day')) return null;
+
+              let startHour = 0;
+              let endHour = 24;
+              if (start.isSame(timelineDate, 'day')) startHour = start.hour() + start.minute() / 60;
+              if (end.isSame(timelineDate, 'day')) endHour = end.hour() + end.minute() / 60;
+
+              const left = (startHour / 24) * 100;
+              const width = ((endHour - startHour) / 24) * 100;
+
+              return (
+                <div
+                  style={{
+                    position: "absolute",
+                    left: `${left}%`,
+                    width: `${width}%`,
+                    height: "100%",
+                    background: "#52c41a", // Xanh lá
+                    opacity: 0.5,
+                    zIndex: 3,
+                    borderLeft: "2px solid #237804",
+                    borderRight: "2px solid #237804",
+                  }}
+                />
+              );
+            }}
+          </Form.Item>
+        </div>
+        <div style={{ display: 'flex', gap: 15, marginTop: 5, fontSize: 11 }}>
+          <Space><div style={{ width: 12, height: 12, background: '#ff4d4f', opacity: 0.6 }}></div>Đã có lịch</Space>
+          <Space><div style={{ width: 12, height: 12, background: '#52c41a', opacity: 0.5 }}></div>Đang chọn</Space>
+        </div>
+      </div>
+    );
+  };
+
+  // --- Columns Definitions ---
+  const selectionColumns = [
+    {
+      title: "Ảnh",
+      dataIndex: "images",
+      width: 60,
+      render: (images) => (
+        // Lấy ảnh đầu tiên hoặc hiển thị icon mặc định
+        <Avatar
+          shape="square"
+          size={40}
+          src={images?.[0]?.image} // Giả sử cấu trúc API trả về mảng images
+          icon={<SearchOutlined />}
+        />
+      ),
+    },
+    {
+      title: "Tên sản phẩm",
+      dataIndex: "name",
+      render: (text) => <Text style={{ fontSize: 12, fontWeight: 500 }}>{text}</Text>
+    },
+    {
+      title: "Giá gốc",
+      dataIndex: "original_price",
+      width: 100,
+      render: (val) => <Text type="secondary">{intcomma(val)}đ</Text>
+    },
+    {
+      title: "Kho",
+      dataIndex: "stock",
+      width: 60,
+      align: 'center'
+    },
+  ];
+
+  const mainColumns = [
+    {
+      title: "Sản phẩm",
+      dataIndex: "name",
+      render: (text, record) => (
+        <Space>
+          {/* Placeholder ảnh */}
+          <Avatar shape="square" size={40} src={record.images?.[0]?.image} />
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 500 }}>{text}</div>
+            <div style={{ fontSize: 11, color: "#888" }}>Kho gốc: {record.stock}</div>
+          </div>
+        </Space>
+      ),
+    },
+    {
+      title: "Giá Flash Sale (đ)",
+      width: 180,
+      render: (_, record) => {
+        const latestProduct = allProducts.find(p => p.id === record.id) || record;
+        return (
+          <Form.Item
+            name={['flash_items', record.id, 'flash_price']}
+            style={{ marginBottom: 0 }}
+            rules={[{ required: true, message: "Nhập giá" }]}
+          >
+            <InputNumber
+              style={{ width: "100%" }}
+              formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+              parser={value => value.replace(/\$\s?|(,*)/g, '')}
+              addonAfter={<span  style={{ fontSize: 10, color: "red" }}>-{Math.round(((latestProduct.original_price - (form.getFieldValue(['flash_items', record.id, 'flash_price']) || latestProduct.original_price)) / latestProduct.original_price) * 100)}%</span>}
+            />
+          </Form.Item>
+        )
+      }
+    },
+    {
+      title: "Số lượng Sale", // Đã sửa lỗi "Ensure this value..." ở đây
+      width: 140,
+      render: (_, record) => {
+        const latestProduct = allProducts.find(p => p.id === record.id) || record;
+        return (
+          <Form.Item
+            name={['flash_items', record.id, 'stock']}
+            style={{ marginBottom: 0 }}
+            initialValue={latestProduct.stock}
+            rules={[
+              { required: true, message: "Nhập SL" },
+              { type: 'number', min: 1, message: ">= 1" },
+              { type: 'number', max: latestProduct.stock, message: "Vượt kho" }
+            ]}
+          >
+            <InputNumber min={1} max={latestProduct.stock} style={{ width: "100%" }} />
+          </Form.Item>
+        );
+      },
+    },
+    {
+      key: "action",
+      width: 50,
+      render: (_, record) => <Button type="text" danger icon={<DeleteOutlined />} onClick={() => handleRemoveProduct(record.id)} />,
+    },
+  ];
 
   return (
-    <Form form={form} layout="vertical" name="flashsale_form">
-      {/* Bộ lọc danh mục */}
-      <Form.Item label="Danh mục">
-        <Select
-          value={selectedCategory}
-          onChange={(value) => {
-            setSelectedCategory(value);
-            setCurrentPage(1); // Reset trang khi đổi danh mục
-          }}
-          style={{ width: 200 }}
-        >
-          <Option value="all">Tất cả</Option>
-          {categories.map((cat) => (
-            <Option key={cat.id} value={cat.id}>
-              {cat.name}
-            </Option>
-          ))}
-        </Select>
-      </Form.Item>
-
-      {/* Ẩn input form */}
-      <Form.Item
-        name="products"
-        style={{ display: "none" }}
-        rules={[
-          { required: true, message: "Vui lòng chọn ít nhất 1 sản phẩm!" },
-        ]}
-      >
-        <Input />
-      </Form.Item>
-
-      {/* Danh sách sản phẩm */}
-      <Spin spinning={loading}>
-        <ProductGrid
-          products={paginatedProducts}
-          selectedIds={selectedProductIds}
-          onToggle={toggleProduct}
-        />
-        {total > pageSize && (
-          <div style={{ textAlign: "center", marginTop: 16 }}>
-            <Pagination
-              current={currentPage}
-              pageSize={pageSize}
-              total={total}
-              onChange={(page) => setCurrentPage(page)}
-              showSizeChanger={false}
-            />
-          </div>
-        )}
-      </Spin>
-
-      <Divider />
-
-      {/* Các form item cho sản phẩm đã chọn */}
-      {selectedProductIds
-        .map((id) => products.find((p) => p.id === id))
-        .filter(Boolean)
-        .map((product) => (
-          <Card
-            key={product.id}
-            title={
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
+    <div style={{ height: "100%" }}>
+      <Form form={form} layout="vertical" name="flashsale_form">
+        <Card size="small" title="Cấu hình thời gian" style={{ marginBottom: 16 }}>
+          <Row gutter={24}>
+            <Col span={16}>
+              <Form.Item
+                name="time_range"
+                label="Thời gian diễn ra"
+                validateFirst // Dừng lại ở lỗi đầu tiên
+                rules={[
+                  { required: true, message: "Vui lòng chọn thời gian!" },
+                  {
+                    validator: (_, value) => {
+                      if (!value || value.length < 2) return Promise.resolve();
+                      // LOGIC CHECK TRÙNG Ở ĐÂY
+                      const isOverlapped = checkOverlap(value[0], value[1], existingSales, currentId);
+                      if (isOverlapped) {
+                        return Promise.reject("Thời gian bị trùng với Flash Sale khác! Hãy nhìn thanh bên dưới.");
+                      }
+                      return Promise.resolve();
+                    },
+                  },
+                ]}
               >
-                <span>{product.name}</span>
-                <div style={{ color: "#0008fbff", fontWeight: "normal" }}>
-                  SL: {product.stock.toLocaleString()}
-                </div>
-                <span style={{ color: "#ff4d4f", fontWeight: "bold" }}>
-                  <span style={{ fontWeight: 400, color: "#000" }}>
-                    Giá gốc:
-                  </span>{" "}
-                  {intcomma(product.price)}đ
-                </span>
-              </div>
-            }
-            style={{ marginBottom: 16 }}
-          >
-            <Row gutter={16}>
-              <Col span={12}>
-                <Form.Item
-                  name={["flash_items", product.id, "flash_price"]}
-                  label="Giá Flash Sale"
-                  rules={[
-                    {
-                      required: true,
-                      message: "Vui lòng nhập giá Flash Sale!",
-                    },
-                    {
-                      type: "number",
-                      min: 1,
-                      transform: (value) => (value ? Number(value) : null),
-                      message: "Giá phải lớn hơn 0",
-                    },
-                  ]}
-                >
-                  <Input
-                    type="number"
-                    addonAfter="đ"
-                    placeholder="Nhập giá flash"
-                  />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item
-                  name={["flash_items", product.id, "stock"]}
-                  label="Số lượng"
-                  rules={[
-                    { required: true, message: "Vui lòng nhập số lượng!" },
-                    {
-                      type: "number",
-                      min: 1,
-                      transform: (value) => (value ? Number(value) : null),
-                      message: "Số lượng tối thiểu là 1",
-                    },
-                  ]}
-                >
-                  <Input type="number" placeholder="Nhập số lượng giới hạn" />
-                </Form.Item>
-              </Col>
-            </Row>
-          </Card>
-        ))}
+                <RangePicker
+                  showTime={{ format: "HH:mm" }}
+                  format="DD/MM/YYYY HH:mm"
+                  style={{ width: "100%" }}
+                  placeholder={['Bắt đầu', 'Kết thúc']}
+                  // Khi user đổi ngày trên lịch, update timelineDate để UI nhảy theo
+                  onCalendarChange={(dates) => {
+                    if (dates && dates[0]) setTimelineDate(dates[0]);
+                  }}
+                  onChange={(dates) => {
+                    if (dates && dates[0]) setTimelineDate(dates[0]);
+                  }}
+                />
+              </Form.Item>
 
-      <Row gutter={16}>
-        <Col span={12}>
-          <Form.Item name="is_active" label="Kích hoạt" valuePropName="checked">
-            <Switch />
-          </Form.Item>
-        </Col>
-      </Row>
+              {/* COMPONENT TIMELINE HIỂN THỊ TẠI ĐÂY */}
+              {renderTimeline()}
+            </Col>
 
-      <Form.Item
-        name="time_range"
-        label="Thời gian Flash Sale"
-        rules={[{ required: true, message: "Vui lòng chọn thời gian!" }]}
-      >
-        <RangePicker
-          showTime
-          format="YYYY-MM-DD HH:mm"
-          placeholder={["Bắt đầu", "Kết thúc"]}
-        />
-      </Form.Item>
-    </Form>
+            <Col span={8}>
+              <Form.Item name="is_active" label="Trạng thái" valuePropName="checked">
+                <Switch checkedChildren="Kích hoạt" unCheckedChildren="Ẩn" />
+              </Form.Item>
+              <Alert message="Lưu ý" description="Các khoảng đỏ là thời gian đã có lịch. Vui lòng chọn khoảng trống." type="info" showIcon style={{ fontSize: 12 }} />
+            </Col>
+          </Row>
+        </Card>
+
+        {/* --- Phần chọn sản phẩm giữ nguyên --- */}
+        <Card
+          size="small"
+          title={
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span>Sản phẩm ({selectedProducts.length})</span>
+              <Button type="dashed" icon={<PlusOutlined />} onClick={() => setIsSelectorOpen(!isSelectorOpen)}>
+                {isSelectorOpen ? "Đóng" : "Thêm SP"}
+              </Button>
+            </div>
+          }
+        >
+          {isSelectorOpen && (
+            <div style={{ padding: 10, background: "#fafafa", borderBottom: "1px solid #eee" }}>
+              <Input placeholder="Tìm sản phẩm..." prefix={<SearchOutlined />} onChange={(e) => setSelectorSearch(e.target.value)} style={{ marginBottom: 10 }} />
+              <Table
+                columns={selectionColumns}
+                dataSource={filteredProducts}
+                rowKey="id"
+                size="small"
+                pagination={{ pageSize: 5 }}
+                rowSelection={{
+                  type: 'checkbox',
+                  onChange: handleSelectProducts,
+                  selectedRowKeys: selectedProducts.map(p => p.id)
+                }}
+              />
+            </div>
+          )}
+          <Table columns={mainColumns} dataSource={selectedProducts} rowKey="id" pagination={false} scroll={{ y: 300 }} />
+          <Form.Item name="products" style={{ display: "none" }} rules={[{ required: true }]}><Input /></Form.Item>
+        </Card>
+      </Form>
+    </div>
   );
 };
 

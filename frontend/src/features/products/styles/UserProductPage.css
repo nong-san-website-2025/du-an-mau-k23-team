@@ -1,6 +1,5 @@
 .product-card {
   border-radius: 4px;
-  overflow: hidden;
   transition: all 0.2s ease;
   border: 0;
   border: 1px solid #e0e0e0; /* sáng, không chói */
@@ -13,9 +12,9 @@
 }
 
 .custom-btn {
-  background-color: #fff ; /* màu hover tùy chỉnh */
+  background-color: #fff; /* màu hover tùy chỉnh */
   color: #4caf50;
-  border: 1px solid #4caf50 ;
+  border: 1px solid #4caf50;
   width: 40px !important;
   transition: all 0.6s ease;
 }
@@ -24,4 +23,86 @@
   background-color: #4caf50 !important;
   color: #fff !important;
   border: none !important;
+}
+
+/* Responsive padding for NewProductsPage */
+.responsive-container {
+  padding: 12px 16px;
+}
+
+@media (min-width: 576px) {
+  .responsive-container {
+    padding: 12px 24px;
+  }
+}
+
+@media (min-width: 768px) {
+  .responsive-container {
+    padding: 12px 48px;
+  }
+}
+
+@media (min-width: 992px) {
+  .responsive-container {
+    padding: 12px 96px;
+  }
+}
+
+@media (min-width: 1200px) {
+  .responsive-container {
+    padding: 12px 144px;
+  }
+}
+
+@media (min-width: 1600px) {
+  .responsive-container {
+    padding: 12px 190px;
+  }
+}
+
+/* Responsive header for NewProductsPage */
+.responsive-header {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+@media (min-width: 768px) {
+  .responsive-header {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0;
+  }
+}
+
+/* Responsive title for NewProductsPage */
+.responsive-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+  position: relative;
+  padding-bottom: 6px;
+}
+
+.responsive-title span {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100px;
+  height: 3px;
+  background-color: #f59e0b;
+  border-radius: 2px;
+}
+
+@media (min-width: 768px) {
+  .responsive-title {
+    font-size: 24px;
+  }
+
+  .responsive-title span {
+    width: 120px;
+  }
 }

@@ -58,20 +58,64 @@ export default function OrderDetailRow({
                   <thead>
                     <tr>
                       <th>Sản phẩm</th>
+                      <th>Danh mục</th>
                       <th>Số lượng</th>
                       <th>Đơn giá</th>
                       <th>Thành tiền</th>
+                      <th>Phí sàn</th>
+                      <th>Doanh thu NCC</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {order.items.map((item, index) => (
-                      <tr key={index}>
-                        <td>{item.product_name || "N/A"}</td>
-                        <td>{item.quantity}</td>
-                        <td>{formatCurrency(item.price)}</td>
-                        <td>{formatCurrency(item.price * item.quantity)}</td>
-                      </tr>
-                    ))}
+                    {order.items.map((item, index) => {
+                      const itemTotal = (item.price || 0) * (item.quantity || 0);
+                      const platformCommission = (item.platform_commission || 0) || (itemTotal * (item.commission_rate || 0));
+                      const sellerAmount = (item.seller_amount || 0) || (itemTotal - platformCommission);
+                      
+                      return (
+                        <tr key={index}>
+                          <td>{item.product_name || "N/A"}</td>
+                          <td>
+                            <span className="badge bg-light text-dark">
+                              {item.category_name || "N/A"}
+                            </span>
+                          </td>
+                          <td>{item.quantity}</td>
+                          <td>{formatCurrency(item.price)}</td>
+                          <td className="fw-bold">{formatCurrency(itemTotal)}</td>
+                          <td className="text-danger fw-semibold">
+                            {formatCurrency(platformCommission)}
+                            <br/>
+                            <small className="text-muted">({((item.commission_rate || 0) * 100).toFixed(1)}%)</small>
+                          </td>
+                          <td className="text-success fw-semibold">
+                            {formatCurrency(sellerAmount)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {/* Tổng cộng */}
+                    <tr style={{ borderTop: "2px solid #dee2e6", fontWeight: "bold" }}>
+                      <td colSpan="4" className="text-end">Tổng cộng:</td>
+                      <td>{formatCurrency(order.total_price)}</td>
+                      <td className="text-danger">
+                        {formatCurrency(
+                          (order.items || []).reduce((sum, item) => {
+                            const itemTotal = (item.price || 0) * (item.quantity || 0);
+                            return sum + ((item.platform_commission || 0) || (itemTotal * (item.commission_rate || 0)));
+                          }, 0)
+                        )}
+                      </td>
+                      <td className="text-success">
+                        {formatCurrency(
+                          (order.items || []).reduce((sum, item) => {
+                            const itemTotal = (item.price || 0) * (item.quantity || 0);
+                            const platformCommission = (item.platform_commission || 0) || (itemTotal * (item.commission_rate || 0));
+                            return sum + ((item.seller_amount || 0) || (itemTotal - platformCommission));
+                          }, 0)
+                        )}
+                      </td>
+                    </tr>
                   </tbody>
                 </table>
               </div>

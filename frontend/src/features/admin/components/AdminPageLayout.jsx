@@ -1,34 +1,47 @@
 import React from "react";
+import { Card, Typography } from "antd";
+import "../styles/AdminPageLayout.css";
+const { Title } = Typography;
 
-
-export default function AdminPageLayout({ sidebar, children, header }) {
-  return (
-    <div className="container-fluid py-0" style={{padding:0}}>
-      {/* Header cố định */}
-      {header && (
-        <div style={{position:'sticky', top:0, zIndex: 100, background:'#fff', boxShadow:'0 2px 8px #f3f4f6'}}>
-          {header}
-        </div>
-      )}
-      <div className="row" style={{ minHeight: "calc(100vh - 56px)" }}>
-        {sidebar ? (
-          <>
-            <div
-              className="col-12 col-md-2 border-end bg-white p-0"
-              style={{ minHeight: "100vh", position:'sticky', top: header ? 64 : 0, zIndex: 10, boxShadow:'2px 0 8px #f3f4f6', background:'#fff' }}
-            >
-              {sidebar}
-            </div>
-            <div className="col-12 col-md-10 p-0" style={{overflowY:'auto', maxHeight:'calc(100vh - 64px)'}}>
-              {children}
-            </div>
-          </>
-        ) : (
-          <div className="col-12 p-0" style={{overflowY:'auto', maxHeight:'calc(100vh - 64px)'}}>
+export default function AdminPageLayout({ title, children, extra, sidebar, topContent }) {
+  
+  if (sidebar === null) {
+    return (
+      <div className="admin-shell bg-light">
+        <div className="admin-main" style={{ marginLeft: 0 }}>
+          <main className="admin-content" style={{ marginLeft: 0, padding: "12px 16px" }}>
+            {topContent && <div style={{ marginBottom: 20 }}>{topContent}</div>}
             {children}
+          </main>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ padding: "0px 12px", borderRadius: "0px" }}>
+      <Card>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: 12,
+            borderRadius: 0,
+          }}
+        >
+          <Title level={2}>{title}</Title>
+          {extra && <div>{extra}</div>}
+        </div>
+        
+        {topContent && (
+          <div style={{ marginBottom: 24 }}>
+            {topContent}
           </div>
         )}
-      </div>
+        
+        {children}
+      </Card>
     </div>
   );
 }

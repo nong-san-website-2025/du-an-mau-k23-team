@@ -9,13 +9,28 @@ const API_BASE_URL = "http://localhost:8000/api";
 export default function MarketingAutomationPage() {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
+  const token = localStorage.getItem("token"); // ✅ Lấy token đăng nhập
+
+  // Cấu hình axios có sẵn header Authorization
+  const axiosConfig = {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  };
 
   const fetchSettings = async () => {
     try {
-      const res = await axios.get(`${API_BASE_URL}/settings/marketing/`);
+      const res = await axios.get(`${API_BASE_URL}/settings/marketing/`, axiosConfig);
       form.setFieldsValue(res.data);
     } catch (err) {
-      message.error("Không tải được cài đặt marketing.");
+      console.error(err);
+      if (err.response?.status === 401) {
+        message.error("Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.");
+      } else if (err.response?.status === 404) {
+        message.warning("Chưa có dữ liệu cài đặt. Sẽ được tạo mới khi lưu.");
+      } else {
+        message.error("Không tải được cài đặt marketing.");
+      }
     }
   };
 
@@ -26,24 +41,45 @@ export default function MarketingAutomationPage() {
   const handleSave = async (values) => {
     setLoading(true);
     try {
-      await axios.put(`${API_BASE_URL}/settings/marketing/`, values);
-      message.success("Lưu cài đặt marketing thành công ✅");
+      await axios.put(`${API_BASE_URL}/settings/marketing/`, values, axiosConfig);
+      message.success("💾 Lưu cài đặt marketing thành công!");
     } catch (err) {
-      message.error("Lưu thất bại.");
+      console.error(err);
+      if (err.response?.status === 401) {
+        message.error("Bạn chưa đăng nhập hoặc token đã hết hạn!");
+      } else {
+        message.error("Lưu thất bại, vui lòng thử lại.");
+      }
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Card title="Tự động hóa marketing" style={{ maxWidth: 800, margin: "0 auto" }}>
+    <Card
+      title="⚙️ Tự động hóa Marketing"
+      style={{
+        maxWidth: 800,
+        margin: "40px auto",
+        borderRadius: 12,
+        boxShadow: "0 4px 10px rgba(0,0,0,0.1)",
+      }}
+    >
       <Form form={form} layout="vertical" onFinish={handleSave}>
-        <Form.Item label="Gửi email khuyến mãi định kỳ" name="enable_email" valuePropName="checked">
-          <Switch />
+        <Form.Item
+          label="Gửi email khuyến mãi định kỳ"
+          name="enable_email"
+          valuePropName="checked"
+        >
+          <Switch checkedChildren="Bật" unCheckedChildren="Tắt" />
         </Form.Item>
 
-        <Form.Item label="Gửi SMS khuyến mãi định kỳ" name="enable_sms" valuePropName="checked">
-          <Switch />
+        <Form.Item
+          label="Gửi SMS khuyến mãi định kỳ"
+          name="enable_sms"
+          valuePropName="checked"
+        >
+          <Switch checkedChildren="Bật" unCheckedChildren="Tắt" />
         </Form.Item>
 
         <Form.Item label="Chiến dịch theo mùa" name="season_campaign">
@@ -56,8 +92,19 @@ export default function MarketingAutomationPage() {
 
         <Form.Item style={{ textAlign: "right" }}>
           <Space>
-            <Button icon={<ReloadOutlined />} onClick={fetchSettings}>Tải lại</Button>
-            <Button type="primary" htmlType="submit" icon={<SaveOutlined />} loading={loading}>
+            <Button
+              icon={<ReloadOutlined />}
+              onClick={fetchSettings}
+              disabled={loading}
+            >
+              Tải lại
+            </Button>
+            <Button
+              type="primary"
+              htmlType="submit"
+              icon={<SaveOutlined />}
+              loading={loading}
+            >
               Lưu cài đặt
             </Button>
           </Space>

@@ -6,6 +6,7 @@ import {
   FaInstagramSquare,
   FaInstalod,
   FaPhone,
+  FaTiktok,
 } from "react-icons/fa";
 import { PiInstagramLogoFill } from "react-icons/pi";
 import { IoIosHelpCircle } from "react-icons/io";
@@ -23,7 +24,7 @@ export default function TopBar() {
           style={{ whiteSpace: "nowrap", fontSize: 13, fontWeight: 400 }}
         >
           <span>
-            Tải ứng dụng | <FaFacebook /> <PiInstagramLogoFill size="15" />
+            Tải ứng dụng | <FaFacebook /> <FaTiktok /> 
           </span>
         </div>
 

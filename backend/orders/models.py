@@ -2,6 +2,8 @@ from django.db import models
 from django.utils import timezone
 from products.models import Product
 from users.models import CustomUser
+from django.contrib.auth.models import User
+from django.conf import settings
 
 # Thêm model Cart và CartItem để mỗi user có một giỏ hàng riêng
 class Cart(models.Model):
@@ -29,6 +31,7 @@ class Order(models.Model):
     STATUS_CHOICES = [
         ('pending', 'Pending'),
         ('shipping', 'Shipping'),
+        ('delivery', 'Delivery pending'),
         ('success', 'Success'),
         ('cancelled', 'Cancelled'),
         ('ready_to_pick', 'Ready to pick'),
@@ -48,8 +51,10 @@ class Order(models.Model):
     note = models.TextField(blank=True, null=True, default="")
     payment_method = models.CharField(max_length=50, default="Thanh toán khi nhận hàng", null=True, blank=True)
     total_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    shipping_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0)  # Phí vận chuyển
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
     stock_deducted = models.BooleanField(default=False)  # Đánh dấu đã trừ tồn kho để tránh trừ lặp lại
+    sold_counted = models.BooleanField(default=False)
     is_deleted = models.BooleanField(default=False)  # Soft delete field
     created_at = models.DateTimeField(auto_now_add=True)
     deleted_at = models.DateTimeField(null=True, blank=True)  # Timestamp when deleted
@@ -101,3 +106,24 @@ class Complaint(models.Model):
 
     def __str__(self):
         return f"Complaint {self.id} - Order {self.order.id}"
+    
+class Preorder(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='preorders'
+    )
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name='preorders'
+    )
+    quantity = models.PositiveIntegerField(default=1)
+    preorder_date = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=50, default='pending')
+
+    class Meta:
+        unique_together = ('user', 'product')  # ✅ Mỗi user chỉ được đặt trước 1 lần cho 1 sản phẩm
+
+    def __str__(self):
+        return f"{self.user.username} - {self.product.name} ({self.quantity})"

@@ -1,8 +1,15 @@
 import React, { useState, useEffect } from "react";
-import { Form, Input, Select, Checkbox, Button, Card, Space } from "antd";
+import { Form, Input, Select, Checkbox, Button, Space } from "antd";
 import { getProvinces, getDistricts, getWards } from "../../../../services/api/ghnApi";
 
 const { Option } = Select;
+
+const isValidProvinceName = (name) => {
+  if (!name || typeof name !== 'string') return false;
+  if (/[0-9!@#$%^&*()_+=\[\]{};:'"\\|,.<>?/`~]/.test(name)) return false;
+  if (/test/i.test(name)) return false;
+  return true;
+};
 
 const AddressAddForm = ({ onSuccess, onCancel }) => {
   const [form] = Form.useForm();
@@ -15,7 +22,12 @@ const AddressAddForm = ({ onSuccess, onCancel }) => {
   const selectedDistrict = Form.useWatch("district_id", form);
 
   useEffect(() => {
-    getProvinces().then(setProvinces).catch(console.error);
+    getProvinces()
+      .then(data => {
+        const filteredProvinces = data.filter(p => isValidProvinceName(p.ProvinceName));
+        setProvinces(filteredProvinces);
+      })
+      .catch(console.error);
   }, []);
 
   useEffect(() => {
@@ -50,22 +62,36 @@ const AddressAddForm = ({ onSuccess, onCancel }) => {
 
   const handleFinish = (values) => {
     setLoading(true);
+
+    // Tìm tên tỉnh, huyện, xã từ dữ liệu đã load
+    const selectedProvince = provinces.find(p => p.ProvinceID === parseInt(values.province_id, 10));
+    const selectedDistrict = districts.find(d => d.DistrictID === parseInt(values.district_id, 10));
+    const selectedWard = wards.find(w => w.WardCode === values.ward_code);
+
+    // Ghép địa chỉ đầy đủ: địa chỉ cụ thể + xã/phường + quận/huyện + tỉnh/thành phố
+    const fullAddress = [
+      values.address_detail.trim(),
+      selectedWard?.WardName || '',
+      selectedDistrict?.DistrictName || '',
+      selectedProvince?.ProvinceName || ''
+    ].filter(Boolean).join(', ');
+
     onSuccess({
       recipient_name: values.full_name.trim(),
       phone: values.phone.trim(),
       province_id: parseInt(values.province_id, 10),
       district_id: parseInt(values.district_id, 10),
       ward_code: values.ward_code,
-      location: values.address_detail.trim(),
+      location: fullAddress,
       is_default: Boolean(values.is_default),
     });
   };
 
   return (
-    <Card title="Thêm địa chỉ mới" style={{ marginTop: 16 }}>
-      <Form
+    <Form
         form={form}
         layout="vertical"
+        
         onFinish={handleFinish}
         initialValues={{ is_default: false }}
       >
@@ -145,7 +171,6 @@ const AddressAddForm = ({ onSuccess, onCancel }) => {
           </Space>
         </Form.Item>
       </Form>
-    </Card>
   );
 };
 

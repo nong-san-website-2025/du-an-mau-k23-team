@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import useUserProfile from "../features/users/services/useUserProfile";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -9,15 +9,18 @@ import Logo from "./Header/Logo";
 import SearchBoxWithSuggestions from "./Header/SearchBoxWithSuggestions";
 import UserActions from "./Header/UserActions";
 import TopBar from "./Header/TopBar";
+import { useAuth } from "../features/login_register/services/AuthContext";
 
 import useSellerStatus from "../services/hooks/useSellerStatus";
 import useSearch from "../services/hooks/useSearch";
 
 export default function Header({ shouldFetchProfile = true }) {
   const userProfile = useUserProfile();
-
+  const { logout } = useAuth();
   const { cartItems } = useCart();
   const cartCount = cartItems.length;
+  const [popularItems, setPopularItems] = useState([]);
+
   const navigate = useNavigate();
 
   const { storeName, sellerStatus } = useSellerStatus(shouldFetchProfile);
@@ -36,6 +39,7 @@ export default function Header({ shouldFetchProfile = true }) {
     useState(false);
   const [showCartDropdown, setShowCartDropdown] = useState(false);
   const [hoveredDropdown, setHoveredDropdown] = useState(null);
+  const [hotKeywords, setHotKeywords] = useState([]);
 
   const greenText = {
     color: "#4caf50",
@@ -43,10 +47,27 @@ export default function Header({ shouldFetchProfile = true }) {
     fontWeight: 800,
   };
 
-  console.log("👤 userProfile trong Header:", userProfile);
+  useEffect(() => {
+    fetch("/api/search/popular-keywords/")
+      .then((res) => res.json())
+      .then((data) => {
+        const keywords = data.keywords?.slice(0, 7) || [];
+        setHotKeywords(keywords);
+      })
+      .catch((err) => {
+        console.error("❌ Fetch hot keywords failed:", err);
+        setHotKeywords([]);
+      });
+  }, []);
 
-  const handleLogout = () => {
-    localStorage.clear();
+  useEffect(() => {
+    fetch("/api/search/popular-items/")
+      .then((res) => res.json())
+      .then((data) => setPopularItems(data.items || []))
+      .catch((err) => console.error("Failed to load popular items", err));
+  }, []);
+  const handleLogout = async () => {
+    await logout(); // gọi logout từ AuthContext
     setShowProfileDropdown(false);
     navigate("/login", { replace: true });
   };
@@ -72,45 +93,105 @@ export default function Header({ shouldFetchProfile = true }) {
       >
         <TopBar />
         <div
-          className="border-bottom"
+          className="border-bottom px-0 px-md-2"
           style={{
             background: "linear-gradient(to bottom, #2E7D32 0%, #4CAF50 100%)",
-            padding: "0 120px",
           }}
         >
           <div
-            className="container-fluid d-flex align-items-center justify-content-between py-1 px-1"
-            style={{ minHeight: "60px", flexWrap: "nowrap" }}
+            className="container-fluid d-flex flex-column flex-md-row align-items-center justify-content-between py-0 px-1"
+            style={{
+              minHeight: "55px",
+              position: "relative",
+            }}
           >
-            <Logo greenText={greenText} />
-            <SearchBoxWithSuggestions
-              search={search}
-              setSearch={setSearch}
-              showSuggestions={showSuggestions}
-              setShowSuggestions={setShowSuggestions}
-              searchResults={searchResults}
-              handleSearchChange={handleSearchChange}
-              handleSearchSubmit={handleSearchSubmit}
-              greenText={greenText}
-              containerRef={searchRef}
-            />
-            <UserActions
-              greenText={greenText}
-              cartCount={cartCount}
-              cartItems={cartItems}
-              showCartDropdown={showCartDropdown}
-              setShowCartDropdown={setShowCartDropdown}
-              userProfile={userProfile}
-              showProfileDropdown={showProfileDropdown}
-              setShowProfileDropdown={setShowProfileDropdown}
-              handleLogout={handleLogout}
-              showNotificationDropdown={showNotificationDropdown}
-              setShowNotificationDropdown={setShowNotificationDropdown}
-              hoveredDropdown={hoveredDropdown}
-              setHoveredDropdown={setHoveredDropdown}
-              storeName={storeName}
-              sellerStatus={sellerStatus}
-            />
+            <div className="w-100 d-flex justify-content-center justify-content-md-start" style={{ paddingBottom: 5 }}>
+              <Logo greenText={greenText} />
+            </div>
+
+            <div
+              className="w-100 d-flex justify-content-center"
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                position: "relative",
+                marginBottom: 5,
+              }}
+            >
+              <SearchBoxWithSuggestions
+                search={search}
+                setSearch={setSearch}
+                showSuggestions={showSuggestions}
+                setShowSuggestions={setShowSuggestions}
+                searchResults={searchResults}
+                handleSearchChange={handleSearchChange}
+                handleSearchSubmit={handleSearchSubmit}
+                greenText={greenText}
+                containerRef={searchRef}
+              />
+
+              {popularItems.length > 0 && (
+                <div
+                  className="d-none d-md-flex"
+                  style={{
+                    flexWrap: "nowrap",
+                    gap: "4px",
+                    marginTop: "4px",
+                    overflow: "hidden",
+                  }}
+                >
+                  {popularItems.slice(0, 7).map((item) => (
+                    <span
+                      key={`${item.type}-${item.id}`}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (item.type === "product") {
+                          navigate(`/products/${item.id}`);
+                        } else if (item.type === "category") {
+                          navigate(
+                            `/products?category=${encodeURIComponent(item.name)}`
+                          );
+                        }
+                      }}
+                      style={{
+                        padding: "4px 6px",
+                        color: "white",
+                        borderRadius: "16px",
+                        fontSize: "13px",
+                        cursor: "pointer",
+                        whiteSpace: "nowrap", // ← không xuống dòng
+                        overflow: "hidden", // ← ẩn phần tràn
+                        textOverflow: "clip", // ← hiển thị "..." khi tràn
+                        maxWidth: "100px", // ← giới hạn độ rộng (bắt buộc để ellipsis hoạt động)
+                      }}
+                    >
+                      {item.name}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="w-100 d-flex justify-content-center justify-content-md-end">
+              <UserActions
+                greenText={greenText}
+                cartCount={cartCount}
+                cartItems={cartItems}
+                showCartDropdown={showCartDropdown}
+                setShowCartDropdown={setShowCartDropdown}
+                userProfile={userProfile}
+                showProfileDropdown={showProfileDropdown}
+                setShowProfileDropdown={setShowProfileDropdown}
+                handleLogout={handleLogout}
+                showNotificationDropdown={showNotificationDropdown}
+                setShowNotificationDropdown={setShowNotificationDropdown}
+                hoveredDropdown={hoveredDropdown}
+                setHoveredDropdown={setHoveredDropdown}
+                storeName={storeName}
+                sellerStatus={sellerStatus}
+              />
+            </div>
           </div>
         </div>
       </header>

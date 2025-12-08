@@ -12,12 +12,14 @@ from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
 )
+# Import SSE view
+from users.views.notifications import notification_sse_view
 
 def home(request):
     return HttpResponse("Hello, world!")
 
 urlpatterns = [
-    path('admin/', admin.site.urls), 
+    path('admin/', admin.site.urls),
     path('', home),
 
     path('api/users/', include('users.urls')),
@@ -32,7 +34,8 @@ urlpatterns = [
     path('api/cart/', include('cart.urls')),
     path('', include('reviews.urls')),
     path("api/promotions/", include("promotions.urls")),
-     path("api/promotions/", include(promotions_router.urls)),
+    path("api/promotions/", include(promotions_router.urls)),
+    path('api/search/', include('search.urls')),
 
     path('api/complaints/', include('complaints.urls')),
 
@@ -48,9 +51,15 @@ urlpatterns = [
 
     path("api/marketing/", include("marketing.urls")),
     path("api/chat/", include("chat.urls")),
+    path("api/", include("blog.urls")),
 
+    # SSE endpoint
+    path('api/sse/', notification_sse_view, name='sse-notifications'),
 
     path("api/", include("system.urls")),
+    path('api/', include('system_settings.urls')),
+
+    
 ]
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

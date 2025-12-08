@@ -1,7 +1,8 @@
 
 import React from 'react';
 import { useCart } from '../services/CartContext';
-import '../styles/AppCart.css'; // Assuming you have a CSS file for styling
+import { formatVND } from '../../stores/components/StoreDetail/utils/utils';
+import '../styles/AppCart.css';
 
 const CartItem = ({ item, showPrice = true, buttonStyleOverrides = {} }) => {
   const { updateQuantity, removeFromCart } = useCart();
@@ -20,7 +21,7 @@ const CartItem = ({ item, showPrice = true, buttonStyleOverrides = {} }) => {
       <div className="cart-item-info" style={{ flex: 1 }}>
         <h4 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#222' }}>{item.product?.name || ''}</h4>
         {showPrice && item.product && (
-          <p style={{ margin: '2px 0 8px 0', color: '#888', fontSize: 14 }}>Giá: <span style={{ color: '#16A34A', fontWeight: 600 }}>{Number(item.product.price || 0).toLocaleString()}₫</span></p>
+          <p style={{ margin: '2px 0 8px 0', color: '#888', fontSize: 14 }}>Giá: <span style={{ color: '#16A34A', fontWeight: 600 }}>{formatVND(item.product.price)}</span></p>
         )}
         <div className="cart-item-actions" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <button

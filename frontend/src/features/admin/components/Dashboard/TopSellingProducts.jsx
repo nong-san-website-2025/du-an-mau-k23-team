@@ -33,9 +33,7 @@ export default function TopSellingProducts() {
         }));
 
         setData(normalized);
-        console.log("✅ Top Products:", normalized);
       } catch (err) {
-        console.error("❌ Lỗi fetch top-products:", err.response || err);
         setData([]);
       }
     };

@@ -1,0 +1,270 @@
+/* PromotionSection.module.css */
+
+/* --- 1. Layout & Container --- */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid transparent; /* Dùng border màu trong suốt để giữ layout */
+}
+
+.titleWrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.iconBox {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+/* --- 2. Grid System (Bento Layout) --- */
+.gridContainer {
+  display: grid;
+  grid-template-columns: 280px 1fr; /* Cột trái cứng 280px, cột phải auto */
+  gap: 20px;
+  /* Min-height quan trọng để tránh CLS (Cumulative Layout Shift) khi chưa có data */
+  min-height: 460px; 
+}
+
+.rightGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  gap: 20px;
+}
+
+/* Responsive Breakpoints */
+@media (max-width: 992px) {
+  .gridContainer {
+    grid-template-columns: 1fr; /* Tablet: Chuyển sang 1 cột dọc */
+  }
+  .leftCol {
+    height: 380px; /* Chiều cao cố định cho Hero banner trên tablet */
+  }
+}
+
+@media (max-width: 768px) {
+  .rightGrid {
+    grid-template-columns: repeat(2, 1fr); /* Mobile ngang: 2 cột */
+  }
+}
+
+@media (max-width: 576px) {
+  .rightGrid {
+    grid-template-columns: 1fr; /* Mobile dọc: 1 cột */
+  }
+  .leftCol {
+    height: 320px;
+  }
+}
+
+/* --- 3. Hero Product Card (Left Side) --- */
+.heroCard {
+  height: 100%;
+  border-radius: 16px;
+  overflow: hidden;
+  position: relative;
+  background: #fff;
+  border: 1px solid #f0f0f0;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.heroCard:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+  border-color: #d9d9d9;
+}
+
+/* Container ảnh của Hero - Chiếm phần lớn diện tích */
+.heroImageWrapper {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background: #fafafa;
+  min-height: 200px;
+}
+
+.heroContent {
+  padding: 20px;
+  background: #fff;
+  z-index: 2;
+  flex-shrink: 0; /* Không bị co lại */
+}
+
+/* --- 4. Product Item Card (Right Side) --- */
+.productCard {
+  background: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #f0f0f0;
+  transition: all 0.25s ease;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.productCard:hover {
+  border-color: #d9d9d9;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  transform: translateY(-2px);
+}
+
+/* Wrapper tạo khung vuông tỷ lệ 1:1 */
+.imgWrapper {
+  position: relative;
+  padding-top: 100%; /* Aspect Ratio Square */
+  overflow: hidden;
+  background: #fafafa;
+}
+
+/* --- 5. SMART IMAGE & SKELETON (Core Feature) --- */
+.smartImageContainer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Style đặc biệt để ép Antd Skeleton Image bung full kích thước */
+.skeletonWrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Override class nội tại của Ant Design để nó resize theo cha */
+.skeletonWrapper :global(.ant-skeleton-element),
+.skeletonWrapper :global(.ant-skeleton-image) {
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: 0 !important; /* Bỏ bo góc của skeleton để khớp container */
+}
+
+/* Style cho ảnh thật */
+.realImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  transition: opacity 0.4s ease, transform 0.5s ease;
+  opacity: 0; /* Mặc định ẩn để chờ load */
+}
+
+.realImage.loaded {
+  opacity: 1;
+  z-index: 2; /* Load xong nhảy lên trên Skeleton */
+}
+
+/* Hiệu ứng zoom ảnh khi hover vào card cha */
+.heroCard:hover .realImage,
+.productCard:hover .realImage {
+  transform: scale(1.08);
+}
+
+/* --- 6. Badges & Content Info --- */
+.discountBadge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: #ff4d4f;
+  color: white;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 12px;
+  z-index: 10;
+  box-shadow: 0 2px 8px rgba(255, 77, 79, 0.25);
+}
+
+.info {
+  padding: 12px;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #262626;
+  margin-bottom: 6px;
+  /* Cắt text dòng thứ 2 */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  height: 40px; 
+  line-height: 20px;
+}
+
+.priceGroup {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.price {
+  color: #ff4d4f;
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.originalPrice {
+  color: #999;
+  text-decoration: line-through;
+  font-size: 12px;
+}
+
+/* Action Buttons (Hiện khi hover) */
+.quickAction {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  padding: 10px;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  z-index: 5;
+  transform: translateY(100%); /* Ẩn xuống dưới */
+  transition: transform 0.3s cubic-bezier(0.2, 0, 0.2, 1);
+  background: linear-gradient(to top, rgba(0,0,0,0.05), transparent); /* Gradient nhẹ */
+}
+
+.productCard:hover .quickAction {
+  transform: translateY(0);
+}

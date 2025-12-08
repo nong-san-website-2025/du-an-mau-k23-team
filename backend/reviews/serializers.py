@@ -31,16 +31,14 @@ class ReviewSerializer(serializers.ModelSerializer):
 
     def get_replies(self, obj):
         # Trả về danh sách reply của review
-        return ReviewReplySerializer(obj.replies.all(), many=True).data
+        return ReviewReplySerializer(obj.replies.all(), many=True, context=self.context).data
 
     def validate(self, data):
-        # Chỉ dùng khi tạo review theo route products/<product_id>/reviews/
-        view = self.context.get("view")
         request = self.context.get("request")
-        if request and view:
+        if request and request.user:
             user = request.user
-            product_id = view.kwargs.get("product_id")
-            if product_id and Review.objects.filter(user=user, product_id=product_id).exists():
+            product = data.get("product")
+            if product and Review.objects.filter(user=user, product=product).exists():
                 raise serializers.ValidationError("Bạn đã đánh giá sản phẩm này rồi.")
         return data
 
@@ -51,23 +49,28 @@ class ReviewListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         product_id = self.kwargs["product_id"]
-        return Review.objects.filter(product_id=product_id)
+        # Exclude hidden reviews for public viewing
+        return Review.objects.filter(product_id=product_id, is_hidden=False)
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user, product_id=self.kwargs["product_id"])
 
-
 # ----------------- REVIEW REPLY -----------------
 class ReviewReplySerializer(serializers.ModelSerializer):
+    review = serializers.PrimaryKeyRelatedField(read_only=True)
+    user_name = serializers.SerializerMethodField()
+    
     class Meta:
         model = ReviewReply
         fields = "__all__"
         read_only_fields = ["user"]
 
-    def create(self, validated_data):
-        request = self.context["request"]
-        validated_data["user"] = request.user
-        return super().create(validated_data)
+    def get_user_name(self, obj):
+        try:
+            # Prefer full name when available
+            return getattr(obj.user, 'get_full_name', lambda: None)() or getattr(obj.user, 'username', None) or str(obj.user)
+        except Exception:
+            return None
 
 
 # ----------------- CUSTOMER SUPPORT -----------------

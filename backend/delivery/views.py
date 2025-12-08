@@ -7,7 +7,7 @@ from .services.ghn import GHNClient
 class CalculateShippingFeeView(APIView):
     def post(self, request):
 
-        print("📥 Received request data:", request.data)  # Log dữ liệu nhận được
+        print("Received request data:", request.data)  # Log dữ liệu nhận được
         
         payload = request.data.copy()  # Tạo bản sao để tránh sửa request gốc
 
@@ -58,7 +58,7 @@ class CalculateShippingFeeView(APIView):
         payload.setdefault('service_type_id', 2)
         payload.setdefault('insurance_value', 0)
 
-        print("📤 Sending to GHN:", payload)  # Debug log
+        print("Sending to GHN:", payload)  # Debug log
 
         # Gọi GHN service
         result = GHNClient.calculate_shipping_fee(payload)
@@ -69,7 +69,7 @@ class CalculateShippingFeeView(APIView):
                 'detail': result['detail']
             }, status=status.HTTP_200_OK)
         else:
-            print("❌ GHN Error:", result)  # Debug log
+            print("GHN Error:", result)  # Debug log
             return Response({
                 'error': result['message'],
                 'code': result.get('error_code')

@@ -1,8 +1,8 @@
 body {
-  font-family: 'Nunito Sans', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   padding: 0;
   margin: 0;
-  
+  overflow-y: scroll !important;
 }
 
 .App {
@@ -52,3 +52,10 @@ body {
   background: #e5e5e5;
 }
 
+.content-wrapper {
+  padding: 16px;
+  /* Hoặc dùng shorthand */
+  /* padding: 0 16px; */
+  max-width: 1300px; /* (tuỳ chọn) giới hạn chiều rộng tối đa để tránh quá rộng trên màn hình lớn */
+  margin: 0 auto;    /* (tuỳ chọn) căn giữa nếu có max-width */
+}

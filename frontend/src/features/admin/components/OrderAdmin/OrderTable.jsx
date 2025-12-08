@@ -58,6 +58,8 @@ export default function OrderTable({
           <th>Khách hàng</th>
           <th>Số điện thoại</th>
           <th>Tổng tiền</th>
+          <th>Phí sàn</th>
+          <th>Doanh thu NCC</th>
           <th>Trạng thái</th>
           <th>Ngày tạo</th>
           <th>Shop</th>
@@ -66,35 +68,52 @@ export default function OrderTable({
       <tbody>
         {filteredOrders.length === 0 ? (
           <tr>
-            <td colSpan="7" className="text-center py-4">
+            <td colSpan="9" className="text-center py-4">
               <i className="bi bi-inbox" style={{ fontSize: "3rem", color: "#6c757d", marginBottom: "1rem" }}></i>
               <p className="text-muted">Không có đơn hàng nào</p>
             </td>
           </tr>
         ) : (
-          filteredOrders.map((order) => (
-            <React.Fragment key={order.id}>
-              <OrderTableRow
-                order={order}
-                expanded={expandedOrderId === order.id}
-                onExpand={() => handleExpand(order.id)}
-                getStatusBadgeClass={getStatusBadgeClass}
-                getStatusLabel={getStatusLabel}
-                formatCurrency={formatCurrency}
-                formatDate={formatDate}
-              />
-              {expandedOrderId === order.id && (
-                <OrderDetailRow 
+          filteredOrders.map((order) => {
+            // Tính tổng phí sàn và doanh thu NCC từ các items
+            const totalPlatformCommission = (order.items || []).reduce((sum, item) => {
+              const itemAmount = (item.price || 0) * (item.quantity || 0);
+              const commission = itemAmount * (item.commission_rate || 0);
+              return sum + commission;
+            }, 0);
+            
+            const totalSellerAmount = (order.items || []).reduce((sum, item) => {
+              const itemAmount = (item.price || 0) * (item.quantity || 0);
+              const commission = itemAmount * (item.commission_rate || 0);
+              return sum + (itemAmount - commission);
+            }, 0);
+            
+            return (
+              <React.Fragment key={order.id}>
+                <OrderTableRow
                   order={order}
+                  expanded={expandedOrderId === order.id}
+                  onExpand={() => handleExpand(order.id)}
                   getStatusBadgeClass={getStatusBadgeClass}
                   getStatusLabel={getStatusLabel}
                   formatCurrency={formatCurrency}
                   formatDate={formatDate}
-                  onCancel={onCancel}
+                  platformCommission={totalPlatformCommission}
+                  sellerAmount={totalSellerAmount}
                 />
-              )}
-            </React.Fragment>
-          ))
+                {expandedOrderId === order.id && (
+                  <OrderDetailRow 
+                    order={order}
+                    getStatusBadgeClass={getStatusBadgeClass}
+                    getStatusLabel={getStatusLabel}
+                    formatCurrency={formatCurrency}
+                    formatDate={formatDate}
+                    onCancel={onCancel}
+                  />
+                )}
+              </React.Fragment>
+            );
+          })
         )}
       </tbody>
     </table>

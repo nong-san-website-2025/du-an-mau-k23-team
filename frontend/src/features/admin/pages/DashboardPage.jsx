@@ -35,7 +35,6 @@ export default function DashboardPage() {
             headers: { Authorization: `Bearer ${token}` },
           }
         );
-        console.log("✅ Dashboard API response:", response.data);
         setData(response.data);
       } catch (err) {
         console.error("❌ Dashboard API error:", err.response || err);
