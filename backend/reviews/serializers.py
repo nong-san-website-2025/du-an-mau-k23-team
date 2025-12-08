@@ -57,10 +57,11 @@ class ReviewListCreateView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user, product_id=self.kwargs["product_id"])
 
-
 # ----------------- REVIEW REPLY -----------------
 class ReviewReplySerializer(serializers.ModelSerializer):
+    review = serializers.PrimaryKeyRelatedField(read_only=True)
     user_name = serializers.SerializerMethodField()
+    
     class Meta:
         model = ReviewReply
         fields = "__all__"
@@ -72,11 +73,6 @@ class ReviewReplySerializer(serializers.ModelSerializer):
             return getattr(obj.user, 'get_full_name', lambda: None)() or getattr(obj.user, 'username', None) or str(obj.user)
         except Exception:
             return None
-
-    def create(self, validated_data):
-        request = self.context["request"]
-        validated_data["user"] = request.user
-        return super().create(validated_data)
 
 
 # ----------------- CUSTOMER SUPPORT -----------------

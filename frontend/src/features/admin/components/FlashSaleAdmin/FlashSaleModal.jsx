@@ -4,7 +4,7 @@ import FlashSaleForm from "./FlashSaleForm";
 import { createFlashSale, updateFlashSale } from "../../services/flashsaleApi";
 import moment from "moment";
 
-const FlashSaleModal = ({ visible, onCancel, onSuccess, record }) => {
+const FlashSaleModal = ({ visible, onCancel, onSuccess, record, existingSales }) => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
 
@@ -74,8 +74,8 @@ const FlashSaleModal = ({ visible, onCancel, onSuccess, record }) => {
     } catch (err) {
       console.error(err);
       if (err.errorFields) {
-         // Lỗi validate form
-         return; 
+        // Lỗi validate form
+        return;
       }
       const errorMsg = err.response?.data ? JSON.stringify(err.response.data) : "Có lỗi xảy ra!";
       message.error(errorMsg);
@@ -99,7 +99,8 @@ const FlashSaleModal = ({ visible, onCancel, onSuccess, record }) => {
       maskClosable={false}
       style={{ top: 20 }}
     >
-      <FlashSaleForm form={form} isEdit={!!record} />
+      <FlashSaleForm form={form} isEdit={!!record} currentId={record?.id} // <--- Truyền ID để biết đường trừ nó ra khi check trùng
+        existingSales={existingSales} />
     </Modal>
   );
 };

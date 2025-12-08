@@ -6,6 +6,11 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from .models import ReviewReply
 import logging
+from django.db.models.signals import post_save, post_delete
+from django.dispatch import receiver
+from django.db.models import Avg, Count
+from .models import Review
+from products.models import Product
 
 logger = logging.getLogger(__name__)
 
@@ -155,3 +160,27 @@ def send_review_reply_to_seller(sender, instance, created, **kwargs):
         logger.info(f"Sent review reply notification to seller {seller_user_id} for review {review.id}")
     except Exception as e:
         logger.error(f"Failed to send seller review reply notification: {e}")
+
+
+@receiver([post_save, post_delete], sender=Review)
+def update_product_rating(sender, instance, **kwargs):
+    """
+    Signal này chạy mỗi khi Review được tạo, sửa (ẩn/hiện), hoặc xóa.
+    Nó sẽ tính lại rating và review_count cho Product.
+    """
+    product = instance.product
+    
+    # ✅ QUAN TRỌNG: Chỉ tính các review KHÔNG BỊ ẨN
+    visible_reviews = Review.objects.filter(product=product, is_hidden=False)
+    
+    aggregates = visible_reviews.aggregate(
+        average_rating=Avg('rating'),
+        total_reviews=Count('id')
+    )
+    
+    # Cập nhật vào Product
+    product.rating = round(aggregates['average_rating'] or 0, 1) # Làm tròn 1 số thập phân
+    product.review_count = aggregates['total_reviews'] or 0
+    
+    # Sử dụng update_fields để tối ưu query, chỉ update 2 trường này
+    product.save(update_fields=['rating', 'review_count'])

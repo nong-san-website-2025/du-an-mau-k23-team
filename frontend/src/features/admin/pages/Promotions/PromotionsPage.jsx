@@ -1,11 +1,9 @@
-// src/features/admin/promotions/PromotionsPage.jsx
 import React, { useEffect, useState } from "react";
-import { Button, message } from "antd";
-import dayjs from "dayjs";
-import AdminPageLayout from "../../components/AdminPageLayout";
-
+import { Button, message, Card } from "antd";
+import { PlusOutlined } from "@ant-design/icons";
+import AdminPageLayout from "../../components/AdminPageLayout"; // Giả định layout của bạn
 import PromotionFilter from "../../components/PromotionAdmin/PromotionFilter";
-import PromotionTable from "../../components/PromotionAdmin/PromotionTable";
+import PromotionTable from "../../components/PromotionAdmin/PromotionTable"; // Đường dẫn component mới
 import PromotionModal from "../../components/PromotionAdmin/PromotionModal";
 import PromotionDetailModal from "../../components/PromotionAdmin/PromotionDetailModal";
 
@@ -19,199 +17,200 @@ import {
 import { getCategories } from "../../services/products";
 
 export default function PromotionsPage() {
-  const [data, setData] = useState([]);
+  // State quản lý UI
   const [loading, setLoading] = useState(false);
+  const [modalLoading, setModalLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
-  const [detail, setDetail] = useState(null);
+  
+  // State dữ liệu
+  const [data, setData] = useState([]);
   const [categories, setCategories] = useState([]);
-
   const [filters, setFilters] = useState({});
+  const [selectedRecord, setSelectedRecord] = useState(null); // Dùng chung cho Edit và View Detail
 
+  // Initial Fetch
   useEffect(() => {
-    getCategories().then((res) => setCategories(res));
+    getCategories().then((res) => setCategories(res)).catch(() => {});
   }, []);
-
-  const fetchData = async (params = {}) => {
-    setLoading(true);
-    try {
-      const res = await getPromotionsOverview(params);
-      const mapped = Array.isArray(res)
-        ? res.map((item) => ({
-            ...item,
-            title: item.title ?? item.name ?? "",
-            start: item.start_at ?? item.start ?? null,
-            end: item.end_at ?? item.end ?? null,
-          }))
-        : [];
-      setData(mapped);
-    } catch (err) {
-      console.error(err);
-      message.error("Không thể tải danh sách khuyến mãi");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   useEffect(() => {
     fetchData(filters);
   }, [filters]);
 
+  const fetchData = async (params = {}) => {
+    setLoading(true);
+    try {
+      const res = await getPromotionsOverview(params);
+      // Backend Django thường trả về list, đảm bảo luôn là array
+      setData(Array.isArray(res) ? res : []);
+    } catch (err) {
+      console.error(err);
+      message.error("Không thể tải dữ liệu khuyến mãi");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // --- Handlers ---
   const handleCreate = () => {
-    setDetail(null);
+    setSelectedRecord(null);
     setModalOpen(true);
+  };
+
+  const handleEdit = async (record) => {
+    try {
+      setModalLoading(true); // Hiển thị loading nhẹ
+      // Gọi API chi tiết để lấy full data (categories, rules, etc.)
+      const detailData = await getVoucher(record.id);
+      setSelectedRecord(detailData);
+      setModalOpen(true);
+    } catch (error) {
+      message.error("Không tải được chi tiết để chỉnh sửa");
+    } finally {
+      setModalLoading(false);
+    }
   };
 
   const handleViewDetail = async (record) => {
     try {
-      const id = record.id; // id là số nguyên
-      const detailData = await getVoucher(id); // URL sẽ thành /vouchers/20/
-      setDetail(detailData);
-      setDetailModalOpen(true);
-    } catch (err) {
-      message.error("Không tải được chi tiết voucher");
+        // Tương tự edit, lấy data mới nhất
+        const detailData = await getVoucher(record.id);
+        setSelectedRecord(detailData);
+        setDetailModalOpen(true);
+    } catch (error) {
+        message.error("Lỗi tải chi tiết");
     }
   };
 
   const handleDelete = async (record) => {
     try {
       await deleteVoucher(record.id);
-      message.success("Đã xóa voucher");
-      fetchData(filters);
+      message.success("Đã xóa voucher thành công");
+      fetchData(filters); // Refresh table
     } catch (err) {
-      message.error("Không thể xóa voucher");
+      message.error("Xóa thất bại. Vui lòng thử lại.");
     }
   };
 
-  const handleSave = async (values) => {
-    // 'values' nhận từ modal có dạng:
-    // { ..., discountType: "amount", discountValue: 20000, dateRange: [...] }
-
-    // 1. Sao chép tất cả giá trị từ form vào payload
+  // --- Logic xử lý Data trước khi gửi lên Server (Business Logic Layer) ---
+  const processPayload = (values) => {
     const payload = { ...values };
-
-    // 2. Xử lý và chuyển đổi trường giảm giá
-    // Dựa vào 'discountType' để tạo trường 'discount_amount' hoặc 'discount_percent' v.v.
-    if (payload.discountType === "amount") {
-      payload.discount_amount = payload.discountValue;
-    } else if (payload.discountType === "percent") {
-      payload.discount_percent = payload.discountValue;
-    } else if (payload.discountType === "freeship") {
-      // Giả sử backend mong muốn 'freeship_amount' cho loại 'freeship'
-      // Nếu backend chỉ cần biết là freeship (không cần giá trị), bạn có thể gán true
-      // Nhưng dựa trên lỗi ban đầu, có vẻ nó mong muốn 'freeship_amount'
+    
+    // 1. Xử lý logic Voucher Type
+    if (payload.voucherType === "freeship") {
       payload.freeship_amount = payload.discountValue;
+      payload.discount_amount = 0;
+      payload.discount_percent = 0;
+    } else {
+      // Normal voucher
+      if (payload.discountType === "percent") {
+        payload.discount_percent = payload.discountValue;
+        payload.discount_amount = 0;
+      } else {
+        payload.discount_amount = payload.discountValue;
+        payload.discount_percent = 0;
+      }
+      payload.freeship_amount = 0;
     }
 
-    // 3. Xóa các trường tạm thời 'discountType' và 'discountValue'
+    // 2. Xử lý DateRange (Antd trả về Dayjs object -> ISO String cho Django)
+    if (payload.dateRange && payload.dateRange.length === 2) {
+      payload.start_at = payload.dateRange[0].toISOString();
+      payload.end_at = payload.dateRange[1].toISOString();
+    }
+    
+    // Cleanup trường thừa của frontend
+    delete payload.dateRange;
     delete payload.discountType;
     delete payload.discountValue;
+    
+    return payload;
+  };
 
-    // 4. Xử lý trường dateRange (Nếu backend yêu cầu start_at và end_at riêng)
-    // Giả sử 'values.dateRange' là một mảng 2 phần tử: [dayjsObjectStart, dayjsObjectEnd]
-    // Hoặc chuỗi ISO: ["2025-10-27T17:00:00.000Z", "2025-11-29T17:00:00.000Z"]
-    if (
-      payload.dateRange &&
-      Array.isArray(payload.dateRange) &&
-      payload.dateRange.length === 2
-    ) {
-      // Backend có thể muốn 2 trường riêng biệt là 'start_at' và 'end_at'
-      // Nếu `values.dateRange` là chuỗi (từ payload trước), nó đã sẵn sàng.
-      // Nếu nó là đối tượng dayjs (từ Form của Antd), bạn cần .toISOString()
-
-      // Kiểm tra xem phần tử có phải là đối tượng dayjs không
-      const formatIfNeeded = (date) => {
-        // Nếu là đối tượng dayjs (có hàm toISOString)
-        if (date && typeof date.toISOString === "function") {
-          return date.toISOString();
-        }
-        // Nếu đã là chuỗi ISO
-        return date;
-      };
-
-      payload.start_at = formatIfNeeded(payload.dateRange[0]);
-      payload.end_at = formatIfNeeded(payload.dateRange[1]);
-
-      // Xóa trường dateRange thừa
-      delete payload.dateRange;
-    }
-
-    // 5. Gửi payload đã được chuyển đổi lên server
+  const handleSave = async (values) => {
+    setModalLoading(true);
     try {
-      if (detail) {
-        // Gửi payload đã chuyển đổi cho hàm update
-        await updateVoucher(detail.id, payload);
-        message.success("Cập nhật voucher thành công");
+      const payload = processPayload(values);
+
+      if (selectedRecord && selectedRecord.id) {
+        await updateVoucher(selectedRecord.id, payload);
+        message.success("Cập nhật thành công!");
       } else {
-        // Gửi payload đã chuyển đổi cho hàm create
         await createVoucher(payload);
-        message.success("Tạo voucher thành công");
+        message.success("Tạo mới thành công!");
       }
-      setModalOpen(false); // Đóng modal
-      fetchData(filters); // Tải lại dữ liệu bảng
+      
+      setModalOpen(false);
+      fetchData(filters);
     } catch (err) {
-      // Hiển thị lỗi chi tiết từ server (nếu có)
+      // Xử lý lỗi chuyên nghiệp: Đọc lỗi từ Django DRF response
       const errorData = err.response?.data;
-      let errorMessage = "Có lỗi khi lưu voucher";
-
-      if (errorData) {
-        // Lấy lỗi non_field_errors (như lỗi ban đầu)
-        if (
-          errorData.non_field_errors &&
-          Array.isArray(errorData.non_field_errors)
-        ) {
-          errorMessage = errorData.non_field_errors.join(", ");
-        }
-        // Lấy lỗi của từng trường cụ thể (ví dụ: 'code' đã tồn tại)
-        else if (typeof errorData === "object") {
-          const fieldErrors = Object.keys(errorData)
-            .map(
-              (key) =>
-                `${key}: ${errorData[key].join ? errorData[key].join(", ") : errorData[key]}`
-            )
-            .join("; ");
-          if (fieldErrors) errorMessage = fieldErrors;
-        }
+      let msg = "Có lỗi xảy ra";
+      
+      if (typeof errorData === 'object') {
+          // Lấy tin nhắn lỗi đầu tiên tìm thấy
+          const firstKey = Object.keys(errorData)[0];
+          const firstError = Array.isArray(errorData[firstKey]) ? errorData[firstKey][0] : errorData[firstKey];
+          msg = `${firstKey}: ${firstError}`;
       }
-
-      console.error("Lỗi khi lưu voucher:", err.response || err);
-      message.error(errorMessage);
+      message.error(msg);
+    } finally {
+      setModalLoading(false);
     }
   };
 
   return (
     <AdminPageLayout
       title="QUẢN LÝ KHUYẾN MÃI"
-      extra={
-        <Button type="primary" onClick={handleCreate}>
-          + Tạo Voucher
-        </Button>
-      }
+      breadcrumb={['Trang chủ', 'Marketing', 'Khuyến mãi']} // Thêm breadcrumb cho chuyên nghiệp
     >
-      <PromotionFilter
-        onFilterChange={setFilters}
-        onClear={() => setFilters({})}
-      />
+        {/* Bọc trong Card để tạo khối unified đẹp mắt */}
+        <Card bordered={false} className="shadow-sm">
+            <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
+                 {/* Filter Component */}
+                 <div style={{ flex: 1, marginRight: 16 }}>
+                    <PromotionFilter
+                        onFilterChange={setFilters}
+                        onClear={() => setFilters({})}
+                    />
+                 </div>
+                 
+                 {/* Main Action */}
+                 <Button 
+                    type="primary" 
+                    icon={<PlusOutlined />} 
+                    onClick={handleCreate}
+                    size="large"
+                >
+                    Tạo Voucher
+                </Button>
+            </div>
 
-      <PromotionTable
-        data={data}
-        loading={loading}
-        onView={handleViewDetail}
-        onDelete={handleDelete}
-      />
+            <PromotionTable
+                data={data}
+                loading={loading}
+                onView={handleViewDetail}
+                onEdit={handleEdit} // Thêm prop onEdit
+                onDelete={handleDelete}
+            />
+        </Card>
 
+      {/* Modal Form Create/Edit */}
       <PromotionModal
         open={modalOpen}
+        loading={modalLoading}
         onCancel={() => setModalOpen(false)}
         onSave={handleSave}
-        detail={detail}
+        detail={selectedRecord}
         categories={categories}
       />
 
+      {/* Modal View Detail */}
       <PromotionDetailModal
         open={detailModalOpen}
         onCancel={() => setDetailModalOpen(false)}
-        detail={detail}
+        detail={selectedRecord}
       />
     </AdminPageLayout>
   );

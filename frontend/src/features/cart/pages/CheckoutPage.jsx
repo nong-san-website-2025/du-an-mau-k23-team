@@ -1,37 +1,21 @@
 // src/features/cart/pages/CheckoutPage.jsx
-
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "../services/CartContext";
-import {
-  Typography,
-  Button,
-  Select,
-  Row,
-  Col,
-  Space,
-  Divider,
-  Input,
-  Tooltip,
-} from "antd";
-import {
-  EnvironmentOutlined,
-  ShoppingOutlined,
-  DollarCircleOutlined,
-  CreditCardOutlined,
-  TagOutlined,
-  InfoCircleOutlined,
-  SaveOutlined,
-} from "@ant-design/icons";
+import { Row, Col, Typography, Divider, Button, Input, message } from "antd";
+import { TagOutlined, FileTextOutlined } from "@ant-design/icons";
 
-// Giả định import custom hook và component con đã tồn tại
+// Styles
+import "../styles/CheckoutPage.css";
+
+// Components
 import useCheckoutLogic from "../hooks/useCheckoutLogic";
-import PaymentButton from "../components/PaymnentButton";
-import AddressSelector from "../components/AddressSelector"; // Cần update AddressSelector để nhận thêm props
-import VoucherSection from "../components/VoucherSection";
+import AddressSelector from "../components/AddressSelector";
 import ProductList from "../components/ProductList";
-import { formatVND } from "../../stores/components/StoreDetail/utils/utils";
-import "../styles/CheckoutPage.css"; // Đảm bảo có CSS cho sticky và layout
+import VoucherSection from "../components/VoucherSection";
+import PaymentMethod from "../components/PaymentMethod"; // Component mới tách
+import PaymentButton from "../components/PaymentButton";
+import { intcomma } from "../../../utils/format";
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -41,252 +25,135 @@ const CheckoutPage = () => {
   const { cartItems } = useCart();
 
   const {
-    shippingFee,
-    selectedAddressId,
-    manualEntry,
-    discount,
-    payment,
-    isLoading,
-    token,
-    addresses,
-    total,
-    totalAfterDiscount,
-    selectedItems,
-    selectedAddress, // Lấy từ hook
-    customerName,
-    customerPhone,
-    addressText,
-    note,
-    geoManual, // Lấy từ hook
-
-    // Setters
-    setSelectedAddressId,
-    setManualEntry,
-    setPayment,
-    setCustomerName,
-    setCustomerPhone,
-    setAddressText,
-    setNote,
-    setGeoManual,
-    shippingStatus,
-
-    // Handlers
-    handleApplyVoucher,
-    handleOrder,
-    handleSaveManualAddress, // Lấy từ hook
+    shippingFee, selectedAddressId, manualEntry, discount, payment,
+    isLoading, token, addresses, total, totalAfterDiscount,
+    selectedItems, selectedAddress, customerName, customerPhone,
+    addressText, note, geoManual,
+    setSelectedAddressId, setManualEntry, setPayment, setCustomerName,
+    setCustomerPhone, setAddressText, setNote, setGeoManual, shippingStatus,
+    handleApplyVoucher, handleOrder, handleSaveManualAddress,
   } = useCheckoutLogic();
 
-  // Kiểm tra tính hợp lệ cơ bản cho việc đặt hàng
-  const isAddressValid =
-    (selectedAddressId && selectedAddress?.location) ||
-    (manualEntry &&
-      customerName &&
-      customerPhone &&
-      addressText &&
-      geoManual.districtId);
+  const isAddressValid = (selectedAddressId && selectedAddress?.location) ||
+    (manualEntry && customerName && customerPhone && addressText);
+  const isReadyToOrder = selectedItems.length > 0 && isAddressValid && shippingFee > 0;
 
-  const isReadyToOrder =
-    selectedItems.length > 0 && isAddressValid && shippingFee > 0;
+  // Render nút thanh toán chung (dùng lại cho cả Desktop và Mobile)
+  const renderCheckoutAction = () => {
+    if (payment === "Ví điện tử") {
+      return (
+        <PaymentButton
+          amount={totalAfterDiscount}
+          orderData={{ /* Logic data order */ }}
+          disabled={!isReadyToOrder || isLoading}
+        />
+      )
+    }
+    return (
+      <Button
+        type="primary"
+        size="large"
+        block
+        loading={isLoading}
+        onClick={handleOrder}
+        disabled={!isReadyToOrder}
+        style={{ height: 48, fontSize: 16, fontWeight: 600, background: '#00b96b', borderColor: '#00b96b' }}
+      >
+        Đặt hàng
+      </Button>
+    )
+  }
 
-  // --- Cấu trúc Layout 2 Cột ---
   return (
-    <Row gutter={[32, 24]} className="checkout-container">
-      <Col xs={24}>
-        <Title level={2} style={{ marginBottom: 20, fontWeight: 700 }}>
-          Thanh toán đơn hàng
-        </Title>
-      </Col>
+    <div className="checkout-container">
+      <div className="checkout-wrapper">
+        <div className="checkout-title">Thanh toán</div>
 
-      {/* ==================== LEFT COLUMN ==================== */}
-      <Col xs={24} lg={14} xl={16}>
-        {/* --- Địa chỉ giao hàng --- */}
-        <div className="checkout-section">
-          <Title level={4} className="section-title">
-            <EnvironmentOutlined /> Địa chỉ Giao hàng
-          </Title>
-
-          <AddressSelector
-            addresses={addresses}
-            selectedAddressId={selectedAddressId}
-            onSelect={setSelectedAddressId}
-            onManage={() => navigate("/profile?tab=address&redirect=checkout")}
-            onToggleManual={() => setManualEntry(!manualEntry)}
-            manualEntry={manualEntry}
-            customerName={customerName}
-            setCustomerName={setCustomerName}
-            customerPhone={customerPhone}
-            setCustomerPhone={setCustomerPhone}
-            addressText={addressText}
-            setAddressText={setAddressText}
-            geoManual={geoManual}
-            setGeoManual={setGeoManual}
-            onSaveManual={handleSaveManualAddress}
-          />
-
-          {!isAddressValid && (
-            <Text type="danger" style={{ marginTop: 8, display: "block" }}>
-              <InfoCircleOutlined /> Vui lòng chọn hoặc nhập đầy đủ địa chỉ giao
-              hàng.
-            </Text>
-          )}
-        </div>
-
-        {/* --- Sản phẩm --- */}
-        <div className="checkout-section">
-          <Title level={4} className="section-title">
-            <ShoppingOutlined /> Sản phẩm ({selectedItems.length} mặt hàng)
-          </Title>
-          <ProductList
-            cartItems={cartItems}
-            onEditCart={() => navigate("/cart")}
-          />
-        </div>
-
-        {/* --- Voucher --- */}
-        <div className="checkout-section">
-          <Title level={4} className="section-title">
-            <TagOutlined /> Mã giảm giá
-          </Title>
-
-          {!token ? (
-            <div className="voucher-login-prompt">
-              💡 <strong>Đăng nhập</strong> để sử dụng voucher giảm giá!
-            </div>
-          ) : (
-            <VoucherSection total={total} onApply={handleApplyVoucher} />
-          )}
-        </div>
-
-        {/* --- Thanh toán --- */}
-        <div className="checkout-section">
-          <Title level={4} className="section-title">
-            <DollarCircleOutlined /> Phương thức Thanh toán
-          </Title>
-
-          <Select
-            size="large"
-            value={payment}
-            onChange={setPayment}
-            style={{ width: "100%" }}
-          >
-            <Select.Option value="Thanh toán khi nhận hàng">
-              <Space>
-                <CreditCardOutlined /> Thanh toán khi nhận hàng (COD)
-              </Space>
-            </Select.Option>
-
-            <Select.Option value="Ví điện tử">
-              <Space>
-                <CreditCardOutlined /> Thanh toán qua VNPAY
-              </Space>
-            </Select.Option>
-          </Select>
-        </div>
-
-        {/* --- Ghi chú --- */}
-        <div className="checkout-section">
-          <Title level={4} className="section-title">
-            <SaveOutlined /> Ghi chú đơn hàng
-          </Title>
-
-          <TextArea
-            rows={3}
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder="Ví dụ: giao giờ hành chính, gọi trước khi đến..."
-          />
-        </div>
-      </Col>
-
-      {/* ==================== RIGHT COLUMN ==================== */}
-      <Col xs={24} lg={10} xl={8}>
-        <div className="order-summary-sticky">
-          <Title level={3} style={{ marginBottom: 16 }}>
-            Tóm tắt Đơn hàng
-          </Title>
-
-          <Space direction="vertical" style={{ width: "100%" }}>
-            <div className="price-row">
-              <Text>Tạm tính:</Text>
-              <Text>{total.toLocaleString()}đ</Text>
-            </div>
-
-            <div className="price-row">
-              <Text>Phí vận chuyển:</Text>
-
-              <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <Text strong>
-                  {shippingFee > 0 ? shippingFee.toLocaleString() + "đ" : "—"}
-                </Text>
-                {shippingStatus === "loading" && (
-                  <Text type="secondary">(Đang tính...)</Text>
-                )}
-              </span>
-            </div>
-
-            <div className="price-row">
-              <Text>Giảm giá Voucher:</Text>
-              <Text type="danger">- {discount.toLocaleString()}đ</Text>
-            </div>
-          </Space>
-
-          <Divider />
-
-          <div className="price-row total-row">
-            <Text strong >Tổng thanh toán:</Text>
-            <Text strong className="total-amount" style={{color: "#4caf50"}}>
-              {totalAfterDiscount.toLocaleString()}đ
-            </Text>
-          </div>
-
-          <Divider />
-
-          {payment === "Ví điện tử" ? (
-            <PaymentButton
-              className="custom-pay-btn"
-              title="Thanh toán qua VNPAY"
-              amount={totalAfterDiscount}
-              orderData={{
-                total_price: totalAfterDiscount,
-                customer_name: manualEntry
-                  ? customerName
-                  : selectedAddress?.recipient_name,
-                customer_phone: manualEntry
-                  ? customerPhone
-                  : selectedAddress?.phone,
-                address: manualEntry ? addressText : selectedAddress?.location,
-                note,
-                items: selectedItems.map((item) => ({
-                  product: item.product?.id || item.product,
-                  quantity: parseInt(item.quantity),
-                  price: parseFloat(item.product?.price),
-                })),
-              }}
-              disabled={!isReadyToOrder || isLoading}
+        <Row gutter={24}>
+          {/* === CỘT TRÁI: THÔNG TIN === */}
+          <Col xs={24} lg={16}>
+            <AddressSelector
+              addresses={addresses}
+              selectedAddressId={selectedAddressId}
+              onSelect={setSelectedAddressId}
+              manualEntry={manualEntry}
+              onToggleManual={() => setManualEntry(!manualEntry)}
+            /* Truyền thêm props manual nếu cần */
             />
-          ) : (
-            <Button
-              type="primary"
-              size="large"
-              className="confirm-order-btn"
-              loading={isLoading}
-              onClick={handleOrder}
-              disabled={!isReadyToOrder}
-              style={{backgroundColor: "#4caf50"}}
-            >
-              Xác nhận Đặt hàng
-            </Button>
-          )}
 
-          {!isReadyToOrder && (
-            <div className="error-message">
-              <InfoCircleOutlined /> Vui lòng nhập địa chỉ đầy đủ và chọn sản
-              phẩm.
+            <ProductList cartItems={cartItems} onEditCart={() => navigate("/cart")} />
+
+            <div className="checkout-card">
+              <div className="card-header"><TagOutlined /> Mã giảm giá</div>
+              <VoucherSection total={total} onApply={handleApplyVoucher} />
             </div>
-          )}
+
+            <PaymentMethod payment={payment} setPayment={setPayment} />
+
+            <div className="checkout-card">
+              <div className="card-header"><FileTextOutlined /> Ghi chú</div>
+              <TextArea
+                rows={2}
+                placeholder="Lời nhắn cho người bán hoặc shipper..."
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                style={{ borderRadius: 8 }}
+              />
+            </div>
+          </Col>
+
+          {/* === CỘT PHẢI: TÓM TẮT (Desktop Sticky) === */}
+          <Col xs={24} lg={8}>
+            <div className="order-summary-wrapper checkout-card">
+              <Title level={4}>Đơn hàng</Title>
+
+              <div className="summary-row">
+                <Text type="secondary">Tạm tính</Text>
+                <Text>{intcomma(total)}₫</Text>
+              </div>
+
+              <div className="summary-row">
+                <Text type="secondary">Phí vận chuyển</Text>
+                <Text>{intcomma(shippingFee)}₫</Text>
+              </div>
+
+              <div className="summary-row">
+                <Text type="secondary">Giảm giá</Text>
+                <Text type="success">-{intcomma(discount)}₫</Text>
+              </div>
+
+              <Divider style={{ margin: "12px 0" }} />
+
+              <div className="summary-row total">
+                <Text>Tổng cộng</Text>
+                <div style={{ textAlign: 'right' }}>
+                  <div className="total-price">{intcomma(totalAfterDiscount)}₫</div>
+
+                </div>
+              </div>
+
+              <div className="mobile-hide-btn" style={{ marginTop: 24 }}>
+                {renderCheckoutAction()}
+                {!isReadyToOrder && <Text type="danger" style={{ fontSize: 12, marginTop: 8, display: 'block', textAlign: 'center' }}>Vui lòng điền đủ thông tin</Text>}
+              </div>
+            </div>
+          </Col>
+        </Row>
+      </div>
+
+      {/* === MOBILE STICKY BOTTOM BAR === */}
+      <div className="mobile-bottom-bar">
+        <div>
+          <Text type="secondary" style={{ fontSize: 12 }}>Tổng thanh toán</Text>
+          <div style={{ color: '#ff4d4f', fontWeight: 700, fontSize: 18 }}>
+            {totalAfterDiscount.toLocaleString('vi-VN')}₫
+          </div>
         </div>
-      </Col>
-    </Row>
+        <div style={{ width: '50%' }}>
+          {renderCheckoutAction()}
+        </div>
+      </div>
+    </div>
   );
 };
 

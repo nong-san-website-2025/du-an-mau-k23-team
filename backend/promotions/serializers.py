@@ -225,28 +225,68 @@ class FlashSaleAdminSerializer(serializers.ModelSerializer):
     class Meta:
         model = FlashSale
         fields = [
-            'id', 'start_time', 'end_time', 'is_active', 'flashsale_products',       ]
+            'id', 'start_time', 'end_time', 'is_active', 'flashsale_products',
+        ]
         read_only_fields = ['id']
 
-
     def validate(self, data):
+        # --- BƯỚC 2: CHUẨN BỊ DỮ LIỆU ĐỂ CHECK (Hỗ trợ cả Create và Update) ---
+        # Lấy dữ liệu từ input (data), nếu không có (trường hợp Update 1 phần) thì lấy từ bản ghi cũ (instance)
         start_time = data.get('start_time')
         end_time = data.get('end_time')
+        is_active = data.get('is_active')
+
+        if self.instance: # Nếu đang là EDIT
+            if start_time is None: start_time = self.instance.start_time
+            if end_time is None: end_time = self.instance.end_time
+            if is_active is None: is_active = self.instance.is_active
+        else: # Nếu đang là CREATE
+            if is_active is None: is_active = True # Mặc định active nếu tạo mới
+
         flashsale_products = data.get('flashsale_products', [])
 
-        # 1. Validate thời gian
+        # 1. Validate thời gian cơ bản
         if start_time and end_time and start_time >= end_time:
             raise serializers.ValidationError({
                 "end_time": "Thời gian kết thúc phải sau thời gian bắt đầu."
             })
 
-        # 2. Phải có ít nhất 1 sản phẩm
-        if not flashsale_products:
-            raise serializers.ValidationError({
-                "flashsale_products": "Phải có ít nhất 1 sản phẩm trong Flash Sale."
-            })
+        # --- BƯỚC 3: LOGIC CHECK TRÙNG LỊCH (QUAN TRỌNG) ---
+        if is_active and start_time and end_time:
+            # Tìm các Flash Sale đang chạy (Active) bị trùng giờ
+            # Logic trùng: (Start A < End B) và (End A > Start B)
+            overlapping = FlashSale.objects.filter(
+                is_active=True,
+                start_time__lt=end_time,
+                end_time__gt=start_time
+            )
+            
+            # Nếu đang Edit, phải loại trừ chính nó ra khỏi danh sách trùng
+            if self.instance:
+                overlapping = overlapping.exclude(pk=self.instance.pk)
 
-        # 3. Validate từng sản phẩm
+            if overlapping.exists():
+                conflict = overlapping.first()
+                # Format ngày giờ cho dễ đọc
+                s_str = conflict.start_time.strftime('%H:%M %d/%m')
+                e_str = conflict.end_time.strftime('%H:%M %d/%m')
+                raise serializers.ValidationError(
+                    f"Khoảng thời gian này bị trùng với Flash Sale ID {conflict.id} ({s_str} - {e_str})"
+                )
+        # -----------------------------------------------------
+
+        # 2. Validate sản phẩm (Giữ nguyên logic cũ của bạn)
+        # Lưu ý: Khi update, nếu không gửi flashsale_products lên thì bỏ qua check này
+        # hoặc tùy logic của bạn muốn bắt buộc gửi lại list.
+        # Ở đây tôi giữ logic cũ: bắt buộc phải có nếu gửi list rỗng
+        
+        # Nếu đang tạo mới (self.instance is None) HOẶC user có gửi list products (kể cả rỗng)
+        if (not self.instance) or ('flashsale_products' in data):
+             if not flashsale_products:
+                raise serializers.ValidationError({
+                    "flashsale_products": "Phải có ít nhất 1 sản phẩm trong Flash Sale."
+                })
+
         seen_products = set()
         for item in flashsale_products:
             product = item.get('product')
@@ -256,26 +296,24 @@ class FlashSaleAdminSerializer(serializers.ModelSerializer):
             # Kiểm tra trùng lặp sản phẩm
             if product in seen_products:
                 raise serializers.ValidationError({
-                    "flashsale_products": f"Sản phẩm {product} bị lặp lại."
+                    "flashsale_products": f"Sản phẩm {product} bị lặp lại trong danh sách."
                 })
             seen_products.add(product)
 
             # Kiểm tra giá flash
             if flash_price is None or flash_price <= 0:
-                raise serializers.ValidationError({
-                    "flash_price": f"Giá flash của sản phẩm {product} phải > 0."
-                })
+                raise serializers.ValidationError(f"Giá flash của sản phẩm {product} phải > 0.")
 
             if product.original_price and flash_price >= product.original_price:
-                raise serializers.ValidationError({
-                    "flash_price": f"Giá flash của sản phẩm {product} phải thấp hơn giá gốc ({product.original_price})."
-                })
+                raise serializers.ValidationError(f"Giá flash của {product} ({flash_price}) phải thấp hơn giá gốc ({product.original_price}).")
 
             # Kiểm tra tồn kho
             if stock is None or stock < 1:
-                raise serializers.ValidationError({
-                    "stock": f"Số lượng của sản phẩm {product} phải >= 1."
-                })
+                raise serializers.ValidationError(f"Số lượng sale của sản phẩm {product} phải >= 1.")
+            
+            # Check kỹ hơn: Số lượng sale không được lớn hơn tồn kho thực tế
+            if stock > product.stock:
+                 raise serializers.ValidationError(f"Số lượng sale của {product} ({stock}) vượt quá tồn kho hiện tại ({product.stock}).")
 
         return data
 
@@ -283,7 +321,6 @@ class FlashSaleAdminSerializer(serializers.ModelSerializer):
         products_data = validated_data.pop('flashsale_products', [])
         flashsale = FlashSale.objects.create(**validated_data)
 
-        # Tạo dữ liệu cho từng sản phẩm
         for product_data in products_data:
             FlashSaleProduct.objects.create(flashsale=flashsale, **product_data)
 
@@ -292,12 +329,11 @@ class FlashSaleAdminSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         products_data = validated_data.pop('flashsale_products', None)
 
-        # Cập nhật dữ liệu cơ bản
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
 
-        # Reset sản phẩm nếu có dữ liệu mới
+        # Chỉ reset sản phẩm nếu frontend gửi danh sách mới lên
         if products_data is not None:
             instance.flashsale_products.all().delete()
             for product_data in products_data:

@@ -1,8 +1,14 @@
 import React from "react";
-import { Modal } from "antd";
+import { Modal, Descriptions, Image, Typography, Empty } from "antd";
+
+const { Text } = Typography;
 
 const ComplaintDetailModal = ({ visible, complaint, onClose }) => {
   if (!complaint) return null;
+
+  // Tách media thành ảnh và video
+  const images = complaint.media_urls?.filter(url => !url.match(/\.(mp4|webm|ogg)$/i)) || [];
+  const videos = complaint.media_urls?.filter(url => url.match(/\.(mp4|webm|ogg)$/i)) || [];
 
   return (
     <Modal
@@ -10,29 +16,55 @@ const ComplaintDetailModal = ({ visible, complaint, onClose }) => {
       title="Chi tiết khiếu nại"
       onCancel={onClose}
       footer={null}
-      width={600}
+      width={700}
+      centered
     >
-      <p><b>Người dùng:</b> {complaint.user_name}</p>
-      <p><b>Sản phẩm:</b> {complaint.product_name}</p>
-      <p><b>Đơn giá:</b> {complaint.unit_price ?? complaint.product_price}</p>
-      <p><b>Số lượng:</b> {complaint.quantity ?? 1}</p>
-      <p><b>Lý do:</b> {complaint.reason}</p>
-      <p><b>Trạng thái:</b> {complaint.status}</p>
-      <p><b>Ngày tạo:</b> {complaint.created_at}</p>
+      <Descriptions bordered column={1} labelStyle={{ width: '150px', fontWeight: 'bold' }}>
+        <Descriptions.Item label="Người dùng">{complaint.user_name}</Descriptions.Item>
+        <Descriptions.Item label="Sản phẩm">{complaint.product_name}</Descriptions.Item>
+        <Descriptions.Item label="Đơn giá">
+          {Number(complaint.unit_price ?? complaint.product_price).toLocaleString("vi-VN")} VNĐ
+        </Descriptions.Item>
+        <Descriptions.Item label="Số lượng">{complaint.quantity ?? 1}</Descriptions.Item>
+        <Descriptions.Item label="Lý do báo cáo">
+            <Text type="danger">{complaint.reason}</Text>
+        </Descriptions.Item>
+        <Descriptions.Item label="Ngày tạo">
+            {complaint.created_at ? new Date(complaint.created_at).toLocaleString("vi-VN") : ""}
+        </Descriptions.Item>
+      </Descriptions>
 
-      <div>
-        <b>Hình ảnh/Video minh họa:</b>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
-          {Array.isArray(complaint.media_urls) && complaint.media_urls.length > 0 ? (
-            complaint.media_urls.map((url, idx) => 
-              url.match(/\.(mp4|webm|ogg)$/i) ? (
-                <video key={idx} src={url} controls style={{ width: 220, height: 120 }} />
-              ) : (
-                <img key={idx} src={url} alt="media" style={{ maxWidth: 120, maxHeight: 90, borderRadius: 4 }} />
-              )
-            )
-          ) : <span>Không có</span>}
-        </div>
+      <div style={{ marginTop: 20 }}>
+        <Text strong style={{ display: 'block', marginBottom: 10 }}>Hình ảnh & Video bằng chứng:</Text>
+        
+        {complaint.media_urls?.length > 0 ? (
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            {/* Gallery Ảnh */}
+            <Image.PreviewGroup>
+              {images.map((url, idx) => (
+                <Image 
+                  key={`img-${idx}`} 
+                  width={100} 
+                  height={100} 
+                  src={url} 
+                  style={{ objectFit: 'cover', borderRadius: 8, border: '1px solid #f0f0f0' }} 
+                />
+              ))}
+            </Image.PreviewGroup>
+
+            {/* Video Player */}
+            {videos.map((url, idx) => (
+              <video 
+                key={`vid-${idx}`} 
+                src={url} 
+                controls 
+                style={{ width: 180, height: 100, borderRadius: 8, backgroundColor: '#000' }} 
+              />
+            ))}
+          </div>
+        ) : (
+          <Empty description="Không có hình ảnh/video đính kèm" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+        )}
       </div>
     </Modal>
   );

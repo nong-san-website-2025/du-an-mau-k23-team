@@ -29,7 +29,7 @@ import ContactSupport from "../pages/CustomerService/ContactSupport";
 import SellingGuide from "../pages/CustomerService/SellingGuide";
 import NewProductsPage from "../pages/NewProductsPage";
 import ComingSoonProductsPage from "../pages/ComingSoonProductsPage";
-import PrimarySecurity from "../pages/CustomerService/Primarysecurity";
+import PrimarySecurity from "../pages/CustomerService/PrimarySecurity";
 import Recruitment from "../pages/CustomerService/Recruitment";
 import Termsofservice from "../pages/CustomerService/Termsofservice";
 import RturnmoNey from "../pages/CustomerService/RturnmoNey";
@@ -37,10 +37,13 @@ import GreenFarmwallet from "../pages/CustomerService/GreenFarmwallet";
 import Frequentlyaskedquestions from "../pages/CustomerService/FAQ";
 import BlogListPage from "../features/blog/pages/BlogListPage";
 import BlogDetailPage from "../features/blog/pages/BlogDetailPage";
+import LegalPage from "../pages/LegalPage";
 
 export const userRoutes = [
   <Route path="/" element={<Layout />} key="layout">
     <Route index element={<HomePage />} />
+    <Route path="portal" element={<LegalPage />} />
+    <Route path="selling-guide" element={<SellingGuide />} />
     <Route path="blog" element={<BlogListPage />} />
     <Route path="blog/:slug" element={<BlogDetailPage />} />
     <Route path="products" element={<UserProductPage />} />

@@ -93,19 +93,19 @@ export default function Header({ shouldFetchProfile = true }) {
       >
         <TopBar />
         <div
-          className="border-bottom px-3 px-md-5"
+          className="border-bottom px-0 px-md-2"
           style={{
             background: "linear-gradient(to bottom, #2E7D32 0%, #4CAF50 100%)",
           }}
         >
           <div
-            className="container-fluid d-flex flex-column flex-md-row align-items-center justify-content-between py-1 px-1"
+            className="container-fluid d-flex flex-column flex-md-row align-items-center justify-content-between py-0 px-1"
             style={{
-              minHeight: "60px",
+              minHeight: "55px",
               position: "relative",
             }}
           >
-            <div className="w-100 d-flex justify-content-center justify-content-md-start" style={{ paddingBottom: 10 }}>
+            <div className="w-100 d-flex justify-content-center justify-content-md-start" style={{ paddingBottom: 5 }}>
               <Logo greenText={greenText} />
             </div>
 
@@ -116,7 +116,7 @@ export default function Header({ shouldFetchProfile = true }) {
                 flexDirection: "column",
                 alignItems: "center",
                 position: "relative",
-                marginBottom: 10,
+                marginBottom: 5,
               }}
             >
               <SearchBoxWithSuggestions
@@ -135,9 +135,10 @@ export default function Header({ shouldFetchProfile = true }) {
                 <div
                   className="d-none d-md-flex"
                   style={{
-                    flexWrap: "wrap",
+                    flexWrap: "nowrap",
                     gap: "4px",
                     marginTop: "4px",
+                    overflow: "hidden",
                   }}
                 >
                   {popularItems.slice(0, 7).map((item) => (
@@ -162,7 +163,7 @@ export default function Header({ shouldFetchProfile = true }) {
                         whiteSpace: "nowrap", // ← không xuống dòng
                         overflow: "hidden", // ← ẩn phần tràn
                         textOverflow: "clip", // ← hiển thị "..." khi tràn
-                        maxWidth: "120px", // ← giới hạn độ rộng (bắt buộc để ellipsis hoạt động)
+                        maxWidth: "100px", // ← giới hạn độ rộng (bắt buộc để ellipsis hoạt động)
                       }}
                     >
                       {item.name}

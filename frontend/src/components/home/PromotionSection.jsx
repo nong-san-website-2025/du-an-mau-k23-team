@@ -1,466 +1,320 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import {
-  Card,
-  List,
   Typography,
   Button,
-  Row,
-  Col,
-  Space,
-  Badge,
-  Flex,
   Skeleton,
-  Tag,
-  message,
+  Rate,
+  Empty, // <--- 1. Import thêm Empty
 } from "antd";
 import {
   ArrowRightOutlined,
   EyeOutlined,
+  ShoppingCartOutlined,
   FireOutlined,
   ThunderboltOutlined,
-  StarFilled,
 } from "@ant-design/icons";
 import axios from "axios";
-import NoImage from "../shared/NoImage";
 import styles from "./PromotionSection.module.css";
 
-const { Title, Text } = Typography;
-const PRODUCTS_GRID_COUNT = 6;
-const TOTAL_PRODUCTS_DISPLAYED = 7;
-const DEFAULT_IMAGE_PATH =
-  "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&q=80";
+// --- CONSTANTS ---
 const API_BASE_URL = "http://localhost:8000/api";
+const DEFAULT_IMG = "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&q=80";
 
-const formatPrice = (price) => {
-  if (!price) return "0₫";
-  return new Intl.NumberFormat("vi-VN", {
-    style: "currency",
-    currency: "VND",
-  })
-    .format(price)
-    .replace("₫", "₫");
+// --- UTILS ---
+const formatCurrency = (amount) =>
+  new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(amount);
+
+const calculateDiscount = (original, current) => {
+  if (!original || !current || original <= current) return null;
+  return Math.round(((original - current) / original) * 100);
 };
 
-const calculateDiscount = (originalPrice, currentPrice) => {
-  if (!originalPrice || !currentPrice || originalPrice <= currentPrice) {
-    return null;
-  }
-  const discountPercent = Math.round(
-    ((originalPrice - currentPrice) / originalPrice) * 100
-  );
-  return `-${discountPercent}%`;
-};
+// --- COMPONENT: SMART IMAGE (Tối ưu Skeleton Loading + Antd Empty) ---
+const SmartImage = ({ src, alt }) => {
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [isError, setIsError] = useState(false);
 
-const transformProductData = (apiProduct) => {
-  const mainImage =
-    apiProduct.main_image?.image ||
-    apiProduct.images?.[0]?.image ||
-    DEFAULT_IMAGE_PATH;
-  const originalPrice = apiProduct.original_price;
-  const currentPrice = apiProduct.price;
-  const discount = calculateDiscount(originalPrice, currentPrice);
-
-  return {
-    id: apiProduct.id,
-    name: apiProduct.name,
-    image: mainImage,
-    price: formatPrice(currentPrice),
-    originalPrice:
-      originalPrice && originalPrice > currentPrice
-        ? formatPrice(originalPrice)
-        : null,
-    discount: discount,
-    rating: apiProduct.rating || 0,
-    sold: apiProduct.sold || 0,
-  };
-};
-
-const HeroProductCard = ({ product }) => {
-  const [imageError, setImageError] = useState(false);
-  const hasValidImage =
-    product.image && product.image !== DEFAULT_IMAGE_PATH && !imageError;
+  // Reset state khi src thay đổi
+  useEffect(() => {
+    setIsLoaded(false);
+    setIsError(false);
+  }, [src]);
 
   return (
-    <div className={styles.heroProductCard}>
-      {/* 1. Phần Ảnh (Trên) */}
-      <div className={styles.heroImageWrapper}>
-        {product.discount && (
-          <div className={styles.heroDiscountBadge}>
-            <Tag color="red" className={styles.discountTag}>
-              {product.discount}
-            </Tag>
-          </div>
-        )}
-
-        {hasValidImage ? (
-          <img
-            className={styles.heroProductImage}
-            src={product.image}
-            alt={product.name}
-            onError={() => setImageError(true)}
-          />
-        ) : (
-          <NoImage height="100%" text={product.name} />
-        )}
-      </div>
-
-      {/* 2. Phần Thông Tin (Dưới) */}
-      <div className={styles.heroInfoContent}>
-        {product.rating && (
-          <div className={styles.heroRating}>
-            <StarFilled style={{ color: "#fadb14", fontSize: "16px" }} />
-            <span className={styles.heroRatingValue}>{product.rating}</span>
-            <span className={styles.heroRatingText}>
-              ({product.sold}+ đã bán)
-            </span>
-          </div>
-        )}
-
-        <Title
-          level={3}
-          className={styles.heroProductName}
-          title={product.name}
-        >
-          {product.name}
-        </Title>
-
-        <div className={styles.heroFooter}>
-          <div className={styles.heroPriceBlock}>
-            <span className={styles.heroCurrentPrice}>{product.price}</span>
-            {product.originalPrice && (
-              <span className={styles.heroOriginalPrice}>
-                {product.originalPrice}
-              </span>
-            )}
-          </div>
-
-          <Button
-            type="primary"
-            size="large"
-            className={styles.heroCTA}
-            icon={<EyeOutlined />}
-          >
-            Xem ngay
-          </Button>
+    <div className={styles.smartImageContainer}>
+      {/* 1. Layer Skeleton: Chỉ hiện khi chưa load xong và chưa lỗi */}
+      {!isLoaded && !isError && (
+        <div className={styles.skeletonWrapper}>
+          <Skeleton.Image active />
         </div>
-      </div>
+      )}
+
+      {/* 2. Layer Error Fallback: Hiện khi ảnh lỗi -> Dùng Empty của Ant Design */}
+      {isError && (
+        <div 
+          className={styles.skeletonWrapper} 
+          style={{ 
+            background: '#f5f5f5', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center' 
+          }}
+        >
+          {/* Sử dụng component Empty chế độ Simple cho gọn */}
+          <Empty 
+            image={Empty.PRESENTED_IMAGE_SIMPLE} 
+            description={<span style={{ fontSize: 12, color: '#999' }}>No Image</span>} 
+          />
+        </div>
+      )}
+
+      {/* 3. Layer Real Image: Luôn render nhưng ẩn (opacity 0) cho đến khi load xong */}
+      {!isError && (
+        <img
+          src={src}
+          alt={alt}
+          loading="lazy"
+          onLoad={() => setIsLoaded(true)}
+          onError={() => {
+            setIsLoaded(true); // Tắt skeleton
+            setIsError(true);  // Bật lỗi để hiện Empty
+          }}
+          className={`${styles.realImage} ${isLoaded ? styles.loaded : ''}`}
+        />
+      )}
     </div>
   );
 };
 
-const SmallProductCard = ({ product, badgeText, badgeColor }) => {
-  const [imageError, setImageError] = useState(false);
-  const hasValidImage =
-    product.image && product.image !== DEFAULT_IMAGE_PATH && !imageError;
+// --- CUSTOM HOOK: Data Fetching ---
+const useProductData = (endpoint) => {
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  return (
-    <Badge.Ribbon
-      text={badgeText}
-      color={badgeColor}
-      className={styles.ribbonBadge}
-    >
-      <Card
-        hoverable
-        className={styles.smallProductCard}
-        cover={
-          <div className={styles.smallCardImageWrapper}>
-            {hasValidImage ? (
-              <img
-                className={styles.smallCardImage}
-                src={product.image}
-                alt={product.name}
-                onError={() => setImageError(true)}
-              />
-            ) : (
-              <NoImage height={200} text={product.name} />
-            )}
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const { data } = await axios.get(`${API_BASE_URL}${endpoint}`);
+        
+        const transformed = data.map((item) => ({
+          id: item.id,
+          name: item.name,
+          // Ưu tiên ảnh main, nếu không có thì lấy ảnh đầu tiên, không có nữa thì fallback
+          image: item.main_image?.image || item.images?.[0]?.image || DEFAULT_IMG,
+          price: item.price,
+          originalPrice: item.original_price,
+          discountPercent: calculateDiscount(item.original_price, item.price),
+          rating: item.rating || 5,
+          sold: item.sold || 0,
+        }));
+        
+        setProducts(transformed);
+      } catch (error) {
+        console.error(`[PromotionSection] Error fetching ${endpoint}:`, error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-            {product.discount && (
-              <div className={styles.smallDiscountBadge}>
-                <Tag color="red" className={styles.smallDiscountTag}>
-                  {product.discount}
-                </Tag>
-              </div>
-            )}
+    fetchData();
+  }, [endpoint]);
 
-            <div className={styles.quickViewOverlay}>
-              <EyeOutlined />
-            </div>
-          </div>
-        }
-        styles={{ body: { padding: 0 } }}
-      >
-        <div className={styles.smallCardContent}>
-          <div className={styles.smallProductName}>{product.name}</div>
-
-          {product.rating && (
-            <div className={styles.smallRating}>
-              <StarFilled style={{ color: "#fadb14", fontSize: "12px" }} />
-              <span className={styles.smallRatingValue}>{product.rating}</span>
-              <span className={styles.smallRatingCount}>({product.sold})</span>
-            </div>
-          )}
-
-          <div className={styles.smallPriceSection}>
-            <span className={styles.smallCurrentPrice}>{product.price}</span>
-            {product.originalPrice && (
-              <span className={styles.smallOriginalPrice}>
-                {product.originalPrice}
-              </span>
-            )}
-          </div>
-
-          <div className={styles.smallCtaOnHover}>
-            <Button
-              type="primary"
-              block
-              size="small"
-              className={styles.smallCTA}
-              icon={<EyeOutlined />}
-            >
-              Xem ngay
-            </Button>
-          </div>
-        </div>
-      </Card>
-    </Badge.Ribbon>
-  );
+  return { products, loading };
 };
 
-// Enhanced Section component
-function ProductSection({
-  title,
-  icon,
-  iconColor,
-  products,
-  loading,
-  viewMoreLink,
-  badgeText,
-  badgeColor,
-}) {
-  const heroProduct = products?.[0];
-  let gridProducts = products?.slice(1, TOTAL_PRODUCTS_DISPLAYED);
+// --- COMPONENT: HERO PRODUCT (Cột Trái - Card Lớn) ---
+const HeroProduct = React.memo(({ product }) => {
+  if (!product) return null;
 
-  if (!loading && gridProducts && gridProducts.length < PRODUCTS_GRID_COUNT) {
-    const missingCount = PRODUCTS_GRID_COUNT - gridProducts.length;
-    for (let i = 0; i < missingCount; i++) {
-      gridProducts.push({
-        id: `placeholder-${title}-${i}`,
-        name: "...",
-        image: DEFAULT_IMAGE_PATH,
-        isPlaceholder: true,
-      });
-    }
-  }
+  return (
+    <div className={styles.heroCard}>
+      <div className={styles.heroImageWrapper}>
+        {product.discountPercent && (
+          <div className={styles.discountBadge}>-{product.discountPercent}%</div>
+        )}
+        <SmartImage src={product.image} alt={product.name} />
+      </div>
+      
+      <div className={styles.heroContent}>
+        <Typography.Title 
+          level={4} 
+          className={styles.name} 
+          style={{ fontSize: 18, height: 'auto', marginBottom: 8 }}
+          title={product.name}
+        >
+          {product.name}
+        </Typography.Title>
+        
+        <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center' }}>
+          <Rate disabled defaultValue={product.rating} style={{ fontSize: 14, color: '#fadb14' }} />
+          <span style={{ color: '#888', marginLeft: 8, fontSize: 12 }}>({product.sold} đã bán)</span>
+        </div>
+        
+        <div className={styles.priceGroup} style={{ marginBottom: 20 }}>
+          <span className={styles.price} style={{ fontSize: 24 }}>{formatCurrency(product.price)}</span>
+          {product.originalPrice && (
+            <span className={styles.originalPrice}>{formatCurrency(product.originalPrice)}</span>
+          )}
+        </div>
+        
+        <Button 
+          type="primary" 
+          size="large" 
+          block 
+          style={{ height: 48, borderRadius: 8, fontWeight: 500 }}
+          icon={<ShoppingCartOutlined />}
+        >
+          Mua ngay
+        </Button>
+      </div>
+    </div>
+  );
+});
 
-  // Loading state
+// --- COMPONENT: PRODUCT ITEM (Lưới Phải - Card Nhỏ) ---
+const ProductItem = React.memo(({ product }) => {
+  return (
+    <div className={styles.productCard}>
+      <div className={styles.imgWrapper}>
+        {product.discountPercent && (
+          <div className={styles.discountBadge}>-{product.discountPercent}%</div>
+        )}
+        <SmartImage src={product.image} alt={product.name} />
+
+        {/* Hover Actions */}
+        <div className={styles.quickAction}>
+          <Button type="primary" shape="circle" icon={<EyeOutlined />} />
+          <Button type="default" shape="circle" icon={<ShoppingCartOutlined />} />
+        </div>
+      </div>
+
+      <div className={styles.info}>
+        <div>
+          <div className={styles.name} title={product.name}>{product.name}</div>
+          <div className={styles.priceGroup}>
+            <span className={styles.price}>{formatCurrency(product.price)}</span>
+            {product.originalPrice && (
+              <span className={styles.originalPrice}>{formatCurrency(product.originalPrice)}</span>
+            )}
+          </div>
+        </div>
+        
+        <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Rate disabled defaultValue={product.rating} style={{ fontSize: 11, color: '#fadb14' }} />
+          <span style={{ fontSize: 11, color: '#999' }}>Đã bán {product.sold}</span>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+// --- SECTION COMPONENT ---
+const ProductSection = ({ title, icon, color, endpoint, viewMoreLink }) => {
+  const { products, loading } = useProductData(endpoint);
+  
+  const heroProduct = products[0];
+  const gridProducts = useMemo(() => products.slice(1, 7), [products]);
+
+  // SKELETON LOADING STATE
   if (loading) {
     return (
-      <div className={styles.sectionBlock}>
-        <Row
-          justify="space-between"
-          align="middle"
-          style={{ marginBottom: 24 }}
-        >
-          <Col>
-            <Skeleton.Input style={{ width: 240, height: 32 }} active />
-          </Col>
-        </Row>
-        <Row gutter={32}>
-          <Col lg={12} md={24} xs={24}>
-            <Skeleton.Image
-              active
-              style={{ width: "100%", height: 480, borderRadius: 20 }}
-            />
-          </Col>
-          <Col lg={12} md={24} xs={24}>
-            <Row gutter={[20, 24]}>
-              {[...Array(4)].map((_, i) => (
-                <Col lg={12} md={12} sm={12} xs={12} key={i}>
-                  <Card>
-                    <Skeleton.Image
-                      style={{ width: "100%", height: 200 }}
-                      active
-                    />
-                    <Skeleton
-                      paragraph={{ rows: 2 }}
-                      active
-                      style={{ marginTop: 12 }}
-                    />
-                  </Card>
-                </Col>
-              ))}
-            </Row>
-          </Col>
-        </Row>
+      <div className={styles.container}>
+        <div className={styles.header}>
+           <Skeleton.Input active size="large" style={{ width: 200 }} />
+        </div>
+        <div className={styles.gridContainer}>
+          <div className={styles.leftCol}>
+             {/* Skeleton Hero */}
+             <div style={{ height: '100%', minHeight: 400, background: '#fff', borderRadius: 16, border: '1px solid #f0f0f0', overflow: 'hidden' }}>
+                <Skeleton.Image active style={{ width: '100%', height: '60%' }} />
+                <div style={{ padding: 20 }}>
+                   <Skeleton active paragraph={{ rows: 2 }} />
+                </div>
+             </div>
+          </div>
+          <div className={styles.rightGrid}>
+            {/* Skeleton Grid */}
+            {[...Array(6)].map((_, i) => (
+               <div key={i} style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid #f0f0f0', background: '#fff' }}>
+                  <div style={{ paddingTop: '100%', position: 'relative' }}>
+                     <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                       <Skeleton.Image active />
+                     </div>
+                  </div>
+                  <div style={{ padding: 10 }}>
+                     <Skeleton active paragraph={{ rows: 1 }} title={false} />
+                  </div>
+               </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
 
-  if (!heroProduct) return null;
+  if (!products || products.length === 0) return null;
 
   return (
-    <div className={styles.sectionBlock}>
-      {/* Enhanced Header */}
-      <div
-        className={styles.sectionHeader}
-        style={{ borderBottomColor: iconColor }}
-      >
-        <div className={styles.sectionHeaderContent}>
-          <div
-            className={styles.sectionIconWrapper}
-            style={{ background: `${iconColor}15` }}
-          >
-            {React.cloneElement(icon, { style: { color: iconColor } })}
+    <section className={styles.container}>
+      {/* Header */}
+      <div className={styles.header} style={{ borderBottomColor: `${color}20` }}>
+        <div className={styles.titleWrapper}>
+          <div className={styles.iconBox} style={{ backgroundColor: `${color}15`, color: color }}>
+            {icon}
           </div>
-          <Title
-            level={2}
-            className={styles.sectionTitle}
-            style={{ color: iconColor }}
-          >
+          <Typography.Title level={2} style={{ margin: 0, color: color, fontSize: 24 }}>
             {title}
-          </Title>
+          </Typography.Title>
         </div>
-
-        <Button
-          type="text"
-          href={viewMoreLink}
-          className={styles.viewAllBtn}
-          style={{ color: iconColor }}
-        >
+        <Button type="link" href={viewMoreLink} style={{ color: color }}>
           Xem tất cả <ArrowRightOutlined />
         </Button>
       </div>
 
-      {/* Product Layout */}
-      <div className={styles.productLayout}>
-        {/* Hero Product */}
-        <div>
-          <HeroProductCard product={heroProduct} />
+      {/* Grid Content */}
+      <div className={styles.gridContainer}>
+        {/* Left: Hero Product */}
+        <div className={styles.leftCol}>
+           <HeroProduct product={heroProduct} />
         </div>
 
-        {/* Grid Products */}
-        <div className={styles.productGrid}>
-          {gridProducts?.map((product) => (
-            <div key={product.id}>
-              {product.isPlaceholder ? (
-                <Card>
-                  <Skeleton.Image
-                    style={{ height: 200, width: "100%" }}
-                    active
-                  />
-                  <Skeleton
-                    paragraph={{ rows: 2 }}
-                    active
-                    style={{ marginTop: 12 }}
-                  />
-                </Card>
-              ) : (
-                <SmallProductCard
-                  product={product}
-                  badgeText={badgeText}
-                  badgeColor={badgeColor}
-                />
-              )}
-            </div>
+        {/* Right: Small Grid */}
+        <div className={styles.rightGrid}>
+          {gridProducts.map((product) => (
+            <ProductItem key={product.id} product={product} />
+          ))}
+          
+          {/* Fill empty cells */}
+          {[...Array(Math.max(0, 6 - gridProducts.length))].map((_, idx) => (
+             <div key={`empty-${idx}`} style={{ background: '#f9f9f9', borderRadius: 12, border: '1px dashed #e8e8e8' }} />
           ))}
         </div>
       </div>
-    </div>
+    </section>
   );
-}
-
-const fetchNewProducts = async (setProducts, setLoading) => {
-  try {
-    console.log(
-      "[PromotionSection] Fetching new products from:",
-      `${API_BASE_URL}/products/new-products/`
-    );
-    const response = await axios.get(`${API_BASE_URL}/products/new-products/`, {
-      timeout: 10000,
-      headers: {
-        Accept: "application/json",
-      },
-    });
-    console.log("[PromotionSection] New products fetched:", response.data);
-    const transformed = response.data.map(transformProductData);
-    setProducts(transformed);
-  } catch (error) {
-    console.error("[PromotionSection] Lỗi khi lấy sản phẩm mới:", {
-      message: error.message,
-      status: error.response?.status,
-      url: error.config?.url,
-      data: error.response?.data,
-    });
-    message.error("Không thể tải sản phẩm mới. Vui lòng kiểm tra backend.");
-  } finally {
-    setLoading(false);
-  }
 };
 
-const fetchBestSellers = async (setProducts, setLoading) => {
-  try {
-    console.log(
-      "[PromotionSection] Fetching best sellers from:",
-      `${API_BASE_URL}/products/best-sellers/`
-    );
-    const response = await axios.get(`${API_BASE_URL}/products/best-sellers/`, {
-      timeout: 10000,
-      headers: {
-        Accept: "application/json",
-      },
-    });
-    console.log("[PromotionSection] Best sellers fetched:", response.data);
-    const transformed = response.data.map(transformProductData);
-    setProducts(transformed);
-  } catch (error) {
-    console.error("[PromotionSection] Lỗi khi lấy sản phẩm bán chạy:", {
-      message: error.message,
-      status: error.response?.status,
-      url: error.config?.url,
-      data: error.response?.data,
-    });
-    message.error(
-      "Không thể tải sản phẩm bán chạy. Vui lòng kiểm tra backend."
-    );
-  } finally {
-    setLoading(false);
-  }
-};
-
+// --- MAIN EXPORT ---
 export default function PromotionSection() {
-  const [newProducts, setNewProducts] = useState([]);
-  const [bestSellers, setBestSellers] = useState([]);
-  const [loadingNew, setLoadingNew] = useState(true);
-  const [loadingBest, setLoadingBest] = useState(true);
-
-  useEffect(() => {
-    fetchNewProducts(setNewProducts, setLoadingNew);
-    fetchBestSellers(setBestSellers, setLoadingBest);
-  }, []);
-
   return (
-    <div className={styles.promotionWrapper}>
+    <div style={{ padding: "40px 0", background: "#f8f9fa" }}>
       <ProductSection
         title="Sản phẩm mới"
         icon={<ThunderboltOutlined />}
-        iconColor="#1677ff"
-        products={newProducts}
-        loading={loadingNew}
+        color="#1677ff" 
+        endpoint="/products/new-products/"
         viewMoreLink="/new-products"
-        badgeText="Mới"
-        badgeColor="blue"
       />
+
+      <div style={{ height: 40 }} /> 
 
       <ProductSection
         title="Bán chạy nhất"
         icon={<FireOutlined />}
-        iconColor="#f5222d"
-        products={bestSellers}
-        loading={loadingBest}
+        color="#f5222d" 
+        endpoint="/products/best-sellers/"
         viewMoreLink="/best-sellers"
-        badgeText="Hot"
-        badgeColor="red"
       />
     </div>
   );

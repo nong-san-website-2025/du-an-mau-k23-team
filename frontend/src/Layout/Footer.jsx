@@ -160,14 +160,12 @@ export default function Footer() {
               Dịch vụ khách hàng
             </h6>
             <ul style={{ listStyle: "none", padding: 0, margin: 0, fontSize: "0.9rem" }}>
-              <li style={{ marginBottom: "0.5rem" }}><a href="/buying-guide" className={linkClass}>Hướng dẫn mua hàng</a></li>
-              <li style={{ marginBottom: "0.5rem" }}><a href="/selling-guide" className={linkClass}>Hướng dẫn bán hàng</a></li>
-              <li style={{ marginBottom: "0.5rem" }}><a href="/contactsupport" className={linkClass}>Liên hệ hỗ trợ</a></li>
-              <li style={{ marginBottom: "0.5rem" }}><a href="/returnpolicy" className={linkClass}>Chính sách đổi trả</a></li>
-              <li style={{ marginBottom: "0.5rem" }}><a href="/warrantypolicy" className={linkClass}>Chính sách bảo hành</a></li>
-              <li style={{ marginBottom: "0.5rem" }}><a href="/RturnmoNey" className={linkClass}>Trả hàng/Hoàn tiền</a></li>
-              <li style={{ marginBottom: "0.5rem" }}><a href="/GreenFarmwallet" className={linkClass}>Ví GreenFarm</a></li>
-              <li style={{ marginBottom: "0.5rem" }}><a href="/faq" className={linkClass}>Câu hỏi thường gặp</a></li>
+              <li style={{ marginBottom: "0.5rem" }}><a href="/portal?tab=buying-guide" className={linkClass}>Hướng dẫn mua hàng</a></li>
+              <li style={{ marginBottom: "0.5rem" }}><a href="/portal?tab=selling-guide" className={linkClass}>Hướng dẫn bán hàng</a></li>
+              <li style={{ marginBottom: "0.5rem" }}><a href="/portal?tab=contact" className={linkClass}>Liên hệ hỗ trợ</a></li>
+              <li style={{ marginBottom: "0.5rem" }}><a href="/portal?tab=return-policy" className={linkClass}>Chính sách đổi trả</a></li>
+              <li style={{ marginBottom: "0.5rem" }}><a href="/portal?tab=wallet" className={linkClass}>Ví GreenFarm</a></li>
+              <li style={{ marginBottom: "0.5rem" }}><a href="/portal?tab=faq" className={linkClass}>Câu hỏi thường gặp</a></li>
             </ul>
           </div>
 
@@ -178,8 +176,8 @@ export default function Footer() {
             </h6>
             <ul style={{ listStyle: "none", padding: 0, margin: 0, fontSize: "0.9rem" }}>
               <li style={{ marginBottom: "0.5rem" }}><a href="/abouts" className={linkClass}>Về chúng tôi</a></li>
-              <li style={{ marginBottom: "0.5rem" }}><a href="/recruitment" className={linkClass}>Tuyển dụng</a></li>
-              <li style={{ marginBottom: "0.5rem" }}><a href="/primarysecurity" className={linkClass}>Chính sách bảo mật</a></li>
+              <li style={{ marginBottom: "0.5rem" }}><a href="/portal?tab=recruitment" className={linkClass}>Tuyển dụng</a></li>
+              <li style={{ marginBottom: "0.5rem" }}><a href="/portal?tab=privacy" className={linkClass}>Chính sách bảo mật</a></li>
               <li style={{ marginBottom: "0.5rem" }}><a href="/terms-of-service" className={linkClass}>Điều khoản dịch vụ</a></li>
               <li style={{ marginBottom: "0.5rem" }}><a href="/featured" className={linkClass}>Sản phẩm</a></li>
               <li style={{ marginBottom: "0.5rem" }}><a href="/blog" className={linkClass}>Blog</a></li>

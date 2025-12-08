@@ -250,6 +250,7 @@ const FlashSalePage = () => {
           loadData();
         }}
         record={editingRecord}
+        existingSales={data}
       />
     </AdminPageLayout>
   );
