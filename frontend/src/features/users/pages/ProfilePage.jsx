@@ -16,7 +16,6 @@ import useWalletLogic from "../hooks/useWalletLogic";
 import ProfileSidebar from "../components/ProfileSidebar";
 import ProfileInfo from "../components/ProfileInfo";
 import AddressList from "../components/AddressList";
-import WalletTab from "../components/WalletTab";
 import ChangePassword from "../components/ChangePassword";
 import NotificationSettings from "../components/NotificationSettings";
 import VoucherList from "../components/VoucherList";
@@ -189,22 +188,7 @@ function ProfilePage() {
                 <Rewards />
               </div>
             )}
-            {activeTab === "special" && (
-              <div style={{ fontSize: 16, marginBottom: 10, color: "#D32F2F" }}>
-                Chức năng ưu đãi đặc biệt sẽ được bổ sung.
-              </div>
-            )}
-            {activeTab === "wallet" && (
-              <WalletTab
-                walletBalance={walletBalance}
-                loadingWallet={loadingWallet}
-                rechargeAmount={rechargeAmount}
-                setRechargeAmount={setRechargeAmount}
-                rechargeLoading={rechargeLoading}
-                rechargeError={rechargeError}
-                handleRecharge={handleRecharge}
-              />
-            )}
+
           </Card>
         </Col>
       </Row>

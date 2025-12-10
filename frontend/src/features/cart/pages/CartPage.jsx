@@ -311,23 +311,7 @@ function CartPage() {
                     );
                   })}
 
-                  <div className="store-footer">
-                    <div className="voucher-compact">
-                      <Ticket size={16} />
-                      <Button
-                        type="link"
-                        onClick={() =>
-                          setVoucherModal({
-                            visible: true,
-                            storeId,
-                            storeName: displayName,
-                          })
-                        }
-                      >
-                        Chọn mã giảm giá cho shop
-                      </Button>
-                    </div>
-                  </div>
+
                 </Card>
               );
             })}

@@ -33,7 +33,8 @@ SECRET_KEY = os.environ.get(
 DEBUG = os.environ.get("DEBUG", "True") == "True"
 
 ALLOWED_HOSTS = [
-    "*"
+    "*",
+    "192.168.68.117",
 ]
 
 DEBUG = True
@@ -238,6 +239,9 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",  # Alternative React port
     "http://127.0.0.1:5173",
     "http://127.0.0.1:3000",
+    "http://192.168.68.117:5173",  # External machine access
+    "http://192.168.68.117:3000",
+    "http://192.168.68.105:3000",
 ]
 CORS_ALLOW_METHODS = [
     'DELETE',

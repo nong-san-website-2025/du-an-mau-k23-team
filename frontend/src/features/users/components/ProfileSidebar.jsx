@@ -27,7 +27,6 @@ const navItems = [
   { key: "voucher", label: "Kho mã giảm giá", icon: <FaGift /> },
   { key: "myvoucher", label: "Mã giảm giá của tôi", icon: <FaGift /> },
   { key: "point", label: "Điểm Thưởng", icon: <FaStar /> },
-  { key: "wallet", label: "Ví", icon: <FaWallet /> },
 ];
 
 const ProfileSidebar = ({ activeTab, setActiveTab }) => {

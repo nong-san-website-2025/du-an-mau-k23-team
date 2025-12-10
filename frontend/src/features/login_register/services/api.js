@@ -1,7 +1,8 @@
 // src/login_register/services/api.js
 import axios from "axios";
 
-const API_URL = "http://localhost:8000/api"; // Hoặc process.env.REACT_APP_API_URL
+// const API_URL = "http://192.168.68.117:8000/api"; // Hoặc process.env.REACT_APP_API_URL
+const API_URL = process.env.REACT_APP_API_URL; // Hoặc process.env.REACT_APP_API_URL
 
 const api = axios.create({
   baseURL: API_URL,
