@@ -19,60 +19,102 @@ class ProductMiniSerializer(serializers.ModelSerializer):
         return obj.discounted_price
 
 class SellerListSerializer(serializers.ModelSerializer):
+    image = serializers.SerializerMethodField()
+    followers_count = serializers.SerializerMethodField()
+    total_products = serializers.SerializerMethodField()
     owner_username = serializers.CharField(source='user.username', read_only=True)
     user_email = serializers.EmailField(source="user.email", read_only=True)
     created_at = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%S.%fZ")
-    followers_count = serializers.SerializerMethodField()
-    total_products = serializers.SerializerMethodField()
-    
+
     class Meta:
         model = Seller
-        fields = ['id', 'store_name', 'image', 'address', 'status', 'bio', 'owner_username', 'phone', 'user_email', 'created_at', 'followers_count', 'total_products']
+        fields = [
+            'id', 'store_name', 'image', 'address', 'status',
+            'bio', 'owner_username', 'phone', 'user_email',
+            'created_at', 'followers_count', 'total_products'
+        ]
+
+    def get_image(self, obj):
+        request = self.context.get("request")
+        if obj.image:
+            if request:
+                return request.build_absolute_uri(obj.image.url)
+            return obj.image.url
+        return None
 
     def get_followers_count(self, obj):
         return obj.followers.count()
 
     def get_total_products(self, obj):
-        return obj.products.count()  # hoặc Product.objects.filter(store=obj).count()
+        return Product.objects.filter(seller=obj).count()
+
 class SellerRegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = Seller
-        fields = ['id', 'user', 'store_name', 'bio', 'address', 'phone', 'image']
+        fields = ['id', 'user', 'store_name', 'bio', 'address', 'phone', 'image', "tax_code",
+            "business_type",
+            "cccd_front",
+            "cccd_back",
+            "business_license",
+        ]
 
 class SellerDetailSerializer(serializers.ModelSerializer):
-    products = ProductMiniSerializer(many=True, read_only=True, source='product_set')
+    image = serializers.SerializerMethodField()
+    cccd_front = serializers.SerializerMethodField()
+    cccd_back = serializers.SerializerMethodField()
+    business_license = serializers.SerializerMethodField()
+
+    business_type = serializers.CharField()
+    tax_code = serializers.CharField()
+    products = serializers.SerializerMethodField()
     followers_count = serializers.SerializerMethodField()
     is_following = serializers.SerializerMethodField()
     total_products = serializers.SerializerMethodField()
     owner_username = serializers.CharField(source='user.username', read_only=True)
     user_email = serializers.EmailField(source="user.email", read_only=True)
 
+    
 
     class Meta:
         model = Seller
         fields = [
-            'id',
-            'store_name',
-            'bio',
-            'address',
-            'phone',
-            'image',
-            'created_at',
-            'status',
-            'rejection_reason',
-            'products',
-            'followers_count',
-            'is_following',
-            'total_products',
-            'owner_username',
-            'user_email'
-        ]
+        'id',
+        'store_name',
+        'bio',
+        'address',
+        'phone',
+        'image',
+        'created_at',
+        'status',
+        'rejection_reason',
+        'products',
+
+        # ✅ thêm các field này
+        "business_type",
+            "tax_code",
+            "cccd_front",
+            "cccd_back",
+            "business_license",
+            "followers_count",
+            "is_following",
+            "total_products",
+            "owner_username",
+            "user_email",
+    ]
+
+
+    
+
+    def get_products(self, obj):
+        # Fix cực chuẩn – luôn lấy đúng product
+        qs = Product.objects.filter(seller=obj)
+        return ProductMiniSerializer(qs, many=True, context=self.context).data
 
     def get_followers_count(self, obj):
         return obj.followers.count()
-    
+
     def get_total_products(self, obj):
-        return obj.products.count()  # hoặc Product.objects.filter(store=obj).count()
+        return Product.objects.filter(seller=obj).count()
 
     def get_is_following(self, obj):
         request = self.context.get('request')
@@ -80,16 +122,42 @@ class SellerDetailSerializer(serializers.ModelSerializer):
         if user and user.is_authenticated:
             return SellerFollow.objects.filter(user=user, seller=obj).exists()
         return False
+    
+    def get_full_url(self, obj_file):
+        request = self.context.get("request")
+        if obj_file:
+            return request.build_absolute_uri(obj_file.url)
+        return None
+
+    def get_image(self, obj):
+        return self.get_full_url(obj.image)
+
+    def get_cccd_front(self, obj):
+        return self.get_full_url(obj.cccd_front)
+
+    def get_cccd_back(self, obj):
+        return self.get_full_url(obj.cccd_back)
+
+    def get_business_license(self, obj):
+        return self.get_full_url(obj.business_license)
+
 
 class SellerSerializer(serializers.ModelSerializer):
     user_username = serializers.CharField(source="user.username", read_only=True)
     user_email = serializers.EmailField(source="user.email", read_only=True)
+    image = serializers.ImageField(required=False, allow_null=True)
+    business_type = serializers.CharField(required=False, allow_null=True)
+    tax_code = serializers.CharField(required=False, allow_null=True)
+    
 
     class Meta:
         model = Seller
         fields = [
             "id", "store_name", "bio", "address", "phone", "image",
-            "created_at", "user", "user_username", "user_email", "status", "rejection_reason"
+            "created_at", "user", "user_username", "user_email", "status", "rejection_reason", "business_type",
+            "tax_code",  "cccd_front",
+            "cccd_back", "business_license",
+
         ]
         read_only_fields = ["created_at"]
 
@@ -139,3 +207,6 @@ class SellerActivityLogSerializer(serializers.ModelSerializer):
     class Meta:
         model = SellerActivityLog
         fields = ["id", "action", "action_display", "description", "created_at"]
+
+
+

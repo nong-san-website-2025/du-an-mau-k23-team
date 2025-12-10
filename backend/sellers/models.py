@@ -8,22 +8,37 @@ class Seller(models.Model):
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name="seller")
     store_name = models.CharField(max_length=255, db_index=True)
     bio = models.TextField(blank=True)
-    address = models.CharField(max_length=255, blank=True)  
-    phone = models.CharField(max_length=20, blank=True)     
-    image = models.ImageField(upload_to='stores/', blank=True, null=True)  
+    address = models.CharField(max_length=255, blank=True)
+    phone = models.CharField(max_length=20, blank=True)
+    image = models.ImageField(upload_to='stores/', blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
     STATUS_CHOICES = [
         ("pending", "Chờ duyệt"),
         ("approved", "Đã duyệt"),
         ("rejected", "Bị từ chối"),
         ("active", "Đang hoạt động"),
-        ("locked", "Đã khóa")
+        ("locked", "Đã khóa"),
     ]
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
-    rejection_reason = models.TextField(blank=True, null=True, help_text="Lý do từ chối (nếu status = rejected)")
+    rejection_reason = models.TextField(blank=True, null=True)
+
+    BUSINESS_TYPE_CHOICES = [
+        ("personal", "Cá nhân"),
+        ("business", "Doanh nghiệp"),
+        ("household", "Hộ kinh doanh"),
+    ]
+
+    business_type = models.CharField(max_length=20, choices=BUSINESS_TYPE_CHOICES, blank=True, null=True)
+    tax_code = models.CharField(max_length=50, blank=True, null=True)
+
+    cccd_front = models.ImageField(upload_to="cccd/", blank=True, null=True)
+    cccd_back = models.ImageField(upload_to="cccd/", blank=True, null=True)
+    business_license = models.ImageField(upload_to="licenses/", blank=True, null=True)
 
     def __str__(self):
         return self.store_name
+
 class Shop(models.Model):
     owner = models.OneToOneField(
         settings.AUTH_USER_MODEL, 
