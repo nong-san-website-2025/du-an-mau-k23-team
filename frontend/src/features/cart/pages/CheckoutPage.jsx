@@ -91,7 +91,7 @@ const CheckoutPage = () => {
             <PaymentMethod payment={payment} setPayment={setPayment} />
 
             <div className="checkout-card">
-              <div className="card-header"><FileTextOutlined /> Ghi chú</div>
+              <div className="card-header fs-5 mb-2" ><FileTextOutlined /> Ghi chú</div>
               <TextArea
                 rows={2}
                 placeholder="Lời nhắn cho người bán hoặc shipper..."

@@ -113,7 +113,14 @@ class ProductSerializer(serializers.ModelSerializer):
         fields = "__all__"
         read_only_fields = ["seller", "status", "category", "created_at", "updated_at", "rating", "review_count", "sold", "normalized_name", "ordered_quantity", "estimated_quantity"]
 
+    def validate_original_price(self, value):
+        if value is None or value == '':
+            raise serializers.ValidationError("Giá gốc là bắt buộc")
+        return value
+
     def validate(self, data):
+        if 'original_price' not in data or data.get('original_price') is None:
+            raise serializers.ValidationError({"original_price": "Giá gốc là bắt buộc"})
         if 'subcategory' in data and data['subcategory']:
             data['category'] = data['subcategory'].category
         return data

@@ -302,6 +302,10 @@ export default function ProductsPage() {
   // --- Submit Form ---
   const handleSubmitForm = async (formData) => {
     try {
+      if (!formData.has("original_price")) {
+        message.error("Lỗi: Giá gốc không được gửi từ form!");
+        return;
+      }
       if (!editingProduct) {
         formData.append("status", "pending");
         await productApi.createProduct(formData);

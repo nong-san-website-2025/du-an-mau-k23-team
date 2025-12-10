@@ -11,26 +11,26 @@ from sellers.models import Seller
 from .models_withdraw import WithdrawRequest
 from .serializers import WithdrawRequestSerializer
 from django.views.decorators.csrf import csrf_exempt
-import urllib.parse
 from django.conf import settings
 from django.http import JsonResponse
 import hashlib
-from datetime import datetime
 from .serializers import PaymentSerializer
-import random
 import logging
 from vnpay_python.vnpay import vnpay
 from django.shortcuts import redirect
 from django.contrib.auth import get_user_model
-from rest_framework import status
-from rest_framework.decorators import permission_classes
 from rest_framework.permissions import AllowAny
-from orders.serializers import OrderCreateSerializer
+from django.db import transaction
 from orders.models import Order, OrderItem
-from cart.models import Cart
 from django.core.cache import cache
 from .models import Payment, SellerWallet, WalletTransaction  # ← Thêm 2 models
 from .models_withdraw import WithdrawRequest
+from django.db.models import Sum
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from products.models import Product
+from decimal import Decimal
 
 
 logger = logging.getLogger(__name__)
@@ -839,3 +839,131 @@ def wallet_balance_detail(request, seller_id):
         return Response({"error": "Seller not found"}, status=404)
     except SellerWallet.DoesNotExist:
         return Response({"error": "Seller wallet not found"}, status=404)
+
+
+def calculate_order_net_income(order, seller_id):
+    """Tính tiền seller nhận được (Giá bán - Phí sàn - Hoa hồng...)"""
+    order_total = Decimal(str(order.total_price or 0))
+    shipping_fee = Decimal(str(order.shipping_fee or 0))
+    
+    seller_item_total = Decimal('0')
+    commission = Decimal('0')
+    
+    for item in order.items.all():
+        if item.product and item.product.seller_id == seller_id:
+            item_total = Decimal(str(item.price or 0)) * item.quantity
+            seller_item_total += item_total
+            
+            commission_rate = (
+                Decimal(str(item.product.category.commission_rate)) 
+                if item.product.category else Decimal('0')
+            )
+            commission += item_total * commission_rate
+            
+    if order_total > 0 and seller_item_total > 0:
+        shipping_fee_seller = (seller_item_total / order_total) * shipping_fee
+    else:
+        shipping_fee_seller = Decimal('0')
+        
+    seller_share = seller_item_total - shipping_fee_seller - commission
+    return max(seller_share, Decimal('0'))
+
+# --- API 1: Lấy danh sách đơn hàng CHỜ DUYỆT TIỀN ---
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_pending_orders_for_wallet(request, seller_id):
+    if not request.user.is_staff:
+        return Response({"error": "Permission denied"}, status=403)
+
+    try:
+        from sellers.models import Seller
+        seller = Seller.objects.get(user_id=seller_id)
+        
+        # 1. Lấy tất cả Order thành công của Seller
+        product_ids = Product.objects.filter(seller=seller).values_list('id', flat=True)
+        order_ids = OrderItem.objects.filter(product_id__in=product_ids).values_list('order_id', flat=True).distinct()
+        
+        success_orders = Order.objects.filter(
+            id__in=order_ids, 
+            status="success"
+        ).prefetch_related('items', 'items__product').order_by('-created_at')
+
+        pending_orders_data = []
+        
+        # 2. Lọc ra những đơn chưa có trong WalletTransaction
+        # Note: Cách này đơn giản, nếu system lớn nên thêm field is_paid vào Order
+        for order in success_orders:
+            # Check xem đã có giao dịch nào ghi chú là đơn này chưa
+            is_processed = WalletTransaction.objects.filter(
+                wallet__seller=seller,
+                note__contains=f"Order #{order.id}"
+            ).exists()
+            
+            if not is_processed:
+                net_income = calculate_order_net_income(order, seller.id)
+                if net_income > 0:
+                    pending_orders_data.append({
+                        "id": order.id,
+                        "created_at": order.created_at,
+                        "customer_name": order.customer_name,
+                        "total_order_value": float(order.total_price),
+                        "net_income": float(net_income),
+                    })
+
+        return Response({"pending_orders": pending_orders_data})
+
+    except Exception as e:
+        logger.error(f"Error: {e}")
+        return Response({"error": str(e)}, status=500)
+
+# --- API 2: DUYỆT TIỀN CHO TỪNG ĐƠN (QUAN TRỌNG NHẤT) ---
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def approve_order_revenue(request, order_id):
+    """Duyệt doanh thu: Cộng Balance, Trừ Pending Balance"""
+    if not request.user.is_staff:
+        return Response({"error": "Permission denied"}, status=403)
+
+    try:
+        with transaction.atomic():
+            order = Order.objects.select_for_update().get(id=order_id)
+            
+            # Tìm seller của đơn hàng
+            first_item = order.items.first()
+            if not first_item or not first_item.product.seller:
+                return Response({"error": "Cannot identify seller"}, status=400)
+            
+            seller = first_item.product.seller
+            wallet = SellerWallet.objects.select_for_update().get(seller=seller)
+
+            # Check trùng lặp
+            if WalletTransaction.objects.filter(wallet=wallet, note__contains=f"Order #{order.id}").exists():
+                return Response({"error": "Đơn hàng này đã được cộng tiền rồi"}, status=400)
+
+            # Tính tiền
+            amount = calculate_order_net_income(order, seller.id)
+            
+            # ✅ UPDATE LOGIC VÍ (FIX LỖI CỦA BẠN TẠI ĐÂY)
+            wallet.balance += amount
+            wallet.pending_balance = max(wallet.pending_balance - amount, Decimal('0')) # Trừ pending
+            wallet.save()
+
+            # Tạo lịch sử
+            WalletTransaction.objects.create(
+                wallet=wallet,
+                amount=amount,
+                type="add", 
+                note=f"Doanh thu từ đơn hàng Order #{order.id}"
+            )
+
+            return Response({
+                "message": "Approved success",
+                "new_balance": float(wallet.balance),
+                "new_pending": float(wallet.pending_balance)
+            })
+
+    except Order.DoesNotExist:
+        return Response({"error": "Order not found"}, status=404)
+    except Exception as e:
+        logger.error(f"Approve error: {e}")
+        return Response({"error": str(e)}, status=500)

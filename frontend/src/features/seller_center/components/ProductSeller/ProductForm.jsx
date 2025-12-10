@@ -102,12 +102,23 @@ const ProductForm = ({ visible, onCancel, onSubmit, initialValues, categories = 
     form
       .validateFields()
       .then((values) => {
+        if (!values.original_price || values.original_price <= 0) {
+          message.error("Vui lòng nhập giá gốc hợp lệ!");
+          return;
+        }
         const formData = new FormData();
         Object.entries(values).forEach(([key, value]) => {
-          if (value !== undefined && value !== null) {
+          if (key === 'original_price') {
+            formData.append(key, value);
+          } else if (value !== undefined && value !== null) {
             formData.append(key, value);
           }
         });
+        
+        if (!formData.has('original_price')) {
+          message.error("Lỗi: Giá gốc không được gửi!");
+          return;
+        }
 
         const primaryFile = fileList.find((file) => file.uid === primaryImage);
         if (primaryFile?.originFileObj) {
@@ -285,15 +296,17 @@ const ProductForm = ({ visible, onCancel, onSubmit, initialValues, categories = 
                   <Form.Item
                     label="Giá gốc (VNĐ)"
                     name="original_price"
+                    initialValue={initialValues?.original_price || null}
                     rules={[
-                      { required: true, message: "Nhập giá gốc" },
+                      { required: true, message: "Vui lòng nhập giá gốc" },
                       { type: 'number', min: 1000, message: "Giá tối thiểu là 1,000đ" },
                       { type: 'number', max: 1000000000, message: "Giá trị quá lớn" }
                     ]}
                   >
                     <InputNumber
                       style={{ width: "100%" }}
-                      formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
+                      placeholder="Nhập giá gốc (VD: 50000)"
+                      formatter={(v) => v ? `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",") : ""}
                       parser={(v) => v.replace(/\$\s?|(,*)/g, "")}
                     />
                   </Form.Item>

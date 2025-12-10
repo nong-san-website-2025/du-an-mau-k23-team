@@ -1,152 +1,164 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Layout,
   Avatar,
   Dropdown,
-  Badge,
-  Spin,
   Button,
-  List,
   Typography,
-  Tooltip,
+  Space,
+  theme,
   Skeleton,
+  Spin,
+  Input,
 } from "antd";
-import { UserOutlined, BellOutlined, MenuOutlined } from "@ant-design/icons";
+import {
+  MenuOutlined,
+  UserOutlined,
+  LogoutOutlined,
+  SearchOutlined,
+} from "@ant-design/icons";
+import { useNavigate } from "react-router-dom";
 import sellerService from "../services/api/sellerService";
 
 const { Header } = Layout;
+const { Text } = Typography;
+
+const getAvatarLabel = (name) => {
+  if (!name) return "?";
+  const firstWord = name.trim().split(/\s+/)[0] || name.trim().charAt(0);
+  return firstWord.charAt(0).toUpperCase();
+};
 
 export default function SellerTopbar({ onToggleSidebar }) {
-  const [notifications, setNotifications] = useState([
-    { id: 1, message: "Có đơn hàng mới", isRead: false },
-    { id: 2, message: "Khách hủy đơn #1234", isRead: false },
-    { id: 3, message: "Hệ thống bảo trì lúc 23h", isRead: true },
-  ]);
+  const navigate = useNavigate();
+  const { token } = theme.useToken();
 
   const [seller, setSeller] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [searchValue, setSearchValue] = useState("");
 
   useEffect(() => {
-    const fetchSeller = async () => {
+    const fetchSellerProfile = async () => {
       try {
+        setLoading(true);
         const data = await sellerService.getMe();
         setSeller(data);
       } catch (error) {
-        console.error("Lỗi khi lấy thông tin seller:", error);
+        console.error("Lỗi lấy thông tin seller:", error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchSeller();
+    fetchSellerProfile();
   }, []);
 
-  const getInitial = (name) => {
-    if (!name) return "?";
-    const firstWord = name.trim().split(/\s+/)[0] || name.trim().charAt(0);
-    const withoutDiacritics = firstWord
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "");
-    return (withoutDiacritics.charAt(0) || "?").toUpperCase();
-  };
-
-  const menuItems = [
-    { key: "profile", label: "Hồ sơ" },
-    { key: "logout", label: "Đăng xuất" },
+  const userMenuItems = [
+    {
+      key: "info",
+      label: (
+        <div
+          className="flex flex-col px-2 py-1 cursor-default"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {loading ? (
+            <Skeleton.Input active size="small" style={{ width: 100 }} />
+          ) : (
+            <>
+              <Text strong>{seller?.store_name || "Chưa đặt tên Shop"}</Text>
+              <Text type="secondary" className="text-xs truncate w-40">
+                {seller?.email || seller?.name || "Seller"}
+              </Text>
+            </>
+          )}
+        </div>
+      ),
+    },
+    { type: "divider" },
+    { key: "profile", icon: <UserOutlined />, label: "Cửa hàng" },
+    { type: "divider" },
+    {
+      key: "logout",
+      icon: <LogoutOutlined />,
+      label: "Đăng xuất",
+      danger: true,
+    },
   ];
 
-  const onMenuClick = ({ key }) => {
-    if (key === "logout") {
-      localStorage.removeItem("user");
-      window.location.href = "/login";
-    }
+  const handleSearch = (value) => {
+    setSearchValue(value);
   };
-
-  const notificationMenu = useMemo(
-    () => (
-      <List
-        size="small"
-        style={{ width: 300, maxHeight: 320, overflowY: "auto" }}
-        dataSource={notifications}
-        renderItem={(item) => (
-          <List.Item
-            style={{
-              backgroundColor: item.isRead ? "#fff" : "#f5f5f5",
-              cursor: "pointer",
-              padding: "8px 12px",
-            }}
-          >
-            <Typography.Text strong={!item.isRead}>
-              {item.message}
-            </Typography.Text>
-          </List.Item>
-        )}
-      />
-    ),
-    [notifications]
-  );
 
   return (
     <Header
-      className="bg-white px-4 shadow-sm"
       style={{
+        padding: "0 24px",
+        background: token.colorBgContainer,
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
-        gap: 16,
+        boxShadow: "0 1px 8px rgba(0, 0, 0, 0.06)",
+        height: 64,
+        borderBottom: `1px solid ${token.colorBorder}`,
       }}
     >
-      {/* Toggle sidebar for mobile */}
-      {onToggleSidebar && (
-        <Button
-          type="text"
-          icon={<MenuOutlined />}
-          onClick={onToggleSidebar}
-          style={{ fontSize: 20 }}
-        />
-      )}
-      <div style={{ flex: 1 }} /> {/* Spacer */}
-      {/* Notifications */}
-      {loading ? (
-        <Spin size="small" style={{ marginRight: 16 }} />
-      ) : (
+      {/* Left: Toggle Button */}
+      <div className="flex items-center">
+        {onToggleSidebar && (
+          <Button
+            type="text"
+            icon={<MenuOutlined />}
+            onClick={onToggleSidebar}
+            style={{ fontSize: "16px", width: 40, height: 40 }}
+            className="hover:bg-gray-100 transition-colors duration-200"
+          />
+        )}
+      </div>
+
+
+      {/* Right: User Profile */}
+      <Space size={16}>
         <Dropdown
-          overlay={notificationMenu}
-          trigger={["click"]}
-          placement="bottomRight"
-        >
-          <Badge
-            count={notifications.filter((n) => !n.isRead).length}
-            offset={[0, 0]}
-          >
-            <BellOutlined
-              style={{ fontSize: 20, cursor: "pointer", marginRight: 16 }}
-            />
-          </Badge>
-        </Dropdown>
-      )}
-      {/* Seller avatar + menu */}
-      {loading ? (
-        <Skeleton.Avatar active size="large" shape="circle" />
-      ) : (
-        <Dropdown
-          menu={{ items: menuItems, onClick: onMenuClick }}
+          menu={{
+            items: userMenuItems,
+            onClick: ({ key }) => {
+              if (key === "logout") {
+                localStorage.removeItem("accessToken");
+                navigate("/login");
+              } else if (key === "profile") {
+                navigate("/seller-center/store/info");
+              }
+            },
+          }}
           placement="bottomRight"
           arrow
+          trigger={["click"]}
         >
           <div
-            style={{ display: "flex", alignItems: "center", cursor: "pointer" }}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-full cursor-pointer hover:bg-gray-50 transition-colors duration-200"
+            style={{ height: "48px" }}
           >
-            {seller?.avatar ? (
-              <Avatar size="large" src={seller.avatar} />
+            {loading ? (
+              <Spin size="small" />
             ) : (
-              <Avatar size="large">
-                {getInitial(seller?.store_name || seller?.name || "")}
-              </Avatar>
+              <>
+                <Avatar
+                  size={36}
+                  style={{
+                    backgroundColor: token.colorPrimary,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                  src={seller?.avatar}
+                  icon={!seller?.avatar && <UserOutlined />}
+                >
+                </Avatar>
+              </>
             )}
           </div>
         </Dropdown>
-      )}
+      </Space>
     </Header>
   );
 }

@@ -1,3 +1,35 @@
-.seller-shell * {
-  font-family: 'Roboto', sans-serif !important;
+.seller-main-layout {
+  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background-color: #f8fafc;
+}
+
+.seller-content-wrapper {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 768px) {
+  .seller-content-wrapper {
+    margin: 8px !important;
+    padding: 16px !important;
+    border-radius: 8px !important;
+  }
+}
+
+@media (min-width: 768px) {
+  .seller-content-wrapper {
+    margin: 24px !important;
+    padding: 24px !important;
+    border-radius: 12px !important;
+  }
 }

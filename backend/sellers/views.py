@@ -293,7 +293,10 @@ class ProductViewSet(viewsets.ModelViewSet):
         return Response({"message": "Đã cập nhật ảnh đại diện"}, status=status.HTTP_200_OK)
 
     def perform_create(self, serializer):
-        # Gán seller theo user hiện tại
+        import sys
+        print(f"DEBUG: Request data = {self.request.data}", file=sys.stderr)
+        print(f"DEBUG: Validated data = {serializer.validated_data}", file=sys.stderr)
+        
         seller = Seller.objects.filter(user=self.request.user).first()
         if not seller:
             raise serializers.ValidationError({"detail": "Bạn chưa đăng ký làm seller"})

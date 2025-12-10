@@ -54,7 +54,7 @@ function TopBar({ onLogout }) {
         <span className="admin-brand ms-2">GreenFarm</span>
       </div>
       <div className="d-flex align-items-center gap-3">
-        <NotificationDropdown notifications={notifications} />
+
         {/* <DropdownTopBarButton
           Icon={Globe}
           defaultLabel={currentLangLabel}
@@ -75,31 +75,7 @@ function TopBar({ onLogout }) {
             },
           ]}
         /> */}
-        <DropdownTopBarButton
-  Icon={Settings}
-  items={[
-    {
-      label: t("Cấu hình vận chuyển"),
-      onClick: () => navigate("/admin/settings/shipping"),
-    },
-    {
-      label: t("Chính sách đổi trả & khiếu nại"),
-      onClick: () => navigate("/admin/settings/return-policy"),
-    },
-    {
-      label: t("Tự động hóa marketing"),
-      onClick: () => navigate("/admin/settings/marketing"),
-    },
-    {
-      label: t("Điểm thưởng & hạng khách hàng"),
-      onClick: () => navigate("/admin/settings/loyalty"),
-    },
-    {
-      label: t("Tùy biến giao diện"),
-      onClick: () => navigate("/admin/settings/theme"),
-    },
-  ]}
-/>
+
 
         {/* Thay UserDropdown vào đây */}
         <UserDropdown onLogout={onLogout} t={t} navigate={navigate} />
@@ -188,26 +164,4 @@ function DropdownTopBarButton({ Icon, items, defaultLabel }) {
 }
 
 /* ----------------- Notification Dropdown ----------------- */
-function NotificationDropdown({ notifications }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <Dropdown
-      overlay={
-        <List
-          size="small"
-          dataSource={notifications}
-          renderItem={(item) => <List.Item>{item.text}</List.Item>}
-          style={{ width: 250 }}
-        />
-      }
-      trigger={["click"]}
-      open={open}
-      onOpenChange={(flag) => setOpen(flag)}
-      placement="bottomRight"
-    >
-      <Badge count={notifications.length} offset={[0, 0]}>
-        <Button type="text" icon={<Bell size={20} />} />
-      </Badge>
-    </Dropdown>
-  );
-}
+

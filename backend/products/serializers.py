@@ -70,8 +70,8 @@ class ProductSerializer(serializers.ModelSerializer):
     category = serializers.PrimaryKeyRelatedField(queryset=Category.objects.all(), required=False)
     seller_name = serializers.CharField(source='seller.store_name', read_only=True)
     
-    original_price = serializers.SerializerMethodField()
-    discounted_price = serializers.SerializerMethodField()
+    # original_price = serializers.SerializerMethodField()
+    # discounted_price = serializers.SerializerMethodField()
     price = serializers.SerializerMethodField()
 
     main_image = serializers.SerializerMethodField()
@@ -125,12 +125,12 @@ class ProductSerializer(serializers.ModelSerializer):
             return ProductImageSerializer(first_image, context=self.context).data
         return None
 
-    def get_original_price(self, obj):
-        return int(obj.original_price)
+    # def get_original_price(self, obj):
+    #     return int(obj.original_price)
 
-    def get_discounted_price(self, obj):
-        value = obj.discounted_price if obj.discounted_price else obj.original_price
-        return int(value or 0)
+    # def get_discounted_price(self, obj):
+    #     value = obj.discounted_price if obj.discounted_price else obj.original_price
+    #     return int(value or 0)
 
     def get_price(self, obj):
         original = obj.original_price

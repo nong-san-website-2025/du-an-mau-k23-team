@@ -56,29 +56,6 @@ const WalletTable = ({ data, onView, onApprovePending }) => {
       sorter: (a, b) => new Date(a.updated_at || 0) - new Date(b.updated_at || 0),
       align: "center",
     },
-    {
-      title: "Hành động",
-      key: "action",
-      width: 100,
-      align: "center",
-      render: (_, record) => (
-        <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
-          {onApprovePending && (record.pending_balance || 0) > 0 && (
-            <Tooltip title="Duyệt số dư chờ">
-              <Button
-                type="primary"
-                icon={<CheckOutlined />}
-                size="small"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onApprovePending(record);
-                }}
-              />
-            </Tooltip>
-          )}
-        </div>
-      ),
-    },
   ];
 
   return (
