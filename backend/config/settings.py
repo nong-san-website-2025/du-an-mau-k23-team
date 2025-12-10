@@ -234,6 +234,7 @@ CLOUDINARY_STORAGE = {
 
 # --- CORS & CSRF
 CORS_ALLOW_CREDENTIALS = True
+
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",  # Vite dev server
     "http://localhost:3000",  # Alternative React port
