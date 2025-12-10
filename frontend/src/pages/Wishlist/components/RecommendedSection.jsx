@@ -2,7 +2,7 @@ import React from "react";
 import { Card, Button, Row, Col, Spin } from "antd";
 import { useNavigate } from "react-router-dom";
 
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000/api";
+const API_URL = process.env.REACT_APP_API_URL;
 // hoặc define lại nếu cần
 
 const RecommendedSection = ({

@@ -30,6 +30,7 @@ class Product(models.Model):
         ("rejected", "Rejected"),
         ("banned", "Banned"),
         ("hidden", "Hidden"),
+        ('pending_update', 'Chờ duyệt cập nhật'),
     ]
 
     AVAILABILITY_CHOICES = [
@@ -59,7 +60,7 @@ class Product(models.Model):
     stock = models.PositiveIntegerField(default=0)
     sold = models.IntegerField(default=0, blank=True)
 
-    # image = models.ImageField(upload_to='products/', blank=True, null=True)
+    image = models.ImageField(upload_to='products/', blank=True, null=True)
     rating = models.DecimalField(max_digits=3, decimal_places=1, default=0)
     review_count = models.PositiveIntegerField(default=0)
     location = models.CharField(max_length=100, blank=True)
@@ -68,7 +69,6 @@ class Product(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     estimated_quantity = models.PositiveIntegerField(default=10)  # Số lượng dự kiến có thể đặt trước
     ordered_quantity = models.PositiveIntegerField(default=0) 
-    availability_status = models.CharField(max_length=50, default='available')  
     # Visibility and status
     is_hidden = models.BooleanField(default=False)
     status = models.CharField(  # trạng thái kiểm duyệt (admin)
@@ -79,13 +79,12 @@ class Product(models.Model):
 
     availability_status = models.CharField(  # trạng thái seller chọn
         max_length=20,
-        choices=AVAILABILITY_CHOICES,   
+        choices=AVAILABILITY_CHOICES,
         default="available",
     )
 
     season_start = models.DateField(null=True, blank=True)
     season_end = models.DateField(null=True, blank=True)
-    estimated_quantity = models.PositiveIntegerField(null=True, blank=True)
 
     def __str__(self):
         return self.name
@@ -136,20 +135,79 @@ class ProductFeature(models.Model):
 
 class ProductImage(models.Model):
     product = models.ForeignKey(
-        Product, 
-        on_delete=models.CASCADE, 
+        Product,
+        on_delete=models.CASCADE,
         related_name='images'
     )
     image = models.ImageField(upload_to='products/gallery/')
     is_primary = models.BooleanField(default=False)
     order = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
-    
+
     class Meta:
         ordering = ['order', 'created_at']
-    
+
     def __str__(self):
         return f"{self.product.name} - Image {self.id}"
+
+
+class PendingProductUpdate(models.Model):
+    """
+    Model lưu trữ các yêu cầu cập nhật sản phẩm đang chờ duyệt từ admin
+    """
+    product = models.OneToOneField(Product, on_delete=models.CASCADE, related_name='pending_update')
+    # Dữ liệu mới được đề xuất
+    name = models.CharField(max_length=255, blank=True)
+    description = models.TextField(blank=True)
+    original_price = models.DecimalField(max_digits=10, decimal_places=0, null=True, blank=True)
+    discounted_price = models.DecimalField(max_digits=10, decimal_places=0, null=True, blank=True)
+    unit = models.CharField(max_length=10, blank=True)
+    stock = models.PositiveIntegerField(null=True, blank=True)
+    location = models.CharField(max_length=100, blank=True)
+    brand = models.CharField(max_length=100, blank=True)
+    availability_status = models.CharField(max_length=20, blank=True)
+    season_start = models.DateField(null=True, blank=True)
+    season_end = models.DateField(null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Pending update for {self.product.name}"
+
+    def apply_changes(self):
+        """
+        Áp dụng các thay đổi vào sản phẩm và xóa pending update
+        """
+        product = self.product
+        # Chỉ cập nhật các field không blank
+        if self.name:
+            product.name = self.name
+        if self.description:
+            product.description = self.description
+        if self.original_price is not None:
+            product.original_price = self.original_price
+        if self.discounted_price is not None:
+            product.discounted_price = self.discounted_price
+        if self.unit:
+            product.unit = self.unit
+        if self.stock is not None:
+            product.stock = self.stock
+        if self.location:
+            product.location = self.location
+        if self.brand:
+            product.brand = self.brand
+        if self.availability_status:
+            product.availability_status = self.availability_status
+        if self.season_start is not None:
+            product.season_start = self.season_start
+        if self.season_end is not None:
+            product.season_end = self.season_end
+
+        product.status = 'approved'
+        product.is_hidden = False
+        product.save()
+        self.delete()
 
 
 # class Preorder(models.Model):

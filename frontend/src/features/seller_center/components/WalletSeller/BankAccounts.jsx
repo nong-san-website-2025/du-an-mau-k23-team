@@ -1,8 +1,9 @@
+// components/WalletSeller/BankAccounts.jsx
 import React from "react";
-import { Row, Col, Card, Button, Space, Tag, Divider, Typography } from "antd";
-import { CreditCardOutlined, BankOutlined } from "@ant-design/icons";
+import { Card, Button, Row, Col, Typography, Tag, Empty, Space } from "antd";
+import { PlusOutlined, CreditCardOutlined, CheckCircleFilled } from "@ant-design/icons";
 
-const { Text } = Typography;
+const { Text, Title } = Typography;
 
 export default function BankAccounts({ bankAccounts = [] }) {
   return (
@@ -10,57 +11,70 @@ export default function BankAccounts({ bankAccounts = [] }) {
       title={
         <Space>
           <CreditCardOutlined />
-          <span>Tài khoản ngân hàng</span>
+          <span>Tài khoản ngân hàng liên kết</span>
         </Space>
       }
-      extra={<Button type="link">+ Thêm tài khoản</Button>}
-      style={{ marginBottom: 24 }}
+      extra={
+        <Button type="dashed" icon={<PlusOutlined />} size="small">
+          Thêm tài khoản
+        </Button>
+      }
+      bordered={false}
+      style={{ boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}
     >
-      <Row gutter={[16, 16]}>
-        {bankAccounts && bankAccounts.length > 0 ? (
-          bankAccounts.map((account) => (
-            <Col xs={24} md={12} key={account.key}>
-              <Card
-                size="small"
-                bordered
+      {bankAccounts.length === 0 ? (
+        <Empty description="Chưa có tài khoản ngân hàng nào" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+      ) : (
+        <Row gutter={[16, 16]}>
+          {bankAccounts.map((acc) => (
+            <Col xs={24} md={12} lg={8} key={acc.key}>
+              <div
                 style={{
-                  background: account.isDefault ? "#f6ffed" : "#fff",
-                  borderColor: account.isDefault ? "#52c41a" : "#d9d9d9",
+                  border: acc.isDefault ? "1px solid #b7eb8f" : "1px solid #f0f0f0",
+                  borderRadius: 12,
+                  padding: 20,
+                  position: "relative",
+                  background: acc.isDefault 
+                    ? "linear-gradient(135deg, #f6ffed 0%, #ffffff 100%)" 
+                    : "#fff",
+                  transition: "all 0.3s",
+                  cursor: "pointer",
                 }}
+                className="bank-card-hover" // Bạn có thể thêm CSS hover effect ở file global
               >
-                <Space direction="vertical" style={{ width: "100%" }}>
-                  <Space>
-                    <BankOutlined style={{ fontSize: 24, color: "#1890ff" }} />
-                    <div>
-                      <Text strong style={{ fontSize: 16 }}>
-                        {account.bankName}
-                      </Text>
-                      {account.isDefault && (
-                        <Tag color="success" style={{ marginLeft: 8 }}>
-                          Mặc định
-                        </Tag>
-                      )}
-                    </div>
-                  </Space>
-                  <Divider style={{ margin: "8px 0" }} />
-                  <div>
-                    <Text type="secondary">Số tài khoản: </Text>
-                    <Text strong>{account.accountNumber}</Text>
-                  </div>
-                  <div>
-                    <Text type="secondary">Chủ tài khoản: </Text>
-                    <Text strong>{account.accountName}</Text>
-                  </div>
-                </Space>
-              </Card>
+                {acc.isDefault && (
+                  <Tag 
+                    color="success" 
+                    icon={<CheckCircleFilled />} 
+                    style={{ position: "absolute", top: 12, right: 12, margin: 0 }}
+                  >
+                    Mặc định
+                  </Tag>
+                )}
+                
+                <div style={{ marginBottom: 16 }}>
+                  <Text type="secondary" style={{ fontSize: 12 }}>NGÂN HÀNG</Text>
+                  <Title level={5} style={{ margin: 0, color: "#1890ff" }}>
+                    {acc.bankName.toUpperCase()}
+                  </Title>
+                </div>
+
+                <div style={{ marginBottom: 16 }}>
+                   <Text type="secondary" style={{ fontSize: 12 }}>SỐ TÀI KHOẢN</Text>
+                   <div style={{ fontSize: 18, fontFamily: "monospace", letterSpacing: 1, fontWeight: 600 }}>
+                     {acc.accountNumber}
+                   </div>
+                </div>
+
+                <div>
+                  <Text type="secondary" style={{ fontSize: 12 }}>CHỦ TÀI KHOẢN</Text>
+                  <div style={{ fontWeight: 500 }}>{acc.accountName.toUpperCase()}</div>
+                </div>
+              </div>
             </Col>
-          ))
-        ) : (
-          <Col xs={24}>
-            <Text type="secondary">Chưa có tài khoản ngân hàng nào</Text>
-          </Col>
-        )}
-      </Row>
+          ))}
+        </Row>
+      )}
     </Card>
   );
 }

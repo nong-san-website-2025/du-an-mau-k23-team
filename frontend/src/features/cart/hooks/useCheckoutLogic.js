@@ -57,7 +57,7 @@ const useCheckoutLogic = () => {
   const selectedItems = useMemo(() => {
     return cartItems.filter((i) => i.selected);
   }, [cartItems]);
-  
+
   // --- ASYNC HANDLERS ---
 
   // Xử lý áp dụng Voucher
@@ -118,7 +118,11 @@ const useCheckoutLogic = () => {
       setIsLoading(true);
       await API.post("orders/", orderData);
       await clearCart();
-      notification.success("Đặt hàng thành công!");
+      notification.success({
+        message: "Đơn hàng đã được đặt",
+        placement: "topRight",
+        duration: 2,
+      });
       navigate("/orders?tab=pending");
     } catch (error) {
       console.error("Đặt hàng thất bại:", error);
@@ -208,8 +212,8 @@ const useCheckoutLogic = () => {
       const to_ward_code = manualEntry
         ? geoManual.wardCode
         : selectedAddress?.ward_code
-        ? String(selectedAddress.ward_code).trim()
-        : undefined;
+          ? String(selectedAddress.ward_code).trim()
+          : undefined;
 
       if (!to_district_id || !to_ward_code) {
         setShippingFee(0);
@@ -252,7 +256,6 @@ const useCheckoutLogic = () => {
 
     fetchShippingFee();
   }, [manualEntry, geoManual, selectedAddress, selectedItems]);
-
 
   return {
     // State

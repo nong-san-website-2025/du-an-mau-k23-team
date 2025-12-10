@@ -1,43 +1,47 @@
-import api from "../../../login_register/services/api";
+import api from "./api";
 
 const reviewService = {
   // Lấy danh sách đánh giá của seller
   getSellerReviews: async (params = {}) => {
-    const queryParams = new URLSearchParams();
-    if (params.product_id) queryParams.append('product_id', params.product_id);
-    if (params.seller_id) queryParams.append('seller_id', params.seller_id);
-    if (params.store_name) queryParams.append('store_name', params.store_name);
+    // 1. Lọc bỏ các giá trị null, undefined, rỗng hoặc "all" để URL sạch đẹp
+    // Ví dụ: { rating: "all", search: "" } -> {}
+    const cleanParams = Object.fromEntries(
+      Object.entries(params).filter(([_, v]) => v != null && v !== "" && v !== "all")
+    );
 
-    const queryString = queryParams.toString();
-    const url = `/reviews/seller/reviews/${queryString ? '?' + queryString : ''}`;
-
-    const res = await api.get(url);
+    // 2. Truyền thẳng vào axios, nó sẽ tự biến thành ?page=1&rating=5...
+    const res = await api.get("/reviews/seller/reviews/", { 
+      params: cleanParams 
+    });
+    
     return res.data;
   },
 
   // Lấy thống kê đánh giá
   getSellerReviewsSummary: async (params = {}) => {
-    const queryParams = new URLSearchParams();
-    if (params.year) queryParams.append('year', params.year);
-    if (params.month) queryParams.append('month', params.month);
+    // Tương tự, làm sạch params trước khi gửi
+    const cleanParams = Object.fromEntries(
+      Object.entries(params).filter(([_, v]) => v != null && v !== "")
+    );
 
-    const queryString = queryParams.toString();
-    const url = `/reviews/seller/reviews/summary/${queryString ? '?' + queryString : ''}`;
-
-    const res = await api.get(url);
+    const res = await api.get("/reviews/seller/reviews/summary/", { 
+      params: cleanParams 
+    });
     return res.data;
   },
 
   // Lấy hoạt động gần đây
   getRecentActivities: async (limit = 5) => {
-    const res = await api.get(`/reviews/seller/reviews/recent-activities/?limit=${limit}`);
+    const res = await api.get("/reviews/seller/reviews/recent-activities/", {
+      params: { limit }
+    });
     return res.data;
   },
 
   // Trả lời đánh giá
   replyToReview: async (reviewId, replyText) => {
-    const res = await api.post(`/reviews/review-replies/`, {
-      review: reviewId,
+    const res = await api.post("/reviews/review-replies/", {
+      review: reviewId, // ID review
       reply_text: replyText
     });
     return res.data;
@@ -51,7 +55,9 @@ const reviewService = {
 
   // Lấy danh sách reply của một review
   getReviewReplies: async (reviewId) => {
-    const res = await api.get(`/reviews/review-replies/?review=${reviewId}`);
+    const res = await api.get("/reviews/review-replies/", {
+      params: { review: reviewId }
+    });
     return res.data;
   }
 };

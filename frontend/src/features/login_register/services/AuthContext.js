@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import api from "../services/api";
-import { jwtDecode } from "jwt-decode";
+// import { jwtDecode } from "jwt-decode"; // Nếu không dùng ở dưới thì có thể bỏ comment hoặc xóa
+import { message, notification } from "antd"; // ✅ Import Ant Design
 
 const AuthContext = createContext();
 export const useAuth = () => useContext(AuthContext);
@@ -9,7 +10,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Load user từ token, fetch role trực tiếp từ backend
+  // Load user từ token
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -20,7 +21,7 @@ export const AuthProvider = ({ children }) => {
 
     const fetchUser = async () => {
       try {
-        const res = await api.get("/users/me/"); // backend trả về { username, role, ... }
+        const res = await api.get("/users/me/");
         setUser({
           ...res.data,
           isAuthenticated: true,
@@ -28,6 +29,7 @@ export const AuthProvider = ({ children }) => {
         });
       } catch (err) {
         console.error("Cannot fetch current user:", err);
+        // Không cần thông báo lỗi ở đây vì người dùng chỉ vừa F5 lại trang
         setUser(null);
       } finally {
         setLoading(false);
@@ -37,7 +39,7 @@ export const AuthProvider = ({ children }) => {
     fetchUser();
   }, []);
 
-  // Trong hàm login
+  // --- HÀM LOGIN ---
   const login = async (username, password) => {
     try {
       const { data } = await api.post("users/login/", { username, password });
@@ -52,24 +54,38 @@ export const AuthProvider = ({ children }) => {
         token: data.access,
       });
 
-      // Store username in localStorage for seller status checking
       if (meRes.data?.username) {
         localStorage.setItem("username", meRes.data.username);
       }
 
-      // 👇 GỬI SỰ KIỆN ĐĂNG NHẬP THÀNH CÔNG
       window.dispatchEvent(new CustomEvent("user-logged-in"));
+
+      // ✅ THÔNG BÁO THÀNH CÔNG
+      message.success(`Xin chào, ${meRes.data.username || "bạn"}! Đăng nhập thành công.`);
 
       return { success: true, role: meRes.data.role, token: data.access };
     } catch (err) {
+      // ✅ XỬ LÝ LỖI
+      const errorDetail = err.response?.data?.detail;
+      let errorMsg = "Đăng nhập thất bại. Vui lòng thử lại!";
+
+      // Kiểm tra mã lỗi hoặc nội dung text trả về để báo cụ thể
+      if (err.response?.status === 401) {
+        errorMsg = "Sai tên tài khoản hoặc mật khẩu!";
+      } else if (errorDetail) {
+        errorMsg = errorDetail; // Lỗi cụ thể từ backend nếu có
+      }
+
+      message.error(errorMsg); // Hiển thị lỗi màu đỏ
+
       return {
         success: false,
-        error: err.response?.data?.detail || "Login failed",
+        error: errorMsg,
       };
     }
   };
 
-  // Trong hàm loginWithToken (dùng cho OAuth callback, VNPAY, v.v.)
+  // --- HÀM LOGIN WITH TOKEN (OAuth/VNPAY) ---
   const loginWithToken = async (accessToken, refreshToken = null) => {
     try {
       localStorage.setItem("token", accessToken);
@@ -82,19 +98,23 @@ export const AuthProvider = ({ children }) => {
         token: accessToken,
       });
 
-      // 👇 GỬI SỰ KIỆN
       window.dispatchEvent(new CustomEvent("user-logged-in"));
+      
+      // ✅ Thông báo nhẹ
+      message.success("Đăng nhập thành công!");
+
     } catch (err) {
       console.error("loginWithToken error:", err);
       setUser(null);
+      message.error("Phiên đăng nhập không hợp lệ. Vui lòng đăng nhập lại.");
     }
   };
 
+  // --- HÀM LOGOUT ---
   const logout = async () => {
     try {
       const token = localStorage.getItem("token");
 
-      // 🔥 GỬI REQUEST LOGOUT ĐẾN BACKEND (ghi log)
       if (token) {
         try {
           const refreshToken = localStorage.getItem("refresh");
@@ -102,10 +122,10 @@ export const AuthProvider = ({ children }) => {
             refresh: refreshToken,
           });
         } catch (logoutErr) {
-          console.warn("Logout API call failed (but continuing):", logoutErr);
+          console.warn("Logout API call failed:", logoutErr);
         }
 
-        // Xử lý cart như cũ
+        // Xử lý cart (giữ nguyên logic của bạn)
         try {
           const res = await api.get("/cartitems/");
           const serverCart = Array.isArray(res.data) ? res.data : [];
@@ -129,33 +149,67 @@ export const AuthProvider = ({ children }) => {
     } catch (err) {
       console.error("Logout process error:", err);
     } finally {
-      // ✅ LUÔN XÓA TOKEN VÀ RESET USER (dù có lỗi hay không)
-      const keysToRemove = ["token", "refresh"];
+      const keysToRemove = ["token", "refresh", "username"]; // Xóa thêm username cho sạch
       keysToRemove.forEach((k) => localStorage.removeItem(k));
       setUser(null);
 
-      // 👇 GỬI SỰ KIỆN ĐĂNG XUẤT (nếu cần)
       window.dispatchEvent(new CustomEvent("user-logged-out"));
+
+      // ✅ THÔNG BÁO LOGOUT
+      message.success("Đăng xuất thành công. Hẹn gặp lại!");
     }
   };
 
+  // --- GIÁ TRỊ CONTEXT ---
   const value = {
     user,
     login,
     logout,
     loginWithToken,
     register: async (payload) => {
-      // giữ nguyên logic register, chỉ cần gọi login() đã refactor
       try {
         const { data } = await api.post("/users/register/", payload);
+        
+        // ✅ THÔNG BÁO ĐĂNG KÝ
+        message.success("Đăng ký tài khoản thành công! Đang đăng nhập...");
+
         if (payload?.username && payload?.password) {
+          // Gọi login nội bộ (login này đã có thông báo success riêng rồi)
           await login(payload.username, payload.password);
         }
         return { success: true, data };
       } catch (err) {
+        // ✅ XỬ LÝ LỖI ĐĂNG KÝ
+        // Backend thường trả về object lỗi validation, ví dụ: { username: ["Tên này đã tồn tại"] }
+        const errorData = err.response?.data;
+        let errorMessage = "Đăng ký thất bại. Vui lòng kiểm tra lại thông tin.";
+
+        if (errorData) {
+            // Nếu backend trả về string lỗi trực tiếp
+            if (typeof errorData.detail === 'string') {
+                errorMessage = errorData.detail;
+            } 
+            // Nếu backend trả về lỗi validation dạng object
+            else if (typeof errorData === 'object') {
+                // Lấy lỗi đầu tiên tìm thấy
+                const firstKey = Object.keys(errorData)[0];
+                const firstError = errorData[firstKey];
+                if (Array.isArray(firstError)) {
+                    errorMessage = `${firstKey}: ${firstError[0]}`; // VD: username: Tài khoản đã tồn tại
+                }
+            }
+        }
+
+        // Dùng notification cho lỗi đăng ký vì nội dung lỗi có thể dài
+        notification.error({
+            message: 'Đăng ký thất bại',
+            description: errorMessage,
+            placement: 'topRight',
+        });
+
         return {
           success: false,
-          error: err.response?.data?.detail || "Register failed",
+          error: errorMessage,
         };
       }
     },
@@ -172,10 +226,14 @@ export const AuthProvider = ({ children }) => {
         });
 
         window.dispatchEvent(new CustomEvent("user-logged-in"));
+        
+        // ✅ Thông báo Google
+        message.success(`Đăng nhập Google thành công! Chào ${meRes.data.username}`);
 
         return { success: true, user: meRes.data };
       } catch (err) {
         console.error("Google login failed:", err);
+        message.error("Đăng nhập Google thất bại. Vui lòng thử lại sau.");
         return { success: false, error: "Google login failed" };
       }
     },

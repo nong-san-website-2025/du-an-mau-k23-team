@@ -57,7 +57,7 @@ class ReviewListCreateView(generics.ListCreateAPIView):
 
 # ----------------- REVIEW REPLY -----------------
 class ReviewReplySerializer(serializers.ModelSerializer):
-    review = serializers.PrimaryKeyRelatedField(read_only=True)
+    review = serializers.PrimaryKeyRelatedField(queryset=Review.objects.all())    
     user_name = serializers.SerializerMethodField()
     
     class Meta:

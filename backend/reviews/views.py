@@ -40,30 +40,54 @@ class MyReviewView(generics.RetrieveAPIView):
 
 
 class SellerReviewsView(generics.ListAPIView):
-    """
-    Danh sách đánh giá cho các sản phẩm thuộc cửa hàng của người bán hiện tại.
-    Hỗ trợ filter theo product_id, seller_id, store_name.
-    """
     serializer_class = ReviewSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        qs = Review.objects.select_related("product", "product__seller", "user").all()
+        # 1. Base Query: Lấy review của sản phẩm thuộc seller này
         user = self.request.user
-        # Nếu là seller, chỉ xem review của sản phẩm của mình
+        qs = Review.objects.select_related("product", "product__seller", "user").all()
+        
         seller = getattr(user, "seller", None)
         if seller:
             qs = qs.filter(product__seller=seller)
-        # Filter bổ sung
+
+        # -----------------------------------------------------------
+        # 2. XỬ LÝ BỘ LỌC (Code mới thêm vào)
+        # -----------------------------------------------------------
+        
+        # Lọc theo Product ID (nếu có)
         product_id = self.request.query_params.get("product_id")
-        seller_id = self.request.query_params.get("seller_id")
-        store_name = self.request.query_params.get("store_name")
         if product_id:
             qs = qs.filter(product_id=product_id)
-        if seller_id:
-            qs = qs.filter(product__seller_id=seller_id)
-        if store_name:
-            qs = qs.filter(product__seller__store_name__icontains=store_name)
+
+        # Lọc theo Rating (Số sao)
+        rating = self.request.query_params.get("rating")
+        if rating and rating != 'all':
+            qs = qs.filter(rating=rating)
+
+        # Lọc theo Status (Trạng thái)
+        status = self.request.query_params.get("status")
+        if status:
+            if status == 'replied':
+                # Đã trả lời: đếm số reply > 0
+                qs = qs.annotate(reply_count=Count('replies')).filter(reply_count__gt=0)
+            elif status == 'unreplied':
+                # Chưa trả lời: đếm số reply = 0
+                qs = qs.annotate(reply_count=Count('replies')).filter(reply_count=0)
+            elif status == 'hidden':
+                # Đã ẩn
+                qs = qs.filter(is_hidden=True)
+
+        # Tìm kiếm (Search)
+        search = self.request.query_params.get("search")
+        if search:
+            qs = qs.filter(
+                Q(user__username__icontains=search) |  # Tên người mua
+                Q(product__name__icontains=search) |   # Tên sản phẩm
+                Q(comment__icontains=search)           # Nội dung review
+            )
+
         return qs.order_by("-created_at")
 
 

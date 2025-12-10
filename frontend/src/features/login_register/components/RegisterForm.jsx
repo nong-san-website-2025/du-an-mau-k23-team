@@ -1,4 +1,7 @@
 // components/RegisterForm.jsx
+import React from 'react';
+// Import thư viện đo độ mạnh mật khẩu
+import { PasswordStrengthMeter } from 'react-password-strength-meter';
 import { TextField, Button, Typography, Box } from "@mui/material";
 import { useRegister } from "../hooks/useRegister";
 
@@ -28,6 +31,7 @@ export default function RegisterForm({ onClose }) {
         fullWidth
       />
 
+      {/* Trường mật khẩu */}
       <TextField
         label="Mật khẩu"
         name="password"
@@ -37,6 +41,12 @@ export default function RegisterForm({ onClose }) {
         disabled={loading}
         fullWidth
       />
+
+      {/* Component hiển thị độ mạnh mật khẩu */}
+      {/* Kiểm tra nếu có nhập mật khẩu mới hiển thị thanh đo (tuỳ chọn, ở đây tôi để hiển thị luôn) */}
+      <Box sx={{ mt: -1, mb: 1 }}>
+        <PasswordStrengthMeter password={form.password} />
+      </Box>
 
       <TextField
         label="Nhập lại mật khẩu"

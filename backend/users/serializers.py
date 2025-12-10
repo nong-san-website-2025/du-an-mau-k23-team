@@ -1,3 +1,4 @@
+import re
 from rest_framework import serializers
 from .models import CustomUser, PointHistory
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -215,6 +216,19 @@ class RegisterSerializer(serializers.ModelSerializer):
         # Kiểm tra password trùng khớp
         if data['password'] != data['password2']:
             raise serializers.ValidationError({"password": "Mật khẩu nhập lại không khớp."})
+
+        # Kiểm tra độ dài tối thiểu
+        if len(data['password']) < 8:
+            raise serializers.ValidationError({"password": "Mật khẩu phải có ít nhất 8 ký tự."})
+
+        # Kiểm tra ít nhất 1 ký tự in hoa
+        if not re.search(r'[A-Z]', data['password']):
+            raise serializers.ValidationError({"password": "Mật khẩu phải chứa ít nhất 1 ký tự in hoa."})
+
+        # Kiểm tra ít nhất 1 số
+        if not re.search(r'\d', data['password']):
+            raise serializers.ValidationError({"password": "Mật khẩu phải chứa ít nhất 1 số."})
+
         return data
 
     def create(self, validated_data):

@@ -1,9 +1,11 @@
 import React, { useRef, useEffect, useState } from "react";
-import { Carousel } from "antd";
-import { ThunderboltFilled, RightOutlined, LeftOutlined } from "@ant-design/icons";
+import { Carousel, Button, Skeleton, Typography, theme } from "antd";
+import { ThunderboltFilled, RightOutlined, LeftOutlined, FireFilled } from "@ant-design/icons";
 import FlashSaleItem from "./FlashSaleItem";
 import CountdownTimer from "./CountdownTimer";
-import api from "../../features/login_register/services/api"; // Giữ nguyên import của bạn
+import api from "../../features/login_register/services/api";
+
+const { Title } = Typography;
 
 export default function FlashSaleList() {
   const carouselRef = useRef();
@@ -11,7 +13,9 @@ export default function FlashSaleList() {
   const [endTime, setEndTime] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Giả lập data để test giao diện (bạn có thể xóa và dùng api call như cũ)
+  // Hook lấy token màu sắc từ Ant Design để đồng bộ theme
+  const { token } = theme.useToken();
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -31,150 +35,254 @@ export default function FlashSaleList() {
     fetchData();
   }, []);
 
-  if (!loading && flashItems.length === 0) return null;
+  // 1. Loading State: Hiển thị Skeleton thay vì null để chuẩn UX
+  if (loading) {
+    return (
+      <div className="container" style={{ margin: "20px 0", padding: "20px" }}>
+        <Skeleton active paragraph={{ rows: 1 }} />
+        <div style={{ display: "flex", gap: 20, marginTop: 20 }}>
+          {[1, 2, 3, 4, 5].map((i) => (
+            <Skeleton.Image key={i} active style={{ width: 200, height: 250 }} />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (flashItems.length === 0) return null;
 
   return (
-    <div className="flash-sale-container">
+    <div className="flash-sale-section">
       <div className="container">
         {/* Header Section */}
         <div className="flash-header">
-          <div className="header-title-group">
-            <div className="flash-icon-box">
-               <ThunderboltFilled />
+          <div className="header-left">
+            <div className="title-wrapper" >
+              <ThunderboltFilled className="flash-icon" />
+              <h1 className="gradient-text">FLASH SALE</h1>
+
             </div>
-            <h2 className="title">FLASH SALE</h2>
-            {endTime && <CountdownTimer endTime={endTime} />}
+
+            {/* Countdown Wrapper - Tạo điểm nhấn cho đồng hồ */}
+            {endTime && (
+              <div className="countdown-badge">
+                <span className="ending-text">Kết thúc trong:</span>
+                <CountdownTimer endTime={endTime} />
+              </div>
+            )}
           </div>
-          
-          <a href="/flash-sale" className="view-all-link">
-            Xem tất cả <RightOutlined style={{ fontSize: '10px' }} />
-          </a>
+
+          <Button type="link" href="/flash-sale" className="view-all-btn">
+            Xem tất cả <RightOutlined />
+          </Button>
         </div>
 
         {/* Carousel Section */}
-        <div className="carousel-wrapper">
+        <div className="carousel-container">
           <Carousel
             ref={carouselRef}
             infinite
             dots={false}
-            slidesToShow={5} // Chỉnh số lượng mặc định phù hợp
-            slidesToScroll={1}
+            slidesToShow={5}
+            slidesToScroll={2} // Scroll 2 item cho nhanh hơn
+            draggable
             responsive={[
+              { breakpoint: 1400, settings: { slidesToShow: 5 } },
               { breakpoint: 1200, settings: { slidesToShow: 4 } },
               { breakpoint: 992, settings: { slidesToShow: 3 } },
-              { breakpoint: 576, settings: { slidesToShow: 2 } },
+              { breakpoint: 768, settings: { slidesToShow: 2 } },
+              { breakpoint: 576, settings: { slidesToShow: 1 } }, // Mobile hiển thị 1 cái to
             ]}
           >
             {flashItems.map((item) => (
-              <div key={item.product_id} className="slide-padding">
+              <div key={item.product_id} className="slide-item">
                 <FlashSaleItem flash={item} />
               </div>
             ))}
           </Carousel>
 
-          {/* Navigation Arrows */}
-          <button className="nav-btn prev-btn" onClick={() => carouselRef.current.prev()}>
+          {/* Navigation Arrows - Đặt giữa chiều cao hình ảnh */}
+          <div className="nav-arrow prev" onClick={() => carouselRef.current.prev()}>
             <LeftOutlined />
-          </button>
-          <button className="nav-btn next-btn" onClick={() => carouselRef.current.next()}>
+          </div>
+          <div className="nav-arrow next" onClick={() => carouselRef.current.next()}>
             <RightOutlined />
-          </button>
+          </div>
         </div>
       </div>
 
       <style jsx>{`
-        .flash-sale-container {
+        .flash-sale-section {
           background-color: #fff;
-          margin: 20px 0;
-          padding: 20px 0;
+          margin: 24px 0;
+          padding: 24px 0;
+          border-radius: 8px; /* Bo góc nhẹ cho container */
+          /* Có thể thêm shadow nếu nền web màu xám */
+          /* box-shadow: 0 2px 8px rgba(0,0,0,0.06); */
         }
 
-        /* Header Styling */
+        /* --- Header Styling --- */
         .flash-header {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          margin-bottom: 20px;
-          border-bottom: 1px solid #f0f0f0;
-          padding-bottom: 12px;
-        }
-        .header-title-group {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-        }
-        .flash-icon-box {
-            font-size: 24px;
-            color: #ff4d4f;
-            animation: flash 1.5s infinite;
-        }
-        .title {
-          margin: 0;
-          color: #ff4d4f;
-          font-weight: 800;
-          font-size: 1.5rem;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-          margin-right: 12px;
-        }
-        .view-all-link {
-          color: #666;
-          font-size: 14px;
-          text-decoration: none;
-          display: flex;
-          align-items: center;
-          gap: 4px;
-          transition: color 0.3s;
-        }
-        .view-all-link:hover {
-          color: #ff4d4f;
+          margin-bottom: 24px;
+          padding-bottom: 16px;
+          border-bottom: 2px solid #f5f5f5; /* Line ngăn cách rõ hơn */
         }
 
-        /* Carousel Styling */
-        .carousel-wrapper {
-          position: relative;
+        .header-left {
+          display: flex;
+          align-items: center;
+          gap: 24px;
+          flex-wrap: wrap;
         }
-        .slide-padding {
-          padding: 0 6px; /* Khoảng cách giữa các card */
-          height: 100%;
+
+        .title-wrapper {
+        display: flex;           /* Kích hoạt Flexbox */
+        align-items: center;     /* Căn giữa theo trục dọc (Vertical Center) */
+        justify-content: center; /* (Tuỳ chọn) Căn giữa theo trục ngang nếu cần */
+        gap: 12px;               /* Khoảng cách giữa Icon và Chữ */
+        height: 100%;            /* Đảm bảo chiều cao để căn giữa hoạt động */
+    }
+
+    .gradient-text {
+        font-size: 28px;
+        font-weight: 900;
+        
+        /* --- DÒNG QUAN TRỌNG ĐỂ CĂN GIỮA --- */
+        margin: 0;              /* Xóa margin mặc định của h2 */
+        line-height: 1;         /* Giảm chiều cao dòng để chữ không bị lệch lên/xuống */
+        padding-top: 4px;       /* (Mẹo) Đôi khi font chữ in hoa cần đẩy xuống xíu để đều mắt với icon */
+        
+        /* Style màu mè cũ */
+        text-transform: uppercase;
+        font-family: 'Arial Black', sans-serif;
+        background: linear-gradient(90deg, #ff4d4f 0%, #f5222d 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .flash-icon {
+        font-size: 32px;
+        color: #ff4d4f;
+        display: flex;          /* Giúp icon căn chuẩn hơn trong flex */
+        align-items: center;
+    }
+        
+        .fire-icon {
+            font-size: 24px;
+            color: #ff7a45;
+        }
+
+        /* --- Countdown Styling --- */
+        .countdown-badge {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #262626; /* Nền tối để làm nổi bật số */
+            padding: 6px 16px;
+            border-radius: 20px;
+            color: white;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
         }
         
-        /* Custom Navigation Buttons */
-        .nav-btn {
-          position: absolute;
-          top: 40%;
-          transform: translateY(-50%);
-          width: 40px;
-          height: 40px;
-          border-radius: 50%;
-          background: #fff;
-          border: 1px solid #eee;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-          color: #333;
-          font-size: 16px;
-          cursor: pointer;
-          z-index: 10;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transition: all 0.3s ease;
-          opacity: 0; /* Ẩn mặc định */
+        .ending-text {
+            font-size: 13px;
+            opacity: 0.8;
+            font-weight: 500;
         }
-        .carousel-wrapper:hover .nav-btn {
-          opacity: 1; /* Hiện khi hover vùng carousel */
-        }
-        .nav-btn:hover {
-          background: #ff4d4f;
-          color: #fff;
-          border-color: #ff4d4f;
-        }
-        .prev-btn { left: -20px; }
-        .next-btn { right: -20px; }
 
-        @keyframes flash {
-            0% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.6; transform: scale(1.1); }
-            100% { opacity: 1; transform: scale(1); }
+        /* Giả sử CountdownTimer trả về text, CSS này sẽ style cho text đó màu trắng */
+        .countdown-badge :global(div), .countdown-badge :global(span) {
+            color: #fff; 
+            font-weight: 700;
+            font-size: 16px;
+            font-family: monospace; /* Font số kỹ thuật số */
+        }
+
+        .view-all-btn {
+            font-weight: 600;
+            font-size: 15px;
+            color: #595959;
+        }
+        .view-all-btn:hover {
+            color: #ff4d4f;
+        }
+
+        /* --- Carousel & Navigation --- */
+        .carousel-container {
+            position: relative;
+            padding: 0 10px; /* Tránh bị cắt shadow của item */
+        }
+
+        .slide-item {
+            padding: 10px 8px; /* Tạo khoảng thở giữa các card */
+            transition: transform 0.3s;
+        }
+        
+        /* Hiệu ứng hover cho card bên trong (nếu FlashSaleItem chưa có) */
+        .slide-item:hover {
+             transform: translateY(-5px);
+        }
+
+        .nav-arrow {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 44px;
+            height: 44px;
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid #f0f0f0;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            z-index: 10;
+            font-size: 18px;
+            color: #595959;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            opacity: 0; /* Ẩn mặc định */
+        }
+        
+        /* Chỉ hiện mũi tên khi hover vào vùng carousel */
+        .carousel-container:hover .nav-arrow {
+            opacity: 1;
+        }
+
+        .nav-arrow:hover {
+            background: #ff4d4f;
+            color: white;
+            border-color: #ff4d4f;
+            transform: translateY(-50%) scale(1.1);
+        }
+
+        .prev { left: -22px; }
+        .next { right: -22px; }
+
+        @keyframes shake {
+            0% { transform: rotate(0deg); }
+            25% { transform: rotate(15deg); }
+            50% { transform: rotate(0deg); }
+            75% { transform: rotate(-15deg); }
+            100% { transform: rotate(0deg); }
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .header-left {
+                gap: 10px;
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .gradient-text {
+                font-size: 22px;
+            }
+            .nav-arrow {
+                display: none; /* Ẩn mũi tên trên mobile, dùng vuốt tay */
+            }
         }
       `}</style>
     </div>

@@ -390,11 +390,11 @@ export const CartProvider = ({ children }) => {
     }
     setCartItems([]);
     saveGuestCart([]);
-    notification.success({
-      message: "Đơn hàng đã được đặt",
-      placement: "topRight",
-      duration: 2,
-    });
+    // notification.success({
+    //   message: "Đơn hàng đã được đặt",
+    //   placement: "topRight",
+    //   duration: 2,
+    // });
   }, [cartItems, isAuthenticated, saveGuestCart]);
 
   // Clear selected items

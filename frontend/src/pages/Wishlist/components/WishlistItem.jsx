@@ -35,7 +35,7 @@ const WishlistItem = ({ item, onRemove }) => {
             preview={false}
             src={
               item.image && item.image.startsWith("/")
-                ? `http://localhost:8000${item.image}`
+                ? `${process.env.REACT_APP_API_URL.replace('/api', '')}${item.image}`
                 : item.image?.startsWith("http")
                   ? item.image
                   : "https://via.placeholder.com/400x300?text=No+Image"

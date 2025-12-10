@@ -92,7 +92,7 @@ const Sidebar = () => {
       children: [
         {
           key: "/admin/products/approval",
-          label: "Duyệt sản phẩm",
+          label: "Quản lý sản phẩm",
         },
         {
           key: "/admin/products/categories",

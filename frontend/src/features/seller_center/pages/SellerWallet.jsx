@@ -1,39 +1,53 @@
 // SellerWallet.jsx
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Modal,
   Form,
   Input,
   Select,
-  Spin,
   message,
-  Button,
-  Space,
+  Layout,
+  Breadcrumb,
   Alert,
+  Divider,
 } from "antd";
-import { BankOutlined, WalletOutlined } from "@ant-design/icons";
+import { HomeOutlined, WalletOutlined } from "@ant-design/icons";
 import { useAuth } from "../../login_register/services/AuthContext";
+
+// Import components
 import WalletStats from "../components/WalletSeller/WalletStats";
 import BankAccounts from "../components/WalletSeller/BankAccounts";
 import WalletTransactions from "../components/WalletSeller/WalletTransactions";
 
+const { Content } = Layout;
+const { Option } = Select;
+
 export default function SellerWallet() {
   const { api } = useAuth();
-  const [withdrawModalVisible, setWithdrawModalVisible] = useState(false);
   const [form] = Form.useForm();
+
+  // States dữ liệu
   const [loading, setLoading] = useState(false);
-  const [balance, setBalance] = useState(0);
-  const [pendingBalance, setPendingBalance] = useState(0);
-  const [transactions, setTransactions] = useState([]);
-  const [totalIncome, setTotalIncome] = useState(0);
-  const [totalWithdrawn, setTotalWithdrawn] = useState(0);
+  const [walletData, setWalletData] = useState({
+    balance: 0,
+    pendingBalance: 0,
+    totalIncome: 0,
+    totalWithdrawn: 0,
+    rawTransactions: [], // Lưu trữ toàn bộ giao dịch gốc
+  });
 
-  // State cho bộ lọc
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [dateRange, setDateRange] = useState(null);
+  // State giao diện
+  const [withdrawModalVisible, setWithdrawModalVisible] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
-  // Thông tin tài khoản ngân hàng
+  // State bộ lọc (Filter)
+  const [filters, setFilters] = useState({
+    search: "",
+    status: null,
+    dateRange: null,
+  });
+
+  // Mock data tài khoản ngân hàng (Trong thực tế nên gọi API lấy danh sách)
   const bankAccounts = [
     {
       key: "1",
@@ -51,6 +65,7 @@ export default function SellerWallet() {
     },
   ];
 
+  // 1. Fetch Data
   const fetchWalletData = useCallback(async () => {
     setLoading(true);
     try {
@@ -59,254 +74,210 @@ export default function SellerWallet() {
         api.get("/payments/seller/finance/"),
       ]);
 
-      setBalance(balanceRes.data.balance || 0);
-      setPendingBalance(balanceRes.data.pending_balance || 0);
-
       const payments = financeRes.data.payments || [];
       const withdraws = financeRes.data.withdraws || [];
 
-      let txns = [
+      // Chuẩn hóa dữ liệu giao dịch thành 1 mảng chung
+      const normalizedTransactions = [
         ...payments.map((p) => ({
           id: p.id,
           amount: p.amount,
-          transaction_type: p.status === "success" ? "payment" : "pending",
+          transaction_type: p.status === "success" ? "income" : "pending", // Đổi tên cho dễ hiểu
           description: `Thanh toán đơn hàng #${p.order}`,
           created_at: p.created_at,
+          status: p.status,
         })),
         ...withdraws.map((w) => ({
-          id: `RT${String(w.id).padStart(4, "0")}`, // ➜ RT0001, RT0123...
+          id: `RT${String(w.id).padStart(4, "0")}`,
           amount: w.amount,
           transaction_type: "withdraw",
-          description: `Rút tiền - ${w.status}`,
+          description: `Yêu cầu rút tiền - ${w.status === 'pending' ? 'Đang chờ duyệt' : 'Đã duyệt'}`,
           created_at: w.created_at,
+          status: w.status,
         })),
       ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
-      // Áp dụng bộ lọc ở phía client
-      if (searchTerm) {
-        txns = txns.filter(
-          (tx) =>
-            tx.id.toString().toLowerCase().includes(searchTerm.toLowerCase()) ||
-            tx.description.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-      }
-
-      if (statusFilter) {
-        txns = txns.filter((tx) => tx.transaction_type === statusFilter);
-      }
-
-      if (dateRange && dateRange[0] && dateRange[1]) {
-        const start = dateRange[0].startOf("day").toISOString();
-        const end = dateRange[1].endOf("day").toISOString();
-        txns = txns.filter((tx) => {
-          const txDate = new Date(tx.created_at).toISOString();
-          return txDate >= start && txDate <= end;
-        });
-      }
-
-      setTransactions(txns);
-
-      let income = financeRes.data.total_revenue || 0;
-      let withdrawn = withdraws.reduce((sum, w) => {
-        if (w.status === "paid" || w.status === "approved") {
-          return sum + parseFloat(w.amount);
-        }
-        return sum;
+      // Tính toán tổng
+      const withdrawn = withdraws.reduce((sum, w) => {
+        return (w.status === "paid" || w.status === "approved") ? sum + parseFloat(w.amount) : sum;
       }, 0);
 
-      setTotalIncome(income);
-      setTotalWithdrawn(withdrawn);
+      setWalletData({
+        balance: balanceRes.data.balance || 0,
+        pendingBalance: balanceRes.data.pending_balance || 0,
+        totalIncome: financeRes.data.total_revenue || 0,
+        totalWithdrawn: withdrawn,
+        rawTransactions: normalizedTransactions,
+      });
+
     } catch (error) {
       console.error("Error fetching wallet data:", error);
-      message.error("Lỗi tải dữ liệu ví tiền");
+      message.error("Không thể tải dữ liệu ví. Vui lòng thử lại sau.");
     } finally {
       setLoading(false);
     }
-  }, [api, searchTerm, statusFilter, dateRange]);
+  }, [api]);
 
   useEffect(() => {
     fetchWalletData();
   }, [fetchWalletData]);
 
-  const handleWithdraw = async (values) => {
-    try {
-      await api.post("/payments/withdraw/request/", { amount: values.amount });
+  // 2. Client-side Filtering Logic (Dùng useMemo để tối ưu hiệu năng)
+  const filteredTransactions = useMemo(() => {
+    let result = [...walletData.rawTransactions];
+    const { search, status, dateRange } = filters;
 
-      message.success(
-        "Yêu cầu rút tiền thành công. Tiền sẽ được chuyển trong 1-3 ngày làm việc."
+    if (search) {
+      const lowerSearch = search.toLowerCase();
+      result = result.filter(
+        (tx) =>
+          tx.id.toString().toLowerCase().includes(lowerSearch) ||
+          tx.description.toLowerCase().includes(lowerSearch)
       );
+    }
+
+    if (status) {
+      result = result.filter((tx) => tx.transaction_type === status);
+    }
+
+    if (dateRange && dateRange[0] && dateRange[1]) {
+      const start = dateRange[0].startOf("day").valueOf();
+      const end = dateRange[1].endOf("day").valueOf();
+      result = result.filter((tx) => {
+        const txTime = new Date(tx.created_at).getTime();
+        return txTime >= start && txTime <= end;
+      });
+    }
+
+    return result;
+  }, [walletData.rawTransactions, filters]);
+
+  // Hàm handle thay đổi filter
+  const handleFilterChange = (key, value) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
+  };
+
+  // 3. Xử lý Rút tiền
+  const handleWithdraw = async (values) => {
+    setSubmitting(true);
+    try {
+      await api.post("/payments/withdraw/request/", { amount: values.amount, note: values.note });
+      message.success("Gửi yêu cầu rút tiền thành công!");
       setWithdrawModalVisible(false);
       form.resetFields();
-      fetchWalletData();
+      fetchWalletData(); // Reload lại số dư
     } catch (error) {
-      const errorMsg =
-        error.response?.data?.error ||
-        error.response?.data?.detail ||
-        "Lỗi khi rút tiền";
+      const errorMsg = error.response?.data?.error || "Có lỗi xảy ra khi rút tiền.";
       message.error(errorMsg);
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  // Hàm xử lý từ base layout
-  const handleSearch = (value) => {
-    setSearchTerm(value);
-  };
-
-  const handleFilterStatus = (value) => {
-    setStatusFilter(value);
-  };
-
-  const handleDateRangeChange = (dates) => {
-    setDateRange(dates);
-  };
-
   return (
-    <Spin spinning={loading}>
-      <div
-        style={{ background: "#fff", padding: "24px", minHeight: "100vh" }}
-      >
-        {/* Header */}
-        <div
-          style={{
-            marginBottom: 24,
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            background: "#fff",
-            padding: "16px 24px",
-            borderRadius: 8,
-            boxShadow: "0 2px 6px rgba(0,0,0,0.05)",
-          }}
-        >
-          <div>
-            <h2
-              style={{
-                marginBottom: 0,
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-              }}
-            >
-              <WalletOutlined /> VÍ TIỀN
-            </h2>
-            <p style={{ marginBottom: 0, color: "rgba(0,0,0,0.45)" }}>
-              Quản lý số dư và giao dịch của bạn
-            </p>
-          </div>
-          <Button type="primary" onClick={fetchWalletData}>
-            Làm mới
-          </Button>
-        </div>
+    <Layout style={{ minHeight: "100vh", background: "#f0f2f5" }}>
+      <Content style={{ margin: "24px" }}>
+        {/* Breadcrumb */}
 
-        {/* Thống kê tổng quan */}
-        <div
-          style={{
-            background: "#fff",
-            padding: "24px",
-            borderRadius: 8,
-            marginBottom: 24,
-          }}
-        >
+
+        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+          {/* Header Area */}
+          <div style={{ marginBottom: 24 }}>
+            <h2 style={{ fontSize: 24, fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
+              <WalletOutlined style={{ color: '#1890ff' }} /> QUẢN LÝ VÍ TIỀN
+            </h2>
+            <span style={{ color: '#8c8c8c' }}>Theo dõi dòng tiền và yêu cầu rút tiền nhanh chóng</span>
+          </div>
+
           <WalletStats
-            balance={balance}
-            pendingBalance={pendingBalance}
-            totalIncome={totalIncome}
-            totalWithdrawn={totalWithdrawn}
+            loading={loading}
+            balance={walletData.balance}
+            pendingBalance={walletData.pendingBalance}
+            totalIncome={walletData.totalIncome}
+            totalWithdrawn={walletData.totalWithdrawn}
             onWithdrawClick={() => setWithdrawModalVisible(true)}
           />
-        </div>
 
-        {/* Tài khoản ngân hàng */}
-        <div
-          style={{
-            background: "#fff",
-            padding: "24px",
-            borderRadius: 8,
-            marginBottom: 24,
-          }}
-        >
+          <Divider style={{ margin: "32px 0" }} />
+
           <BankAccounts bankAccounts={bankAccounts} />
+
+          <div style={{ marginTop: 24 }}>
+            <WalletTransactions
+              loading={loading}
+              transactions={filteredTransactions}
+              filterValues={filters}
+              onFilterChange={handleFilterChange}
+            />
+          </div>
         </div>
 
-        {/* Lịch sử giao dịch */}
-        <div style={{ background: "#fff", borderRadius: 8 }}>
-          <WalletTransactions
-            loading={loading}
-            transactions={transactions}
-            onSearch={handleSearch}
-            onFilterStatus={handleFilterStatus}
-            onDateRangeChange={handleDateRangeChange}
-          />
-        </div>
-
-        {/* Modal rút tiền */}
+        {/* --- MODAL RÚT TIỀN --- */}
         <Modal
-          title={
-            <Space>
-              <BankOutlined />
-              <span>Yêu cầu rút tiền</span>
-            </Space>
-          }
+          title="Yêu cầu rút tiền"
           open={withdrawModalVisible}
           onCancel={() => {
-            setWithdrawModalVisible(false);
-            form.resetFields();
+            if (!submitting) {
+              setWithdrawModalVisible(false);
+              form.resetFields();
+            }
           }}
-          footer={null}
-          width={600}
+          okText="Xác nhận rút"
+          cancelText="Hủy bỏ"
+          onOk={() => form.submit()}
+          confirmLoading={submitting}
+          width={500}
+          centered
         >
+          <Alert
+            message="Thông tin quan trọng"
+            description="Thời gian xử lý giao dịch từ 1-3 ngày làm việc (không tính T7, CN). Phí rút tiền: Miễn phí."
+            type="info"
+            showIcon
+            style={{ marginBottom: 24 }}
+          />
+
           <Form form={form} layout="vertical" onFinish={handleWithdraw}>
-            <Form.Item label="Số dư khả dụng" style={{ marginBottom: 16 }}>
-              <div
-                style={{
-                  padding: "12px",
-                  background: "#f0f2f5",
-                  borderRadius: 8,
-                }}
-              >
-                <span
-                  style={{ fontSize: 24, color: "#3f8600", fontWeight: "bold" }}
-                >
-                  {parseFloat(balance).toLocaleString("vi-VN")} ₫
-                </span>
+            <Form.Item label="Số dư khả dụng" style={{ marginBottom: 12 }}>
+              <div style={{
+                background: '#f6ffed',
+                border: '1px solid #b7eb8f',
+                padding: '10px 16px',
+                borderRadius: 6,
+                color: '#389e0d',
+                fontWeight: 'bold',
+                fontSize: 18
+              }}>
+                {parseFloat(walletData.balance).toLocaleString("vi-VN")} ₫
               </div>
             </Form.Item>
 
             <Form.Item
-              label="Tài khoản ngân hàng"
+              label="Tài khoản nhận tiền"
               name="bankAccount"
-              rules={[
-                {
-                  required: true,
-                  message: "Vui lòng chọn tài khoản ngân hàng",
-                },
-              ]}
+              initialValue={bankAccounts.find(x => x.isDefault)?.key}
+              rules={[{ required: true, message: "Vui lòng chọn tài khoản!" }]}
             >
-              <Select placeholder="Chọn tài khoản ngân hàng" size="large">
-                {bankAccounts.map((account) => (
-                  <Select.Option key={account.key} value={account.key}>
-                    {account.bankName} - {account.accountNumber} (
-                    {account.accountName})
-                  </Select.Option>
+              <Select placeholder="Chọn tài khoản ngân hàng">
+                {bankAccounts.map((acc) => (
+                  <Option key={acc.key} value={acc.key}>
+                    {acc.bankName} - {acc.accountNumber}
+                  </Option>
                 ))}
               </Select>
             </Form.Item>
 
             <Form.Item
-              label="Số tiền rút"
+              label="Số tiền muốn rút"
               name="amount"
               rules={[
-                { required: true, message: "Vui lòng nhập số tiền" },
+                { required: true, message: "Vui lòng nhập số tiền!" },
                 {
                   validator: (_, value) => {
+                    const num = parseFloat(value);
                     if (!value) return Promise.resolve();
-                    const numValue = parseFloat(value);
-                    if (numValue < 100000) {
-                      return Promise.reject("Số tiền tối thiểu là 100,000 ₫");
-                    }
-                    if (numValue > balance) {
-                      return Promise.reject("Số tiền vượt quá số dư khả dụng");
-                    }
+                    if (num < 100000) return Promise.reject("Số tiền tối thiểu 100,000₫");
+                    if (num > walletData.balance) return Promise.reject("Số dư không đủ!");
                     return Promise.resolve();
                   },
                 },
@@ -314,39 +285,18 @@ export default function SellerWallet() {
             >
               <Input
                 type="number"
-                placeholder="Nhập số tiền"
                 suffix="₫"
+                placeholder="Nhập số tiền (VD: 500000)"
                 size="large"
               />
             </Form.Item>
 
-            <Form.Item label="Ghi chú" name="note">
-              <Input.TextArea
-                rows={3}
-                placeholder="Nhập ghi chú (không bắt buộc)"
-              />
-            </Form.Item>
-
-            <Alert
-              message="Thời gian xử lý: 1-3 ngày làm việc"
-              type="warning"
-              showIcon
-              style={{ marginBottom: 16 }}
-            />
-
-            <Form.Item style={{ marginBottom: 0 }}>
-              <Space style={{ width: "100%", justifyContent: "flex-end" }}>
-                <Button onClick={() => setWithdrawModalVisible(false)}>
-                  Hủy
-                </Button>
-                <Button type="primary" htmlType="submit" size="large">
-                  Xác nhận rút tiền
-                </Button>
-              </Space>
+            <Form.Item label="Ghi chú (Tùy chọn)" name="note">
+              <Input.TextArea rows={2} placeholder="Nhập ghi chú cho quản trị viên..." />
             </Form.Item>
           </Form>
         </Modal>
-      </div>
-    </Spin>
+      </Content>
+    </Layout>
   );
 }

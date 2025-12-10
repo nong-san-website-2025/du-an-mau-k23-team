@@ -133,7 +133,7 @@ export default function SearchResultsPage() {
       image: product.image?.startsWith("http")
         ? product.image
         : product.image?.startsWith("/")
-          ? `http://localhost:8000${product.image}`
+          ? `${process.env.REACT_APP_API_URL.replace('/api', '')}${product.image}`
           : "",
     });
   };

@@ -8,7 +8,7 @@ export const triggerNotificationUpdate = async (userId, notificationData) => {
     if (!token) return;
 
     // Send notification event to backend
-    await fetch(`http://localhost:8000/api/notifications/trigger/`, {
+    await fetch(`${process.env.REACT_APP_API_URL}/notifications/trigger/`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

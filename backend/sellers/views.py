@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework import status as drf_status
 from datetime import date
 from django.db.models import Sum, F, FloatField
-
+from django.db import transaction
 from rest_framework import generics
 from django.db import models
 from django.db.models.functions import Coalesce, Cast
@@ -13,7 +13,7 @@ from django.db.models.functions import Coalesce, Cast
 from .models import Seller
 from .serializers import SellerListSerializer, SellerDetailSerializer, SellerRegisterSerializer
 from rest_framework import viewsets, permissions
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, action
 from .models import Seller, Shop, Product, SellerFollow
 from .serializers import SellerSerializer,  ShopSerializer, ProductSerializer, OrderSerializer, VoucherSerializer, SellerFollowSerializer
 from rest_framework.response import Response
@@ -22,8 +22,10 @@ from rest_framework.decorators import api_view
 from django.contrib.auth.models import User
 from django.db.models import Sum, Count, Q, Avg
 
+from products.models import PendingProductUpdate
+
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
-from datetime import datetime   
+from datetime import datetime
 from django.utils import timezone
 
 from orders.models import Order, OrderItem
@@ -245,27 +247,102 @@ class ShopViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         # Khi tạo shop -> tự động gán owner là user đang đăng nhập
         serializer.save(owner=self.request.user)
-
 class ProductViewSet(viewsets.ModelViewSet):
     serializer_class = ProductSerializer
     queryset = Product.objects.all()
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticated] # Mặc định yêu cầu login
 
     def get_queryset(self):
-        return Product.objects.filter(shop__owner=self.request.user)
+        user = self.request.user
+        # 1. Nếu là Admin: thấy hết
+        if user.is_staff:
+            return Product.objects.all().order_by('-created_at')
+        
+        # 2. Nếu là Seller: chỉ thấy sản phẩm của shop mình
+        # Giả sử quan hệ: Seller -> User (OneToOne) và Shop -> Owner (User)
+        # Hoặc Product -> Seller. Tùy model của bạn, ở đây tôi dùng logic trong code cũ của bạn:
+        return Product.objects.filter(seller__user=user).order_by('-created_at')
 
-    def create(self, request, *args, **kwargs):
-        # Gán shop theo user hiện tại để tránh phải gửi từ frontend
-        shop = Shop.objects.filter(owner=request.user).first()
-        if not shop:
-            return Response({"detail": "Bạn chưa có shop"}, status=status.HTTP_400_BAD_REQUEST)
-        data = request.data.copy()
-        data["shop"] = shop.id
-        serializer = self.get_serializer(data=data)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+    # --- ACTION: Chọn ảnh đại diện ---
+    @action(detail=True, methods=['post'], url_path='set-primary-image')
+    def set_primary_image(self, request, pk=None):
+        product = self.get_object() # Tự động check permission get_queryset
+        image_id = request.data.get("image_id")
+
+        if not image_id:
+            return Response({"error": "Thiếu image_id"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            target_image = ProductImage.objects.get(id=image_id, product=product)
+        except ProductImage.DoesNotExist:
+            return Response({"error": "Ảnh không tồn tại trong sản phẩm này"}, status=status.HTTP_404_NOT_FOUND)
+
+        with transaction.atomic():
+            # 1. Reset toàn bộ về False
+            product.images.all().update(is_primary=False)
+            
+            # 2. Set ảnh mục tiêu True
+            target_image.is_primary = True
+            target_image.save()
+
+            # 3. Cập nhật thumbnail cache ở bảng Product (quan trọng để hiển thị nhanh ở list)
+            # YÊU CẦU: Model Product PHẢI có trường 'image'
+            product.image = target_image.image
+            product.save(update_fields=['image'])
+
+        return Response({"message": "Đã cập nhật ảnh đại diện"}, status=status.HTTP_200_OK)
+
+    def perform_create(self, serializer):
+        # Gán seller theo user hiện tại
+        seller = Seller.objects.filter(user=self.request.user).first()
+        if not seller:
+            raise serializers.ValidationError({"detail": "Bạn chưa đăng ký làm seller"})
+        serializer.save(seller=seller)
+
+    def update(self, request, *args, **kwargs):
+        product = self.get_object()
+
+        # Kiểm tra quyền sở hữu
+        if not hasattr(request.user, "seller") or product.seller != request.user.seller:
+            return Response({"detail": "Không có quyền"}, status=403)
+
+        old_status = product.status
+
+        # CHO PHÉP SỬA THOẢI MÁI nếu chưa duyệt hoặc đang chờ duyệt cập nhật
+        if old_status in ["pending", "pending_update", "rejected", "self_rejected"]:
+            return super().update(request, *args, **kwargs)
+
+        # TRƯỜNG HỢP ĐANG BÁN (approved) → tạo yêu cầu cập nhật pending thay vì update trực tiếp
+        if old_status == "approved":
+            # Tạo hoặc cập nhật PendingProductUpdate
+            pending_update, created = PendingProductUpdate.objects.get_or_create(
+                product=product,
+                defaults={}
+            )
+
+            # Cập nhật dữ liệu mới vào pending update
+            serializer = self.get_serializer(product, data=request.data, partial=True)
+            if serializer.is_valid():
+                # Lưu dữ liệu vào pending update thay vì product
+                for field, value in serializer.validated_data.items():
+                    if hasattr(pending_update, field):
+                        setattr(pending_update, field, value)
+                pending_update.save()
+
+                # Chuyển product sang trạng thái pending_update
+                product.status = "pending_update"
+                product.is_hidden = True
+                product.save(update_fields=["status", "is_hidden"])
+
+                return Response({
+                    "message": "Yêu cầu cập nhật đã được gửi. Sản phẩm sẽ tạm ẩn cho đến khi được duyệt.",
+                    "status": "pending_update"
+                }, status=200)
+            else:
+                return Response(serializer.errors, status=400)
+
+        # Banned → không cho sửa
+        return Response({"detail": "Sản phẩm bị khóa, không thể chỉnh sửa"}, status=403)
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
         # Nếu muốn check quyền: chỉ seller của shop mới xóa

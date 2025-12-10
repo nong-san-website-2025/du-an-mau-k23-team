@@ -1,78 +1,119 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { message, Modal, Spin, Upload, Typography } from "antd";
+import {
+  message, Modal, Upload, Typography, Card,
+  Input, Tabs, Button, Divider
+} from "antd";
+import {
+  UploadOutlined,
+  PlusOutlined,
+  ReloadOutlined,
+  SearchOutlined,
+  DropboxOutlined,
+  CheckCircleOutlined,
+  ClockCircleOutlined,
+  StopOutlined,
+  StarOutlined,
+  DeleteOutlined,
+  StarFilled,
+  ImportOutlined, // <--- 1. Import Icon Import
+  FileExcelOutlined
+} from "@ant-design/icons";
 
-import { debounce } from "lodash";
 import { productApi } from "../services/api/productApi";
-import ProductBaseLayout from "../../seller_center/components/ProductSeller/ProductBaseLayout";
-import ProductTable from "../../seller_center/components/ProductSeller/ProductTable";
-import ProductForm from "../../seller_center/components/ProductSeller/ProductForm";
-import ProductDetailModal from "../../seller_center/components/ProductSeller/ProductDetailModal";
-import "../../seller_center/styles/OrderPage.css";
-import { UploadOutlined } from "@ant-design/icons";
+
+// Import Components
+import ProductTable from "../components/ProductSeller/ProductTable";
+import ProductForm from "../components/ProductSeller/ProductForm";
+import ProductDetailModal from "../components/ProductSeller/ProductDetailModal";
+import ImportProductModal from "../components/ProductSeller/ImportProductModal"; // <--- 2. Import Component Modal
+import StatsSection from "../../admin/components/common/StatsSection";
+
+import "../styles/OrderPage.css";
+
+const { Title, Text } = Typography;
 
 export default function ProductsPage() {
-  const [products, setProducts] = useState([]);
-  const [filtered, setFiltered] = useState([]);
+  // ==================== 1. STATE MANAGEMENT ====================
+
+  // Data States
+  const [rawProducts, setRawProducts] = useState([]);
+  const [filteredProducts, setFilteredProducts] = useState([]);
   const [categories, setCategories] = useState([]);
+
+  // UI States
   const [loading, setLoading] = useState(false);
-  const [modalVisible, setModalVisible] = useState(false);
+
+  // -- Modal Visibilities --
+  const [modalVisible, setModalVisible] = useState(false); // Add/Edit Modal
+  const [importModalVisible, setImportModalVisible] = useState(false); // <--- 3. State cho Import Modal
+
   const [editingProduct, setEditingProduct] = useState(null);
-  const [statusFilter, setStatusFilter] = useState("");
+
+  // Filter States
+  const [activeTab, setActiveTab] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
+
+  // Detail & Gallery States
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [isDetailModalVisible, setIsDetailModalVisible] = useState(false);
+
   const [galleryVisible, setGalleryVisible] = useState(false);
   const [galleryProduct, setGalleryProduct] = useState(null);
   const [galleryFileList, setGalleryFileList] = useState([]);
   const [galleryLoading, setGalleryLoading] = useState(false);
 
-  // 👉 Hàm map màu và text trạng thái
+  // ==================== 2. CONFIG & HELPERS ====================
+
   const getStatusConfig = (status) =>
     ({
       pending: { text: "Chờ duyệt", color: "gold" },
       approved: { text: "Đã duyệt", color: "green" },
       rejected: { text: "Bị từ chối", color: "red" },
-      self_rejected: { text: "Tự từ chối", color: "volcano" },
+      self_rejected: { text: "Đã hủy", color: "default" },
+      banned: { text: "Đã khóa", color: "volcano" },
+      pending_update: { text: "Chờ duyệt cập nhật", color: "orange" },
     })[status] || { text: status, color: "default" };
 
   const getAvailabilityConfig = (availability) =>
     ({
       available: { text: "Có sẵn", color: "blue" },
       coming_soon: { text: "Sắp có", color: "purple" },
+      out_of_stock: { text: "Hết hàng", color: "red" },
     })[availability] || { text: availability, color: "default" };
 
-  // 🔹 Fetch dữ liệu sản phẩm & danh mục
+  // ==================== 3. API FETCHING ====================
+
   const fetchData = async () => {
     setLoading(true);
     try {
       const [catRes, prodRes] = await Promise.all([
         productApi.getCategories(),
-        productApi.getSellerProducts({
-          status: statusFilter || undefined,
-          search: searchTerm || undefined,
-        }),
+        productApi.getSellerProducts(),
       ]);
 
-      const categoriesData = catRes.data.results || catRes.data;
-      const productsData = prodRes.data.results || prodRes.data;
+      const categoriesData = catRes.data.results || catRes.data || [];
+      const productsData = prodRes.data.results || prodRes.data || [];
 
+      // Map Category Name vào Product
       const mapped = productsData.map((p) => {
         const cat = categoriesData.find((c) =>
-          c.subcategories.some((s) => s.id === p.subcategory)
+          c.subcategories?.some((s) => s.id === p.subcategory)
         );
         const sub = cat?.subcategories.find((s) => s.id === p.subcategory);
         return {
           ...p,
-          category_name: cat?.name || "",
-          subcategory_name: sub?.name || "",
+          category_name: cat?.name || "Khác",
+          subcategory_name: sub?.name || "Khác",
         };
       });
 
+      // Sort: Mới nhất lên đầu
+      const sorted = mapped.sort((a, b) => b.id - a.id);
+
       setCategories(categoriesData);
-      setProducts(mapped.sort((a, b) => b.id - a.id));
-      setFiltered(mapped);
+      setRawProducts(sorted);
     } catch (err) {
-      message.error("Không thể tải dữ liệu");
+      message.error("Không thể tải dữ liệu sản phẩm");
       console.error(err);
     } finally {
       setLoading(false);
@@ -81,240 +122,363 @@ export default function ProductsPage() {
 
   useEffect(() => {
     fetchData();
-  }, [statusFilter, searchTerm]);
+  }, []);
 
-  // 🔎 Lọc theo từ khóa + trạng thái
-  const applyFilters = (products, keyword, status) =>
-    products.filter((p) => {
-      const matchesKeyword = keyword
-        ? p.name?.toLowerCase().includes(keyword.toLowerCase()) ||
-          String(p.id).includes(keyword)
-        : true;
-      const matchesStatus = status ? p.status === status : true;
-      return matchesKeyword && matchesStatus;
-    });
+  // ==================== 4. FILTER ENGINE ====================
 
-  const handleSearch = (value) => {
-    setSearchTerm(value);
-    setFiltered(applyFilters(products, value, statusFilter));
-  };
+  useEffect(() => {
+    let result = [...rawProducts];
 
-  const handleFilterStatus = (status) => {
-    setStatusFilter(status);
-    setFiltered(applyFilters(products, searchTerm, status));
-  };
-
-  const debouncedSearch = useMemo(
-    () => debounce(handleSearch, 400),
-    [products, statusFilter]
-  );
-
-  // 🟩 Mở form thêm / sửa
-  const openModal = (product = null) => {
-    setEditingProduct(product);
-    setModalVisible(true);
-  };
-
-  // 🟦 Submit form
-  const handleSubmit = async (formData) => {
-    try {
-      if (!editingProduct) {
-        // 🟢 Tạo mới: đảm bảo có ảnh
-        formData.append("status", "pending");
-        await productApi.createProduct(formData);
-        message.success("Thêm sản phẩm thành công (chờ duyệt)");
-      } else {
-        // 🔵 Cập nhật: kiểm tra xem có ảnh mới không
-        const hasNewImages = Array.from(formData.entries()).some(
-          ([key]) => key === "images"
-        );
-
-        if (!hasNewImages) {
-          // ❗ Không có ảnh mới → gửi JSON thay vì FormData (nếu backend hỗ trợ)
-          // Nhưng nếu backend bắt buộc multipart, thì vẫn gửi FormData không có images
-          const plainData = {};
-          for (let [key, value] of formData.entries()) {
-            if (key !== "images" && key !== "primary_image_index") {
-              plainData[key] = value;
-            }
-          }
-
-          // 👇 Gửi JSON nếu API hỗ trợ PATCH/PUT với JSON
-          await productApi.updateProduct(editingProduct.id, plainData, {
-            headers: {
-              "Content-Type": "application/json",
-            },
-          });
-        } else {
-          // Có ảnh mới → gửi FormData như bình thường
-          await productApi.updateProduct(editingProduct.id, formData);
-        }
-
-        message.success("Cập nhật thành công");
-      }
-
-      setModalVisible(false);
-      fetchData();
-    } catch (err) {
-      console.error(err);
-      message.error("Có lỗi khi lưu sản phẩm");
+    if (searchTerm) {
+      const lowerKey = searchTerm.toLowerCase();
+      result = result.filter(
+        (p) =>
+          p.name.toLowerCase().includes(lowerKey) ||
+          String(p.id).includes(lowerKey) ||
+          p.category_name.toLowerCase().includes(lowerKey)
+      );
     }
-  };
+
+    if (activeTab !== "all") {
+      switch (activeTab) {
+        case "pending":
+          result = result.filter((p) => p.status === "pending" || p.status === "pending_update");
+          break;
+        case "approved":
+          result = result.filter((p) => p.status === "approved");
+          break;
+        case "rejected":
+          result = result.filter((p) => ["rejected", "self_rejected", "banned"].includes(p.status));
+          break;
+        case "out_of_stock":
+          result = result.filter((p) => p.stock <= 0);
+          break;
+        default:
+          break;
+      }
+    }
+    setFilteredProducts(result);
+  }, [rawProducts, searchTerm, activeTab]);
+
+  // ==================== 5. STATS CALCULATION ====================
+
+  const statsItems = useMemo(() => {
+    const total = rawProducts.length;
+    const approved = rawProducts.filter(p => p.status === 'approved').length;
+    const pending = rawProducts.filter(p => ['pending', 'pending_update'].includes(p.status)).length;
+    const outOfStock = rawProducts.filter(p => p.stock <= 0).length;
+
+    return [
+      { title: "Tổng sản phẩm", value: total, icon: <DropboxOutlined />, color: "#1890ff" },
+      { title: "Đang hoạt động", value: approved, icon: <CheckCircleOutlined />, color: "#52c41a" },
+      { title: "Chờ phê duyệt", value: pending, icon: <ClockCircleOutlined />, color: "#faad14" },
+      { title: "Hết hàng", value: outOfStock, icon: <StopOutlined />, color: "#ff4d4f" }
+    ];
+  }, [rawProducts]);
+
+  // ==================== 6. HANDLERS ====================
+
+  // --- CRUD Handlers ---
+  const handleAddNew = () => { setEditingProduct(null); setModalVisible(true); };
+  const handleEdit = (product) => { setEditingProduct(product); setModalVisible(true); };
 
   const handleDelete = async (id) => {
     try {
       await productApi.deleteProduct(id);
-      message.success("Xóa sản phẩm thành công");
-      fetchData();
+      message.success("Đã xóa sản phẩm");
+      setRawProducts(prev => prev.filter(i => i.id !== id));
     } catch {
-      message.error("Không thể xóa sản phẩm");
-    }
-  };
-
-  const handleToggleHide = async (p) => {
-    try {
-      await productApi.toggleHide(p.id);
-      message.success(p.is_hidden ? "Đã hiện sản phẩm" : "Đã ẩn sản phẩm");
-      fetchData();
-    } catch {
-      message.error("Không thể thay đổi trạng thái ẩn/hiện");
+      message.error("Lỗi khi xóa sản phẩm");
     }
   };
 
   const handleSelfReject = async (p) => {
     try {
       await productApi.selfReject(p.id);
-      message.success("Đã chuyển sang trạng thái tự từ chối");
-      fetchData();
+      message.success("Đã hủy đăng bán");
+      setRawProducts(prev => prev.map(i => i.id === p.id ? { ...i, status: 'self_rejected' } : i));
     } catch {
-      message.error("Không thể tự từ chối sản phẩm");
+      message.error("Lỗi khi hủy đăng bán");
     }
   };
 
-  const openGallery = (product) => {
-    setGalleryProduct(product);
-    const existing =
-      product.images?.map((img) => ({
-        uid: String(img.id),
-        name: `Ảnh ${img.id}`,
-        status: "done",
-        url: img.image,
-        is_primary: img.is_primary,
-      })) || [];
-    setGalleryFileList(existing);
-    setGalleryVisible(true);
+  const handleToggleHide = async (record) => {
+    try {
+      // Gọi API toggleHide đã khai báo trong productApi
+      await productApi.toggleHide(record.id);
+
+      const actionText = record.is_hidden ? "Đã hiển thị lại" : "Đã ẩn";
+      message.success(`${actionText} sản phẩm: ${record.name}`);
+
+      // Cập nhật state cục bộ để UI phản hồi nhanh (không cần gọi lại API list)
+      setRawProducts(prev =>
+        prev.map(p => p.id === record.id ? { ...p, is_hidden: !p.is_hidden } : p)
+      );
+    } catch (error) {
+      console.error(error);
+      message.error("Lỗi khi thay đổi trạng thái");
+    }
+  };
+  // --- Import Handler ---
+  const handleImportSuccess = () => {
+    // <--- 4. Callback khi import xong
+    fetchData(); // Refresh lại dữ liệu bảng
+    // Modal sẽ tự đóng hoặc giữ lại tùy thuộc vào logic bên trong ImportProductModal,
+    // nhưng ở đây ta chỉ cần refresh data.
+  };
+
+  // --- Image Gallery Logic ---
+  const handleSetPrimaryImage = async (imgId) => {
+    if (!galleryProduct) return;
+    try {
+      await productApi.setPrimaryImage(galleryProduct.id, imgId);
+      message.success("Đã thay đổi ảnh đại diện");
+      fetchData();
+      setGalleryFileList(prev => prev.map(item => ({
+        ...item,
+        is_primary: String(item.uid) === String(imgId)
+      })));
+      if (selectedProduct && selectedProduct.id === galleryProduct.id) {
+        const newPrimaryImg = galleryFileList.find(i => String(i.uid) === String(imgId));
+        if (newPrimaryImg) setSelectedProduct(prev => ({ ...prev, image: newPrimaryImg.url }));
+      }
+    } catch (err) {
+      console.error(err);
+      message.error("Lỗi khi đặt ảnh đại diện");
+    }
+  };
+
+  const handleRemoveImage = async (file) => {
+    if (file.originFileObj) {
+      setGalleryFileList(prev => prev.filter(item => item.uid !== file.uid));
+      return;
+    }
+    try {
+      await productApi.deleteProductImage(file.uid);
+      message.success("Đã xóa ảnh");
+      setGalleryFileList(prev => prev.filter(item => item.uid !== file.uid));
+      fetchData();
+    } catch (err) {
+      message.error("Không thể xóa ảnh này");
+    }
   };
 
   const handleGalleryUpload = async () => {
     const newFiles = galleryFileList.filter((f) => f.originFileObj);
-    if (newFiles.length === 0) {
-      message.warning("Không có ảnh mới để tải lên");
-      return;
-    }
+    if (newFiles.length === 0) return message.warning("Chưa có ảnh mới");
 
     const formData = new FormData();
-    newFiles.forEach((file) => {
-      formData.append("images", file.originFileObj);
-    });
+    newFiles.forEach((file) => formData.append("images", file.originFileObj));
 
     setGalleryLoading(true);
     try {
       await productApi.uploadProductImages(galleryProduct.id, formData);
       message.success("Tải ảnh thành công");
       setGalleryVisible(false);
-      fetchData(); // refresh để thấy ảnh mới
+      fetchData();
+      if (selectedProduct && selectedProduct.id === galleryProduct.id) {
+        setIsDetailModalVisible(false); // Close detail to refresh
+      }
     } catch (err) {
-      console.error(err);
       message.error("Tải ảnh thất bại");
     } finally {
       setGalleryLoading(false);
     }
   };
 
-  return (
-    <>
-      <ProductBaseLayout
-        title="QUẢN LÝ SẢN PHẨM"
-        loading={loading}
-        data={filtered}
-        onSearch={debouncedSearch}
-        onFilterStatus={handleFilterStatus}
-        onAddNew={() => openModal()}
-        customTable={
-          <ProductTable
-            data={filtered}
-            onEdit={openModal}
-            onDelete={handleDelete}
-            onToggleHide={handleToggleHide}
-            onSelfReject={handleSelfReject}
-            onManageImages={openGallery}
-            onRow={(record) => ({
-              className: "order-item-row-hover",
-              onClick: () => {
-                setSelectedProduct(record);
-                setIsDetailModalVisible(true);
-              },
-            })}
-          />
-        }
-      />
+  const openGallery = (p) => {
+    setGalleryProduct(p);
+    const existing = p.images?.map(i => ({
+      uid: String(i.id),
+      url: i.image,
+      status: 'done',
+      name: `Image-${i.id}`,
+      is_primary: i.is_primary
+    })) || [];
+    setGalleryFileList(existing);
+    setGalleryVisible(true);
+  };
 
-      {/* Chi tiết sản phẩm */}
+  // --- Submit Form ---
+  const handleSubmitForm = async (formData) => {
+    try {
+      if (!editingProduct) {
+        formData.append("status", "pending");
+        await productApi.createProduct(formData);
+        message.success("Thêm mới thành công, chờ duyệt");
+      } else {
+        // Logic update (như cũ)
+        const hasImages = Array.from(formData.entries()).some(([k]) => k === "images");
+        if (!hasImages) {
+          const plain = {};
+          for (let [k, v] of formData.entries()) {
+            if (k !== 'images' && k !== 'primary_image_index') plain[k] = v;
+          }
+          await productApi.updateProduct(editingProduct.id, plain, { headers: { "Content-Type": "application/json" } });
+        } else {
+          await productApi.updateProduct(editingProduct.id, formData);
+        }
+        message.success("Cập nhật thành công");
+      }
+      setModalVisible(false);
+      fetchData();
+    } catch {
+      message.error("Lỗi khi lưu dữ liệu");
+    }
+  };
+
+  const tabItems = [
+    { key: "all", label: `Tất cả (${statsItems[0].value})` },
+    { key: "approved", label: `Đang bán (${statsItems[1].value})`, icon: <CheckCircleOutlined /> },
+    { key: "pending", label: `Chờ duyệt (${statsItems[2].value})`, icon: <ClockCircleOutlined /> },
+    { key: "out_of_stock", label: `Hết hàng (${statsItems[3].value})`, icon: <StopOutlined /> },
+    { key: "rejected", label: "Đã huỷ / Từ chối" },
+  ];
+
+  // ==================== 7. RENDER ====================
+
+  return (
+    <div style={{ minHeight: "100vh", backgroundColor: "#f0f2f5", padding: "0px" }}>
+
+      {/* 2. Main Content Card */}
+      <Card bordered={false} style={{ borderRadius: 8, boxShadow: "0 1px 2px rgba(0,0,0,0.03)" }}>
+
+        {/* Toolbar */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <Title level={4} style={{ margin: 0 }}>DANH SÁCH SẢN PHẨM</Title>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <Input
+              placeholder="Tìm theo tên, mã SP..."
+              prefix={<SearchOutlined />}
+              style={{ width: 250 }}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              allowClear
+            />
+            <Button icon={<ReloadOutlined />} onClick={fetchData}>Làm mới</Button>
+
+            {/* --- 5. Button Nhập Excel --- */}
+            <Button
+              icon={<ImportOutlined />}
+              onClick={() => setImportModalVisible(true)}
+              style={{ borderColor: '#52c41a', color: '#52c41a' }}
+            >
+              Nhập Excel
+            </Button>
+
+            <Button type="primary" icon={<PlusOutlined />} onClick={handleAddNew}>
+              Thêm sản phẩm
+            </Button>
+          </div>
+        </div>
+
+        {/* Tabs Filter */}
+        <Tabs
+          activeKey={activeTab}
+          onChange={setActiveTab}
+          items={tabItems}
+          type="card"
+          style={{ marginBottom: 16 }}
+        />
+
+        {/* Product Table */}
+        <ProductTable
+          data={filteredProducts}
+          loading={loading}
+          onView={(record) => { setSelectedProduct(record); setIsDetailModalVisible(true); }}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          onSelfReject={handleSelfReject}
+          onToggleHide={handleToggleHide} // 👈 Truyền hàm này vào
+          onRow={(record) => ({
+            onClick: () => { setSelectedProduct(record); setIsDetailModalVisible(true); },
+          })}
+        />
+      </Card>
+
+      {/* --- MODALS AREA --- */}
+
+      {/* 1. Detail Modal */}
       <ProductDetailModal
         visible={isDetailModalVisible}
         onClose={() => setIsDetailModalVisible(false)}
         product={selectedProduct}
+        onManageImages={openGallery}
         getStatusConfig={getStatusConfig}
         getAvailabilityConfig={getAvailabilityConfig}
       />
 
-      {/* Form thêm/sửa sản phẩm */}
+      {/* 2. Add/Edit Form */}
       <ProductForm
         visible={modalVisible}
         onCancel={() => setModalVisible(false)}
-        onSubmit={handleSubmit}
+        onSubmit={handleSubmitForm}
         initialValues={editingProduct}
         categories={categories}
       />
 
-      {/* Modal quản lý gallery */}
+      {/* 3. Import Excel Modal - TÍCH HỢP MỚI */}
+      <ImportProductModal
+        visible={importModalVisible}
+        onClose={() => setImportModalVisible(false)}
+        onSuccess={handleImportSuccess}
+      />
+
+      {/* 4. Gallery Upload Modal */}
       <Modal
         open={galleryVisible}
-        title="Quản lý ảnh sản phẩm"
+        title={<div style={{ display: 'flex', gap: 8, alignItems: 'center' }}><UploadOutlined /> Quản lý thư viện ảnh</div>}
         onCancel={() => setGalleryVisible(false)}
-        onOk={handleGalleryUpload}
-        confirmLoading={galleryLoading}
-        okText="Tải lên ảnh mới"
+        footer={[
+          <Button key="back" onClick={() => setGalleryVisible(false)}>Đóng</Button>,
+          <Button
+            key="submit"
+            type="primary"
+            onClick={handleGalleryUpload}
+            loading={galleryLoading}
+            disabled={!galleryFileList.some(f => f.originFileObj)}
+          >
+            Tải lên ảnh mới
+          </Button>
+        ]}
         width={800}
+        centered
       >
-        <Upload
-          listType="picture-card"
-          fileList={galleryFileList}
-          beforeUpload={() => false}
-          onChange={({ fileList }) => {
-            if (fileList.length <= 6) {
-              setGalleryFileList(fileList);
-            } else {
-              message.warning("Tối đa 6 ảnh");
-            }
-          }}
-          multiple
-        >
-          {galleryFileList.length < 6 && (
-            <div>
-              <UploadOutlined style={{ fontSize: 20 }} />
-              <div style={{ marginTop: 8 }}>Tải ảnh</div>
-            </div>
-          )}
-        </Upload>
-        <Typography.Text
-          type="secondary"
-          style={{ display: "block", marginTop: 12 }}
-        >
-          • Ảnh cũ sẽ được giữ nguyên.
-          <br />• Chỉ ảnh mới (có dấu +) sẽ được tải lên.
-        </Typography.Text>
+        <div style={{ padding: 16 }}>
+          <Title level={5} style={{ marginBottom: 16 }}>Ảnh hiện tại</Title>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginBottom: 24 }}>
+            {galleryFileList.filter(f => !f.originFileObj).map(file => (
+              <div key={file.uid} style={{ position: 'relative', width: 120, height: 120, border: file.is_primary ? '2px solid #faad14' : '1px solid #d9d9d9', borderRadius: 8, overflow: 'hidden' }}>
+                <img src={file.url} alt="product" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <div style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', background: 'rgba(0,0,0,0.6)', padding: '4px', display: 'flex', justifyContent: 'space-between' }}>
+                  <Button type="text" size="small" icon={file.is_primary ? <StarFilled style={{ color: '#faad14' }} /> : <StarOutlined style={{ color: 'white' }} />} onClick={() => handleSetPrimaryImage(file.uid)} />
+                  <Button type="text" size="small" danger icon={<DeleteOutlined />} onClick={() => handleRemoveImage(file)} />
+                </div>
+                {file.is_primary && <div style={{ position: 'absolute', top: 0, right: 0, background: '#faad14', color: 'white', fontSize: 10, padding: '2px 6px', borderBottomLeftRadius: 8 }}>Chính</div>}
+              </div>
+            ))}
+            {galleryFileList.filter(f => !f.originFileObj).length === 0 && <Text type="secondary">Chưa có ảnh nào trên server.</Text>}
+          </div>
+          <Divider />
+          <Title level={5} style={{ marginBottom: 16 }}>Thêm ảnh mới</Title>
+          <Upload
+            listType="picture-card"
+            fileList={galleryFileList.filter(f => f.originFileObj)}
+            beforeUpload={() => false}
+            onChange={({ fileList }) => {
+              const oldFiles = galleryFileList.filter(f => !f.originFileObj);
+              if (oldFiles.length + fileList.length <= 6) setGalleryFileList([...oldFiles, ...fileList]);
+              else message.warning("Tổng cộng tối đa 6 ảnh");
+            }}
+            onRemove={(file) => handleRemoveImage(file)}
+            multiple
+          >
+            {galleryFileList.length < 6 && <div><PlusOutlined /><div style={{ marginTop: 8 }}>Chọn ảnh</div></div>}
+          </Upload>
+          <div style={{ marginTop: 8 }}><Text type="secondary" style={{ fontSize: 12 }}>* Bấm vào <StarOutlined /> để chọn làm ảnh đại diện.</Text></div>
+        </div>
       </Modal>
-    </>
+
+    </div>
   );
 }

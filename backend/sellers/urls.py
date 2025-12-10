@@ -11,9 +11,7 @@ from .views import (
 from rest_framework.routers import DefaultRouter
 from .views import (
     SellerViewSet,
-    ShopViewSet,
-    ProductViewSet,
-    SellerLockAPIView,
+    ShopViewSet,    SellerLockAPIView,
     SellerByStatusAPIView,
     SellerProductsAPIView,
     SellerMeAPIView,
@@ -21,13 +19,13 @@ from .views import (
 )
 from sellers import views
 from sellers import views_analytics
+from products.views import ProductViewSet
 
 
 router = DefaultRouter()
 router.register(r'sellers', SellerViewSet, basename="sellers")
 router.register(r'shops', ShopViewSet, basename="shops")
-router.register(r"products", ProductViewSet)
-
+router.register(r"products", ProductViewSet, basename="seller-products")
 urlpatterns = [
     path('', SellerListAPIView.as_view(), name='seller-list'),
     path('register/', SellerRegisterAPIView.as_view(), name='seller-register'),

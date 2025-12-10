@@ -1,4 +1,4 @@
-import api from "../../../login_register/services/api";
+import api from "./api";
 
 const sellerService = {
   getMe: async () => {

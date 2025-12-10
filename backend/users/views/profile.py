@@ -12,7 +12,7 @@ from django.contrib.auth.tokens import default_token_generator
 from django.urls import reverse
 from django.utils import timezone
 
-from rest_framework import generics, permissions, status
+from rest_framework import generics, permissions, status, serializers
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -241,3 +241,28 @@ class UploadAvatarView(APIView):
         request.user.avatar = avatar
         request.user.save()
         return Response({"avatar": request.user.avatar.url})
+    
+
+class PublicUserSerializer(serializers.ModelSerializer):
+    """
+    Serializer rút gọn chỉ lấy thông tin hiển thị Chat
+    """
+    full_name = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = CustomUser
+        fields = ['id', 'username', 'email', 'avatar', 'full_name']
+
+    def get_full_name(self, obj):
+        # Ưu tiên lấy tên đầy đủ, nếu không có thì lấy username
+        return obj.get_full_name() or obj.username
+
+class PublicUserRetrieveView(generics.RetrieveAPIView):
+    """
+    API lấy thông tin cơ bản của user theo ID.
+    Dùng cho: Chat, hiển thị người bán/người mua.
+    Quyền hạn: Chỉ cần đăng nhập là xem được (IsAuthenticated).
+    """
+    queryset = CustomUser.objects.filter(is_active=True)
+    serializer_class = PublicUserSerializer
+    permission_classes = [permissions.IsAuthenticated]

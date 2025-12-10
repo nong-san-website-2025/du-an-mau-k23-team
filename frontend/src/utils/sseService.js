@@ -22,7 +22,7 @@ class SSEManager {
     this.userId = userId;
     this.connectionStatus = 'CONNECTING';
 
-    const url = `http://localhost:8000/api/sse/?token=${token}`;
+    const url = `${process.env.REACT_APP_API_URL}/sse/?token=${token}`;
 
     console.log(`[SSE] Attempting connection... (Retry: ${this.retryCount})`);
 

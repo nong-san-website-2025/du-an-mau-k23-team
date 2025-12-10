@@ -42,7 +42,7 @@ function CartPage() {
 
   const navigate = useNavigate();
 
-  useEffect(() => {}, [cartItems]);
+  useEffect(() => { }, [cartItems]);
 
   useEffect(() => {
     const loadSellerInfos = async () => {
@@ -223,21 +223,7 @@ function CartPage() {
                       </div>
                     </div>
 
-                    <div className="store-actions">
-                      <Button
-                        type="link"
-                        icon={<TicketIcon />}
-                        onClick={() =>
-                          setVoucherModal({
-                            visible: true,
-                            storeId,
-                            storeName: displayName,
-                          })
-                        }
-                      >
-                        Thêm voucher
-                      </Button>
-                    </div>
+
                   </div>
 
                   <Divider style={{ margin: "12px 0" }} />
@@ -305,7 +291,7 @@ function CartPage() {
 
                         <div className="col-price">
                           {/* Chuyển fontWeight thành 'normal' hoặc 400 */}
-                          <Text style={{fontWeight: 400}} >
+                          <Text style={{ fontWeight: 400 }} >
                             {formatVND(prod.price)}
                           </Text>
                         </div>
@@ -409,7 +395,7 @@ function CartPage() {
 
                 <div className="summary-total">
                   <Text type="secondary">Tổng thanh toán</Text>
-                  <Title style={{ color: '#4caf50'}}  level={4}>{formatVND(selectedTotal)}</Title>
+                  <Title style={{ color: '#4caf50' }} level={4}>{formatVND(selectedTotal)}</Title>
                 </div>
               </div>
 

@@ -16,9 +16,8 @@ urlpatterns = [
     path('top-products/', top_products, name='top-products'),
     path('new-products/', views.new_products, name='new-products'),
     path('best-sellers/', views.best_sellers, name='best-sellers'),
-
+    path('import-excel/', views.ImportProductExcelView.as_view(), name='product-import-excel'),
     path("search/", SearchAPIView.as_view(), name="search"),  # API tìm kiếm
-    path("", include(router.urls)),  # Các API của Product & Category
     path("<int:product_id>/reviews/", ReviewListCreateView.as_view(), name="product-reviews"),
     path("by-seller/<int:seller_id>/", products_by_seller, name="products-by-seller"),
     path("products/bulk-approve/", views.bulk_approve_products, name="bulk-approve-products"),
@@ -27,4 +26,5 @@ urlpatterns = [
     path('<int:product_id>/images/', views.ProductImageUploadView.as_view(), name='product-image-upload'),
     path('images/<int:image_id>/', views.ProductImageDeleteView.as_view(), name='product-image-delete'),
     path('featured-categories/', FeaturedCategoryListView.as_view(), name='featured-categories'),
+    path("", include(router.urls)),  # Các API của Product & Category
 ]

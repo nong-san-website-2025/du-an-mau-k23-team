@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Product, Category, Subcategory, ProductImage
+from .models import Product, Category, Subcategory, ProductImage, PendingProductUpdate
 from sellers.serializers import SellerListSerializer
 from django.db.models import Sum
 from orders.models import OrderItem
@@ -9,11 +9,11 @@ from store.serializers import StoreSerializer
 # ✅ Thêm ProductImageSerializer
 class ProductImageSerializer(serializers.ModelSerializer):
     image = serializers.ImageField()
-    
+
     class Meta:
         model = ProductImage
         fields = ['id', 'image', 'is_primary', 'order']
-        
+
     def to_representation(self, instance):
         data = super().to_representation(instance)
         request = self.context.get('request')
@@ -21,6 +21,16 @@ class ProductImageSerializer(serializers.ModelSerializer):
             # Trả về URL đầy đủ
             data['image'] = request.build_absolute_uri(instance.image.url) if request else instance.image.url
         return data
+
+
+class PendingProductUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PendingProductUpdate
+        fields = [
+            'name', 'description', 'original_price', 'discounted_price', 'unit',
+            'stock', 'location', 'brand', 'availability_status', 'season_start', 'season_end',
+            'created_at', 'updated_at'
+        ]
 
 
 class SubcategorySerializer(serializers.ModelSerializer):
@@ -80,6 +90,8 @@ class ProductSerializer(serializers.ModelSerializer):
     sold = serializers.SerializerMethodField()
 
     commission_rate = serializers.SerializerMethodField()
+    pending_update = serializers.SerializerMethodField()
+    comparison_data = serializers.SerializerMethodField()
     class Meta:
         model = Product
         fields = [
@@ -94,7 +106,7 @@ class ProductSerializer(serializers.ModelSerializer):
             "estimated_quantity", "preordered_quantity", 'ordered_quantity',
             "is_coming_soon", "is_out_of_stock", "available_quantity",
             "total_preordered", "user_preordered", "features", "main_image",
-            "commission_rate"
+            "commission_rate", "pending_update", "comparison_data"
         ]
         read_only_fields = ["status", "seller"]
 
@@ -212,6 +224,67 @@ class ProductSerializer(serializers.ModelSerializer):
             return False
         return obj.stock <= 0
 
+    # Trong class ProductSerializer, thêm hàm này:
+    def get_comparison_data(self, obj):
+        """Trả về dữ liệu so sánh giữa current và pending - dùng cho chi tiết"""
+        current_data = {
+            'name': obj.name,
+            'description': obj.description,
+            'original_price': float(obj.original_price) if obj.original_price else None,
+            'discounted_price': float(obj.discounted_price) if obj.discounted_price else None,
+            'unit': obj.unit,
+            'stock': obj.stock,
+            'location': obj.location,
+            'brand': obj.brand,
+            'availability_status': obj.availability_status,
+            'season_start': obj.season_start.isoformat() if obj.season_start else None,
+            'season_end': obj.season_end.isoformat() if obj.season_end else None,
+        }
+
+        pending_data = None
+        changes = {}
+
+        try:
+            pending = obj.pending_update  # hoặc obj.pending_update nếu là OneToOne
+            if pending:
+                pending_data = {
+                    'name': pending.name or obj.name,
+                    'description': pending.description or obj.description,
+                    'original_price': float(pending.original_price) if pending.original_price is not None else current_data['original_price'],
+                    'discounted_price': float(pending.discounted_price) if pending.discounted_price is not None else current_data['discounted_price'],
+                    'unit': pending.unit or obj.unit,
+                    'stock': pending.stock if pending.stock is not None else obj.stock,
+                    'location': pending.location or obj.location,
+                    'brand': pending.brand or obj.brand,
+                    'availability_status': pending.availability_status or obj.availability_status,
+                    'season_start': pending.season_start.isoformat() if pending.season_start else (obj.season_start.isoformat() if obj.season_start else None),
+                    'season_end': pending.season_end.isoformat() if pending.season_end else (obj.season_end.isoformat() if obj.season_end else None),
+                }
+
+                for field in current_data.keys():
+                    if current_data[field] != pending_data[field]:
+                        changes[field] = {
+                            'old': current_data[field],
+                            'new': pending_data[field]
+                        }
+        except PendingProductUpdate.DoesNotExist:
+            pass
+
+        return {
+            'current': current_data,
+            'pending': pending_data,
+            'changes': changes,
+            'has_changes': len(changes) > 0
+        }
+
+    def get_pending_update(self, obj):
+        try:
+            if hasattr(obj, 'pending_update') and obj.pending_update:
+                return PendingProductUpdateSerializer(obj.pending_update, context=self.context).data
+        except PendingProductUpdate.DoesNotExist:
+            pass
+        return None
+
 
 class ProductListSerializer(serializers.ModelSerializer):
     category_name = serializers.CharField(source='subcategory.category.name', read_only=True)
@@ -243,6 +316,8 @@ class ProductListSerializer(serializers.ModelSerializer):
     sold = serializers.SerializerMethodField()
 
     commission_rate = serializers.SerializerMethodField()
+    pending_update = serializers.SerializerMethodField()
+    comparison_data = serializers.SerializerMethodField()
     class Meta:
         model = Product
         fields = [
@@ -257,7 +332,7 @@ class ProductListSerializer(serializers.ModelSerializer):
             "estimated_quantity", "preordered_quantity",
             "is_coming_soon", "is_out_of_stock", "available_quantity",
             "total_preordered", "user_preordered", "features", "store", "main_image",
-            "commission_rate"
+            "commission_rate", "pending_update", "comparison_data"
         ]
         read_only_fields = ["id", "created_at", "updated_at", "seller"]
 
@@ -265,6 +340,67 @@ class ProductListSerializer(serializers.ModelSerializer):
         if obj.category and hasattr(obj.category, 'commission_rate'):
             return obj.category.commission_rate
         return None
+
+    def get_comparison_data(self, obj):
+        """Trả về dữ liệu so sánh giữa current và pending"""
+        current_data = {
+            'name': obj.name,
+            'description': obj.description,
+            'original_price': float(obj.original_price) if obj.original_price else None,
+            'discounted_price': float(obj.discounted_price) if obj.discounted_price else None,
+            'unit': obj.unit,
+            'stock': obj.stock,
+            'location': obj.location,
+            'brand': obj.brand,
+            'availability_status': obj.availability_status,
+            'season_start': obj.season_start.isoformat() if obj.season_start else None,
+            'season_end': obj.season_end.isoformat() if obj.season_end else None,
+        }
+
+        pending_data = None
+        changes = {}
+
+        try:
+            pending = obj.pending_update
+            pending_data = {
+                'name': pending.name if pending.name else obj.name,
+                'description': pending.description if pending.description else obj.description,
+                'original_price': float(pending.original_price) if pending.original_price is not None else (float(obj.original_price) if obj.original_price else None),
+                'discounted_price': float(pending.discounted_price) if pending.discounted_price is not None else (float(obj.discounted_price) if obj.discounted_price else None),
+                'unit': pending.unit if pending.unit else obj.unit,
+                'stock': pending.stock if pending.stock is not None else obj.stock,
+                'location': pending.location if pending.location else obj.location,
+                'brand': pending.brand if pending.brand else obj.brand,
+                'availability_status': pending.availability_status if pending.availability_status else obj.availability_status,
+                'season_start': pending.season_start.isoformat() if pending.season_start else (obj.season_start.isoformat() if obj.season_start else None),
+                'season_end': pending.season_end.isoformat() if pending.season_end else (obj.season_end.isoformat() if obj.season_end else None),
+            }
+
+            # Tính toán sự khác biệt
+            for field in current_data.keys():
+                if current_data[field] != pending_data[field]:
+                    changes[field] = {
+                        'old': current_data[field],
+                        'new': pending_data[field]
+                    }
+
+        except PendingProductUpdate.DoesNotExist:
+            pass
+
+        return {
+            'current': current_data,
+            'pending': pending_data,
+            'changes': changes,
+            'has_changes': len(changes) > 0
+        }
+
+    def get_pending_update(self, obj):
+        try:
+            pending = obj.pending_update
+            return PendingProductUpdateSerializer(pending).data
+        except PendingProductUpdate.DoesNotExist:
+            return None
+
 
     def get_main_image(self, obj):
         primary_image = obj.images.filter(is_primary=True).first()

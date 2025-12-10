@@ -13,12 +13,10 @@ import {
   Statistic,
   Divider,
   Card,
-  Tooltip,
-  Rate,
+  Alert,
+  Progress
 } from "antd";
 import {
-  CloseOutlined,
-  CopyOutlined,
   DollarOutlined,
   FileImageOutlined,
   InfoCircleOutlined,
@@ -27,221 +25,199 @@ import {
   ClockCircleOutlined,
   CloseCircleOutlined,
   LockOutlined,
-  QuestionCircleOutlined,
-  SearchOutlined,
+  WarningOutlined,
+  HistoryOutlined,
+  EnvironmentOutlined,
+  CalendarOutlined,
+  DeploymentUnitOutlined,
+  ShopOutlined
 } from "@ant-design/icons";
+
+import dayjs from "dayjs";
+import relativeTime from "dayjs/plugin/relativeTime";
+import "dayjs/locale/vi";
 import { intcomma } from "../../../../../utils/format";
-// Nếu chưa có file format, dùng hàm dự phòng bên dưới:
-// const intcomma = (val) => val ? Number(val).toLocaleString('vi-VN') : '0';
+
+// Kích hoạt plugin
+dayjs.extend(relativeTime);
+dayjs.locale("vi");
 
 const { Text, Title, Paragraph } = Typography;
 
 export default function ProductDetailDrawer({ visible, product, onClose }) {
   if (!product) return null;
 
-  // --- Helpers ---
-  const copyToClipboard = (text) => {
-    navigator.clipboard.writeText(text);
-  };
+  // Logic xác định hàng Update (Nếu trạng thái pending và updated > created 5 phút)
+  const isUpdate = product.status === 'pending_update' || (product.status === 'pending' && 
+    dayjs(product.updated_at).diff(dayjs(product.created_at), 'minute') > 5);
 
   const statusConfig = {
     approved: { label: "Đang bán", color: "success", icon: <CheckCircleOutlined /> },
-    pending: { label: "Chờ duyệt", color: "processing", icon: <ClockCircleOutlined /> },
+    pending: { label: "Chờ duyệt", color: "gold", icon: <ClockCircleOutlined /> },
+    pending_update: { label: "Chờ duyệt cập nhật", color: "orange", icon: <HistoryOutlined /> },
     rejected: { label: "Từ chối", color: "error", icon: <CloseCircleOutlined /> },
     banned: { label: "Bị khóa", color: "default", icon: <LockOutlined /> },
-    default: { label: "Không xác định", color: "default", icon: <QuestionCircleOutlined /> },
+    self_rejected: { label: "Đã hủy", color: "default", icon: <CloseCircleOutlined /> },
   };
 
-  const stockConfig = {
-    available: { label: "Đang kinh doanh", color: "cyan" },
-    out_of_stock: { label: "Ngừng kinh doanh", color: "volcano" },
-    coming_soon: { label: "Sắp mở bán", color: "gold" },
+  const availabilityConfig = {
+    available: { text: "Có sẵn", color: "blue" },
+    coming_soon: { text: "Sắp có (Mùa vụ)", color: "purple" },
+    out_of_stock: { text: "Hết hàng", color: "red" },
   };
 
-  const getStatus = (status) => statusConfig[status] || statusConfig.default;
-  const getStockStatus = (status) => stockConfig[status] || stockConfig.available;
+  const getStatus = (s) => statusConfig[s] || { label: s, color: "default" };
 
-  // --- Tab 1: Thông tin chung ---
+  // --- 1. Tab Thông tin chung ---
   const renderGeneralInfo = () => (
-    <Space direction="vertical" size="middle" style={{ width: "100%" }}>
-      <Descriptions
-        title="Định danh & Phân loại"
-        bordered
-        size="small"
-        column={{ xxl: 2, xl: 2, lg: 2, md: 1, sm: 1, xs: 1 }}
-      >
-        <Descriptions.Item label="Tên sản phẩm" span={2}>
-          <Text strong>{product.name}</Text>
+    <Space direction="vertical" style={{ width: "100%" }}>
+      <Descriptions bordered size="small" column={1} labelStyle={{ width: '140px' }}>
+        <Descriptions.Item label="Danh mục">
+          <Text strong>{product.category_name}</Text> / {product.subcategory_name}
         </Descriptions.Item>
-        <Descriptions.Item label="Mã sản phẩm (ID)">
-          <Space>
-            <Text code>{product.id}</Text>
-            <Tooltip title="Sao chép ID">
-              <Button
-                type="text"
-                icon={<CopyOutlined />}
-                size="small"
-                onClick={() => copyToClipboard(product.id)}
-              />
-            </Tooltip>
-          </Space>
+        
+        {/* Đã bỏ Thương hiệu */}
+        
+        <Descriptions.Item label="Cửa hàng">
+           <Space><ShopOutlined /> {product.seller_name}</Space>
         </Descriptions.Item>
-        <Descriptions.Item label="Thương hiệu">
-          {product.brand || "No Brand"}
+        
+        {/* Mới thêm: Nơi sản xuất */}
+        <Descriptions.Item label="Xuất xứ">
+            <Space><EnvironmentOutlined style={{ color: '#eb2f96' }} /> {product.location || "Chưa cập nhật"}</Space>
         </Descriptions.Item>
-        <Descriptions.Item label="Danh mục chính">
-          <Tag color="blue">{product.category_name}</Tag>
-        </Descriptions.Item>
-        <Descriptions.Item label="Danh mục phụ">
-          {product.subcategory_name || "—"}
+
+        {/* Mới thêm: Đơn vị tính */}
+        <Descriptions.Item label="Đơn vị tính">
+            <Space><DeploymentUnitOutlined style={{ color: '#1890ff' }} /> {product.unit || "kg"}</Space>
         </Descriptions.Item>
       </Descriptions>
 
-      <div style={{ marginTop: 16 }}>
-        <Title level={5}>Mô tả chi tiết</Title>
-        <Card size="small" style={{ background: "#f9fafb" }}>
-          <Paragraph
-            ellipsis={{ rows: 6, expandable: true, symbol: "Xem thêm" }}
-            style={{ marginBottom: 0, whiteSpace: "pre-wrap" }}
-          >
-            {product.description || "Chưa có mô tả chi tiết cho sản phẩm này."}
-          </Paragraph>
+      <Card size="small" title="Mô tả chi tiết" style={{ background: "#f9fafb", marginTop: 10 }}>
+        <Paragraph ellipsis={{ rows: 8, expandable: true }} style={{ whiteSpace: 'pre-line' }}>
+            {product.description}
+        </Paragraph>
+      </Card>
+    </Space>
+  );
+
+  // --- 2. Tab Giá & Kho & Mùa vụ ---
+  const renderBusinessInfo = () => {
+    const isSeason = product.availability_status === 'coming_soon';
+    
+    // Tính phần trăm đặt trước (nếu là mùa vụ)
+    const percentOrdered = isSeason && product.estimated_quantity > 0 
+        ? Math.round((product.ordered_quantity / product.estimated_quantity) * 100) 
+        : 0;
+
+    return (
+      <Space direction="vertical" style={{ width: "100%" }}>
+        {/* Phần Giá */}
+        <Card size="small" style={{ borderColor: '#d9d9d9' }}>
+            <Row gutter={16}>
+            <Col span={12}>
+                <Statistic 
+                    title="Giá gốc" 
+                    value={product.original_price} 
+                    formatter={v => intcomma(v) + ' đ'} 
+                    valueStyle={{ fontSize: 16, color: '#8c8c8c', textDecoration: 'line-through' }} 
+                />
+            </Col>
+            <Col span={12}>
+                <Statistic 
+                    title="Giá bán (KM)" 
+                    value={product.discounted_price} 
+                    formatter={v => intcomma(v) + ' đ'} 
+                    valueStyle={{ fontSize: 22, color: '#cf1322', fontWeight: 'bold' }} 
+                />
+            </Col>
+            </Row>
         </Card>
-      </div>
-    </Space>
-  );
 
-  // --- Tab 2: Kinh doanh (Logic tính lợi nhuận Admin) ---
-  const renderBusinessInfo = () => (
-    <Space direction="vertical" size="large" style={{ width: "100%" }}>
-      <Row gutter={16}>
-        <Col span={12}>
-          <Card size="small">
-            <Statistic
-              title="Giá bán hiện tại"
-              value={product.discounted_price || product.price}
-              formatter={(val) => intcomma(val) + ' đ'}
-              valueStyle={{ color: "#3f8600", fontWeight: 600 }}
-              prefix={<DollarOutlined />}
+        <Divider style={{ margin: '12px 0' }} />
+
+        {/* Thông tin Kho & Trạng thái */}
+        <Descriptions size="small" column={1} bordered labelStyle={{ width: '140px' }}>
+            <Descriptions.Item label="Trạng thái kho">
+                <Tag color={availabilityConfig[product.availability_status]?.color}>
+                    {availabilityConfig[product.availability_status]?.text || product.availability_status}
+                </Tag>
+            </Descriptions.Item>
+            
+            <Descriptions.Item label="Tồn kho thực tế">
+                <b>{intcomma(product.stock)}</b> {product.unit}
+            </Descriptions.Item>
+            
+            <Descriptions.Item label="Đã bán">
+                {intcomma(product.sold || 0)} {product.unit}
+            </Descriptions.Item>
+            
+            <Descriptions.Item label="Hoa hồng sàn">
+                {product.commission_rate ? <Tag color="green">{product.commission_rate * 100}%</Tag> : <Text type="secondary">Mặc định</Text>}
+            </Descriptions.Item>
+        </Descriptions>
+
+        {/* --- HIỂN THỊ THÔNG TIN MÙA VỤ (NẾU CÓ) --- */}
+        {isSeason && (
+            <Alert
+                message={
+                    <Space>
+                        <CalendarOutlined /> 
+                        <Text strong>Thông tin Mùa vụ & Đặt trước</Text>
+                    </Space>
+                }
+                description={
+                    <div style={{ marginTop: 8 }}>
+                        <Row gutter={[16, 8]}>
+                            <Col span={12}>
+                                <Text type="secondary">Bắt đầu:</Text><br/>
+                                {product.season_start ? dayjs(product.season_start).format('DD/MM/YYYY') : '---'}
+                            </Col>
+                            <Col span={12}>
+                                <Text type="secondary">Kết thúc:</Text><br/>
+                                {product.season_end ? dayjs(product.season_end).format('DD/MM/YYYY') : '---'}
+                            </Col>
+                        </Row>
+                        <Divider style={{ margin: '8px 0' }} dashed />
+                        <div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                                <Text>Đã đặt trước:</Text>
+                                <Text strong>{intcomma(product.ordered_quantity)} / {intcomma(product.estimated_quantity)} {product.unit}</Text>
+                            </div>
+                            <Progress percent={percentOrdered} size="small" status="active" strokeColor="#722ed1" />
+                        </div>
+                    </div>
+                }
+                type="info"
+                style={{ marginTop: 16, border: '1px solid #d3adf7', background: '#f9f0ff' }}
             />
-          </Card>
-        </Col>
-        <Col span={12}>
-          <Card size="small">
-            <Statistic
-              title="Đã bán"
-              value={product.sold_count}
-              valueStyle={{ color: "#1677ff" }}
-            />
-          </Card>
-        </Col>
-      </Row>
+        )}
+      </Space>
+    );
+  };
 
-      <Descriptions title="Chi tiết giá & Lợi nhuận sàn" bordered size="small" column={1}>
-        <Descriptions.Item label="Giá niêm yết (Gốc)">
-          <Text delete type="secondary">
-            {intcomma(product.original_price)} đ
-          </Text>
-        </Descriptions.Item>
-        <Descriptions.Item label="Giá khuyến mãi (Thực tế)">
-          <Text type="danger" strong>
-            {intcomma(product.discounted_price)} đ
-          </Text>
-        </Descriptions.Item>
-
-        {/* --- PHẦN TÍNH TOÁN LỢI NHUẬN ADMIN --- */}
-        <Descriptions.Item label="Biên lợi nhuận ước tính (Phí sàn)">
-          {product.commission_rate != null && !isNaN(Number(product.commission_rate)) && product.discounted_price ? (
-            <Space>
-              {/* 1. Hiển thị số tiền Admin nhận được */}
-              <Tag color="green" style={{ fontSize: 14, padding: '4px 8px' }}>
-                {(() => {
-                  const price = Number(product.discounted_price);
-                  const rate = Number(product.commission_rate);
-
-                  // Logic: Lợi nhuận = Giá bán * Tỉ lệ hoa hồng
-                  const profit = price * rate;
-
-                  return `+${intcomma(Math.round(profit))} đ`;
-                })()}
-              </Tag>
-
-              {/* 2. Hiển thị tỉ lệ % để đối chiếu */}
-              <Text type="secondary">
-                (Rate: {Number(product.commission_rate) * 100}%)
-              </Text>
-            </Space>
-          ) : (
-            <Tag color="default">Chưa thiết lập phí sàn</Tag>
-          )}
-        </Descriptions.Item>
-        {/* ------------------------------------------- */}
-      </Descriptions>
-    </Space>
-  );
-
-  // --- Tab 3: SEO ---
-  const renderSeoInfo = () => (
-    <Space direction="vertical" size="middle" style={{ width: "100%" }}>
-      <Descriptions title="Cấu hình SEO (Marketing)" bordered size="small" column={1}>
-        <Descriptions.Item label="URL Slug">
-          <Text code>{product.slug || "/san-pham"}</Text>
-        </Descriptions.Item>
-        <Descriptions.Item label="Meta Title">
-          {product.meta_title || product.name}
-        </Descriptions.Item>
-        <Descriptions.Item label="Meta Keywords">
-          {product.meta_keywords || "do an, thuc pham"}
-        </Descriptions.Item>
-      </Descriptions>
-    </Space>
-  );
-
-  // --- Tab 4: Hình ảnh ---
+  // --- 3. Tab Hình ảnh ---
   const renderImages = () => (
-    <div>
-      <div style={{ marginBottom: 16 }}>
-        <Text strong>Ảnh đại diện & Gallery ({product.images?.length || 0})</Text>
-      </div>
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))",
-          gap: 16,
-        }}
-      >
-        {product.images?.map((img, index) => (
-          <div
-            key={img.id || index}
-            style={{
-              border: img.is_primary ? "2px solid #1677ff" : "1px solid #d9d9d9",
-              borderRadius: 8,
-              padding: 4,
-              position: "relative",
-            }}
-          >
-            <Image
-              src={img.image}
-              width="100%"
-              height={120}
-              style={{ objectFit: "cover", borderRadius: 4 }}
-            />
-            {img.is_primary && (
-              <Tag color="blue" style={{ position: "absolute", top: 8, right: 0 }}>
-                Chính
-              </Tag>
-            )}
-          </div>
-        ))}
-      </div>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(100px, 1fr))", gap: 10 }}>
+      {product.images?.map((img, idx) => (
+        <div key={idx} style={{ position: "relative", border: img.is_primary ? "2px solid #1890ff" : "1px solid #ddd", borderRadius: 4, overflow: 'hidden' }}>
+          <Image 
+            src={img.image} 
+            style={{ objectFit: 'cover', display: 'block' }} 
+            height={100} 
+            width="100%" 
+          />
+          {img.is_primary && <Tag color="blue" style={{ position: 'absolute', top: 0, right: 0, margin: 0, borderRadius: '0 0 0 4px', fontSize: 10 }}>Chính</Tag>}
+        </div>
+      ))}
+      {(!product.images || product.images.length === 0) && <Text type="secondary">Không có hình ảnh</Text>}
     </div>
   );
 
   const items = [
-    { key: "1", label: <span><InfoCircleOutlined /> Tổng quan</span>, children: renderGeneralInfo() },
-    { key: "2", label: <span><DollarOutlined /> Kinh doanh</span>, children: renderBusinessInfo() },
-    { key: "3", label: <span><SearchOutlined /> SEO</span>, children: renderSeoInfo() },
-    { key: "4", label: <span><FileImageOutlined /> Hình ảnh</span>, children: renderImages() },
+    { key: "1", label: <span><InfoCircleOutlined /> Thông tin</span>, children: renderGeneralInfo() },
+    { key: "2", label: <span><DollarOutlined /> Giá & Kho</span>, children: renderBusinessInfo() },
+    { key: "3", label: <span><FileImageOutlined /> Hình ảnh ({product.images?.length || 0})</span>, children: renderImages() },
   ];
 
   return (
@@ -252,83 +228,69 @@ export default function ProductDetailDrawer({ visible, product, onClose }) {
           <Tag color={getStatus(product.status).color}>
             {getStatus(product.status).icon} {getStatus(product.status).label}
           </Tag>
+          {/* Tag Cảnh báo trên Header */}
+          {isUpdate && (
+            <Tag color="warning" icon={<HistoryOutlined />}>Đã chỉnh sửa</Tag>
+          )}
         </Space>
       }
-      width={800}
+      width={720}
       onClose={onClose}
       open={visible}
-      closable={false}
-      styles={{ body: { padding: 0, paddingBottom: 24 } }}
       extra={
         <Space>
-          <Tooltip title="Xem sản phẩm trên web">
-            <Button
-              type="text"
-              icon={<GlobalOutlined />}
-              target="_blank"
-              href={`/products/${product.id}`}
-              style={{ color: '#595959' }}
-            >
-              Xem Web
-            </Button>
-          </Tooltip>
-          <Divider type="vertical" />
-          <Tooltip title="Đóng (Esc)">
-            <Button
-              icon={<CloseOutlined />}
-              onClick={onClose}
-              danger
-              type="text"
-            />
-          </Tooltip>
+           {/* Nút xem web chỉ hiện khi đã duyệt */}
+           {product.status === 'approved' && 
+                <Button type="link" href={`/product/${product.id}`} target="_blank" icon={<GlobalOutlined />}>
+                    Xem trên Web
+                </Button>
+           }
         </Space>
       }
-      footer={
-        <div style={{ textAlign: "right", color: "#8c8c8c", fontSize: 12 }}>
-          <Space split={<Divider type="vertical" />}>
-            <span>Ngày tạo: {new Date(product.created_at).toLocaleString("vi-VN")}</span>
-            <span>Cập nhật: {new Date(product.updated_at).toLocaleString("vi-VN")}</span>
-          </Space>
-        </div>
-      }
     >
-      <div style={{ padding: "20px 24px", background: "#fff", borderBottom: "1px solid #f0f0f0" }}>
-        <Row gutter={24} align="middle">
-          <Col flex="100px">
-            <Image
-              width={100}
-              height={100}
-              src={product.main_image?.image || "https://via.placeholder.com/150"}
-              style={{ borderRadius: 8, objectFit: "cover", border: '1px solid #f0f0f0' }}
+      {/* Cảnh báo cập nhật */}
+      {isUpdate && (
+        <Alert
+          message="Cảnh báo: Sản phẩm có cập nhật mới"
+          description={
+            <div>
+              Sản phẩm này vừa được Người bán chỉnh sửa lúc <b>{dayjs(product.updated_at).format("HH:mm DD/MM/YYYY")}</b>.
+              <br />
+              Vui lòng kiểm tra kỹ các thay đổi trước khi duyệt.
+            </div>
+          }
+          type="warning"
+          showIcon
+          icon={<WarningOutlined />}
+          style={{ marginBottom: 20 }}
+        />
+      )}
+
+      {/* Header Info thu gọn */}
+      <div style={{ display: 'flex', gap: 16, marginBottom: 20, paddingBottom: 16, borderBottom: '1px solid #f0f0f0' }}>
+         <div style={{ border: '1px solid #f0f0f0', borderRadius: 6, padding: 2 }}>
+            <Image 
+                width={80} 
+                height={80} 
+                src={product.image || product.images?.[0]?.image} // Ưu tiên ảnh thumbnail
+                style={{ borderRadius: 4, objectFit: 'cover' }} 
+                fallback="/no-image.png"
             />
-          </Col>
-          <Col flex="auto">
-            <Text type="secondary" style={{ fontSize: 12 }}>#{product.id} • {product.category_name}</Text>
-            <Title level={4} style={{ margin: "4px 0" }}>
-              {product.name}
-            </Title>
-            <Space>
-              <Tag color={getStockStatus(product.availability_status).color}>
-                {getStockStatus(product.availability_status).label}
-              </Tag>
-              <Text strong style={{ color: '#cf1322', fontSize: 16 }}>
-                {intcomma(product.discounted_price)} đ
-              </Text>
-              <Rate
-                disabled
-                defaultValue={Number(product.rating)}
-                style={{ fontSize: 14 }}
-                allowHalf
-              />
-              <Text type="secondary" style={{ fontSize: 12 }}>({product.review_count} đánh giá)</Text>
+         </div>
+         <div style={{ flex: 1 }}>
+            <Title level={4} style={{ margin: '0 0 4px 0', fontSize: 18 }}>{product.name}</Title>
+            <Space split={<Divider type="vertical" />}>
+                <Text type="secondary">ID: #{product.id}</Text>
+                <Text type="secondary"><ClockCircleOutlined /> Cập nhật: {dayjs(product.updated_at).fromNow()}</Text>
             </Space>
-          </Col>
-        </Row>
+            <div style={{ marginTop: 6 }}>
+                <Tag color="cyan">{product.category_name}</Tag>
+                <Tag>{product.subcategory_name}</Tag>
+            </div>
+         </div>
       </div>
 
-      <div style={{ padding: "0 24px" }}>
-        <Tabs defaultActiveKey="1" items={items} size="middle" style={{ marginTop: 12 }} />
-      </div>
+      <Tabs defaultActiveKey="1" items={items} type="card" />
     </Drawer>
   );
 }

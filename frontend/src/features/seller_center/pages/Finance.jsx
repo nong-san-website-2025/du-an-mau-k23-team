@@ -245,7 +245,7 @@ const buildCashFlowForecast = (rows) => {
       .filter((row) =>
         row?.payoutStatus
           ? normalizeStatus(row.payoutStatus).includes("pending") ||
-            normalizeStatus(row.status).includes("pending")
+          normalizeStatus(row.status).includes("pending")
           : normalizeStatus(row.status).includes("pending")
       )
       .filter((row) => {
@@ -341,7 +341,7 @@ const fetchJson = async (url, options = {}) => {
     ...(token && { Authorization: `Bearer ${token}` }),
     ...(options.headers || {}),
   };
-  
+
   const res = await fetch(url, {
     credentials: "include",
     ...options,
@@ -484,10 +484,10 @@ const Finance = () => {
     } catch (err) {
       console.error("Finance data loading error:", err);
       const errorMessage = err.message || "Không thể tải dữ liệu tài chính";
-      
+
       // Kiểm tra xem có token không
       const token = localStorage.getItem("token");
-      
+
       // Lưu lỗi vào state để hiển thị UI phù hợp
       if (errorMessage.includes("Seller not found")) {
         setError("seller_not_found");
@@ -529,14 +529,14 @@ const Finance = () => {
       const matchesType = types.includes(transaction.type);
       const matchesSearch = searchText
         ? [transaction.orderId, transaction.transactionId, transaction.description]
-            .filter(Boolean)
-            .some((text) => text.toString().toLowerCase().includes(searchText.toLowerCase()))
+          .filter(Boolean)
+          .some((text) => text.toString().toLowerCase().includes(searchText.toLowerCase()))
         : true;
 
       const date = transaction.createdAt ? dayjs(transaction.createdAt) : null;
       const matchesDate = date
         ? (!startDate || isSameOrAfter(date, startDate, "day")) &&
-          (!endDate || isSameOrBefore(date, endDate, "day"))
+        (!endDate || isSameOrBefore(date, endDate, "day"))
         : true;
 
       return matchesType && matchesSearch && matchesDate;
@@ -840,7 +840,7 @@ const Finance = () => {
     <Spin spinning={loading}>
       <div style={{ background: "#f5f7fa", minHeight: "100vh", padding: "24px" }}>
         <Space direction="vertical" size={24} style={{ width: "100%" }}>
-          
+
           {/* Header Section */}
           <div style={{
             background: "linear-gradient(135deg, #1890ff 0%, #0050b3 100%)",
@@ -868,8 +868,8 @@ const Finance = () => {
                   <Button icon={<ReloadOutlined />} onClick={loadFinanceData} style={{ color: "white", borderColor: "rgba(255,255,255,0.3)" }}>
                     Tải lại
                   </Button>
-                  <Button 
-                    icon={<DownloadOutlined />} 
+                  <Button
+                    icon={<DownloadOutlined />}
                     type="primary"
                     style={{ background: "white", color: "#1890ff", border: "none" }}
                     onClick={() =>
@@ -888,82 +888,7 @@ const Finance = () => {
           {/* Main Statistics Cards */}
           <Row gutter={[16, 16]}>
             {/* Available Balance */}
-            <Col xs={24} sm={12} lg={6}>
-              <Card
-                style={{
-                  borderRadius: "12px",
-                  border: "none",
-                  boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-                  height: "100%",
-                  overflow: "hidden",
-                }}
-                bodyStyle={{ padding: "20px", position: "relative" }}
-              >
-                <div style={{
-                  position: "absolute",
-                  top: 0,
-                  right: 0,
-                  width: "80px",
-                  height: "80px",
-                  background: "linear-gradient(135deg, rgba(22, 163, 74, 0.1) 0%, rgba(22, 163, 74, 0) 100%)",
-                  borderRadius: "0 0 0 80px"
-                }} />
-                <Space direction="vertical" size={12} style={{ width: "100%", position: "relative", zIndex: 1 }}>
-                  <Space align="center">
-                    <div style={{
-                      width: "40px",
-                      height: "40px",
-                      background: "rgba(22, 163, 74, 0.1)",
-                      borderRadius: "8px",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      color: "#16a34a"
-                    }}>
-                      <WalletOutlined style={{ fontSize: 20 }} />
-                    </div>
-                    <Text type="secondary" style={{ fontSize: 13 }}>Số dư khả dụng</Text>
-                  </Space>
-                  <div>
-                    <Statistic
-                      value={summary.availableBalance}
-                      formatter={formatCurrency}
-                      valueStyle={{ color: "#16a34a", fontSize: 24, fontWeight: 700 }}
-                    />
-                  </div>
-                  <Input
-                    type="number"
-                    min={10000}
-                    step={10000}
-                    value={withdrawAmount}
-                    placeholder="Nhập số tiền rút"
-                    onChange={(event) => setWithdrawAmount(toNumber(event.target.value))}
-                    style={{ borderRadius: "8px" }}
-                    size="small"
-                  />
-                  <Button
-                    type="primary"
-                    icon={<BankOutlined />}
-                    loading={withdrawLoading}
-                    block
-                    size="small"
-                    onClick={handleWithdraw}
-                    disabled={withdrawDisabled}
-                    style={{ borderRadius: "8px", background: "#16a34a", borderColor: "#16a34a" }}
-                  >
-                    Rút tiền
-                  </Button>
-                  {withdrawDisabled && (
-                    <Alert
-                      message="Vượt quá số dư"
-                      type="error"
-                      showIcon
-                      style={{ marginTop: "8px" }}
-                    />
-                  )}
-                </Space>
-              </Card>
-            </Col>
+
 
             {/* Pending Balance */}
             <Col xs={24} sm={12} lg={6}>

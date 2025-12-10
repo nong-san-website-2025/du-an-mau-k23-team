@@ -1,274 +1,202 @@
-// src/features/seller_center/components/ProductTable.jsx
 import React from "react";
-import { Table, Button, Popconfirm, Tag, Space, Tooltip, Image } from "antd";
+import { Table, Typography, Space, Image, Avatar, Tag } from "antd";
 import {
   EditOutlined,
   DeleteOutlined,
   StopOutlined,
-  PictureOutlined,
+  FileImageOutlined,
+  EyeOutlined,
+  HistoryOutlined,
+  EyeInvisibleOutlined,
 } from "@ant-design/icons";
 import { intcomma } from "../../../../utils/format";
-import "../../styles/Table.css";
 import ButtonAction from "../../../../components/ButtonAction";
+import StatusTag from "../../../../components/StatusTag";
+import dayjs from "dayjs";
+
+const { Text } = Typography;
 
 const ProductTable = ({
   data,
+  loading,
+  onView,
   onEdit,
-  onDelete,
-  onSelfReject,
+  onDelete, // Hàm xóa chính thức (Hard Delete)
+  onSelfReject, // Hàm hủy đăng bán (Soft Delete / Unpublish)
+  onToggleHide,
   onRow,
-  onManageImages,
 }) => {
   const columns = [
-    {
-      title: "ID",
-      dataIndex: "id",
-      key: "id",
-      width: 70,
-      align: "center",
-    },
+    // ... (Giữ nguyên các cột 1 đến 5: Sản phẩm, Phân loại, Giá, Trạng thái, Mùa vụ)
+    // ── 1. CỘT SẢN PHẨM ─────────────────────
     {
       title: "Sản phẩm",
-      key: "name",
-      width: 300,
-      render: (record) => {
+      key: "product_info",
+      width: 260,
+      fixed: "left",
+      render: (_, record) => {
         let imageUrl = null;
         if (Array.isArray(record.images) && record.images.length > 0) {
           const primary = record.images.find((img) => img.is_primary);
           imageUrl = primary?.image || record.images[0]?.image;
         }
-
+        const isPendingUpdate = record.status === "pending_update";
         return (
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            {imageUrl ? (
-              <Image
-                src={imageUrl}
-                alt={record.name}
-                width={48}
-                height={48}
-                style={{
-                  objectFit: "cover",
-                  borderRadius: 6,
-                  border: "1px solid #f0f0f0",
-                }}
-                fallback="/no-image.png"
-                preview={false}
-              />
-            ) : (
-              <div
-                style={{
-                  width: 48,
-                  height: 48,
-                  backgroundColor: "#fafafa",
-                  border: "1px solid #f0f0f0",
-                  borderRadius: 6,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "#bbb",
-                  fontSize: 14,
-                }}
-              >
-                Chưa có ảnh
+          <div style={{ display: "flex", gap: 12 }}>
+            <div onClick={(e) => e.stopPropagation()}>
+              {imageUrl ? (
+                <Image src={imageUrl} width={56} height={56} style={{ borderRadius: 6, objectFit: "cover", border: "1px solid #f0f0f0" }} preview={{ mask: <EyeOutlined /> }} fallback="/no-image.png" />
+              ) : (
+                <Avatar shape="square" size={56} icon={<FileImageOutlined />} style={{ backgroundColor: "#f5f5f5", color: "#bfbfbf" }} />
+              )}
+            </div>
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                <Text strong ellipsis={{ tooltip: record.name }} style={{ fontSize: 14, maxWidth: 280 }}>{record.name}</Text>
+                {isPendingUpdate && <Tag color="orange" icon={<HistoryOutlined />} style={{ margin: 0, fontSize: 11 }}>Chờ duyệt cập nhật</Tag>}
               </div>
-            )}
-            <Tooltip title={record.name} placement="topLeft">
-              <span
-                style={{
-                  maxWidth: 200,
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                  fontWeight: 500,
-                }}
-              >
-                {record.name}
-              </span>
-            </Tooltip>
+              <Text type="secondary" style={{ fontSize: 12 }}>ID: #{record.id} {isPendingUpdate && " • Đã gửi yêu cầu cập nhật"}</Text>
+            </div>
           </div>
         );
       },
     },
     {
-      title: "Danh mục",
+      title: "Phân loại",
       key: "category",
       width: 180,
-      render: (record) => (
-        <div>
-          <div style={{ fontWeight: 500 }}>{record.category_name || "---"}</div>
-          <small style={{ color: "#8c8c8c" }}>
-            {record.subcategory_name || "---"}
-          </small>
+      render: (_, record) => (
+        <Space direction="vertical" size={0}>
+          <Text style={{ fontSize: 13 }}>{record.category_name || "---"}</Text>
+          <Text type="secondary" style={{ fontSize: 12 }}>{record.subcategory_name || "---"}</Text>
+        </Space>
+      ),
+    },
+    {
+      title: "Giá bán & Tồn kho",
+      key: "price_stock",
+      width: 180,
+      align: "right",
+      render: (_, record) => (
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
+          <Space align="baseline" size={4}>
+            <Text type="secondary" delete style={{ fontSize: 12 }}>{intcomma(record.original_price)}đ</Text>
+            <Text type="danger" strong style={{ fontSize: 14 }}>{intcomma(record.discounted_price || record.original_price)}đ</Text>
+          </Space>
+          <Text style={{ fontSize: 12, marginTop: 2 }}>
+            Kho: <span style={{ color: record.stock > 0 ? "#52c41a" : "#ff4d4f", fontWeight: 500 }}>{intcomma(record.stock)}</span>
+          </Text>
         </div>
       ),
     },
     {
-      title: "Giá gốc",
-      dataIndex: "original_price",
-      key: "original_price",
-      width: 120,
-      align: "right",
-      render: (price) => (
-        <span style={{ color: "#999" }}>{intcomma(price)} đ</span>
-      ),
-    },
-    {
-      title: "Giá bán",
-      dataIndex: "discounted_price",
-      key: "discounted_price",
-      width: 120,
-      align: "right",
-      render: (price) => (
-        <strong style={{ color: "#1890ff" }}>{intcomma(price)} đ</strong>
-      ),
-    },
-    {
-      title: "Kho",
-      dataIndex: "stock",
-      key: "stock",
-      width: 90,
+      title: "Trạng thái",
+      key: "status_col",
+      width: 170,
       align: "center",
-      render: (stock) =>
-        stock > 0 ? (
-          <Tag color="green">{stock.toLocaleString()}</Tag>
-        ) : (
-          <Tag color="red">Hết</Tag>
-        ),
-    },
-    {
-      title: "Duyệt",
-      dataIndex: "status",
-      key: "status",
-      width: 140,
-      align: "center",
-      render: (status) => {
-        const statusMap = {
-          pending: { color: "orange", text: "Chờ duyệt" },
-          approved: { color: "green", text: "Đã duyệt" },
-          rejected: { color: "red", text: "Từ chối" },
-          banned: { color: "grey", text: "Đã khoá" },
-          self_rejected: { color: "volcano", text: "Tự huỷ" },
-        };
-        const s = statusMap[status] || { color: "default", text: status };
-        return <Tag color={s.color}>{s.text}</Tag>;
-      },
-    },
-    {
-      title: "Hàng hóa",
-      dataIndex: "availability_status",
-      key: "availability_status",
-      width: 140,
-      align: "center",
-      render: (availability) => {
-        const statusMap = {
-          available: { color: "blue", text: "Có sẵn" },
-          coming_soon: { color: "purple", text: "Sắp có" },
-        };
-        const s = statusMap[availability] || {
-          color: "default",
-          text: availability,
-        };
-        return <Tag color={s.color}>{s.text}</Tag>;
-      },
-    },
-    {
-      title: "Mùa vụ",
-      key: "season",
-      width: 260,
-      render: (record) => {
-        if (record.availability_status !== "coming_soon") {
-          return <span style={{ color: "#8c8c8c" }}>—</span>;
+      render: (_, record) => {
+        let showStatus = record.status;
+        if (record.status === 'approved' && record.is_hidden) {
+          showStatus = 'hidden';
         }
-
-        const formatDate = (dateStr) => {
-          if (!dateStr) return "—";
-          const d = new Date(dateStr);
-          return isNaN(d.getTime()) ? "—" : d.toLocaleDateString("vi-VN");
-        };
-
-        const start = formatDate(record.season_start);
-        const end = formatDate(record.season_end);
-        const estimated = record.estimated_quantity || 0;
-        const ordered = record.ordered_quantity || 0;
-
         return (
-          <div style={{ fontSize: 13, lineHeight: 1.5 }}>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                marginBottom: 4,
-              }}
-            >
-              <span style={{ color: "#595959", fontWeight: 500 }}>📅</span>
-              <span>
-                <b>{start}</b> → <b>{end}</b>
-              </span>
-            </div>
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <Tag color="purple" style={{ fontSize: 12 }}>
-                Dự kiến: {estimated.toLocaleString("vi-VN")}
-              </Tag>
-              <Tag color="geekblue" style={{ fontSize: 12 }}>
-                Đã đặt: {ordered.toLocaleString("vi-VN")}
-              </Tag>
-            </div>
-          </div>
+          <Space direction="vertical" size={4}>
+            <StatusTag status={showStatus} type="status" />
+            <StatusTag status={record.availability_status} type="availability" />
+          </Space>
         );
       },
     },
     {
-      title: "Hành động",
+      title: "Thông tin mùa vụ",
+      key: "season",
+      width: 250,
+      render: (_, record) => {
+        if (record.availability_status !== "coming_soon") return <Text type="secondary" italic>—</Text>;
+        const start = record.season_start ? dayjs(record.season_start).format("DD/MM/YYYY") : "?";
+        const end = record.season_end ? dayjs(record.season_end).format("DD/MM/YYYY") : "?";
+        return (
+          <div style={{ fontSize: 13, background: "#f9f0ff", padding: "6px 10px", borderRadius: 6, border: "1px dashed #d3adf7" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+              <Text strong style={{ color: "#722ed1" }}>Mùa vụ</Text>
+              <Text style={{ fontSize: 12 }}>{start} - {end}</Text>
+            </div>
+            <Space size={10} style={{ fontSize: 12 }} split={<span style={{ color: "#d9d9d9" }}>|</span>}>
+              <span>Dự kiến: <b>{intcomma(record.estimated_quantity)}</b></span>
+              <span>Đặt trước: <b>{intcomma(record.ordered_quantity || 0)}</b></span>
+            </Space>
+          </div>
+        );
+      },
+    },
+
+    // ── 6. CỘT HÀNH ĐỘNG (Đã chỉnh sửa) ──────────────────────────────────────
+    {
+      title: <div style={{ textAlign: 'center', width: '100%' }}>Thao tác</div>,
       key: "action",
       fixed: "right",
-      width: 120,
+      width: 120, // Đủ rộng cho 4-5 nút
       align: "center",
-      className: "compact-action-column",
       render: (_, record) => {
-        const isSelfRejected = record.status === "self_rejected";
+        const isBanned = record.status === "banned";
+        const isApproved = record.status === "approved";
+        
+        // Điều kiện xóa: Chưa bán được hàng nào (sold = 0) VÀ chưa có ai đặt trước (ordered = 0)
+        // VÀ không phải là đang bị banned (để tránh xóa bằng chứng vi phạm nếu cần)
+        const canDelete = (record.sold === 0 || !record.sold) && 
+                          (record.ordered_quantity === 0 || !record.ordered_quantity) && 
+                          !isBanned;
 
         const actions = [
+          // 1. Xem chi tiết
           {
+            actionType: "view",
             show: true,
-            icon: <PictureOutlined style={{ color: "#1890ff" }} />,
-            tooltip: "Quản lý ảnh sản phẩm",
-            onClick: onManageImages,
+            icon: <EyeOutlined />,
+            tooltip: "Xem chi tiết",
+            onClick: onView,
           },
+          // 2. Ẩn / Hiện
           {
-            show: !isSelfRejected,
-            icon: <StopOutlined />,
-            tooltip: "Huỷ yêu cầu đăng sản phẩm",
-            onClick: onSelfReject,
-            confirm: {
-              title: "Bạn có chắc muốn huỷ thêm sản phẩm này?",
-              okText: "Xác nhận",
-              cancelText: "Hủy",
-            },
-            buttonProps: { danger: true },
+            actionType: "toggle_hide",
+            show: isApproved, 
+            icon: record.is_hidden ? <EyeOutlined /> : <EyeInvisibleOutlined />,
+            tooltip: record.is_hidden ? "Hiển thị lại sản phẩm" : "Tạm ẩn sản phẩm",
+            onClick: () => onToggleHide(record),
           },
+
+          // 3. Chỉnh sửa
           {
+            actionType: "edit",
             show: true,
-            icon: <EditOutlined style={{ color: "#52c41a" }} />,
-            tooltip: "Chỉnh sửa sản phẩm",
+            icon: <EditOutlined />,
+            tooltip: isBanned ? "Sản phẩm bị khóa" : "Chỉnh sửa",
             onClick: onEdit,
+            buttonProps: { disabled: isBanned },
           },
+          
+          // 5. Xóa vĩnh viễn (Hard Delete) - Chỉ hiện khi đủ điều kiện
           {
-            show: isSelfRejected,
+            actionType: "delete",
+            show: canDelete, // Chỉ hiện khi chưa có đơn
             icon: <DeleteOutlined />,
-            tooltip: "Xóa sản phẩm khỏi danh sách",
-            onClick: (record) => onDelete(record.id),
-            confirm: {
-              title: "Bạn có chắc chắn muốn xóa sản phẩm này?",
-              okText: "Xóa",
-              cancelText: "Hủy",
-              okButtonProps: { danger: true },
+            tooltip: "Xóa vĩnh viễn (Chưa có đơn hàng)",
+            onClick: () => onDelete(record.id),
+            confirm: { 
+                title: "Xóa vĩnh viễn sản phẩm?", 
+                description: "Hành động này không thể hoàn tác.",
+                okText: "Xóa ngay", 
+                isDanger: true 
             },
-            buttonProps: { danger: true },
+            buttonProps: { danger: true, ghost: true }, // Đỏ viền
           },
         ];
 
-        return <ButtonAction actions={actions} record={record} />;
+        return (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%' }}>
+                <ButtonAction actions={actions} record={record} />
+            </div>
+        );
       },
     },
   ];
@@ -276,18 +204,17 @@ const ProductTable = ({
   return (
     <Table
       columns={columns}
-      dataSource={data}
+      dataSource={data || []}
+      loading={{ spinning: loading, tip: "Đang tải..." }}
       rowKey="id"
-      bordered
-      pagination={{
-        pageSize: 10,
-        showSizeChanger: false,
-        showTotal: (total) => `Tổng ${total} sản phẩm`,
-      }}
-      scroll={{ x: 1400, y: 600 }}
-      size="middle"
+      pagination={{ pageSize: 7, showTotal: (total) => `Tổng ${total} sản phẩm` }}
+      scroll={{ x: 1500 }}
       onRow={onRow}
-      rowClassName="table-row-hover"
+      rowClassName={(record) =>
+        `cursor-pointer hover:bg-slate-50 ${record.is_hidden ? "opacity-60 bg-gray-50" : ""} ${record.status === "pending_update" ? "ant-table-row-pending-update" : ""}`
+      }
+      size="small"
+      bordered
     />
   );
 };

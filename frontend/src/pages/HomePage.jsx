@@ -19,6 +19,8 @@ import { fetchCategories } from "../services/api/homepageApi.js";
 import { getBannersBySlot } from "../features/admin/services/marketingApi.js";
 
 import "../styles/HomePage.css";
+import ProductSection from "../components/home/PromotionSection.jsx";
+import { FireOutlined, ThunderboltOutlined } from "@ant-design/icons";
 
 export default function HomePage() {
   const [loading, setLoading] = useState(true);
@@ -104,26 +106,35 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* === Section 2: Quick Access === */}
+        {/* === Section 3: Danh mục === */}
         <section className="home-section">
-          <QuickAccessBar />
+          <CategorySection categories={categories} />
         </section>
+
 
         {/* Banner: Dưới Quick Access */}
         <DynamicAdSlot slotCode="homepage_below_quick_access" maxHeight="200px" />
         <section className="home-section">
           <FlashSaleList />
         </section>
-        
-        {/* === Section 3: Danh mục === */}
-        <section className="home-section">
-          <CategorySection categories={categories} />
-        </section>
 
-        {/* === Section 4: Khuyến mãi === */}
-        <section className="home-section">
-          <PromotionSection />
-        </section>
+        {/* SECTION 1: SẢN PHẨM MỚI */}
+        <ProductSection
+          title="SẢN PHẨM MỚI"
+          icon={<ThunderboltOutlined />}
+          color="#1677ff"
+          endpoint="/products/new-products/"
+          viewMoreLink="/new-products"
+        />
+
+        <ProductSection
+          title="BÁN CHẠY NHẤT"
+          icon={<FireOutlined />}
+          color="#f5222d"
+          endpoint="/products/best-sellers/"
+          viewMoreLink="/best-sellers"
+        />
+
 
         {/* Banner: Trước Flash Sale */}
         <DynamicAdSlot slotCode="homepage_above_flash_sale" maxHeight="400px" />

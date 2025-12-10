@@ -20,7 +20,7 @@ export default function PreorderPage() {
   const [loading, setLoading] = useState(true);
 
   const token = localStorage.getItem("token");
-  const API_URL = "http://localhost:8000/api/orders/preorders/";
+  const API_URL = `${process.env.REACT_APP_API_URL}/orders/preorders/`;
 
   const api = axios.create({
     baseURL: API_URL,
@@ -43,7 +43,7 @@ export default function PreorderPage() {
 
       try {
         const res = await axios.get(
-          "http://localhost:8000/api/orders/preorders/",
+          `${process.env.REACT_APP_API_URL}/orders/preorders/`,
           {
             headers: { Authorization: `Bearer ${token}` },
           }

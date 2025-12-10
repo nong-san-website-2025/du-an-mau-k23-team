@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { Modal, Form, Input, message, Card, Avatar, Rate, Space, Typography, Divider } from "antd";
-import { UserOutlined } from "@ant-design/icons";
+import { Modal, Form, Input, message, Alert, Avatar, Rate, Space, Typography, Button } from "antd";
+import { UserOutlined, BulbOutlined } from "@ant-design/icons";
 
 const { TextArea } = Input;
-const { Text } = Typography;
+const { Text, Paragraph } = Typography;
 
 const ReviewReplyModal = ({ visible, review, onClose, onReply }) => {
   const [form] = Form.useForm();
@@ -19,19 +19,12 @@ const ReviewReplyModal = ({ visible, review, onClose, onReply }) => {
     try {
       const values = await form.validateFields();
       setLoading(true);
-
       await onReply(review.id, values.reply_text);
-
-      message.success("Trả lời đánh giá thành công!");
       onClose();
-      form.resetFields();
     } catch (error) {
-      if (error.errorFields) {
-        // Validation error
-        return;
+      if (!error.errorFields) {
+        console.error("Lỗi khi trả lời:", error);
       }
-      console.error("Lỗi khi trả lời:", error);
-      message.error("Không thể trả lời đánh giá");
     } finally {
       setLoading(false);
     }
@@ -42,113 +35,67 @@ const ReviewReplyModal = ({ visible, review, onClose, onReply }) => {
   return (
     <Modal
       open={visible}
-      title="Trả lời đánh giá khách hàng"
+      title="Phản hồi khách hàng"
       onCancel={onClose}
-      onOk={handleSubmit}
-      okText="Gửi trả lời"
-      confirmLoading={loading}
-      width={700}
-      okButtonProps={{
-        style: { backgroundColor: '#52c41a', borderColor: '#52c41a' }
-      }}
+      footer={[
+        <Button key="cancel" onClick={onClose}>Hủy bỏ</Button>,
+        <Button key="submit" type="primary" loading={loading} onClick={handleSubmit}>
+          Gửi phản hồi
+        </Button>
+      ]}
+      width={600}
+      centered
     >
-      <div style={{ marginBottom: 20 }}>
-        {/* Hiển thị đánh giá gốc */}
-        <Card size="small" style={{ marginBottom: 16 }}>
-          <Space direction="vertical" style={{ width: "100%" }}>
-            <Space>
-              <Avatar icon={<UserOutlined />} size="small" />
-              <div>
-                <Text strong>{review.user_name}</Text>
-                <Text type="secondary" style={{ fontSize: '12px', marginLeft: 8 }}>
-                  {new Date(review.created_at).toLocaleString('vi-VN')}
-                </Text>
-              </div>
-            </Space>
-
-            <Space>
-              <Rate disabled value={review.rating} style={{ fontSize: '14px' }} />
-              <Text>{review.rating}/5 sao</Text>
-            </Space>
-
-            <div style={{
-              padding: 12,
-              backgroundColor: '#f9f9f9',
-              borderRadius: 4,
-              whiteSpace: 'pre-wrap'
-            }}>
-              {review.comment || "Không có nội dung"}
-            </div>
-
-            <div style={{ fontSize: '12px', color: '#666' }}>
-              Sản phẩm: {review.product_name}
-            </div>
-          </Space>
-        </Card>
-
-        {/* Hiển thị các phản hồi trước đó nếu có */}
-        {review.replies && review.replies.length > 0 && (
-          <>
-            <Divider style={{ margin: '16px 0' }} />
-            <Card size="small" title="Các phản hồi trước" style={{ marginBottom: 16 }}>
-              <Space direction="vertical" style={{ width: "100%" }}>
-                {review.replies.map((reply, index) => (
-                  <div key={reply.id || index} style={{
-                    padding: 12,
-                    backgroundColor: '#f6ffed',
-                    border: '1px solid #b7eb8f',
-                    borderRadius: 6,
-                    marginBottom: 8
-                  }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                      <Text strong style={{ color: '#52c41a' }}>
-                        {reply.user_name || "Người bán"}
-                      </Text>
-                      <Text type="secondary" style={{ fontSize: '12px' }}>
-                        {new Date(reply.created_at).toLocaleString('vi-VN')}
-                      </Text>
-                    </div>
-                    <div style={{ whiteSpace: 'pre-wrap' }}>
-                      {reply.reply_text}
-                    </div>
-                  </div>
-                ))}
-              </Space>
-            </Card>
-          </>
-        )}
-
-        {/* Form trả lời */}
-        <Form form={form} layout="vertical">
-          <Form.Item
-            name="reply_text"
-            label="Nội dung trả lời"
-            rules={[
-              { required: true, message: "Vui lòng nhập nội dung trả lời" },
-              { min: 10, message: "Nội dung trả lời phải có ít nhất 10 ký tự" }
-            ]}
-          >
-            <TextArea
-              rows={6}
-              placeholder="Nhập nội dung trả lời cho đánh giá này..."
-              showCount
-              maxLength={1000}
-            />
-          </Form.Item>
-        </Form>
-
-        {/* Hướng dẫn */}
-        <Card size="small" style={{ backgroundColor: '#f6ffed', border: '1px solid #b7eb8f' }}>
-          <Text strong style={{ color: '#52c41a' }}>💡 Mẹo trả lời hiệu quả:</Text>
-          <ul style={{ marginTop: 8, color: '#666', paddingLeft: 20 }}>
-            <li>Trả lời một cách lịch sự và chân thành</li>
-            <li>Cảm ơn khách hàng đã đánh giá</li>
-            <li>Giải quyết vấn đề nếu có thể hoặc xin lỗi về sự bất tiện</li>
-            <li>Cung cấp thông tin bổ sung về sản phẩm nếu cần</li>
-            <li>Tránh tranh cãi hoặc đổ lỗi</li>
-          </ul>
-        </Card>
+      {/* Context Review */}
+      <div style={{ padding: '16px', background: '#fafafa', borderRadius: 8, marginBottom: 24 }}>
+        <Space align="start">
+           <Avatar icon={<UserOutlined />} src={review.user_avatar} />
+           <div>
+              <Text strong>{review.user_name}</Text>
+              <div><Rate disabled value={review.rating} style={{ fontSize: 12 }} /></div>
+           </div>
+        </Space>
+        <Paragraph 
+          ellipsis={{ rows: 2, expandable: true, symbol: 'Xem thêm' }} 
+          style={{ marginTop: 12, marginBottom: 0, color: '#595959', paddingLeft: 40 }}
+        >
+          "{review.comment || 'Không có nội dung'}"
+        </Paragraph>
       </div>
+
+      <Form form={form} layout="vertical">
+        <Form.Item
+          name="reply_text"
+          label={<Text strong>Nội dung phản hồi</Text>}
+          rules={[
+            { required: true, message: "Vui lòng nhập nội dung" },
+            { min: 10, message: "Nội dung quá ngắn (tối thiểu 10 ký tự)" }
+          ]}
+        >
+          <TextArea
+            rows={5}
+            placeholder="Cảm ơn bạn đã ủng hộ shop..."
+            showCount
+            maxLength={500}
+            style={{ fontSize: 15 }}
+          />
+        </Form.Item>
+      </Form>
+
+      <Alert
+        message="Mẹo phản hồi chuyên nghiệp"
+        description={
+          <ul style={{ paddingLeft: 20, margin: 0 }}>
+             <li>Luôn bắt đầu bằng lời cảm ơn hoặc xin lỗi chân thành.</li>
+             <li>Giải quyết trực tiếp vấn đề khách hàng nêu ra.</li>
+             <li>Giữ thái độ tích cực, tránh tranh cãi công khai.</li>
+          </ul>
+        }
+        type="info"
+        showIcon
+        icon={<BulbOutlined />}
+        style={{ marginTop: 16 }}
+      />
     </Modal>
   );
 };

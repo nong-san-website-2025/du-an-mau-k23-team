@@ -1,74 +1,66 @@
-import React, { useState } from "react";
-import { Tag, Typography } from "antd";
+// components/WalletSeller/WalletTransactions.jsx
+import React from "react";
+import { Table, Card, Tag, Typography, DatePicker, Input, Select, Space, Row, Col } from "antd";
 import {
+  SearchOutlined,
   ArrowUpOutlined,
   ArrowDownOutlined,
   HistoryOutlined,
+  FileTextOutlined
 } from "@ant-design/icons";
-import WalletBaseLayout from "./WalletBaseLayout";
 
 const { Text } = Typography;
+const { RangePicker } = DatePicker;
+const { Option } = Select;
 
 export default function WalletTransactions({
   loading,
-  transactions,
-  onSearch,
-  onFilterStatus,
-  onDateRangeChange,
+  transactions, // Dữ liệu đã được fetch
+  filterValues, // { search, status, dateRange }
+  onFilterChange, // Hàm xử lý thay đổi bộ lọc
 }) {
-  // Lịch sử giao dịch - Cột bảng
-  const transactionColumns = [
+  const columns = [
     {
       title: "Mã GD",
       dataIndex: "id",
       key: "id",
-      width: 120,
+      render: (text) => <Text copyable code>{text}</Text>,
     },
     {
       title: "Loại giao dịch",
       dataIndex: "transaction_type",
       key: "transaction_type",
-      width: 150,
       render: (type) => {
-        const config = {
-          deposit: {
-            color: "success",
-            text: "Nạp tiền",
-            icon: <ArrowUpOutlined />,
-          },
-          withdraw: {
-            color: "error",
-            text: "Rút tiền",
-            icon: <ArrowDownOutlined />,
-          },
-          payment: {
-            color: "error",
-            text: "Thanh toán",
-            icon: <ArrowDownOutlined />,
-          },
-          pending: {
-            color: "warning",
-            text: "Chờ xử lý",
-            icon: <HistoryOutlined />,
-          },
-          refund: {
-            color: "warning",
-            text: "Hoàn tiền",
-            icon: <ArrowUpOutlined />,
-          },
-          adjustment: {
-            color: "default",
-            text: "Điều chỉnh",
-            icon: <ArrowUpOutlined />,
-          },
-        };
-        const { color, text, icon } = config[type] || {
-          color: "default",
-          text: type,
-        };
+        let color = "default";
+        let icon = null;
+        let text = type;
+
+        switch (type) {
+          case "payment": // Chi tiền (vd: trả phí sàn)
+          case "withdraw": // Rút tiền
+            color = "error";
+            icon = <ArrowDownOutlined />;
+            text = type === "withdraw" ? "Rút tiền" : "Thanh toán";
+            break;
+          case "income": // Doanh thu
+          case "deposit": // Nạp tiền (nếu có)
+          case "refund": // Hoàn tiền
+            color = "success";
+            icon = <ArrowUpOutlined />;
+            text = type === "income" ? "Doanh thu" : "Hoàn tiền";
+            break;
+          case "pending":
+            color = "warning";
+            icon = <HistoryOutlined />;
+            text = "Đang xử lý";
+            break;
+          default:
+            break;
+        }
+
         return (
-          <Tag color={color} icon={icon}>
-            {text}
+          <Tag color={color} icon={icon} style={{ minWidth: 100, textAlign: 'center' }}>
+            {text.toUpperCase()}
           </Tag>
         );
       },
@@ -77,23 +69,14 @@ export default function WalletTransactions({
       title: "Số tiền",
       dataIndex: "amount",
       key: "amount",
-      width: 150,
+      align: "right",
       render: (amount, record) => {
-        const isIncome = ["deposit", "refund", "adjustment"].includes(
-          record.transaction_type
-        );
-        const isExpense = ["payment", "withdraw"].includes(
-          record.transaction_type
-        );
-        const isPending = record.transaction_type === "pending";
-
-        const color = isIncome ? "#52c41a" : isPending ? "#faad14" : "#ff4d4f";
-        const prefix = isIncome ? "+" : isPending ? "~" : "-";
-
+        const isNegative = ["payment", "withdraw"].includes(record.transaction_type);
+        const color = isNegative ? "#ff4d4f" : "#52c41a";
+        const prefix = isNegative ? "-" : "+";
         return (
-          <Text strong style={{ color }}>
-            {prefix}
-            {parseFloat(amount).toLocaleString("vi-VN")} ₫
+          <Text strong style={{ color, fontSize: 15 }}>
+            {prefix} {parseFloat(amount).toLocaleString("vi-VN")} ₫
           </Text>
         );
       },
@@ -102,40 +85,80 @@ export default function WalletTransactions({
       title: "Mô tả",
       dataIndex: "description",
       key: "description",
+      width: 300,
     },
     {
       title: "Thời gian",
       dataIndex: "created_at",
       key: "created_at",
-      width: 180,
-      render: (date) => {
-        if (!date) return "-";
-        return new Date(date).toLocaleString("vi-VN");
-      },
+      render: (date) => (
+        <span style={{ color: "#8c8c8c" }}>
+          {new Date(date).toLocaleString("vi-VN", {
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
+        </span>
+      ),
+      sorter: (a, b) => new Date(a.created_at) - new Date(b.created_at),
     },
   ];
 
-  const transactionData = transactions.map((tx, idx) => ({
-    key: tx.id || idx,
-    id: tx.id,
-    ...tx,
-  }));
-
   return (
-    <WalletBaseLayout
-      title="Lịch sử giao dịch"
-      loading={loading}
-      data={transactionData}
-      columns={transactionColumns}
-      onSearch={onSearch}
-      onFilterStatus={onFilterStatus}
-      onDateRangeChange={onDateRangeChange}
-      onRow={(record) => ({
-        // Bạn có thể thêm hành động khi click vào dòng ở đây
-      })}
-      searchPlaceholder="Tìm kiếm mã giao dịch hoặc mô tả..."
-      showDateFilter={true}
-      showStatusFilter={true}
-    />
+    <Card
+      title={
+        <Space>
+          <FileTextOutlined />
+          <span>Lịch sử giao dịch</span>
+        </Space>
+      }
+      bordered={false}
+      style={{ boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}
+    >
+      {/* Thanh bộ lọc */}
+      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+        <Col xs={24} md={8}>
+          <Input
+            placeholder="Tìm kiếm mã GD, nội dung..."
+            prefix={<SearchOutlined style={{ color: "#bfbfbf" }} />}
+            allowClear
+            onChange={(e) => onFilterChange("search", e.target.value)}
+          />
+        </Col>
+        <Col xs={24} md={6}>
+          <Select
+            placeholder="Loại giao dịch"
+            allowClear
+            style={{ width: "100%" }}
+            onChange={(val) => onFilterChange("status", val)}
+          >
+            <Option value="payment">Thanh toán</Option>
+            <Option value="withdraw">Rút tiền</Option>
+            <Option value="pending">Đang xử lý</Option>
+          </Select>
+        </Col>
+        <Col xs={24} md={10}>
+          <RangePicker
+            style={{ width: "100%" }}
+            format="DD/MM/YYYY"
+            onChange={(dates) => onFilterChange("dateRange", dates)}
+          />
+        </Col>
+      </Row>
+
+      <Table
+        columns={columns}
+        dataSource={transactions}
+        rowKey="id"
+        loading={loading}
+        pagination={{
+          pageSize: 10,
+          showTotal: (total) => `Tổng ${total} giao dịch`,
+          showSizeChanger: true,
+        }}
+      />
+    </Card>
   );
 }

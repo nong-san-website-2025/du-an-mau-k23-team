@@ -37,6 +37,21 @@ export function useRegister(onSuccess) {
       return;
     }
 
+    if (form.password.length < 8) {
+      setError("Mật khẩu phải có ít nhất 8 ký tự!");
+      return;
+    }
+
+    if (!/[A-Z]/.test(form.password)) {
+      setError("Mật khẩu phải chứa ít nhất 1 ký tự in hoa!");
+      return;
+    }
+
+    if (!/\d/.test(form.password)) {
+      setError("Mật khẩu phải chứa ít nhất 1 số!");
+      return;
+    }
+
     setLoading(true);
     try {
       // Gọi register từ AuthContext: tự xử lý đăng ký, auto-login và xác nhận role

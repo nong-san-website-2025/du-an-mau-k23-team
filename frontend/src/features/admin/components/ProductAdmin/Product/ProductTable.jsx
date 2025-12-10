@@ -1,19 +1,21 @@
 import React, { useState } from "react";
-import { Table, Tooltip, Image, Skeleton } from "antd";
+import { Table, Tooltip, Image, Skeleton, Tag, Space, Typography } from "antd";
 import {
   EyeOutlined,
   CheckOutlined,
   CloseOutlined,
   LockOutlined,
   UnlockOutlined,
+  SyncOutlined,      // Icon Cập nhật
+  PlusCircleOutlined, // Icon Mới
+  DiffOutlined,      // Icon So sánh
 } from "@ant-design/icons";
 import dayjs from "dayjs";
-import ProductStatusTag from "./ProductStatusTag";
-import "../../../styles/AdminPageLayout.css";
-
-// Import file ButtonAction từ đường dẫn của bạn
-import ButtonAction from "../../../../../components/ButtonAction";
+import ProductStatusTag from "./ProductStatusTag"; // Component tag trạng thái cũ của bạn
+import ButtonAction from "../../../../../components/ButtonAction"; // Component nút cũ của bạn
 import { intcomma } from "../../../../../utils/format";
+
+const { Text } = Typography;
 
 const ProductTable = ({
   data,
@@ -21,112 +23,104 @@ const ProductTable = ({
   onReject,
   onView,
   onToggleBan,
+  onCompare,
   selectedRowKeys,
   setSelectedRowKeys,
   onRow,
 }) => {
-  const [selectedColumns, setSelectedColumns] = useState([
-    "image",
-    "name",
-    "category",
-    "seller",
-    "price",
-    "unit",
-    "status",
-    "created_at",
-    "action",
+  const [selectedColumns] = useState([
+    "image", "name", "category", "seller", "price", "status", "created_at", "action"
   ]);
 
+  // Helper: Xác định đây là hàng Mới hay hàng Cập nhật
+  const getRequestType = (record) => {
+    if (record.status === "pending_update") return "pending_update";
+    if (record.status !== "pending") return null;
+    // Nếu updated_at > created_at quá 5 phút -> coi là Cập nhật
+    const isUpdate = dayjs(record.updated_at).diff(dayjs(record.created_at), 'minute') > 5;
+    return isUpdate ? "update" : "new";
+  };
+
   const columns = [
-    // --- Cột Ảnh (có Skeleton) ---
     {
       title: "Ảnh",
       key: "image",
       dataIndex: "image",
-      width: 70,
+      width: 80,
       align: "center",
       render: (_, record) => {
-        const productImage =
-          record.main_image?.image ||
-          (record.images?.length > 0 ? record.images[0].image : null);
-        const imgWidth = 60;
-        const imgHeight = 40;
-
+        const imgUrl = record.main_image?.image || (record.images?.[0]?.image);
         return (
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              width: imgWidth,
-              height: imgHeight,
-              borderRadius: 4,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              margin: "0 auto",
-            }}
-          >
-            {productImage ? (
+          <div onClick={(e) => e.stopPropagation()} style={{ width: 60, height: 40, margin: "0 auto" }}>
+            {imgUrl ? (
               <Image
-                src={productImage}
-                alt={record.name}
-                width={imgWidth}
-                height={imgHeight}
+                src={imgUrl}
+                width={60}
+                height={40}
                 style={{ objectFit: "cover", borderRadius: 4 }}
-                onError={(e) => {
-                  e.target.onerror = null;
-                  e.target.src = "https://placehold.co/60x40/f5f5f5/999999?text=No+Image";
-                }}
-                fallback="https://placehold.co/60x40/f5f5f5/999999?text=Error"
-                preview={true}
+                fallback="https://placehold.co/60x40?text=No+Image"
               />
             ) : (
-              <Skeleton.Image
-                active={false}
-                style={{ width: imgWidth, height: imgHeight, borderRadius: 4 }}
-              />
+              <Skeleton.Image active={false} style={{ width: 60, height: 40 }} />
             )}
           </div>
         );
       },
     },
-    // --- Các cột thông tin cơ bản ---
     {
       title: "Tên sản phẩm",
       dataIndex: "name",
       key: "name",
-      width: 240,
-      ellipsis: { showTitle: false },
-      render: (text) => (
-        <Tooltip title={text}>
-          <span style={{ fontWeight: 500 }}>{text}</span>
-        </Tooltip>
-      ),
+      width: 280,
+      render: (text, record) => {
+        const reqType = getRequestType(record);
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+            {/* Hiển thị Tag phân loại nếu đang Pending */}
+            {reqType === 'pending_update' && (
+              <Tag color="orange" style={{ marginBottom: 4, marginRight: 0, fontSize: 11 }}>
+                <DiffOutlined /> Chờ duyệt cập nhật
+              </Tag>
+            )}
+            {reqType === 'update' && (
+              <Tag color="warning" style={{ marginBottom: 4, marginRight: 0, fontSize: 11 }}>
+                <SyncOutlined  /> Cập nhật lại
+              </Tag>
+            )}
+            {reqType === 'new' && (
+               <Tag color="cyan" style={{ marginBottom: 4, marginRight: 0, fontSize: 11 }}>
+                 <PlusCircleOutlined /> Mới đăng
+               </Tag>
+             )}
+            
+            <Tooltip title={text}>
+              <Text strong style={{ fontSize: 14, lineHeight: 1.2 }}>{text}</Text>
+            </Tooltip>
+
+            {/* Hiển thị thời gian */}
+            <Text type="secondary" style={{ fontSize: 11, marginTop: 2 }}>
+              {reqType === 'update' 
+                ? `Sửa: ${dayjs(record.updated_at).format("HH:mm DD/MM")}`
+                : `Tạo: ${dayjs(record.created_at).format("HH:mm DD/MM")}`
+              }
+            </Text>
+          </div>
+        );
+      },
       sorter: (a, b) => (a.name || "").localeCompare(b.name || ""),
     },
     {
-      title: "Danh mục",
+      title: "Danh mục & Shop",
       key: "category",
-      width: 160,
-      align: "center",
-      render: (_, record) => record.category_name || "—",
-      sorter: (a, b) => (a.category_name || "").localeCompare(b.category_name || ""),
-    },
-    {
-      title: "Người bán",
-      key: "seller",
-      dataIndex: "seller",
-      width: 150,
-      align: "center",
-      render: (_, record) => {
-        const text = record.seller?.store_name || record.seller_name || "—";
-        return (
-          <Tooltip title={text}>
-            <span style={{ display: "inline-block", maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {text}
-            </span>
-          </Tooltip>
-        );
-      },
+      width: 200,
+      render: (_, record) => (
+        <Space direction="vertical" size={0}>
+            <Text style={{fontSize: 13}}>{record.category_name || "—"}</Text>
+            <Text type="secondary" style={{fontSize: 12}}>
+                Store: {record.seller?.store_name || record.seller_name}
+            </Text>
+        </Space>
+      ),
     },
     {
       title: "Giá bán",
@@ -134,10 +128,14 @@ const ProductTable = ({
       key: "price",
       width: 120,
       align: "right",
-      render: (price) => (price ? `${intcomma(price)} đ` : "—"),
-      sorter: (a, b) => a.price - b.price,
-    }
-    ,
+      render: (_, record) => (
+          <div style={{display: 'flex', flexDirection: 'column'}}>
+            <Text delete type="secondary" style={{fontSize: 11}}>{intcomma(record.original_price)}</Text>
+            <Text strong type="danger">{intcomma(record.discounted_price || record.price)} ₫</Text>
+          </div>
+      ),
+      sorter: (a, b) => (a.discounted_price || 0) - (b.discounted_price || 0),
+    },
     {
       title: "Trạng thái",
       key: "status",
@@ -146,23 +144,12 @@ const ProductTable = ({
       render: (_, record) => <ProductStatusTag status={record.status} />,
     },
     {
-      title: "Ngày tạo",
-      dataIndex: "created_at",
-      key: "created_at",
-      width: 180,
-      align: "center",
-      render: (date) => (date ? dayjs(date).format("DD/MM/YYYY HH:mm") : "—"),
-      sorter: (a, b) => new Date(a.created_at) - new Date(b.created_at),
-    },
-    // --- CỘT HÀNH ĐỘNG (Cấu hình nút ở đây) ---
-    {
       title: "Hành động",
       key: "action",
-      width: 100,
+      width: 110,
       align: "center",
       fixed: "right",
       render: (_, record) => {
-        // Cấu hình danh sách nút dựa trên record hiện tại
         const actions = [
           {
             actionType: "view",
@@ -172,54 +159,41 @@ const ProductTable = ({
             show: true,
           },
           {
+            actionType: "compare",
+            icon: <DiffOutlined />,
+            tooltip: "So sánh thay đổi",
+            onClick: onCompare,
+            show: record.status === "pending_update",
+          },
+          {
             actionType: "approve",
             icon: <CheckOutlined />,
-            tooltip: "Duyệt sản phẩm",
-            // Chỉ cho phép duyệt nếu trạng thái là pending
-            show: record.status === "pending",
-            confirm: {
-              title: "Duyệt sản phẩm này?",
-              okText: "Duyệt",
-            },
+            tooltip: "Duyệt",
+            show: ["pending", "pending_update"].includes(record.status),
+            confirm: { title: "Duyệt sản phẩm này?", okText: "Duyệt" },
             onClick: onApprove,
           },
           {
             actionType: "reject",
             icon: <CloseOutlined />,
-            tooltip: "Từ chối sản phẩm",
-            // Chỉ cho phép từ chối nếu trạng thái là pending
-            show: record.status === "pending",
-            confirm: {
-              title: "Từ chối sản phẩm này?",
-              okText: "Từ chối",
-            },
+            tooltip: "Từ chối",
+            show: ["pending", "pending_update"].includes(record.status),
+            confirm: { title: "Từ chối sản phẩm?", okText: "Từ chối", isDanger: true },
             onClick: onReject,
           },
           {
             actionType: record.status === "banned" ? "unlock" : "lock",
             icon: record.status === "banned" ? <UnlockOutlined /> : <LockOutlined />,
-            tooltip: record.status === "banned" ? "Mở khóa" : "Khóa sản phẩm",
-            // Chỉ cho phép khoá/mở khoá nếu sản phẩm đã duyệt
-            show: record.status === "approved" || record.status === "banned",
-            confirm: {
-              title: record.status === "banned"
-                ? "Mở khóa sản phẩm này?"
-                : "Khóa sản phẩm này?",
-              okText: "Đồng ý",
-            },
+            tooltip: record.status === "banned" ? "Mở khóa" : "Khóa",
+            show: ["approved", "banned"].includes(record.status),
+            confirm: { title: "Xác nhận đổi trạng thái?", okText: "Đồng ý" },
             onClick: onToggleBan,
           },
         ];
-
         return <ButtonAction actions={actions} record={record} />;
       },
     },
   ];
-
-  const rowSelection = {
-    selectedRowKeys,
-    onChange: (keys) => setSelectedRowKeys(keys),
-  };
 
   return (
     <Table
@@ -227,13 +201,12 @@ const ProductTable = ({
       bordered
       size="small"
       dataSource={data}
-      columns={columns.filter((col) => selectedColumns.includes(col.key))}
-      rowSelection={rowSelection}
+      columns={columns.filter(c => selectedColumns.includes(c.key))}
+      rowSelection={{ selectedRowKeys, onChange: setSelectedRowKeys }}
       onRow={onRow}
-      pagination={{ pageSize: 10 }}
-      scroll={{ x: "max-content" }}
+      pagination={{ pageSize: 10, showTotal: (t) => `Tổng ${t} sản phẩm` }}
+      scroll={{ x: 1000 }}
       sticky
-      rowClassName="table-row"
     />
   );
 };

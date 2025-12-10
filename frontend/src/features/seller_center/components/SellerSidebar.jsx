@@ -72,11 +72,6 @@ export default function SellerSidebar({ onItemClick }) {
       label: "Thống kê",
     },
     {
-      key: "/seller-center/promotions",
-      icon: <GiftOutlined />,
-      label: "Khuyến mãi",
-    },
-    {
       key: "/seller-center/reviews",
       icon: <StarOutlined />,
       label: "Đánh giá",

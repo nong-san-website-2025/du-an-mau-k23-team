@@ -1,146 +1,95 @@
 import React from "react";
-import { Modal, Card, Avatar, Rate, Divider, Space, Tag, Typography, Button } from "antd";
-import { UserOutlined, ShopOutlined, MessageOutlined } from "@ant-design/icons";
+import { Modal, Avatar, Rate, Divider, Space, Tag, Typography, Button, Descriptions, Timeline, theme } from "antd";
+import { UserOutlined, ShopOutlined, MessageOutlined, ClockCircleOutlined } from "@ant-design/icons";
 
-const { Text } = Typography;
+const { Text, Title, Paragraph } = Typography;
 
 const ReviewDetailModal = ({ visible, review, onClose, onReply }) => {
+  const { token } = theme.useToken();
+
   if (!review) return null;
 
   return (
     <Modal
       open={visible}
-      title="Chi tiết đánh giá"
+      title={<Title level={4} style={{ margin: 0 }}>Chi tiết đánh giá #{review.id}</Title>}
       onCancel={onClose}
       footer={[
-        <Button key="close" onClick={onClose}>
-          Đóng
-        </Button>,
+        <Button key="close" onClick={onClose}>Đóng</Button>,
         <Button
           key="reply"
           type="primary"
           icon={<MessageOutlined />}
-          onClick={() => {
-            onClose();
-            onReply(review);
-          }}
-          style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }}
+          onClick={() => { onClose(); onReply(review); }}
         >
-          Trả lời
+          Viết phản hồi
         </Button>
       ]}
       width={700}
+      centered
     >
-      <div style={{ padding: "20px 0" }}>
-        {/* Thông tin người dùng và sản phẩm */}
-        <Card size="small" style={{ marginBottom: 16 }}>
-          <Space direction="vertical" style={{ width: "100%" }}>
-            <Space>
-              <Avatar icon={<UserOutlined />} />
-              <div>
-                <Text strong>{review.user_name}</Text>
-                <br />
-                <Text type="secondary" style={{ fontSize: '12px' }}>
-                  {new Date(review.created_at).toLocaleString('vi-VN')}
-                </Text>
-              </div>
-            </Space>
+      {/* Product & Status Info */}
+      <Descriptions bordered size="small" column={2} style={{ marginTop: 16 }}>
+        <Descriptions.Item label="Sản phẩm" span={2}>
+           <Text strong>{review.product_name}</Text>
+        </Descriptions.Item>
+        <Descriptions.Item label="Thời gian">
+           {new Date(review.created_at).toLocaleString('vi-VN')}
+        </Descriptions.Item>
+        <Descriptions.Item label="Trạng thái">
+           <Space>
+             <Tag color={review.is_hidden ? "red" : "green"}>{review.is_hidden ? "Đã ẩn" : "Hiển thị"}</Tag>
+             <Tag color={(review.replies?.length > 0) ? "blue" : "orange"}>
+               {(review.replies?.length > 0) ? "Đã trả lời" : "Chưa trả lời"}
+             </Tag>
+           </Space>
+        </Descriptions.Item>
+      </Descriptions>
 
-            <Divider style={{ margin: "8px 0" }} />
+      <Divider orientation="left" style={{ borderColor: token.colorBorderSecondary }}>Nội dung đánh giá</Divider>
 
-            <Space>
-              <Avatar icon={<ShopOutlined />} />
-              <div>
-                <Text strong>{review.product_name}</Text>
-                <br />
-                <Text type="secondary" style={{ fontSize: '12px' }}>
-                  Cửa hàng: {review.seller_store_name}
-                </Text>
-              </div>
-            </Space>
-          </Space>
-        </Card>
-
-        {/* Nội dung đánh giá */}
-        <Card size="small" style={{ marginBottom: 16 }}>
-          <Space direction="vertical" style={{ width: "100%" }}>
-            <div>
-              <Text strong>Đánh giá: </Text>
-              <Rate disabled value={review.rating} style={{ marginLeft: 8 }} />
-              <Text style={{ marginLeft: 8 }}>{review.rating}/5 sao</Text>
-            </div>
-
-            <div>
-              <Text strong>Nội dung đánh giá:</Text>
-              <div style={{
-                marginTop: 8,
-                padding: 12,
-                backgroundColor: '#f9f9f9',
-                borderRadius: 4,
-                whiteSpace: 'pre-wrap',
-                minHeight: 60
-              }}>
-                {review.comment || "Không có nội dung"}
-              </div>
-            </div>
-          </Space>
-        </Card>
-
-        {/* Trạng thái */}
-        <Card size="small" style={{ marginBottom: 16 }}>
-          <Space>
-            <Text strong>Trạng thái:</Text>
-            <Space>
-              <Tag color={review.is_hidden ? "red" : "green"}>
-                {review.is_hidden ? "Đã ẩn" : "Hiển thị"}
-              </Tag>
-              <Tag color={(review.replies && review.replies.length > 0) ? "blue" : "orange"}>
-                {(review.replies && review.replies.length > 0) ? `Đã trả lời (${review.replies.length})` : "Chưa trả lời"}
-              </Tag>
-            </Space>
-          </Space>
-        </Card>
-
-        {/* Các phản hồi */}
-        {review.replies && review.replies.length > 0 && (
-          <Card size="small" title="Các phản hồi" style={{ marginBottom: 16 }}>
-            <Space direction="vertical" style={{ width: "100%" }}>
-              {review.replies.map((reply, index) => (
-                <div key={reply.id || index} style={{
-                  padding: 12,
-                  backgroundColor: '#f6ffed',
-                  border: '1px solid #b7eb8f',
-                  borderRadius: 6,
-                  marginBottom: 8
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                    <Text strong style={{ color: '#52c41a' }}>
-                      {reply.user_name || "Người bán"}
-                    </Text>
-                    <Text type="secondary" style={{ fontSize: '12px' }}>
-                      {new Date(reply.created_at).toLocaleString('vi-VN')}
-                    </Text>
-                  </div>
-                  <div style={{ whiteSpace: 'pre-wrap' }}>
-                    {reply.reply_text}
-                  </div>
-                </div>
-              ))}
-            </Space>
-          </Card>
-        )}
-
-        {/* Thông tin bổ sung */}
-        <Card size="small" title="Thông tin bổ sung">
-          <Space direction="vertical" size={8}>
-            <Text>ID đánh giá: <Text code>{review.id}</Text></Text>
-            <Text>Thời gian tạo: {new Date(review.created_at).toLocaleString('vi-VN')}</Text>
-            {review.updated_at && (
-              <Text>Cập nhật lần cuối: {new Date(review.updated_at).toLocaleString('vi-VN')}</Text>
-            )}
-          </Space>
-        </Card>
+      {/* User Review Content */}
+      <div style={{ display: 'flex', gap: 16, marginBottom: 24 }}>
+        <Avatar size={54} icon={<UserOutlined />} src={review.user_avatar} />
+        <div style={{ flex: 1 }}>
+           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <Text strong style={{ fontSize: 16 }}>{review.user_name}</Text>
+              <Rate disabled value={review.rating} style={{ fontSize: 14 }} />
+           </div>
+           <div style={{ 
+             marginTop: 12, 
+             padding: 16, 
+             background: '#f5f5f5', 
+             borderRadius: 8, 
+             position: 'relative' 
+           }}>
+              <Paragraph style={{ margin: 0, fontSize: 15 }}>{review.comment || "Không có nội dung văn bản"}</Paragraph>
+           </div>
+        </div>
       </div>
+
+      {/* Replies Timeline */}
+      {review.replies && review.replies.length > 0 && (
+        <>
+          <Divider orientation="left" style={{ borderColor: token.colorBorderSecondary }}>Lịch sử phản hồi</Divider>
+          <div style={{ paddingLeft: 24 }}>
+            <Timeline>
+              {review.replies.map((reply, index) => (
+                <Timeline.Item 
+                  key={index} 
+                  dot={<ShopOutlined style={{ fontSize: 16, color: token.colorPrimary }} />}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                     <Text strong style={{ color: token.colorPrimary }}>{reply.user_name || "Cửa hàng"}</Text>
+                     <Text type="secondary" style={{ fontSize: 12 }}><ClockCircleOutlined /> {new Date(reply.created_at).toLocaleString('vi-VN')}</Text>
+                  </div>
+                  <Paragraph style={{ color: token.colorTextSecondary }}>{reply.reply_text}</Paragraph>
+                </Timeline.Item>
+              ))}
+            </Timeline>
+          </div>
+        </>
+      )}
     </Modal>
   );
 };

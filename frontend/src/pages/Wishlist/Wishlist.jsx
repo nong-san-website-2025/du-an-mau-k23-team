@@ -15,7 +15,7 @@ import { productApi } from "../../features/products/services/productApi";
 import Layout from "../../Layout/LayoutDefault";
 
 const { Option } = Select;
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000/api";
+const API_URL = process.env.REACT_APP_API_URL;
 
 const Wishlist = () => {
   const [wishlist, setWishlist] = useState(() => {

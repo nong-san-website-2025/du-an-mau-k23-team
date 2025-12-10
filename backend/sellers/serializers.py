@@ -111,6 +111,12 @@ class ProductSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = "__all__"
+        read_only_fields = ["seller", "status", "category", "created_at", "updated_at", "rating", "review_count", "sold", "normalized_name", "ordered_quantity", "estimated_quantity"]
+
+    def validate(self, data):
+        if 'subcategory' in data and data['subcategory']:
+            data['category'] = data['subcategory'].category
+        return data
 
 class OrderSerializer(serializers.ModelSerializer):
     class Meta:

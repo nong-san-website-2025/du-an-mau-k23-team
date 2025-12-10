@@ -100,5 +100,7 @@ urlpatterns = [
 
     # Statistics
     path('statistics/customers/', admin.customer_statistics_report, name='customer-statistics'),
+
+    path('info/<int:pk>/', profile.PublicUserRetrieveView.as_view(), name='public-user-info'),
 path('', include(router.urls)),
 ]
