@@ -71,6 +71,8 @@ class OrderItemSerializer(serializers.ModelSerializer):
 
     def get_product_image(self, obj):
         request = self.context.get('request')
+        if not obj.product:
+            return None
         first_image = obj.product.images.first()  # ✅ Lấy ảnh đầu tiên
         if first_image and hasattr(first_image.image, 'url'):
             if request:

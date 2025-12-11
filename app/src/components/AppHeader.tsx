@@ -1,4 +1,3 @@
-// src/components/AppHeader.tsx
 import React from "react";
 import {
   IonToolbar,
@@ -8,24 +7,28 @@ import {
   IonIcon,
   IonHeader,
   IonBackButton,
+  IonBadge,
+  IonTitle,
 } from "@ionic/react";
-import { chatbubbleOutline, cartOutline } from "ionicons/icons";
+import { chatbubbleEllipsesOutline, cartOutline, searchOutline } from "ionicons/icons";
 import { useCart } from "../context/CartContext";
 import { useHistory } from "react-router-dom";
+import "../styles/AppHeader.css"; // Import file CSS riêng
 
 interface AppHeaderProps {
-  showSearch?: boolean; // Hiển thị thanh tìm kiếm? (mặc định: true)
-  showBack?: boolean;   // Hiển thị nút Back? (mặc định: false)
-  defaultHref?: string; // Đường dẫn mặc định khi nhấn back (chỉ dùng nếu showBack=true)
-  backgroundColor?: string;
-  
+  showSearch?: boolean;
+  showBack?: boolean;
+  defaultHref?: string;
+  title?: string; // Thêm prop Title nếu không show Search
+  className?: string; // Cho phép custom class từ ngoài
 }
 
 const AppHeader: React.FC<AppHeaderProps> = ({
   showSearch = true,
   showBack = false,
   defaultHref = "/",
-  backgroundColor = "#4caf50",
+  title = "",
+  className = "",
 }) => {
   const { cartItemCount } = useCart();
   const history = useHistory();
@@ -35,55 +38,44 @@ const AppHeader: React.FC<AppHeaderProps> = ({
   };
 
   return (
-    <IonHeader>
-      <IonToolbar style={{ "--background": backgroundColor }}>
-        {/* Nút Back (nếu cần) */}
-        {showBack && (
-          <IonButtons slot="start">
+    <IonHeader className={`main-header ion-no-border ${className}`}>
+      <IonToolbar className="main-toolbar">
+        {/* === Left Section === */}
+        <IonButtons slot="start">
+          {showBack && (
             <IonBackButton
               defaultHref={defaultHref}
-              color="light"
-              text=""
+              className="custom-back-btn"
+              text="" // UX hiện đại thường ẩn text "Back", chỉ để icon
             />
-          </IonButtons>
-        )}
+          )}
+        </IonButtons>
 
-        {/* Thanh tìm kiếm */}
-        {showSearch && (
+        {/* === Center Section (Title or Search) === */}
+        {showSearch ? (
           <IonSearchbar
-            placeholder="Search"
+            placeholder="Tìm kiếm sản phẩm..."
+            inputMode="search"
             showClearButton="focus"
-            // onIonInput / onIonChange có thể thêm sau
+            className="custom-searchbar"
+            searchIcon={searchOutline}
           />
+        ) : (
+          <IonTitle className="header-title">{title}</IonTitle>
         )}
 
-        {/* Nút chat & giỏ hàng */}
-        <IonButtons slot="end">
-          <IonButton>
-            <IonIcon icon={chatbubbleOutline} color="light" size="large" />
+        {/* === Right Section === */}
+        <IonButtons slot="end" className="action-buttons">
+          <IonButton className="icon-btn">
+            <IonIcon icon={chatbubbleEllipsesOutline} />
           </IonButton>
-          <IonButton onClick={handleCartClick} style={{ position: "relative" }}>
-            <IonIcon icon={cartOutline} color="light" size="large" />
+
+          <IonButton onClick={handleCartClick} className="icon-btn cart-btn">
+            <IonIcon icon={cartOutline} />
             {cartItemCount > 0 && (
-              <div
-                style={{
-                  position: "absolute",
-                  top: "-4px",
-                  right: "-4px",
-                  background: "red",
-                  color: "white",
-                  borderRadius: "50%",
-                  width: "16px",
-                  height: "16px",
-                  fontSize: "10px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontWeight: "bold",
-                }}
-              >
+              <IonBadge color="danger" className="cart-badge">
                 {cartItemCount > 9 ? "9+" : cartItemCount}
-              </div>
+              </IonBadge>
             )}
           </IonButton>
         </IonButtons>

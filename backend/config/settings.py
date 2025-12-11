@@ -243,6 +243,11 @@ CORS_ALLOWED_ORIGINS = [
     "http://192.168.68.117:5173",  # External machine access
     "http://192.168.68.117:3000",
     "http://192.168.68.105:3000",
+    "http://172.18.96.1:8100",
+    "http://192.168.2.9:8100",
+    "http://192.168.1.59:8100",
+    
+    
 ]
 CORS_ALLOW_METHODS = [
     'DELETE',

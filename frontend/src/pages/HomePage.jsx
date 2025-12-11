@@ -91,11 +91,11 @@ export default function HomePage() {
         <section className="home-section hero-section">
           <div className="d-flex gap-0 mt-3 note">
             <div style={{ flex: 7 }}>
-              {/* Slider chính */}
+             
               <BannerSlider slotCode="homepage_hero_carousel" />
             </div>
             <div style={{ flex: 3 }}>
-              {/* 2 Banner bên cạnh slider */}
+             
               <DynamicAdSlot
                 slotCode="homepage_hero_side"
                 maxHeight="150px"

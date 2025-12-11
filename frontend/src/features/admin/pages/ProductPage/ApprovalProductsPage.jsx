@@ -84,6 +84,7 @@ const ApprovalProductsPage = () => {
   // --- Helper: Categorize Data for Badges ---
   const counts = useMemo(() => {
     return {
+      pending: data.filter(i => i.status === "pending").length,
       action_required: data.filter(i => ["pending", "pending_update"].includes(i.status)).length,
       approved: data.filter(i => i.status === "approved").length,
       rejected: data.filter(i => i.status === "rejected").length,
@@ -98,6 +99,9 @@ const ApprovalProductsPage = () => {
       // 1. Tab Logic (Quan trọng nhất)
       let matchesTab = false;
       switch (activeTab) {
+        case "pending":
+          matchesTab = item.status === "pending";
+          break;
         case "action_required":
           matchesTab = ["pending", "pending_update"].includes(item.status);
           break;
@@ -208,12 +212,11 @@ const ApprovalProductsPage = () => {
   // --- Tabs Configuration ---
   const tabItems = [
     {
-      key: "action_required",
+      key: "pending",
       label: (
         <Space>
-          <ClockCircleOutlined /> Cần duyệt
-          {/* Số lượng để trong ngoặc, màu xám cho tinh tế */}
-          <span style={{ color: '#999' }}>({counts.action_required})</span>
+          <ClockCircleOutlined /> Chờ duyệt
+          <span style={{ color: '#999' }}>({counts.pending})</span>
         </Space>
       ),
     },
