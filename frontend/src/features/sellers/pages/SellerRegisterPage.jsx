@@ -5,7 +5,6 @@ import {
   Button,
   Upload,
   message,
-  Result,
   Spin,
   Card,
   Steps,
@@ -27,15 +26,19 @@ export default function SellerRegisterPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [sellerStatus, setSellerStatus] = useState(null);
-  const [fileList, setFileList] = useState([]);
+
+  const [businessLicense, setBusinessLicense] = useState(null);
+  const [cccdFront, setCccdFront] = useState(null);
+  const [cccdBack, setCccdBack] = useState(null);
+  const [shopImage, setShopImage] = useState(null);
+
   const [currentUser, setCurrentUser] = useState(null);
 
   const [showTypeModal, setShowTypeModal] = useState(true);
   const [userType, setUserType] = useState(null);
 
   const token = localStorage.getItem("token");
-  const headers = token ? { Authorization: `Bearer ${token}` } : {};
-
+  const headersAuth = token ? { Authorization: `Bearer ${token}` } : {};
   const { setRole } = useAuth();
 
   useEffect(() => {
@@ -43,26 +46,25 @@ export default function SellerRegisterPage() {
     fetchUser();
   }, []);
 
+  // ===== FETCH SELLER =====
   const fetchSeller = async () => {
     if (!token) return setLoading(false);
     try {
-      const res = await fetch(
-        `${process.env.REACT_APP_API_URL}/sellers/me/`,
-        { headers }
-      );
-      if (!res.ok) throw new Error("Không tìm thấy seller của bạn");
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/sellers/me/`, {
+        headers: headersAuth,
+      });
+      if (!res.ok) throw new Error("Không tìm thấy seller");
       const data = await res.json();
+
       setSellerStatus(data.status?.toLowerCase() || null);
 
-      if (data) {
-        form.setFieldsValue({
-          store_name: data.store_name,
-          bio: data.bio,
-          address: data.address,
-          phone: data.phone,
-          email: data.email,
-        });
-      }
+      form.setFieldsValue({
+        store_name: data.store_name,
+        bio: data.bio,
+        address: data.address,
+        phone: data.phone,
+        email: data.email,
+      });
     } catch (err) {
       console.log(err);
     } finally {
@@ -70,13 +72,13 @@ export default function SellerRegisterPage() {
     }
   };
 
+  // ===== FETCH USER INFO =====
   const fetchUser = async () => {
     if (!token) return;
     try {
-      const res = await fetch(
-        `${process.env.REACT_APP_API_URL}/users/me/`,
-        { headers }
-      );
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/users/me/`, {
+        headers: headersAuth,
+      });
       const data = await res.json();
       setCurrentUser(data);
 
@@ -89,67 +91,90 @@ export default function SellerRegisterPage() {
     }
   };
 
+  // ===== CHECK STORE NAME =====
   const checkStoreName = async (name) => {
     const res = await fetch(
       `${process.env.REACT_APP_API_URL}/sellers/check-store-name/?name=${name}`
     );
-    const data = await res.json();
-    return data.exists;
+    return (await res.json()).exists;
   };
 
+  // ===== SUBMIT =====
   const handleSubmit = async (values) => {
     setSubmitting(true);
-
     try {
-      const isExist = await checkStoreName(values.store_name);
-      if (isExist) {
+      const exist = await checkStoreName(values.store_name);
+      if (exist) {
         message.error("Tên cửa hàng đã tồn tại!");
+        setSubmitting(false);
         return;
       }
 
       const formData = new FormData();
 
+      // user id
       if (token) {
         const payload = JSON.parse(atob(token.split(".")[1]));
         formData.append("user", payload.user_id || payload.id);
       }
 
-      formData.append("user_type", userType);
+      formData.append("business_type", userType);
 
-      Object.entries(values).forEach(([key, value]) => {
-        if (key === "image" && fileList.length > 0) {
-          formData.append("image", fileList[0].originFileObj);
-        } else if (value) {
-          formData.append(key, value);
+      // append text fields
+      Object.entries(values).forEach(([key, val]) => {
+        if (
+          key !== "business_license" &&
+          key !== "cccd_front" &&
+          key !== "cccd_back" &&
+          key !== "image"
+        ) {
+          formData.append(key, val);
         }
       });
 
-      const res = await fetch(
-        `${process.env.REACT_APP_API_URL}/sellers/register/`,
-        {
-          method: "POST",
-          body: formData,
-          headers,
-        }
-      );
+      // append files
+      const appendFile = (key, file) => {
+        if (file) formData.append(key, file.originFileObj || file);
+      };
 
-      if (!res.ok) throw new Error("Đăng ký thất bại");
+      appendFile("business_license", businessLicense);
+      appendFile("cccd_front", cccdFront);
+      appendFile("cccd_back", cccdBack);
+      appendFile("image", shopImage);
+
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/sellers/register/`, {
+        method: "POST",
+        body: formData,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          // KHÔNG set Content-Type !!!
+        },
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        console.log(data);
+        message.error(data.message || "Đăng ký thất bại");
+        return;
+      }
 
       message.success("Gửi yêu cầu đăng ký thành công!");
       setSellerStatus("pending");
-    } catch (e) {
-      message.error(e.message || "Có lỗi xảy ra");
+    } catch (err) {
+      message.error("Lỗi submit");
+      console.log(err);
     } finally {
       setSubmitting(false);
     }
   };
 
+  // ===== OPEN SHOP =====
   const handleOpenShop = async () => {
     try {
-      const res = await fetch(
-        `${process.env.REACT_APP_API_URL}/sellers/activate/`,
-        { method: "POST", headers }
-      );
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/sellers/activate/`, {
+        method: "POST",
+        headers: headersAuth,
+      });
       if (!res.ok) throw new Error("Mở cửa hàng thất bại");
 
       message.success("Cửa hàng đã mở!");
@@ -165,7 +190,6 @@ export default function SellerRegisterPage() {
   return (
     <div style={{ maxWidth: 650, margin: "20px auto" }}>
       <Card>
-        {/* STEP */}
         <Steps
           current={
             sellerStatus === "pending"
@@ -183,17 +207,17 @@ export default function SellerRegisterPage() {
           <Step title="Hoạt động" icon={<CheckCircleOutlined />} />
         </Steps>
 
-        {/* MODAL CHỌN LOẠI */}
+        {/* MODAL CHỌN TYPE */}
         {!sellerStatus && (
           <Modal
-            title="Bạn là ai?"
             open={showTypeModal}
             closable={false}
             footer={null}
+            title="Bạn là ai?"
           >
             <Radio.Group
-              onChange={(e) => setUserType(e.target.value)}
               value={userType}
+              onChange={(e) => setUserType(e.target.value)}
               style={{ display: "flex", flexDirection: "column", gap: 12 }}
             >
               <Radio value="business">Doanh nghiệp</Radio>
@@ -204,8 +228,8 @@ export default function SellerRegisterPage() {
             <Button
               type="primary"
               block
-              style={{ marginTop: 20 }}
               disabled={!userType}
+              style={{ marginTop: 20 }}
               onClick={() => setShowTypeModal(false)}
             >
               Tiếp tục
@@ -241,7 +265,7 @@ export default function SellerRegisterPage() {
               <Input />
             </Form.Item>
 
-            {/* FIELD ĐỘNG */}
+            {/* DOANH NGHIỆP / HỘ */}
             {["business", "household"].includes(userType) && (
               <>
                 <Form.Item
@@ -257,17 +281,38 @@ export default function SellerRegisterPage() {
                   label="Giấy phép kinh doanh"
                   rules={[{ required: true }]}
                 >
-                  <Upload beforeUpload={() => false} listType="picture">
+                  <Upload
+                    beforeUpload={() => false}
+                    onChange={(info) => setBusinessLicense(info.file)}
+                  >
                     <Button icon={<UploadOutlined />}>Tải ảnh</Button>
                   </Upload>
                 </Form.Item>
               </>
             )}
 
+            {/* CÁ NHÂN */}
             {userType === "personal" && (
               <>
-                <Form.Item name="tax_code" label="Mã số thuế (không bắt buộc)">
+                <Form.Item
+                  name="tax_code"
+                  label="Mã số thuế (không bắt buộc)"
+                >
                   <Input />
+                </Form.Item>
+
+                <Form.Item
+                  name="image"
+                  label="Ảnh cửa hàng"
+                  rules={[{ required: true, message: "Vui lòng tải ảnh cửa hàng" }]}
+                >
+                  <Upload
+                    beforeUpload={() => false}
+                    onChange={(info) => setShopImage(info.file)}
+                    listType="picture"
+                  >
+                    <Button icon={<UploadOutlined />}>Tải ảnh cửa hàng</Button>
+                  </Upload>
                 </Form.Item>
 
                 <Form.Item
@@ -275,7 +320,10 @@ export default function SellerRegisterPage() {
                   label="CCCD mặt trước"
                   rules={[{ required: true }]}
                 >
-                  <Upload beforeUpload={() => false} listType="picture">
+                  <Upload
+                    beforeUpload={() => false}
+                    onChange={(info) => setCccdFront(info.file)}
+                  >
                     <Button icon={<UploadOutlined />}>Tải ảnh</Button>
                   </Upload>
                 </Form.Item>
@@ -285,7 +333,10 @@ export default function SellerRegisterPage() {
                   label="CCCD mặt sau"
                   rules={[{ required: true }]}
                 >
-                  <Upload beforeUpload={() => false} listType="picture">
+                  <Upload
+                    beforeUpload={() => false}
+                    onChange={(info) => setCccdBack(info.file)}
+                  >
                     <Button icon={<UploadOutlined />}>Tải ảnh</Button>
                   </Upload>
                 </Form.Item>

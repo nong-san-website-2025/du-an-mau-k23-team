@@ -5,25 +5,16 @@ import {
   Descriptions,
   Tag,
   Spin,
-  Card,
   Row,
   Col,
   Empty,
-  Modal,
-  Button,
   message,
 } from "antd";
-import { Clock4, DollarSign, Package, ShoppingCart } from "lucide-react";
+import { ShopFilled } from "@ant-design/icons";
 import axios from "axios";
 import dayjs from "dayjs";
 import NoImage from "../../../../components/shared/NoImage";
 
-import {
-  AreaChartOutlined,
-  ShopFilled,
-  StarFilled,
-  ExclamationCircleOutlined,
-} from "@ant-design/icons";
 import ActivityTimeline from "./ActivityTimeline";
 import SellerRejectionModal from "./SellerRejectionModal";
 import PerformanceStats from "./PerformanceStats";
@@ -38,46 +29,36 @@ const { TabPane } = Tabs;
 export default function SellerDetailDrawer({
   visible,
   onClose,
-  seller,
+  seller: initialSeller, // prop ban đầu từ danh sách
   onApprove,
   onReject,
   onLock,
 }) {
   const [loading, setLoading] = useState(false);
   const [analytics, setAnalytics] = useState(null);
-  const [sellerData, setSellerData] = useState(seller);
-  const [actionLoading, setActionLoading] = useState(false);
+  const [sellerData, setSellerData] = useState(null); // dữ liệu mới nhất từ API detail
   const [rejectModalVisible, setRejectModalVisible] = useState(false);
-  const [rejectionDetailModalVisible, setRejectionDetailModalVisible] =
-    useState(false);
 
-  const fetchSellerDetail = useCallback(
-    async (id) => {
-      try {
-        const res = await axios.get(
-          `${process.env.REACT_APP_API_URL}/sellers/${id}/`,
-          {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
-            },
-          }
-        );
-        setSellerData(res.data);
-      } catch (error) {
-        console.error("Error fetching seller detail:", error);
-        setSellerData(seller);
-      }
-    },
-    [seller]
-  );
-
-  useEffect(() => {
-    if (seller?.id && visible) {
-      fetchAnalytics(seller.id);
-      fetchSellerDetail(seller.id);
+  // Fetch chi tiết seller (có đầy đủ cccd_front, cccd_back, business_license)
+  const fetchSellerDetail = useCallback(async (id) => {
+    try {
+      const res = await axios.get(
+        `${process.env.REACT_APP_API_URL}/sellers/${id}/`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+      setSellerData(res.data); // ← Có đầy đủ URL ảnh từ Serializer
+    } catch (error) {
+      console.error("Lỗi tải chi tiết cửa hàng:", error);
+      message.error("Không thể tải chi tiết cửa hàng");
+      // Không set sellerData → vẫn dùng initialSeller để hiển thị cơ bản
     }
-  }, [seller, visible, fetchSellerDetail]);
+  }, []);
 
+  // Fetch analytics
   const fetchAnalytics = async (id) => {
     setLoading(true);
     try {
@@ -88,42 +69,60 @@ export default function SellerDetailDrawer({
         }
       );
       setAnalytics(res.data);
-    } catch {
+    } catch (err) {
+      console.warn("Dùng mock analytics");
       setAnalytics(mockAnalyticsData);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleActionReject = async (reason) => {
-    const sellerTarget = sellerData || seller;
+  // Gọi khi drawer mở hoặc seller thay đổi
+  useEffect(() => {
+    if (initialSeller?.id && visible) {
+      fetchAnalytics(initialSeller.id);
+      fetchSellerDetail(initialSeller.id);
+    }
+  }, [initialSeller?.id, visible, fetchSellerDetail]);
 
+  // Xử lý từ chối
+  const handleActionReject = async (reason) => {
+    const target = sellerData || initialSeller;
     try {
-      // ✅ Gọi đúng API backend luôn tại đây
       await axios.post(
-        `${process.env.REACT_APP_API_URL}/sellers/${sellerTarget.id}/reject/`,
-        {
-          reason: reason,
-        },
+        `${process.env.REACT_APP_API_URL}/sellers/${target.id}/reject/`,
+        { reason },
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
         }
       );
-
       message.success("Đã từ chối cửa hàng thành công!");
       setRejectModalVisible(false);
-      fetchSellerDetail(sellerTarget.id); // refresh lại trạng thái
+      fetchSellerDetail(target.id); // refresh lại
+      onReject?.(); // callback cho component cha nếu cần
     } catch (error) {
-      console.error("❌ Reject error:", error?.response?.data || error);
       message.error(
         error?.response?.data?.detail || "Có lỗi khi từ chối cửa hàng!"
       );
     }
   };
 
-  const currentSeller = sellerData || seller;
+  // Ưu tiên dữ liệu mới nhất
+  const currentSeller = sellerData || initialSeller;
+
+  // Nếu chưa có data gì cả và drawer đang mở → loading
+  if (!currentSeller && visible) {
+    return (
+      <Drawer open={visible} onClose={onClose} width={1200} title="Đang tải...">
+        <div style={{ textAlign: "center", padding: 50 }}>
+          <Spin size="large" />
+        </div>
+      </Drawer>
+    );
+  }
+
   if (!currentSeller) return null;
 
   const formatDate = (date) =>
@@ -154,6 +153,15 @@ export default function SellerDetailDrawer({
       household: "Hộ kinh doanh",
     })[type] || "—";
 
+  const imgStyle = {
+    width: "100%",
+    maxHeight: 300,
+    objectFit: "contain",
+    borderRadius: 10,
+    border: "1px solid #eee",
+    background: "#fafafa",
+  };
+
   return (
     <Drawer
       open={visible}
@@ -162,7 +170,7 @@ export default function SellerDetailDrawer({
       title={`Chi tiết cửa hàng: ${currentSeller.store_name}`}
     >
       <Tabs defaultActiveKey="1" type="card">
-        {/* 🔹 TAB 1: THÔNG TIN CHUNG */}
+        {/* TAB 1: THÔNG TIN CHUNG */}
         <TabPane
           tab={
             <span>
@@ -172,6 +180,7 @@ export default function SellerDetailDrawer({
           key="1"
         >
           <Row gutter={20}>
+            {/* Ảnh đại diện cửa hàng */}
             <Col span={5} style={{ textAlign: "center" }}>
               {currentSeller.image ? (
                 <img
@@ -190,6 +199,7 @@ export default function SellerDetailDrawer({
               )}
             </Col>
 
+            {/* Thông tin chi tiết */}
             <Col span={19}>
               <Descriptions bordered column={2}>
                 <Descriptions.Item label="Tên cửa hàng">
@@ -219,7 +229,7 @@ export default function SellerDetailDrawer({
                   {currentSeller.address || "—"}
                 </Descriptions.Item>
 
-                <Descriptions.Item label="Loại đối tượng">
+                <Descriptions.Item label="Hình thức kinh doanh">
                   {getBusinessTypeLabel(currentSeller.business_type)}
                 </Descriptions.Item>
 
@@ -228,53 +238,72 @@ export default function SellerDetailDrawer({
                 </Descriptions.Item>
               </Descriptions>
 
-              {/* ✅ HIỂN THỊ CCCD / GPKD */}
-
-              <div style={{ marginTop: 20 }}>
+              {/* HIỂN THỊ CCCD / GIẤY PHÉP KINH DOANH */}
+              <div style={{ marginTop: 30 }}>
                 <Row gutter={16}>
+                  {/* Cá nhân: CCCD trước + sau */}
                   {currentSeller.business_type === "personal" && (
                     <>
                       <Col span={12}>
-                        <p>CCCD mặt trước</p>
+                        <p>
+                          <strong>CCCD mặt trước</strong>
+                        </p>
                         {currentSeller.cccd_front ? (
                           <img
                             src={currentSeller.cccd_front}
-                            style={imgStyle}
                             alt="CCCD mặt trước"
+                            style={imgStyle}
+                            onError={(e) => {
+                              e.target.onerror = null;
+                              e.target.src = "/no-image.jpg";
+                            }}
                           />
                         ) : (
-                          <Empty description="Chưa có ảnh CCCD mặt trước" />
+                          <Empty description="Chưa tải lên CCCD mặt trước" />
                         )}
                       </Col>
 
                       <Col span={12}>
-                        <p>CCCD mặt sau</p>
+                        <p>
+                          <strong>CCCD mặt sau</strong>
+                        </p>
                         {currentSeller.cccd_back ? (
                           <img
                             src={currentSeller.cccd_back}
-                            style={imgStyle}
                             alt="CCCD mặt sau"
+                            style={imgStyle}
+                            onError={(e) => {
+                              e.target.onerror = null;
+                              e.target.src = "/no-image.jpg";
+                            }}
                           />
                         ) : (
-                          <Empty description="Chưa có ảnh CCCD mặt sau" />
+                          <Empty description="Chưa tải lên CCCD mặt sau" />
                         )}
                       </Col>
                     </>
                   )}
 
+                  {/* Doanh nghiệp / Hộ kinh doanh: Giấy phép kinh doanh */}
                   {["business", "household"].includes(
                     currentSeller.business_type
                   ) && (
                     <Col span={24}>
-                      <p>Giấy phép kinh doanh</p>
+                      <p>
+                        <strong>Giấy phép kinh doanh</strong>
+                      </p>
                       {currentSeller.business_license ? (
                         <img
                           src={currentSeller.business_license}
-                          style={imgStyle}
                           alt="Giấy phép kinh doanh"
+                          style={{ ...imgStyle, maxHeight: 500 }}
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = "/no-image.jpg";
+                          }}
                         />
                       ) : (
-                        <Empty description="Chưa có ảnh giấy phép kinh doanh" />
+                        <Empty description="Chưa tải lên giấy phép kinh doanh" />
                       )}
                     </Col>
                   )}
@@ -284,9 +313,9 @@ export default function SellerDetailDrawer({
           </Row>
         </TabPane>
 
-        {/* Các tab còn lại giữ nguyên */}
+        {/* Các tab khác */}
         <TabPane tab="Sản phẩm" key="2">
-          <ProductsTab sellerId={currentSeller.id} /> 
+          <ProductsTab sellerId={currentSeller.id} />
         </TabPane>
 
         <TabPane tab="Đơn hàng" key="3">
@@ -294,7 +323,7 @@ export default function SellerDetailDrawer({
         </TabPane>
 
         <TabPane tab="Hiệu suất" key="4">
-          <PerformanceStats analytics={analytics} />
+          <PerformanceStats analytics={analytics} loading={loading} />
         </TabPane>
 
         <TabPane tab="Tài chính" key="5">
@@ -310,20 +339,13 @@ export default function SellerDetailDrawer({
         </TabPane>
       </Tabs>
 
+      {/* Modal từ chối */}
       <SellerRejectionModal
         visible={rejectModalVisible}
         onClose={() => setRejectModalVisible(false)}
         seller={currentSeller}
-        onRejectSuccess={(reason) => handleActionReject(reason)}
+        onRejectSuccess={handleActionReject}
       />
     </Drawer>
   );
 }
-
-const imgStyle = {
-  width: "100%",
-  maxHeight: 220,
-  objectFit: "contain",
-  borderRadius: 10,
-  border: "1px solid #eee",
-};

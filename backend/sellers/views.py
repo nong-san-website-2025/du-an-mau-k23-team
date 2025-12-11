@@ -278,19 +278,12 @@ class SellerMeAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        if getattr(request.user.role, "name", "") != "seller":
-            return Response({"detail": "Bạn chưa đăng ký làm seller"}, status=403)
+        seller = Seller.objects.filter(user=request.user).first()
+        if not seller:
+            return Response({"detail": "Bạn chưa đăng ký seller"}, status=404)
 
-        seller, created = Seller.objects.get_or_create(
-            user=request.user,
-            defaults={
-                "store_name": f"Shop {request.user.username}",
-                "status": "pending",
-            }
-        )
-        serializer = SellerDetailSerializer(self.get_object(), context=self.get_serializer_context())
-
-        return Response(serializer.data)
+        serializer = SellerDetailSerializer(seller, context={"request": request})
+        return Response(serializer.data, status=200)
 
 
 

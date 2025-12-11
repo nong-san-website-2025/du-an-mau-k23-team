@@ -10,14 +10,24 @@ from sellers.models import SellerActivityLog
 
 class ProductMiniSerializer(serializers.ModelSerializer):
     discounted_price = serializers.SerializerMethodField()
+    price = serializers.SerializerMethodField()
+    main_image = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
-        fields = ['id', 'name', 'price', 'discount', 'discounted_price', 'image', 'location', 'unit', 'stock']
+        fields = ['id', 'name', 'price', 'discount', 'discounted_price', 'image', 'location', 'unit', 'stock', 'status', 'main_image', 'created_at', 'updated_at']
 
     def get_discounted_price(self, obj):
         return obj.discounted_price
 
+    def get_price(self, obj):
+        return obj.discounted_price or obj.original_price
+
+    def get_main_image(self, obj):
+        if obj.image:
+            return obj.image.url
+        first_img = obj.images.first()
+        return first_img.image.url if first_img else None
 class SellerListSerializer(serializers.ModelSerializer):
     image = serializers.SerializerMethodField()
     followers_count = serializers.SerializerMethodField()
@@ -51,12 +61,34 @@ class SellerListSerializer(serializers.ModelSerializer):
 class SellerRegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = Seller
-        fields = ['id', 'user', 'store_name', 'bio', 'address', 'phone', 'image', "tax_code",
-            "business_type",
-            "cccd_front",
-            "cccd_back",
-            "business_license",
+        fields = [
+            'id', 'user', 'store_name', 'bio', 'address', 'phone', 'image',
+            'tax_code', 'business_type', 'cccd_front', 'cccd_back', 'business_license'
         ]
+
+    def validate(self, attrs):
+        business_type = attrs.get("business_type")
+
+        if business_type not in ["personal", "business", "household"]:
+            raise serializers.ValidationError({
+                "business_type": "Loại hình kinh doanh không hợp lệ hoặc bị thiếu."
+            })
+
+        # Cá nhân → phải có CCCD
+        if business_type == "personal":
+            if not attrs.get("cccd_front") or not attrs.get("cccd_back"):
+                raise serializers.ValidationError(
+                    {"cccd": "Cá nhân phải upload CCCD mặt trước và mặt sau."}
+                )
+
+        # DN + hộ kinh doanh → phải có GPLK
+        if business_type in ["business", "household"]:
+            if not attrs.get("business_license"):
+                raise serializers.ValidationError(
+                    {"business_license": "Phải upload giấy phép kinh doanh."}
+                )
+
+        return attrs
 
 class SellerDetailSerializer(serializers.ModelSerializer):
     image = serializers.SerializerMethodField()
@@ -64,7 +96,7 @@ class SellerDetailSerializer(serializers.ModelSerializer):
     cccd_back = serializers.SerializerMethodField()
     business_license = serializers.SerializerMethodField()
 
-    business_type = serializers.CharField()
+    business_type = serializers.CharField(read_only=True)
     tax_code = serializers.CharField()
     products = serializers.SerializerMethodField()
     followers_count = serializers.SerializerMethodField()
@@ -146,7 +178,7 @@ class SellerSerializer(serializers.ModelSerializer):
     user_username = serializers.CharField(source="user.username", read_only=True)
     user_email = serializers.EmailField(source="user.email", read_only=True)
     image = serializers.ImageField(required=False, allow_null=True)
-    business_type = serializers.CharField(required=False, allow_null=True)
+    business_type = serializers.CharField(required=False, allow_null=True, allow_blank=True)
     tax_code = serializers.CharField(required=False, allow_null=True)
     
 
