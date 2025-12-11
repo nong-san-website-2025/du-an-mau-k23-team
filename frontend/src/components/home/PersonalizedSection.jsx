@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { Skeleton } from "antd"; // <--- Import Ant Design
 import { productApi } from "../../features/products/services/productApi.js";
 import ProductCard from "../../features/products/components/ProductCard.jsx";
-import { useCart } from "../../features/cart/services/CartContext";
+import { useCart } from "../../features/cart/services/CartContext.js";
 import "../../styles/home/PersonalizedSections.css";
 
 // --- SUB-COMPONENT: SKELETON LOADER CHUẨN ANT DESIGN ---

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { FireFilled } from "@ant-design/icons";
 import { Skeleton } from "antd";
-import { intcomma } from './../../utils/format';
+import { intcomma } from '../../utils/format';
 
 export default function FlashSaleItem({ flash }) {
   // 1. Khai báo State đầu tiên

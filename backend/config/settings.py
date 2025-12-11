@@ -158,18 +158,12 @@ if os.environ.get("DATABASE_URL"):
     DATABASES['default']['OPTIONS']['client_encoding'] = 'UTF8'
 else:
     DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'ecom_db',               # tên database
-        'USER': 'postgres',             # user
-        'PASSWORD': '12345',     # mật khẩu
-        'HOST': 'localhost',          # hoặc IP server
-        'PORT': '5432',               # port mặc định
-        'OPTIONS': {
-            'client_encoding': 'UTF8',
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',   # file database sẽ nằm trong project
         }
     }
-}
+
 
 # --- Auth
 AUTH_USER_MODEL = "users.CustomUser"
