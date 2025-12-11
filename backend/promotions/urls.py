@@ -11,8 +11,9 @@ from .views import (
     my_vouchers,
     claim_voucher,
     apply_voucher,
-    consume_voucher, # Thêm dòng này
+    consume_voucher,
     public_seller_vouchers,
+    ImportVoucherAPIView, # <--- [MỚI] Thêm import này
 )
 
 # 2. Khởi tạo router MỘT LẦN DUY NHẤT
@@ -25,6 +26,10 @@ router.register(r'seller/vouchers', SellerVoucherViewSet, basename='seller-vouch
 
 # 4. Định nghĩa các URL cho các view lẻ (function-based views)
 urlpatterns = [
+    # --- [QUAN TRỌNG] URL IMPORT EXCEL ---
+    # Bạn nên đặt dòng này ở đầu list hoặc trước các path dynamic khác để tối ưu matching
+    path('vouchers/import_excel/', ImportVoucherAPIView.as_view(), name='voucher-import-excel'),
+
     path('overview/', promotions_overview, name='promotions-overview'),
     path('flash-sales/', FlashSaleListView.as_view(), name='flash-sale-list'),
     path('vouchers/my_vouchers/', my_vouchers, name='my-vouchers'),

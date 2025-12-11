@@ -9,6 +9,7 @@ class Category(models.Model):
     image = models.ImageField(upload_to='categories/', blank=True, null=True)
     is_featured = models.BooleanField(default=False)
     commission_rate = models.FloatField(default=0.05)  # 5% mặc định
+    icon = models.ImageField(upload_to='categories/icons/', null=True, blank=True)
     
     def __str__(self):
         return f"{self.name} ({self.subcategories.count()} danh mục con)"

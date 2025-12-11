@@ -160,15 +160,8 @@ if os.environ.get("DATABASE_URL"):
 else:
     DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'ecom_db',               # tên database
-        'USER': 'postgres',             # user
-        'PASSWORD': '12345',     # mật khẩu
-        'HOST': 'localhost',          # hoặc IP server
-        'PORT': '5432',               # port mặc định
-        'OPTIONS': {
-            'client_encoding': 'UTF8',
-        }
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
     }
 }
 

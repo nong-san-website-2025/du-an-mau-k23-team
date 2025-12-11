@@ -13,6 +13,8 @@ def clear_homepage_cache(sender, instance, **kwargs):
 
 @receiver(post_migrate)
 def create_default_adslots(sender, **kwargs):
+    return
+
     if sender.name != "marketing":  # Đảm bảo chỉ chạy cho app này
         return
 

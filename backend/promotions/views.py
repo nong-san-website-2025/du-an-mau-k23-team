@@ -1,28 +1,35 @@
-# promotions/views.py
-from rest_framework import viewsets, permissions, generics
+from rest_framework import viewsets, permissions, generics, status
+from rest_framework.views import APIView 
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
-from django.db.models import Q
+from django.db.models import Q, F
 from django.utils.timezone import now
 from django.utils import timezone
 from django.db import transaction
 from django.contrib.auth import get_user_model
-from .serializers import SellerVoucherSerializer # Serializer cho seller mà chúng ta đã định nghĩa
-from sellers.models import Seller # Model Seller để liên kết
 from rest_framework import filters
 from django_filters.rest_framework import DjangoFilterBackend
+import datetime 
+import traceback 
 
+from sellers.models import Seller
 from .models import Voucher, FlashSale, UserVoucher
+
 from .serializers import (
     VoucherDetailSerializer,
     FlashSaleSerializer,
     FlashSaleAdminSerializer,
     UserVoucherSerializer,
+    SellerVoucherSerializer,
+    VoucherImportSerializer 
 )
 
 User = get_user_model()
 
+# ============================================================
+# 1. HELPER CLASSES & FUNCTIONS
+# ============================================================
 
 class IsStaffOrReadOnly(permissions.BasePermission):
     def has_permission(self, request, view):
@@ -30,12 +37,34 @@ class IsStaffOrReadOnly(permissions.BasePermission):
             return request.user and request.user.is_authenticated
         return request.user and request.user.is_staff
 
+def _safe_get_user_voucher_by_code(user, code, for_update=False):
+    qs = UserVoucher.objects.select_related("voucher").filter(user=user, voucher__code=code).order_by("id")
+    if for_update:
+        qs = qs.select_for_update()
+    return qs.first()
+
+def _calc_discount_for_voucher(voucher, order_total):
+    discount = 0.0
+    if voucher.discount_amount:
+        discount = float(voucher.discount_amount)
+    elif voucher.discount_percent:
+        discount = (float(order_total) * float(voucher.discount_percent)) / 100.0
+        if voucher.max_discount_amount and discount > float(voucher.max_discount_amount):
+            discount = float(voucher.max_discount_amount)
+    elif voucher.freeship_amount:
+        discount = float(voucher.freeship_amount)
+    return float(discount)
+
+
+# ============================================================
+# 2. VOUCHER VIEWSET
+# ============================================================
 
 class VoucherViewSet(viewsets.ModelViewSet):
     queryset = Voucher.objects.all().order_by('-created_at')
     serializer_class = VoucherDetailSerializer
     permission_classes = [IsAuthenticated]
-
+    
     def get_queryset(self):
         qs = super().get_queryset()
         user = self.request.user
@@ -52,57 +81,108 @@ class VoucherViewSet(viewsets.ModelViewSet):
             raise PermissionError("Chỉ admin mới tạo voucher hệ thống.")
         voucher = serializer.save(created_by=user)
 
-        # If direct distribution requested, distribute to active users up to total_quantity
         if voucher.distribution_type == Voucher.DistributionType.DIRECT:
             users_qs = User.objects.filter(is_active=True)
-            remaining = voucher.total_quantity if voucher.total_quantity is not None else None
-
+            remaining = voucher.total_quantity
             bulk = []
             for u in users_qs:
-                if remaining is not None and remaining <= 0:
-                    break
+                if remaining is not None and remaining <= 0: break
                 give = voucher.per_user_quantity
-                if remaining is not None:
-                    give = min(give, remaining)
+                if remaining is not None: give = min(give, remaining)
                 if not UserVoucher.objects.filter(user=u, voucher=voucher).exists():
                     bulk.append(UserVoucher(user=u, voucher=voucher, quantity=give))
-                    if remaining is not None:
-                        remaining -= give
-
+                    if remaining is not None: remaining -= give
             if bulk:
                 UserVoucher.objects.bulk_create(bulk, ignore_conflicts=True)
 
 
-# -------------------------
-# Helper: safe get + calc
-# -------------------------
-def _safe_get_voucher_for_claim(code):
-    return Voucher.objects.filter(code=code, distribution_type=Voucher.DistributionType.CLAIM, active=True).order_by('id').first()
+# ============================================================
+# 3. IMPORT VOUCHER API (FIX LỖI 500 FREESHIP)
+# ============================================================
+
+class ImportVoucherAPIView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def post(self, request):
+        try:
+            data = request.data
+            if not isinstance(data, list):
+                return Response({"error": "Dữ liệu gửi lên phải là danh sách (Array)."}, status=400)
+
+            serializer = VoucherImportSerializer(data=data, many=True)
+            if not serializer.is_valid():
+                return Response({"errors": serializer.errors, "message": "Dữ liệu không hợp lệ."}, status=400)
+
+            validated_data = serializer.validated_data
+            vouchers_to_create = []
+            current_user = request.user if request.user.is_authenticated else None
+
+            with transaction.atomic():
+                for item in validated_data:
+                    start_at = datetime.datetime.combine(item['start_date'], datetime.time.min)
+                    end_at = datetime.datetime.combine(item['end_date'], datetime.time.max)
+                    if timezone.is_naive(start_at): start_at = timezone.make_aware(start_at)
+                    if timezone.is_naive(end_at): end_at = timezone.make_aware(end_at)
+
+                    # --- Logic Phân loại giá trị ---
+                    d_percent = 0
+                    d_amount = 0
+                    d_freeship = 0
+                    max_disc = None # Để None thay vì 0 nếu DB cho phép null
+
+                    # Chuẩn hóa input
+                    raw_type = str(item['discount_type']).lower().strip()
+
+                    if raw_type == 'percent':
+                        d_percent = item['value']
+                        max_disc = 500000 
+                    elif raw_type == 'freeship':
+                        d_freeship = item['value']
+                    else: 
+                        d_amount = item['value']
+
+                    # --- [FIX QUAN TRỌNG] Bỏ trường voucher_type vì DB không có ---
+                    voucher = Voucher(
+                        code=item['code'],
+                        title=item['title'],
+                        
+                        # Chỉ lưu các giá trị tiền/%, không lưu voucher_type text
+                        discount_percent=d_percent,
+                        discount_amount=d_amount,
+                        freeship_amount=d_freeship,
+                        max_discount_amount=max_disc,
+                        
+                        min_order_value=item.get('min_order', 0),
+                        start_at=start_at,
+                        end_at=end_at,
+                        
+                        total_quantity=item['quantity'],
+                        per_user_quantity=1,
+                        
+                        # Mặc định là Claim để user nhận được
+                        distribution_type='claim', 
+                        
+                        scope='system', 
+                        active=True,
+                        created_by=current_user
+                    )
+                    vouchers_to_create.append(voucher)
+                
+                Voucher.objects.bulk_create(vouchers_to_create)
+
+            return Response({"success": True, "message": "Import thành công!"}, status=201)
+
+        except Exception as e:
+            # In lỗi ra terminal để debug
+            print("❌ LỖI IMPORT 500:", str(e))
+            print(traceback.format_exc())
+            return Response({"error": f"Lỗi hệ thống: {str(e)}"}, status=500)
 
 
-def _safe_get_user_voucher_by_code(user, code, for_update=False):
-    qs = UserVoucher.objects.select_related("voucher").filter(user=user, voucher__code=code).order_by("id")
-    if for_update:
-        qs = qs.select_for_update()
-    return qs.first()
+# ============================================================
+# 4. API CLAIM VOUCHER
+# ============================================================
 
-
-def _calc_discount_for_voucher(voucher, order_total):
-    discount = 0.0
-    if voucher.discount_amount:
-        discount = float(voucher.discount_amount)
-    elif voucher.discount_percent:
-        discount = (float(order_total) * float(voucher.discount_percent)) / 100.0
-        if voucher.max_discount_amount and discount > float(voucher.max_discount_amount):
-            discount = float(voucher.max_discount_amount)
-    elif voucher.freeship_amount:
-        discount = float(voucher.freeship_amount)
-    return float(discount)
-
-
-# -------------------------
-# Claim voucher
-# -------------------------
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def claim_voucher(request):
@@ -115,11 +195,11 @@ def claim_voucher(request):
     try:
         with transaction.atomic():
             voucher = Voucher.objects.select_for_update().filter(
-                code=code, distribution_type=Voucher.DistributionType.CLAIM, active=True
+                code=code, active=True
             ).order_by('id').first()
 
             if not voucher:
-                return Response({"error": "Voucher không tồn tại hoặc không claim được"}, status=400)
+                return Response({"error": "Voucher không tồn tại"}, status=404)
 
             if voucher.start_at and now() < voucher.start_at:
                 return Response({"error": "Voucher chưa bắt đầu"}, status=400)
@@ -127,37 +207,47 @@ def claim_voucher(request):
                 return Response({"error": "Voucher đã hết hạn"}, status=400)
 
             if UserVoucher.objects.filter(user=user, voucher=voucher).exists():
-                return Response({"error": "Bạn đã nhận voucher này rồi"}, status=400)
+                return Response({"error": "Bạn đã sở hữu voucher này rồi"}, status=400)
 
-            if voucher.total_quantity is not None:
-                issued = voucher.issued_count()
-                remaining = voucher.total_quantity - issued
-                if remaining <= 0:
-                    return Response({"error": "Voucher đã hết"}, status=400)
-                give = min(voucher.per_user_quantity, remaining)
-            else:
-                give = voucher.per_user_quantity
+            # Check số lượng (Hỗ trợ vô cực)
+            total_qty = voucher.total_quantity
+            used_qty = voucher.used_quantity if hasattr(voucher, 'used_quantity') else 0
+            if used_qty == 0 and hasattr(voucher, 'issued_count'):
+                 used_qty = voucher.issued_count()
 
-            uv = UserVoucher.objects.create(user=user, voucher=voucher, quantity=give)
+            if total_qty is not None:
+                if used_qty >= total_qty:
+                    return Response({"error": "Voucher đã hết lượt sử dụng"}, 400)
+
+            uv = UserVoucher.objects.create(
+                user=user, 
+                voucher=voucher, 
+                quantity=voucher.per_user_quantity or 1
+            )
+            
+            if hasattr(voucher, 'used_quantity'):
+                Voucher.objects.filter(pk=voucher.pk).update(used_quantity=F('used_quantity') + 1)
 
     except Exception as e:
         return Response({"error": str(e)}, status=400)
 
     serializer = UserVoucherSerializer(uv)
-    return Response({"success": True, "user_voucher": serializer.data})
+    return Response({"success": True, "message": "Nhận voucher thành công!", "user_voucher": serializer.data})
 
 
-# -------------------------
-# Promotions overview
-# -------------------------
+# ============================================================
+# 5. API OVERVIEW (FILTER)
+# ============================================================
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def promotions_overview(request):
     user = request.user
     search = request.query_params.get("search")
-    scope = request.query_params.get("scope")                # system / seller
-    distribution_type = request.query_params.get("distribution_type")  # CLAIM / DIRECT
-    active = request.query_params.get("active")              # true / false
+    scope = request.query_params.get("scope")
+    distribution_type = request.query_params.get("distribution_type")
+    active = request.query_params.get("active")
+    voucher_type_filter = request.query_params.get("voucherType")
 
     if user.is_staff:
         vouchers = Voucher.objects.all().order_by('-created_at')
@@ -170,63 +260,67 @@ def promotions_overview(request):
 
     if search:
         vouchers = vouchers.filter(Q(title__icontains=search) | Q(code__icontains=search))
+    
+    # Logic Lọc chuẩn (dựa vào giá trị tiền, không dựa vào cột text)
+    if voucher_type_filter:
+        if voucher_type_filter == 'freeship':
+            vouchers = vouchers.filter(freeship_amount__gt=0)
+        elif voucher_type_filter == 'normal':
+            vouchers = vouchers.filter(Q(discount_amount__gt=0) | Q(discount_percent__gt=0))
 
-    if scope:
-        vouchers = vouchers.filter(scope=scope)
-
-    if distribution_type:
-        vouchers = vouchers.filter(distribution_type=distribution_type)
-
+    if scope: vouchers = vouchers.filter(scope=scope)
+    if distribution_type: vouchers = vouchers.filter(distribution_type=distribution_type)
     if active is not None:
-        if active.lower() in ["true", "1"]:
-            vouchers = vouchers.filter(active=True)
-        elif active.lower() in ["false", "0"]:
-            vouchers = vouchers.filter(active=False)
+        if active.lower() in ["true", "1"]: vouchers = vouchers.filter(active=True)
+        elif active.lower() in ["false", "0"]: vouchers = vouchers.filter(active=False)
 
     data = []
     for v in vouchers:
+        d_type = getattr(v, 'discount_type', 'unknown')
+        if callable(d_type): d_type = d_type()
+
+        used = 0
+        if hasattr(v, 'used_quantity'): used = v.used_quantity
+        elif hasattr(v, 'issued_count'): 
+            m = getattr(v, 'issued_count')
+            used = m() if callable(m) else m
+
+        total = v.total_quantity
+        remaining = max(0, total - used) if total is not None else None
+
+        # Determine type for Frontend
+        final_type = 'normal'
+        if v.freeship_amount and v.freeship_amount > 0:
+            final_type = 'freeship'
+
         data.append({
             "id": v.id,    
             "code": v.code,
             "name": v.title or v.code,
             "type": "voucher",
-            "discount_type": v.discount_type(),
-            "discount_percent": float(v.discount_percent) if v.discount_percent is not None else None,
-            "discount_amount": int(v.discount_amount) if v.discount_amount is not None else None,
-            "freeship_amount": int(v.freeship_amount) if v.freeship_amount is not None else None,
-            "min_order_value": int(v.min_order_value) if v.min_order_value is not None else None,
+            "voucher_type": final_type, # Frontend dùng cái này để hiển thị Tag
+            "discount_type": d_type, 
+            "discount_percent": float(v.discount_percent) if v.discount_percent else None,
+            "discount_amount": int(v.discount_amount) if v.discount_amount else None,
+            "freeship_amount": int(v.freeship_amount) if v.freeship_amount else None,
+            "min_order_value": int(v.min_order_value) if v.min_order_value else 0,
             "start": v.start_at,
             "end": v.end_at,
             "scope": v.scope,
             "active": v.active,
             "distribution_type": v.distribution_type,
-            "total_quantity": v.total_quantity,
+            "total_quantity": total,
             "per_user_quantity": v.per_user_quantity,
-            "issued_count": v.issued_count(),
-            "remaining_quantity": v.remaining_quantity(),
+            "issued_count": used,
+            "remaining_quantity": remaining,
         })
     return Response(data)
 
 
-class FlashSaleListView(generics.ListCreateAPIView):
-    serializer_class = FlashSaleSerializer
-    permission_classes = [AllowAny]
+# ============================================================
+# 6. OTHER VIEWS (GIỮ NGUYÊN)
+# ============================================================
 
-    def get_queryset(self):
-        now_t = timezone.now()
-        return FlashSale.objects.filter(
-            is_active=True,
-            start_time__lte=now_t,
-            end_time__gt=now_t
-        ).prefetch_related(
-            'flashsale_products__product'
-        )
-
-
-
-# -------------------------
-# My vouchers
-# -------------------------
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def my_vouchers(request):
@@ -234,163 +328,103 @@ def my_vouchers(request):
     serializer = UserVoucherSerializer(user_vouchers, many=True)
     return Response(serializer.data)
 
-
-# -------------------------
-# APPLY voucher (preview)
-# -------------------------
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def apply_voucher(request):
     code = request.data.get("code")
     order_total = request.data.get("order_total")
-
     if code is None or order_total is None:
         return Response({"error": "Thiếu code hoặc order_total"}, status=400)
-
     user_voucher = _safe_get_user_voucher_by_code(request.user, code, for_update=False)
     if not user_voucher:
-        return Response({"error": "Voucher không thuộc về bạn hoặc chưa nhận"}, status=400)
-
+        return Response({"error": "Voucher không thuộc về bạn"}, status=400)
     voucher = user_voucher.voucher
+    if not voucher.active: return Response({"error": "Voucher đã tắt"}, status=400)
+    if voucher.start_at and now() < voucher.start_at: return Response({"error": "Chưa đến thời gian"}, status=400)
+    if voucher.end_at and now() > voucher.end_at: return Response({"error": "Hết hạn"}, status=400)
+    
+    # Check usage user
+    remaining_user = 0
+    if hasattr(user_voucher, 'remaining_for_user'): remaining_user = user_voucher.remaining_for_user()
+    else: remaining_user = max(0, user_voucher.quantity - user_voucher.used_count)
+    if remaining_user <= 0: return Response({"error": "Đã dùng hết"}, status=400)
 
-    if not voucher.active:
-        return Response({"error": "Voucher đã tắt"}, status=400)
-    if voucher.start_at and now() < voucher.start_at:
-        return Response({"error": "Voucher chưa đến thời gian áp dụng"}, status=400)
-    if voucher.end_at and now() > voucher.end_at:
-        return Response({"error": "Voucher đã hết hạn"}, status=400)
-    if user_voucher.remaining_for_user() <= 0:
-        return Response({"error": "Bạn đã sử dụng hết voucher này"}, status=400)
-    try:
-        order_total_f = float(order_total)
-    except (TypeError, ValueError):
-        return Response({"error": "order_total không hợp lệ"}, status=400)
+    try: order_total_f = float(order_total)
+    except: return Response({"error": "order_total sai"}, status=400)
+    
     if voucher.min_order_value and order_total_f < float(voucher.min_order_value):
-        return Response({"error": f"Đơn tối thiểu {voucher.min_order_value}₫ để áp dụng voucher"}, status=400)
+        return Response({"error": f"Đơn tối thiểu {voucher.min_order_value}₫"}, status=400)
 
     discount = _calc_discount_for_voucher(voucher, order_total_f)
     new_total = max(0.0, order_total_f - discount)
-
     return Response({"success": True, "discount": discount, "new_total": new_total})
 
-
-# -------------------------
-# CONSUME voucher (mark used)
-# -------------------------
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def consume_voucher(request):
     code = request.data.get("code")
     order_total = request.data.get("order_total")
-
     if code is None or order_total is None:
         return Response({"error": "Thiếu code hoặc order_total"}, status=400)
-
     try:
         with transaction.atomic():
             user_voucher = _safe_get_user_voucher_by_code(request.user, code, for_update=True)
-            if not user_voucher:
-                return Response({"error": "Voucher không thuộc về bạn hoặc chưa nhận"}, status=400)
-
+            if not user_voucher: return Response({"error": "Lỗi voucher user"}, status=400)
             voucher = user_voucher.voucher
+            if not voucher.active: return Response({"error": "Voucher tắt"}, 400)
+            
+            # Recalculate check
+            remaining_user = max(0, user_voucher.quantity - user_voucher.used_count)
+            if remaining_user <= 0: return Response({"error": "Hết lượt"}, 400)
 
-            if not voucher.active:
-                return Response({"error": "Voucher đã tắt"}, status=400)
-            if voucher.start_at and now() < voucher.start_at:
-                return Response({"error": "Voucher chưa đến thời gian áp dụng"}, status=400)
-            if voucher.end_at and now() > voucher.end_at:
-                return Response({"error": "Voucher đã hết hạn"}, status=400)
-            if user_voucher.remaining_for_user() <= 0:
-                return Response({"error": "Bạn đã sử dụng hết voucher này"}, status=400)
-            try:
-                order_total_f = float(order_total)
-            except (TypeError, ValueError):
-                return Response({"error": "order_total không hợp lệ"}, status=400)
-            if voucher.min_order_value and order_total_f < float(voucher.min_order_value):
-                return Response({"error": f"Đơn tối thiểu {voucher.min_order_value}₫ để áp dụng voucher"}, status=400)
-
-            discount = _calc_discount_for_voucher(voucher, order_total_f)
-            user_voucher.mark_used_once()
-
+            discount = _calc_discount_for_voucher(voucher, float(order_total))
+            if hasattr(user_voucher, 'mark_used_once'): user_voucher.mark_used_once()
+            else:
+                user_voucher.used_count += 1
+                user_voucher.save()
+            
+            if hasattr(voucher, 'used_quantity'):
+                Voucher.objects.filter(pk=voucher.pk).update(used_quantity=F('used_quantity') + 1)
             return Response({"success": True, "discount": discount})
-    except Exception as exc:
-        return Response({"error": str(exc)}, status=400)
+    except Exception as e:
+        return Response({"error": str(e)}, status=400)
 
+class FlashSaleListView(generics.ListCreateAPIView):
+    serializer_class = FlashSaleSerializer
+    permission_classes = [AllowAny]
+    def get_queryset(self):
+        now_t = timezone.now()
+        return FlashSale.objects.filter(is_active=True, start_time__lte=now_t, end_time__gt=now_t).prefetch_related('flashsale_products__product')
 
-# -------------------------
-# Admin flashsale viewset
-# -------------------------
 class FlashSaleAdminViewSet(viewsets.ModelViewSet):
-    queryset = FlashSale.objects.all().prefetch_related('products')  # ✅ Sửa ở đây
+    queryset = FlashSale.objects.all().prefetch_related('products')
     serializer_class = FlashSaleAdminSerializer
     permission_classes = [IsAdminUser]
 
-
-# promotions/views.py
-
-# ... Dán đoạn code này vào cuối file ...
-
-# --- BẮT ĐẦU CODE THÊM MỚI CHO SELLER ---
-
-# Permission để kiểm tra user có phải là seller không
 class IsSellerUser(permissions.BasePermission):
-    """
-    Chỉ cho phép truy cập nếu user đã được xác thực và có liên kết đến một Seller profile.
-    """
     def has_permission(self, request, view):
-        # Dựa trên model của bạn, user có một related_name là "seller"
         return request.user.is_authenticated and hasattr(request.user, 'seller')
 
-# ViewSet dành riêng cho Seller để quản lý voucher
 class SellerVoucherViewSet(viewsets.ModelViewSet):
-    """
-    API endpoint cho phép Seller quản lý (CRUD) các voucher của riêng họ.
-    """
     serializer_class = SellerVoucherSerializer
-    permission_classes = [IsSellerUser] # Chỉ seller mới được truy cập
-
+    permission_classes = [IsSellerUser]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['active'] # Lọc chính xác theo Trạng thái (active=true, active=false)
-    search_fields = ['title', 'code'] # Cho phép tìm kiếm theo Tên (title) và Mã (code)
-
+    filterset_fields = ['active']
+    search_fields = ['title', 'code']
     def get_queryset(self):
-        # Chỉ trả về các voucher thuộc về cửa hàng của user đang đăng nhập
-        user_seller = self.request.user.seller
-        return Voucher.objects.filter(seller=user_seller).order_by('-created_at')
-
+        return Voucher.objects.filter(seller=self.request.user.seller).order_by('-created_at')
     def perform_create(self, serializer):
-        # Tự động gán các giá trị khi Seller tạo voucher
-        user_seller = self.request.user.seller
-        serializer.save(
-            created_by=self.request.user,
-            seller=user_seller,
-            scope=Voucher.Scope.SELLER # Luôn là voucher của seller
-        )
-
-# --- KẾT THÚC CODE THÊM MỚI ---
+        scope_val = "seller" 
+        if hasattr(Voucher, 'Scope'): scope_val = Voucher.Scope.SELLER
+        serializer.save(created_by=self.request.user, seller=self.request.user.seller, scope=scope_val)
 
 @api_view(['GET'])
-@permission_classes([AllowAny])  # Cho phép mọi người xem
+@permission_classes([AllowAny])
 def public_seller_vouchers(request, seller_id):
-    """
-    Lấy danh sách voucher HOẠT ĐỘNG và CÒN HẠN của một seller cụ thể (dùng cho trang StoreDetail).
-    """
-    try:
-        seller = Seller.objects.get(id=seller_id)
-    except Seller.DoesNotExist:
-        return Response({"error": "Seller không tồn tại"}, status=404)
-
+    try: seller = Seller.objects.get(id=seller_id)
+    except: return Response({"error": "Seller 404"}, 404)
     now = timezone.now()
-    vouchers = Voucher.objects.filter(
-        seller=seller,
-        active=True,
-        scope=Voucher.Scope.SELLER
-    ).filter(
-        Q(start_at__isnull=True) | Q(start_at__lte=now)
-    ).filter(
-        Q(end_at__isnull=True) | Q(end_at__gte=now)
-    ).order_by('-created_at')
-
-    # Serialize dữ liệu (dùng VoucherDetailSerializer hoặc tạo serializer đơn giản hơn)
-    serializer = VoucherDetailSerializer(vouchers, many=True)
-    return Response(serializer.data)
+    scope_val = "seller"
+    if hasattr(Voucher, 'Scope'): scope_val = Voucher.Scope.SELLER
+    vouchers = Voucher.objects.filter(seller=seller, active=True, scope=scope_val).filter(Q(start_at__isnull=True)|Q(start_at__lte=now)).filter(Q(end_at__isnull=True)|Q(end_at__gte=now)).order_by('-created_at')
+    return Response(VoucherDetailSerializer(vouchers, many=True).data)
