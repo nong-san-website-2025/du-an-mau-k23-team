@@ -20,6 +20,7 @@ from .views import (
 from sellers import views
 from sellers import views_analytics
 from products.views import ProductViewSet
+from .views import check_store_name
 
 
 router = DefaultRouter()
@@ -63,5 +64,7 @@ urlpatterns = [
     # Generic detail - ĐẶT CUỐI CÙNG
     path('<int:pk>/', SellerDetailAPIView.as_view(), name='seller-detail'),
     path('pending-count/', views.pending_sellers_count, name='pending-sellers-count'),
+
+    path("check-store-name/", check_store_name),
     
 ] + router.urls
