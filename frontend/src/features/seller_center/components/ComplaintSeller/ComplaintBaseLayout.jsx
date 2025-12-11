@@ -15,6 +15,10 @@ export default function ComplaintBaseLayout({
   onRow,
 }) {
   const [search, setSearch] = useState("");
+  const isTiny = typeof window !== "undefined" && window.matchMedia("(max-width: 360px)").matches;
+  const isSmall = typeof window !== "undefined" && window.matchMedia("(max-width: 768px)").matches;
+  const isDesktop = typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches;
+  const searchMaxWidth = isTiny ? undefined : isDesktop ? 560 : isSmall ? 420 : 520;
 
   const handleSearch = (v) => {
     setSearch(v);
@@ -23,28 +27,38 @@ export default function ComplaintBaseLayout({
 
   return (
     <div style={{ padding: 6, background: "#fff", minHeight: "100vh" }}>
-      {/* Tiêu đề + nút */}
-      <Row justify="space-between" align="middle">
+      {/* Tiêu đề */}
+      <Row align="middle">
         <Col>
           <Title level={2} style={{ paddingLeft: 24 }}>
             {title}
           </Title>
         </Col>
-        <Col style={{ paddingRight: 24 }}>{extra}</Col>
       </Row>
 
-      {/* Thanh tìm */}
-      <Row style={{ paddingLeft: 24, marginBottom: 0 }}>
-        <Col>
+      {/* Thanh công cụ: Tìm kiếm + Extra (lọc, làm mới) */}
+      <Row
+        style={{
+          padding: isTiny ? '0 12px' : '0 24px',
+          marginTop: 8,
+          marginBottom: 8,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          flexWrap: 'nowrap',
+        }}
+      >
+        <Col style={{ flex: '1 1 280px', minWidth: isTiny ? 120 : 140, maxWidth: searchMaxWidth }}>
           <Input.Search
             placeholder={searchPlaceholder}
             allowClear
             prefix={<SearchOutlined />}
             value={search}
             onChange={(e) => handleSearch(e.target.value)}
-            style={{ width: 320 }}
+            style={{ width: '100%' }}
           />
         </Col>
+        <Col style={{ flex: '0 0 auto', marginLeft: 'auto' }}>{extra}</Col>
       </Row>
 
       {/* Bảng */}

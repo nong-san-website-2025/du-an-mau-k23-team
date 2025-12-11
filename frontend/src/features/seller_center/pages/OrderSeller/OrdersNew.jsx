@@ -143,7 +143,7 @@ export default function OrdersNew() {
     },
 
     {
-      title: "Thời gian tồn tại",
+      title: "Thời gian",
       dataIndex: "created_at",
       width: 180,
       align: "center",
@@ -177,53 +177,58 @@ export default function OrdersNew() {
       title: "Hành động",
       align: "center",
       width: 240,
+      onHeaderCell: () => ({
+        style: { paddingRight: 16, paddingLeft: 10 }
+      }),
       render: (_, r) => (
-        <Space size="middle" onClick={(e) => e.stopPropagation()}>
-          <Popconfirm
-            title="Xác nhận duyệt đơn"
-            description="Bạn chắc chắn muốn duyệt đơn hàng này?"
-            onConfirm={() => approveMutation.mutate(r.id)}
-            okText="Duyệt"
-            cancelText="Hủy"
-            okButtonProps={{ loading: approveMutation.isPending }}
-          >
-            <Button
-              type="primary"
-              size="middle"
-              loading={
-                approveMutation.isPending && approveMutation.variables === r.id
-              }
-              disabled={cancelMutation.isPending}
-              style={{ minWidth: 90 }}
-              onClick={(e) => e.stopPropagation()}
+        <div style={{ paddingRight: 14, paddingLeft: 6 }}>
+          <Space size="middle" onClick={(e) => e.stopPropagation()}>
+            <Popconfirm
+              title="Xác nhận duyệt đơn"
+              description="Bạn chắc chắn muốn duyệt đơn hàng này?"
+              onConfirm={() => approveMutation.mutate(r.id)}
+              okText="Duyệt"
+              cancelText="Hủy"
+              okButtonProps={{ loading: approveMutation.isPending }}
             >
-              Duyệt đơn
-            </Button>
-          </Popconfirm>
+              <Button
+                type="primary"
+                size="middle"
+                loading={
+                  approveMutation.isPending && approveMutation.variables === r.id
+                }
+                disabled={cancelMutation.isPending}
+                style={{ minWidth: 90 }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                Duyệt đơn
+              </Button>
+            </Popconfirm>
 
-          <Popconfirm
-            title="Xác nhận từ chối"
-            description="Bạn chắc chắn muốn từ chối đơn hàng này?"
-            onConfirm={() => cancelMutation.mutate(r.id)}
-            okText="Từ chối"
-            cancelText="Quay lại"
-            okButtonProps={{ danger: true, loading: cancelMutation.isPending }}
-          >
-            <Button
-              size="middle"
-              danger
-              ghost
-              loading={
-                cancelMutation.isPending && cancelMutation.variables === r.id
-              }
-              disabled={approveMutation.isPending}
-              style={{ minWidth: 90 }}
-              onClick={(e) => e.stopPropagation()}
+            <Popconfirm
+              title="Xác nhận từ chối"
+              description="Bạn chắc chắn muốn từ chối đơn hàng này?"
+              onConfirm={() => cancelMutation.mutate(r.id)}
+              okText="Từ chối"
+              cancelText="Quay lại"
+              okButtonProps={{ danger: true, loading: cancelMutation.isPending }}
             >
-              Từ chối
-            </Button>
-          </Popconfirm>
-        </Space>
+              <Button
+                size="middle"
+                danger
+                ghost
+                loading={
+                  cancelMutation.isPending && cancelMutation.variables === r.id
+                }
+                disabled={approveMutation.isPending}
+                style={{ minWidth: 90 }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                Từ chối
+              </Button>
+            </Popconfirm>
+          </Space>
+        </div>
       ),
     },
   ];
