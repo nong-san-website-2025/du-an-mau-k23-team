@@ -1,21 +1,22 @@
 import React, { useState } from "react";
-import { Table, Tooltip, Image, Skeleton, Tag, Space, Typography } from "antd";
+import { Table, Tooltip, Image, Skeleton, Tag, Space, Typography, Modal, Select, message } from "antd";
 import {
   EyeOutlined,
   CheckOutlined,
   CloseOutlined,
   LockOutlined,
   UnlockOutlined,
-  SyncOutlined,      // Icon Cập nhật
-  PlusCircleOutlined, // Icon Mới
-  DiffOutlined,      // Icon So sánh
+  SyncOutlined,
+  PlusCircleOutlined,
+  DiffOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
-import ProductStatusTag from "./ProductStatusTag"; // Component tag trạng thái cũ của bạn
-import ButtonAction from "../../../../../components/ButtonAction"; // Component nút cũ của bạn
+import ProductStatusTag from "./ProductStatusTag";
+import ButtonAction from "../../../../../components/ButtonAction";
 import { intcomma } from "../../../../../utils/format";
 
 const { Text } = Typography;
+const { Option } = Select;
 
 const ProductTable = ({
   data,
@@ -32,11 +33,41 @@ const ProductTable = ({
     "image", "name", "category", "seller", "price", "status", "created_at", "action"
   ]);
 
-  // Helper: Xác định đây là hàng Mới hay hàng Cập nhật
+  // Danh sách lý do từ chối sẵn
+  const rejectReasons = [
+    "Sản phẩm không hợp lệ",
+    "Hình ảnh sai",
+    "Giá không hợp lý",
+    "Nội dung vi phạm",
+  ];
+
+  // State quản lý modal từ chối
+  const [rejectModal, setRejectModal] = useState({
+    visible: false,
+    record: null,
+    reason: "Sản phẩm không hợp lệ" // mặc định
+  });
+
+  const showRejectModal = (record) => {
+    setRejectModal({ visible: true, record, reason: "Sản phẩm không hợp lệ" });
+  };
+
+  const handleRejectOk = () => {
+    if (!rejectModal.reason) {
+      message.warning("Vui lòng chọn lý do từ chối!");
+      return;
+    }
+    onReject(rejectModal.record, rejectModal.reason);
+    setRejectModal({ visible: false, record: null, reason: "Sản phẩm không hợp lệ" });
+  };
+
+  const handleRejectCancel = () => {
+    setRejectModal({ visible: false, record: null, reason: "Sản phẩm không hợp lệ" });
+  };
+
   const getRequestType = (record) => {
     if (record.status === "pending_update") return "pending_update";
     if (record.status !== "pending") return null;
-    // Nếu updated_at > created_at quá 5 phút -> coi là Cập nhật
     const isUpdate = dayjs(record.updated_at).diff(dayjs(record.created_at), 'minute') > 5;
     return isUpdate ? "update" : "new";
   };
@@ -49,9 +80,9 @@ const ProductTable = ({
       width: 80,
       align: "center",
       render: (_, record) => {
-        const imgUrl = record.main_image?.image || (record.images?.[0]?.image);
+        const imgUrl = record.main_image?.image || record.images?.[0]?.image;
         return (
-          <div onClick={(e) => e.stopPropagation()} style={{ width: 60, height: 40, margin: "0 auto" }}>
+          <div style={{ width: 60, height: 40, margin: "0 auto" }}>
             {imgUrl ? (
               <Image
                 src={imgUrl}
@@ -69,14 +100,13 @@ const ProductTable = ({
     },
     {
       title: "Tên sản phẩm",
-      dataIndex: "name",
       key: "name",
+      dataIndex: "name",
       width: 280,
       render: (text, record) => {
         const reqType = getRequestType(record);
         return (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-            {/* Hiển thị Tag phân loại nếu đang Pending */}
             {reqType === 'pending_update' && (
               <Tag color="orange" style={{ marginBottom: 4, marginRight: 0, fontSize: 11 }}>
                 <DiffOutlined /> Chờ duyệt cập nhật
@@ -84,7 +114,7 @@ const ProductTable = ({
             )}
             {reqType === 'update' && (
               <Tag color="warning" style={{ marginBottom: 4, marginRight: 0, fontSize: 11 }}>
-                <SyncOutlined  /> Cập nhật lại
+                <SyncOutlined /> Cập nhật lại
               </Tag>
             )}
             {reqType === 'new' && (
@@ -92,12 +122,9 @@ const ProductTable = ({
                  <PlusCircleOutlined /> Mới đăng
                </Tag>
              )}
-            
             <Tooltip title={text}>
               <Text strong style={{ fontSize: 14, lineHeight: 1.2 }}>{text}</Text>
             </Tooltip>
-
-            {/* Hiển thị thời gian */}
             <Text type="secondary" style={{ fontSize: 11, marginTop: 2 }}>
               {reqType === 'update' 
                 ? `Sửa: ${dayjs(record.updated_at).format("HH:mm DD/MM")}`
@@ -178,8 +205,7 @@ const ProductTable = ({
             icon: <CloseOutlined />,
             tooltip: "Từ chối",
             show: ["pending", "pending_update"].includes(record.status),
-            confirm: { title: "Từ chối sản phẩm?", okText: "Từ chối", isDanger: true },
-            onClick: onReject,
+            onClick: () => showRejectModal(record),
           },
           {
             actionType: record.status === "banned" ? "unlock" : "lock",
@@ -196,18 +222,41 @@ const ProductTable = ({
   ];
 
   return (
-    <Table
-      rowKey="id"
-      bordered
-      size="small"
-      dataSource={data}
-      columns={columns.filter(c => selectedColumns.includes(c.key))}
-      rowSelection={{ selectedRowKeys, onChange: setSelectedRowKeys }}
-      onRow={onRow}
-      pagination={{ pageSize: 10, showTotal: (t) => `Tổng ${t} sản phẩm` }}
-      scroll={{ x: 1000 }}
-      sticky
-    />
+    <>
+      <Table
+        rowKey="id"
+        bordered
+        size="small"
+        dataSource={data}
+        columns={columns.filter(c => selectedColumns.includes(c.key))}
+        rowSelection={{ selectedRowKeys, onChange: setSelectedRowKeys }}
+        onRow={onRow}
+        pagination={{ pageSize: 10, showTotal: (t) => `Tổng ${t} sản phẩm` }}
+        scroll={{ x: 1000 }}
+        sticky
+      />
+
+      {/* Modal chọn lý do từ chối */}
+      <Modal
+        title="Chọn lý do từ chối sản phẩm"
+        visible={rejectModal.visible}
+        onOk={handleRejectOk}
+        onCancel={handleRejectCancel}
+        okText="Xác nhận"
+        cancelText="Hủy"
+      >
+        <Select
+          style={{ width: "100%" }}
+          placeholder="Chọn lý do từ chối"
+          value={rejectModal.reason}
+          onChange={(value) => setRejectModal(prev => ({ ...prev, reason: value }))}
+        >
+          {rejectReasons.map(r => (
+            <Option key={r} value={r}>{r}</Option>
+          ))}
+        </Select>
+      </Modal>
+    </>
   );
 };
 
