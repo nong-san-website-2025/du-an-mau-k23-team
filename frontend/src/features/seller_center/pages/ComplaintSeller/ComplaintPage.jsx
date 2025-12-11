@@ -16,6 +16,8 @@ export default function ComplaintPage() {
   const [loading, setLoading] = useState(false);
   const [filtered, setFiltered] = useState([]);
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
+  const [searchKeyword, setSearchKeyword] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
 
   const token =
     typeof window !== "undefined" ? localStorage.getItem("token") : null;
@@ -55,17 +57,28 @@ export default function ComplaintPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
-  /* ===== search ===== */
-  const handleSearch = (kw) => {
-    const lower = kw.toLowerCase();
+  /* ===== search and filter ===== */
+  const applyFilters = (keyword = searchKeyword, status = statusFilter) => {
+    const lower = keyword.toLowerCase();
     setFiltered(
       complaints.filter(
         (c) =>
-          c.complainant_name?.toLowerCase().includes(lower) ||
-          c.product_name?.toLowerCase().includes(lower) ||
-          String(c.id).includes(lower)
+          (c.complainant_name?.toLowerCase().includes(lower) ||
+            c.product_name?.toLowerCase().includes(lower) ||
+            String(c.id).includes(lower)) &&
+          (!status || c.status === status)
       )
     );
+  };
+
+  const handleSearch = (kw) => {
+    setSearchKeyword(kw);
+    applyFilters(kw, statusFilter);
+  };
+
+  const handleStatusFilterChange = (status) => {
+    setStatusFilter(status);
+    applyFilters(searchKeyword, status);
   };
 
   /* ===== CRUD / actions ===== */
@@ -301,6 +314,8 @@ export default function ComplaintPage() {
         filtered={filtered}
         columns={columns}
         onSearch={handleSearch}
+        onStatusFilterChange={handleStatusFilterChange}
+        statusFilter={statusFilter}
         onRefresh={fetchComplaints}
         onRowClick={(record) => {
           setDetailComplaint(record);

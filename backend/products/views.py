@@ -13,7 +13,7 @@ from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser
 
 # Models
-from .models import Product, Category, Subcategory, PendingProductUpdate, ProductImage
+from .models import Product, Category, Subcategory, PendingProductUpdate, ProductImage, ProductView
 from sellers.models import Seller, SellerActivityLog
 from reviews.models import Review
 from orders.models import OrderItem, Preorder
@@ -40,6 +40,30 @@ def normalize_text(text):
     text = unicodedata.normalize('NFD', text)
     text = ''.join(ch for ch in text if unicodedata.category(ch) != 'Mn')
     return text.lower().strip()
+
+def get_client_ip(request):
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(',')[0]
+    else:
+        ip = request.META.get('REMOTE_ADDR')
+    return ip
+
+def record_product_view(request, product):
+    try:
+        ip_address = get_client_ip(request)
+        user = request.user if request.user.is_authenticated else None
+        
+        ProductView.objects.create(
+            product=product,
+            user=user,
+            ip_address=ip_address
+        )
+        
+        product.view_count = product.view_count + 1
+        product.save(update_fields=['view_count'])
+    except Exception as e:
+        pass
 
 # ================= FUNCTION BASED VIEWS =================
 
@@ -288,8 +312,9 @@ class ProductViewSet(viewsets.ModelViewSet):
     permission_classes = [AllowAny]
     queryset = Product.objects.select_related('subcategory__category', 'seller').prefetch_related('images').all()
 
+    # ✅ ĐÃ SỬA: Thêm "increment_views" vào AllowAny để fix lỗi 401
     def get_permissions(self):
-        if self.action in ["list", "retrieve", "featured"]:
+        if self.action in ["list", "retrieve", "featured", "increment_views"]:
             return [permissions.AllowAny()]
         return [IsAuthenticated()]
 
@@ -366,6 +391,9 @@ class ProductViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
         
+        # ❌ ĐÃ TẮT: Không đếm view ở đây nữa để tránh bị đếm trùng lặp
+        # record_product_view(request, instance) 
+        
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
 
@@ -400,6 +428,25 @@ class ProductViewSet(viewsets.ModelViewSet):
         return Response({"detail": "Sản phẩm bị khóa, không thể chỉnh sửa"}, status=403)
 
     # ----- ACTIONS -----
+
+    @action(detail=True, methods=['post'], url_path='increment-views', permission_classes=[AllowAny])
+    def increment_views(self, request, pk=None):
+        """
+        API chuyên dụng để tăng view.
+        Frontend sẽ kiểm soát việc gọi API này (chỉ gọi 1 lần/phiên).
+        """
+        try:
+            product = self.get_object()
+            
+            # Gọi hàm helper record_product_view đã có sẵn ở trên
+            record_product_view(request, product)
+            
+            return Response({
+                "status": "success", 
+                "view_count": product.view_count
+            }, status=200)
+        except Exception as e:
+            return Response({"error": str(e)}, status=400)
 
     @action(detail=True, methods=['post'], url_path='set-primary-image', permission_classes=[IsAuthenticated])
     def set_primary_image(self, request, pk=None):

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Row, Col, Input, Card, Typography, Button, Table } from "antd";
+import { Row, Col, Input, Card, Typography, Button, Table, Select } from "antd";
 import { SearchOutlined, ReloadOutlined } from "@ant-design/icons";
 
 const { Title } = Typography;
@@ -12,6 +12,8 @@ export default function ComplaintBaseLayout({
   columns,
   onSearch,
   searchPlaceholder = "Tìm theo tên khách, tên SP, mã đơn…",
+  onStatusFilterChange,
+  statusFilter,
   onRow,
 }) {
   const [search, setSearch] = useState("");
@@ -33,8 +35,8 @@ export default function ComplaintBaseLayout({
         <Col style={{ paddingRight: 24 }}>{extra}</Col>
       </Row>
 
-      {/* Thanh tìm */}
-      <Row style={{ paddingLeft: 24, marginBottom: 0 }}>
+      {/* Thanh tìm và lọc */}
+      <Row style={{ paddingLeft: 24, marginBottom: 16, gap: 16 }} align="middle">
         <Col>
           <Input.Search
             placeholder={searchPlaceholder}
@@ -43,6 +45,20 @@ export default function ComplaintBaseLayout({
             value={search}
             onChange={(e) => handleSearch(e.target.value)}
             style={{ width: 320 }}
+          />
+        </Col>
+        <Col>
+          <Select
+            placeholder="Lọc theo trạng thái"
+            allowClear
+            value={statusFilter}
+            onChange={onStatusFilterChange}
+            style={{ width: 200 }}
+            options={[
+              { label: "Chờ xử lý", value: "pending" },
+              { label: "Đã xử lý", value: "resolved" },
+              { label: "Đã từ chối", value: "rejected" },
+            ]}
           />
         </Col>
       </Row>

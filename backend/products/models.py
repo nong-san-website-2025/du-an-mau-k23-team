@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings    
 import unicodedata
+from django.utils import timezone
 class Category(models.Model):
     name = models.CharField(max_length=100, db_index=True)
     key = models.CharField(max_length=50, unique=True)
@@ -63,6 +64,7 @@ class Product(models.Model):
     image = models.ImageField(upload_to='products/', blank=True, null=True)
     rating = models.DecimalField(max_digits=3, decimal_places=1, default=0)
     review_count = models.PositiveIntegerField(default=0)
+    view_count = models.PositiveIntegerField(default=0, db_index=True)
     location = models.CharField(max_length=100, blank=True)
     brand = models.CharField(max_length=100, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -210,16 +212,20 @@ class PendingProductUpdate(models.Model):
         self.delete()
 
 
-# class Preorder(models.Model):
-#     user = models.ForeignKey(
-#         settings.AUTH_USER_MODEL,
-#         on_delete=models.CASCADE,
-#         related_name="preorders"
-#     )
-#     product = models.ForeignKey(
-#         Product,
-#         on_delete=models.CASCADE,
-#         related_name="preorders"  # 👈 thêm dòng này
-#     )
-#     quantity = models.PositiveIntegerField()
-#     created_at = models.DateTimeField(auto_now_add=True)
+class ProductView(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="view_logs")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+    ip_address = models.GenericIPAddressField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    
+    class Meta:
+        verbose_name = "Product View"
+        verbose_name_plural = "Product Views"
+        indexes = [
+            models.Index(fields=['product', 'created_at']),
+            models.Index(fields=['created_at']),
+        ]
+    
+    def __str__(self):
+        user_info = self.user.username if self.user else f"IP: {self.ip_address}"
+        return f"{self.product.name} - {user_info} ({self.created_at:%d/%m/%Y %H:%M})"

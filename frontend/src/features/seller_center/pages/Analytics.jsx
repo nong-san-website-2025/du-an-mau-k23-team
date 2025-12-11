@@ -507,59 +507,7 @@ export default function Analytics() {
       { name: "Khách quay lại", value: customer_analysis?.returning_customers || 0 }
     ];
 
-    return (
-      <div>
-        <Row gutter={[24, 24]} style={{ marginBottom: 24 }}>
-          <Col xs={24} lg={12}>
-            <Card title={<Title level={5}>Khách hàng đến từ đâu?</Title>} style={{ borderRadius: '12px', height: '100%' }}>
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie data={trafficPieData} cx="50%" cy="50%" labelLine={false}
-                       label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                       outerRadius={100} fill="#8884d8" dataKey="value">
-                    {trafficPieData.map((entry, index) => (<Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />))}
-                  </Pie>
-                  <Tooltip />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            </Card>
-          </Col>
-          <Col xs={24} lg={12}>
-            <Card title={<Title level={5}>Phân Tích Khách Hàng</Title>} style={{ borderRadius: '12px', height: '100%' }}>
-              <ResponsiveContainer width="100%" height={250}>
-                <PieChart>
-                  <Pie data={customerPieData} cx="50%" cy="50%" innerRadius={60} outerRadius={80}
-                       fill="#8884d8" paddingAngle={5} dataKey="value">
-                    {customerPieData.map((entry, index) => (<Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />))}
-                  </Pie>
-                  <Tooltip />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-              <div style={{ marginTop: 16, textAlign: "center" }}>
-                <Statistic title="Tổng khách hàng" value={customer_analysis?.total_customers || 0} />
-                <Statistic title="Tỷ lệ quay lại" value={customer_analysis?.retention_rate || 0} suffix="%" valueStyle={{ color: THEME_COLORS.primary }}/>
-              </div>
-            </Card>
-          </Col>
-        </Row>
-
-        <Card title={<Title level={5}>Từ Khóa Vàng - Khách tìm gì mua nấy</Title>} style={{ borderRadius: '12px' }}>
-          <Table dataSource={top_keywords || []} rowKey="keyword" pagination={false}
-            columns={[
-              { title: "Từ khóa", dataIndex: "keyword", key: "keyword" },
-              { title: "Số lượt tìm", dataIndex: "count", key: "count", sorter: (a, b) => a.count - b.count },
-              { title: "Xu hướng", key: "trend", render: (_, record) => {
-                  const isHot = record.count > 10;
-                  return <Tag color={isHot ? "volcano" : "default"}>{isHot ? "🔥 Tìm nhiều" : "Bình thường"}</Tag>;
-                }
-              }
-            ]}
-          />
-        </Card>
-      </div>
-    );
+    
   };
   
   // --- Component chính ---
@@ -594,12 +542,6 @@ export default function Analytics() {
           key="products"
         >
           {renderProducts()}
-        </Tabs.TabPane>
-        <Tabs.TabPane
-          tab={<span><TeamOutlined /> Khách hàng</span>}
-          key="traffic"
-        >
-          {renderTraffic()}
         </Tabs.TabPane>
       </Tabs>
     </AnalyticsBaseLayout>

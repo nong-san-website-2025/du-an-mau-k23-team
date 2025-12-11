@@ -17,6 +17,17 @@ const DetailModal = ({ visible, onCancel, complaint }) => {
     return config[status] || { color: "default", text: "Không xác định" };
   };
 
+  const getResolutionText = (resolution_type) => {
+    const config = {
+      refund_full: "Hoàn tiền toàn bộ",
+      refund_partial: "Hoàn tiền một phần",
+      replace: "Đổi sản phẩm",
+      voucher: "Tặng voucher/điểm thưởng",
+      reject: "Từ chối khiếu nại",
+    };
+    return config[resolution_type] || "Không xác định";
+  };
+
   const { color: statusColor, text: statusText } = getStatusConfig(complaint.status);
 
   const mediaList = Array.isArray(complaint.media_urls)
@@ -53,11 +64,13 @@ const DetailModal = ({ visible, onCancel, complaint }) => {
 
           <InfoGroup title="Thông tin sản phẩm">
             <InfoRow label="Tên sản phẩm" value={complaint.product_name || "—"} />
+            <InfoRow label="Mã sản phẩm" value={complaint.product_id || "—"} />
             <InfoRow label="Số lượng" value={complaint.quantity ?? 1} />
             <InfoRow
               label="Đơn giá"
               value={formatVND(complaint.unit_price ?? complaint.product_price ?? 0)}
             />
+            <InfoRow label="Mã đơn hàng" value={complaint.order_id ? `#${complaint.order_id}` : "—"} />
           </InfoGroup>
         </div>
 
@@ -86,6 +99,21 @@ const DetailModal = ({ visible, onCancel, complaint }) => {
           </InfoGroup>
         </div>
       </div>
+
+      {/* Hình thức xử lý (khi đã xử lý) */}
+      {(complaint.status === "resolved" || complaint.status === "rejected") && complaint.resolution_type && (
+        <>
+          <Divider style={{ margin: "24px 0 16px" }} />
+          <div>
+            <Text strong style={{ marginBottom: 12, display: "block", fontSize: 15 }}>
+              Hình thức xử lý
+            </Text>
+            <Tag color={complaint.status === "resolved" ? "green" : "red"} style={{ fontSize: 14, padding: "6px 14px" }}>
+              {getResolutionText(complaint.resolution_type)}
+            </Tag>
+          </div>
+        </>
+      )}
 
       {/* Minh chứng (full-width dưới 2 cột) */}
       {mediaList.length > 0 && (

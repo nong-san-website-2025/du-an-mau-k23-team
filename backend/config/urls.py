@@ -54,7 +54,7 @@ urlpatterns = [
     path("api/", include("blog.urls")),
 
     # SSE endpoint
-    path('api/sse/', notification_sse_view, name='sse-notifications'),
+    # path('api/sse/', notification_sse_view, name='sse-notifications'),
 
     path("api/", include("system.urls")),
     path('api/', include('system_settings.urls')),

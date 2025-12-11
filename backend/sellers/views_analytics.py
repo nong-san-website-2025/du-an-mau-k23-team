@@ -16,7 +16,7 @@ from django.db.models.functions import TruncDay, TruncWeek, TruncMonth, TruncHou
 from django.utils import timezone
 from datetime import timedelta, datetime
 from sellers.models import Seller
-from products.models import Product
+from products.models import Product, ProductView
 from orders.models import Order, OrderItem
 from payments.models import Payment
 import json
@@ -106,9 +106,17 @@ def analytics_overview(request):
     current_order_count = current_orders.filter(status__in=["success", "delivered"]).count()
     previous_order_count = previous_orders.filter(status__in=["success", "delivered"]).count()
     
-    # Mock visits data (in real app, track with analytics service)
-    current_visits = current_order_count * 10  # Estimate: 10% conversion rate
-    previous_visits = previous_order_count * 10
+    current_visits = ProductView.objects.filter(
+        product_id__in=product_ids,
+        created_at__gte=start_date,
+        created_at__lte=end_date
+    ).count()
+    
+    previous_visits = ProductView.objects.filter(
+        product_id__in=product_ids,
+        created_at__gte=compare_start,
+        created_at__lt=compare_end
+    ).count()
     
     # Conversion rate
     conversion_rate = (current_order_count / current_visits * 100) if current_visits > 0 else 0
@@ -203,13 +211,10 @@ def analytics_overview(request):
         })
     
     # Sales funnel (simplified)
-    product_views = current_visits  # Mock data
-    orders_count = current_order_count
-    
     funnel = {
         "visits": current_visits,
-        "product_views": product_views,
-        "orders": orders_count
+        "product_views": current_visits,
+        "orders": current_order_count
     }
     
     return Response({
@@ -388,9 +393,13 @@ def analytics_products(request):
         units_sold = items.aggregate(total=Sum("quantity"))["total"] or 0
         revenue = items.aggregate(total=Sum(F("price") * F("quantity")))["total"] or 0
         
-        # Mock views and cart adds (in real app, track these events)
-        views = units_sold * 20  # Estimate: 5% view-to-purchase
-        cart_adds = units_sold * 5  # Estimate: 20% cart-to-purchase
+        views = ProductView.objects.filter(
+            product=product,
+            created_at__gte=start_date,
+            created_at__lte=end_date
+        ).count()
+        
+        cart_adds = units_sold * 5 if units_sold > 0 else 0
         
         conversion_rate = (units_sold / views * 100) if views > 0 else 0
         
