@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Table, message, Button, Card, Tooltip } from "antd";
+import { Table, message, Button, Card, Tooltip, Typography } from "antd";
 import { 
   ReloadOutlined, 
   EyeOutlined, 
@@ -12,8 +12,8 @@ import {
 import ComplaintDetailModal from "../../components/ComplaintAdmin/ComplaintDetailModal";
 import ComplaintResolveModal from "../../components/ComplaintAdmin/ComplaintResolveModal";
 import AdminPageLayout from "../../components/AdminPageLayout";
-import StatusTag from "../../../../components/StatusTag"; // Component bạn cung cấp
-import ButtonAction from "../../../../components//ButtonAction"; // Component bạn cung cấp
+import StatusTag from "../../../../components/StatusTag"; 
+import ButtonAction from "../../../../components/ButtonAction"; 
 
 const API_URL = "http://localhost:8000/api/complaints/";
 
@@ -24,6 +24,7 @@ const UserReports = () => {
   // Modal State
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [detailComplaint, setDetailComplaint] = useState(null);
+  
   const [resolveModalVisible, setResolveModalVisible] = useState(false);
   const [resolveComplaint, setResolveComplaint] = useState(null);
 
@@ -34,6 +35,9 @@ const UserReports = () => {
       const res = await fetch(API_URL, {
         headers: { Authorization: `Bearer ${token}` },
       });
+      
+      if (!res.ok) throw new Error("Failed to fetch");
+
       const data = await res.json();
       
       let listData = [];
@@ -60,13 +64,18 @@ const UserReports = () => {
   const handleReject = async (record) => {
     try {
       const token = localStorage.getItem("token");
-      await fetch(`${API_URL}${record.id}/`, {
+      const res = await fetch(`${API_URL}${record.id}/`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ status: "rejected" }),
       });
-      message.success("Đã từ chối khiếu nại!");
-      refreshReports();
+
+      if(res.ok) {
+          message.success("Đã từ chối khiếu nại!");
+          refreshReports();
+      } else {
+          message.error("Có lỗi xảy ra khi từ chối.");
+      }
     } catch (err) {
       message.error("Lỗi kết nối!");
     }
@@ -75,20 +84,24 @@ const UserReports = () => {
   const handleResetPending = async (record) => {
     try {
       const token = localStorage.getItem("token");
-      await fetch(`${API_URL}${record.id}/`, {
+      const res = await fetch(`${API_URL}${record.id}/`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ status: "pending" }), // Reset về trạng thái chờ
+        body: JSON.stringify({ status: "pending" }), 
       });
-      message.success("Đã chuyển về chờ xử lý!");
-      refreshReports();
+
+      if(res.ok) {
+          message.success("Đã chuyển về chờ xử lý!");
+          refreshReports();
+      } else {
+          message.error("Không thể reset trạng thái.");
+      }
     } catch (err) {
       message.error("Lỗi kết nối!");
     }
   };
 
   // --- Cấu hình Cột Bảng ---
-
   const columns = [
     { 
         title: "STT", 
@@ -99,8 +112,8 @@ const UserReports = () => {
     },
     { 
         title: "Người dùng", 
-        dataIndex: "complainant_name",
-        render: (text) => <b>{text}</b>
+        dataIndex: "complainant_name", // <--- Đây là key quan trọng
+        render: (text) => <b>{text || "Không xác định"}</b>
     },
     { 
         title: "Sản phẩm", 
@@ -126,10 +139,11 @@ const UserReports = () => {
       },
     },
     { 
-        title: "Lý do", 
+        title: "Người Bán", 
         dataIndex: "reason",
-        width: 200,
-        ellipsis: true
+        width: 250,
+        ellipsis: true,
+        render: (reason) => <Tooltip title={reason}>{reason}</Tooltip>
     },
     {
       title: "Ngày tạo",
@@ -150,7 +164,6 @@ const UserReports = () => {
       width: 140,
       align: 'right',
       render: (_, record) => {
-        // Cấu hình danh sách hành động cho ButtonAction
         const actions = [
             {
                 actionType: 'view',
@@ -162,7 +175,7 @@ const UserReports = () => {
                 }
             },
             {
-                actionType: 'approve', // Màu xanh lá
+                actionType: 'approve',
                 icon: <CheckCircleOutlined />,
                 tooltip: "Giải quyết / Duyệt",
                 show: record.status === 'pending',
@@ -172,7 +185,7 @@ const UserReports = () => {
                 }
             },
             {
-                actionType: 'reject', // Màu đỏ
+                actionType: 'reject',
                 icon: <CloseCircleOutlined />,
                 tooltip: "Từ chối khiếu nại",
                 show: record.status === 'pending',
@@ -185,7 +198,7 @@ const UserReports = () => {
                 onClick: () => handleReject(record)
             },
             {
-                actionType: 'edit', // Màu cyan (Tạm dùng cho nút Reset)
+                actionType: 'edit', 
                 icon: <UndoOutlined />,
                 tooltip: "Xử lý lại (Reset)",
                 show: record.status !== 'pending',
@@ -223,7 +236,7 @@ const UserReports = () => {
             dataSource={reports}
             loading={loading}
             pagination={{ pageSize: 10, showSizeChanger: true }}
-            scroll={{ x: 1000 }} // Hỗ trợ responsive trên mobile
+            scroll={{ x: 1000 }} 
         />
       </Card>
 

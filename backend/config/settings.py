@@ -1,9 +1,3 @@
-# --- Fix Unicode encoding for Vietnamese characters on Windows
-import sys
-if hasattr(sys.stdout, 'reconfigure'):
-    sys.stdout.reconfigure(encoding='utf-8')
-    sys.stderr.reconfigure(encoding='utf-8')
-
 # --- File upload limits (tăng giới hạn để upload video)
 DATA_UPLOAD_MAX_MEMORY_SIZE = 104857600  # 100MB
 FILE_UPLOAD_MAX_MEMORY_SIZE = 104857600  # 100MB
@@ -33,8 +27,7 @@ SECRET_KEY = os.environ.get(
 DEBUG = os.environ.get("DEBUG", "True") == "True"
 
 ALLOWED_HOSTS = [
-    "*",
-    "192.168.68.117",
+    "*"
 ]
 
 DEBUG = True
@@ -155,47 +148,19 @@ if os.environ.get("DATABASE_URL"):
             ssl_require=True
         )
     }
-    DATABASES['default']['OPTIONS'] = DATABASES['default'].get('OPTIONS', {})
-    DATABASES['default']['OPTIONS']['client_encoding'] = 'UTF8'
 else:
     DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'ecom_db',               # tên database
-        'USER': 'postgres',             # user
-        'PASSWORD': '12345',     # mật khẩu
-        'HOST': 'localhost',          # hoặc IP server
-        'PORT': '5432',               # port mặc định
-        'OPTIONS': {
-            'client_encoding': 'UTF8',
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
         }
     }
-}
 
 # --- Auth
 AUTH_USER_MODEL = "users.CustomUser"
 AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
 ]
-
-AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-        'OPTIONS': {
-            'min_length': 8,
-        }
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
-]
-
 
 # --- REST Framework
 REST_FRAMEWORK = {
@@ -239,9 +204,6 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",  # Alternative React port
     "http://127.0.0.1:5173",
     "http://127.0.0.1:3000",
-    "http://192.168.68.117:5173",  # External machine access
-    "http://192.168.68.117:3000",
-    "http://192.168.68.105:3000",
 ]
 CORS_ALLOW_METHODS = [
     'DELETE',
@@ -279,7 +241,10 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 
 # --- Others
-LANGUAGE_CODE = 'vi'
+LANGUAGE_CODE = 'en-us'
+TIME_ZONE = 'UTC'
+USE_I18N = True
+USE_TZ = True
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 

@@ -21,31 +21,31 @@ class Command(BaseCommand):
                     phone="0909123456",
                     address="Đà Lạt, Lâm Đồng"
                 )
-                self.stdout.write(self.style.SUCCESS("✅ Đã tạo seller mẫu."))
+                self.stdout.write(self.style.SUCCESS(" Đã tạo seller mẫu."))
             else:
                 seller = Seller.objects.first()
 
             # 2. Tạo categories
             categories_data = [
-                {"name": "Trái cây", "key": "fruits", "icon": "Apple"},
-                {"name": "Rau củ", "key": "vegetables", "icon": "Carrot"},
-                {"name": "Thực phẩm chế biến", "key": "processed", "icon": "Box"},
-                {"name": "Thịt & Trứng", "key": "meat_eggs", "icon": "Drumstick"},
-                {"name": "Sữa & Đồ uống", "key": "dairy_drinks", "icon": "Milk"},
-                {"name": "Ngũ cốc & Hạt", "key": "grains_nuts", "icon": "Wheat"},
-                {"name": "Gia vị & Thảo mộc", "key": "spices_herbs", "icon": "Leaf"},
-                {"name": "Trà & Cà phê", "key": "tea_coffee", "icon": "Coffee"},
-                {"name": "Đồ khô & Mứt", "key": "dried_jam", "icon": "Gift"},
-                {"name": "Hữu cơ & Sạch", "key": "organic", "icon": "Seedling"},
-                {"name": "Hải sản tươi sống", "key": "seafood", "icon": "Fish"},
-                {"name": "Vật tư nông nghiệp", "key": "agriculture_supplies", "icon": "Tool"},
+                {"name": "Trái cây", "key": "fruits"},
+                {"name": "Rau củ", "key": "vegetables"},
+                {"name": "Thực phẩm chế biến", "key": "processed"},
+                {"name": "Thịt & Trứng", "key": "meat_eggs"},
+                {"name": "Sữa & Đồ uống", "key": "dairy_drinks"},
+                {"name": "Ngũ cốc & Hạt", "key": "grains_nuts"},
+                {"name": "Gia vị & Thảo mộc", "key": "spices_herbs"},
+                {"name": "Trà & Cà phê", "key": "tea_coffee"},
+                {"name": "Đồ khô & Mứt", "key": "dried_jam"},
+                {"name": "Hữu cơ & Sạch", "key": "organic"},
+                {"name": "Hải sản tươi sống", "key": "seafood"},
+                {"name": "Vật tư nông nghiệp", "key": "agriculture_supplies"},
             ]
 
             categories = {}
             for cat_data in categories_data:
                 category, _ = Category.objects.get_or_create(
                     key=cat_data["key"],
-                    defaults={"name": cat_data["name"], "icon": cat_data["icon"]},
+                    defaults={"name": cat_data["name"]},
                 )
                 categories[cat_data["key"]] = category
 
@@ -111,12 +111,12 @@ class Command(BaseCommand):
             existing_count = Product.objects.count()
             if existing_count >= 100:
                 self.stdout.write(
-                    self.style.WARNING(f"⚠️ Đã có {existing_count} sản phẩm. Không tạo thêm.")
+                    self.style.WARNING(f" Đã có {existing_count} sản phẩm. Không tạo thêm.")
                 )
                 return
 
             num_to_create = 100 - existing_count
-            self.stdout.write(f"🌱 Sẽ tạo thêm {num_to_create} sản phẩm...")
+            self.stdout.write(f" Sẽ tạo thêm {num_to_create} sản phẩm...")
 
             for i in range(num_to_create):
                 name = f"{random.choice(product_names)} ({i + 1})"
@@ -144,5 +144,5 @@ class Command(BaseCommand):
 
 
             self.stdout.write(
-                self.style.SUCCESS(f"✅ Đã tạo {num_to_create} sản phẩm nông sản mẫu.")
+                self.style.SUCCESS(f" Đã tạo {num_to_create} sản phẩm nông sản mẫu.")
             )
