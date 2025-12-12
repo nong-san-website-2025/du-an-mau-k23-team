@@ -9,6 +9,8 @@ const ComplaintTable = ({
   columns,
   onRowClick,
   onSearch,
+  onStatusFilterChange,
+  statusFilter,
   onRefresh,
 }) => {
   return (
@@ -27,6 +29,8 @@ const ComplaintTable = ({
       data={filtered}
       columns={columns}
       onSearch={onSearch}
+      onStatusFilterChange={onStatusFilterChange}
+      statusFilter={statusFilter}
       onRow={(record) => ({
         className: "row-hover",
         onClick: () => onRowClick(record),

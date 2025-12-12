@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { toast } from "react-toastify";
 import { useCart } from "../../cart/services/CartContext";
 import { useParams, useNavigate } from "react-router-dom";
@@ -44,6 +44,9 @@ const ProductDetailPage = () => {
   const [isFavorite, setIsFavorite] = useState(false);
   const [relatedProducts, setRelatedProducts] = useState([]);
 
+  // SỬA LỖI TĂNG VIEW: Dùng useRef thay vì useState để không gây re-render
+  const viewIncremented = useRef(false);
+
   // Reviews state
   const [reviews, setReviews] = useState([]);
   const [newComment, setNewComment] = useState("");
@@ -51,7 +54,9 @@ const ProductDetailPage = () => {
   const [hasReviewed, setHasReviewed] = useState(false);
   const [myReview, setMyReview] = useState(null);
 
+  // Reset trạng thái đếm view khi ID sản phẩm thay đổi (khi user chuyển từ SP này sang SP khác)
   useEffect(() => {
+    viewIncremented.current = false;
     document.documentElement.scrollTop = 0;
     document.body.scrollTop = 0;
   }, [id]);
@@ -155,17 +160,19 @@ const ProductDetailPage = () => {
     }
   };
 
-  // ✅ Load dữ liệu với kiểm tra quyền truy cập
+  // ✅ Load dữ liệu với kiểm tra quyền truy cập và đếm view chuẩn
   useEffect(() => {
     const loadData = async () => {
       try {
         setLoading(true);
+        console.log("👉 Bắt đầu load data"); // Log 1
         setError(null);
+        
+        // 1. Gọi API lấy thông tin sản phẩm (GET)
         const productData = await productApi.getProduct(id);
-        console.log("✅ Product data loaded:", productData); // <-- THÊM DÒNG NÀY
+        
+        console.log("✅ Product data loaded:", productData);
 
-        // ✅ CHỈ ẨN SẢN PHẨM KHÔNG PHẢI 'approved'
-        const isStoreBlocked = productData.store?.status === "rejected";
         const isProductVisible = productData.status === "approved";
 
         if (!isProductVisible) {
@@ -173,9 +180,26 @@ const ProductDetailPage = () => {
           return;
         }
 
-        // ✅ Cho phép hiển thị sản phẩm dù cửa hàng bị rejected
+        console.log("👉 Check Ref:", viewIncremented.current); // Log 3
 
         setProduct(productData);
+
+        // 2. Tăng view (POST) - CHỈ GỌI 1 LẦN DUY NHẤT bằng cách check useRef
+        if (!viewIncremented.current) {
+          try {
+            await fetch(`http://localhost:8000/api/products/${id}/increment-views/`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+            });
+            console.log("👉 Đang gọi API increment-views..."); // Log 4
+            // Đánh dấu đã tăng view, useRef thay đổi không gây render lại -> fix lỗi loop
+            viewIncremented.current = true; 
+          } catch (viewError) {
+            console.warn('Could not increment product views:', viewError);
+          }
+        }
 
         const reviewList = await reviewApi.getReviews(id);
         setReviews(reviewList);
@@ -192,8 +216,10 @@ const ProductDetailPage = () => {
         setLoading(false);
       }
     };
+    
     loadData();
-  }, [id, user]);
+  }, [id, user]); // ✅ Đã bỏ viewIncremented ra khỏi dependency
+
   const handleAddToCart = async () => {
     if (!product) return;
 
