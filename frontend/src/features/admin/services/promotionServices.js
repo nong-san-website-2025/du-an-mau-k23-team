@@ -46,7 +46,7 @@ export const consumeVoucher = async (code, orderTotal) => {
 };
 
 // ===============================================
-// API CHO ADMIN PANEL (Giữ nguyên)
+// API CHO ADMIN PANEL (Giữ nguyên & Thêm Import)
 // ===============================================
 
 // Lấy danh sách TẤT CẢ voucher (dùng cho Admin)
@@ -76,6 +76,13 @@ export const updateVoucher = async (id, data) => {
 // Xóa voucher (dùng cho Admin)
 export const deleteVoucher = async (id) => {
   const res = await axiosClient.delete(`${API_URL}/vouchers/${id}/`);
+  return res.data;
+};
+
+// [MỚI] API Import Voucher từ Excel (Đã thêm vào đây)
+export const importVouchers = async (dataList) => {
+  // dataList là mảng JSON các voucher đã parse từ Excel
+  const res = await axiosClient.post(`${API_URL}/vouchers/import_excel/`, dataList);
   return res.data;
 };
 

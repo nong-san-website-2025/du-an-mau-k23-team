@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from "react";
-import { Button, message, Card } from "antd";
-import { PlusOutlined } from "@ant-design/icons";
-import AdminPageLayout from "../../components/AdminPageLayout"; // Giả định layout của bạn
+import { Button, message, Card, Space } from "antd";
+import { PlusOutlined, CloudUploadOutlined } from "@ant-design/icons";
+
+import AdminPageLayout from "../../components/AdminPageLayout";
 import PromotionFilter from "../../components/PromotionAdmin/PromotionFilter";
-import PromotionTable from "../../components/PromotionAdmin/PromotionTable"; // Đường dẫn component mới
+import PromotionTable from "../../components/PromotionAdmin/PromotionTable";
 import PromotionModal from "../../components/PromotionAdmin/PromotionModal";
 import PromotionDetailModal from "../../components/PromotionAdmin/PromotionDetailModal";
+import ImportVoucherModal from "../../components/PromotionAdmin/ImportVoucherModal";
 
 import {
   getPromotionsOverview,
@@ -13,23 +15,23 @@ import {
   createVoucher,
   updateVoucher,
   deleteVoucher,
+  importVouchers,
 } from "../../services/promotionServices";
 import { getCategories } from "../../services/products";
 
 export default function PromotionsPage() {
-  // State quản lý UI
   const [loading, setLoading] = useState(false);
   const [modalLoading, setModalLoading] = useState(false);
+  
   const [modalOpen, setModalOpen] = useState(false);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [importModalOpen, setImportModalOpen] = useState(false);
   
-  // State dữ liệu
   const [data, setData] = useState([]);
   const [categories, setCategories] = useState([]);
   const [filters, setFilters] = useState({});
-  const [selectedRecord, setSelectedRecord] = useState(null); // Dùng chung cho Edit và View Detail
+  const [selectedRecord, setSelectedRecord] = useState(null);
 
-  // Initial Fetch
   useEffect(() => {
     getCategories().then((res) => setCategories(res)).catch(() => {});
   }, []);
@@ -42,7 +44,6 @@ export default function PromotionsPage() {
     setLoading(true);
     try {
       const res = await getPromotionsOverview(params);
-      // Backend Django thường trả về list, đảm bảo luôn là array
       setData(Array.isArray(res) ? res : []);
     } catch (err) {
       console.error(err);
@@ -52,7 +53,6 @@ export default function PromotionsPage() {
     }
   };
 
-  // --- Handlers ---
   const handleCreate = () => {
     setSelectedRecord(null);
     setModalOpen(true);
@@ -60,8 +60,7 @@ export default function PromotionsPage() {
 
   const handleEdit = async (record) => {
     try {
-      setModalLoading(true); // Hiển thị loading nhẹ
-      // Gọi API chi tiết để lấy full data (categories, rules, etc.)
+      setModalLoading(true);
       const detailData = await getVoucher(record.id);
       setSelectedRecord(detailData);
       setModalOpen(true);
@@ -74,7 +73,6 @@ export default function PromotionsPage() {
 
   const handleViewDetail = async (record) => {
     try {
-        // Tương tự edit, lấy data mới nhất
         const detailData = await getVoucher(record.id);
         setSelectedRecord(detailData);
         setDetailModalOpen(true);
@@ -87,43 +85,71 @@ export default function PromotionsPage() {
     try {
       await deleteVoucher(record.id);
       message.success("Đã xóa voucher thành công");
-      fetchData(filters); // Refresh table
+      fetchData(filters);
     } catch (err) {
       message.error("Xóa thất bại. Vui lòng thử lại.");
     }
   };
 
-  // --- Logic xử lý Data trước khi gửi lên Server (Business Logic Layer) ---
+  const handleImportAPI = async (excelData) => {
+    try {
+        await importVouchers(excelData);
+        fetchData(filters);
+        return true; 
+    } catch (error) {
+        throw error;
+    }
+  };
+
+  // --- [FIX QUAN TRỌNG] LOGIC CHUẨN HÓA DỮ LIỆU ---
   const processPayload = (values) => {
     const payload = { ...values };
     
-    // 1. Xử lý logic Voucher Type
-    if (payload.voucherType === "freeship") {
-      payload.freeship_amount = payload.discountValue;
-      payload.discount_amount = 0;
-      payload.discount_percent = 0;
-    } else {
-      // Normal voucher
-      if (payload.discountType === "percent") {
-        payload.discount_percent = payload.discountValue;
-        payload.discount_amount = 0;
-      } else {
-        payload.discount_amount = payload.discountValue;
-        payload.discount_percent = 0;
-      }
-      payload.freeship_amount = 0;
+    // 1. Map số lượng từ Form sang DB
+    // Form dùng limit_usage, DB dùng total_quantity
+    if (values.limit_usage !== undefined) {
+        payload.total_quantity = values.limit_usage;
+    }
+    if (values.limit_per_user !== undefined) {
+        payload.per_user_quantity = values.limit_per_user;
     }
 
-    // 2. Xử lý DateRange (Antd trả về Dayjs object -> ISO String cho Django)
+    // 2. Logic Phân loại Voucher (Freeship vs Normal)
+    if (payload.voucherType === "freeship") {
+      // Freeship: Gán giá trị vào freeship_amount, reset các trường discount về null
+      payload.freeship_amount = payload.discountValue;
+      payload.discount_amount = null; 
+      payload.discount_percent = null;
+      payload.max_discount_amount = null; // Freeship ko cần trần giảm giá
+    } else {
+      // Normal: Reset freeship về null
+      payload.freeship_amount = null; 
+      
+      if (payload.discountType === "percent") {
+        payload.discount_percent = payload.discountValue;
+        payload.discount_amount = null;
+      } else {
+        payload.discount_amount = payload.discountValue;
+        payload.discount_percent = null;
+      }
+    }
+
+    // 3. Xử lý thời gian
     if (payload.dateRange && payload.dateRange.length === 2) {
       payload.start_at = payload.dateRange[0].toISOString();
       payload.end_at = payload.dateRange[1].toISOString();
     }
     
-    // Cleanup trường thừa của frontend
+    // 4. Set mặc định Distribution Type = CLAIM (Để user nhận được)
+    payload.distribution_type = 'claim'; 
+
+    // 5. Cleanup trường thừa
     delete payload.dateRange;
     delete payload.discountType;
     delete payload.discountValue;
+    delete payload.voucherType; 
+    delete payload.limit_usage; 
+    delete payload.limit_per_user;
     
     return payload;
   };
@@ -144,15 +170,18 @@ export default function PromotionsPage() {
       setModalOpen(false);
       fetchData(filters);
     } catch (err) {
-      // Xử lý lỗi chuyên nghiệp: Đọc lỗi từ Django DRF response
       const errorData = err.response?.data;
       let msg = "Có lỗi xảy ra";
       
-      if (typeof errorData === 'object') {
-          // Lấy tin nhắn lỗi đầu tiên tìm thấy
-          const firstKey = Object.keys(errorData)[0];
-          const firstError = Array.isArray(errorData[firstKey]) ? errorData[firstKey][0] : errorData[firstKey];
-          msg = `${firstKey}: ${firstError}`;
+      // Xử lý thông báo lỗi chi tiết từ DRF
+      if (typeof errorData === 'object' && errorData !== null) {
+          if (errorData.non_field_errors) {
+              msg = errorData.non_field_errors[0]; 
+          } else {
+              const firstKey = Object.keys(errorData)[0];
+              const firstError = Array.isArray(errorData[firstKey]) ? errorData[firstKey][0] : errorData[firstKey];
+              msg = `${firstKey}: ${firstError}`;
+          }
       }
       message.error(msg);
     } finally {
@@ -163,12 +192,10 @@ export default function PromotionsPage() {
   return (
     <AdminPageLayout
       title="QUẢN LÝ KHUYẾN MÃI"
-      breadcrumb={['Trang chủ', 'Marketing', 'Khuyến mãi']} // Thêm breadcrumb cho chuyên nghiệp
+      breadcrumb={['Trang chủ', 'Marketing', 'Khuyến mãi']}
     >
-        {/* Bọc trong Card để tạo khối unified đẹp mắt */}
         <Card bordered={false} className="shadow-sm">
             <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
-                 {/* Filter Component */}
                  <div style={{ flex: 1, marginRight: 16 }}>
                     <PromotionFilter
                         onFilterChange={setFilters}
@@ -176,27 +203,36 @@ export default function PromotionsPage() {
                     />
                  </div>
                  
-                 {/* Main Action */}
-                 <Button 
-                    type="primary" 
-                    icon={<PlusOutlined />} 
-                    onClick={handleCreate}
-                    size="large"
-                >
-                    Tạo Voucher
-                </Button>
+                 <Space>
+                    <Button 
+                        icon={<CloudUploadOutlined />} 
+                        onClick={() => setImportModalOpen(true)}
+                        size="large"
+                        style={{ borderColor: '#217346', color: '#217346' }}
+                    >
+                        Import Excel
+                    </Button>
+
+                    <Button 
+                        type="primary" 
+                        icon={<PlusOutlined />} 
+                        onClick={handleCreate}
+                        size="large"
+                    >
+                        Tạo Voucher
+                    </Button>
+                 </Space>
             </div>
 
             <PromotionTable
                 data={data}
                 loading={loading}
                 onView={handleViewDetail}
-                onEdit={handleEdit} // Thêm prop onEdit
+                onEdit={handleEdit}
                 onDelete={handleDelete}
             />
         </Card>
 
-      {/* Modal Form Create/Edit */}
       <PromotionModal
         open={modalOpen}
         loading={modalLoading}
@@ -206,11 +242,16 @@ export default function PromotionsPage() {
         categories={categories}
       />
 
-      {/* Modal View Detail */}
       <PromotionDetailModal
         open={detailModalOpen}
         onCancel={() => setDetailModalOpen(false)}
         detail={selectedRecord}
+      />
+
+      <ImportVoucherModal
+         open={importModalOpen}
+         onCancel={() => setImportModalOpen(false)}
+         onImportAPI={handleImportAPI}
       />
     </AdminPageLayout>
   );

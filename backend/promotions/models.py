@@ -45,6 +45,7 @@ class Voucher(models.Model):
     # --- CÁC TRƯỜNG MỚI QUAN TRỌNG CẦN THÊM ---
     class ProductScope(models.TextChoices):
         ALL = "ALL", "Tất cả sản phẩm của cửa hàng"
+        CATEGORY = "CATEGORY", "Theo danh mục" # <--- THÊM CÁI NÀY
         SPECIFIC = "SPECIFIC", "Sản phẩm tùy chọn"
 
     product_scope = models.CharField(
@@ -70,16 +71,20 @@ class Voucher(models.Model):
         choices=DistributionType.choices,
         default=DistributionType.CLAIM,
     )
-    code = models.CharField(max_length=50)
-    title = models.CharField(max_length=200, blank=True)
+    code = models.CharField(max_length=50, unique=True, db_index=True) 
+    title = models.CharField(max_length=200)
+
     description = models.TextField(blank=True)
     scope = models.CharField(max_length=10, choices=Scope.choices, default=Scope.SYSTEM)
     seller = models.ForeignKey(Seller, null=True, blank=True, on_delete=models.CASCADE, related_name="vouchers")
     discount_percent = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     discount_amount = models.DecimalField(max_digits=12, decimal_places=0, null=True, blank=True)
     freeship_amount = models.DecimalField(max_digits=12, decimal_places=0, null=True, blank=True)
-    total_quantity = models.PositiveIntegerField(null=True, blank=True, help_text="Tổng số lượng voucher (pool). Null = không giới hạn")
-    per_user_quantity = models.PositiveIntegerField(null=True, blank=True,default=1, help_text="Số lượng cấp cho 1 user khi nhận / được push")
+    
+    total_quantity = models.PositiveIntegerField(default=0, help_text="Tổng số lượng phát hành")
+    used_quantity = models.PositiveIntegerField(default=0, help_text="Số lượng đã sử dụng thực tế") # [NEW] Track usage tại đây thay vì count()
+    per_user_quantity = models.PositiveIntegerField(default=1)
+    
     min_order_value = models.DecimalField(max_digits=12, decimal_places=0, null=True, blank=True)
     max_discount_amount = models.DecimalField(max_digits=12, decimal_places=0, null=True, blank=True)
     start_at = models.DateTimeField(null=True, blank=True)
