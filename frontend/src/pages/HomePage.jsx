@@ -4,13 +4,12 @@ import { Spin } from "antd";
 import { Helmet } from "react-helmet";
 
 // Components
-import QuickAccessBar from "../components/Home/QuickAccessBar.jsx";
-import CategorySection from "../components/Home/CategorySection.jsx";
-import FlashSaleList from "../components/Home/FlashSaleList.jsx";
-import PersonalizedSection from "../components/Home/PersonalizedSection.jsx";
-import BannerSlider from "../components/Home/BannerSlider.jsx";
-import FeaturedBlogs from "../components/Home/FeaturedBlogs.jsx";
-import PromotionSection from "../components/Home/PromotionSection.jsx";
+import QuickAccessBar from "../components/home/QuickAccessBar.jsx";
+import CategorySection from "../components/home/CategorySection.jsx";
+import FlashSaleList from "../components/home/FlashSaleList.jsx";
+import PersonalizedSection from "../components/home/PersonalizedSection.jsx";
+import BannerSlider from "../components/home/BannerSlider.jsx";
+import FeaturedBlogs from "../components/home/FeaturedBlogs.jsx";
 import DynamicAdSlot from "../features/admin/components/MarketingAdmin/DynamicAdSlot.jsx";
 import Layout from "../Layout/LayoutDefault.js";
 
@@ -19,7 +18,7 @@ import { fetchCategories } from "../services/api/homepageApi.js";
 import { getBannersBySlot } from "../features/admin/services/marketingApi.js";
 
 import "../styles/HomePage.css";
-import ProductSection from "../components/Home/PromotionSection.jsx";
+import ProductSection from "../components/home/PromotionSection.jsx";
 import { FireOutlined, ThunderboltOutlined } from "@ant-design/icons";
 
 export default function HomePage() {

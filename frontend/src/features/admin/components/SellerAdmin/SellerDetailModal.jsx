@@ -52,8 +52,6 @@ export default function SellerDetailDrawer({
       );
       setSellerData(res.data); // ← Có đầy đủ URL ảnh từ Serializer
     } catch (error) {
-      console.error("Lỗi tải chi tiết cửa hàng:", error);
-      message.error("Không thể tải chi tiết cửa hàng");
       // Không set sellerData → vẫn dùng initialSeller để hiển thị cơ bản
     }
   }, []);
