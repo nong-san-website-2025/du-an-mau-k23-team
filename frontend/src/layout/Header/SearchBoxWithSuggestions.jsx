@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, Package, FolderOpen, Clock, X, ArrowUpLeft } from "lucide-react";
-import "../styles/css/SearchBox.css"; // File CSS ở phần dưới
+import "../styles/SearchBox.css"; // File CSS ở phần dưới
 
 // Helper: Highlight text khớp với từ khóa (UX Feature)
 const HighlightText = ({ text = "", highlight = "" }) => {

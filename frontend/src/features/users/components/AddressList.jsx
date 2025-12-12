@@ -62,6 +62,7 @@ const AddressList = ({
                 fetchWardsByDistrict={fetchWardsByDistrict}
                 onDelete={handleDeleteClick}
                 setDefaultAddress={setDefaultAddress}
+                
               />
             </List.Item>
           )}
