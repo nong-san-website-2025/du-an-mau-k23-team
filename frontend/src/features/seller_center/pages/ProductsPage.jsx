@@ -348,13 +348,19 @@ export default function ProductsPage() {
       <Card bordered={false} style={{ borderRadius: 8, boxShadow: "0 1px 2px rgba(0,0,0,0.03)" }}>
 
         {/* Toolbar */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <Title level={4} style={{ margin: 0 }}>DANH SÁCH SẢN PHẨM</Title>
-          <div style={{ display: 'flex', gap: 10 }}>
+        <div className="page-toolbar" style={{ position: 'sticky', top: 0, zIndex: 10, background: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12, paddingBottom: 12 }}>
+          <Title
+            level={4}
+            className="page-title"
+            style={{ margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+          >
+            DANH SÁCH SẢN PHẨM
+          </Title>
+          <div className="toolbar-actions" style={{ display: 'flex', gap: 10 }}>
             <Input
               placeholder="Tìm theo tên, mã SP..."
               prefix={<SearchOutlined />}
-              style={{ width: 250 }}
+              style={{ width: 250, maxWidth: '100%' }}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               allowClear
@@ -386,18 +392,20 @@ export default function ProductsPage() {
         />
 
         {/* Product Table */}
-        <ProductTable
-          data={filteredProducts}
-          loading={loading}
-          onView={(record) => { setSelectedProduct(record); setIsDetailModalVisible(true); }}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-          onSelfReject={handleSelfReject}
-          onToggleHide={handleToggleHide} // 👈 Truyền hàm này vào
-          onRow={(record) => ({
-            onClick: () => { setSelectedProduct(record); setIsDetailModalVisible(true); },
-          })}
-        />
+        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          <ProductTable
+            data={filteredProducts}
+            loading={loading}
+            onView={(record) => { setSelectedProduct(record); setIsDetailModalVisible(true); }}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onSelfReject={handleSelfReject}
+            onToggleHide={handleToggleHide} // 👈 Truyền hàm này vào
+            onRow={(record) => ({
+              onClick: () => { setSelectedProduct(record); setIsDetailModalVisible(true); },
+            })}
+          />
+        </div>
       </Card>
 
       {/* --- MODALS AREA --- */}

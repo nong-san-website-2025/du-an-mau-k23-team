@@ -224,17 +224,20 @@ export default function ComplaintPage() {
       dataIndex: "complainant_name",
       key: "complainant_name",
       width: 160,
+      align: "center",
     },
     {
       title: "Sản phẩm",
       dataIndex: "product_name",
       key: "product_name",
       width: 220,
+      align: "center",
     },
     {
       title: "Nội dung",
       dataIndex: "reason",
       key: "reason",
+      align: "center",
       render: (t) => (
         <Typography.Text
           ellipsis={{ tooltip: t }}
@@ -249,6 +252,7 @@ export default function ComplaintPage() {
       dataIndex: "status",
       key: "status",
       width: 140,
+      align: "center",
       render: (s) => {
         const map = {
           pending: "Chờ xử lý",
@@ -265,6 +269,7 @@ export default function ComplaintPage() {
       dataIndex: "created_at",
       key: "created_at",
       width: 180,
+      align: "center",
       render: (t) => moment(t).format("HH:mm DD/MM/YYYY"),
     },
     {
@@ -272,6 +277,7 @@ export default function ComplaintPage() {
       key: "action",
       width: 320,
       className: "no-row-click",
+      align: "center",
       render: (_, record) => (
         <div onClick={(e) => e.stopPropagation()}>
           <Space>

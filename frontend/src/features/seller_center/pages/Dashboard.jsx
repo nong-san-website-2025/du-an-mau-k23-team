@@ -114,6 +114,7 @@ export default function Dashboard() {
   const [topProducts, setTopProducts] = useState([]);
   const [reviewActivities, setReviewActivities] = useState([]);
   const intervalRef = useRef(null);
+  const isNarrowPhone = typeof window !== 'undefined' && window.matchMedia('(max-width: 450px)').matches;
 
   /* ===== DATA LOADING ===== */
   const loadData = async (opts = {}) => {
@@ -297,7 +298,7 @@ export default function Dashboard() {
                        <Space align="start">
                            <Avatar shape="square" size={48} style={{ backgroundColor: '#e6f7ff', color: '#1890ff' }} icon={<ShoppingOutlined />} />
                            <div>
-                               <Text type="secondary">Đơn mới chờ duyệt</Text>
+                         {!isNarrowPhone && <Text type="secondary">Đơn mới chờ duyệt</Text>}
                                <Title level={2} style={{ margin: '4px 0' }}>{pendingOrders.length}</Title>
                                {pendingOrders.length > 0 && <Tag color="blue">Cần xử lý ngay</Tag>}
                            </div>
@@ -309,9 +310,9 @@ export default function Dashboard() {
                        <Space align="start">
                            <Avatar shape="square" size={48} style={{ backgroundColor: '#fff7e6', color: '#fa8c16' }} icon={<SyncOutlined />} />
                            <div>
-                               <Text type="secondary">Đang xử lý/Giao</Text>
+                         {!isNarrowPhone && <Text type="secondary">Đang xử lý/Giao</Text>}
                                <Title level={2} style={{ margin: '4px 0' }}>{processingOrders.length}</Title>
-                               <Text type="secondary" style={{ fontSize: 12 }}>Đơn hàng đang vận hành</Text>
+                         {!isNarrowPhone && <Text type="secondary" style={{ fontSize: 12 }}>Đơn hàng đang vận hành</Text>}
                            </div>
                        </Space>
                    </Card>
