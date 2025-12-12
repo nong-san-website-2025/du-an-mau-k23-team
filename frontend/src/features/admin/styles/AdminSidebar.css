@@ -1,0 +1,75 @@
+/* ===========================
+   SIDEBAR LAYOUT
+=========================== */
+.sidebar {
+  position: fixed;
+  top: 30px;
+  left: 0;
+  width: 250px;
+  height: calc(100vh - 70px);
+  background: #ffffff;
+  border-right: 1px solid #e5e7eb;
+  overflow-y: auto;
+  padding-top: 12px;
+}
+
+/* Xóa underline và giữ màu mặc định */
+.sidebar a {
+  text-decoration: none;
+  color: inherit;
+}
+
+/* ===========================
+   MENU ITEM — NORMAL
+=========================== */
+.ant-menu-item,
+.ant-menu-submenu-title {
+  font-weight: 500 !important;
+  color: #344054 !important; /* Màu text chuẩn admin dashboard */
+  border-radius: 8px !important;
+  padding-left: 14px !important;
+}
+
+/* ===========================
+   HOVER STATE
+=========================== */
+.ant-menu-item:hover,
+.ant-menu-submenu-title:hover {
+  background-color: #E6F8EC !important; /* Xanh pastel dễ nhìn */
+  color: #22C55E !important; /* Green-500 */
+}
+
+/* ===========================
+   ACTIVE (SELECTED) ITEM
+=========================== */
+.ant-menu-item-selected {
+  background-color: #D1F5DB !important; /* Xanh lá đậm hơn hover */
+  color: #15803D !important; /* Green-600 */
+  font-weight: 600 !important;
+}
+
+/* Icon khi active */
+.ant-menu-item-selected .anticon {
+  color: #15803D !important;
+}
+
+/* ===========================
+   SUBMENU OPEN / ACTIVE
+=========================== */
+.ant-menu-submenu-open > .ant-menu-submenu-title {
+  background-color: #F2FFF5 !important;
+  color: #22C55E !important;
+  font-weight: 600 !important;
+  border-radius: 8px;
+}
+
+/* ===========================
+   REMOVE DEFAULT INDENT ISSUE
+=========================== */
+.ant-menu-sub.ant-menu-inline {
+  background: transparent !important;
+}
+
+.custom-menu .ant-menu-submenu .ant-menu-item {
+  padding-left: 38px !important; /* Điều chỉnh giá trị này */
+}

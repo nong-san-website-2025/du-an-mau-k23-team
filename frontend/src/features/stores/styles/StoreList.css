@@ -1,0 +1,47 @@
+.store-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.store-search-box {
+  max-width: 300px;
+  min-width: 220px;
+}
+
+.store-search-icon {
+  background: #fff;
+  border-right: none;
+}
+
+.store-search-box input {
+  border-left: none;
+  box-shadow: none;
+}
+
+.no-store-text {
+  text-align: center;
+  color: #888;
+  font-style: italic;
+  margin-top: 20px;
+}
+
+.store-card-img {
+  width: 100%;
+  height: 180px; /* chiều cao cố định */
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8f8f8; /* màu nền trung tính */
+}
+
+.store-card-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* hoặc 'contain' nếu muốn thấy toàn bộ ảnh */
+}

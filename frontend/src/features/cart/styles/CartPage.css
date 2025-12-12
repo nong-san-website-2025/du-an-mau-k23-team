@@ -1,0 +1,200 @@
+/* ------------------------- CSS: src/features/cart/styles/CartPage.css ------------------------- */
+
+/* Lưu ý: file CSS này kèm theo để bạn copy vào ../styles/CartPage.css */
+
+.cart-page .container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px 16px 120px; /* có khoảng trống cho mobile sticky */
+}
+
+.card-elevated {
+  border-radius: 8px;
+  box-shadow: 0 1px 6px rgba(16,24,40,0.06);
+}
+
+.store-group {
+  margin-bottom: 20px;
+}
+
+.store-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.store-meta {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.store-logo-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.store-name {
+  cursor: pointer;
+}
+
+.store-sub {
+  font-size: 12px;
+}
+
+.grid-header {
+  display: grid;
+  grid-template-columns: 48px 1fr 120px 180px 120px;
+  gap: 12px;
+  align-items: center;
+  padding: 8px 4px;
+  color: rgba(0,0,0,0.65);
+  font-weight: 600;
+}
+
+.grid-row {
+  display: grid;
+  grid-template-columns: 48px 1fr 120px 180px 120px;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 4px;
+  border-top: 1px solid #f2f2f2;
+}
+
+.cart-item {
+  align-items: center;
+}
+
+.item-img {
+  width: 90px;
+  height: 90px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.item-main {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.item-meta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.item-name {
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.item-seller {
+  margin-top: 6px;
+}
+
+.item-actions {
+  margin-top: 8px;
+}
+
+.store-footer {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 4px;
+}
+
+.related-card .related-list {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.related-item {
+  width: 140px;
+  border-radius: 8px;
+  padding: 8px;
+  text-align: left;
+}
+
+.related-thumb img {
+  width: 100%;
+  height: 96px;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+.summary-card {
+  position: relative;
+}
+
+.sticky-summary {
+  position: sticky;
+  top: 88px;
+}
+
+.summary-lines .summary-line {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+}
+
+.summary-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.summary-total {
+  text-align: right;
+}
+
+.cart-bottom-bar-mobile {
+  display: none;
+}
+
+/* Responsive */
+@media (max-width: 991px) {
+  .grid-header,
+  .grid-row {
+    grid-template-columns: 48px 1fr 100px 140px 80px;
+  }
+
+  .container {
+    padding-bottom: 140px;
+  }
+
+  .cart-right {
+    order: 2;
+  }
+
+  .cart-bottom-bar-mobile {
+    display: flex;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: #fff;
+    padding: 10px 16px;
+    border-top: 1px solid #eee;
+    align-items: center;
+    justify-content: space-between;
+    z-index: 60;
+  }
+}
+
+/* Small polish */
+.clickable { cursor: pointer; }
+.no-image { display:flex; align-items:center; justify-content:center; height:90px; }
+
+/* Accessibility focus outline */
+.clickable:focus { outline: 2px solid rgba(22,163,74,0.25); outline-offset: 3px; }
+
+/* Summary popover custom rows */
+.summary-row { display:flex; justify-content:space-between; padding:6px 0; }
+
+/* end of CartPage.css */
+
+.normal-font {
+  font-weight: lighter !important;
+}
