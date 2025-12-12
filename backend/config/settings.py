@@ -265,3 +265,11 @@ VNPAY_CONFIG = {
     "VNPAY_URL": "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html",
     "RETURN_URL": "http://localhost:3000/vnpay-return",
 }
+
+# settings.py
+
+# ... code cũ ...
+
+# Cấu hình Meilisearch Cloud
+MEILI_HOST = 'https://ms-7b1d44a1cc8f-36421.sgp.meilisearch.io'  # <-- Dán URL của bạn vào đây
+MEILI_API_KEY = 'd611238018e51274246622efd4717bc5996905c1'         # <-- Dán Admin API Key vào đây

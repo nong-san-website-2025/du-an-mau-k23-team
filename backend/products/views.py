@@ -30,6 +30,7 @@ from .serializers import (
 )
 from reviews.serializers import ReviewSerializer
 import pandas as pd 
+from .search_service import search_service
 
 User = get_user_model()
 
@@ -833,3 +834,61 @@ class ReviewListCreateView(generics.ListCreateAPIView):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user, product_id=self.kwargs["product_id"])
+
+    
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def smart_search(request):
+    query = request.GET.get('q', '').strip()
+    
+    # Cấu trúc trả về mặc định để Frontend không lỗi
+    empty_response = {'products': [], 'shops': [], 'categories': []}
+
+    if not query:
+        return Response(empty_response)
+
+    try:
+        # Gọi xuống Service Meilisearch
+        result = search_service.search(query)
+        hits = result.get('hits', [])
+        
+        response_data = {
+            'products': [],
+            'shops': [],
+            'categories': []
+        }
+
+        seen_shops = set()
+        seen_cats = set()
+
+        for item in hits:
+            # 1. Product list
+            response_data['products'].append({
+                'id': item['id'],
+                'name': item['name'],
+                # Lấy tên đã highlight (có thẻ <em>)
+                'highlighted_name': item['_formatted']['name'] if '_formatted' in item else item['name'], 
+                'price': item['price'],
+                'image': item['image'],
+                'sold': item['sold']
+            })
+
+            # 2. Shop Suggestion
+            if item.get('store_name') and item['store_name'] not in seen_shops:
+                response_data['shops'].append(item['store_name'])
+                seen_shops.add(item['store_name'])
+
+            # 3. Category Suggestion
+            if item.get('category_name') and item['category_name'] not in seen_cats:
+                response_data['categories'].append({
+                    'name': item['category_name'],
+                    'slug': item.get('category_slug', '')
+                })
+                seen_cats.add(item['category_name'])
+
+        return Response(response_data)
+
+    except Exception as e:
+        print(f"⚠️ Search Error: {e}")
+        # Nếu lỗi (VD: chưa chạy sync), trả về rỗng để web không chết
+        return Response(empty_response)
