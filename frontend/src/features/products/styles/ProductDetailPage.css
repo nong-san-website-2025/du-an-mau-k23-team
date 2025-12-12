@@ -81,10 +81,10 @@
 }
 
 .product-price {
-  color: #ff6f61;
-  font-weight: 700;
-  font-size: 1.6rem;
-  margin-bottom: 15px;
+  font-weight: 600;
+  /* Đổi từ Đỏ (#ff4d4f) sang Xanh lá (#4CAF50) */
+  color: #4CAF50; 
+  margin-right: 10px;
 }
 
 .quantity-selector {
