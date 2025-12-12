@@ -11,7 +11,7 @@ import PersonalizedSection from "../components/home/PersonalizedSection.jsx";
 import BannerSlider from "../components/home/BannerSlider.jsx";
 import FeaturedBlogs from "../components/home/FeaturedBlogs.jsx";
 import DynamicAdSlot from "../features/admin/components/MarketingAdmin/DynamicAdSlot.jsx";
-import Layout from "../Layout/LayoutDefault.js";
+import Layout from "../layout/LayoutDefault.js";
 
 // APIs
 import { fetchCategories } from "../services/api/homepageApi.js";

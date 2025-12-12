@@ -1,11 +1,11 @@
 import { Route } from "react-router-dom";
-import Layout from "../Layout/Layout";
+import Layout from "../layout/Layout";
 import HomePage from "../pages/HomePage";
 import UserProductPage from "../features/products/pages/UserProductPage";
 import ProductDetailPage from "../features/products/pages/ProductDetailPage";
 import CartPage from "../features/cart/pages/CartPage";
 import CheckoutPage from "../features/cart/pages/CheckoutPage";
-import AboutPage from "../pages/about/about";
+import AboutPage from "../pages/About/About";
 import StoreList from "../features/stores/pages/StoreList";
 import StoreDetail from "../features/stores/pages/StoreDetail";
 import FeaturedProductsPage from "../features/featured/pages/FeaturedProductsPage";

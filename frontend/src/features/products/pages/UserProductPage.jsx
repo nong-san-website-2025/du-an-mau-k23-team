@@ -14,7 +14,7 @@ import {
 import { AppstoreOutlined } from "@ant-design/icons";
 import "../styles/UserProductPage.css";
 import ProductCard from "../components/ProductCard";
-import Layout from "../../../Layout/LayoutDefault";
+import Layout from "../../../layout/LayoutDefault";
 import FilterSidebar from "../components/FilterSidebar";
 import { useProductFilters } from "../hooks/useProductFilters";
 import { getProductIdFromCartItem } from "../utils/productUtils";

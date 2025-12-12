@@ -15,7 +15,7 @@ import { useCart } from "../features/cart/services/CartContext";
 import axiosInstance from "../features/admin/services/axiosInstance";
 import "../features/products/styles/UserProductPage.css";
 import ProductCard from "../features/products/components/ProductCard";
-import Layout from "../Layout/LayoutDefault";
+import Layout from "../layout/LayoutDefault";
 import SellerGrid from "../features/stores/components/SellerGrid";
 import FilterSidebar from "../features/products/components/FilterSidebar";
 import { useProductFilters } from "../features/products/hooks/useProductFilters";

@@ -38,7 +38,7 @@ import {
   CopyOutlined,
 } from "@ant-design/icons";
 import CommentSection from "../components/CommentSection";
-import Layout from "../../../Layout/LayoutDefault";
+import Layout from "../../../layout/LayoutDefault";
 import "../styles/BlogDetailPage.css";
 
 
