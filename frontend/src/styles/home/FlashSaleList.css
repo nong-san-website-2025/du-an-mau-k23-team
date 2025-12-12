@@ -1,156 +1,144 @@
+/* FlashSaleList.css - Phiên bản tương thích với Global CSS của bạn */
+
 .flash-sale-section {
-  background: linear-gradient(135deg, #fff7e6, #fff);
-  padding: 20px 0px;
-  border-radius: 12px;
+  /* Override lại style của cha (.home-section > div) để dùng style riêng */
+  background-color: #fff !important; 
+  padding: 20px 24px 30px 24px !important; /* Padding to hơn để thoáng */
+  border-radius: 12px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important; /* Bóng đổ đẹp hơn */
+  margin: 0 !important; /* Reset margin vì cha đã lo phần margin */
   position: relative;
-  transition: all 0.3s ease;
+  overflow: visible; /* QUAN TRỌNG: Để mũi tên thò ra ngoài không bị cắt */
 }
 
-/* --- Header --- */
-.flash-sale-header {
+/* --- Header Section --- */
+.flash-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  background: white;
-  padding: 12px 20px;
-  border-radius: 10px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  align-items: baseline;
+  border-bottom: 1px solid #f0f0f0;
   margin-bottom: 20px;
+  padding-bottom: 12px;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 
-.flash-sale-header .left {
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.title-wrapper {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.flash-sale-header h2 {
+.flash-icon {
+  font-size: 28px;
   color: #ff4d4f;
+  animation: flashShake 2s infinite;
+}
+
+@keyframes flashShake {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-10deg); }
+  75% { transform: rotate(10deg); }
+}
+
+.gradient-text {
+  font-size: 24px;
+  margin: 0;
+  line-height: 1.2;
   font-weight: 800;
-  font-size: 1.4rem;
+  text-transform: uppercase;
+  font-style: italic;
+  background: linear-gradient(90deg, #f5222d 0%, #ff7a45 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
-.flash-sale-header .flash-icon {
-  width: 32px;
-  height: 32px;
+/* --- Countdown --- */
+.countdown-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
+.ending-text {
+  font-size: 14px;
+  color: #8c8c8c;
+}
+.timer-box { /* Style cho số */ }
 
-.flash-sale-header .right {
-  font-weight: 500;
-  color: #555;
+/* --- Button --- */
+.view-all-btn {
+  font-weight: 600;
+  color: #595959;
+  display: flex;
+  align-items: center;
+}
+.view-all-btn:hover {
+  color: #ff4d4f !important;
 }
 
 /* --- Carousel --- */
-.flash-sale-carousel-wrapper {
+.carousel-wrapper {
   position: relative;
-  overflow: visible !important;
+  /* Bỏ padding ngang ở đây vì đã có padding ở .flash-sale-section */
 }
 
-/* Ẩn mũi tên mặc định */
-.flash-sale-carousel-wrapper .slick-prev,
-.flash-sale-carousel-wrapper .slick-next {
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  z-index: 10;
+.slide-item-wrapper {
+  padding: 10px;
 }
 
-/* Hover vào khu vực flash sale thì hiện mũi tên */
-.flash-sale-section:hover .slick-prev,
-.flash-sale-section:hover .slick-next {
-  opacity: 1;
-}
-
-/* Tinh chỉnh vị trí & màu mũi tên */
-.flash-sale-carousel-wrapper .slick-prev,
-.flash-sale-carousel-wrapper .slick-next {
-  width: 34px;
-  height: 32px;
-  background: rgba(255, 77, 79, 0.1);
-  border-radius: 50%;
-}
-
-.flash-sale-carousel-wrapper .slick-prev:hover,
-.flash-sale-carousel-wrapper .slick-next:hover {
-  background: #ff4d4f;
-}
-
-.flash-sale-carousel-wrapper .slick-prev::before,
-.flash-sale-carousel-wrapper .slick-next::before {
-  color: #ff4d4f;
-  font-size: 20px;
-}
-
-.flash-sale-carousel-wrapper .slick-prev:hover::before,
-.flash-sale-carousel-wrapper .slick-next:hover::before {
-  color: white;
-}
-
-.flash-slide {
-  padding: 0px;
-}
-
-/* --- View All button --- */
-.view-all {
-  text-align: center;
-  margin-top: 10px;
-}
-
-.view-all-btn {
-  display: inline-block;
-  background: #fff0f0;
-  color: #ff4d4f;
-  font-weight: 600;
-  text-decoration: none;
-  padding: 8px 16px;
-  border-radius: 8px;
-}
-
-.view-all-btn:hover {
-  background: #ff4d4f;
-  color: #fff;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 10px rgba(255, 77, 79, 0.2);
-}
-/* --- Nút custom --- */
-.custom-prev,
-.custom-next {
+/* --- Navigation Arrows --- */
+.nav-arrow {
   position: absolute;
-  top: 50%; /* căn giữa theo carousel */
+  top: 50%;
   transform: translateY(-50%);
-  z-index: 5;
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
+  background: #fff;
   border-radius: 50%;
-  border: none;
-  background-color: rgba(0, 128, 0, 0.15); /* xanh lá nhạt */
-  color: #007b00; /* xanh lá đậm */
-  font-size: 28px;
-  cursor: pointer;
-  transition: all 0.3s ease;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+  z-index: 100; /* Z-index cao để nổi lên trên */
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 6px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  color: #8c8c8c;
+  opacity: 0;
+  transition: all 0.3s;
 }
 
-/* Hover */
-.custom-prev:hover,
-.custom-next:hover {
-  background-color: rgba(0, 128, 0, 0.25);
-  transform: translateY(-50%) scale(1.1);
+.flash-sale-section:hover .nav-arrow {
+  opacity: 1;
 }
 
-/* Vị trí hai nút */
-.custom-prev {
-  left: -16px; /* vừa sát carousel */
+.nav-arrow:hover {
+  background: #ff4d4f;
+  color: #fff;
 }
 
-.custom-next {
-  right: -16px;
-}
+/* Chỉnh vị trí mũi tên: 
+   Vì container cha có margin, nên ta đẩy mũi tên sát mép hơn */
+.nav-arrow.prev { left: -15px; } 
+.nav-arrow.next { right: -15px; }
 
-/* Nếu đang ở đầu/cuối carousel */
-.slick-disabled {
-  opacity: 0.3;
-  pointer-events: none;
+/* Responsive */
+@media (max-width: 768px) {
+  .flash-sale-section {
+    padding: 12px !important;
+  }
+  .flash-header {
+    flex-direction: column;
+    align-items: flex-start;
+    display: flex;
+  }
+  .header-left {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .ending-text, .nav-arrow { display: none; }
 }

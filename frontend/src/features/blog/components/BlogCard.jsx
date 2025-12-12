@@ -1,8 +1,19 @@
 import React from "react";
-import { Link } from "react-router-dom"; // Giả sử bạn dùng react-router-dom
-import { ArrowRightOutlined } from "@ant-design/icons"; // Tận dụng icon của Antd cho đồng bộ
+import { Link } from "react-router-dom";
+import { ArrowRightOutlined } from "@ant-design/icons";
+
+// Hàm tiện ích: Loại bỏ các thẻ HTML để lấy văn bản thuần
+const stripHtml = (html) => {
+  if (!html) return "";
+  const tempDiv = document.createElement("div");
+  tempDiv.innerHTML = html;
+  return tempDiv.textContent || tempDiv.innerText || "";
+};
 
 export default function BlogCard({ post }) {
+  // Lấy nội dung text thuần
+  const plainDescription = stripHtml(post.content);
+
   return (
     <div className="group relative flex flex-col bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden h-full">
       
@@ -20,7 +31,7 @@ export default function BlogCard({ post }) {
           </div>
         )}
         
-        {/* Category Badge - Nổi bật trên ảnh */}
+        {/* Category Badge */}
         {post.category_name && (
           <span className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm text-blue-600 text-xs font-bold px-3 py-1 rounded-full shadow-sm">
             {post.category_name}
@@ -35,14 +46,14 @@ export default function BlogCard({ post }) {
           <Link to={`/blog/${post.slug}`}>{post.title}</Link>
         </h2>
 
-        {/* Date / Meta (Optional - thêm vào cho chuyên nghiệp) */}
+        {/* Date */}
         <div className="mt-2 text-xs text-gray-400 font-medium">
-           {new Date().toLocaleDateString('vi-VN')} {/* Demo date */}
+           {post.created_at ? new Date(post.created_at).toLocaleDateString('vi-VN') : 'Mới cập nhật'}
         </div>
 
-        {/* Description */}
+        {/* Description: Sử dụng text thuần đã lọc thẻ HTML */}
         <p className="text-gray-500 mt-3 text-sm leading-relaxed line-clamp-3 flex-1">
-          {post.content}
+          {plainDescription}
         </p>
 
         {/* Footer / CTA */}
