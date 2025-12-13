@@ -5,6 +5,13 @@ from django.db.models import Sum
 from orders.models import OrderItem
 from products.models import ProductFeature
 from store.serializers import StoreSerializer
+from datetime import timedelta
+
+
+class SellerWithDateSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    store_name = serializers.CharField()
+    created_at = serializers.DateTimeField()
 
 # ✅ Thêm ProductImageSerializer
 class ProductImageSerializer(serializers.ModelSerializer):
@@ -287,6 +294,7 @@ class ProductSerializer(serializers.ModelSerializer):
 
 
 class ProductListSerializer(serializers.ModelSerializer):
+    is_reup = serializers.SerializerMethodField()
     category_name = serializers.CharField(source='subcategory.category.name', read_only=True)
     subcategory_name = serializers.CharField(source='subcategory.name', read_only=True)
     category_id = serializers.IntegerField(source='subcategory.category.id', read_only=True)
@@ -304,7 +312,8 @@ class ProductListSerializer(serializers.ModelSerializer):
     total_preordered = serializers.SerializerMethodField()
     user_preordered = serializers.SerializerMethodField()
 
-    store = SellerListSerializer(source='seller', read_only=True)  # ✅ đúng
+    store = SellerWithDateSerializer(source='seller', read_only=True)  # ✅ đúng
+    seller = SellerWithDateSerializer(read_only=True)
 
 
 
@@ -332,7 +341,7 @@ class ProductListSerializer(serializers.ModelSerializer):
             "estimated_quantity", "preordered_quantity",
             "is_coming_soon", "is_out_of_stock", "available_quantity",
             "total_preordered", "user_preordered", "features", "store", "main_image",
-            "commission_rate", "pending_update", "comparison_data"
+            "commission_rate", "pending_update", "comparison_data", 'is_reup',
         ]
         read_only_fields = ["id", "created_at", "updated_at", "seller"]
 
@@ -468,6 +477,21 @@ class ProductListSerializer(serializers.ModelSerializer):
         if obj.availability_status == "coming_soon":
             return False
         return obj.stock <= 0
+    
+
+    def get_is_reup(self, obj):
+        # Nếu không phải hàng pending thì thôi
+        if obj.status != 'pending':
+            return False
+            
+        # Logic: Nếu ngày cập nhật (updated_at) lớn hơn ngày tạo (created_at) quá 1 tiếng
+        # Nghĩa là đã từng đăng lâu rồi, giờ sửa lại và gửi duyệt
+        # (Lưu ý: Dùng total_seconds() để so sánh cho chuẩn)
+        try:
+            diff = obj.updated_at - obj.created_at
+            return diff.total_seconds() > 3600 # 3600 giây = 1 tiếng
+        except:
+            return False
 
 class ProductImageCreateSerializer(serializers.ModelSerializer):
     class Meta:
