@@ -35,6 +35,7 @@ import AdminPageLayout from "../../components/AdminPageLayout";
 import ProductDetailDrawer from "../../components/ProductAdmin/Product/ProductDetailModal";
 import ProductComparisonModal from "../../components/ProductAdmin/Product/ProductComparisonModal";
 import { productApi } from "../../services/productApi";
+import ShopDetailDrawer from "../../components/ProductAdmin/Product/ShopDetailDrawer"; // Đường dẫn tuỳ project bạn
 
 const { Text, Title } = Typography;
 
@@ -76,18 +77,88 @@ const ApprovalProductsPage = () => {
     useState(null);
   const [comparisonLoading, setComparisonLoading] = useState(false);
 
+  const [shopDrawerVisible, setShopDrawerVisible] = useState(false);
+  const [selectedShopProfile, setSelectedShopProfile] = useState(null);
+
   // --- Fetch Data ---
+  // --- Fetch Data & Logic Thám Tử ---
   const fetchProducts = async () => {
     try {
       setLoading(true);
       const res = await api.get("/products/", { headers: getAuthHeaders() });
-      const raw = Array.isArray(res.data) ? res.data : res.data.results || [];
-      // Sắp xếp: Ưu tiên AI score cao lên đầu, sau đó đến ngày cập nhật
-      const sorted = raw.sort((a, b) => {
+
+      // 1. Lấy dữ liệu thô từ API
+      let rawData = Array.isArray(res.data) ? res.data : res.data.results || [];
+
+      // ==================================================================
+      // 🕵️‍♂️ LOGIC THÁM TỬ: PHÁT HIỆN TÁI XUẤT HIỆN (RE-UP CHECK)
+      // ==================================================================
+
+      // A. Tạo danh sách đen (Blacklist): Các SP đã bị xóa hoặc cấm trước đây
+      const blacklistHistory = rawData.filter((p) =>
+        ["deleted", "banned", "rejected"].includes(p.status)
+      );
+
+      // B. Duyệt qua từng sản phẩm để kiểm tra
+      const processedData = rawData.map((currentProduct) => {
+        // Chỉ soi những ông đang chờ duyệt
+        if (["pending", "pending_update"].includes(currentProduct.status)) {
+          // Soi xem có trùng với hồ sơ đen nào không
+          const matchFound = blacklistHistory.find((oldProduct) => {
+            // Điều kiện 1: Phải cùng một Shop (Seller)
+            // Lưu ý: Dùng optional chaining ?. để tránh lỗi nếu seller null
+            const isSameSeller =
+              oldProduct.seller?.id === currentProduct.seller?.id;
+
+            // Điều kiện 2: Trùng tên (Bỏ viết hoa, bỏ khoảng trắng thừa)
+            const isSameName =
+              oldProduct.name?.trim().toLowerCase() ===
+              currentProduct.name?.trim().toLowerCase();
+
+            // Điều kiện 3: Trùng giá tiền (Ép kiểu Number cho chắc)
+            const isSamePrice =
+              Number(oldProduct.price) === Number(currentProduct.price);
+
+            // Điều kiện 4: Không so sánh với chính nó (Quan trọng!)
+            const isNotSelf = oldProduct.id !== currentProduct.id;
+
+            // ==> Nếu thỏa mãn tất cả thì là Tái xuất hiện
+            return isSameSeller && isSameName && isSamePrice && isNotSelf;
+          });
+
+          // Nếu phát hiện trùng
+          if (matchFound) {
+            console.log(
+              `⚠️ Phát hiện Re-up: ${currentProduct.name} trùng với ID cũ ${matchFound.id}`
+            );
+            return {
+              ...currentProduct,
+              is_reup: true, // Gắn cờ Re-up
+              // Tạo câu cảnh báo để hiển thị (nếu cần)
+              reup_warning: `Trùng khớp sản phẩm đã xóa ngày ${dayjs(matchFound.updated_at).format("DD/MM/YYYY")} (Lý do: ${matchFound.reason || "Vi phạm"})`,
+            };
+          }
+        }
+
+        // Nếu không trùng thì trả về nguyên bản
+        return currentProduct;
+      });
+      // ==================================================================
+
+      // 2. Sắp xếp lại (Ưu tiên Re-up và AI Score lên đầu để Admin chú ý)
+      const sorted = processedData.sort((a, b) => {
+        // Nếu là Re-up thì ưu tiên lên đầu tiên
+        if (a.is_reup && !b.is_reup) return -1;
+        if (!a.is_reup && b.is_reup) return 1;
+
+        // Sau đó đến điểm AI
         if ((b.ai_score || 0) !== (a.ai_score || 0))
           return (b.ai_score || 0) - (a.ai_score || 0);
+
+        // Cuối cùng là ngày tháng
         return new Date(b.updated_at) - new Date(a.updated_at);
       });
+
       setData(sorted);
     } catch (err) {
       console.error(err);
@@ -137,9 +208,17 @@ const ApprovalProductsPage = () => {
   };
 
   const isReappearing = (item) => {
-    // Giả sử API trả về field 'previously_deleted' hoặc ta check logic nào đó
-    // Ví dụ tạm: check field giả định hoặc description có chứa từ khóa
-    return item.is_reup || item.history_status === "deleted";
+    // Chỉ tính những cái đang chờ duyệt
+    if (!["pending", "pending_update"].includes(item.status)) return false;
+
+    // Logic mới: Kiểm tra cờ is_reup do Frontend tự tính toán ở trên
+    if (item.is_reup === true) return true;
+
+    // Logic cũ (Backup): Nếu Backend có lưu vết
+    if (item.previous_status === "deleted" || item.previous_status === "banned")
+      return true;
+
+    return false;
   };
 
   // --- Thống kê số lượng cho Filter Rủi ro (Chỉ tính trên tập đang chờ xử lý) ---
@@ -292,6 +371,55 @@ const ApprovalProductsPage = () => {
     { key: "all", label: "Tất cả" },
   ];
 
+  const getJoinTime = (dateString) => {
+    if (!dateString) return "N/A";
+    const created = new Date(dateString);
+    const today = new Date();
+    const diffTime = Math.abs(today - created);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); // Dùng ceil (làm tròn lên) hoặc check < 1
+
+    if (diffDays <= 1) return " Vừa tham gia hôm nay ";
+    return `${diffDays} ngày trước`;
+  };
+
+  // Hàm gom nhóm sản phẩm theo Seller
+  const groupProductsBySeller = (productList) => {
+    const groups = {};
+
+    productList.forEach((product) => {
+      // Lấy ID hoặc tên shop để làm key gom nhóm
+      // (Dùng optional chaining ?. để tránh lỗi nếu dữ liệu seller bị null)
+      const shopName = product.seller?.store_name || "Chưa đặt tên Shop";
+      const shopAvatar = product.seller?.avatar || null;
+      const seller = product.seller || {};
+      if (seller) console.log("Check hàng seller:", seller);
+
+      if (!groups[shopName]) {
+        groups[shopName] = {
+          shopName: shopName,
+          image: shopAvatar,
+          created_at: product.seller?.created_at, // Ngày tạo shop
+          joinedText: getJoinTime(seller.created_at),
+          products: [], // Danh sách sản phẩm của shop này
+          email: seller.email || "Chưa có email",
+          phone: seller.phone || seller.phone_number || "Chưa có SĐT",
+          address: seller.address || "Chưa cập nhật địa chỉ",
+          ownerName: seller.full_name,
+        };
+      }
+      // Đẩy sản phẩm vào danh sách của shop đó
+      groups[shopName].products.push(product);
+    });
+
+    // Chuyển object thành mảng để dễ map() ra giao diện
+    return Object.values(groups);
+  };
+
+  const handleViewShopProfile = (shopData) => {
+    setSelectedShopProfile(shopData);
+    setShopDrawerVisible(true);
+  };
+
   return (
     <AdminPageLayout title="QUẢN LÝ & DUYỆT SẢN PHẨM">
       <Card bordered={false} bodyStyle={{ padding: "0px" }}>
@@ -420,19 +548,267 @@ const ApprovalProductsPage = () => {
           </div>
 
           {/* --- TABLE / GRID VIEW --- */}
+          {/* --- TABLE / GRID VIEW --- */}
+          {/* TABLE / GRID VIEW */}
           {loading && !data.length ? (
             <div style={{ textAlign: "center", padding: 50 }}>
               <Spin size="large" />
             </div>
           ) : (
-            <ProductTable
-              data={filteredData}
-              selectedRowKeys={selectedRowKeys}
-              setSelectedRowKeys={setSelectedRowKeys}
-              onApprove={handleApprove}
-              onReject={handleReject}
-              onView={handleView}
-            />
+            <>
+              {/* --- TRƯỜNG HỢP 1: SHOP MỚI -> HIỆN GRID CARD --- */}
+              {riskFilter === "new_shop" ? (
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns:
+                      "repeat(auto-fill, minmax(400px, 1fr))",
+                    gap: "24px",
+                  }}
+                >
+                  {groupProductsBySeller(filteredData).map((shop, index) => (
+                    <Card
+                      key={index}
+                      hoverable
+                      style={{
+                        borderRadius: "12px",
+                        border: "1px solid #d9d9d9",
+                        overflow: "hidden",
+                      }}
+                      bodyStyle={{ padding: 0 }}
+                    >
+                      {/* 1. Header của Shop Card */}
+                      <div
+                        style={{
+                          padding: "16px",
+                          background: "#f0f5ff",
+                          borderBottom: "1px solid #f0f0f0",
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "12px",
+                          }}
+                        >
+                          <div
+                            style={{
+                              width: "48px",
+                              height: "48px",
+                              borderRadius: "50%",
+                              background: "#fff",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              border: "1px solid #ddd",
+                              overflow: "hidden",
+                            }}
+                          >
+                            {shop.avatar ? (
+                              <img
+                                src={shop.avatar}
+                                alt="avatar"
+                                style={{
+                                  width: "100%",
+                                  height: "100%",
+                                  objectFit: "cover",
+                                }}
+                              />
+                            ) : (
+                              <ShopOutlined
+                                style={{ fontSize: "24px", color: "#1890ff" }}
+                              />
+                            )}
+                          </div>
+                          <div>
+                            <Title
+                              level={5}
+                              style={{ margin: 0, color: "#1f1f1f" }}
+                            >
+                              {shop.shopName}
+                            </Title>
+                            <Text type="secondary" style={{ fontSize: "12px" }}>
+                              📅 Tham gia: {shop.joinedText}
+                            </Text>
+                          </div>
+                        </div>
+                        <Tag color="green">Shop mới</Tag>
+                      </div>
+
+                      {/* 2. Danh sách sản phẩm bên trong */}
+                      <div style={{ padding: "0 16px" }}>
+                        <div
+                          style={{
+                            padding: "12px 0",
+                            borderBottom: "1px dashed #f0f0f0",
+                          }}
+                        >
+                          <Text strong>
+                            📦 Danh sách chờ duyệt ({shop.products.length}):
+                          </Text>
+                        </div>
+                        <div
+                          style={{
+                            maxHeight: "250px",
+                            overflowY: "auto",
+                            paddingBottom: "12px",
+                          }}
+                        >
+                          {shop.products.map((item) => (
+                            <div
+                              key={item.id}
+                              style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                padding: "10px 0",
+                                borderBottom: "1px solid #f5f5f5",
+                              }}
+                            >
+                              <div
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "10px",
+                                }}
+                              >
+                                <img
+                                  src={item.image}
+                                  alt={item.name}
+                                  style={{
+                                    width: "40px",
+                                    height: "40px",
+                                    borderRadius: "4px",
+                                    objectFit: "cover",
+                                    border: "1px solid #eee",
+                                  }}
+                                />
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    flexDirection: "column",
+                                  }}
+                                >
+                                  <Text
+                                    style={{
+                                      fontSize: "14px",
+                                      maxWidth: "180px",
+                                    }}
+                                    ellipsis={{ tooltip: item.name }}
+                                  >
+                                    {item.name}
+                                  </Text>
+                                  <Text
+                                    type="danger"
+                                    style={{ fontSize: "12px" }}
+                                  >
+                                    {parseInt(item.price).toLocaleString()}đ
+                                  </Text>
+                                </div>
+                              </div>
+                              <div style={{ display: "flex", gap: "4px" }}>
+                                <CheckCircleOutlined
+                                  style={{
+                                    fontSize: "20px",
+                                    color: "#52c41a",
+                                    cursor: "pointer",
+                                  }}
+                                  onClick={() => handleApprove(item.id)}
+                                  title="Duyệt nhanh"
+                                />
+                                <CloseCircleOutlined
+                                  style={{
+                                    fontSize: "20px",
+                                    color: "#ff4d4f",
+                                    cursor: "pointer",
+                                  }}
+                                  onClick={() =>
+                                    handleReject(item.id, "Vi phạm chính sách")
+                                  }
+                                  title="Từ chối nhanh"
+                                />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* 3. Footer của Card (Đã sửa lỗi lặp code) */}
+                      <div
+                        style={{
+                          padding: "12px 16px",
+                          background: "#fafafa",
+                          borderTop: "1px solid #f0f0f0",
+                          textAlign: "right",
+                        }}
+                      >
+                        <a
+                          style={{
+                            color: "#1890ff",
+                            fontWeight: 500,
+                            cursor: "pointer",
+                          }}
+                          onClick={() => handleViewShopProfile(shop)}
+                        >
+                          Xem hồ sơ Shop &rarr;
+                        </a>
+                      </div>
+                    </Card>
+                  ))}
+                  {filteredData.length === 0 && (
+                    <div
+                      style={{
+                        gridColumn: "1/-1",
+                        textAlign: "center",
+                        padding: 20,
+                      }}
+                    >
+                      <Text type="secondary">
+                        Không có shop mới nào cần duyệt.
+                      </Text>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                // --- TRƯỜNG HỢP 2: CÁC TRƯỜNG HỢP KHÁC (BAO GỒM "TÁI XUẤT HIỆN") -> HIỆN BẢNG ---
+                <div>
+                  {/* Đã di chuyển cảnh báo Reup xuống đúng chỗ này */}
+                  {riskFilter === "reup" && (
+                    <div
+                      style={{
+                        marginBottom: 16,
+                        padding: "8px 12px",
+                        background: "#fff1f0",
+                        border: "1px solid #ffa39e",
+                        borderRadius: 4,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                      }}
+                    >
+                      <ReloadOutlined style={{ color: "#cf1322" }} />
+                      <Text type="danger">
+                        Danh sách này gồm các sản phẩm đã từng bị xóa/vi phạm
+                        trước đây. Vui lòng kiểm tra kỹ trước khi duyệt lại.
+                      </Text>
+                    </div>
+                  )}
+
+                  <ProductTable
+                    data={filteredData}
+                    selectedRowKeys={selectedRowKeys}
+                    setSelectedRowKeys={setSelectedRowKeys}
+                    onApprove={handleApprove}
+                    onReject={handleReject}
+                    onView={handleView}
+                  />
+                </div>
+              )}
+            </>
           )}
         </div>
       </Card>
@@ -452,6 +828,12 @@ const ApprovalProductsPage = () => {
         onApprove={(p) => handleApprove(p.id)}
         onReject={(p) => handleReject(p.id)}
         loading={comparisonLoading}
+      />
+
+      <ShopDetailDrawer
+        visible={shopDrawerVisible}
+        onClose={() => setShopDrawerVisible(false)}
+        shopData={selectedShopProfile}
       />
     </AdminPageLayout>
   );

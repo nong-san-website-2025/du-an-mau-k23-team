@@ -253,6 +253,7 @@ const ProductManager = ({
         />
       ),
     },
+    
     {
       title: "Tên sản phẩm",
       dataIndex: "name",

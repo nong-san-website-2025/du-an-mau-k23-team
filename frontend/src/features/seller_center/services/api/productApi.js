@@ -22,6 +22,8 @@ export const productApi = {
     });
   },
 
+  
+
   // ==================== 2. DANH MỤC & HIỂN THỊ ====================
   getCategories: () =>
     api.get("/products/categories/", { headers: getAuthHeaders() }),
