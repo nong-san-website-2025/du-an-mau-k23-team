@@ -1,11 +1,11 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { Button, Input, Space, message, Row, Col } from "antd";
-import { PlusOutlined, SearchOutlined, ReloadOutlined } from "@ant-design/icons";
+import { Button, Input, Space, message, Row, Col, Modal } from "antd";
+import { PlusOutlined, SearchOutlined, ReloadOutlined, DeleteOutlined } from "@ant-design/icons";
 import AdminPageLayout from "../../components/AdminPageLayout";
 import BlogTable from "../../components/BlogAdmin/BlogTable";
 import BlogFormDrawer from "../../components/BlogAdmin/BlogFormModal"; 
 import CategoryModal from "../../components/BlogAdmin/CategoryModal";
-import { adminFetchBlogs, fetchCategories } from "../../../blog/api/blogApi";
+import { adminFetchBlogs, fetchCategories, adminDeleteBlog } from "../../../blog/api/blogApi";
 
 const AdminBlogs = () => {
   const [blogs, setBlogs] = useState([]);
@@ -16,6 +16,7 @@ const AdminBlogs = () => {
   const [editing, setEditing] = useState(null);
   const [pagination, setPagination] = useState({ current: 1, pageSize: 10, total: 0 });
   const [searchText, setSearchText] = useState("");
+  const [selectedRows, setSelectedRows] = useState([]);
 
   const loadBlogs = useCallback(async (page = 1, pageSize = 10, search = "") => {
     setLoading(true);
@@ -69,19 +70,56 @@ const AdminBlogs = () => {
     setDrawerVisible(true);
   };
 
+  const handleBulkDelete = () => {
+    if (selectedRows.length === 0) {
+      message.warning("Vui lòng chọn ít nhất một bài viết để xóa");
+      return;
+    }
+
+    Modal.confirm({
+      title: `Xóa ${selectedRows.length} bài viết?`,
+      description: "Hành động này không thể hoàn tác",
+      okText: "Xóa",
+      cancelText: "Hủy",
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        setLoading(true);
+        try {
+          const selectedBlogs = blogs.filter(blog => selectedRows.includes(blog.id));
+          await Promise.all(selectedBlogs.map(blog => adminDeleteBlog(blog.slug)));
+          message.success(`Đã xóa ${selectedRows.length} bài viết`);
+          setSelectedRows([]);
+          loadBlogs(pagination.current, pagination.pageSize, searchText);
+        } catch {
+          message.error("Xóa thất bại, vui lòng thử lại");
+        } finally {
+          setLoading(false);
+        }
+      },
+    });
+  };
+
   return (
     <AdminPageLayout
       title="QUẢN LÝ BÀI VIẾT"
       extra={
         <Space>
-           <Button icon={<ReloadOutlined />} onClick={() => loadBlogs(pagination.current)}>
-            Làm mới
+          <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
+            Viết bài mới
           </Button>
           <Button onClick={() => setCategoryModalVisible(true)}>
             Quản lý Danh mục
           </Button>
-          <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
-            Viết bài mới
+          <Button 
+            danger 
+            icon={<DeleteOutlined />} 
+            onClick={handleBulkDelete}
+            disabled={selectedRows.length === 0}
+          >
+            Xóa ({selectedRows.length})
+          </Button>
+          <Button icon={<ReloadOutlined />} onClick={() => loadBlogs(pagination.current)}>
+            Làm mới
           </Button>
         </Space>
       }
@@ -108,13 +146,18 @@ const AdminBlogs = () => {
         fetchBlogs={() => loadBlogs(pagination.current, pagination.pageSize)}
         setEditing={setEditing}
         setDrawerVisible={setDrawerVisible}
+        selectedRows={selectedRows}
+        onSelectionChange={setSelectedRows}
       />
 
       <BlogFormDrawer
         visible={drawerVisible}
         onClose={() => setDrawerVisible(false)}
         editing={editing}
-        fetchBlogs={() => loadBlogs(pagination.current, pagination.pageSize)}
+        fetchBlogs={() => {
+          setSelectedRows([]);
+          loadBlogs(pagination.current, pagination.pageSize);
+        }}
         categories={categories}
       />
 

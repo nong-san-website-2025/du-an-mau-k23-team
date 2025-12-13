@@ -13,7 +13,12 @@ from .views import (
     apply_voucher,
     consume_voucher,
     public_seller_vouchers,
+<<<<<<< HEAD
+    import_flash_sale_excel,
+    download_flash_sale_template,
+=======
     ImportVoucherAPIView, # <--- [MỚI] Thêm import này
+>>>>>>> e21d4717ed9a21d58b67311486d4ccecfa2d3c42
 )
 
 # 2. Khởi tạo router MỘT LẦN DUY NHẤT
@@ -37,6 +42,8 @@ urlpatterns = [
     path('vouchers/apply/', apply_voucher, name='apply-voucher'),
     path('vouchers/consume/', consume_voucher, name='consume-voucher'),
     path('vouchers/public/<int:seller_id>/', public_seller_vouchers, name='public-seller-vouchers'),
+    path('flash-sale/import/', import_flash_sale_excel, name='flash-sale-import'),
+    path('flash-sale/template/', download_flash_sale_template, name='flash-sale-template'),
 ]
 
 # 5. Gộp các URL của router vào urlpatterns (Cách làm chuẩn của Django)

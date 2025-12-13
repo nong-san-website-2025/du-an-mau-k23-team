@@ -1,15 +1,14 @@
-import React from "react";
-import { Table, Switch, Tag, Space, message, Typography, Image, Tooltip, Skeleton } from "antd";
+import React, { useState } from "react";
+import { Table, Switch, Tag, Space, message, Typography, Image, Tooltip, Skeleton, Checkbox } from "antd";
 import { EditOutlined, DeleteOutlined, EyeOutlined, UserOutlined } from "@ant-design/icons";
 import { adminDeleteBlog, adminTogglePublish } from "../../../blog/api/blogApi";
 
-// Giả sử ButtonAction nằm cùng thư mục hoặc trong thư mục components chung
-// Bạn nhớ sửa đường dẫn import cho đúng với project nhé
 import ButtonAction from "../../../../components/ButtonAction"; 
 
 const { Text } = Typography;
 
-export default function BlogTable({ blogs, loading, pagination, onChange, fetchBlogs, setEditing, setDrawerVisible }) {
+export default function BlogTable({ blogs, loading, pagination, onChange, fetchBlogs, setEditing, setDrawerVisible, selectedRows, onSelectionChange }) {
+  const [selectAll, setSelectAll] = useState(false);
 
   const handleDelete = async (slug) => {
     try {
@@ -31,7 +30,49 @@ export default function BlogTable({ blogs, loading, pagination, onChange, fetchB
     }
   };
 
+  const handleSelectAll = (e) => {
+    const checked = e.target.checked;
+    setSelectAll(checked);
+    if (checked) {
+      const allIds = blogs.map(blog => blog.id);
+      onSelectionChange(allIds);
+    } else {
+      onSelectionChange([]);
+    }
+  };
+
+  const handleSelectRow = (id, checked) => {
+    let newSelection = [...selectedRows];
+    if (checked) {
+      if (!newSelection.includes(id)) {
+        newSelection.push(id);
+      }
+    } else {
+      newSelection = newSelection.filter(item => item !== id);
+      setSelectAll(false);
+    }
+    onSelectionChange(newSelection);
+  };
+
   const columns = [
+    {
+      title: (
+        <Checkbox
+          checked={selectAll && blogs.length > 0}
+          indeterminate={selectedRows.length > 0 && selectedRows.length < blogs.length}
+          onChange={handleSelectAll}
+        />
+      ),
+      dataIndex: "select",
+      width: 50,
+      align: "center",
+      render: (_, record) => (
+        <Checkbox
+          checked={selectedRows.includes(record.id)}
+          onChange={(e) => handleSelectRow(record.id, e.target.checked)}
+        />
+      ),
+    },
     {
       title: "Ảnh",
       dataIndex: "image",
@@ -162,7 +203,11 @@ export default function BlogTable({ blogs, loading, pagination, onChange, fetchB
       columns={columns}
       dataSource={blogs}
       pagination={{ ...pagination, showSizeChanger: true, showTotal: (total) => `Tổng ${total} bài` }}
-      onChange={onChange}
+      onChange={(p) => {
+        setSelectAll(false);
+        onSelectionChange([]);
+        onChange(p);
+      }}
       bordered
       size="middle"
       scroll={{ x: 1000 }}
