@@ -172,6 +172,9 @@ class PendingProductUpdate(models.Model):
     availability_status = models.CharField(max_length=20, blank=True)
     season_start = models.DateField(null=True, blank=True)
     season_end = models.DateField(null=True, blank=True)
+    weight_g = models.IntegerField(default=1000, verbose_name="Cân nặng (gram)")
+
+
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

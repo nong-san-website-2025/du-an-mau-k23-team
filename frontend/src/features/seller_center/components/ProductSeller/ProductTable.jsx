@@ -65,7 +65,7 @@ const ProductTable = ({
             <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
                 <Text strong ellipsis={{ tooltip: record.name }} style={{ fontSize: 14, maxWidth: 280 }}>{record.name}</Text>
-                {isPendingUpdate && <Tag color="orange" icon={<HistoryOutlined />} style={{ margin: 0, fontSize: 11 }}>Chờ duyệt cập nhật</Tag>}
+
               </div>
               <Text type="secondary" style={{ fontSize: 12 }}>ID: #{record.id} {isPendingUpdate && " • Đã gửi yêu cầu cập nhật"}</Text>
             </div>
@@ -152,12 +152,12 @@ const ProductTable = ({
       render: (_, record) => {
         const isBanned = record.status === "banned";
         const isApproved = record.status === "approved";
-        
+
         // Điều kiện xóa: Chưa bán được hàng nào (sold = 0) VÀ chưa có ai đặt trước (ordered = 0)
         // VÀ không phải là đang bị banned (để tránh xóa bằng chứng vi phạm nếu cần)
-        const canDelete = (record.sold === 0 || !record.sold) && 
-                          (record.ordered_quantity === 0 || !record.ordered_quantity) && 
-                          !isBanned;
+        const canDelete = (record.sold === 0 || !record.sold) &&
+          (record.ordered_quantity === 0 || !record.ordered_quantity) &&
+          !isBanned;
 
         const actions = [
           // 1. Xem chi tiết
@@ -171,7 +171,7 @@ const ProductTable = ({
           // 2. Ẩn / Hiện
           {
             actionType: "toggle_hide",
-            show: isApproved, 
+            show: isApproved,
             icon: record.is_hidden ? <EyeOutlined /> : <EyeInvisibleOutlined />,
             tooltip: record.is_hidden ? "Hiển thị lại sản phẩm" : "Tạm ẩn sản phẩm",
             onClick: () => onToggleHide(record),
@@ -186,7 +186,7 @@ const ProductTable = ({
             onClick: onEdit,
             buttonProps: { disabled: isBanned },
           },
-          
+
           // 5. Xóa vĩnh viễn (Hard Delete) - Chỉ hiện khi đủ điều kiện
           {
             actionType: "delete",
@@ -194,20 +194,20 @@ const ProductTable = ({
             icon: <DeleteOutlined />,
             tooltip: "Xóa vĩnh viễn (Chưa có đơn hàng)",
             onClick: () => onDelete(record.id),
-            confirm: { 
-                title: "Xóa vĩnh viễn sản phẩm?", 
-                description: "Hành động này không thể hoàn tác.",
-                okText: "Xóa ngay", 
-                isDanger: true 
+            confirm: {
+              title: "Xóa vĩnh viễn sản phẩm?",
+              description: "Hành động này không thể hoàn tác.",
+              okText: "Xóa ngay",
+              isDanger: true
             },
             buttonProps: { danger: true, ghost: true }, // Đỏ viền
           },
         ];
 
         return (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%' }}>
-                <ButtonAction actions={actions} record={record} />
-            </div>
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%' }}>
+            <ButtonAction actions={actions} record={record} />
+          </div>
         );
       },
     },

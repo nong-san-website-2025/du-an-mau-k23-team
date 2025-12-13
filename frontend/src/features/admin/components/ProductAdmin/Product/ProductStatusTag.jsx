@@ -18,6 +18,9 @@ const ProductStatusTag = ({ status }) => {
   } else if (status === "banned") {
     color = "grey";
     label = "Đã khoá";
+  } else if (status === "pending_update") {
+    color = "volcano";
+    label = "Chờ duyệt cập nhật";
   } else {
     label = "Không rõ";
   }

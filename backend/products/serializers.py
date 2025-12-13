@@ -242,6 +242,7 @@ class ProductSerializer(serializers.ModelSerializer):
             'unit': obj.unit,
             'stock': obj.stock,
             'location': obj.location,
+            'weight_g': obj.weight_g, # 👈 Thêm vào current
             'brand': obj.brand,
             'availability_status': obj.availability_status,
             'season_start': obj.season_start.isoformat() if obj.season_start else None,
@@ -381,6 +382,7 @@ class ProductListSerializer(serializers.ModelSerializer):
                 'stock': pending.stock if pending.stock is not None else obj.stock,
                 'location': pending.location if pending.location else obj.location,
                 'brand': pending.brand if pending.brand else obj.brand,
+                'weight_g': pending.weight_g if pending.weight_g is not None else obj.weight_g,
                 'availability_status': pending.availability_status if pending.availability_status else obj.availability_status,
                 'season_start': pending.season_start.isoformat() if pending.season_start else (obj.season_start.isoformat() if obj.season_start else None),
                 'season_end': pending.season_end.isoformat() if pending.season_end else (obj.season_end.isoformat() if obj.season_end else None),
