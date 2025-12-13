@@ -12,6 +12,11 @@ from .serializers import SellerVoucherSerializer # Serializer cho seller mà ch�
 from sellers.models import Seller # Model Seller để liên kết
 from rest_framework import filters
 from django_filters.rest_framework import DjangoFilterBackend
+from django.http import HttpResponse
+import openpyxl
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from datetime import datetime, timedelta
+from .excel_import_service import FlashSaleExcelImportService
 
 from .models import Voucher, FlashSale, UserVoucher
 from .serializers import (
@@ -394,3 +399,84 @@ def public_seller_vouchers(request, seller_id):
     # Serialize dữ liệu (dùng VoucherDetailSerializer hoặc tạo serializer đơn giản hơn)
     serializer = VoucherDetailSerializer(vouchers, many=True)
     return Response(serializer.data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAdminUser])
+def import_flash_sale_excel(request):
+    """
+    API endpoint để import Flash Sale từ file Excel
+    """
+    if 'file' not in request.FILES:
+        return Response({'error': 'File không được tìm thấy'}, status=400)
+    
+    file = request.FILES['file']
+    service = FlashSaleExcelImportService()
+    
+    if service.import_flash_sales(file):
+        result = service.get_result()
+        return Response(result, status=201)
+    else:
+        result = service.get_result()
+        return Response(result, status=400)
+
+
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def download_flash_sale_template(request):
+    """
+    API endpoint để download template Excel cho Flash Sale import
+    """
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Flash Sales"
+    
+    headers = ['product_id', 'product_name', 'flash_price', 'stock', 'start_time', 'end_time']
+    
+    header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+    header_font = Font(bold=True, color="FFFFFF")
+    border = Border(
+        left=Side(style='thin'),
+        right=Side(style='thin'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin')
+    )
+    
+    for col_idx, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col_idx)
+        cell.value = header
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal='center', vertical='center')
+        cell.border = border
+    
+    now_time = datetime.now()
+    sample_start = now_time + timedelta(days=1)
+    sample_end = sample_start + timedelta(hours=2)
+    
+    sample_data = [
+        [1, 'Sản phẩm mẫu 1', 50000, 100, sample_start.strftime('%Y-%m-%d %H:%M:%S'), sample_end.strftime('%Y-%m-%d %H:%M:%S')],
+        [2, 'Sản phẩm mẫu 2', 75000, 50, sample_start.strftime('%Y-%m-%d %H:%M:%S'), sample_end.strftime('%Y-%m-%d %H:%M:%S')],
+    ]
+    
+    for row_idx, row_data in enumerate(sample_data, 2):
+        for col_idx, value in enumerate(row_data, 1):
+            cell = ws.cell(row=row_idx, column=col_idx)
+            cell.value = value
+            cell.alignment = Alignment(horizontal='left', vertical='center')
+            cell.border = border
+    
+    ws.column_dimensions['A'].width = 12
+    ws.column_dimensions['B'].width = 25
+    ws.column_dimensions['C'].width = 15
+    ws.column_dimensions['D'].width = 12
+    ws.column_dimensions['E'].width = 22
+    ws.column_dimensions['F'].width = 22
+    
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename=flash_sale_template.xlsx'
+    
+    wb.save(response)
+    return response
