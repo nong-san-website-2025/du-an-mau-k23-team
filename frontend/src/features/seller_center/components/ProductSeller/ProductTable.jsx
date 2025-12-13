@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Table, Typography, Space, Image, Avatar, Tag } from "antd";
 import {
   EditOutlined,
@@ -26,6 +26,18 @@ const ProductTable = ({
   onToggleHide,
   onRow,
 }) => {
+  // Detect mobile viewport to adjust fixed columns
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mql = window.matchMedia('(max-width: 768px)');
+    const handler = (e) => setIsMobile(e.matches);
+    handler(mql);
+    mql.addEventListener ? mql.addEventListener('change', handler) : mql.addListener(handler);
+    return () => {
+      mql.removeEventListener ? mql.removeEventListener('change', handler) : mql.removeListener(handler);
+    };
+  }, []);
+
   const columns = [
     // ... (Giữ nguyên các cột 1 đến 5: Sản phẩm, Phân loại, Giá, Trạng thái, Mùa vụ)
     // ── 1. CỘT SẢN PHẨM ─────────────────────
@@ -33,7 +45,7 @@ const ProductTable = ({
       title: "Sản phẩm",
       key: "product_info",
       width: 260,
-      fixed: "left",
+      fixed: isMobile ? undefined : "left",
       render: (_, record) => {
         let imageUrl = null;
         if (Array.isArray(record.images) && record.images.length > 0) {
@@ -134,7 +146,7 @@ const ProductTable = ({
     {
       title: <div style={{ textAlign: 'center', width: '100%' }}>Thao tác</div>,
       key: "action",
-      fixed: "right",
+      fixed: isMobile ? undefined : "right",
       width: 120, // Đủ rộng cho 4-5 nút
       align: "center",
       render: (_, record) => {
@@ -208,7 +220,9 @@ const ProductTable = ({
       loading={{ spinning: loading, tip: "Đang tải..." }}
       rowKey="id"
       pagination={{ pageSize: 7, showTotal: (total) => `Tổng ${total} sản phẩm` }}
-      scroll={{ x: 1500 }}
+      // Explicit horizontal + vertical scroll to enable sticky header
+      scroll={{ x: 1160, y: 480 }}
+      sticky={{ offsetHeader: 0 }}
       onRow={onRow}
       rowClassName={(record) =>
         `cursor-pointer hover:bg-slate-50 ${record.is_hidden ? "opacity-60 bg-gray-50" : ""} ${record.status === "pending_update" ? "ant-table-row-pending-update" : ""}`

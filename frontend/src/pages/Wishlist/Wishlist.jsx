@@ -12,7 +12,7 @@ import {
 import WishlistItem from "./components/WishlistItem";
 import RecommendedSection from "./components/RecommendedSection";
 import { productApi } from "../../features/products/services/productApi";
-import Layout from "../../Layout/LayoutDefault";
+import Layout from "../../layout/LayoutDefault";
 
 const { Option } = Select;
 const API_URL = process.env.REACT_APP_API_URL;

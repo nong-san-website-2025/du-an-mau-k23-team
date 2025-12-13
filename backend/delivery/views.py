@@ -4,6 +4,8 @@ from rest_framework.response import Response
 from rest_framework import status
 from .services.ghn import GHNClient
 
+CACHE_TTL = 86400
+
 class CalculateShippingFeeView(APIView):
     def post(self, request):
 
@@ -75,30 +77,66 @@ class CalculateShippingFeeView(APIView):
                 'code': result.get('error_code')
             }, status=status.HTTP_400_BAD_REQUEST)
 
+from django.core.cache import cache  # Import cache
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from .services.ghn import GHNClient
+
+# Thời gian cache: 24 giờ (86400 giây) vì địa chính ít thay đổi
+CACHE_TTL = 86400 
 
 class GHNProvincesView(APIView):
     def get(self, request):
-        res = GHNClient.get_provinces()
-        if res.get('success'):
-            return Response(res, status=status.HTTP_200_OK)
-        return Response(res, status=status.HTTP_400_BAD_REQUEST)
+        cache_key = 'ghn_provinces'
+        data = cache.get(cache_key)
+
+        if not data:
+            print("Fetching provinces from GHN (Cache Miss)...")
+            res = GHNClient.get_provinces()
+            if res.get('success'):
+                data = res
+                cache.set(cache_key, data, CACHE_TTL)
+            else:
+                return Response(res, status=status.HTTP_400_BAD_REQUEST)
+        
+        return Response(data, status=status.HTTP_200_OK)
 
 class GHNDistrictsView(APIView):
     def get(self, request):
         province_id = request.query_params.get('province_id')
         if not province_id:
             return Response({'success': False, 'message': 'Missing province_id'}, status=status.HTTP_400_BAD_REQUEST)
-        res = GHNClient.get_districts(province_id)
-        if res.get('success'):
-            return Response(res, status=status.HTTP_200_OK)
-        return Response(res, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Cache key phải unique theo province_id
+        cache_key = f'ghn_districts_{province_id}'
+        data = cache.get(cache_key)
+
+        if not data:
+            res = GHNClient.get_districts(province_id)
+            if res.get('success'):
+                data = res
+                cache.set(cache_key, data, CACHE_TTL)
+            else:
+                return Response(res, status=status.HTTP_400_BAD_REQUEST)
+                
+        return Response(data, status=status.HTTP_200_OK)
 
 class GHNWardsView(APIView):
     def get(self, request):
         district_id = request.query_params.get('district_id')
         if not district_id:
             return Response({'success': False, 'message': 'Missing district_id'}, status=status.HTTP_400_BAD_REQUEST)
-        res = GHNClient.get_wards(district_id)
-        if res.get('success'):
-            return Response(res, status=status.HTTP_200_OK)
-        return Response(res, status=status.HTTP_400_BAD_REQUEST)
+        
+        cache_key = f'ghn_wards_{district_id}'
+        data = cache.get(cache_key)
+
+        if not data:
+            res = GHNClient.get_wards(district_id)
+            if res.get('success'):
+                data = res
+                cache.set(cache_key, data, CACHE_TTL)
+            else:
+                return Response(res, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(data, status=status.HTTP_200_OK)

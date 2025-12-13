@@ -1,6 +1,7 @@
 # products/search_service.py
 from django.conf import settings
 
+
 # 1. Tạo Class Mock trước (để dùng khi lỗi)
 class MockSearchService:
     def search(self, *args, **kwargs):
@@ -8,12 +9,13 @@ class MockSearchService:
     def index_product(self, *args, **kwargs):
         pass
     def delete_product(self, *args, **kwargs):
+        
         pass
 
 # 2. Khởi tạo Service thật
 try:
     # Di chuyển import vào trong để tránh lỗi ModuleNotFoundError làm sập server
-    import meilisearch 
+    import meilisearch
     
     class ProductSearchService:
         def __init__(self):

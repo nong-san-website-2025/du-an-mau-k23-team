@@ -44,6 +44,7 @@ const ProfileInfo = ({
   addresses = [],
   onOpenFollowingModal,
   onOpenFollowersModal,
+  deleteAddress, // <--- Đảm bảo đã lấy biến này ra
 }) => {
   const objectUrlRef = useRef(null);
   const [editingFields, setEditingFields] = useState({});

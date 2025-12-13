@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import {
@@ -17,7 +16,6 @@ import {
   Typography,
   Tooltip,
   Skeleton,
-  Breadcrumb,
   Avatar,
   Divider,
   Tag,
@@ -38,14 +36,15 @@ import {
   CopyOutlined,
 } from "@ant-design/icons";
 import CommentSection from "../components/CommentSection";
-import Layout from "../../../Layout/LayoutDefault";
+import Layout from "../../../layout/LayoutDefault";
 import "../styles/BlogDetailPage.css";
 
+// --- QUAN TRỌNG: Import CSS của React Quill để hiển thị đúng format ---
+import "react-quill/dist/quill.snow.css"; 
 
 const { Title, Text } = Typography;
 
 export default function BlogDetailPage() {
-  // Banner ngẫu nhiên từ API
   const [sidebarBanners, setSidebarBanners] = useState([]);
   const { slug } = useParams();
   const [post, setPost] = useState(null);
@@ -53,19 +52,18 @@ export default function BlogDetailPage() {
   const [liked, setLiked] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
   const token = localStorage.getItem("token");
-  // State cho bài viết nổi bật và sản phẩm bán chạy
+  
   const [topPosts, setTopPosts] = useState([]);
   const [bestSellers, setBestSellers] = useState([]);
 
   useEffect(() => {
-    // Lấy banner thật từ API
     fetchSidebarBanners()
-      .then((data) => {
-        setSidebarBanners(Array.isArray(data) ? data : []);
-      })
+      .then((data) => setSidebarBanners(Array.isArray(data) ? data : []))
       .catch(() => setSidebarBanners([]));
+      
     setLoading(true);
     window.scrollTo(0, 0);
+    
     fetchPostDetail(slug)
       .then((res) => {
         setPost(res.data);
@@ -78,7 +76,6 @@ export default function BlogDetailPage() {
       })
       .finally(() => setLoading(false));
 
-    // Lấy top bài viết theo view
     fetchPosts()
       .then((res) => {
         if (Array.isArray(res.data)) {
@@ -90,17 +87,14 @@ export default function BlogDetailPage() {
       })
       .catch(() => setTopPosts([]));
 
-    // Lấy sản phẩm bán chạy
     fetchBestSellers()
-      .then((data) => {
-        setBestSellers(Array.isArray(data) ? data.slice(0, 3) : []);
-      })
+      .then((data) => setBestSellers(Array.isArray(data) ? data.slice(0, 3) : []))
       .catch(() => setBestSellers([]));
 
     const viewedKey = `viewed_${slug}`;
     if (!sessionStorage.getItem(viewedKey)) {
       sessionStorage.setItem(viewedKey, "true");
-      increaseView(slug).catch(() => { });
+      increaseView(slug).catch(() => {});
     }
   }, [slug]);
 
@@ -135,7 +129,6 @@ export default function BlogDetailPage() {
     message.success("Đã sao chép liên kết bài viết!");
   };
 
-  // Skeleton Loading State
   if (loading) {
     return (
       <Layout>
@@ -165,13 +158,9 @@ export default function BlogDetailPage() {
   return (
     <Layout>
       <div className="blog-container">
-        {/* Breadcrumb Navigation */}
-
         <Row gutter={[32, 32]}>
-          {/* Cột trái: Nội dung chính */}
           <Col xs={24} lg={17}>
             <article className="blog-main-content">
-              {/* Category Tag & Date */}
               <div className="post-meta-top">
                 <Tag color="green" className="category-tag">
                   {post.category_name || "Tin tức"}
@@ -183,12 +172,10 @@ export default function BlogDetailPage() {
                 </Text>
               </div>
 
-              {/* Title */}
               <Title level={1} className="post-title">
                 {post.title}
               </Title>
 
-              {/* Author Info */}
               <div className="author-card">
                 <Avatar size={48} src={post.author_avatar} icon={<HomeOutlined />} />
                 <div className="author-info">
@@ -198,7 +185,6 @@ export default function BlogDetailPage() {
                   </div>
                 </div>
 
-                {/* Actions Bar (Desktop Inline) */}
                 <div className="desktop-actions">
                   <Tooltip title="Lưu bài viết">
                     <Button
@@ -219,20 +205,23 @@ export default function BlogDetailPage() {
                 </div>
               </div>
 
-              {/* Featured Image */}
               {post.image && (
                 <div className="featured-image-wrapper">
                   <img src={post.image} alt={post.title} className="featured-image" />
                 </div>
               )}
 
-              {/* Content */}
-              <div
-                className="prose-content"
-                dangerouslySetInnerHTML={{ __html: post.content }}
-              />
+              {/* --- PHẦN NỘI DUNG CHÍNH (ĐÃ SỬA) --- */}
+              {/* Thêm class 'ql-snow' bọc ngoài và 'ql-editor' bên trong để nhận CSS của Quill */}
+              <div className="ql-snow">
+                <div
+                  className="ql-editor prose-content" 
+                  dangerouslySetInnerHTML={{ __html: post.content }}
+                  style={{ padding: 0, fontSize: '16px', lineHeight: '1.8' }}
+                />
+              </div>
+              {/* ------------------------------------ */}
 
-              {/* Interaction Footer */}
               <Divider />
               <div className="interaction-footer">
                 <div className="like-section">
@@ -256,47 +245,34 @@ export default function BlogDetailPage() {
                 </div>
               </div>
 
-              {/* Comments */}
               <div className="comments-wrapper">
                 <CommentSection postId={post.id} initialComments={post.comments} />
               </div>
             </article>
           </Col>
 
-          {/* Cột phải: Sidebar (Sticky) */}
           <Col xs={24} lg={7}>
             <Affix offsetTop={100} style={{ width: '100%' }}>
               <aside className="blog-sidebar">
-                {/* Ví dụ: Bài viết liên quan / Sản phẩm gợi ý */}
                 <div className="sidebar-widget">
                   <Title level={4}>Bài viết nổi bật</Title>
                   <div className="related-list">
                     {topPosts.length === 0 && <Text type="secondary">Không có dữ liệu</Text>}
                     {topPosts.map((item) => (
                       <div key={item.id} className="related-item">
-                        {/* Wrapper ảnh */}
                         <div className="related-thumb">
                           {item.image ? (
-                            <img
-                              src={item.image}
-                              alt={item.title}
-                            // XÓA HẾT style inline ở đây, để CSS lo
-                            />
+                            <img src={item.image} alt={item.title} />
                           ) : (
-                            // Placeholder khi không có ảnh
                             <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ccc' }}>
                               <EyeOutlined />
                             </div>
                           )}
                         </div>
-
-                        {/* Wrapper thông tin */}
                         <div className="related-info">
                           <Link to={`/blog/${item.slug}`} className="related-title" title={item.title}>
                             {item.title}
                           </Link>
-
-                          {/* Gom ngày và view lại cho gọn */}
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                             <Text type="secondary" style={{ fontSize: 11 }}>
                               {new Date(item.created_at).toLocaleDateString("vi-VN")}
@@ -313,7 +289,6 @@ export default function BlogDetailPage() {
                 </div>
 
                 <div className="sidebar-widget advertisement">
-                  {/* Banner thật từ API */}
                   {sidebarBanners.length === 0 && <Text type="secondary">Không có banner quảng cáo</Text>}
                   {sidebarBanners.length > 0 && (
                     <>
@@ -321,14 +296,13 @@ export default function BlogDetailPage() {
                         <a key={banner.id} href={banner.click_url || "#"} target="_blank" rel="noopener noreferrer">
                           <img
                             src={banner.image}
-                            alt={banner.title || "Banner quảng cáo"}
+                            alt={banner.title || "Banner"}
                             style={{ width: "100%", borderRadius: 8, marginBottom: 16, objectFit: "cover", maxHeight: 120 }}
                           />
                         </a>
                       ))}
                     </>
                   )}
-                  {/* Sản phẩm bán chạy */}
                   <div>
                     {bestSellers.length === 0 && <Text type="secondary">Không có sản phẩm bán chạy</Text>}
                     {bestSellers.map((product) => (

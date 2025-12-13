@@ -10,3 +10,49 @@
   transition: background-color 0.3s ease;
   cursor: pointer;
 }
+
+/* Responsive title: prevent vertical stacking on narrow screens */
+.page-title {
+  white-space: nowrap;
+  word-break: keep-all;
+  line-height: 1.2;
+}
+
+@media (max-width: 768px) {
+  .page-title {
+    white-space: normal; /* allow wrapping but not per-letter */
+    word-break: keep-all;
+    font-size: 18px; /* shrink for mobile */
+  }
+  .page-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .toolbar-actions {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .toolbar-actions .ant-input-affix-wrapper {
+    width: 100% !important;
+  }
+  .toolbar-actions .ant-btn {
+    flex: 0 0 auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .page-title {
+    font-size: 16px;
+  }
+  .page-toolbar {
+    gap: 10px;
+  }
+  .toolbar-actions {
+    justify-content: space-between;
+  }
+  .toolbar-actions .ant-btn {
+    font-size: 12px;
+    padding: 0 10px;
+  }
+}

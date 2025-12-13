@@ -10,9 +10,8 @@ import FlashSaleList from "../components/home/FlashSaleList.jsx";
 import PersonalizedSection from "../components/home/PersonalizedSection.jsx";
 import BannerSlider from "../components/home/BannerSlider.jsx";
 import FeaturedBlogs from "../components/home/FeaturedBlogs.jsx";
-import PromotionSection from "../components/home/PromotionSection.jsx";
 import DynamicAdSlot from "../features/admin/components/MarketingAdmin/DynamicAdSlot.jsx";
-import Layout from "../Layout/LayoutDefault.js";
+import Layout from "../layout/LayoutDefault.js";
 
 // APIs
 import { fetchCategories } from "../services/api/homepageApi.js";
@@ -91,11 +90,11 @@ export default function HomePage() {
         <section className="home-section hero-section">
           <div className="d-flex gap-0 mt-3 note">
             <div style={{ flex: 7 }}>
-              {/* Slider chính */}
+             
               <BannerSlider slotCode="homepage_hero_carousel" />
             </div>
             <div style={{ flex: 3 }}>
-              {/* 2 Banner bên cạnh slider */}
+             
               <DynamicAdSlot
                 slotCode="homepage_hero_side"
                 maxHeight="150px"

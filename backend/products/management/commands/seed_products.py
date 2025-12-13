@@ -21,7 +21,7 @@ class Command(BaseCommand):
                     phone="0909123456",
                     address="Đà Lạt, Lâm Đồng"
                 )
-                self.stdout.write(self.style.SUCCESS("✅ Đã tạo seller mẫu."))
+                self.stdout.write(self.style.SUCCESS(" Đã tạo seller mẫu."))
             else:
                 seller = Seller.objects.first()
 
@@ -111,12 +111,12 @@ class Command(BaseCommand):
             existing_count = Product.objects.count()
             if existing_count >= 100:
                 self.stdout.write(
-                    self.style.WARNING(f"⚠️ Đã có {existing_count} sản phẩm. Không tạo thêm.")
+                    self.style.WARNING(f" Đã có {existing_count} sản phẩm. Không tạo thêm.")
                 )
                 return
 
             num_to_create = 100 - existing_count
-            self.stdout.write(f"🌱 Sẽ tạo thêm {num_to_create} sản phẩm...")
+            self.stdout.write(f" Sẽ tạo thêm {num_to_create} sản phẩm...")
 
             for i in range(num_to_create):
                 name = f"{random.choice(product_names)} ({i + 1})"
@@ -144,5 +144,5 @@ class Command(BaseCommand):
 
 
             self.stdout.write(
-                self.style.SUCCESS(f"✅ Đã tạo {num_to_create} sản phẩm nông sản mẫu.")
+                self.style.SUCCESS(f" Đã tạo {num_to_create} sản phẩm nông sản mẫu.")
             )

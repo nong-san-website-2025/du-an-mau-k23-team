@@ -34,6 +34,7 @@ from products.models import Product as ProductModel
 from sellers.models import SellerActivityLog
 from sellers.serializers import SellerActivityLogSerializer
 from products.serializers import ProductListSerializer
+from rest_framework.parsers import MultiPartParser, FormParser
 
 
 
@@ -51,7 +52,7 @@ def search_sellers(request):
     q = request.GET.get("q", "")
     # Giới hạn số lượng trả về (ví dụ 20) để tránh quá tải
     sellers = Seller.objects.filter(store_name__icontains=q)[:20]
-    serializer = SellerSerializer(sellers, many=True)
+    serializer = SellerSerializer(sellers, many=True, context={"request": request})
     return Response(serializer.data)
 
 class SellerRejectAPIView(APIView):
@@ -130,19 +131,57 @@ class SellerRegisterAPIView(generics.CreateAPIView):
     queryset = Seller.objects.all()
     serializer_class = SellerRegisterSerializer
 
-    def perform_create(self, serializer):
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+
+        if not serializer.is_valid():
+            # ✅ Luôn trả JSON, không bao giờ trả HTML
+            return Response(
+                {
+                    "errors": serializer.errors,
+                    "message": "Dữ liệu không hợp lệ"
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         seller = serializer.save()
+        return Response(
+            {
+                "message": "Đăng ký shop thành công",
+                "seller_id": seller.id
+            },
+            status=status.HTTP_201_CREATED
+        )
+
+
+@api_view(["GET"])
+def check_store_name(request):
+    name = request.GET.get("name", "").strip()
+
+    if not name:
+        return Response(
+            {"exists": False, "message": "Tên không hợp lệ"},
+            status=400
+        )
+
+    exists = Seller.objects.filter(store_name__iexact=name).exists()
+
+    return Response({
+        "exists": exists
+    })
+
 
 class SellerPendingListAPIView(generics.ListAPIView):
     serializer_class = SellerListSerializer
     def get_queryset(self):
         return Seller.objects.filter(status="pending")
 
-class SellerDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
+class SellerDetailAPIView(generics.RetrieveAPIView):
     queryset = Seller.objects.all()
     serializer_class = SellerDetailSerializer
-    # Cho phép công khai xem chi tiết cửa hàng
-    permission_classes = [permissions.AllowAny]
+
+    def get_serializer_context(self):
+        return {"request": self.request}
 
 class SellerByStatusAPIView(generics.ListAPIView):
     serializer_class = SellerListSerializer
@@ -164,24 +203,46 @@ def available_users(request):
     return Response(users)
 
 class SellerViewSet(viewsets.ModelViewSet):
+    queryset = Seller.objects.all()
+    # Default serializer (dùng cho list/create/update)
     serializer_class = SellerSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+    permission_classes = [IsAuthenticated]
 
-    def get_queryset(self):
-        return Seller.objects.all().order_by('-created_at')
+    def get_serializer_class(self):
+        """
+        Trả về serializer phù hợp theo action:
+         - 'retrieve' -> SellerDetailSerializer (để trả đầy đủ ảnh + business_type + tax_code)
+         - các action khác -> SellerSerializer (nhẹ hơn)
+        """
+        if self.action in ['retrieve', 'retrieve', 'me']:
+            return SellerDetailSerializer
+        return SellerSerializer
 
-    def perform_create(self, serializer):
-        if self.request.user.is_staff:
-            serializer.save()  # admin tạo cho user khác
-        else:
-            serializer.save(user=self.request.user)
-    
     def create(self, request, *args, **kwargs):
-        serializer = SellerSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        data = request.data.copy()
+        print("✅ Incoming data:", data)
+
+        serializer = self.get_serializer(data=data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        seller = serializer.save(user=request.user)
+
+        # Trả đầy đủ dữ liệu detail ngay sau khi tạo
+        out_serializer = SellerDetailSerializer(seller, context={"request": request})
+        return Response(out_serializer.data, status=status.HTTP_201_CREATED)
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', True)
+        instance = self.get_object()
+        data = request.data.copy()
+        print("✅ Update data:", data)
+
+        serializer = self.get_serializer(instance, data=data, partial=partial, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        seller = serializer.save()
+
+        out_serializer = SellerDetailSerializer(seller, context={"request": request})
+        return Response(out_serializer.data, status=status.HTTP_200_OK)
 
 class SellerProductsAPIView(APIView):
     permission_classes = [IsAuthenticated]
@@ -217,18 +278,13 @@ class SellerMeAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        if getattr(request.user.role, "name", "") != "seller":
-            return Response({"detail": "Bạn chưa đăng ký làm seller"}, status=403)
+        seller = Seller.objects.filter(user=request.user).first()
+        if not seller:
+            return Response({"detail": "Bạn chưa đăng ký seller"}, status=404)
 
-        seller, created = Seller.objects.get_or_create(
-            user=request.user,
-            defaults={
-                "store_name": f"Shop {request.user.username}",
-                "status": "pending",
-            }
-        )
-        serializer = SellerDetailSerializer(seller)
-        return Response(serializer.data)
+        serializer = SellerDetailSerializer(seller, context={"request": request})
+        return Response(serializer.data, status=200)
+
 
 
 class ShopViewSet(viewsets.ModelViewSet):

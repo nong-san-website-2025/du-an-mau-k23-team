@@ -1,0 +1,82 @@
+/* Container chính giới hạn độ rộng */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 16px;
+  margin-bottom: 48px; /* Khoảng cách giữa các section */
+
+}
+
+/* --- HEADER SECTION --- */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 2px solid #f0f0f0; /* Đường kẻ mờ dưới header */
+  padding-bottom: 16px;
+  margin-bottom: 24px;
+}
+
+.titleWrapper {
+  display: flex;
+  align-items: center;
+  gap: 16px; /* Khoảng cách giữa Icon và Title */
+}
+
+/* Hộp chứa Icon tròn */
+.iconBox {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+/* Nút "Xem tất cả" */
+.viewMoreBtn {
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.3s ease;
+}
+.viewMoreBtn:hover {
+  gap: 8px; /* Hiệu ứng mũi tên trượt ra khi hover */
+}
+
+/* --- GRID LAYOUT (QUAN TRỌNG) --- */
+.gridContainer {
+  display: grid;
+  /* Desktop: 4 cột đều nhau */
+  grid-template-columns: repeat(4, 1fr); 
+  gap: 20px; /* Khoảng cách giữa các ô */
+  min-height: 300px;
+}
+
+/* Tablet (Màn hình < 992px): 3 cột */
+@media (max-width: 992px) {
+  .gridContainer {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* Mobile lớn (Màn hình < 768px): 2 cột */
+@media (max-width: 768px) {
+  .gridContainer {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px; /* Giảm khoảng cách trên mobile */
+  }
+  
+  /* Thu nhỏ header trên mobile */
+  .titleWrapper {
+    gap: 10px;
+  }
+  .iconBox {
+    width: 36px;
+    height: 36px;
+    font-size: 18px;
+  }
+}

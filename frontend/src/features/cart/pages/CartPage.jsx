@@ -21,7 +21,7 @@ import { productApi } from "../../products/services/productApi";
 import { formatVND } from "../../stores/components/StoreDetail/utils/utils";
 import QuantityInput from "./QuantityInput";
 import "../styles/CartPage.css";
-import Layout from "../../../Layout/LayoutDefault";
+import Layout from "../../../layout/LayoutDefault";
 import { getSellerDetail } from "../../sellers/services/sellerService";
 import NoImage from "../../../components/shared/NoImage";
 

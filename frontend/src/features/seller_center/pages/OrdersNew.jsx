@@ -52,7 +52,6 @@ export default function OrdersNew({ onAction }) {
     try {
       const res = await API.get("orders/seller/pending/");
       const allOrders = res.data || [];
-      // Lọc chỉ đơn hàng có ít nhất một sản phẩm thuộc shop
       const filteredOrders = allOrders.filter((order) =>
         (order.items || []).some((item) => productIds.has(item.product))
       );
@@ -132,16 +131,35 @@ export default function OrdersNew({ onAction }) {
     }
   };
 
+  // --- CẤU HÌNH CỘT CHO TABLE RESPONSIVE ---
   const columns = [
-    { title: "Mã đơn", dataIndex: "id", key: "id" },
+    { 
+      title: "Mã", 
+      dataIndex: "id", 
+      key: "id",
+      width: 60, // Cố định chiều rộng nhỏ
+      fixed: 'left', // Ghim bên trái
+      render: (text) => <span style={{fontWeight: 'bold'}}>#{text}</span>
+    },
     {
       title: "Khách hàng",
       key: "customer",
+      width: 160, // Đặt chiều rộng cụ thể để text tự xuống dòng
       render: (_, r) => (
-        <div>
-          <div><strong>{r.customer_name}</strong></div>
-          <div style={{ fontSize: 12, color: "#666" }}>{r.customer_phone}</div>
-          <div style={{ fontSize: 12, color: "#666" }}>{r.address}</div>
+        <div style={{ fontSize: 13 }}>
+          <div style={{fontWeight: 600}}>{r.customer_name}</div>
+          <div style={{ color: "#666" }}>{r.customer_phone}</div>
+          {/* Giới hạn địa chỉ hiển thị gọn gàng */}
+          <div style={{ 
+            color: "#888", 
+            fontSize: 11,
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden'
+          }}>
+            {r.address}
+          </div>
         </div>
       ),
     },
@@ -149,90 +167,110 @@ export default function OrdersNew({ onAction }) {
       title: "Trạng thái",
       dataIndex: "status",
       key: "status",
-      render: renderStatusTag,
+      width: 90,
+      render: (status) => (
+        <Tag style={{margin: 0}} color={status === "pending" ? "gold" : "blue"}>
+           {status === "pending" ? "Chờ" : status}
+        </Tag>
+      )
     },
     {
       title: "Tổng tiền",
       dataIndex: "total_price",
       key: "total_price",
-      render: (v) => <strong>{formatCurrency(v)}đ</strong>,
+      width: 110,
+      render: (v) => <strong style={{color: '#16a34a'}}>{formatCurrency(v)}đ</strong>,
     },
     {
       title: "Hành động",
       key: "actions",
+      fixed: 'right', // Ghim bên phải để luôn nhìn thấy nút
+      width: 140,
       render: (_, r) => (
-        <Space>
-          <Button onClick={() => openDetail(r)}>Xem chi tiết</Button>
-          <Button type="primary" onClick={() => approve(r.id)}>
-            Duyệt đơn
-          </Button>
-          <Popconfirm
-            title="Xác nhận hủy đơn"
-            description={`Bạn có chắc muốn hủy đơn #${r.id}?`}
-            okText="Hủy đơn"
-            cancelText="Đóng"
-            onConfirm={() => cancelOrder(r.id)}
-          >
-            <Button danger>Hủy đơn</Button>
-          </Popconfirm>
-        </Space>
+        // QUAN TRỌNG: paddingRight ở đây giúp đẩy các nút qua trái, tránh sát viền màn hình
+        <div style={{ paddingRight: 15 }}>
+          <Space direction="vertical" size={4} style={{ width: '100%' }}>
+            <Button size="small" block onClick={() => openDetail(r)}>
+              Chi tiết
+            </Button>
+            <Button type="primary" size="small" block onClick={() => approve(r.id)}>
+              Duyệt
+            </Button>
+            <Popconfirm
+              title="Hủy đơn này?"
+              okText="Có"
+              cancelText="Không"
+              onConfirm={() => cancelOrder(r.id)}
+              placement="topRight"
+            >
+              <Button danger size="small" block>Hủy</Button>
+            </Popconfirm>
+          </Space>
+        </div>
       ),
     },
   ];
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-bold">Đơn mới cần xác nhận</h2>
+    // Thêm padding cho container ngoài cùng để nội dung không dính sát lề trái/phải
+    <div style={{ padding: '0 10px', paddingBottom: 20 }}>
+      
+      <div className="flex justify-between items-center mb-4 pt-2">
+        <h2 className="text-xl font-bold" style={{margin: 0}}>Đơn mới ({orders.length})</h2>
         {orders.length > 0 && (
-          <Button type="primary" onClick={approveAll} loading={loading}>
-            Duyệt tất cả ({orders.length} đơn)
+          <Button type="primary" size="small" onClick={approveAll} loading={loading}>
+            Duyệt hết
           </Button>
         )}
       </div>
+
       <Table
         rowKey="id"
         loading={loading}
         dataSource={orders}
         columns={columns}
+        // QUAN TRỌNG: Kích hoạt thanh cuộn ngang khi màn hình nhỏ
+        scroll={{ x: 750 }} 
+        pagination={{ pageSize: 5 }}
+        size="small"
+        bordered
       />
 
+      {/* Modal Chi Tiết */}
       <Modal
         open={detailVisible}
         onCancel={closeDetail}
         footer={null}
-        width={760}
+        width="95%" // Modal rộng gần full màn hình điện thoại
+        style={{ top: 20, maxWidth: 760 }}
         centered
         destroyOnClose
         title={
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span>Chi tiết đơn #{selectedOrder?.id}</span>
+            <span>Đơn #{selectedOrder?.id}</span>
             {selectedOrder?.status && renderStatusTag(selectedOrder.status)}
           </div>
         }
       >
         {selectedOrder && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 15 }}>
             <Descriptions
               bordered
               size="small"
-              column={2}
-              labelStyle={{ fontWeight: 600 }}
+              column={1} // Trên mobile hiển thị 1 cột
+              labelStyle={{ width: '100px', fontWeight: 600 }}
             >
               <Descriptions.Item label="Khách hàng">
                 {selectedOrder.customer_name || "—"}
               </Descriptions.Item>
-              <Descriptions.Item label="Số điện thoại">
-                {selectedOrder.customer_phone || "—"}
+              <Descriptions.Item label="SĐT">
+                <a href={`tel:${selectedOrder.customer_phone}`}>{selectedOrder.customer_phone}</a>
               </Descriptions.Item>
-              <Descriptions.Item label="Địa chỉ" span={2}>
+              <Descriptions.Item label="Địa chỉ">
                 {selectedOrder.address || "—"}
               </Descriptions.Item>
-              <Descriptions.Item label="Ghi chú" span={2}>
+              <Descriptions.Item label="Ghi chú">
                 {selectedOrder.note || "—"}
-              </Descriptions.Item>
-              <Descriptions.Item label="Thanh toán">
-                {selectedOrder.payment_method || "—"}
               </Descriptions.Item>
               <Descriptions.Item label="Ngày tạo">
                 {selectedOrder.created_at
@@ -242,7 +280,7 @@ export default function OrdersNew({ onAction }) {
             </Descriptions>
 
             <div>
-              <h3 style={{ fontWeight: 600, marginBottom: 12 }}>Sản phẩm trong đơn</h3>
+              <h3 style={{ fontWeight: 600, marginBottom: 8 }}>Sản phẩm</h3>
               <List
                 dataSource={selectedOrder.items || []}
                 locale={{ emptyText: "Không có sản phẩm" }}
@@ -252,34 +290,23 @@ export default function OrdersNew({ onAction }) {
                   return (
                     <List.Item
                       key={`${selectedOrder.id}-${item.product}`}
-                      style={{ alignItems: "flex-start" }}
+                      style={{ alignItems: "flex-start", padding: '10px 0' }}
                     >
-                      <Space align="start" size={16} style={{ width: "100%" }}>
+                      <Space align="start" size={12} style={{ width: "100%" }}>
                         <Image
                           src={resolveProductImage(item.product_image)}
                           alt={item.product_name}
-                          width={56}
-                          height={56}
-                          style={{ borderRadius: 10, objectFit: "cover" }}
+                          width={50}
+                          height={50}
+                          style={{ borderRadius: 6, objectFit: "cover" }}
                           preview={false}
-                          fallback="https://via.placeholder.com/56"
+                          fallback="https://via.placeholder.com/50"
                         />
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: 600 }}>{item.product_name}</div>
-                          <div style={{ fontSize: 13, color: "#4b5563" }}>
+                          <div style={{ fontWeight: 600, fontSize: 13, lineHeight: 1.2 }}>{item.product_name}</div>
+                          <div style={{ fontSize: 12, color: "#666", marginTop: 4 }}>
                             {formatCurrency(item.price)}đ × {item.quantity}
                           </div>
-                          {item.seller_name && (
-                            <div
-                              style={{
-                                fontSize: 12,
-                                color: "#6b7280",
-                                marginTop: 4,
-                              }}
-                            >
-                              Nhà cung cấp: {item.seller_name}
-                            </div>
-                          )}
                         </div>
                         <div style={{ fontWeight: 600, color: "#16a34a" }}>
                           {formatCurrency(productTotal)}đ
@@ -291,20 +318,14 @@ export default function OrdersNew({ onAction }) {
               />
             </div>
 
-            <Divider style={{ margin: "8px 0" }} />
+            <Divider style={{ margin: "5px 0" }} />
 
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 24 }}>
-              <div style={{ textAlign: "right" }}>
-                <div style={{ fontSize: 13, color: "#6b7280" }}>Phí vận chuyển</div>
-                <div style={{ fontWeight: 600 }}>
-                  {formatCurrency(selectedOrder.shipping_fee || 0)}đ
-                </div>
+            <div style={{ display: "flex", flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+              <div style={{ fontSize: 13, color: "#666" }}>
+                  Phí vận chuyển: {formatCurrency(selectedOrder.shipping_fee || 0)}đ
               </div>
-              <div style={{ textAlign: "right" }}>
-                <div style={{ fontSize: 13, color: "#6b7280" }}>Tổng tiền</div>
-                <div style={{ fontSize: 18, fontWeight: 700, color: "#16a34a" }}>
-                  {formatCurrency(selectedOrder.total_price)}đ
-                </div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: "#16a34a" }}>
+                  Tổng cộng: {formatCurrency(selectedOrder.total_price)}đ
               </div>
             </div>
           </div>

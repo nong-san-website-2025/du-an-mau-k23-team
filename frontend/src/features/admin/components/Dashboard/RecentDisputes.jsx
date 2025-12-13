@@ -35,7 +35,10 @@ export default function RecentDisputes() {
     fetchDisputes();
   }, []);
 
-  const formatOrderId = (id) => `DH${id.toString().padStart(3, "0")}`;
+  const formatOrderId = (id) => {
+    if (!id) return "N/A";
+    return `DH${id.toString().padStart(3, "0")}`;
+  };
   const statusColors = {
     pending: "red",
     in_progress: "gold",
@@ -67,7 +70,11 @@ export default function RecentDisputes() {
       dataIndex: "order_id",
       key: "order_id",
       render: (orderId) => (
-        <a href={`/orders/${orderId}`}>{formatOrderId(orderId)}</a>
+        orderId ? (
+          <a href={`/orders/${orderId}`}>{formatOrderId(orderId)}</a>
+        ) : (
+          <span>{formatOrderId(orderId)}</span>
+        )
       ),
     },
 
@@ -145,7 +152,7 @@ export default function RecentDisputes() {
               <b>Mã khiếu nại:</b> #{selectedDispute.id}
             </p>
             <p>
-              <b>Đơn hàng:</b> #{selectedDispute.order_id}
+              <b>Đơn hàng:</b> {selectedDispute.order_id ? `#${selectedDispute.order_id}` : "N/A"}
             </p>
             <p>
               <b>Người khiếu nại:</b> {selectedDispute.complainant_name}

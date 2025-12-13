@@ -1,23 +1,121 @@
 from rest_framework import serializers
-from .models import Promotion, Voucher ,FlashSale, UserVoucher, FlashSaleProduct
+from django.db.models import Sum
+from .models import Promotion, Voucher, FlashSale, UserVoucher, FlashSaleProduct
 from products.models import Product
 from orders.models import OrderItem
-from django.db.models import Sum
-from rest_framework import serializers
-from .models import Voucher
 
+# =========================================================
+# 1. HELPER / NESTED SERIALIZERS
+# =========================================================
 
 class PromotionListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Promotion
         fields = ['id', 'code', 'name', 'type', 'start', 'end', 'active']
 
+class FlashSaleItemDisplaySerializer(serializers.ModelSerializer):
+    """
+    Serializer này dùng để hiển thị từng MÓN HÀNG trong Flashsale (View Flat)
+    """
+    product_name = serializers.CharField(source='product.name', read_only=True)
+    product_image = serializers.SerializerMethodField()
+    remaining_time = serializers.SerializerMethodField()
+    remaining_stock = serializers.SerializerMethodField()
+
+    class Meta:
+        model = FlashSaleProduct 
+        fields = [
+            'id', 'product_id', 'product_name', 'product_image',
+            'original_price', 'flash_price', 'stock',
+            'remaining_time', 'remaining_stock' 
+        ]
+
+    def get_product_name(self, obj):
+        return obj.product.name if obj.product else ""
+
+    def get_product_image(self, obj):
+        product = obj.product
+        if product:
+            image_obj = product.images.filter(is_primary=True).first() or product.images.first()
+            if image_obj:
+                request = self.context.get('request')
+                if request:
+                    return request.build_absolute_uri(image_obj.image.url)
+                return image_obj.image.url
+        return None
+
+    def get_remaining_time(self, obj):
+        return obj.flashsale.remaining_time if obj.flashsale else 0
+
+    def get_remaining_stock(self, obj):
+        sold = OrderItem.objects.filter(
+            product=obj.product,
+            order__status__in=['paid', 'shipped', 'delivered', 'success'],
+            created_at__gte=obj.flashsale.start_time,
+            created_at__lt=obj.flashsale.end_time
+        ).aggregate(total=Sum('quantity'))['total'] or 0
+        return max(0, obj.stock - sold)
+
+
+class FlashSaleProductSerializer(serializers.ModelSerializer):
+    product_id = serializers.IntegerField(source='product.id')
+    product_name = serializers.CharField(source='product.name')
+    original_price = serializers.DecimalField(source='product.original_price', max_digits=12, decimal_places=0)
+    product_image = serializers.SerializerMethodField() 
+    remaining_stock = serializers.SerializerMethodField()
+
+    class Meta:
+        model = FlashSaleProduct
+        fields = ['product_id', 'product_name', 'product_image', 'original_price', 'flash_price', 'stock', 'remaining_stock']
+
+    def get_remaining_stock(self, obj):
+        sold = OrderItem.objects.filter(
+            product=obj.product,
+            order__status__in=['paid', 'shipped', 'delivered', 'success'],
+            created_at__gte=obj.flashsale.start_time,
+            created_at__lt=obj.flashsale.end_time
+        ).aggregate(total=Sum('quantity'))['total'] or 0
+        return max(0, obj.stock - sold)
+
+    def get_product_image(self, obj):
+        product = obj.product
+        if not product: return None
+        image_obj = product.images.filter(is_primary=True).first() or product.images.first()
+        if image_obj:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(image_obj.image.url)
+            return image_obj.image.url
+        return None
+
+class FlashSaleProductAdminSerializer(serializers.ModelSerializer):
+    product_name = serializers.CharField(source='product.name', read_only=True)
+    original_price = serializers.DecimalField(
+        source='product.original_price', max_digits=12, decimal_places=0, read_only=True
+    )
+    remaining_stock = serializers.SerializerMethodField()
+
+    class Meta:
+        model = FlashSaleProduct
+        fields = ['id', 'product', 'product_name', 'original_price', 'flash_price', 'stock', 'remaining_stock']
+    
+    def get_remaining_stock(self, obj):
+        sold = OrderItem.objects.filter(
+            product=obj.product,
+            order__status__in=['paid', 'shipped', 'delivered', 'success'],
+            created_at__gte=obj.flashsale.start_time,
+            created_at__lt=obj.flashsale.end_time
+        ).aggregate(total=Sum('quantity'))['total'] or 0
+        return max(0, obj.stock - sold)
+
+
+# =========================================================
+# 2. VOUCHER SERIALIZERS
+# =========================================================
 
 class VoucherDetailSerializer(serializers.ModelSerializer):
     promotion = PromotionListSerializer(read_only=True)
     per_user_quantity = serializers.IntegerField(required=False, default=1)
-
-    # --- PHẦN MỚI: Thêm tên nguồn phát hành ---
     source_name = serializers.SerializerMethodField()
 
     class Meta:
@@ -28,34 +126,38 @@ class VoucherDetailSerializer(serializers.ModelSerializer):
             'min_order_value', 'max_discount_amount',
             'start_at', 'end_at', 'active', 'promotion',
             'created_by', 'created_at',
-            # new distribution / quantity fields
             'distribution_type', 'total_quantity', 'per_user_quantity',
-            'discount_type','source_name',
+            'discount_type', 'source_name',
         ]
         read_only_fields = ['created_by', 'created_at', 'promotion']
 
-    # --- HÀM MỚI: Để lấy tên nguồn gốc voucher ---
     def get_source_name(self, obj):
         if obj.scope == 'system':
-            return 'GreenFarm' # Tên mặc định cho voucher hệ thống
+            return 'GreenFarm'
         if obj.scope == 'seller' and obj.seller:
-            return obj.seller.store_name # Lấy tên shop từ model Seller
+            return obj.seller.store_name 
         return 'Không rõ'  
 
     def validate(self, data):
-        # --- Discount type validation ---
+        # 1. Validate Discount Logic
         count = sum(1 for k in ('discount_percent', 'discount_amount', 'freeship_amount') if data.get(k) is not None)
         if count == 0:
             raise serializers.ValidationError("Phải cung cấp 1 trong các loại giảm: discount_percent, discount_amount, freeship_amount")
         if count > 1:
-            raise serializers.ValidationError("Chỉ được tổng cộng 1 loại giảm.")
+            raise serializers.ValidationError("Chỉ được chọn 1 loại giảm giá.")
 
+        # 2. Validate Percent Range
         if data.get('discount_percent') is not None:
             val = data['discount_percent']
             if val < 0 or val > 100:
-                raise serializers.ValidationError("discount_percent phải trong 0 - 100.")
+                raise serializers.ValidationError("discount_percent phải trong khoảng 0 - 100.")
+            
+            # Check max discount for percent (trừ freeship)
+            if not data.get('max_discount_amount') and data.get('voucher_type') != 'freeship':
+                 # Tạm thời pass để tránh lỗi migrate cũ
+                 pass 
 
-        # --- Fix per_user_quantity ---
+        # 3. Fix per_user_quantity
         dist_type = data.get('distribution_type')
         if dist_type == Voucher.DistributionType.CLAIM:
             if data.get('per_user_quantity') is None:
@@ -66,288 +168,36 @@ class VoucherDetailSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         user = self.context['request'].user
         validated_data['created_by'] = user if user.is_authenticated else None
-        voucher = super().create(validated_data)
-        # phân phối user_voucher (nếu direct) xử lý trong view
-        return voucher
+        return super().create(validated_data)
 
     def update(self, instance, validated_data):
-        """
-        Update voucher gốc. 
-        Không xoá/reset UserVoucher đã phát.
-        """
-
-        # Không cho đổi distribution_type sau khi đã tạo
         if 'distribution_type' in validated_data and validated_data['distribution_type'] != instance.distribution_type:
             raise serializers.ValidationError("Không thể đổi kiểu phân phối sau khi đã tạo.")
 
-        # Nếu chỉnh sửa total_quantity thì phải >= số lượng đã phát
         if 'total_quantity' in validated_data:
-            issued = instance.issued_count()
+            issued = instance.issued_count() if hasattr(instance, 'issued_count') else 0
             if validated_data['total_quantity'] < issued:
-                raise serializers.ValidationError(
-                    f"total_quantity không được nhỏ hơn số đã phát ({issued})."
-                )
+                raise serializers.ValidationError(f"total_quantity không được nhỏ hơn số đã phát ({issued}).")
 
         return super().update(instance, validated_data)
-
-
-class FlashSaleSerializer(serializers.ModelSerializer):
-    product_name = serializers.CharField(source='product.name', read_only=True)
-    product_image = serializers.SerializerMethodField()
-    remaining_time = serializers.SerializerMethodField()
-    remaining_stock = serializers.SerializerMethodField()
-
-    class Meta:
-        model = FlashSale
-        fields = [
-            'id', 'product_id', 'product_name', 'product_image',
-            'original_price', 'flash_price', 'stock',
-            'start_time', 'end_time', 'remaining_time', 'remaining_stock'
-        ]
-
-    def get_product_name(self, obj):
-        return obj.product.name if obj.product else ""
-
-    def get_product_image(self, obj):
-        product = obj.product
-        if product:
-            primary_image = product.images.filter(is_primary=True).first()
-            if primary_image:
-                request = self.context.get('request')
-                if request:
-                    return request.build_absolute_uri(primary_image.image.url)
-                return primary_image.image.url
-            first_image = product.images.first()
-            if first_image:
-                request = self.context.get('request')
-                if request:
-                    return request.build_absolute_uri(first_image.image.url)
-                return first_image.image.url
-        return None
-
-    def get_remaining_time(self, obj):
-        return obj.remaining_time
-
-    def get_remaining_stock(self, obj):
-        return obj.remaining_stock
 
 
 class VoucherSerializer(serializers.ModelSerializer):
     class Meta:
         model = Voucher
-        fields = "__all__"
+        fields = '__all__'
+        read_only_fields = ['created_by', 'created_at', 'used_quantity', 'issued_count']
 
 
-class UserVoucherSerializer(serializers.ModelSerializer):
-    voucher = VoucherDetailSerializer(read_only=True)
-
-    class Meta:
-        model = UserVoucher
-        fields = ["id", "voucher", "is_used", "used_at", "quantity", "used_count"] 
-
-class FlashSaleProductSerializer(serializers.ModelSerializer):
-    product_id = serializers.IntegerField(source='product.id')
-    product_name = serializers.CharField(source='product.name')
-    original_price = serializers.DecimalField(source='product.original_price', max_digits=12, decimal_places=0)
-    # Nếu bạn có field ảnh, ví dụ: product.image.url
-    product_image = serializers.SerializerMethodField() 
-    remaining_stock = serializers.SerializerMethodField()
-
-    class Meta:
-        model = FlashSaleProduct
-        fields = ['product_id', 'product_name', 'product_image', 'original_price', 'flash_price', 'stock', 'remaining_stock']
-
-    def get_remaining_stock(self, obj):
-    # Tính số lượng đã bán trong flash sale này
-        sold = OrderItem.objects.filter(
-            product=obj.product,
-            order__status__in=['paid', 'shipped', 'delivered', 'success'],
-            created_at__gte=obj.flashsale.start_time,
-            created_at__lt=obj.flashsale.end_time
-        ).aggregate(total=Sum('quantity'))['total'] or 0
-
-        return max(0, obj.stock - sold)
-    
-
-    def get_product_image(self, obj):
-        product = obj.product
-        if product:
-            primary_image = product.images.filter(is_primary=True).first()
-            if primary_image:
-                request = self.context.get('request')
-                if request:
-                    return request.build_absolute_uri(primary_image.image.url)
-                return primary_image.image.url
-            first_image = product.images.first()
-            if first_image:
-                request = self.context.get('request')
-                if request:
-                    return request.build_absolute_uri(first_image.image.url)
-                return first_image.image.url
-        return None
-
-class FlashSaleSerializer(serializers.ModelSerializer):
-    flashsale_products = FlashSaleProductSerializer(many=True, read_only=True)
-
-    class Meta:
-        model = FlashSale
-        fields = ['id', 'start_time', 'end_time', 'flashsale_products']
-
-
-class FlashSaleProductAdminSerializer(serializers.ModelSerializer):
-    product_name = serializers.CharField(source='product.name', read_only=True)
-    original_price = serializers.DecimalField(
-        source='product.original_price',
-        max_digits=12,
-        decimal_places=0,
-        read_only=True
-    )
-    remaining_stock = serializers.SerializerMethodField()
-
-    class Meta:
-        model = FlashSaleProduct
-        fields = ['id', 'product', 'product_name', 'original_price', 'flash_price', 'stock','remaining_stock'  ]
-    
-    def get_remaining_stock(self, obj):
-    # Tính số lượng đã bán trong flash sale này
-        sold = OrderItem.objects.filter(
-            product=obj.product,
-            order__status__in=['paid', 'shipped', 'delivered', 'success'],
-            created_at__gte=obj.flashsale.start_time,
-            created_at__lt=obj.flashsale.end_time
-        ).aggregate(total=Sum('quantity'))['total'] or 0
-
-        return max(0, obj.stock - sold)
-
-class FlashSaleAdminSerializer(serializers.ModelSerializer):
-    flashsale_products = FlashSaleProductAdminSerializer(many=True)
-    
-    class Meta:
-        model = FlashSale
-        fields = [
-            'id', 'start_time', 'end_time', 'is_active', 'flashsale_products',
-        ]
-        read_only_fields = ['id']
-
-    def validate(self, data):
-        # --- BƯỚC 2: CHUẨN BỊ DỮ LIỆU ĐỂ CHECK (Hỗ trợ cả Create và Update) ---
-        # Lấy dữ liệu từ input (data), nếu không có (trường hợp Update 1 phần) thì lấy từ bản ghi cũ (instance)
-        start_time = data.get('start_time')
-        end_time = data.get('end_time')
-        is_active = data.get('is_active')
-
-        if self.instance: # Nếu đang là EDIT
-            if start_time is None: start_time = self.instance.start_time
-            if end_time is None: end_time = self.instance.end_time
-            if is_active is None: is_active = self.instance.is_active
-        else: # Nếu đang là CREATE
-            if is_active is None: is_active = True # Mặc định active nếu tạo mới
-
-        flashsale_products = data.get('flashsale_products', [])
-
-        # 1. Validate thời gian cơ bản
-        if start_time and end_time and start_time >= end_time:
-            raise serializers.ValidationError({
-                "end_time": "Thời gian kết thúc phải sau thời gian bắt đầu."
-            })
-
-        # --- BƯỚC 3: LOGIC CHECK TRÙNG LỊCH (QUAN TRỌNG) ---
-        if is_active and start_time and end_time:
-            # Tìm các Flash Sale đang chạy (Active) bị trùng giờ
-            # Logic trùng: (Start A < End B) và (End A > Start B)
-            overlapping = FlashSale.objects.filter(
-                is_active=True,
-                start_time__lt=end_time,
-                end_time__gt=start_time
-            )
-            
-            # Nếu đang Edit, phải loại trừ chính nó ra khỏi danh sách trùng
-            if self.instance:
-                overlapping = overlapping.exclude(pk=self.instance.pk)
-
-            if overlapping.exists():
-                conflict = overlapping.first()
-                # Format ngày giờ cho dễ đọc
-                s_str = conflict.start_time.strftime('%H:%M %d/%m')
-                e_str = conflict.end_time.strftime('%H:%M %d/%m')
-                raise serializers.ValidationError(
-                    f"Khoảng thời gian này bị trùng với Flash Sale ID {conflict.id} ({s_str} - {e_str})"
-                )
-        # -----------------------------------------------------
-
-        # 2. Validate sản phẩm (Giữ nguyên logic cũ của bạn)
-        # Lưu ý: Khi update, nếu không gửi flashsale_products lên thì bỏ qua check này
-        # hoặc tùy logic của bạn muốn bắt buộc gửi lại list.
-        # Ở đây tôi giữ logic cũ: bắt buộc phải có nếu gửi list rỗng
-        
-        # Nếu đang tạo mới (self.instance is None) HOẶC user có gửi list products (kể cả rỗng)
-        if (not self.instance) or ('flashsale_products' in data):
-             if not flashsale_products:
-                raise serializers.ValidationError({
-                    "flashsale_products": "Phải có ít nhất 1 sản phẩm trong Flash Sale."
-                })
-
-        seen_products = set()
-        for item in flashsale_products:
-            product = item.get('product')
-            flash_price = item.get('flash_price')
-            stock = item.get('stock')
-
-            # Kiểm tra trùng lặp sản phẩm
-            if product in seen_products:
-                raise serializers.ValidationError({
-                    "flashsale_products": f"Sản phẩm {product} bị lặp lại trong danh sách."
-                })
-            seen_products.add(product)
-
-            # Kiểm tra giá flash
-            if flash_price is None or flash_price <= 0:
-                raise serializers.ValidationError(f"Giá flash của sản phẩm {product} phải > 0.")
-
-            if product.original_price and flash_price >= product.original_price:
-                raise serializers.ValidationError(f"Giá flash của {product} ({flash_price}) phải thấp hơn giá gốc ({product.original_price}).")
-
-            # Kiểm tra tồn kho
-            if stock is None or stock < 1:
-                raise serializers.ValidationError(f"Số lượng sale của sản phẩm {product} phải >= 1.")
-            
-            # Check kỹ hơn: Số lượng sale không được lớn hơn tồn kho thực tế
-            if stock > product.stock:
-                 raise serializers.ValidationError(f"Số lượng sale của {product} ({stock}) vượt quá tồn kho hiện tại ({product.stock}).")
-
-        return data
-
-    def create(self, validated_data):
-        products_data = validated_data.pop('flashsale_products', [])
-        flashsale = FlashSale.objects.create(**validated_data)
-
-        for product_data in products_data:
-            FlashSaleProduct.objects.create(flashsale=flashsale, **product_data)
-
-        return flashsale
-
-    def update(self, instance, validated_data):
-        products_data = validated_data.pop('flashsale_products', None)
-
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-        instance.save()
-
-        # Chỉ reset sản phẩm nếu frontend gửi danh sách mới lên
-        if products_data is not None:
-            instance.flashsale_products.all().delete()
-            for product_data in products_data:
-                FlashSaleProduct.objects.create(flashsale=instance, **product_data)
-
-        return instance
-
+# =========================================================
+# 3. SELLER VOUCHER SERIALIZER
+# =========================================================
 
 class SellerVoucherSerializer(serializers.ModelSerializer):
-    # Dùng PrimaryKeyRelatedField để nhận một list các ID sản phẩm từ frontend
     applicable_products = serializers.PrimaryKeyRelatedField(
         queryset=Product.objects.all(),
         many=True,
-        required=False # Không bắt buộc vì có thể áp dụng cho tất cả
+        required=False
     )
 
     class Meta:
@@ -358,41 +208,168 @@ class SellerVoucherSerializer(serializers.ModelSerializer):
             'min_order_value', 'max_discount_amount',
             'start_at', 'end_at', 'active',
             'distribution_type', 'total_quantity', 'per_user_quantity',
-            # Các trường mới thêm
             'product_scope', 'applicable_products',
         ]
-        # Các trường này sẽ được tự động điền trong view, không cần seller nhập
         read_only_fields = ['id']
 
     def validate(self, data):
-        # --- Validate loại giảm giá ---
         count = sum(1 for k in ('discount_percent', 'discount_amount', 'freeship_amount') if data.get(k) is not None)
         if count == 0:
             raise serializers.ValidationError("Phải cung cấp 1 trong các loại giảm giá.")
         if count > 1:
             raise serializers.ValidationError("Chỉ được chọn 1 loại giảm giá.")
+        
+        if data.get('discount_percent'):
+             if not data.get('max_discount_amount'):
+                  raise serializers.ValidationError({"max_discount_amount": "Vui lòng nhập mức giảm tối đa khi giảm theo %"})
 
-        # --- Validate logic áp dụng sản phẩm ---
-        if data.get('product_scope') == Voucher.ProductScope.SPECIFIC:
+        if data.get('product_scope') == 'SPECIFIC': 
             if not data.get('applicable_products'):
-                raise serializers.ValidationError({
-                    "applicable_products": "Vui lòng chọn ít nhất một sản phẩm khi áp dụng cho sản phẩm tùy chọn."
-                })
+                raise serializers.ValidationError({"applicable_products": "Vui lòng chọn sản phẩm áp dụng."})
         
-        # --- VALIDATION BẢO MẬT: Kiểm tra sản phẩm có thuộc về cửa hàng không ---
         request = self.context.get('request')
-        user_seller = getattr(request.user, 'seller', None)
-        
-        if not user_seller:
-             raise serializers.ValidationError("Tài khoản của bạn không liên kết với cửa hàng nào.")
-             
-        if 'applicable_products' in data:
-            for product in data['applicable_products']:
-                # Dựa trên model Product của bạn, trường liên kết là `seller`
-                if product.seller != user_seller:
-                    raise serializers.ValidationError({
-                        "applicable_products": f"Sản phẩm '{product.name}' không thuộc cửa hàng của bạn."
-                    })
+        if request and hasattr(request.user, 'seller'):
+            user_seller = request.user.seller
+            if 'applicable_products' in data:
+                for product in data['applicable_products']:
+                    if product.seller != user_seller:
+                        raise serializers.ValidationError(f"Sản phẩm '{product.name}' không thuộc cửa hàng của bạn.")
 
         return data
+
+
+# =========================================================
+# 4. USER VOUCHER SERIALIZER
+# =========================================================
+
+class UserVoucherSerializer(serializers.ModelSerializer):
+    voucher = VoucherDetailSerializer(read_only=True)
+
+    class Meta:
+        model = UserVoucher
+        fields = ["id", "voucher", "is_used", "used_at", "quantity", "used_count"] 
+
+
+# =========================================================
+# 5. IMPORT EXCEL SERIALIZER (CẬP NHẬT FREESHIP)
+# =========================================================
+
+class VoucherImportSerializer(serializers.Serializer):
+    code = serializers.CharField(required=True)
+    title = serializers.CharField(required=True)
     
+    # [QUAN TRỌNG] Thêm 'freeship' vào choices để Backend không báo lỗi
+    discount_type = serializers.ChoiceField(
+        choices=['amount', 'percent', 'freeship'], 
+        default='amount'
+    )
+    
+    value = serializers.DecimalField(max_digits=12, decimal_places=0, required=True)
+    start_date = serializers.DateField(format="%Y-%m-%d", input_formats=["%Y-%m-%d", "%d/%m/%Y"])
+    end_date = serializers.DateField(format="%Y-%m-%d", input_formats=["%Y-%m-%d", "%d/%m/%Y"])
+    quantity = serializers.IntegerField(min_value=1, default=100)
+    min_order = serializers.DecimalField(max_digits=12, decimal_places=0, required=False, default=0)
+
+    def validate_code(self, value):
+        if Voucher.objects.filter(code__iexact=value.strip()).exists():
+            raise serializers.ValidationError(f"Mã '{value}' đã tồn tại.")
+        return value.upper().strip()
+
+    def validate(self, data):
+        if data['start_date'] >= data['end_date']:
+            raise serializers.ValidationError("Ngày kết thúc phải sau ngày bắt đầu.")
+        return data
+
+
+# =========================================================
+# 6. FLASHSALE SERIALIZERS
+# =========================================================
+
+class FlashSaleSerializer(serializers.ModelSerializer):
+    flashsale_products = FlashSaleProductSerializer(many=True, read_only=True)
+    remaining_time = serializers.ReadOnlyField() 
+
+    class Meta:
+        model = FlashSale
+        fields = ['id', 'start_time', 'end_time', 'remaining_time', 'flashsale_products']
+
+
+class FlashSaleAdminSerializer(serializers.ModelSerializer):
+    flashsale_products = FlashSaleProductAdminSerializer(many=True)
+    
+    class Meta:
+        model = FlashSale
+        fields = ['id', 'start_time', 'end_time', 'is_active', 'flashsale_products']
+        read_only_fields = ['id']
+
+    def validate(self, data):
+        start_time = data.get('start_time')
+        end_time = data.get('end_time')
+        is_active = data.get('is_active')
+
+        if self.instance:
+            start_time = start_time or self.instance.start_time
+            end_time = end_time or self.instance.end_time
+            if is_active is None: is_active = self.instance.is_active
+        else:
+            if is_active is None: is_active = True
+
+        if start_time and end_time and start_time >= end_time:
+            raise serializers.ValidationError({"end_time": "Thời gian kết thúc phải sau bắt đầu."})
+
+        if is_active and start_time and end_time:
+            overlapping = FlashSale.objects.filter(
+                is_active=True,
+                start_time__lt=end_time,
+                end_time__gt=start_time
+            )
+            if self.instance:
+                overlapping = overlapping.exclude(pk=self.instance.pk)
+
+            if overlapping.exists():
+                conflict = overlapping.first()
+                s_str = conflict.start_time.strftime('%H:%M %d/%m')
+                e_str = conflict.end_time.strftime('%H:%M %d/%m')
+                raise serializers.ValidationError(f"Trùng lịch với FlashSale ID {conflict.id} ({s_str} - {e_str})")
+
+        flashsale_products = data.get('flashsale_products', [])
+        if (not self.instance or 'flashsale_products' in data) and not flashsale_products:
+             raise serializers.ValidationError({"flashsale_products": "Cần ít nhất 1 sản phẩm."})
+
+        seen_products = set()
+        for item in flashsale_products:
+            product = item.get('product')
+            flash_price = item.get('flash_price')
+            stock = item.get('stock')
+
+            if product in seen_products:
+                raise serializers.ValidationError(f"Sản phẩm {product} bị lặp lại.")
+            seen_products.add(product)
+
+            if not flash_price or flash_price <= 0:
+                raise serializers.ValidationError(f"Giá flash {product} phải > 0.")
+            if product.original_price and flash_price >= product.original_price:
+                raise serializers.ValidationError(f"Giá flash {product} phải < giá gốc.")
+            if not stock or stock < 1:
+                raise serializers.ValidationError(f"Số lượng {product} phải >= 1.")
+
+        return data
+
+    def create(self, validated_data):
+        products_data = validated_data.pop('flashsale_products', [])
+        flashsale = FlashSale.objects.create(**validated_data)
+        for p_data in products_data:
+            FlashSaleProduct.objects.create(flashsale=flashsale, **p_data)
+        return flashsale
+
+    def update(self, instance, validated_data):
+        products_data = validated_data.pop('flashsale_products', None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        if products_data is not None:
+            instance.flashsale_products.all().delete()
+            for p_data in products_data:
+                FlashSaleProduct.objects.create(flashsale=instance, **p_data)
+        return instance

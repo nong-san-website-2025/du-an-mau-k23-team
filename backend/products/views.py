@@ -366,12 +366,20 @@ class ProductViewSet(viewsets.ModelViewSet):
                 Q(name__icontains=s) | Q(description__icontains=s) | Q(brand__icontains=s) | Q(seller__user__username__icontains=s)
             )
 
-        return queryset.filter(
-            status='approved', 
-            is_hidden=False, # 👈 Chỉ lọc ẩn khi xem danh sách thôi
-            subcategory__status='active',
-            subcategory__category__status='active' 
-            ).order_by(self.request.query_params.get('ordering', '-created_at'))
+        # Admin, seller thấy tất cả - khách hàng chỉ thấy approved & not hidden
+        if not (user.is_authenticated and user.is_staff) and not (user.is_authenticated and hasattr(user, 'seller') and str(user.seller.id) == params.get('seller')):
+            # Chỉ filter category/subcategory status cho khách hàng
+            queryset = queryset.filter(
+                subcategory__status='active',
+                subcategory__category__status='active',
+                status='approved',
+                is_hidden=False
+            )
+        else:
+            # Admin và seller thấy tất cả, không filter status
+            pass
+        
+        return queryset.order_by(self.request.query_params.get('ordering', '-created_at'))
 
     # ✅ ĐÃ SỬA: Logic Retrieve (Chi tiết sản phẩm)
     def retrieve(self, request, *args, **kwargs):
