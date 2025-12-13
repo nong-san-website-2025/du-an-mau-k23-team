@@ -1,4 +1,3 @@
-# management/commands/seed_products.py
 from django.core.management.base import BaseCommand
 from django.db import transaction
 from decimal import Decimal
@@ -9,23 +8,28 @@ from products.models import Category, Subcategory, Product
 
 
 class Command(BaseCommand):
-    help = "Tạo 100 sản phẩm nông sản mẫu nếu chưa có, kèm danh mục, rating và review_count."
+    help = "Tạo 100 sản phẩm nông sản mẫu, phân phối đều cho các seller."
 
     def handle(self, *args, **kwargs):
         with transaction.atomic():
-            # 1. Tạo seller mẫu nếu chưa có
-            if not Seller.objects.exists():
-                seller = Seller.objects.create(
+            # 1. Lấy danh sách tất cả Seller hiện có
+            sellers = list(Seller.objects.all())
+
+            # Nếu chưa có seller nào, tạo 1 seller mẫu để làm fallback
+            if not sellers:
+                self.stdout.write(self.style.WARNING(" Chưa có Seller nào, đang tạo Seller mẫu 'Nông Trại Xanh'..."))
+                default_seller = Seller.objects.create(
                     user=None,
                     store_name="Nông Trại Xanh",
                     phone="0909123456",
-                    address="Đà Lạt, Lâm Đồng"
+                    address="Đà Lạt, Lâm Đồng",
+                    status="approved" # Đảm bảo seller này active
                 )
-                self.stdout.write(self.style.SUCCESS(" Đã tạo seller mẫu."))
+                sellers.append(default_seller)
             else:
-                seller = Seller.objects.first()
+                self.stdout.write(self.style.SUCCESS(f" Tìm thấy {len(sellers)} seller để phân phối sản phẩm."))
 
-            # 2. Tạo categories
+            # 2. Tạo categories (Giữ nguyên)
             categories_data = [
                 {"name": "Trái cây", "key": "fruits"},
                 {"name": "Rau củ", "key": "vegetables"},
@@ -49,7 +53,7 @@ class Command(BaseCommand):
                 )
                 categories[cat_data["key"]] = category
 
-            # 3. Tạo subcategories
+            # 3. Tạo subcategories (Giữ nguyên)
             subcategories_data = [
                 ("fruits", "Trái cây nhiệt đới"),
                 ("fruits", "Trái cây ôn đới"),
@@ -84,7 +88,7 @@ class Command(BaseCommand):
                 )
                 subcategories.append(sub)
 
-            # 4. Dữ liệu tên sản phẩm mẫu
+            # 4. Dữ liệu tên sản phẩm mẫu (Giữ nguyên)
             product_names = [
                 "Táo Fuji", "Cam Sành", "Chuối Tiêu", "Xoài Cát", "Dưa Hấu", "Nho Đỏ",
                 "Dưa Chuột", "Cà Chua", "Cà Rốt", "Khoai Tây", "Bí Đỏ", "Ớt Chuông",
@@ -107,7 +111,7 @@ class Command(BaseCommand):
                 "Rau muống", "Rau ngót", "Rau dền", "Rau mồng tơi", "Rau sam",
             ]
 
-            # 5. Tạo sản phẩm (chỉ khi chưa có đủ 100)
+            # 5. Tạo sản phẩm
             existing_count = Product.objects.count()
             if existing_count >= 100:
                 self.stdout.write(
@@ -121,12 +125,16 @@ class Command(BaseCommand):
             for i in range(num_to_create):
                 name = f"{random.choice(product_names)} ({i + 1})"
                 sub = random.choice(subcategories)
-                original_price = Decimal(random.randint(20, 500) * 1000)  # Giá gốc 20k - 500k
-                discounted_price = original_price * Decimal(random.uniform(0.7, 1.0))  # Giảm 0-30%
-                description = f"Sản phẩm {name} chất lượng cao, được chọn lọc kỹ lưỡng."
+                original_price = Decimal(random.randint(20, 500) * 1000)
+                discounted_price = original_price * Decimal(random.uniform(0.7, 1.0))
+                
+                # --- LOGIC MỚI: CHỌN NGẪU NHIÊN 1 SELLER ---
+                chosen_seller = random.choice(sellers)
+                
+                description = f"Sản phẩm {name} chất lượng cao từ {chosen_seller.store_name}."
 
                 Product.objects.create(
-                    seller=seller,
+                    seller=chosen_seller, # Gán seller ngẫu nhiên
                     category=sub.category,
                     subcategory=sub,
                     name=name,
@@ -137,12 +145,11 @@ class Command(BaseCommand):
                     stock=random.randint(5, 100),
                     rating=round(random.uniform(3.0, 5.0), 1),
                     review_count=random.randint(0, 200),
-                    location="Đà Lạt",
+                    location=chosen_seller.address, # Lấy địa chỉ của chính seller đó
                     brand="Nông sản Việt",
                     status="approved",
                 )
 
-
             self.stdout.write(
-                self.style.SUCCESS(f" Đã tạo {num_to_create} sản phẩm nông sản mẫu.")
+                self.style.SUCCESS(f" Đã tạo {num_to_create} sản phẩm và chia đều cho {len(sellers)} seller.")
             )

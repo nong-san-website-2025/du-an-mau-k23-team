@@ -31,24 +31,25 @@ import {
   ShopOutlined,
   CloseCircleOutlined,
   DiffOutlined,
-  PictureOutlined, // Icon cho nút So sánh
+  PictureOutlined,
+  LockOutlined, // Icon Khóa
 } from "@ant-design/icons";
 import dayjs from "dayjs";
-// Giả định các components con và utils đã tồn tại trong dự án của bạn
-import ProductStatusTag from "./ProductStatusTag";
-import { intcomma } from "../../../../../utils/format";
+import ProductStatusTag from "./ProductStatusTag"; // Giả định component này
+import { intcomma } from "../../../../../utils/format"; // Giả định utils này
 
 const { Text, Paragraph } = Typography;
 const { TextArea } = Input;
 
 // --- Helper Functions ---
-// Kiểm tra xem sản phẩm có đang chờ xử lý không
 const checkIsPending = (status) => ["pending", "pending_update"].includes(status?.toLowerCase());
+const checkIsApproved = (status) => status?.toLowerCase() === "active" || status?.toLowerCase() === "approved"; // Điều chỉnh tùy theo value status thật của bạn
 
 // --- SUB-COMPONENT: Product Card (Grid View) ---
-const ProductGridItem = ({ record, isSelected, onSelect, onView, onApprove, onOpenReject, onCompare }) => {
+const ProductGridItem = ({ record, isSelected, onSelect, onView, onApprove, onOpenReject, onCompare, onOpenLock }) => {
   const isPending = checkIsPending(record.status);
-  const isUpdate = record.status === "pending_update"; // Flag kiểm tra cập nhật
+  const isApproved = checkIsApproved(record.status);
+  const isUpdate = record.status === "pending_update";
   const isReup = record.is_reup;
 
   return (
@@ -109,28 +110,45 @@ const ProductGridItem = ({ record, isSelected, onSelect, onView, onApprove, onOp
       </div>
 
       {/* Action Footer */}
-      {isPending ? (
-        <div style={{ display: 'flex', borderTop: '1px solid #f0f0f0', background: '#fafafa' }}>
-          <Button type="text" block style={{ color: '#ff4d4f', height: 40 }} onClick={(e) => { e.stopPropagation(); onOpenReject(record.id); }}>
-            Từ chối
-          </Button>
-          <div style={{ width: 1, background: '#f0f0f0' }} />
-          {/* Logic hiển thị nút: Nếu là update -> So sánh, Nếu là mới -> Duyệt */}
-          {isUpdate ? (
-            <Button type="text" block style={{ color: '#1890ff', height: 40 }} onClick={(e) => { e.stopPropagation(); onCompare(record); }}>
-              <DiffOutlined /> So sánh
+      <div style={{ borderTop: '1px solid #f0f0f0', background: '#fafafa', display: 'flex', height: 40 }}>
+        {isPending ? (
+          <>
+            <Button type="text" style={{ flex: 1, color: '#ff4d4f', height: '100%' }} onClick={(e) => { e.stopPropagation(); onOpenReject(record.id); }}>
+              Từ chối
             </Button>
-          ) : (
-            <Button type="text" block style={{ color: '#52c41a', height: 40 }} onClick={(e) => { e.stopPropagation(); onApprove(record.id); }}>
-              <CheckOutlined /> Duyệt
+            <div style={{ width: 1, background: '#f0f0f0' }} />
+            {isUpdate ? (
+              <Button type="text" style={{ flex: 1, color: '#1890ff', height: '100%' }} onClick={(e) => { e.stopPropagation(); onCompare(record); }}>
+                <DiffOutlined /> So sánh
+              </Button>
+            ) : (
+              <Button type="text" style={{ flex: 1, color: '#52c41a', height: '100%' }} onClick={(e) => { e.stopPropagation(); onApprove(record.id); }}>
+                <CheckOutlined /> Duyệt
+              </Button>
+            )}
+            <div style={{ width: 1, background: '#f0f0f0' }} />
+            <Tooltip title="Xem chi tiết">
+                <Button type="text" style={{ width: 40, height: '100%' }} icon={<EyeOutlined />} onClick={(e) => { e.stopPropagation(); onView(record); }} />
+            </Tooltip>
+          </>
+        ) : isApproved ? (
+            // Footer cho sản phẩm ĐÃ DUYỆT (Lock + Detail)
+            <>
+                 <Button type="text" style={{ flex: 1, color: '#faad14', height: '100%' }} onClick={(e) => { e.stopPropagation(); onOpenLock(record.id); }}>
+                    <LockOutlined /> Khóa
+                </Button>
+                <div style={{ width: 1, background: '#f0f0f0' }} />
+                <Button type="text" style={{ flex: 1, height: '100%' }} onClick={(e) => { e.stopPropagation(); onView(record); }}>
+                    <EyeOutlined /> Chi tiết
+                </Button>
+            </>
+        ) : (
+            // Footer cho sản phẩm ĐÃ TỪ CHỐI / KHÓA (Chỉ hiện View Detail)
+            <Button type="text" block style={{ height: '100%' }} onClick={(e) => { e.stopPropagation(); onView(record); }}>
+                <EyeOutlined /> Xem chi tiết
             </Button>
-          )}
-        </div>
-      ) : (
-        <div style={{ padding: 12, borderTop: '1px solid #f0f0f0', textAlign: 'center' }}>
-          <Button size="small" onClick={(e) => { e.stopPropagation(); onView(record); }}>Xem chi tiết</Button>
-        </div>
-      )}
+        )}
+      </div>
     </Card>
   );
 };
@@ -140,15 +158,18 @@ const ProductManager = ({
   data,
   onApprove,
   onReject,
+  onLock, // <--- Props hàm xử lý khóa sản phẩm
   onView,
   onViewShop,
-  onCompare, // <--- Props nhận hàm mở modal so sánh
+  onCompare,
   selectedRowKeys,
   setSelectedRowKeys,
   viewModeProp = "table"
 }) => {
   const [viewMode, setViewMode] = useState(viewModeProp);
+  // Modal states
   const [rejectModal, setRejectModal] = useState({ open: false, ids: [], reason: "", quickReason: "" });
+  const [lockModal, setLockModal] = useState({ open: false, ids: [], reason: "" }); // <--- State cho Modal Khóa
 
   React.useEffect(() => { setViewMode(viewModeProp) }, [viewModeProp]);
 
@@ -161,16 +182,24 @@ const ProductManager = ({
     data.filter(item => selectedRowKeys.includes(item.id) && checkIsPending(item.status)),
     [data, selectedRowKeys]);
 
-  // Reject Logic
+  // --- Reject Logic ---
   const openReject = (ids) => setRejectModal({ open: true, ids: Array.isArray(ids) ? ids : [ids], reason: "", quickReason: "" });
   const confirmReject = () => {
     const reason = rejectModal.quickReason === "other" || !rejectModal.quickReason ? rejectModal.reason : rejectModal.quickReason;
-    if (!reason.trim()) return message.error("Vui lòng nhập lý do!");
+    if (!reason.trim()) return message.error("Vui lòng nhập lý do từ chối!");
     onReject(rejectModal.ids, reason);
     setRejectModal({ ...rejectModal, open: false });
   };
 
-  // Re-up History Popover Content
+  // --- Lock Logic (Mới) ---
+  const openLock = (ids) => setLockModal({ open: true, ids: Array.isArray(ids) ? ids : [ids], reason: "" });
+  const confirmLock = () => {
+      if (!lockModal.reason.trim()) return message.error("Vui lòng nhập lý do khóa sản phẩm!");
+      onLock && onLock(lockModal.ids, lockModal.reason);
+      setLockModal({ ...lockModal, open: false });
+  };
+
+  // Re-up History Popover Content (Giữ nguyên)
   const renderReupHistory = (history) => (
     <div style={{ width: 320, maxHeight: 400, overflowY: 'auto', padding: 8 }}>
       <div style={{ marginBottom: 16, padding: '8px 12px', background: '#fff2f0', border: '1px solid #ffccc7', borderRadius: 6 }}>
@@ -200,87 +229,38 @@ const ProductManager = ({
       key: "name",
       width: 350,
       render: (_, r) => {
-        // Lấy link ảnh an toàn
         const imageUrl = r.main_image?.image || r.images?.[0]?.image;
-
         return (
           <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-            {/* Image Container - Fixed Size & Relative for Badge */}
-            <div style={{
-              position: 'relative',
-              width: 64,
-              height: 64,
-              flexShrink: 0 // Chống bị co khi tên dài
-            }}>
+            {/* Image Container */}
+            <div style={{ position: 'relative', width: 64, height: 64, flexShrink: 0 }}>
               {imageUrl ? (
                 <Image
-                  src={imageUrl}
-                  width={64}
-                  height={64}
-                  style={{
-                    borderRadius: 8,
-                    objectFit: 'cover',
-                    border: '1px solid #f0f0f0'
-                  }}
-                  // Fallback của Antd phòng khi link ảnh chết (404)
+                  src={imageUrl} width={64} height={64}
+                  style={{ borderRadius: 8, objectFit: 'cover', border: '1px solid #f0f0f0' }}
                   fallback="https://placehold.co/64x64/f5f5f5/bfbfbf?text=IMG"
                 />
               ) : (
-                // UI Placeholder khi không có dữ liệu ảnh
-                <div style={{
-                  width: '100%',
-                  height: '100%',
-                  background: '#fafafa', // Màu nền rất nhạt, sạch sẽ
-                  border: '1px solid #f0f0f0',
-                  borderRadius: 8,
-                  display: 'flex',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  color: '#d9d9d9' // Màu icon chìm, không gây chú ý
-                }}>
+                <div style={{ width: '100%', height: '100%', background: '#fafafa', border: '1px solid #f0f0f0', borderRadius: 8, display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#d9d9d9' }}>
                   <PictureOutlined style={{ fontSize: 24 }} />
                 </div>
               )}
-
-              {/* Badge cảnh báo vi phạm (Reup) */}
               {r.is_reup && (
                 <div style={{ position: 'absolute', bottom: -6, right: -6, zIndex: 10 }}>
                   <Popover title="Lịch sử vi phạm" content={renderReupHistory(r.reupHistory)}>
-                    <div style={{
-                      background: '#ff4d4f',
-                      color: '#fff',
-                      borderRadius: '50%',
-                      width: 20,
-                      height: 20,
-                      display: 'flex',
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      fontSize: 12,
-                      cursor: 'help',
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)' // Thêm bóng nhẹ cho nổi
-                    }}>!</div>
+                    <div style={{ background: '#ff4d4f', color: '#fff', borderRadius: '50%', width: 20, height: 20, display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: 12, cursor: 'help', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>!</div>
                   </Popover>
                 </div>
               )}
             </div>
-
             {/* Info Text */}
             <div style={{ flex: 1, overflow: 'hidden' }}>
-              <Text
-                strong
-                style={{ color: '#262626', fontSize: 14, cursor: 'pointer', display: 'block' }}
-                onClick={() => onView(r)}
-                ellipsis={{ tooltip: r.name }} // Tự động cắt chữ nếu tên quá dài
-              >
+              <Text strong style={{ color: '#262626', fontSize: 14, cursor: 'pointer', display: 'block' }} onClick={() => onView(r)} ellipsis={{ tooltip: r.name }}>
                 {r.name}
               </Text>
               <div style={{ marginTop: 4, display: 'flex', alignItems: 'center' }}>
                 <Text type="danger" strong>{intcomma(r.price)}đ</Text>
-                {r.status === "pending_update" && (
-                  <Tag color="processing" style={{ marginLeft: 8, fontSize: 10, border: 'none' }}>
-                    Cập nhật
-                  </Tag>
-                )}
+                {r.status === "pending_update" && <Tag color="processing" style={{ marginLeft: 8, fontSize: 10, border: 'none' }}>Cập nhật</Tag>}
               </div>
             </div>
           </div>
@@ -313,33 +293,48 @@ const ProductManager = ({
       render: (st) => <ProductStatusTag status={st} />
     },
     {
-      title: "",
+      title: "Thao tác", // Đổi tên cột
       key: "action",
       width: 140,
       fixed: 'right',
-      render: (_, r) => checkIsPending(r.status) && (
-        <Space>
-          {r.status === "pending_update" ? (
-            // Nút So sánh cho Update
-            <Tooltip title="So sánh thay đổi">
-              <Button type="text" shape="circle" icon={<DiffOutlined style={{ color: '#1890ff' }} />} onClick={() => onCompare(r)} />
-            </Tooltip>
-          ) : (
-            // Nút Duyệt thường cho SP mới
-            <Tooltip title="Duyệt nhanh">
-              <Button type="text" shape="circle" icon={<CheckOutlined style={{ color: '#52c41a' }} />} onClick={() => onApprove(r.id)} />
-            </Tooltip>
-          )}
+      render: (_, r) => {
+          const isPending = checkIsPending(r.status);
+          const isApproved = checkIsApproved(r.status);
 
-          <Tooltip title="Từ chối">
-            <Button type="text" shape="circle" icon={<CloseOutlined style={{ color: '#ff4d4f' }} />} onClick={() => openReject(r.id)} />
-          </Tooltip>
+          return (
+            <Space>
+              {/* Nút Xem chi tiết - Luôn hiển thị */}
+              <Tooltip title="Chi tiết">
+                <Button type="text" shape="circle" icon={<EyeOutlined />} onClick={() => onView(r)} />
+              </Tooltip>
 
-          <Tooltip title="Chi tiết">
-            <Button type="text" shape="circle" icon={<EyeOutlined />} onClick={() => onView(r)} />
-          </Tooltip>
-        </Space>
-      )
+              {/* Nút cho trạng thái Chờ duyệt */}
+              {isPending && (
+                  <>
+                     {r.status === "pending_update" ? (
+                        <Tooltip title="So sánh">
+                          <Button type="text" shape="circle" icon={<DiffOutlined style={{ color: '#1890ff' }} />} onClick={() => onCompare(r)} />
+                        </Tooltip>
+                      ) : (
+                        <Tooltip title="Duyệt">
+                          <Button type="text" shape="circle" icon={<CheckOutlined style={{ color: '#52c41a' }} />} onClick={() => onApprove(r.id)} />
+                        </Tooltip>
+                      )}
+                      <Tooltip title="Từ chối">
+                        <Button type="text" shape="circle" icon={<CloseOutlined style={{ color: '#ff4d4f' }} />} onClick={() => openReject(r.id)} />
+                      </Tooltip>
+                  </>
+              )}
+
+              {/* Nút cho trạng thái Đã duyệt (Khóa) */}
+              {isApproved && (
+                  <Tooltip title="Khóa sản phẩm">
+                      <Button type="text" shape="circle" icon={<LockOutlined style={{ color: '#faad14' }} />} onClick={() => openLock(r.id)} />
+                  </Tooltip>
+              )}
+            </Space>
+          );
+      }
     }
   ];
 
@@ -380,8 +375,9 @@ const ProductManager = ({
                 onSelect={handleGridSelect}
                 onView={onView}
                 onApprove={onApprove}
-                onCompare={onCompare} // Truyền prop Compare
+                onCompare={onCompare}
                 onOpenReject={openReject}
+                onOpenLock={openLock} // Truyền prop mở modal khóa
               />
             </List.Item>
           )}
@@ -413,7 +409,10 @@ const ProductManager = ({
                 </Button>
               </>
             ) : (
-              <Text style={{ color: '#aaa', fontSize: 12 }}>Không có mục nào cần xử lý</Text>
+                // Nếu chọn các item đã duyệt, có thể hiện nút Khóa hàng loạt (tùy chọn)
+               <Button type="default" shape="round" icon={<LockOutlined />} style={{color: '#faad14', borderColor: '#faad14'}} onClick={() => openLock(selectedRowKeys)}>
+                  Khóa ({selectedRowKeys.length})
+               </Button>
             )}
           </Space>
         </div>
@@ -442,6 +441,29 @@ const ProductManager = ({
             value={rejectModal.reason} onChange={e => setRejectModal({ ...rejectModal, reason: e.target.value })}
           />
         )}
+      </Modal>
+
+      {/* --- LOCK MODAL (MỚI) --- */}
+      <Modal
+        title={<Space><LockOutlined style={{ color: '#faad14' }} /> Xác nhận khóa sản phẩm</Space>}
+        open={lockModal.open}
+        onOk={confirmLock}
+        onCancel={() => setLockModal({ ...lockModal, open: false })}
+        okText="Khóa ngay"
+        okButtonProps={{ style: { background: '#faad14', borderColor: '#faad14' } }} // Màu vàng warning
+        cancelText="Hủy"
+      >
+         <div style={{ marginBottom: 12 }}>
+            Bạn đang khóa <b>{lockModal.ids.length}</b> sản phẩm đang hoạt động. <br/>
+            <Text type="secondary" style={{fontSize: 12}}>Sản phẩm bị khóa sẽ không hiển thị trên sàn TMĐT.</Text>
+         </div>
+         <div style={{ marginBottom: 8 }}>Lý do khóa:</div>
+         <TextArea
+            rows={4}
+            placeholder="Ví dụ: Hết hàng, vi phạm chính sách sau kiểm duyệt, yêu cầu từ cơ quan chức năng..."
+            value={lockModal.reason}
+            onChange={e => setLockModal({ ...lockModal, reason: e.target.value })}
+          />
       </Modal>
     </div>
   );

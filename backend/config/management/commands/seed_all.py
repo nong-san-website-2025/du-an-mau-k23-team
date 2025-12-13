@@ -14,6 +14,7 @@ class Command(BaseCommand):
             ("Reset & Seed Products", "seed_products"),
             ("Seed Vouchers", "seed_vouchers"),
             ("Seed Blog Posts", "seed_blog"),
+            ("Seed Orders", "seed_orders"),
         ]
 
         for step_name, command_name in steps:

@@ -17,6 +17,7 @@
 }
 
 /* --- Buttons & Icons --- */
+/* Tìm và thay thế class .action-btn */
 .action-btn {
   border: none;
   background: transparent;
@@ -24,15 +25,23 @@
   padding: 8px;
   cursor: pointer;
   border-radius: 50%;
-  transition: background 0.2s ease, transform 0.1s ease;
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
+  
+  /* UX: Sử dụng cubic-bezier để tạo độ nảy đàn hồi */
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 .action-btn:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: rgba(255, 255, 255, 0.15);
+  transform: scale(1.15); /* Phóng to 15% khi hover */
+  color: #16a34a; /* Thay đổi màu icon khi hover */
+}
+
+.action-btn:active {
+  transform: scale(0.95); /* Nhấn xuống nhỏ lại 1 chút tạo cảm giác bấm thật */
 }
 
 .icon-default {
@@ -310,3 +319,4 @@
 .seller-item-active:hover {
   background-color: #16a34a !important;
 }
+

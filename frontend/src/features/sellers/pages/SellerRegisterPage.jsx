@@ -50,6 +50,15 @@ export default function SellerRegisterPage() {
   const headersAuth = token ? { Authorization: `Bearer ${token}` } : {};
   const { setRole } = useAuth();
 
+  const isValidProvinceName = (name) => {
+    if (!name || typeof name !== 'string') return false;
+    // Regex này sẽ loại bỏ: "Quận 1", "Phường 12", "TP. HCM", "Bà Rịa - Vũng Tàu"...
+    // Chỉ giữ lại: "Hà Nội", "Ba Đình", "Hoàn Kiếm"...
+    if (/[0-9!@#$%^&*()_+=\[\]{};:'"\\|,.<>?/`~]/.test(name)) return false;
+    if (/test/i.test(name)) return false;
+    return true;
+  };
+
   useEffect(() => {
     fetchSeller();
     fetchUser();
@@ -57,10 +66,13 @@ export default function SellerRegisterPage() {
   }, []);
 
   // Fetch GHN Provinces
+
   const fetchProvinces = async () => {
     try {
       const data = await getProvinces();
-      setProvinces(data);
+      // Lọc dữ liệu bằng hàm isValidProvinceName
+      const cleanData = data.filter(p => isValidProvinceName(p.ProvinceName));
+      setProvinces(cleanData);
     } catch (err) {
       console.error("Lỗi tải tỉnh/thành:", err);
     }
@@ -73,10 +85,13 @@ export default function SellerRegisterPage() {
     }
   }, [selectedProvinceId]);
 
-  const fetchDistrictsData = async () => {
+ const fetchDistrictsData = async () => {
     try {
       const data = await getDistricts(selectedProvinceId);
-      setDistricts(data);
+      // Lọc dữ liệu
+      const cleanData = data.filter(d => isValidProvinceName(d.DistrictName));
+      
+      setDistricts(cleanData);
       setWards([]);
       setSelectedDistrictId(null);
       setSelectedWardCode(null);
@@ -84,7 +99,6 @@ export default function SellerRegisterPage() {
       console.error("Lỗi tải quận/huyện:", err);
     }
   };
-
   // Fetch Wards when district changes
   useEffect(() => {
     if (selectedDistrictId) {
@@ -95,7 +109,10 @@ export default function SellerRegisterPage() {
   const fetchWardsData = async () => {
     try {
       const data = await getWards(selectedDistrictId);
-      setWards(data);
+      // Lọc dữ liệu
+      const cleanData = data.filter(w => isValidProvinceName(w.WardName));
+      
+      setWards(cleanData);
       setSelectedWardCode(null);
     } catch (err) {
       console.error("Lỗi tải phường/xã:", err);
@@ -262,10 +279,10 @@ export default function SellerRegisterPage() {
             sellerStatus === "pending"
               ? 1
               : sellerStatus === "approved"
-              ? 2
-              : sellerStatus === "active"
-              ? 3
-              : 0
+                ? 2
+                : sellerStatus === "active"
+                  ? 3
+                  : 0
           }
         >
           <Step title="Chưa đăng ký" icon={<ShopOutlined />} />

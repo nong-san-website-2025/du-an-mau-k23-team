@@ -23,9 +23,10 @@ import {
   StarOutlined,
   DeleteOutlined,
   StarFilled,
-  ImportOutlined, // <--- 1. Import Icon Import
-  FileExcelOutlined,
+  ImportOutlined,
   ExclamationCircleOutlined,
+  EyeInvisibleOutlined,
+  EyeOutlined,
 } from "@ant-design/icons";
 
 import { productApi } from "../services/api/productApi";
@@ -34,8 +35,8 @@ import { productApi } from "../services/api/productApi";
 import ProductTable from "../components/ProductSeller/ProductTable";
 import ProductForm from "../components/ProductSeller/ProductForm";
 import ProductDetailModal from "../components/ProductSeller/ProductDetailModal";
-import ImportProductModal from "../components/ProductSeller/ImportProductModal"; // <--- 2. Import Component Modal
-import StatsSection from "../../admin/components/common/StatsSection";
+import ImportProductModal from "../components/ProductSeller/ImportProductModal";
+import StatsSection from "../../admin/components/common/StatsSection"; // Giữ nguyên import cũ của bạn
 
 import "../styles/OrderPage.css";
 
@@ -49,14 +50,14 @@ export default function ProductsPage() {
   const [rawProducts, setRawProducts] = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [selectedRowKeys, setSelectedRowKeys] = useState([]);
+  const [selectedRowKeys, setSelectedRowKeys] = useState([]); // State lưu các ID đã chọn
 
   // UI States
   const [loading, setLoading] = useState(false);
 
   // -- Modal Visibilities --
-  const [modalVisible, setModalVisible] = useState(false); // Add/Edit Modal
-  const [importModalVisible, setImportModalVisible] = useState(false); // <--- 3. State cho Import Modal
+  const [modalVisible, setModalVisible] = useState(false);
+  const [importModalVisible, setImportModalVisible] = useState(false);
 
   const [editingProduct, setEditingProduct] = useState(null);
 
@@ -235,39 +236,75 @@ export default function ProductsPage() {
     }
   };
 
+  // --- BULK ACTION HANDLERS (Xử lý hàng loạt) ---
+
+  // 1. Xóa hàng loạt
   const handleBulkDelete = () => {
     if (selectedRowKeys.length === 0) return;
 
     confirm({
-      title: `Bạn có chắc muốn xóa ${selectedRowKeys.length} sản phẩm đã chọn?`,
+      title: `Xóa ${selectedRowKeys.length} sản phẩm đã chọn?`,
       icon: <ExclamationCircleOutlined />,
-      content:
-        "Các sản phẩm này sẽ bị xóa vĩnh viễn khỏi hệ thống. Hành động này không thể hoàn tác.",
+      content: (
+        <div>
+          <Text type="danger">
+            Hành động này không thể hoàn tác. Các sản phẩm sẽ bị xóa khỏi hệ
+            thống.
+          </Text>
+        </div>
+      ),
       okText: "Xóa Vĩnh Viễn",
       okType: "danger",
       cancelText: "Hủy",
       async onOk() {
         setLoading(true);
         try {
-          // Gọi API xóa cho từng ID trong danh sách đã chọn
           await Promise.all(
             selectedRowKeys.map((id) => productApi.deleteProduct(id))
           );
-          message.success(
-            `Đã xóa thành công ${selectedRowKeys.length} sản phẩm.`
-          ); // Cập nhật lại danh sách sản phẩm (Loại bỏ các sản phẩm đã xóa)
+          message.success(`Đã xóa thành công ${selectedRowKeys.length} sản phẩm.`);
           setRawProducts((prev) =>
             prev.filter((i) => !selectedRowKeys.includes(i.id))
           );
           setSelectedRowKeys([]); // Reset lựa chọn
         } catch (error) {
-          message.error("Lỗi khi xóa hàng loạt. Vui lòng kiểm tra lại.");
+          message.error("Có lỗi xảy ra khi xóa một số sản phẩm.");
           console.error(error);
+          fetchData(); // Load lại data để đồng bộ
         } finally {
           setLoading(false);
         }
       },
     });
+  };
+
+  // 2. Ẩn/Hiện hàng loạt
+  const handleBulkToggleHide = async () => {
+    if (selectedRowKeys.length === 0) return;
+
+    // Chỉ thực hiện với các sản phẩm đã duyệt (Approved) vì chỉ chúng mới có ý nghĩa ẩn/hiện
+    // Tuy nhiên, tùy logic backend, ở đây ta cứ gửi request, backend sẽ check.
+    setLoading(true);
+    try {
+      await Promise.all(
+        selectedRowKeys.map((id) => productApi.toggleHide(id))
+      );
+      message.success(`Đã thay đổi trạng thái ẩn/hiện cho ${selectedRowKeys.length} sản phẩm.`);
+      
+      // Update state cục bộ
+      setRawProducts((prev) =>
+        prev.map((p) =>
+          selectedRowKeys.includes(p.id) ? { ...p, is_hidden: !p.is_hidden } : p
+        )
+      );
+      setSelectedRowKeys([]); // Reset lựa chọn sau khi xong
+    } catch (error) {
+      message.error("Lỗi khi cập nhật trạng thái hiển thị.");
+      console.error(error);
+      fetchData();
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSelfReject = async (p) => {
@@ -284,13 +321,9 @@ export default function ProductsPage() {
 
   const handleToggleHide = async (record) => {
     try {
-      // Gọi API toggleHide đã khai báo trong productApi
       await productApi.toggleHide(record.id);
-
       const actionText = record.is_hidden ? "Đã hiển thị lại" : "Đã ẩn";
       message.success(`${actionText} sản phẩm: ${record.name}`);
-
-      // Cập nhật state cục bộ để UI phản hồi nhanh (không cần gọi lại API list)
       setRawProducts((prev) =>
         prev.map((p) =>
           p.id === record.id ? { ...p, is_hidden: !p.is_hidden } : p
@@ -301,12 +334,9 @@ export default function ProductsPage() {
       message.error("Lỗi khi thay đổi trạng thái");
     }
   };
-  // --- Import Handler ---
+
   const handleImportSuccess = () => {
-    // <--- 4. Callback khi import xong
-    fetchData(); // Refresh lại dữ liệu bảng
-    // Modal sẽ tự đóng hoặc giữ lại tùy thuộc vào logic bên trong ImportProductModal,
-    // nhưng ở đây ta chỉ cần refresh data.
+    fetchData();
   };
 
   // --- Image Gallery Logic ---
@@ -368,7 +398,7 @@ export default function ProductsPage() {
       setGalleryVisible(false);
       fetchData();
       if (selectedProduct && selectedProduct.id === galleryProduct.id) {
-        setIsDetailModalVisible(false); // Close detail to refresh
+        setIsDetailModalVisible(false);
       }
     } catch (err) {
       message.error("Tải ảnh thất bại");
@@ -378,6 +408,7 @@ export default function ProductsPage() {
   };
 
   useEffect(() => {
+    // Reset selection khi chuyển tab để tránh thao tác nhầm
     setSelectedRowKeys([]);
   }, [activeTab]);
 
@@ -407,7 +438,6 @@ export default function ProductsPage() {
         await productApi.createProduct(formData);
         message.success("Thêm mới thành công, chờ duyệt");
       } else {
-        // Logic update (như cũ)
         const hasImages = Array.from(formData.entries()).some(
           ([k]) => k === "images"
         );
@@ -451,25 +481,21 @@ export default function ProductsPage() {
     { key: "rejected", label: "Đã huỷ / Từ chối" },
   ];
 
+  // --- Row Selection Config (Cho phép chọn ở mọi tab) ---
   const rowSelection = useMemo(() => {
-    // Chỉ kích hoạt rowSelection khi đang ở tab "Đã hủy / Từ chối"
-    if (activeTab !== "rejected") return null;
-
     return {
       selectedRowKeys,
       onChange: (keys) => {
-        // Lọc ra các ID (sản phẩm bị từ chối/hủy) để đảm bảo chỉ chọn hàng hợp lệ
-        const rejectedIds = filteredProducts
-          .filter((p) =>
-            ["rejected", "self_rejected", "banned"].includes(p.status)
-          )
-          .map((p) => p.id); // Đảm bảo chỉ chọn các keys hợp lệ trong danh sách filteredProducts
-        const validKeys = keys.filter((key) => rejectedIds.includes(key));
-
+        // Lọc các key hợp lệ có trong danh sách hiện tại (filteredProducts)
+        // để tránh lỗi khi search hoặc chuyển trang
+        const validKeys = filteredProducts
+          .filter(p => keys.includes(p.id))
+          .map(p => p.id);
+          
         setSelectedRowKeys(validKeys);
       },
     };
-  }, [activeTab, selectedRowKeys, filteredProducts]);
+  }, [selectedRowKeys, filteredProducts]);
 
   // ==================== 7. RENDER ====================
 
@@ -477,7 +503,6 @@ export default function ProductsPage() {
     <div
       style={{ minHeight: "100vh", backgroundColor: "#f0f2f5", padding: "0px" }}
     >
-      {/* 2. Main Content Card */}
       <Card
         bordered={false}
         style={{ borderRadius: 8, boxShadow: "0 1px 2px rgba(0,0,0,0.03)" }}
@@ -522,7 +547,6 @@ export default function ProductsPage() {
               Làm mới
             </Button>
 
-            {/* --- 5. Button Nhập Excel --- */}
             <Button
               icon={<ImportOutlined />}
               onClick={() => setImportModalVisible(true)}
@@ -550,37 +574,47 @@ export default function ProductsPage() {
           style={{ marginBottom: 16 }}
         />
 
-        {activeTab === "rejected" && selectedRowKeys.length > 0 && (
+        {/* --- KHU VỰC THAO TÁC HÀNG LOẠT (HIỆN KHI CÓ SELECT) --- */}
+        {selectedRowKeys.length > 0 && (
           <div
             style={{
               marginBottom: 16,
               padding: "10px 16px",
-              border: "1px solid #f30049ff",
-              background: "#fffbe6",
+              border: "1px solid #91caff",
+              background: "#e6f7ff",
               borderRadius: 4,
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
+              animation: "fadeIn 0.3s ease",
             }}
           >
-            {" "}
-            <Text strong style={{ color: "#db0f0fff" }}>
+            <Text strong style={{ color: "#1890ff" }}>
               Đã chọn {selectedRowKeys.length} sản phẩm
-              {" "}
             </Text>
-            {" "}
             <Space>
-              {/* Nút Xóa Hàng Loạt */}{" "}
+              {/* Nút Ẩn / Hiện Hàng Loạt */}
+              <Button
+                icon={<EyeInvisibleOutlined />}
+                onClick={handleBulkToggleHide}
+                disabled={activeTab === 'rejected'} // Không cần ẩn hiện nếu đã bị từ chối
+              >
+                Ẩn / Hiện
+              </Button>
+
+              {/* Nút Xóa Hàng Loạt */}
               <Button
                 danger
                 icon={<DeleteOutlined />}
                 onClick={handleBulkDelete}
               >
-                Xóa tất cả{" "}
+                Xóa ({selectedRowKeys.length})
               </Button>
-              {" "}
+              
+              <Button type="text" onClick={() => setSelectedRowKeys([])}>
+                Bỏ chọn
+              </Button>
             </Space>
-            {" "}
           </div>
         )}
 
@@ -593,12 +627,11 @@ export default function ProductsPage() {
               setSelectedProduct(record);
               setIsDetailModalVisible(true);
             }}
-
             onEdit={handleEdit}
             onDelete={handleDelete}
             onSelfReject={handleSelfReject}
             onToggleHide={handleToggleHide}
-            rowSelection={rowSelection} // 👈 Truyền hàm này vào
+            rowSelection={rowSelection} // Truyền rowSelection vào cho tất cả các tab
             onRow={(record) => ({
               onClick: () => {
                 setSelectedProduct(record);
@@ -610,8 +643,6 @@ export default function ProductsPage() {
       </Card>
 
       {/* --- MODALS AREA --- */}
-
-      {/* 1. Detail Modal */}
       <ProductDetailModal
         visible={isDetailModalVisible}
         onClose={() => setIsDetailModalVisible(false)}
@@ -621,7 +652,6 @@ export default function ProductsPage() {
         getAvailabilityConfig={getAvailabilityConfig}
       />
 
-      {/* 2. Add/Edit Form */}
       <ProductForm
         visible={modalVisible}
         onCancel={() => setModalVisible(false)}
@@ -630,14 +660,12 @@ export default function ProductsPage() {
         categories={categories}
       />
 
-      {/* 3. Import Excel Modal - TÍCH HỢP MỚI */}
       <ImportProductModal
         visible={importModalVisible}
         onClose={() => setImportModalVisible(false)}
         onSuccess={handleImportSuccess}
       />
 
-      {/* 4. Gallery Upload Modal */}
       <Modal
         open={galleryVisible}
         title={
