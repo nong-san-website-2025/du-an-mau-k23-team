@@ -10,16 +10,12 @@ from django.db import transaction
 from django.contrib.auth import get_user_model
 from rest_framework import filters
 from django_filters.rest_framework import DjangoFilterBackend
-<<<<<<< HEAD
 from django.http import HttpResponse
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-from datetime import datetime, timedelta
 from .excel_import_service import FlashSaleExcelImportService
-=======
-import datetime 
+from datetime import datetime, timedelta
 import traceback 
->>>>>>> e21d4717ed9a21d58b67311486d4ccecfa2d3c42
 
 from sellers.models import Seller
 from .models import Voucher, FlashSale, UserVoucher
@@ -433,7 +429,6 @@ def public_seller_vouchers(request, seller_id):
     try: seller = Seller.objects.get(id=seller_id)
     except: return Response({"error": "Seller 404"}, 404)
     now = timezone.now()
-<<<<<<< HEAD
     vouchers = Voucher.objects.filter(
         seller=seller,
         active=True,
@@ -528,9 +523,3 @@ def download_flash_sale_template(request):
     
     wb.save(response)
     return response
-=======
-    scope_val = "seller"
-    if hasattr(Voucher, 'Scope'): scope_val = Voucher.Scope.SELLER
-    vouchers = Voucher.objects.filter(seller=seller, active=True, scope=scope_val).filter(Q(start_at__isnull=True)|Q(start_at__lte=now)).filter(Q(end_at__isnull=True)|Q(end_at__gte=now)).order_by('-created_at')
-    return Response(VoucherDetailSerializer(vouchers, many=True).data)
->>>>>>> e21d4717ed9a21d58b67311486d4ccecfa2d3c42
