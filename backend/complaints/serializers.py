@@ -17,6 +17,7 @@ class ComplaintSerializer(serializers.ModelSerializer):
     )
     discounted_price = serializers.SerializerMethodField()
     media_urls = serializers.SerializerMethodField()
+    seller_name = serializers.CharField(source="product.seller.store_name", read_only=True)
 
     class Meta:
         model = Complaint
@@ -35,6 +36,7 @@ class ComplaintSerializer(serializers.ModelSerializer):
             "media_urls",
             "created_at",
             "resolution_type",
+            "seller_name",
         ]
         read_only_fields = ["user"]
 
