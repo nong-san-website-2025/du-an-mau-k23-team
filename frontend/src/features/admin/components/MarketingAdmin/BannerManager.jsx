@@ -249,9 +249,11 @@ const BannerManager = () => {
         open={showForm}
         onCancel={() => setShowForm(false)}
         footer={null}
-        width={800}
+        width={1200}
         destroyOnClose
         maskClosable={false}
+        bodyStyle={{ maxHeight: "80vh", overflowY: "auto", overflowX: "hidden" }}
+        centered
       >
         <BannerForm
           bannerId={editingBanner?.id}

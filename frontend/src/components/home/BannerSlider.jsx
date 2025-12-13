@@ -1,107 +1,110 @@
-import React, { useEffect, useState } from "react";
+// src/components/home/BannerSlider.jsx
+import React, { useEffect, useState, useRef } from "react";
 import Slider from "react-slick";
 import { getBannersBySlot } from "../../features/admin/services/marketingApi.js";
 import { LeftOutlined, RightOutlined } from "@ant-design/icons";
-import NoImage from "../shared/NoImage.jsx"; // ✅ Import NoImage
+import NoImage from "../shared/NoImage.jsx";
+import { Spin } from "antd";
 import "../../styles/home/BannerSlider.css";
 
-// Hàm kiểm tra URL ảnh hợp lệ
-const isValidImageUrl = (url) => {
-  if (!url || typeof url !== "string") return false;
-  return url.startsWith("http") || url.startsWith("/");
+// Helper xử lý URL ảnh
+const getImageUrl = (url) => {
+  if (!url) return "";
+  if (url.startsWith("http")) return url;
+  return `http://localhost:8000${url}`;
 };
 
-export default function BannerSlider() {
+export default function BannerSlider({ slotCode, className = "", style = {} }) {
   const [banners, setBanners] = useState([]);
-  const sliderRef = React.useRef(null);
+  const [loading, setLoading] = useState(true);
+  const sliderRef = useRef(null);
 
   useEffect(() => {
-    getBannersBySlot("banner_hero")
+    if (!slotCode) return;
+    setLoading(true);
+    getBannersBySlot(slotCode)
       .then((res) => {
-        const activeBanners = res.data.filter((b) => b.is_active);
-        setBanners(activeBanners.length > 0 ? activeBanners : []);
+        const activeBanners = (res.data || []).filter((b) => b.is_active);
+        activeBanners.sort((a, b) => b.priority - a.priority);
+        setBanners(activeBanners);
       })
       .catch((err) => {
-        console.error("Lỗi khi tải banner carousel:", err);
-        setBanners([]); // hoặc giữ trống
-      });
-  }, []);
+        console.error(`Error loading banner [${slotCode}]:`, err);
+        setBanners([]);
+      })
+      .finally(() => setLoading(false));
+  }, [slotCode]);
 
   const settings = {
-    dots: false,
-    infinite: banners.length > 1,
+    dots: true,
+    infinite: banners.length > 1, // Chỉ loop nếu có > 1 ảnh
     speed: 500,
-    autoplay: banners.length > 1,
-    autoplaySpeed: 3000,
+    autoplay: true,
+    autoplaySpeed: 4000,
     slidesToShow: 1,
     slidesToScroll: 1,
     arrows: false,
+    dotsClass: "slick-dots custom-dots",
   };
 
+  if (loading) return <div className="d-flex justify-content-center align-items-center h-100"><Spin /></div>;
   if (banners.length === 0) return null;
 
   return (
-    <div className="position-relative mb-4">
+    <div 
+        className={`banner-slider-wrapper position-relative ${className}`} 
+        // ✅ CẬP NHẬT 1: Ép style tại đây để cắt phần thừa (Quan trọng nhất)
+        style={{ 
+            ...style, 
+            overflow: 'hidden',   // Cắt mọi thứ tràn ra ngoài
+            borderRadius: '8px',  // Bo góc đồng bộ
+            height: style.height || '100%' // Lấy height từ props truyền vào hoặc full cha
+        }}
+    >
       <Slider ref={sliderRef} {...settings}>
-        {banners.map((banner) => {
-          const hasValidImage = isValidImageUrl(banner.image);
-          const imgSrc = hasValidImage
-            ? banner.image.startsWith("/")
-              ? `http://localhost:8000${banner.image}`
-              : banner.image
-            : null;
-
-          return (
-            <div
-              key={banner.id}
-              className="d-flex justify-content-center align-items-center"
-              onClick={() =>
-                banner.click_url && window.open(banner.click_url, "_blank")
-              }
-              style={{ cursor: banner.click_url ? "pointer" : "default"}}
-            >
-              {hasValidImage ? (
-                <img
-                  src={imgSrc}
-                  alt={banner.title || "Banner"}
-                  fetchpriority={banner.id === banners[0].id ? "high" : "auto"}
-                  loading={banner.id === banners[0].id ? "eager" : "lazy"}
-                  className="shadow"
-                  style={{
+        {banners.map((banner) => (
+          <div key={banner.id} className="slider-item">
+            {/* WRAPPER ẢNH */}
+            <div 
+                className="slider-image-container"
+                onClick={() => banner.click_url && window.open(banner.click_url, "_blank")}
+                style={{ 
+                    cursor: banner.click_url ? "pointer" : "default",
                     width: "100%",
-                    height: "300px",
-                    objectFit: "cover",
-                    objectPosition: "center",
-                    borderRadius: "8px",
-
-                  }}
-                  // Không cần onLoad/onError phức tạp nữa
-                />
-              ) : (
-                // ✅ Dùng NoImage khi không có ảnh hợp lệ
-                <div style={{ width: "100%", height: "300px" }}>
-                  <NoImage height={300} text="Banner không khả dụng" />
-                </div>
-              )}
+                    // ✅ CẬP NHẬT 2: Chiều cao 100% của cha (đã bị giới hạn ở trên)
+                    height: "100%", 
+                    display: "block",
+                }}
+            >
+               {banner.image ? (
+                  <img
+                    src={getImageUrl(banner.image)}
+                    alt={banner.title}
+                    style={{
+                        width: "100%",
+                        height: "100%",
+                        // ✅ CẬP NHẬT 3: Cover để ảnh luôn lấp đầy khung mà không méo
+                        objectFit: "cover", 
+                        objectPosition: "center",
+                        display: "block"
+                    }}
+                    loading="lazy"
+                  />
+               ) : (
+                  <NoImage />
+               )}
             </div>
-          );
-        })}
+          </div>
+        ))}
       </Slider>
 
+      {/* Navigation Arrows */}
       {banners.length > 1 && (
         <>
-          <button
-            className="btn btn-light position-absolute top-50 start-0 translate-middle-y shadow"
-            style={{ zIndex: 10 }}
-            onClick={() => sliderRef.current?.slickPrev()}
-          >
+          <button className="slider-arrow prev-arrow" onClick={() => sliderRef.current?.slickPrev()}>
             <LeftOutlined />
           </button>
-          <button
-            className="btn btn-light position-absolute top-50 end-0 translate-middle-y shadow"
-            style={{ zIndex: 10 }}
-            onClick={() => sliderRef.current?.slickNext()}
-          >
+          <button className="slider-arrow next-arrow" onClick={() => sliderRef.current?.slickNext()}>
             <RightOutlined />
           </button>
         </>

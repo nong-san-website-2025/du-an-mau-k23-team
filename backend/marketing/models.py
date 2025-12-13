@@ -13,6 +13,9 @@ class AdSlot(models.Model):
     description = models.TextField(blank=True)
     max_banners = models.PositiveIntegerField(default=1)
 
+    width_hint = models.IntegerField(default=0, help_text="Chiều rộng gợi ý (px)")
+    height_hint = models.IntegerField(default=0, help_text="Chiều cao gợi ý (px)")
+
     def __str__(self):
         return self.name
 
