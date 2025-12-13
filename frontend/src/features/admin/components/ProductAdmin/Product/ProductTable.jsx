@@ -1,4 +1,3 @@
-// src/pages/ProductAdmin/Approval/ProductManager.jsx
 import React, { useState, useMemo } from "react";
 import {
   Table,
@@ -13,9 +12,10 @@ import {
   Segmented,
   Button,
   message,
-  Modal, // <--- Thêm Modal
-  Input, // <--- Thêm Input
-  Radio, // <--- Thêm Radio để chọn nhanh
+  Modal,
+  Input,
+  Radio,
+  Popover, // Thêm Popover
 } from "antd";
 import {
   EyeOutlined,
@@ -24,7 +24,11 @@ import {
   AppstoreOutlined,
   BarsOutlined,
   ThunderboltFilled,
+  HistoryOutlined, // Icon lịch sử
+  WarningOutlined, // Icon cảnh báo
+  ReloadOutlined, // Icon Re-up
 } from "@ant-design/icons";
+import dayjs from "dayjs"; // Cần import dayjs để format ngày
 import ProductStatusTag from "./ProductStatusTag";
 import { intcomma } from "../../../../../utils/format";
 
@@ -50,6 +54,7 @@ const ProductGridItem = ({
   const isPending = checkIsPending(record.status);
   const aiScore = record.ai_score || 0;
   const isHighRisk = aiScore > 80;
+  const isReup = record.is_reup; // Check cờ Re-up
 
   const cardActions = isPending
     ? [
@@ -68,7 +73,7 @@ const ProductGridItem = ({
             onClick={(e) => {
               e.stopPropagation();
               onOpenReject(record.id);
-            }} // Gọi hàm mở modal
+            }}
           />
         </Tooltip>,
       ]
@@ -89,26 +94,46 @@ const ProductGridItem = ({
   return (
     <Card
       hoverable
-      bordered={isSelected}
+      bordered={isSelected || isReup} // Viền đỏ nếu là Spam
       actions={cardActions}
       style={{
         position: "relative",
-        borderColor: isSelected ? "#1890ff" : "#f0f0f0",
+        borderColor: isSelected ? "#1890ff" : isReup ? "#ff4d4f" : "#f0f0f0",
         backgroundColor: isSelected ? "#e6f7ff" : "#fff",
       }}
       bodyStyle={{ padding: 8 }}
       onClick={() => onSelect(record.id)}
     >
-      <div style={{ position: "absolute", top: 8, right: 8, zIndex: 2 }}>
+      {/* Risk Tag */}
+      <div
+        style={{
+          position: "absolute",
+          top: 8,
+          right: 8,
+          zIndex: 2,
+          display: "flex",
+          flexDirection: "column",
+          gap: 4,
+          alignItems: "flex-end",
+        }}
+      >
         {isHighRisk && (
           <Tag color="error" icon={<ThunderboltFilled />}>
             {aiScore}%
           </Tag>
         )}
+        {/* Re-up Tag cho Grid View */}
+        {isReup && (
+          <Tag color="#722ed1" style={{ marginRight: 0 }}>
+            <ReloadOutlined /> Spam
+          </Tag>
+        )}
       </div>
+
       <div style={{ position: "absolute", top: 8, left: 8, zIndex: 2 }}>
         <Checkbox checked={isSelected} />
       </div>
+
       <div
         style={{
           height: 160,
@@ -133,6 +158,7 @@ const ProductGridItem = ({
             {record.name}
           </Text>
         </Tooltip>
+
         <div
           style={{
             display: "flex",
@@ -173,11 +199,10 @@ const ProductManager = ({
 
   // --- State cho Modal Từ Chối ---
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
-  const [rejectIds, setRejectIds] = useState([]); // Lưu ID(s) đang được xử lý
+  const [rejectIds, setRejectIds] = useState([]);
   const [rejectReason, setRejectReason] = useState("");
   const [quickReason, setQuickReason] = useState("");
 
-  // Danh sách lý do mẫu
   const quickReasons = [
     { label: "Hàng giả/Nhái thương hiệu", value: "Hàng giả/Nhái thương hiệu" },
     {
@@ -205,28 +230,23 @@ const ProductManager = ({
 
   const hasPendingItems = pendingSelectedItems.length > 0;
 
-  // --- Xử lý Mở Modal ---
+  // --- Handlers ---
   const handleOpenRejectModal = (ids) => {
     const idArray = Array.isArray(ids) ? ids : [ids];
     if (idArray.length === 0) return;
-
     setRejectIds(idArray);
     setRejectReason("");
     setQuickReason("");
     setIsRejectModalOpen(true);
   };
 
-  // --- Xử lý Xác nhận Từ chối ---
   const handleConfirmReject = () => {
-    // Kiểm tra validation
     const finalReason =
       quickReason === "other" || !quickReason ? rejectReason : quickReason;
-
     if (!finalReason.trim()) {
       message.error("Vui lòng nhập hoặc chọn lý do từ chối!");
       return;
     }
-
     onReject(rejectIds, finalReason);
     setIsRejectModalOpen(false);
   };
@@ -237,7 +257,7 @@ const ProductManager = ({
     onApprove(ids);
   };
 
-  // Columns cho Table
+  // --- Columns cho Table ---
   const tableColumns = [
     {
       title: "Ảnh",
@@ -255,8 +275,75 @@ const ProductManager = ({
     },
     {
       title: "Tên sản phẩm",
-      dataIndex: "name",
-      render: (t) => <Text strong>{t}</Text>,
+      key: "name",
+      width: 300,
+      render: (_, record) => (
+        <Space direction="vertical" size={2} style={{ width: "100%" }}>
+          <Text
+            strong
+            style={{ cursor: "pointer", color: "#1890ff" }}
+            onClick={() => onView(record)}
+          >
+            {record.name}
+          </Text>
+
+          {/* --- CẢNH BÁO RE-UP (SPAM) --- */}
+          {record.is_reup &&
+            record.reupHistory &&
+            record.reupHistory.length > 0 && (
+              <Popover
+                title={
+                  <span style={{ color: "red" }}>
+                    <WarningOutlined /> Lịch sử vi phạm cũ
+                  </span>
+                }
+                content={
+                  <div
+                    style={{ maxWidth: 350, maxHeight: 300, overflowY: "auto" }}
+                  >
+                    <p>
+                      Sản phẩm này có tên trùng với{" "}
+                      <b>{record.reupHistory.length}</b> sản phẩm đã xóa:
+                    </p>
+                    <ul style={{ paddingLeft: 20, margin: 0 }}>
+                      {record.reupHistory.map((item, idx) => (
+                        <li
+                          key={idx}
+                          style={{
+                            marginBottom: 8,
+                            borderBottom: "1px dashed #eee",
+                            paddingBottom: 4,
+                          }}
+                        >
+                          <div style={{ fontSize: 12, color: "#888" }}>
+                            {dayjs(item.updated_at).format("DD/MM/YYYY HH:mm")}
+                          </div>
+                          <div>
+                            <Tag color="error">{item.status}</Tag>
+                            Giá: <b>{intcomma(item.price)}đ</b>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                }
+              >
+                <Tag
+                  icon={<HistoryOutlined />}
+                  color="#fff1f0"
+                  style={{
+                    color: "#cf1322",
+                    border: "1px solid #ffa39e",
+                    cursor: "help",
+                    width: "fit-content",
+                  }}
+                >
+                  ⚠️ Trùng {record.reupHistory.length} lần cũ
+                </Tag>
+              </Popover>
+            )}
+        </Space>
+      ),
     },
     {
       title: "Giá",
@@ -272,8 +359,6 @@ const ProductManager = ({
         r.seller_name ||
         r.store_name || <Text type="secondary">Không có tên</Text>,
     },
-
-    
     {
       title: "Trạng thái",
       width: 140,
@@ -302,7 +387,6 @@ const ProductManager = ({
                   style={{ background: "#52c41a", borderColor: "#52c41a" }}
                   onClick={() => onApprove(record.id)}
                 />
-                {/* Nút từ chối trong bảng -> Mở modal */}
                 <Button
                   size="small"
                   danger
@@ -360,7 +444,7 @@ const ProductManager = ({
                 onSelect={handleGridSelect}
                 onView={onView}
                 onApprove={onApprove}
-                onOpenReject={handleOpenRejectModal} // Truyền hàm mở modal
+                onOpenReject={handleOpenRejectModal}
               />
             </List.Item>
           )}
@@ -417,8 +501,6 @@ const ProductManager = ({
             >
               Duyệt ({pendingSelectedItems.length})
             </Button>
-
-            {/* Nút từ chối hàng loạt -> Mở Modal */}
             <Button
               type="primary"
               danger

@@ -481,16 +481,26 @@ class ProductListSerializer(serializers.ModelSerializer):
     
 
     def get_is_reup(self, obj):
-        # Nếu không phải hàng pending thì thôi
         if obj.status != 'pending':
             return False
             
-        # Logic: Nếu ngày cập nhật (updated_at) lớn hơn ngày tạo (created_at) quá 1 tiếng
-        # Nghĩa là đã từng đăng lâu rồi, giờ sửa lại và gửi duyệt
-        # (Lưu ý: Dùng total_seconds() để so sánh cho chuẩn)
+        # Logic cũ: updated - created > 1 giờ (Quá nhạy)
+        # Logic MỚI: Chỉ coi là Re-up nếu sản phẩm đã tạo được HƠN 7 NGÀY
+        # (Tức là hàng tồn kho, hàng cũ lôi ra bán lại)
+        
         try:
-            diff = obj.updated_at - obj.created_at
-            return diff.total_seconds() > 3600 # 3600 giây = 1 tiếng
+            # 1. Tính tuổi đời sản phẩm
+            age = obj.updated_at - obj.created_at
+            
+            # 2. Quy đổi ra ngày
+            days_old = age.days
+            
+            # 3. Điều kiện: Phải "già" hơn 7 ngày thì mới tính là Tái xuất hiện
+            if days_old >= 7:
+                return True
+                
+            return False
+            
         except:
             return False
 

@@ -196,6 +196,37 @@ class SellerDetailSerializer(serializers.ModelSerializer):
         return self.get_full_url(obj.business_license)
 
 
+class SellerInfoSerializer(serializers.ModelSerializer):
+    # Lấy email từ bảng User
+    email = serializers.EmailField(source='user.email', read_only=True)
+    
+    # Lấy họ tên đầy đủ từ User (hoặc username nếu chưa set tên)
+    full_name = serializers.SerializerMethodField()
+    
+    # Map trường 'image' trong DB thành 'avatar' để frontend dễ dùng
+    avatar = serializers.ImageField(source='image', read_only=True)
+
+    class Meta:
+        model = Seller
+        fields = [
+            'id', 
+            'store_name', 
+            'avatar', 
+            'created_at',
+            # Các trường bổ sung cho Drawer hồ sơ
+            'email',
+            'full_name', 
+            'phone', 
+            'address'
+        ]
+
+    def get_full_name(self, obj):
+        if obj.user:
+            # Ưu tiên lấy Tên đầy đủ, nếu không có thì lấy Username
+            return obj.user.get_full_name() or obj.user.username
+        return "Người dùng ẩn danh"
+
+
 class SellerSerializer(serializers.ModelSerializer):
     user_username = serializers.CharField(source="user.username", read_only=True)
     user_email = serializers.EmailField(source="user.email", read_only=True)
@@ -230,6 +261,8 @@ class ShopSerializer(serializers.ModelSerializer):
         fields = ["id", "name", "description", "owner", "owner_username", "created_at", "is_active"]
 
 class ProductSerializer(serializers.ModelSerializer):
+    seller = SellerInfoSerializer(read_only=True)
+    is_reup = serializers.SerializerMethodField()
     class Meta:
         model = Product
         fields = "__all__"
@@ -246,6 +279,14 @@ class ProductSerializer(serializers.ModelSerializer):
         if 'subcategory' in data and data['subcategory']:
             data['category'] = data['subcategory'].category
         return data
+    
+    def get_is_reup(self, obj):
+    # Logic: Nếu sản phẩm này từng có history là 'deleted' hoặc 'banned'
+    # Hoặc đơn giản là check field is_deleted trong DB nếu bạn dùng soft-delete
+    # Ví dụ giả định:
+        if obj.history.filter(status='deleted').exists(): 
+            return True
+        return False
 
 class OrderSerializer(serializers.ModelSerializer):
     class Meta:
