@@ -80,6 +80,7 @@ class Product(models.Model):
         default="pending",
     )
 
+    reject_reason = models.TextField(null=True, blank=True)
     availability_status = models.CharField(  # trạng thái seller chọn
         max_length=20,
         choices=AVAILABILITY_CHOICES,
