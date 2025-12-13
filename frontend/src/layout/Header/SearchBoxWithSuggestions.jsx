@@ -7,7 +7,6 @@ import {
   Clock,
   ArrowUpLeft,
 } from "lucide-react";
-// Đã xóa import icon 'Store' vì không dùng nữa
 import "../styles/SearchBox.css";
 
 export default function SearchBoxWithSuggestions({
@@ -54,8 +53,6 @@ export default function SearchBoxWithSuggestions({
     setShowSuggestions(false);
   };
 
-  // Đã xóa handleShopClick vì không hiển thị shop
-
   const handleCategoryClick = (categorySlug) => {
     navigate(`/category/${categorySlug}`);
     setShowSuggestions(false);
@@ -67,7 +64,7 @@ export default function SearchBoxWithSuggestions({
     localStorage.removeItem("searchHistory");
   };
 
-  // 4. Memoize Data (Đã bỏ shops)
+  // 4. Memoize Data
   const { categories, products } = useMemo(
     () => ({
       categories: (searchResults?.categories || []).slice(0, 3),
@@ -81,7 +78,10 @@ export default function SearchBoxWithSuggestions({
 
   return (
     <div className="search-container" ref={containerRef}>
-      {/* Input Group */}
+      {/* QUAN TRỌNG: 
+         Dropdown bây giờ nằm BÊN TRONG thẻ .search-input-wrapper.
+         Vì wrapper có position: relative, dropdown absolute sẽ lấy chiều rộng theo wrapper.
+      */}
       <div className={`search-input-wrapper ${showSuggestions ? "active" : ""}`}>
         <input
           ref={inputRef}
@@ -99,105 +99,105 @@ export default function SearchBoxWithSuggestions({
         >
           <Search size={20} color="white" />
         </button>
-      </div>
 
-      {/* Dropdown */}
-      {showSuggestions && (
-        <div className="search-dropdown">
-          
-          {/* CASE 1: Lịch sử */}
-          {!isTyping && history.length > 0 && (
-            <div className="search-section">
-              <div className="section-header">
-                <span>Lịch sử tìm kiếm</span>
-                <span className="clear-history" onClick={clearHistory}>
-                  Xóa
-                </span>
-              </div>
-              <div className="history-list">
-                {history.map((item, idx) => (
-                  <div
-                    key={idx}
-                    className="history-item"
-                    onClick={() => handleSelectKeyword(item)}
-                  >
-                    <Clock size={14} className="icon-grey" />
-                    <span>{item}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* CASE 2: Kết quả tìm kiếm */}
-          {isTyping && (
-            <>
-              {/* --- ĐÃ XÓA SECTION SHOPS TẠI ĐÂY --- */}
-
-              {/* SECTION: Categories */}
-              {categories.length > 0 && (
-                <div className="search-section">
-                  <div className="section-title d-flex">
-                    <FolderOpen size={14} className="icon-blue" />
-                    <div className="section-label">DANH MỤC</div>
-                  </div>
-                  {categories.map((cat, idx) => (
+        {/* --- KHỐI DROPDOWN BẮT ĐẦU TẠI ĐÂY --- */}
+        {showSuggestions && (
+          <div className="search-dropdown">
+            
+            {/* CASE 1: Lịch sử */}
+            {!isTyping && history.length > 0 && (
+              <div className="search-section">
+                <div className="section-header">
+                  <span>Lịch sử tìm kiếm</span>
+                  <span className="clear-history" onClick={clearHistory}>
+                    Xóa
+                  </span>
+                </div>
+                <div className="history-list">
+                  {history.map((item, idx) => (
                     <div
                       key={idx}
-                      className="suggestion-item"
-                      onClick={() => handleCategoryClick(cat.slug)}
+                      className="history-item"
+                      onClick={() => handleSelectKeyword(item)}
                     >
-                      <span>
-                        Tìm trong{" "}
-                        <strong className="highlight-text">{cat.name}</strong>
-                      </span>
-                      <ArrowUpLeft size={14} className="icon-jump" />
+                      <Clock size={14} className="icon-grey" />
+                      <span>{item}</span>
                     </div>
                   ))}
                 </div>
-              )}
+              </div>
+            )}
 
-              {/* SECTION: Products */}
-              {products.length > 0 && (
-                <div className="search-section">
-                  <div className="section-title d-flex">
-                    <Package size={14} className="icon-green" />
-                    <div className="section-label">SẢN PHẨM GỢI Ý</div>
-                  </div>
-                  {products.map((product) => (
-                    <div
-                      key={product.id}
-                      className="product-item"
-                      onClick={() => handleProductClick(product)}
-                    >
-                      <div className="product-info">
-                        <div
-                          className="product-name"
-                          dangerouslySetInnerHTML={{
-                            __html: product.highlighted_name || product.name,
-                          }}
-                        />
-                        {/* --- ĐÃ XÓA div.product-meta (giá & sold) --- */}
+            {/* CASE 2: Kết quả tìm kiếm */}
+            {isTyping && (
+              <>
+                {/* SECTION: Categories */}
+                {categories.length > 0 && (
+                  <div className="search-section">
+                    <div className="section-title d-flex">
+                      <FolderOpen size={14} className="icon-blue" />
+                      <div className="section-label">DANH MỤC</div>
+                    </div>
+                    {categories.map((cat, idx) => (
+                      <div
+                        key={idx}
+                        className="suggestion-item"
+                        onClick={() => handleCategoryClick(cat.slug)}
+                      >
+                        <span>
+                          <strong className="highlight-text">{cat.name}</strong>
+                        </span>
+                        <ArrowUpLeft size={14} className="icon-jump" />
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+                    ))}
+                  </div>
+                )}
 
-              {/* No Results */}
-              {!hasResults && (
-                <div className="no-results">
-                  <div className="no-res-icon">🔍</div>
-                  <p>
-                    Không tìm thấy kết quả cho "<strong>{search}</strong>"
-                  </p>
-                  <span>Thử tìm từ khóa khác xem sao nhé</span>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      )}
+                {/* SECTION: Products */}
+                {products.length > 0 && (
+                  <div className="search-section">
+                    <div className="section-title d-flex">
+                      <Package size={14} className="icon-green" />
+                      <div className="section-label">SẢN PHẨM GỢI Ý</div>
+                    </div>
+                    {products.map((product) => (
+                      <div
+                        key={product.id}
+                        className="product-item"
+                        onClick={() => handleProductClick(product)}
+                      >
+                        {/* Lưu ý: Nếu có ảnh product.image thì thêm thẻ img vào đây */}
+                         {/* <img src={product.image} className="product-thumb" alt="" /> */}
+                        <div className="product-info">
+                          <div
+                            className="product-name"
+                            dangerouslySetInnerHTML={{
+                              __html: product.highlighted_name || product.name,
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* No Results */}
+                {!hasResults && (
+                  <div className="no-results">
+                    <div className="no-res-icon">🔍</div>
+                    <p>
+                      Không tìm thấy kết quả cho "<strong>{search}</strong>"
+                    </p>
+                    <span>Thử tìm từ khóa khác xem sao nhé</span>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+        {/* --- KHỐI DROPDOWN KẾT THÚC TẠI ĐÂY --- */}
+
+      </div>
     </div>
   );
 }

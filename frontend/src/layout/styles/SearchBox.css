@@ -4,15 +4,17 @@
 .search-container {
   position: relative;
   width: 100%;
-  max-width: 800px; /* Độ rộng chuẩn */
+  max-width: 700px;
   margin: 0 auto;
   z-index: 3000;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  /* Padding này sẽ chỉ đẩy thanh Input, Dropdown sẽ tự chạy theo Input */
+  padding-left: 150px; 
 }
 
-/* Input Wrapper */
+/* Input Wrapper - Đóng vai trò là khung cha (relative) cho Dropdown */
 .search-input-wrapper {
-  position: relative;
+  position: relative; /* Quan trọng để dropdown bám theo thằng này */
   display: flex;
   align-items: center;
   background: #fff;
@@ -25,6 +27,9 @@
 .search-input-wrapper.active {
   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
   border-color: #e0e0e0;
+  /* Khi mở dropdown, bo góc dưới vuông lại để liền mạch (tuỳ chọn) */
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
 }
 
 /* Input Field */
@@ -64,19 +69,28 @@
 }
 
 /* =========================================
-   2. DROPDOWN & SECTIONS
+   2. DROPDOWN (Đã chỉnh sửa để khớp với Wrapper)
    ========================================= */
 .search-dropdown {
   position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  width: 100%;
+  /* Đặt top = 100% để nằm ngay dưới wrapper */
+  top: 100%; 
+  left: 0; /* Căn trái bằng wrapper */
+  width: 100%; /* Rộng bằng wrapper */
   background: #fff;
-  border-radius: 8px;
+  
+  /* Chỉnh border radius để khớp với giao diện */
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
+  
   box-shadow: 0 8px 24px rgba(0,0,0,0.12);
-  border: 1px solid #f0f0f0;
+  border: 1px solid #e0e0e0;
+  border-top: none; /* Bỏ viền trên để liền mạch với input */
+  
   overflow: hidden;
   animation: slideDown 0.2s ease-out;
+  z-index: 3001;
+  margin-top: 2px; /* Khoảng cách nhỏ (nếu cần tách rời) hoặc để 0 */
 }
 
 @keyframes slideDown {
@@ -84,7 +98,7 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* Section Styling */
+/* --- CÁC PHẦN DƯỚI GIỮ NGUYÊN --- */
 .search-section {
   padding: 4px 0;
   border-bottom: 1px solid #f5f5f5;
@@ -94,7 +108,6 @@
   border-bottom: none;
 }
 
-/* Header cho Lịch sử (có nút Xóa bên phải) */
 .section-header {
   padding: 8px 16px;
   font-size: 12px;
@@ -106,7 +119,6 @@
   align-items: center;
 }
 
-/* Header cho Danh mục/Sản phẩm (Icon bên trái) */
 .section-title.d-flex {
   display: flex;
   align-items: center;
@@ -128,29 +140,26 @@
 .icon-green { color: #52c41a; }
 .icon-grey { color: #bfbfbf; }
 
-/* =========================================
-   3. ITEM STYLING (History, Suggestion, Shop)
-   ========================================= */
+/* ITEM STYLING */
 .suggestion-item, 
 .history-item {
   padding: 10px 16px;
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 10px; /* Khoảng cách giữa icon và text */
+  gap: 10px;
   font-size: 14px;
   color: #333;
   transition: background 0.1s;
 }
 
-/* Đẩy icon mũi tên sang phải cùng */
 .suggestion-item {
   justify-content: space-between; 
 }
 
 .suggestion-item:hover, 
 .history-item:hover {
-  background-color: #f0f8ff; /* Xanh nhạt khi hover */
+  background-color: #f0f8ff;
   color: #1890ff;
 }
 
@@ -171,9 +180,7 @@
   opacity: 1;
 }
 
-/* =========================================
-   4. PRODUCT ITEM STYLING
-   ========================================= */
+/* PRODUCT ITEM STYLING */
 .product-item {
   display: flex;
   align-items: center;
@@ -207,7 +214,7 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  overflow: hidden; /* Quan trọng để text dài không vỡ layout */
+  overflow: hidden;
 }
 
 .product-name {
@@ -215,13 +222,11 @@
   font-weight: 500;
   line-height: 1.4;
   color: #222;
-  /* Cắt dòng nếu tên quá dài */
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-
 
 .product-name em, 
 .highlight-text {
@@ -251,9 +256,7 @@
   font-size: 11px;
 }
 
-/* =========================================
-   5. NO RESULTS & FOOTER
-   ========================================= */
+/* NO RESULTS & FOOTER */
 .no-results {
   padding: 30px;
   text-align: center;

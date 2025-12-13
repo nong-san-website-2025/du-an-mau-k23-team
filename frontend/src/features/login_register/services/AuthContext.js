@@ -22,11 +22,20 @@ export const AuthProvider = ({ children }) => {
     const fetchUser = async () => {
       try {
         const res = await api.get("/users/me/");
-        setUser({
+        const userData = {
           ...res.data,
           isAuthenticated: true,
           token,
-        });
+        };
+        setUser(userData);
+        
+        // Đồng bộ role flag vào localStorage
+        const roleValue = res.data?.role?.name || res.data?.role || "";
+        if (String(roleValue).trim().toLowerCase() === "seller") {
+          localStorage.setItem("is_seller", "true");
+        } else {
+          localStorage.removeItem("is_seller");
+        }
       } catch (err) {
         console.error("Cannot fetch current user:", err);
         // Không cần thông báo lỗi ở đây vì người dùng chỉ vừa F5 lại trang
@@ -48,14 +57,23 @@ export const AuthProvider = ({ children }) => {
       if (data.refresh) localStorage.setItem("refresh", data.refresh);
 
       const meRes = await api.get("/users/me/");
-      setUser({
+      const userData = {
         ...meRes.data,
         isAuthenticated: true,
         token: data.access,
-      });
+      };
+      setUser(userData);
 
       if (meRes.data?.username) {
         localStorage.setItem("username", meRes.data.username);
+      }
+
+      // Đồng bộ role flag vào localStorage
+      const roleValue = meRes.data?.role?.name || meRes.data?.role || "";
+      if (String(roleValue).trim().toLowerCase() === "seller") {
+        localStorage.setItem("is_seller", "true");
+      } else {
+        localStorage.removeItem("is_seller");
       }
 
       window.dispatchEvent(new CustomEvent("user-logged-in"));
@@ -92,11 +110,20 @@ export const AuthProvider = ({ children }) => {
       if (refreshToken) localStorage.setItem("refresh", refreshToken);
 
       const meRes = await api.get("/users/me/");
-      setUser({
+      const userData = {
         ...meRes.data,
         isAuthenticated: true,
         token: accessToken,
-      });
+      };
+      setUser(userData);
+
+      // Đồng bộ role flag vào localStorage
+      const roleValue = meRes.data?.role?.name || meRes.data?.role || "";
+      if (String(roleValue).trim().toLowerCase() === "seller") {
+        localStorage.setItem("is_seller", "true");
+      } else {
+        localStorage.removeItem("is_seller");
+      }
 
       window.dispatchEvent(new CustomEvent("user-logged-in"));
       
@@ -219,11 +246,20 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem("refresh", googleResponse.refresh);
 
         const meRes = await api.get("/users/me/");
-        setUser({
+        const userData = {
           ...meRes.data,
           isAuthenticated: true,
           token: googleResponse.access,
-        });
+        };
+        setUser(userData);
+
+        // Đồng bộ role flag vào localStorage
+        const roleValue = meRes.data?.role?.name || meRes.data?.role || "";
+        if (String(roleValue).trim().toLowerCase() === "seller") {
+          localStorage.setItem("is_seller", "true");
+        } else {
+          localStorage.removeItem("is_seller");
+        }
 
         window.dispatchEvent(new CustomEvent("user-logged-in"));
         
@@ -237,10 +273,34 @@ export const AuthProvider = ({ children }) => {
         return { success: false, error: "Google login failed" };
       }
     },
+    setRole: (newRole) => {
+      setUser((prev) => {
+        if (!prev) return prev;
+        const updated = { ...prev, role: newRole };
+        
+        // Đồng bộ role flag vào localStorage
+        if (String(newRole).trim().toLowerCase() === "seller") {
+          localStorage.setItem("is_seller", "true");
+        } else {
+          localStorage.removeItem("is_seller");
+        }
+        
+        return updated;
+      });
+    },
     isAuthenticated: () => !!user?.isAuthenticated,
-    isAdmin: () => user?.role === "admin",
-    isSeller: () => user?.role === "seller",
-    isCustomer: () => user?.role === "customer",
+    isAdmin: () => {
+      const roleValue = user?.role?.name || user?.role || "";
+      return String(roleValue).trim().toLowerCase() === "admin";
+    },
+    isSeller: () => {
+      const roleValue = user?.role?.name || user?.role || "";
+      return String(roleValue).trim().toLowerCase() === "seller";
+    },
+    isCustomer: () => {
+      const roleValue = user?.role?.name || user?.role || "";
+      return String(roleValue).trim().toLowerCase() === "customer";
+    },
     getRole: () => user?.role,
     api,
     loading,

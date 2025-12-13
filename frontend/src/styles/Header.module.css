@@ -1,0 +1,68 @@
+/* Header.module.css */
+.headerWrapper {
+  position: sticky;
+  top: 0;
+  z-index: 999;
+  font-family: 'Montserrat', Arial, sans-serif;
+  background: #2e7d32;
+  width: 100%;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15); /* Shadow nhẹ nhàng hơn */
+}
+
+.mainBar {
+  background: linear-gradient(180deg, #2e7d32 0%, #4caf50 100%);
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.containerCustom {
+  padding-left: 15px !important;
+  padding-right: 15px !important;
+  width: 100%;
+}
+
+@media (min-width: 768px) {
+  .containerCustom {
+    padding-left: 5% !important; /* Đẩy vào 5% bề ngang */
+    padding-right: 5% !important;
+  }
+}
+
+@media (min-width: 1200px) {
+  .containerCustom {
+    padding-left: 9% !important; 
+    padding-right: 9% !important;
+  }
+}
+
+.popularTagsContainer {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  margin-top: 8px;
+  overflow-x: auto; /* Cho phép scroll ngang nếu quá dài */
+  scrollbar-width: none; /* Ẩn scrollbar trên Firefox */
+  -ms-overflow-style: none; /* Ẩn scrollbar trên IE */
+  max-width: 100%;
+}
+
+.popularTagsContainer::-webkit-scrollbar {
+  display: none; /* Ẩn scrollbar trên Chrome/Safari */
+}
+
+.tagPill {
+  padding: 4px 10px;
+  color: white;
+  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: 20px;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.3s ease;
+  border: 1px solid transparent;
+}
+
+.tagPill:hover {
+  background-color: rgba(255, 255, 255, 0.4);
+  transform: translateY(-1px);
+}

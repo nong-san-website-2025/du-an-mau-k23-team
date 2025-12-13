@@ -2,7 +2,7 @@ class SSEManager {
   constructor() {
     this.eventSource = null;
     this.listeners = [];
-    this.connectionStatus = 'DISCONNECTED'; // DISCONNECTED, CONNECTING, CONNECTED
+    this.connectionStatus = "DISCONNECTED"; // DISCONNECTED, CONNECTING, CONNECTED
     this.reconnectTimeout = null;
     this.userId = null;
     this.retryCount = 0; // Đếm số lần thử lại để tính thời gian chờ
@@ -10,8 +10,8 @@ class SSEManager {
 
   connect(userId) {
     // Nếu đang kết nối đúng user này rồi thì thôi, không connect lại
-    if (this.connectionStatus === 'CONNECTED' && this.userId === userId) {
-        return;
+    if (this.connectionStatus === "CONNECTED" && this.userId === userId) {
+      return;
     }
 
     this.disconnect(); // Reset sạch sẽ trước khi tạo mới
@@ -20,31 +20,29 @@ class SSEManager {
     if (!token || !userId) return;
 
     this.userId = userId;
-    this.connectionStatus = 'CONNECTING';
+    this.connectionStatus = "CONNECTING";
 
     const url = `${process.env.REACT_APP_API_URL}/sse/?token=${token}`;
-
-    console.log(`[SSE] Attempting connection... (Retry: ${this.retryCount})`);
 
     try {
       this.eventSource = new EventSource(url);
 
       this.eventSource.onopen = () => {
         console.log("[SSE] Connection established.");
-        this.connectionStatus = 'CONNECTED';
+        this.connectionStatus = "CONNECTED";
         this.retryCount = 0; // Reset số lần retry khi thành công
-        
+
         // Clear timeout cũ nếu có
         if (this.reconnectTimeout) {
-            clearTimeout(this.reconnectTimeout);
-            this.reconnectTimeout = null;
+          clearTimeout(this.reconnectTimeout);
+          this.reconnectTimeout = null;
         }
       };
 
       this.eventSource.onmessage = (event) => {
         try {
           // Heartbeat check (nếu server gửi message rỗng để giữ kết nối)
-          if (!event.data || event.data === 'ping') return;
+          if (!event.data || event.data === "ping") return;
 
           const data = JSON.parse(event.data);
           this.notifyListeners(data);
@@ -56,10 +54,9 @@ class SSEManager {
       this.eventSource.onerror = (error) => {
         console.warn("[SSE] Connection lost/error.", error);
         this.eventSource.close(); // Đóng ngay để tránh browser tự retry loạn xạ
-        this.connectionStatus = 'DISCONNECTED';
+        this.connectionStatus = "DISCONNECTED";
         this.handleReconnect();
       };
-
     } catch (error) {
       console.error("[SSE] Setup failed:", error);
       this.handleReconnect();
@@ -69,13 +66,11 @@ class SSEManager {
   handleReconnect() {
     // Exponential Backoff: Chờ 2s, 4s, 8s, 16s... tối đa 30s
     // Để tránh spam server khi server chết hẳn
-    const delay = Math.min(1000 * (2 ** this.retryCount), 30000); 
-    
-    console.log(`[SSE] Reconnecting in ${delay/1000}s...`);
-    
+    const delay = Math.min(1000 * 2 ** this.retryCount, 30000);
+
     this.reconnectTimeout = setTimeout(() => {
-        this.retryCount++;
-        this.connect(this.userId);
+      this.retryCount++;
+      this.connect(this.userId);
     }, delay);
   }
 
@@ -89,8 +84,8 @@ class SSEManager {
       this.eventSource.close();
       this.eventSource = null;
     }
-    
-    this.connectionStatus = 'DISCONNECTED';
+
+    this.connectionStatus = "DISCONNECTED";
   }
 
   addListener(callback) {

@@ -1,145 +1,54 @@
-/* =========================================================
-   1. CẤU TRÚC CHUNG (CONTAINER & LAYOUT)
-   ========================================================= */
-
-/* Căn chỉnh container chính */
+/* Nền chung cho homepage để các khối nội dung nổi bật */
 .homepage-container {
-    width: 100%;
-    max-width: 1440px; /* Giới hạn độ rộng tối đa cho màn hình to */
-    margin: 0 auto;    /* Căn giữa */
-    padding: 0 16px;   /* Padding an toàn cho Mobile */
+  background-color: #f5f5fa; /* Màu xám nhạt chuẩn TMĐT */
+  min-height: 100vh;
 }
 
-/* Các Section chung (trừ Hero) */
-.home-section:not(.hero-section) {
-    margin-top: 32px;
-    margin-bottom: 32px;
+.section-white-bg {
+  background: #fff;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
 
-/* Style thẻ card/nền trắng cho các section nội dung */
-.home-section:not(.hero-section) > div:not([class*="promotionWrapper"]):not(.flash-sale-section), 
-.home-section:not(.hero-section) .category-scroll-container,
-.home-section:not(.hero-section) .row {
-    background: #fff;
-    border-radius: 8px;
-    padding: 16px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+/* Service features (Thanh cam kết) */
+.service-feature-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: #555;
+  font-size: 14px;
+}
+.service-icon {
+  font-size: 24px;
+  color: #28a745;
 }
 
 /* Tiêu đề section */
-.home-section h2 {
-    font-size: 1.1rem;
-    font-weight: 700;
-    margin-bottom: 1rem;
-    color: #1b5e20;
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 10px;
+}
+.section-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #333;
+  text-transform: uppercase;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-/* =========================================================
-   2. HERO SECTION (SLIDER & BANNER)
-   ========================================================= */
-
-.hero-section {
-    margin-top: 20px;
-    margin-bottom: 24px;
-    /* Lưu ý: Không đặt padding/background ở đây để slider tràn viền đẹp */
-}
-
-/* Style cho các mũi tên điều hướng Slider (Prev/Next) */
-.slider-arrow {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    z-index: 10;
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.6);
-    border: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.3s;
-    opacity: 0; /* Ẩn mặc định, hover vào slider mới hiện */
-}
-
-.hero-slider:hover .slider-arrow {
-    opacity: 1;
-}
-
-.slider-arrow:hover {
-    background: #fff;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-}
-
-.prev-arrow { left: 10px; }
-.next-arrow { right: 10px; }
-
-/* =========================================================
-   3. RESPONSIVE & FIX LỖI SLIDER (QUAN TRỌNG)
-   ========================================================= */
-
-/* --- DESKTOP (Màn hình lớn >= 992px) --- */
-@media (min-width: 992px) {
-    /* 1. Ép chiều cao cứng cho cả khu vực Hero */
-    .hero-section {
-        height: 380px; 
-    }
-
-    /* 2. Ép Slider theo chiều cao cha & CẮT PHẦN THỪA (Fix lỗi tràn) */
-    .hero-slider, 
-    .hero-side-banners {
-        height: 100% !important;
-        border-radius: 8px;
-        overflow: hidden !important; /* Quan trọng: Cắt ảnh nếu ảnh quá to */
-    }
-    
-    /* 3. Can thiệp sâu vào class của thư viện Slick Slider */
-    /* Ép tất cả các thẻ div con của slick phải cao 100% */
-    .hero-slider .slick-slider,
-    .hero-slider .slick-track {
-        height: 100% !important;
-    }
-
-    /* Slick list là khung nhìn, phải ẩn overflow để không tràn xuống dưới */
-    .hero-slider .slick-list {
-        height: 100% !important;
-        overflow: hidden !important; 
-        border-radius: 8px;
-    }
-    
-    .hero-slider .slick-slide {
-        height: 100% !important;
-    }
-    
-    /* Div con trực tiếp bên trong slide (do React render) */
-    .hero-slider .slick-slide > div {
-        height: 100% !important;
-    }
-
-    .hero-slider .slider-item {
-        height: 100% !important; 
-    }
-    
-    /* Đảm bảo ảnh cover hết khung */
-    .hero-slider img {
-        height: 100% !important;
-        object-fit: cover !important;
-    }
-}
-
-/* --- MOBILE & TABLET (Màn hình nhỏ < 992px) --- */
-@media (max-width: 991px) {
-    .hero-slider {
-        height: auto;
-        aspect-ratio: 16/9; /* Giữ tỉ lệ chuẩn trên mobile */
-        border-radius: 8px;
-        overflow: hidden;
-    }
-    
-    .hero-slider img {
-        height: 100%;
-        width: 100%;
-        object-fit: cover;
-    }
+/* Mobile responsive fixes */
+@media (max-width: 768px) {
+  .hero-right-banners {
+    display: none; /* Ẩn banner phụ trên mobile để tiết kiệm chỗ */
+  }
 }

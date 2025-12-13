@@ -1,7 +1,8 @@
-/* src/styles/home/PersonalizedSections.css */
-
+/* =========================================
+   1. SECTION TITLE (Tiêu đề)
+   ========================================= */
 .section-title {
-  font-size: 1.5rem;
+  font-size: 1.5rem; /* ~24px */
   font-weight: 700;
   color: #333;
   text-transform: uppercase;
@@ -9,79 +10,138 @@
   position: relative;
   display: inline-block;
   margin-bottom: 1.5rem;
+  /* Font cho tiêu đề nên rõ ràng, mạnh mẽ */
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
+/* Đường gạch chân trang trí */
 .section-title::after {
   content: '';
   position: absolute;
-  bottom: -8px;
+  bottom: -6px;
   left: 0;
-  width: 40px;
-  height: 3px;
-  background-color: #ee4d2d; /* Màu chủ đạo (ví dụ Shopee/Lazada) */
-  border-radius: 2px;
+  width: 50px; /* Dài hơn chút cho cân đối */
+  height: 4px;
+  background-color: #28a745; /* Đổi sang màu Xanh GreenFarm */
+  border-radius: 4px;
+}
+
+/* =========================================
+   2. GRID SYSTEM (Lưới sản phẩm)
+   - Mobile First Strategy
+   ========================================= */
+
+/* Container bọc ngoài */
+.personalized-section-container {
+  min-height: 400px; /* QUAN TRỌNG: Giữ chỗ để IntersectionObserver hoạt động */
+  transition: opacity 0.3s ease;
 }
 
 .product-grid-wrapper {
   display: grid;
-  /* Tự động chia cột: Tối thiểu 160px (mobile) đến 1fr */
-  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
-  gap: 16px;
+  width: 100%;
+  
+  /* MOBILE: Luôn hiển thị 2 cột (chuẩn Shopee/Lazada) */
+  grid-template-columns: repeat(2, 1fr); 
+  gap: 8px; /* Khoảng cách nhỏ trên mobile để tiết kiệm diện tích */
+  
+  /* Căn giữa nếu grid bị lẻ (tuỳ chọn) */
+  justify-content: center;
 }
 
+/* TABLET & DESKTOP */
 @media (min-width: 768px) {
   .product-grid-wrapper {
-    gap: 20px;
+    /* Desktop: Tự động chia cột, mỗi cột tối thiểu 190px */
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 20px; /* Khoảng cách rộng hơn cho thoáng */
   }
 }
 
-/* Hiệu ứng Skeleton Loader chuyên nghiệp */
+/* =========================================
+   3. SKELETON LOADER (Hiệu ứng Loading)
+   - Sử dụng hiệu ứng Shimmer (Quét sáng)
+   ========================================= */
 .skeleton-card {
   background: #fff;
   border-radius: 8px;
   overflow: hidden;
   height: 100%;
   border: 1px solid #f0f0f0;
+  position: relative;
 }
 
+/* Khung ảnh giả lập */
 .skeleton-img {
   width: 100%;
-  padding-top: 100%; /* Aspect ratio 1:1 */
-  background: #e0e0e0;
-  animation: pulse 1.5s infinite ease-in-out;
+  padding-top: 100%; /* Tạo khung vuông tỷ lệ 1:1 */
+  background: #f0f2f5;
+  position: relative;
+  overflow: hidden;
 }
 
+/* Các dòng text giả lập */
 .skeleton-info {
   padding: 12px;
 }
 
 .skeleton-text {
-  height: 14px;
+  height: 16px;
   margin-bottom: 8px;
-  background: #e0e0e0;
+  background: #f0f2f5;
   border-radius: 4px;
-  animation: pulse 1.5s infinite ease-in-out;
+  position: relative;
+  overflow: hidden;
 }
 
 .skeleton-text.short {
   width: 60%;
 }
 
-@keyframes pulse {
-  0% { opacity: 0.6; }
-  50% { opacity: 1; }
-  100% { opacity: 0.6; }
+/* Hiệu ứng Shimmer (Quét sáng từ trái qua phải) */
+.skeleton-img::after,
+.skeleton-text::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.5) 50%,
+    transparent 100%
+  );
+  animation: shimmer 1.5s infinite;
 }
 
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* =========================================
+   4. BUTTONS & UTILS
+   ========================================= */
 .btn-view-more {
-  transition: all 0.3s ease;
+  display: inline-block;
+  padding: 8px 24px;
+  font-weight: 600;
+  color: #555;
+  background: #fff;
   border: 1px solid #d9d9d9;
+  border-radius: 50px; /* Bo tròn kiểu viên thuốc */
+  transition: all 0.3s cubic-bezier(0.645, 0.045, 0.355, 1);
+  cursor: pointer;
 }
 
 .btn-view-more:hover {
-  border-color: #ee4d2d;
-  color: #ee4d2d;
-  background: #fff;
-  box-shadow: 0 2px 8px rgba(238, 77, 45, 0.15);
+  border-color: #28a745;
+  color: #28a745;
+  background: #f6ffed; /* Nền xanh rất nhạt */
+  box-shadow: 0 4px 12px rgba(40, 167, 69, 0.15);
+  transform: translateY(-1px);
 }

@@ -2,38 +2,21 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useInView } from "react-intersection-observer";
 import { useNavigate } from "react-router-dom";
-import { Skeleton } from "antd"; // <--- Import Ant Design
+import { Skeleton, Empty, Button } from "antd"; // <--- Thêm Empty và Button
 import { productApi } from "../../features/products/services/productApi.js";
 import ProductCard from "../../features/products/components/ProductCard.jsx";
 import { useCart } from "../../features/cart/services/CartContext";
 import "../../styles/home/PersonalizedSections.css";
 
-// --- SUB-COMPONENT: SKELETON LOADER CHUẨN ANT DESIGN ---
+// ... (Giữ nguyên component ProductSkeleton của bạn) ...
 const ProductSkeleton = () => {
   return (
-    <div className="card h-100 border-0 shadow-sm overflow-hidden">
-      {/* Phần giả lập ảnh sản phẩm:
-         - Skeleton.Image của Antd mặc định là hình vuông nhỏ.
-         - Ta dùng flexbox của Bootstrap để căn giữa nó trong khung hình chữ nhật.
-         - bg-light giúp tạo khung nền xám nhẹ cho giống khung ảnh.
-      */}
-      <div 
-        className="d-flex justify-content-center align-items-center bg-light position-relative" 
-        style={{ height: "200px" }} // Chiều cao khớp với ảnh thật
-      >
-        {/* active: tạo hiệu ứng sóng chạy qua */}
-        <Skeleton.Image active style={{ transform: "scale(1.5)" }} /> 
-      </div>
-
-      {/* Phần giả lập thông tin (Tên + Giá) */}
-      <div className="card-body p-3">
-        {/* active: hiệu ứng sóng; paragraph: giả lập các dòng text mô tả */}
-        <Skeleton active title={{ width: '70%' }} paragraph={{ rows: 1, width: '40%' }} />
-        
-        {/* Giả lập nút bấm (nếu cần) */}
-        <div className="mt-2">
-             <Skeleton.Button active size="small" shape="round" block={false} style={{ width: 80 }} />
-        </div>
+    <div className="skeleton-card">
+      <div className="skeleton-img"></div>
+      <div className="skeleton-info">
+        <div className="skeleton-text"></div>
+        <div className="skeleton-text short"></div>
+        <div className="skeleton-text" style={{ width: '40%', marginTop: '10px' }}></div>
       </div>
     </div>
   );
@@ -43,6 +26,7 @@ const PersonalizedSection = () => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
+  // eslint-disable-next-line no-unused-vars
   const [error, setError] = useState(null);
 
   const { addToCart } = useCart();
@@ -84,27 +68,49 @@ const PersonalizedSection = () => {
 
   const handleViewMore = () => navigate("/products");
 
-  if (!loading && hasLoaded && products.length === 0 && !error) return null;
+  // --- UX CẢI TIẾN: EMPTY STATE ---
+  // Nếu đã load xong mà không có sản phẩm (hoặc lỗi), hiển thị Empty State thay vì return null
+  if (!loading && hasLoaded && products.length === 0) {
+    return (
+      <section ref={ref} className="container my-5 py-4 bg-white rounded shadow-sm">
+        <div className="d-flex justify-content-between align-items-center mb-4 px-3">
+             <h2 className="section-title mb-0" style={{ fontWeight: 700, textTransform: 'uppercase' }}>
+                Gợi ý cho bạn
+             </h2>
+        </div>
+        <Empty
+          image={Empty.PRESENTED_IMAGE_SIMPLE}
+          description={
+            <span className="text-muted">
+              Hôm nay chưa có gợi ý phù hợp nào dành cho bạn. <br/>
+              Hãy khám phá thêm các sản phẩm khác nhé!
+            </span>
+          }
+        >
+          <Button type="primary" onClick={handleViewMore} style={{ background: '#28a745', borderColor: '#28a745' }}>
+            Khám phá ngay
+          </Button>
+        </Empty>
+      </section>
+    );
+  }
 
   return (
     <section ref={ref} className="container my-5">
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h2 className="section-title mb-0" style={{ fontWeight: 700, textTransform: 'uppercase' }}>
-            Gợi ý cho bạn
+          Gợi ý cho bạn
         </h2>
         {!loading && !error && (
-            <span onClick={handleViewMore} className="text-primary cursor-pointer d-none d-md-block" style={{cursor: 'pointer'}}>
-                Xem tất cả
-            </span>
+          <span onClick={handleViewMore} className="text-primary cursor-pointer d-none d-md-block" style={{ cursor: 'pointer' }}>
+            Xem tất cả
+          </span>
         )}
       </div>
 
-      <div className="product-grid-wrapper"> 
-        {/* Note: Class 'product-grid-wrapper' lấy từ file CSS ở câu trả lời trước */}
-        
+      <div className="product-grid-wrapper">
         {loading ? (
-          // Render 12 Skeletons khi đang loading
-          Array.from({ length: 12 }).map((_, index) => (
+          Array.from({ length: 10 }).map((_, index) => (
             <ProductSkeleton key={index} />
           ))
         ) : (
@@ -120,14 +126,13 @@ const PersonalizedSection = () => {
           ))
         )}
       </div>
-      
-      {/* Fallback button mobile */}
+
       {!loading && !error && products.length > 0 && (
-          <div className="mt-4 text-center d-md-none">
-            <button className="btn btn-outline-primary rounded-pill px-4" onClick={handleViewMore}>
-                Xem thêm
-            </button>
-          </div>
+        <div className="mt-4 text-center d-md-none">
+          <button className="btn btn-outline-primary rounded-pill px-4" onClick={handleViewMore}>
+            Xem thêm
+          </button>
+        </div>
       )}
     </section>
   );

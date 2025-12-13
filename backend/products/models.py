@@ -61,6 +61,7 @@ class Product(models.Model):
     unit = models.CharField(max_length=10, choices=UNIT_CHOICES, default="kg")
     stock = models.PositiveIntegerField(default=0)
     sold = models.IntegerField(default=0, blank=True)
+    weight_g = models.IntegerField(default=1000, verbose_name="Cân nặng (gram)")
 
     image = models.ImageField(upload_to='products/', blank=True, null=True)
     rating = models.DecimalField(max_digits=3, decimal_places=1, default=0)

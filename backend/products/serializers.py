@@ -36,7 +36,7 @@ class PendingProductUpdateSerializer(serializers.ModelSerializer):
         fields = [
             'name', 'description', 'original_price', 'discounted_price', 'unit',
             'stock', 'location', 'brand', 'availability_status', 'season_start', 'season_end',
-            'created_at', 'updated_at'
+            'created_at', 'updated_at', 'weight_g', # 👈 THÊM VÀO ĐÂY
         ]
 
 
@@ -113,7 +113,7 @@ class ProductSerializer(serializers.ModelSerializer):
             "estimated_quantity", "preordered_quantity", 'ordered_quantity',
             "is_coming_soon", "is_out_of_stock", "available_quantity",
             "total_preordered", "user_preordered", "features", "main_image",
-            "commission_rate", "pending_update", "comparison_data"
+            "commission_rate", "pending_update", "comparison_data", 'weight_g',
         ]
         read_only_fields = ["status", "seller"]
 
@@ -341,7 +341,7 @@ class ProductListSerializer(serializers.ModelSerializer):
             "estimated_quantity", "preordered_quantity",
             "is_coming_soon", "is_out_of_stock", "available_quantity",
             "total_preordered", "user_preordered", "features", "store", "main_image",
-            "commission_rate", "pending_update", "comparison_data", 'is_reup',
+            "commission_rate", "pending_update", "comparison_data", 'is_reup', 'weight_g',
         ]
         read_only_fields = ["id", "created_at", "updated_at", "seller"]
 
@@ -361,6 +361,7 @@ class ProductListSerializer(serializers.ModelSerializer):
             'stock': obj.stock,
             'location': obj.location,
             'brand': obj.brand,
+            'weight_g': obj.weight_g, # 👈 THÊM
             'availability_status': obj.availability_status,
             'season_start': obj.season_start.isoformat() if obj.season_start else None,
             'season_end': obj.season_end.isoformat() if obj.season_end else None,

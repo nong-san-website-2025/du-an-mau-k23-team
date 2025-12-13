@@ -1,29 +1,33 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
+import { useHeaderLogic } from "../hooks/useHeaderLogic"; // Import hook vừa tạo
 import useUserProfile from "../features/users/services/useUserProfile";
-import { ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
 import { useCart } from "../features/cart/services/CartContext";
-import { useNavigate } from "react-router-dom";
 
+// Styles
+import styles from "../styles/Header.module.css"; // Giả sử dùng CSS Module
+
+// Sub-components
 import Logo from "./Header/Logo";
 import SearchBoxWithSuggestions from "./Header/SearchBoxWithSuggestions";
 import UserActions from "./Header/UserActions";
 import TopBar from "./Header/TopBar";
-import { useAuth } from "../features/login_register/services/AuthContext";
-
 import useSellerStatus from "../services/hooks/useSellerStatus";
 import useSearch from "../services/hooks/useSearch";
 
 export default function Header({ shouldFetchProfile = true }) {
+  // 1. Logic extracted to custom hooks
+  const { 
+    popularItems, 
+    handleLogout, 
+    handlePopularItemClick, 
+    navigate, 
+    contextHolder 
+  } = useHeaderLogic();
+
   const userProfile = useUserProfile();
-  const { logout } = useAuth();
   const { cartItems } = useCart();
-  const cartCount = cartItems.length;
-  const [popularItems, setPopularItems] = useState([]);
-
-  const navigate = useNavigate();
-
   const { storeName, sellerStatus } = useSellerStatus(shouldFetchProfile);
+  
   const {
     search,
     setSearch,
@@ -34,163 +38,118 @@ export default function Header({ shouldFetchProfile = true }) {
     handleSearchChange,
   } = useSearch();
 
+  // 2. Local UI State
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
-  const [showNotificationDropdown, setShowNotificationDropdown] =
-    useState(false);
+  const [showNotificationDropdown, setShowNotificationDropdown] = useState(false);
   const [showCartDropdown, setShowCartDropdown] = useState(false);
   const [hoveredDropdown, setHoveredDropdown] = useState(null);
-  const [hotKeywords, setHotKeywords] = useState([]);
 
+  // Constants
+  const cartCount = cartItems.length;
   const greenText = {
     color: "#4caf50",
     fontFamily: "Montserrat, Arial, sans-serif",
     fontWeight: 800,
   };
 
-  useEffect(() => {
-    fetch("/api/search/popular-keywords/")
-      .then((res) => res.json())
-      .then((data) => {
-        const keywords = data.keywords?.slice(0, 7) || [];
-        setHotKeywords(keywords);
-      })
-      .catch((err) => {
-        console.error("❌ Fetch hot keywords failed:", err);
-        setHotKeywords([]);
-      });
-  }, []);
-
-  useEffect(() => {
-    fetch("/api/search/popular-items/")
-      .then((res) => res.json())
-      .then((data) => setPopularItems(data.items || []))
-      .catch((err) => console.error("Failed to load popular items", err));
-  }, []);
-  const handleLogout = async () => {
-    await logout(); // gọi logout từ AuthContext
-    setShowProfileDropdown(false);
-    navigate("/login", { replace: true });
-  };
-
-  const handleSearchSubmit = async () => {
+  const onSearchSubmit = () => {
     if (!search.trim()) return;
     navigate(`/search?query=${encodeURIComponent(search)}`);
   };
 
+  const onLogoutClick = () => handleLogout(setShowProfileDropdown);
+
   return (
     <>
-      <ToastContainer position="top-right" autoClose={2000} theme="colored" />
-      <header
-        className="shadow-sm"
-        style={{
-          position: "sticky",
-          top: 0,
-          zIndex: 999,
-          fontFamily: "Montserrat, Arial, sans-serif",
-          background: "#2E7D32",
-          width: "100%",
-        }}
-      >
+      {/* Ant Design Notification Container */}
+      {contextHolder}
+
+      <header className={styles.headerWrapper}>
         <TopBar />
-        <div
-          className="border-bottom px-0 px-md-2"
-          style={{
-            background: "linear-gradient(to bottom, #2E7D32 0%, #4CAF50 100%)",
-          }}
-        >
-          <div
-            className="container-fluid d-flex flex-column flex-md-row align-items-center justify-content-between py-0 px-1"
-            style={{
-              minHeight: "55px",
-              position: "relative",
-            }}
-          >
-            <div className="w-100 d-flex justify-content-center justify-content-md-start" style={{ paddingBottom: 5 }}>
-              <Logo greenText={greenText} />
-            </div>
+        
+        <div className={styles.mainBar}>
+          {/* Sử dụng Grid system của Bootstrap để layout responsive tốt hơn */}
+          <div className={`container-fluid ${styles.containerCustom}`}>
+            <div className="row w-100 align-items-center m-0">
+              
+              {/* LOGO: Col-6 (Mobile) / Col-md-2 (Desktop) */}
+              <div className="col-6 col-md-3 col-lg-2 p-0">
+                <Logo greenText={greenText} />
+              </div>
 
-            <div
-              className="w-100 d-flex justify-content-center"
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                position: "relative",
-                marginBottom: 5,
-              }}
-            >
-              <SearchBoxWithSuggestions
-                search={search}
-                setSearch={setSearch}
-                showSuggestions={showSuggestions}
-                setShowSuggestions={setShowSuggestions}
-                searchResults={searchResults}
-                handleSearchChange={handleSearchChange}
-                handleSearchSubmit={handleSearchSubmit}
-                greenText={greenText}
-                containerRef={searchRef}
-              />
+              {/* USER ACTIONS (Mobile Only - Đảo vị trí lên trên cho dễ bấm) */}
+              <div className="col-6 d-md-none p-0 d-flex justify-content-end">
+                 <UserActions
+                    greenText={greenText}
+                    cartCount={cartCount}
+                    cartItems={cartItems}
+                    showCartDropdown={showCartDropdown}
+                    setShowCartDropdown={setShowCartDropdown}
+                    userProfile={userProfile}
+                    showProfileDropdown={showProfileDropdown}
+                    setShowProfileDropdown={setShowProfileDropdown}
+                    handleLogout={onLogoutClick}
+                    showNotificationDropdown={showNotificationDropdown}
+                    setShowNotificationDropdown={setShowNotificationDropdown}
+                    hoveredDropdown={hoveredDropdown}
+                    setHoveredDropdown={setHoveredDropdown}
+                    storeName={storeName}
+                    sellerStatus={sellerStatus}
+                  />
+              </div>
 
-              {popularItems.length > 0 && (
-                <div
-                  className="d-none d-md-flex"
-                  style={{
-                    flexWrap: "nowrap",
-                    gap: "4px",
-                    marginTop: "4px",
-                    overflow: "hidden",
-                  }}
-                >
-                  {popularItems.slice(0, 7).map((item) => (
-                    <span
-                      key={`${item.type}-${item.id}`}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        if (item.type === "product") {
-                          navigate(`/products/${item.id}`);
-                        } else if (item.type === "category") {
-                          navigate(
-                            `/products?category=${encodeURIComponent(item.name)}`
-                          );
-                        }
-                      }}
-                      style={{
-                        padding: "4px 6px",
-                        color: "white",
-                        borderRadius: "16px",
-                        fontSize: "13px",
-                        cursor: "pointer",
-                        whiteSpace: "nowrap", // ← không xuống dòng
-                        overflow: "hidden", // ← ẩn phần tràn
-                        textOverflow: "clip", // ← hiển thị "..." khi tràn
-                        maxWidth: "100px", // ← giới hạn độ rộng (bắt buộc để ellipsis hoạt động)
-                      }}
-                    >
-                      {item.name}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
+              {/* SEARCH BOX: Col-12 (Mobile - xuống dòng) / Col-md-6 (Desktop - ở giữa) */}
+              <div className="col-12 col-md-6 col-lg-7 mt-2 mt-md-0 position-relative">
+                <SearchBoxWithSuggestions
+                  search={search}
+                  setSearch={setSearch}
+                  showSuggestions={showSuggestions}
+                  setShowSuggestions={setShowSuggestions}
+                  searchResults={searchResults}
+                  handleSearchChange={handleSearchChange}
+                  handleSearchSubmit={onSearchSubmit}
+                  greenText={greenText}
+                  containerRef={searchRef}
+                />
 
-            <div className="w-100 d-flex justify-content-center justify-content-md-end">
-              <UserActions
-                greenText={greenText}
-                cartCount={cartCount}
-                cartItems={cartItems}
-                showCartDropdown={showCartDropdown}
-                setShowCartDropdown={setShowCartDropdown}
-                userProfile={userProfile}
-                showProfileDropdown={showProfileDropdown}
-                setShowProfileDropdown={setShowProfileDropdown}
-                handleLogout={handleLogout}
-                showNotificationDropdown={showNotificationDropdown}
-                setShowNotificationDropdown={setShowNotificationDropdown}
-                hoveredDropdown={hoveredDropdown}
-                setHoveredDropdown={setHoveredDropdown}
-                storeName={storeName}
-                sellerStatus={sellerStatus}
-              />
+                {/* Popular Tags */}
+                {popularItems.length > 0 && (
+                  <div className={`${styles.popularTagsContainer} d-none d-md-flex`}>
+                    {popularItems.slice(0, 7).map((item) => (
+                      <span
+                        key={`${item.type}-${item.id}`}
+                        className={styles.tagPill}
+                        onClick={(e) => handlePopularItemClick(e, item)}
+                        title={item.name}
+                      >
+                        {item.name}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* USER ACTIONS (Desktop Only) */}
+              <div className="d-none d-md-flex col-md-3 col-lg-3 justify-content-end p-0">
+                <UserActions
+                  greenText={greenText}
+                  cartCount={cartCount}
+                  cartItems={cartItems}
+                  showCartDropdown={showCartDropdown}
+                  setShowCartDropdown={setShowCartDropdown}
+                  userProfile={userProfile}
+                  showProfileDropdown={showProfileDropdown}
+                  setShowProfileDropdown={setShowProfileDropdown}
+                  handleLogout={onLogoutClick}
+                  showNotificationDropdown={showNotificationDropdown}
+                  setShowNotificationDropdown={setShowNotificationDropdown}
+                  hoveredDropdown={hoveredDropdown}
+                  setHoveredDropdown={setHoveredDropdown}
+                  storeName={storeName}
+                  sellerStatus={sellerStatus}
+                />
+              </div>
+
             </div>
           </div>
         </div>

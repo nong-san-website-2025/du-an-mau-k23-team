@@ -59,7 +59,8 @@ class SellerListSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'store_name', 'image', 'address', 'status',
             'bio', 'owner_username', 'phone', 'user_email',
-            'created_at', 'followers_count', 'total_products'
+            'created_at', 'followers_count', 'total_products',
+            'district_id', 'ward_code'
         ]
 
     def get_image(self, obj):
@@ -81,7 +82,8 @@ class SellerRegisterSerializer(serializers.ModelSerializer):
         model = Seller
         fields = [
             'id', 'user', 'store_name', 'bio', 'address', 'phone', 'image',
-            'tax_code', 'business_type', 'cccd_front', 'cccd_back', 'business_license'
+            'tax_code', 'business_type', 'cccd_front', 'cccd_back', 'business_license',
+            'district_id', 'ward_code'
         ]
 
     def validate(self, attrs):
@@ -138,6 +140,8 @@ class SellerDetailSerializer(serializers.ModelSerializer):
         'status',
         'rejection_reason',
         'products',
+        'district_id',
+        'ward_code',
 
         # ✅ thêm các field này
         "business_type",

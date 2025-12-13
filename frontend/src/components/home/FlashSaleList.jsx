@@ -1,11 +1,10 @@
 import React, { useRef, useEffect, useState } from "react";
-import { Carousel, Button, Skeleton } from "antd";
-import { ThunderboltFilled, RightOutlined, LeftOutlined } from "@ant-design/icons";
+import { Carousel, Button, Skeleton, Empty } from "antd"; // Import thêm Empty
+import { ThunderboltFilled, RightOutlined, LeftOutlined, ShoppingCartOutlined } from "@ant-design/icons";
 import FlashSaleItem from "./FlashSaleItem";
 import CountdownTimer from "./CountdownTimer";
 import api from "../../features/login_register/services/api";
 
-// Import file CSS riêng biệt
 import "../../styles/home/FlashSaleList.css";
 
 export default function FlashSaleList() {
@@ -23,9 +22,12 @@ export default function FlashSaleList() {
           const current = data[0];
           setFlashItems(current.flashsale_products || []);
           setEndTime(current.end_time);
+        } else {
+            setFlashItems([]); // Đảm bảo mảng rỗng nếu không có data
         }
       } catch (e) {
         console.error("Lỗi tải Flash Sale:", e);
+        setFlashItems([]); // Fallback an toàn
       } finally {
         setLoading(false);
       }
@@ -33,7 +35,6 @@ export default function FlashSaleList() {
     fetchData();
   }, []);
 
-  // Cấu hình Carousel responsive
   const carouselSettings = {
     dots: false,
     infinite: true,
@@ -50,28 +51,52 @@ export default function FlashSaleList() {
     ],
   };
 
-  // Render Skeleton Loading (Giữ nguyên cấu trúc Container để không bị giật layout)
+  // --- RENDERING ---
+
+  // 1. Loading State
   if (loading) {
     return (
       <div className="flash-sale-section container">
-        <div className="flash-header" style={{ border: 'none' }}>
-           <Skeleton.Input active size="large" style={{ width: 200 }} />
+        <div className="flash-header" style={{ border: 'none', paddingBottom: 0 }}>
+            <Skeleton.Input active size="large" style={{ width: 200, borderRadius: 8 }} />
         </div>
-        <div style={{ display: "flex", gap: 16, padding: "0 24px", overflow: "hidden" }}>
+        <div style={{ display: "flex", gap: 16, padding: "24px", overflow: "hidden" }}>
           {[1, 2, 3, 4, 5].map((i) => (
-            <Skeleton.Node key={i} active style={{ width: 220, height: 320 }} />
+            <Skeleton.Node key={i} active style={{ width: 220, height: 320, borderRadius: 12 }} />
           ))}
         </div>
       </div>
     );
   }
 
-  if (flashItems.length === 0) return null;
+  // 2. Empty State (Chuẩn Senior UX/UI)
+  if (flashItems.length === 0) {
+    return (
+      <div className="flash-sale-section container">
+         <div className="flash-empty-wrapper">
+            <Empty
+                image="https://gw.alipayobjects.com/zos/antfincdn/ZHrcdLPrvN/empty.svg"
+                imageStyle={{ height: 120 }}
+                description={
+                    <div className="empty-content">
+                        <h3 className="empty-title">Tiếc quá! Flash Sale đã kết thúc</h3>
+                        <p className="empty-desc">
+                            Đừng bỏ lỡ cơ hội mua sắm. Hãy khám phá hàng ngàn sản phẩm giá tốt khác đang chờ bạn.
+                        </p>
+                    </div>
+                }
+            >
+            </Empty>
+         </div>
+      </div>
+    );
+  }
 
+  // 3. Main Content (Có dữ liệu)
   return (
     <div className="flash-sale-section">
       <div className="container">
-        {/* --- Header Section --- */}
+        {/* Header Section */}
         <div className="flash-header">
           <div className="header-left">
             <div className="title-wrapper">
@@ -90,7 +115,7 @@ export default function FlashSaleList() {
           </div>
         </div>
 
-        {/* --- Carousel Section --- */}
+        {/* Carousel Section */}
         <div className="carousel-wrapper">
           <Carousel ref={carouselRef} {...carouselSettings}>
             {flashItems.map((item) => (
@@ -100,7 +125,6 @@ export default function FlashSaleList() {
             ))}
           </Carousel>
 
-          {/* Custom Navigation Arrows */}
           <div 
             className="nav-arrow prev" 
             onClick={() => carouselRef.current.prev()}

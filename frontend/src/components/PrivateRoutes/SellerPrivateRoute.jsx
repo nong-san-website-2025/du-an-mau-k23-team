@@ -23,8 +23,9 @@ const SellerPrivateRoute = () => {
     return <Navigate to="/login" replace />;
   }
 
-  // Chuẩn hóa role và hỗ trợ fallback cho format cũ (is_seller)
-  const normalizedRole = String(user?.role?.name || "").trim().toLowerCase();
+  // Chuẩn hóa role - hỗ trợ cả format object {name: "seller"} và string "seller"
+  const roleValue = user?.role?.name || user?.role || "";
+  const normalizedRole = String(roleValue).trim().toLowerCase();
   const isSellerFlag = localStorage.getItem("is_seller") === "true";
 
   if (!(normalizedRole === "seller" || isSellerFlag)) {

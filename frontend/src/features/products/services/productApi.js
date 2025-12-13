@@ -89,6 +89,16 @@ export const productApi = {
     );
   },
 
+  getCategoryIdFromProduct(product) {
+    if (!product) return null;
+    // Trường hợp category là object (có id, name)
+    if (typeof product.category === "object" && product.category !== null) {
+      return product.category.id;
+    }
+    // Trường hợp category chỉ là ID (số hoặc chuỗi)
+    return product.category;
+  },
+
   getProduct(id) {
     return request(`/products/${id}/`, {}, { auth: true }).then((p) => ({
       ...p,

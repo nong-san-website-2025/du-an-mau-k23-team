@@ -16,6 +16,7 @@ const useCheckoutLogic = () => {
   // State quản lý dữ liệu và UI
   const [shippingFee, setShippingFee] = useState(0);
   const [shippingStatus, setShippingStatus] = useState("idle");
+  const [shippingFeePerSeller, setShippingFeePerSeller] = useState({}); // { seller_id: fee }
   const [addresses, setAddresses] = useState([]);
   const [selectedAddressId, setSelectedAddressId] = useState(null);
   const [manualEntry, setManualEntry] = useState(false);
@@ -191,7 +192,7 @@ const useCheckoutLogic = () => {
     fetchAddresses();
   }, [token]);
 
-  // Tính phí vận chuyển GHN
+  // Tính phí vận chuyển GHN cho từng seller
   useEffect(() => {
     if (
       selectedAddress &&
@@ -204,6 +205,7 @@ const useCheckoutLogic = () => {
       return;
     }
 
+    // Tính phí vận chuyển GHN cho từng seller
     const fetchShippingFee = async () => {
       const to_district_id = manualEntry
         ? geoManual.districtId
@@ -217,6 +219,7 @@ const useCheckoutLogic = () => {
 
       if (!to_district_id || !to_ward_code) {
         setShippingFee(0);
+        setShippingFeePerSeller({});
         setShippingStatus("idle");
         return;
       }
@@ -224,32 +227,83 @@ const useCheckoutLogic = () => {
       setShippingFee(0);
       setShippingStatus("loading");
 
-      const totalWeight = selectedItems.reduce(
-        (sum, item) => sum + (parseInt(item.quantity) || 0) * 500,
-        0
-      );
+      // Nhóm items theo seller và tính tổng cân nặng thực tế
+      const sellerGroups = {};
+
+      selectedItems.forEach((item) => {
+        // Lấy Seller ID (giữ nguyên logic cũ của bạn)
+        const sellerId =
+          item.product_data?.store?.id ||
+          item.product_data?.seller ||
+          item.product?.store?.id ||
+          item.product?.seller ||
+          item.seller_id;
+
+        if (!sellerId) return;
+
+        if (!sellerGroups[sellerId]) {
+          sellerGroups[sellerId] = 0;
+        }
+
+        // --- ĐOẠN SỬA ĐỔI QUAN TRỌNG ---
+        // 1. Lấy thông tin sản phẩm từ product_data hoặc product
+        const productData = item.product_data || item.product || {};
+
+        // 2. Lấy weight_g từ API Backend trả về
+        // Nếu null hoặc = 0 thì fallback về 200g (mức an toàn)
+        let weightPerItem = 200;
+        if (productData.weight_g && parseInt(productData.weight_g) > 0) {
+          weightPerItem = parseInt(productData.weight_g);
+        }
+
+        // 3. Tính tổng: số lượng * cân nặng thực
+        const quantity = parseInt(item.quantity) || 0;
+        sellerGroups[sellerId] += quantity * weightPerItem;
+      });
 
       try {
+        const sellers = Object.keys(sellerGroups).map((sellerId) => ({
+          seller_id: parseInt(sellerId),
+          weight: sellerGroups[sellerId] > 0 ? sellerGroups[sellerId] : 1, // Tối thiểu 1g
+        }));
+
+        console.log(
+          "📦 GHN DEBUG - DATA GỬI ĐI:",
+          JSON.stringify(sellers, null, 2)
+        );
+
+        if (sellers.length === 0) {
+          setShippingFee(0);
+          setShippingFeePerSeller({});
+          setShippingStatus("idle");
+          return;
+        }
+
         const payload = {
-          from_district_id: 1450, // GHN ID
-          from_ward_code: "21007", // GHN Ward Code
+          sellers: sellers,
           to_district_id: parseInt(to_district_id),
           to_ward_code: to_ward_code,
-          weight: totalWeight > 0 ? totalWeight : 1,
-          length: 20,
-          width: 15,
-          height: 10,
         };
 
-        const res = await API.post("delivery/fee/", payload);
+        const res = await API.post("delivery/fee-per-seller/", payload);
 
-        const fee = res.data?.fee || 0;
-        setShippingFee(fee);
+        const totalFee = res.data?.total_shipping_fee || 0;
+        const sellerFees = {};
+        if (res.data?.sellers) {
+          Object.keys(res.data.sellers).forEach((sellerId) => {
+            if (res.data.sellers[sellerId].success) {
+              sellerFees[sellerId] = res.data.sellers[sellerId].fee;
+            }
+          });
+        }
+
+        setShippingFee(totalFee);
+        setShippingFeePerSeller(sellerFees);
         setShippingStatus("success");
       } catch (error) {
         console.error("❌ Lỗi API GHN:", error);
-        // toast.error("Không thể tính phí vận chuyển"); // Bỏ bớt toast để tránh spam
         setShippingFee(0);
+        setShippingFeePerSeller({});
         setShippingStatus("error");
       }
     };
@@ -261,6 +315,7 @@ const useCheckoutLogic = () => {
     // State
     shippingFee,
     shippingStatus,
+    shippingFeePerSeller,
     addresses,
     selectedAddressId,
     manualEntry,
@@ -278,6 +333,7 @@ const useCheckoutLogic = () => {
     // Setters
     setShippingFee,
     setShippingStatus,
+    setShippingFeePerSeller,
     setAddresses,
     setSelectedAddressId,
     setManualEntry,

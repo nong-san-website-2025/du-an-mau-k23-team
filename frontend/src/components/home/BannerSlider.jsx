@@ -7,14 +7,18 @@ import NoImage from "../shared/NoImage.jsx";
 import { Spin } from "antd";
 import "../../styles/home/BannerSlider.css";
 
-// Helper xử lý URL ảnh
 const getImageUrl = (url) => {
   if (!url) return "";
   if (url.startsWith("http")) return url;
   return `http://localhost:8000${url}`;
 };
 
-export default function BannerSlider({ slotCode, className = "", style = {} }) {
+export default function BannerSlider({ 
+  slotCode, 
+  className = "", 
+  height = "auto", // Prop mới: Kiểm soát chiều cao cố định
+  slidesToShow = 1 
+}) {
   const [banners, setBanners] = useState([]);
   const [loading, setLoading] = useState(true);
   const sliderRef = useRef(null);
@@ -25,7 +29,7 @@ export default function BannerSlider({ slotCode, className = "", style = {} }) {
     getBannersBySlot(slotCode)
       .then((res) => {
         const activeBanners = (res.data || []).filter((b) => b.is_active);
-        activeBanners.sort((a, b) => b.priority - a.priority);
+        activeBanners.sort((a, b) => b.priority - a.priority); // Banner ưu tiên cao lên trước
         setBanners(activeBanners);
       })
       .catch((err) => {
@@ -37,68 +41,53 @@ export default function BannerSlider({ slotCode, className = "", style = {} }) {
 
   const settings = {
     dots: true,
-    infinite: banners.length > 1, // Chỉ loop nếu có > 1 ảnh
+    infinite: banners.length > 1,
     speed: 500,
     autoplay: true,
     autoplaySpeed: 4000,
-    slidesToShow: 1,
+    slidesToShow: slidesToShow,
     slidesToScroll: 1,
-    arrows: false,
+    arrows: false, // Tắt arrow mặc định của slick để dùng custom arrow
     dotsClass: "slick-dots custom-dots",
   };
 
-  if (loading) return <div className="d-flex justify-content-center align-items-center h-100"><Spin /></div>;
+  if (loading) return (
+    <div className={`banner-slider-wrapper d-flex justify-content-center align-items-center ${className}`} style={{ height }}>
+      <Spin />
+    </div>
+  );
+
   if (banners.length === 0) return null;
 
   return (
-    <div 
-        className={`banner-slider-wrapper position-relative ${className}`} 
-        // ✅ CẬP NHẬT 1: Ép style tại đây để cắt phần thừa (Quan trọng nhất)
-        style={{ 
-            ...style, 
-            overflow: 'hidden',   // Cắt mọi thứ tràn ra ngoài
-            borderRadius: '8px',  // Bo góc đồng bộ
-            height: style.height || '100%' // Lấy height từ props truyền vào hoặc full cha
-        }}
-    >
+    <div className={`banner-slider-wrapper ${className}`} style={{ height }}>
       <Slider ref={sliderRef} {...settings}>
         {banners.map((banner) => (
           <div key={banner.id} className="slider-item">
-            {/* WRAPPER ẢNH */}
-            <div 
-                className="slider-image-container"
-                onClick={() => banner.click_url && window.open(banner.click_url, "_blank")}
-                style={{ 
-                    cursor: banner.click_url ? "pointer" : "default",
-                    width: "100%",
-                    // ✅ CẬP NHẬT 2: Chiều cao 100% của cha (đã bị giới hạn ở trên)
-                    height: "100%", 
-                    display: "block",
-                }}
+            <div
+              className="slider-image-container"
+              onClick={() => banner.click_url && window.open(banner.click_url, "_blank")}
+              style={{ 
+                cursor: banner.click_url ? "pointer" : "default",
+                height: height === "auto" ? "100%" : height // Ép chiều cao nếu có
+              }}
             >
-               {banner.image ? (
-                  <img
-                    src={getImageUrl(banner.image)}
-                    alt={banner.title}
-                    style={{
-                        width: "100%",
-                        height: "100%",
-                        // ✅ CẬP NHẬT 3: Cover để ảnh luôn lấp đầy khung mà không méo
-                        objectFit: "cover", 
-                        objectPosition: "center",
-                        display: "block"
-                    }}
-                    loading="lazy"
-                  />
-               ) : (
-                  <NoImage />
-               )}
+              {banner.image ? (
+                <img
+                  src={getImageUrl(banner.image)}
+                  alt={banner.title}
+                  loading="lazy"
+                  style={{ height: "100%", width: "100%" }}
+                />
+              ) : (
+                <NoImage />
+              )}
             </div>
           </div>
         ))}
       </Slider>
 
-      {/* Navigation Arrows */}
+      {/* Custom Arrows */}
       {banners.length > 1 && (
         <>
           <button className="slider-arrow prev-arrow" onClick={() => sliderRef.current?.slickPrev()}>

@@ -10,6 +10,7 @@ import {
   Steps,
   Modal,
   Radio,
+  Select,
 } from "antd";
 import {
   UploadOutlined,
@@ -18,6 +19,7 @@ import {
   ClockCircleOutlined,
 } from "@ant-design/icons";
 import { useAuth } from "../../login_register/services/AuthContext";
+import { getProvinces, getDistricts, getWards } from "../../../services/api/ghnApi";
 
 const { Step } = Steps;
 
@@ -37,6 +39,13 @@ export default function SellerRegisterPage() {
   const [showTypeModal, setShowTypeModal] = useState(true);
   const [userType, setUserType] = useState(null);
 
+  const [provinces, setProvinces] = useState([]);
+  const [districts, setDistricts] = useState([]);
+  const [wards, setWards] = useState([]);
+  const [selectedProvinceId, setSelectedProvinceId] = useState(null);
+  const [selectedDistrictId, setSelectedDistrictId] = useState(null);
+  const [selectedWardCode, setSelectedWardCode] = useState(null);
+
   const token = localStorage.getItem("token");
   const headersAuth = token ? { Authorization: `Bearer ${token}` } : {};
   const { setRole } = useAuth();
@@ -44,7 +53,54 @@ export default function SellerRegisterPage() {
   useEffect(() => {
     fetchSeller();
     fetchUser();
+    fetchProvinces();
   }, []);
+
+  // Fetch GHN Provinces
+  const fetchProvinces = async () => {
+    try {
+      const data = await getProvinces();
+      setProvinces(data);
+    } catch (err) {
+      console.error("Lỗi tải tỉnh/thành:", err);
+    }
+  };
+
+  // Fetch Districts when province changes
+  useEffect(() => {
+    if (selectedProvinceId) {
+      fetchDistrictsData();
+    }
+  }, [selectedProvinceId]);
+
+  const fetchDistrictsData = async () => {
+    try {
+      const data = await getDistricts(selectedProvinceId);
+      setDistricts(data);
+      setWards([]);
+      setSelectedDistrictId(null);
+      setSelectedWardCode(null);
+    } catch (err) {
+      console.error("Lỗi tải quận/huyện:", err);
+    }
+  };
+
+  // Fetch Wards when district changes
+  useEffect(() => {
+    if (selectedDistrictId) {
+      fetchWardsData();
+    }
+  }, [selectedDistrictId]);
+
+  const fetchWardsData = async () => {
+    try {
+      const data = await getWards(selectedDistrictId);
+      setWards(data);
+      setSelectedWardCode(null);
+    } catch (err) {
+      console.error("Lỗi tải phường/xã:", err);
+    }
+  };
 
   // ===== FETCH SELLER =====
   const fetchSeller = async () => {
@@ -103,6 +159,13 @@ export default function SellerRegisterPage() {
   const handleSubmit = async (values) => {
     setSubmitting(true);
     try {
+      // Validate GHN address fields
+      if (!selectedDistrictId || !selectedWardCode) {
+        message.error("Vui lòng chọn quận/huyện và phường/xã!");
+        setSubmitting(false);
+        return;
+      }
+
       const exist = await checkStoreName(values.store_name);
       if (exist) {
         message.error("Tên cửa hàng đã tồn tại!");
@@ -131,6 +194,10 @@ export default function SellerRegisterPage() {
           formData.append(key, val);
         }
       });
+
+      // Append GHN address fields
+      formData.append("district_id", selectedDistrictId);
+      formData.append("ward_code", selectedWardCode);
 
       // append files
       const appendFile = (key, file) => {
@@ -263,6 +330,52 @@ export default function SellerRegisterPage() {
 
             <Form.Item name="address" label="Địa chỉ">
               <Input />
+            </Form.Item>
+
+            <Form.Item
+              label="Tỉnh/Thành phố"
+              rules={[{ required: true, message: "Chọn tỉnh/thành phố" }]}
+            >
+              <Select
+                placeholder="Chọn tỉnh/thành phố"
+                onChange={(value) => setSelectedProvinceId(value)}
+                options={provinces.map((p) => ({
+                  label: p.ProvinceName,
+                  value: p.ProvinceID,
+                }))}
+              />
+            </Form.Item>
+
+            <Form.Item
+              label="Quận/Huyện"
+              rules={[{ required: true, message: "Chọn quận/huyện" }]}
+            >
+              <Select
+                placeholder="Chọn quận/huyện"
+                onChange={(value) => setSelectedDistrictId(value)}
+                value={selectedDistrictId}
+                disabled={!selectedProvinceId}
+                options={districts.map((d) => ({
+                  label: d.DistrictName,
+                  value: d.DistrictID,
+                }))}
+              />
+            </Form.Item>
+
+            <Form.Item
+              label="Phường/Xã"
+              rules={[{ required: true, message: "Chọn phường/xã" }]}
+            >
+              <Select
+                placeholder="Chọn phường/xã"
+                onChange={(value) => setSelectedWardCode(value)}
+                value={selectedWardCode}
+                disabled={!selectedDistrictId}
+                options={wards.map((w) => ({
+                  label: w.WardName,
+                  value: w.WardCode,
+                }))}
+              />
             </Form.Item>
 
             {/* DOANH NGHIỆP / HỘ */}

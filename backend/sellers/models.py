@@ -11,6 +11,14 @@ class Seller(models.Model):
     address = models.CharField(max_length=255, blank=True)
     phone = models.CharField(max_length=20, blank=True)
     image = models.ImageField(upload_to='stores/', blank=True, null=True)
+    
+    district_id = models.IntegerField(
+        null=True, blank=True, help_text='GHN DistrictID for shipping fee calculation'
+    )
+    ward_code = models.CharField(
+        max_length=20, null=True, blank=True, help_text='GHN WardCode for shipping fee calculation'
+    )
+    
     created_at = models.DateTimeField(auto_now_add=True)
 
     STATUS_CHOICES = [

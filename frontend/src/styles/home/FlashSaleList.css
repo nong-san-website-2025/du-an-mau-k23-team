@@ -142,3 +142,86 @@
   }
   .ending-text, .nav-arrow { display: none; }
 }
+
+.flash-empty-wrapper {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  /* Đặt min-height bằng chiều cao trung bình của carousel 
+     để layout không bị "nhảy" (layout shift) khi chuyển trạng thái */
+  min-height: 380px; 
+  text-align: center;
+  width: 100%;
+}
+
+/* Tinh chỉnh ảnh SVG của Antd Empty nếu cần */
+.flash-empty-wrapper .ant-empty-image {
+  margin-bottom: 16px;
+}
+
+.empty-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.empty-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #434343; /* Màu xám đậm hơn chút cho tiêu đề */
+  margin-bottom: 8px;
+}
+
+.empty-desc {
+  font-size: 14px;
+  color: #8c8c8c;
+  max-width: 400px;
+  line-height: 1.6;
+  margin-bottom: 24px;
+}
+
+/* Style nút CTA (Call To Action) */
+.btn-explore-now {
+  background: linear-gradient(90deg, #ff4d4f 0%, #ff7875 100%);
+  border: none;
+  border-radius: 50px; /* Bo tròn kiểu Pill Shape hiện đại */
+  height: 40px;
+  padding: 0 32px;
+  font-weight: 600;
+  font-size: 14px;
+  color: #fff;
+  box-shadow: 0 4px 15px rgba(255, 77, 79, 0.25); /* Bóng đổ màu đỏ nhạt */
+  transition: all 0.3s cubic-bezier(0.645, 0.045, 0.355, 1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* Hover effect cho nút */
+.btn-explore-now:hover, 
+.btn-explore-now:focus {
+  transform: translateY(-2px); /* Nhấc nhẹ nút lên */
+  box-shadow: 0 6px 20px rgba(255, 77, 79, 0.35);
+  background: linear-gradient(90deg, #ff7875 0%, #ff4d4f 100%);
+  color: #fff !important; /* Force chữ trắng */
+}
+
+.btn-explore-now:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 10px rgba(255, 77, 79, 0.25);
+}
+
+/* Responsive cho Empty State */
+@media (max-width: 576px) {
+  .flash-empty-wrapper {
+    min-height: 300px; /* Giảm chiều cao trên mobile */
+    padding: 20px 0;
+  }
+  
+  .empty-desc {
+    max-width: 100%;
+    padding: 0 16px;
+  }
+}
