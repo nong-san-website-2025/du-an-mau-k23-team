@@ -19,6 +19,9 @@ from reviews.models import Review
 from orders.models import OrderItem, Preorder
 from django.conf import settings
 
+import logging
+logger = logging.getLogger(__name__)
+
 # Serializers
 from .serializers import (
     ProductSerializer,
@@ -509,19 +512,33 @@ class ProductViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(products, many=True)
         return Response(serializer.data)
 
-    @action(detail=True, methods=["post"])
-    def approve(self, request, pk=None):
-        product = self.get_object()
-        product.status = "approved"
-        product.save()
-        return Response({"message": "Approved"}, status=200)
-
-    @action(detail=True, methods=["post"])
+    @action(detail=True, methods=["post"], permission_classes=[IsAdminUser]) 
     def reject(self, request, pk=None):
         product = self.get_object()
+
+        # 🚨 DÒNG DEBUG QUAN TRỌNG: In ra toàn bộ dữ liệu request
+        logger.warning(f"Reject request data received: {request.data}") 
+
+        # 1. Lấy lý do từ Admin gửi lên (frontend có thể gửi key là 'reason' hoặc 'reject_reason')
+        reason = request.data.get('reject_reason') or request.data.get('reason')
+
+        # 🚨 DÒNG DEBUG QUAN TRỌNG: Kiểm tra giá trị reason sau khi lấy
+        logger.warning(f"Extracted reason: {reason}")
+
+        # 2. Cập nhật trạng thái và lý do
         product.status = "rejected"
+
+        if reason:
+            product.reject_reason = reason
+        else:
+            # Nếu chạy vào đây, TÊN KEY BỊ SAI.
+            product.reject_reason = "Admin đã từ chối sản phẩm này (Không có lý do cụ thể)."
+
+        # ... (các đoạn code lưu và xử lý khác) ...
         product.save()
-        return Response({"message": "Rejected"}, status=200)
+        return Response({"message": "Đã từ chối sản phẩm thành công!"}, status=200)
+
+
 
     @action(detail=True, methods=["post"], url_path="self-reject", permission_classes=[IsAuthenticated])
     def self_reject(self, request, pk=None):

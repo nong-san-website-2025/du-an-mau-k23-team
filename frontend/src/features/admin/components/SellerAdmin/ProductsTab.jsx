@@ -268,7 +268,7 @@ export default function ProductsTab({ sellerId }) {
                   fontSize: 12,
                 }}
               >
-                {intcomma(record.original_price)} ₫ 
+                {intcomma(record.original_price)} ₫
               </div>
               <div style={{ color: "#ef4444", fontWeight: 600, fontSize: 15 }}>
                 {intcomma(record.discounted_price)} ₫
@@ -276,7 +276,7 @@ export default function ProductsTab({ sellerId }) {
             </>
           ) : (
             <div style={{ fontWeight: 600, color: "#1f2937", fontSize: 15 }}>
-              {intcomma(record.original_price)} ₫ 
+              {intcomma(record.original_price)} ₫
             </div>
           )}
         </Space>
