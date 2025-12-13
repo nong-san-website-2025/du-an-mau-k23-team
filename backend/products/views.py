@@ -511,6 +511,25 @@ class ProductViewSet(viewsets.ModelViewSet):
         products = self.get_queryset().filter(status='pending_update').select_related('pending_update')
         serializer = self.get_serializer(products, many=True)
         return Response(serializer.data)
+    
+    @action(detail=True, methods=['post'], permission_classes=[IsAdminUser])
+    def approve(self, request, pk=None):
+        product = self.get_object()
+        
+        # Kiểm tra nếu là duyệt cập nhật thì gọi sang hàm approve_update
+        if product.status == 'pending_update':
+            # Tùy logic bên bạn, có thể báo lỗi bảo dùng nút khác 
+            # hoặc tự động chuyển hướng xử lý:
+            if hasattr(product, 'pending_update'):
+                product.pending_update.apply_changes()
+                return Response({"message": "Đã duyệt cập nhật thành công"})
+        
+        # Logic duyệt sản phẩm mới
+        product.status = 'approved'
+        product.is_hidden = False # Duyệt xong thì hiện luôn
+        product.save()
+        
+        return Response({"message": "Đã duyệt sản phẩm thành công"}, status=200)
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminUser]) 
     def reject(self, request, pk=None):

@@ -645,6 +645,7 @@ export default function ProductsPage() {
             <UploadOutlined /> Quản lý thư viện ảnh
           </div>
         }
+        zIndex={1050}
         onCancel={() => setGalleryVisible(false)}
         footer={[
           <Button key="back" onClick={() => setGalleryVisible(false)}>
