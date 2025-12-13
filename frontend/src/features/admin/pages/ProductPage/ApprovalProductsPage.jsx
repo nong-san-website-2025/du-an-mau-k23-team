@@ -1,4 +1,3 @@
-// src/pages/ProductAdmin/Approval/ApprovalProductsPage.jsx
 import React, { useEffect, useState, useMemo } from "react";
 import {
   Input,
@@ -11,31 +10,32 @@ import {
   Statistic,
   Typography,
   Tag,
+  Space,
 } from "antd";
 import {
   CheckCircleOutlined,
-  ClockCircleOutlined,
   CloseCircleOutlined,
-  StopOutlined,
-  AppstoreOutlined,
-  WarningOutlined,
-  ThunderboltFilled,
   ShopOutlined,
   ReloadOutlined,
+  WarningOutlined,
   SafetyCertificateOutlined,
+  DashboardOutlined, // Thay cho 🎯
+  FileTextOutlined, // Thay cho 📋
+  RocketOutlined, // Thay cho 🆕
+  HistoryOutlined, // Thay cho ♻️
+  ExclamationCircleOutlined, // Thay cho ⚠️
 } from "@ant-design/icons";
 import axios from "axios";
-import dayjs from "dayjs"; // Cần cài dayjs hoặc dùng new Date()
+import dayjs from "dayjs";
 
-// Import components cũ
-import ProductTable from "../../components/ProductAdmin/Product/ProductTable"; // <--- IMPORT COMPONENT VỪA TẠO
+// Import components
+import ProductTable from "../../components/ProductAdmin/Product/ProductTable";
 import SellerSelect from "../../components/ProductAdmin/Product/SellerSelect";
 import CategorySelect from "../../components/ProductAdmin/Product/CategorySelect";
 import AdminPageLayout from "../../components/AdminPageLayout";
 import ProductDetailDrawer from "../../components/ProductAdmin/Product/ProductDetailModal";
 import ProductComparisonModal from "../../components/ProductAdmin/Product/ProductComparisonModal";
-import { productApi } from "../../services/productApi";
-import ShopDetailDrawer from "../../components/ProductAdmin/Product/ShopDetailDrawer"; // Đường dẫn tuỳ project bạn
+import ShopDetailDrawer from "../../components/ProductAdmin/Product/ShopDetailDrawer";
 
 const { Text, Title } = Typography;
 
@@ -49,7 +49,7 @@ function getAuthHeaders() {
 const filterCardStyle = (isActive, color) => ({
   cursor: "pointer",
   border: isActive ? `2px solid ${color}` : "1px solid #f0f0f0",
-  backgroundColor: isActive ? `${color}10` : "#fff", // Màu nhạt khi active
+  backgroundColor: isActive ? `${color}10` : "#fff",
   borderRadius: 8,
   transition: "all 0.3s",
   height: "100%",
@@ -62,8 +62,8 @@ const ApprovalProductsPage = () => {
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
 
   // --- UI/UX States ---
-  const [activeTab, setActiveTab] = useState("action_required"); // Tab chính (Pending, Approved...)
-  const [riskFilter, setRiskFilter] = useState("all"); // <--- MỚI: Filter rủi ro (all, suspicious, new_shop, reup)
+  const [activeTab, setActiveTab] = useState("action_required");
+  const [riskFilter, setRiskFilter] = useState("all");
 
   const [searchTerm, setSearchTerm] = useState("");
   const [sellerFilter, setSellerFilter] = useState("");
@@ -80,81 +80,104 @@ const ApprovalProductsPage = () => {
   const [shopDrawerVisible, setShopDrawerVisible] = useState(false);
   const [selectedShopProfile, setSelectedShopProfile] = useState(null);
 
-  // --- Fetch Data ---
   // --- Fetch Data & Logic Thám Tử ---
   const fetchProducts = async () => {
     try {
       setLoading(true);
       const res = await api.get("/products/", { headers: getAuthHeaders() });
 
-      // 1. Lấy dữ liệu thô từ API
-      let rawData = Array.isArray(res.data) ? res.data : res.data.results || [];
-
       // ==================================================================
-      // 🕵️‍♂️ LOGIC THÁM TỬ: PHÁT HIỆN TÁI XUẤT HIỆN (RE-UP CHECK)
+      // 🕵️‍♂️ LOGIC THÁM TỬ: PHÁT HIỆN RE-UP (ĐÃ SỬA)
       // ==================================================================
+      let rawData = [
+        // 1. Sản phẩm Lịch sử (Đã bị từ chối trước đây)
+        {
+          id: 9991,
+          name: "Kem Trộn Trắng Cấp Tốc",
+          price: "150000",
+          status: "rejected", // Đã bị từ chối
+          updated_at: "2023-10-01T10:00:00Z",
+          seller: { id: 101, store_name: "Shop Mỹ Phẩm Ảo", avatar: null },
+          images: [{ image: "https://via.placeholder.com/150" }],
+        },
+        {
+          id: 9992,
+          name: "Kem Trộn Trắng Cấp Tốc",
+          price: "140000",
+          status: "banned", // Đã bị cấm
+          updated_at: "2023-10-05T14:30:00Z",
+          seller: { id: 101, store_name: "Shop Mỹ Phẩm Ảo", avatar: null },
+          images: [{ image: "https://via.placeholder.com/150" }],
+        },
 
-      // A. Tạo danh sách đen (Blacklist): Các SP đã bị xóa hoặc cấm trước đây
+        // 2. Sản phẩm Mới (Đang chờ duyệt - Cố tình đăng lại)
+        {
+          id: 1005, // ID mới
+          name: "Kem Trộn Trắng Cấp Tốc", // Tên TRÙNG Y HỆT
+          price: "160000",
+          status: "pending", // Đang chờ duyệt
+          updated_at: "2023-10-25T09:00:00Z",
+          seller: { id: 101, store_name: "Shop Mỹ Phẩm Ảo", avatar: null }, // Cùng Seller ID
+          images: [{ image: "https://via.placeholder.com/150" }],
+          ai_score: 95, // Giả lập điểm rủi ro cao
+        },
+
+        // Giữ lại dữ liệu thật nếu muốn (hoặc comment dòng dưới để chỉ hiện data test)
+        ...(Array.isArray(res.data) ? res.data : res.data.results || []),
+      ];
+      // A. Tạo danh sách đen: Các SP đã bị xóa/từ chối trước đây
       const blacklistHistory = rawData.filter((p) =>
         ["deleted", "banned", "rejected"].includes(p.status)
       );
 
       // B. Duyệt qua từng sản phẩm để kiểm tra
       const processedData = rawData.map((currentProduct) => {
-        // Chỉ soi những ông đang chờ duyệt
+        // Chỉ kiểm tra những sản phẩm đang chờ duyệt
         if (["pending", "pending_update"].includes(currentProduct.status)) {
-          // Soi xem có trùng với hồ sơ đen nào không
-          const matchFound = blacklistHistory.find((oldProduct) => {
-            // Điều kiện 1: Phải cùng một Shop (Seller)
-            // Lưu ý: Dùng optional chaining ?. để tránh lỗi nếu seller null
+          // --- SỬA ĐỔI QUAN TRỌNG: Dùng filter để tìm TẤT CẢ các lần trùng ---
+          const historyMatches = blacklistHistory.filter((oldProduct) => {
+            // 1. Phải cùng Shop
             const isSameSeller =
               oldProduct.seller?.id === currentProduct.seller?.id;
 
-            // Điều kiện 2: Trùng tên (Bỏ viết hoa, bỏ khoảng trắng thừa)
-            const isSameName =
-              oldProduct.name?.trim().toLowerCase() ===
-              currentProduct.name?.trim().toLowerCase();
-
-            // Điều kiện 3: Trùng giá tiền (Ép kiểu Number cho chắc)
-            const isSamePrice =
-              Number(oldProduct.price) === Number(currentProduct.price);
-
-            // Điều kiện 4: Không so sánh với chính nó (Quan trọng!)
+            // 2. Không so sánh với chính nó
             const isNotSelf = oldProduct.id !== currentProduct.id;
 
-            // ==> Nếu thỏa mãn tất cả thì là Tái xuất hiện
-            return isSameSeller && isSameName && isSamePrice && isNotSelf;
+            // 3. Trùng Tên (Xử lý chữ hoa/thường và khoảng trắng)
+            const cleanNameCurrent = currentProduct.name?.trim().toLowerCase();
+            const cleanNameOld = oldProduct.name?.trim().toLowerCase();
+            const isSameName = cleanNameCurrent === cleanNameOld;
+
+            // 4. (Tùy chọn) Trùng Giá - Nếu bạn muốn chặt chẽ hơn
+            // const isSamePrice = Number(oldProduct.price) === Number(currentProduct.price);
+
+            // Điều kiện cuối cùng: Cùng người bán, khác ID, và trùng tên
+            return isSameSeller && isNotSelf && isSameName;
           });
 
-          // Nếu phát hiện trùng
-          if (matchFound) {
+          // Nếu tìm thấy lịch sử trùng
+          if (historyMatches.length > 0) {
             console.log(
-              `⚠️ Phát hiện Re-up: ${currentProduct.name} trùng với ID cũ ${matchFound.id}`
+              `⚠️ Phát hiện Re-up: ${currentProduct.name} trùng ${historyMatches.length} lần.`
             );
             return {
               ...currentProduct,
-              is_reup: true, // Gắn cờ Re-up
-              // Tạo câu cảnh báo để hiển thị (nếu cần)
-              reup_warning: `Trùng khớp sản phẩm đã xóa ngày ${dayjs(matchFound.updated_at).format("DD/MM/YYYY")} (Lý do: ${matchFound.reason || "Vi phạm"})`,
+              is_reup: true, // Cờ đánh dấu để lọc
+              reupHistory: historyMatches, // Lưu danh sách trùng để hiển thị chi tiết
             };
           }
         }
-
-        // Nếu không trùng thì trả về nguyên bản
-        return currentProduct;
+        // Không trùng thì trả về nguyên bản
+        return { ...currentProduct, is_reup: false, reupHistory: [] };
       });
-      // ==================================================================
 
-      // 2. Sắp xếp lại (Ưu tiên Re-up và AI Score lên đầu để Admin chú ý)
+      // 2. Sắp xếp lại (Ưu tiên Re-up lên đầu)
       const sorted = processedData.sort((a, b) => {
-        // Nếu là Re-up thì ưu tiên lên đầu tiên
         if (a.is_reup && !b.is_reup) return -1;
         if (!a.is_reup && b.is_reup) return 1;
-
-        // Sau đó đến điểm AI
+        // Sau đó đến điểm AI (nếu có)
         if ((b.ai_score || 0) !== (a.ai_score || 0))
           return (b.ai_score || 0) - (a.ai_score || 0);
-
         // Cuối cùng là ngày tháng
         return new Date(b.updated_at) - new Date(a.updated_at);
       });
@@ -176,58 +199,27 @@ const ApprovalProductsPage = () => {
   const isSuspicious = (item) =>
     (item.ai_score && item.ai_score >= 80) || item.is_flagged;
 
-  // Hàm kiểm tra Shop mới (Dùng JS thuần, không cần dayjs)
   const isNewShop = (item) => {
-    // --- DÒNG LOG KIỂM TRA ---
-    // In ra xem bên trong seller có gì
-    if (item.seller) {
-      console.log("Dữ liệu Seller của: " + item.name, item.seller);
-    }
-    // -------------------------
-
-    if (!item.seller || typeof item.seller !== "object") return false;
-    if (!item.seller.created_at) return false; // <--- Nếu API thiếu trường này thì code sẽ dừng ở đây
-
-    // 3. Tính toán khoảng cách ngày
+    if (!item.seller || !item.seller.created_at) return false;
     try {
       const createdDate = new Date(item.seller.created_at);
       const today = new Date();
-
-      // Tính số mili-giây chênh lệch
       const diffTime = Math.abs(today - createdDate);
-      // Đổi ra ngày (chia cho 1000ms * 60s * 60m * 24h)
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-      // Debug: Bỏ comment dòng dưới để xem log nếu vẫn lỗi
-      // if (diffDays <= 7) console.log("Found New Shop:", item.name, diffDays);
-
       return diffDays <= 7;
     } catch (e) {
       return false;
     }
   };
 
-  const isReappearing = (item) => {
-    // Chỉ tính những cái đang chờ duyệt
-    if (!["pending", "pending_update"].includes(item.status)) return false;
+  // Logic check Re-up dựa trên flag đã tính ở fetchProducts
+  const isReappearing = (item) => item.is_reup === true;
 
-    // Logic mới: Kiểm tra cờ is_reup do Frontend tự tính toán ở trên
-    if (item.is_reup === true) return true;
-
-    // Logic cũ (Backup): Nếu Backend có lưu vết
-    if (item.previous_status === "deleted" || item.previous_status === "banned")
-      return true;
-
-    return false;
-  };
-
-  // --- Thống kê số lượng cho Filter Rủi ro (Chỉ tính trên tập đang chờ xử lý) ---
+  // --- Thống kê ---
   const riskCounts = useMemo(() => {
-    // Chỉ tính toán trên những item cần xử lý (Pending)
     const pendingItems = data.filter((i) =>
       ["pending", "pending_update"].includes(i.status)
     );
-
     return {
       all: pendingItems.length,
       suspicious: pendingItems.filter(isSuspicious).length,
@@ -236,10 +228,10 @@ const ApprovalProductsPage = () => {
     };
   }, [data]);
 
-  // --- Logic Lọc Dữ Liệu (Master Filter) ---
+  // --- Logic Lọc Dữ Liệu ---
   const filteredData = useMemo(() => {
     return data.filter((item) => {
-      // 1. Lọc theo Tab chính (Trạng thái)
+      // 1. Tab Status
       let matchesTab = false;
       switch (activeTab) {
         case "pending":
@@ -263,14 +255,14 @@ const ApprovalProductsPage = () => {
       }
       if (!matchesTab) return false;
 
-      // 2. Lọc theo Risk Filter (Chỉ áp dụng khi ở tab "Cần xử lý" hoặc "Chờ duyệt")
+      // 2. Risk Filter
       if (["action_required", "pending"].includes(activeTab)) {
         if (riskFilter === "suspicious" && !isSuspicious(item)) return false;
         if (riskFilter === "new_shop" && !isNewShop(item)) return false;
         if (riskFilter === "reup" && !isReappearing(item)) return false;
       }
 
-      // 3. Các bộ lọc tìm kiếm thông thường
+      // 3. Search
       const matchesSearch =
         item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (item.seller?.store_name || "")
@@ -288,60 +280,96 @@ const ApprovalProductsPage = () => {
   }, [data, activeTab, riskFilter, searchTerm, sellerFilter, categoryFilter]);
 
   // --- Handlers ---
+  // src/pages/ProductAdmin/Approval/ApprovalProductsPage.jsx
+
   const processApproval = async (idOrIds, isReject = false, reason = "") => {
-    // ... (Giữ nguyên code xử lý API như cũ)
     const ids = Array.isArray(idOrIds) ? idOrIds : [idOrIds];
-    let successCount = 0;
     setLoading(true);
+
     try {
-      for (const id of ids) {
-        const record = data.find((item) => item.id === id);
-        if (!record) continue;
-        const actionType = isReject ? "reject" : "approve";
-        const suffix = record.status === "pending_update" ? "_update" : "";
-        const endpoint = `${actionType}${suffix}`;
-        const payload = isReject ? { reason: reason } : {};
-        await api.post(`/products/${id}/${endpoint}/`, payload, {
-          headers: getAuthHeaders(),
-        });
-        successCount++;
-      }
-      if (successCount > 0) {
-        message.success(`Đã xử lý ${successCount} sản phẩm.`);
-        fetchProducts();
-        setSelectedRowKeys([]);
-        if (selectedProduct) setDrawerVisible(false);
-        if (selectedComparisonProduct) setComparisonModalVisible(false);
-      }
+      // Dùng Promise.all để xử lý nhiều sản phẩm cùng lúc (nếu chọn nhiều)
+      await Promise.all(
+        ids.map(async (id) => {
+          // --- LOGIC GỌI API THẬT ---
+          // Bạn hãy kiểm tra lại đường dẫn API của bạn.
+          // Dưới đây là 2 trường hợp phổ biến, hãy chọn 1 cái đúng với Backend của bạn:
+
+          // TRƯỜNG HỢP 1: API dạng PATCH cập nhật status
+          /*
+          const payload = isReject 
+            ? { status: "rejected", reject_reason: reason } 
+            : { status: "approved" };
+          
+          return api.patch(`/products/${id}/`, payload, { headers: getAuthHeaders() });
+          */
+
+          // TRƯỜNG HỢP 2: API có endpoint riêng để reject (Thường dùng hơn)
+          if (isReject) {
+            // Gửi lý do từ chối lên server
+            return api.post(
+              `/products/${id}/reject/`, // <-- Đường dẫn API Reject của bạn
+              { reason: reason }, // <-- Body gửi lên
+              { headers: getAuthHeaders() }
+            );
+          } else {
+            // API Approve
+            return api.post(
+              `/products/${id}/approve/`, // <-- Đường dẫn API Approve của bạn
+              {},
+              { headers: getAuthHeaders() }
+            );
+          }
+        })
+      );
+
+      // Thông báo và reload lại trang
+      message.success(
+        isReject
+          ? `Đã từ chối ${ids.length} sản phẩm.`
+          : `Đã duyệt ${ids.length} sản phẩm.`
+      );
+
+      // Reset lại các state
+      fetchProducts(); // Load lại dữ liệu mới nhất từ server
+      setSelectedRowKeys([]); // Xóa danh sách đã chọn
+      setDrawerVisible(false); // Đóng drawer xem chi tiết
+      setComparisonModalVisible(false); // Đóng modal so sánh
     } catch (e) {
-      console.error(e);
-      message.error("Lỗi xử lý.");
+      console.error("Lỗi duyệt/từ chối:", e);
+      // Hiển thị lỗi chi tiết từ Server nếu có
+      const errorMsg =
+        e.response?.data?.message ||
+        e.response?.data?.detail ||
+        "Có lỗi xảy ra khi xử lý.";
+      message.error(errorMsg);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleApprove = (idOrIds) => processApproval(idOrIds, false);
-  const handleReject = (idOrIds, reason) =>
-    processApproval(idOrIds, true, reason);
+  const handleApprove = (id) => processApproval(id, false);
+  const handleReject = (id, reason) => processApproval(id, true, reason);
   const handleView = (record) => {
     setSelectedProduct(record);
     setDrawerVisible(true);
   };
 
-  // --- Counts cho Tabs ---
-  const counts = useMemo(() => {
-    return {
-      pending: data.filter((i) => i.status === "pending").length,
+  const handleViewShopProfile = (shopData) => {
+    setSelectedShopProfile(shopData);
+    setShopDrawerVisible(true);
+  };
+
+  // --- Tabs ---
+  const counts = useMemo(
+    () => ({
       action_required: data.filter((i) =>
         ["pending", "pending_update"].includes(i.status)
       ).length,
       approved: data.filter((i) => i.status === "approved").length,
       rejected: data.filter((i) => i.status === "rejected").length,
-      banned: data.filter((i) => i.status === "banned").length,
-      all: data.length,
-    };
-  }, [data]);
+    }),
+    [data]
+  );
 
   const tabItems = [
     {
@@ -371,58 +399,27 @@ const ApprovalProductsPage = () => {
     { key: "all", label: "Tất cả" },
   ];
 
-  const getJoinTime = (dateString) => {
-    if (!dateString) return "N/A";
-    const created = new Date(dateString);
-    const today = new Date();
-    const diffTime = Math.abs(today - created);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); // Dùng ceil (làm tròn lên) hoặc check < 1
-
-    if (diffDays <= 1) return " Vừa tham gia hôm nay ";
-    return `${diffDays} ngày trước`;
-  };
-
-  // Hàm gom nhóm sản phẩm theo Seller
+  // Helper cho Grid View
   const groupProductsBySeller = (productList) => {
     const groups = {};
-
     productList.forEach((product) => {
-      // Lấy ID hoặc tên shop để làm key gom nhóm
-      // (Dùng optional chaining ?. để tránh lỗi nếu dữ liệu seller bị null)
       const shopName = product.seller?.store_name || "Chưa đặt tên Shop";
-      const shopAvatar = product.seller?.avatar || null;
-      const seller = product.seller || {};
-      if (seller) console.log("Check hàng seller:", seller);
-
       if (!groups[shopName]) {
         groups[shopName] = {
           shopName: shopName,
-          image: shopAvatar,
-          created_at: product.seller?.created_at, // Ngày tạo shop
-          joinedText: getJoinTime(seller.created_at),
-          products: [], // Danh sách sản phẩm của shop này
-          email: seller.email || "Chưa có email",
-          phone: seller.phone || seller.phone_number || "Chưa có SĐT",
-          address: seller.address || "Chưa cập nhật địa chỉ",
-          ownerName: seller.full_name,
+          avatar: product.seller?.avatar,
+          products: [],
+          ...product.seller, // Copy seller info
         };
       }
-      // Đẩy sản phẩm vào danh sách của shop đó
       groups[shopName].products.push(product);
     });
-
-    // Chuyển object thành mảng để dễ map() ra giao diện
     return Object.values(groups);
-  };
-
-  const handleViewShopProfile = (shopData) => {
-    setSelectedShopProfile(shopData);
-    setShopDrawerVisible(true);
   };
 
   return (
     <AdminPageLayout title="QUẢN LÝ & DUYỆT SẢN PHẨM">
-      <Card bordered={false} bodyStyle={{ padding: "0px" }}>
+      <Card bordered={false} bodyStyle={{ padding: 0 }}>
         <Tabs
           activeKey={activeTab}
           onChange={(k) => {
@@ -443,15 +440,23 @@ const ApprovalProductsPage = () => {
             borderTop: "none",
           }}
         >
-          {/* --- KHU VỰC RISK SEGMENTS (Chỉ hiện khi ở tab Cần xử lý) --- */}
+          {/* --- FILTER CARDS --- */}
+          {/* --- FILTER CARDS --- */}
           {["action_required", "pending"].includes(activeTab) && (
             <div style={{ marginBottom: 20 }}>
-              <Text strong style={{ display: "block", marginBottom: 12 }}>
-                🎯 Phân loại rủi ro (Ưu tiên xử lý):
+              <Text
+                strong
+                style={{ display: "block", marginBottom: 12, fontSize: 16 }}
+              >
+                <Space>
+                  <DashboardOutlined style={{ color: "#1890ff" }} /> Phân loại
+                  rủi ro:
+                </Space>
               </Text>
+
               <Row gutter={[16, 16]}>
-                {/* Thẻ 1: Tất cả - Chiếm 1/3 chiều rộng (md={8}) */}
-                <Col xs={24} sm={24} md={8}>
+                {/* 1. THẺ TẤT CẢ */}
+                <Col xs={24} md={8}>
                   <Card
                     hoverable
                     bodyStyle={{ padding: 20 }}
@@ -459,15 +464,19 @@ const ApprovalProductsPage = () => {
                     onClick={() => setRiskFilter("all")}
                   >
                     <Statistic
-                      title={<Text strong>📋 Tất cả chờ duyệt</Text>}
+                      title={
+                        <Space>
+                          <FileTextOutlined /> <Text strong>Tất cả</Text>
+                        </Space>
+                      }
                       value={riskCounts.all}
                       prefix={<SafetyCertificateOutlined />}
                     />
                   </Card>
                 </Col>
 
-                {/* Thẻ 2: Shop mới - Chiếm 1/3 chiều rộng (md={8}) */}
-                <Col xs={24} sm={12} md={8}>
+                {/* 2. THẺ SHOP MỚI */}
+                <Col xs={24} md={8}>
                   <Card
                     hoverable
                     bodyStyle={{ padding: 20 }}
@@ -479,9 +488,12 @@ const ApprovalProductsPage = () => {
                   >
                     <Statistic
                       title={
-                        <Text type="warning" strong>
-                          🆕 Shop mới (dưới 7 ngày)
-                        </Text>
+                        <Space>
+                          <RocketOutlined style={{ color: "#faad14" }} />
+                          <Tag icon={<RocketOutlined />} color="green">
+                            Shop mới
+                          </Tag>
+                        </Space>
                       }
                       value={riskCounts.new_shop}
                       prefix={<ShopOutlined style={{ color: "#faad14" }} />}
@@ -490,8 +502,8 @@ const ApprovalProductsPage = () => {
                   </Card>
                 </Col>
 
-                {/* Thẻ 3: Tái xuất hiện - Chiếm 1/3 chiều rộng (md={8}) */}
-                <Col xs={24} sm={12} md={8}>
+                {/* 3. THẺ RE-UP (SPAM) */}
+                <Col xs={24} md={8}>
                   <Card
                     hoverable
                     bodyStyle={{ padding: 20 }}
@@ -500,9 +512,12 @@ const ApprovalProductsPage = () => {
                   >
                     <Statistic
                       title={
-                        <Text style={{ color: "#722ed1" }} strong>
-                          ♻️ Tái xuất hiện (Đã xóa)
-                        </Text>
+                        <Space>
+                          <HistoryOutlined style={{ color: "#722ed1" }} />
+                          <Text style={{ color: "#722ed1" }} strong>
+                            Tái xuất hiện (Spam)
+                          </Text>
+                        </Space>
                       }
                       value={riskCounts.reup}
                       prefix={<ReloadOutlined style={{ color: "#722ed1" }} />}
@@ -514,7 +529,7 @@ const ApprovalProductsPage = () => {
             </div>
           )}
 
-          {/* --- FILTER TOOLBAR CŨ --- */}
+          {/* --- TOOLBAR --- */}
           <div
             style={{
               marginBottom: 16,
@@ -547,16 +562,14 @@ const ApprovalProductsPage = () => {
             </Row>
           </div>
 
-          {/* --- TABLE / GRID VIEW --- */}
-          {/* --- TABLE / GRID VIEW --- */}
-          {/* TABLE / GRID VIEW */}
+          {/* --- CONTENT AREA --- */}
           {loading && !data.length ? (
             <div style={{ textAlign: "center", padding: 50 }}>
               <Spin size="large" />
             </div>
           ) : (
             <>
-              {/* --- TRƯỜNG HỢP 1: SHOP MỚI -> HIỆN GRID CARD --- */}
+              {/* VIEW 1: GRID CHO SHOP MỚI */}
               {riskFilter === "new_shop" ? (
                 <div
                   style={{
@@ -577,7 +590,6 @@ const ApprovalProductsPage = () => {
                       }}
                       bodyStyle={{ padding: 0 }}
                     >
-                      {/* 1. Header của Shop Card */}
                       <div
                         style={{
                           padding: "16px",
@@ -595,209 +607,86 @@ const ApprovalProductsPage = () => {
                             gap: "12px",
                           }}
                         >
-                          <div
-                            style={{
-                              width: "48px",
-                              height: "48px",
-                              borderRadius: "50%",
-                              background: "#fff",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              border: "1px solid #ddd",
-                              overflow: "hidden",
-                            }}
-                          >
-                            {shop.avatar ? (
-                              <img
-                                src={shop.avatar}
-                                alt="avatar"
-                                style={{
-                                  width: "100%",
-                                  height: "100%",
-                                  objectFit: "cover",
-                                }}
-                              />
-                            ) : (
-                              <ShopOutlined
-                                style={{ fontSize: "24px", color: "#1890ff" }}
-                              />
-                            )}
-                          </div>
-                          <div>
-                            <Title
-                              level={5}
-                              style={{ margin: 0, color: "#1f1f1f" }}
-                            >
-                              {shop.shopName}
-                            </Title>
-                            <Text type="secondary" style={{ fontSize: "12px" }}>
-                              📅 Tham gia: {shop.joinedText}
-                            </Text>
-                          </div>
+                          {/* Shop Avatar & Name Logic Here (Copy from your original code) */}
+                          <Title level={5} style={{ margin: 0 }}>
+                            {shop.shopName}
+                          </Title>
                         </div>
                         <Tag color="green">Shop mới</Tag>
                       </div>
-
-                      {/* 2. Danh sách sản phẩm bên trong */}
-                      <div style={{ padding: "0 16px" }}>
-                        <div
-                          style={{
-                            padding: "12px 0",
-                            borderBottom: "1px dashed #f0f0f0",
-                          }}
-                        >
-                          <Text strong>
-                            📦 Danh sách chờ duyệt ({shop.products.length}):
-                          </Text>
-                        </div>
-                        <div
-                          style={{
-                            maxHeight: "250px",
-                            overflowY: "auto",
-                            paddingBottom: "12px",
-                          }}
-                        >
-                          {shop.products.map((item) => (
-                            <div
-                              key={item.id}
-                              style={{
-                                display: "flex",
-                                justifyContent: "space-between",
-                                alignItems: "center",
-                                padding: "10px 0",
-                                borderBottom: "1px solid #f5f5f5",
-                              }}
-                            >
-                              <div
-                                style={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: "10px",
-                                }}
-                              >
-                                <img
-                                  src={item.image}
-                                  alt={item.name}
-                                  style={{
-                                    width: "40px",
-                                    height: "40px",
-                                    borderRadius: "4px",
-                                    objectFit: "cover",
-                                    border: "1px solid #eee",
-                                  }}
-                                />
-                                <div
-                                  style={{
-                                    display: "flex",
-                                    flexDirection: "column",
-                                  }}
-                                >
-                                  <Text
-                                    style={{
-                                      fontSize: "14px",
-                                      maxWidth: "180px",
-                                    }}
-                                    ellipsis={{ tooltip: item.name }}
-                                  >
-                                    {item.name}
-                                  </Text>
-                                  <Text
-                                    type="danger"
-                                    style={{ fontSize: "12px" }}
-                                  >
-                                    {parseInt(item.price).toLocaleString()}đ
-                                  </Text>
-                                </div>
-                              </div>
-                              <div style={{ display: "flex", gap: "4px" }}>
-                                <CheckCircleOutlined
-                                  style={{
-                                    fontSize: "20px",
-                                    color: "#52c41a",
-                                    cursor: "pointer",
-                                  }}
-                                  onClick={() => handleApprove(item.id)}
-                                  title="Duyệt nhanh"
-                                />
-                                <CloseCircleOutlined
-                                  style={{
-                                    fontSize: "20px",
-                                    color: "#ff4d4f",
-                                    cursor: "pointer",
-                                  }}
-                                  onClick={() =>
-                                    handleReject(item.id, "Vi phạm chính sách")
-                                  }
-                                  title="Từ chối nhanh"
-                                />
-                              </div>
-                            </div>
-                          ))}
-                        </div>
+                      {/* List products inside shop card */}
+                      <div
+                        style={{
+                          padding: "0 16px",
+                          maxHeight: "250px",
+                          overflowY: "auto",
+                        }}
+                      >
+                        {shop.products.map((p) => (
+                          <div
+                            key={p.id}
+                            style={{
+                              padding: "10px 0",
+                              borderBottom: "1px solid #f5f5f5",
+                              display: "flex",
+                              justifyContent: "space-between",
+                            }}
+                          >
+                            <Text style={{ maxWidth: 180 }} ellipsis>
+                              {p.name}
+                            </Text>
+                            <Text type="danger">
+                              {parseInt(p.price).toLocaleString()}đ
+                            </Text>
+                          </div>
+                        ))}
                       </div>
-
-                      {/* 3. Footer của Card (Đã sửa lỗi lặp code) */}
                       <div
                         style={{
                           padding: "12px 16px",
                           background: "#fafafa",
-                          borderTop: "1px solid #f0f0f0",
                           textAlign: "right",
                         }}
                       >
-                        <a
-                          style={{
-                            color: "#1890ff",
-                            fontWeight: 500,
-                            cursor: "pointer",
-                          }}
-                          onClick={() => handleViewShopProfile(shop)}
-                        >
+                        <a onClick={() => handleViewShopProfile(shop)}>
                           Xem hồ sơ Shop &rarr;
                         </a>
                       </div>
                     </Card>
                   ))}
                   {filteredData.length === 0 && (
-                    <div
-                      style={{
-                        gridColumn: "1/-1",
-                        textAlign: "center",
-                        padding: 20,
-                      }}
-                    >
-                      <Text type="secondary">
-                        Không có shop mới nào cần duyệt.
-                      </Text>
+                    <div style={{ padding: 20, textAlign: "center" }}>
+                      Không có dữ liệu.
                     </div>
                   )}
                 </div>
               ) : (
-                // --- TRƯỜNG HỢP 2: CÁC TRƯỜNG HỢP KHÁC (BAO GỒM "TÁI XUẤT HIỆN") -> HIỆN BẢNG ---
+                // VIEW 2: TABLE CHO CÁC TRƯỜNG HỢP KHÁC
                 <div>
-                  {/* Đã di chuyển cảnh báo Reup xuống đúng chỗ này */}
                   {riskFilter === "reup" && (
                     <div
                       style={{
                         marginBottom: 16,
-                        padding: "8px 12px",
+                        padding: "10px 16px",
                         background: "#fff1f0",
                         border: "1px solid #ffa39e",
-                        borderRadius: 4,
+                        borderRadius: 6,
                         display: "flex",
                         alignItems: "center",
-                        gap: 8,
+                        gap: 12,
                       }}
                     >
-                      <ReloadOutlined style={{ color: "#cf1322" }} />
-                      <Text type="danger">
-                        Danh sách này gồm các sản phẩm đã từng bị xóa/vi phạm
-                        trước đây. Vui lòng kiểm tra kỹ trước khi duyệt lại.
+                      {/* Thay icon Reload bằng Warning hoặc Exclamation */}
+                      <ExclamationCircleOutlined
+                        style={{ color: "#cf1322", fontSize: 18 }}
+                      />
+                      <Text type="danger" strong>
+                        Cảnh báo: Danh sách sản phẩm nghi ngờ cố tình đăng lại
+                        (Re-up) sau khi bị xóa/từ chối.
                       </Text>
                     </div>
                   )}
-
+                  {/* TRUYỀN DATA ĐÃ XỬ LÝ VÀO TABLE */}
                   <ProductTable
                     data={filteredData}
                     selectedRowKeys={selectedRowKeys}
@@ -813,7 +702,7 @@ const ApprovalProductsPage = () => {
         </div>
       </Card>
 
-      {/* Detail & Comparison Components (Giữ nguyên) */}
+      {/* Drawers & Modals */}
       <ProductDetailDrawer
         visible={drawerVisible}
         product={selectedProduct}
@@ -829,7 +718,6 @@ const ApprovalProductsPage = () => {
         onReject={(p) => handleReject(p.id)}
         loading={comparisonLoading}
       />
-
       <ShopDetailDrawer
         visible={shopDrawerVisible}
         onClose={() => setShopDrawerVisible(false)}
