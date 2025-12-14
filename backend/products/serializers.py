@@ -5,6 +5,13 @@ from django.db.models import Sum
 from orders.models import OrderItem
 from products.models import ProductFeature
 from store.serializers import StoreSerializer
+from datetime import timedelta
+
+
+class SellerWithDateSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    store_name = serializers.CharField()
+    created_at = serializers.DateTimeField()
 
 # ✅ Thêm ProductImageSerializer
 class ProductImageSerializer(serializers.ModelSerializer):
@@ -29,7 +36,7 @@ class PendingProductUpdateSerializer(serializers.ModelSerializer):
         fields = [
             'name', 'description', 'original_price', 'discounted_price', 'unit',
             'stock', 'location', 'brand', 'availability_status', 'season_start', 'season_end',
-            'created_at', 'updated_at'
+            'created_at', 'updated_at', 'weight_g', # 👈 THÊM VÀO ĐÂY
         ]
 
 
@@ -106,12 +113,7 @@ class ProductSerializer(serializers.ModelSerializer):
             "estimated_quantity", "preordered_quantity", 'ordered_quantity',
             "is_coming_soon", "is_out_of_stock", "available_quantity",
             "total_preordered", "user_preordered", "features", "main_image",
-<<<<<<< Updated upstream
-            "commission_rate", "pending_update", "comparison_data"
-=======
             "commission_rate", "pending_update", "comparison_data", 'weight_g', 'reject_reason',
-            'import_request_at',
->>>>>>> Stashed changes
         ]
         read_only_fields = ["status", "seller"]
 
@@ -240,6 +242,7 @@ class ProductSerializer(serializers.ModelSerializer):
             'unit': obj.unit,
             'stock': obj.stock,
             'location': obj.location,
+            'weight_g': obj.weight_g, # 👈 Thêm vào current
             'brand': obj.brand,
             'availability_status': obj.availability_status,
             'season_start': obj.season_start.isoformat() if obj.season_start else None,
@@ -292,6 +295,7 @@ class ProductSerializer(serializers.ModelSerializer):
 
 
 class ProductListSerializer(serializers.ModelSerializer):
+    is_reup = serializers.SerializerMethodField()
     category_name = serializers.CharField(source='subcategory.category.name', read_only=True)
     subcategory_name = serializers.CharField(source='subcategory.name', read_only=True)
     category_id = serializers.IntegerField(source='subcategory.category.id', read_only=True)
@@ -309,7 +313,8 @@ class ProductListSerializer(serializers.ModelSerializer):
     total_preordered = serializers.SerializerMethodField()
     user_preordered = serializers.SerializerMethodField()
 
-    store = SellerListSerializer(source='seller', read_only=True)  # ✅ đúng
+    store = SellerWithDateSerializer(source='seller', read_only=True)  # ✅ đúng
+    seller = SellerWithDateSerializer(read_only=True)
 
 
 
@@ -337,12 +342,8 @@ class ProductListSerializer(serializers.ModelSerializer):
             "estimated_quantity", "preordered_quantity",
             "is_coming_soon", "is_out_of_stock", "available_quantity",
             "total_preordered", "user_preordered", "features", "store", "main_image",
-<<<<<<< Updated upstream
-            "commission_rate", "pending_update", "comparison_data"
-=======
             "commission_rate", "pending_update", "comparison_data", 'is_reup', 'weight_g',
-            'reject_reason', 'import_request_at',
->>>>>>> Stashed changes
+            'reject_reason',
         ]
         read_only_fields = ["id", "created_at", "updated_at", "seller"]
 
@@ -362,6 +363,7 @@ class ProductListSerializer(serializers.ModelSerializer):
             'stock': obj.stock,
             'location': obj.location,
             'brand': obj.brand,
+            'weight_g': obj.weight_g, # 👈 THÊM
             'availability_status': obj.availability_status,
             'season_start': obj.season_start.isoformat() if obj.season_start else None,
             'season_end': obj.season_end.isoformat() if obj.season_end else None,
@@ -381,6 +383,7 @@ class ProductListSerializer(serializers.ModelSerializer):
                 'stock': pending.stock if pending.stock is not None else obj.stock,
                 'location': pending.location if pending.location else obj.location,
                 'brand': pending.brand if pending.brand else obj.brand,
+                'weight_g': pending.weight_g if pending.weight_g is not None else obj.weight_g,
                 'availability_status': pending.availability_status if pending.availability_status else obj.availability_status,
                 'season_start': pending.season_start.isoformat() if pending.season_start else (obj.season_start.isoformat() if obj.season_start else None),
                 'season_end': pending.season_end.isoformat() if pending.season_end else (obj.season_end.isoformat() if obj.season_end else None),
@@ -478,6 +481,31 @@ class ProductListSerializer(serializers.ModelSerializer):
         if obj.availability_status == "coming_soon":
             return False
         return obj.stock <= 0
+    
+
+    def get_is_reup(self, obj):
+        if obj.status != 'pending':
+            return False
+            
+        # Logic cũ: updated - created > 1 giờ (Quá nhạy)
+        # Logic MỚI: Chỉ coi là Re-up nếu sản phẩm đã tạo được HƠN 7 NGÀY
+        # (Tức là hàng tồn kho, hàng cũ lôi ra bán lại)
+        
+        try:
+            # 1. Tính tuổi đời sản phẩm
+            age = obj.updated_at - obj.created_at
+            
+            # 2. Quy đổi ra ngày
+            days_old = age.days
+            
+            # 3. Điều kiện: Phải "già" hơn 7 ngày thì mới tính là Tái xuất hiện
+            if days_old >= 7:
+                return True
+                
+            return False
+            
+        except:
+            return False
 
 class ProductImageCreateSerializer(serializers.ModelSerializer):
     class Meta:

@@ -178,23 +178,11 @@ export default function ProductsPage() {
 
   // ==================== 5. STATS CALCULATION ====================
 
+
   const statsItems = useMemo(() => {
     const total = rawProducts.length;
-<<<<<<< Updated upstream
-    const approved = rawProducts.filter(p => p.status === 'approved').length;
-    const pending = rawProducts.filter(p => ['pending', 'pending_update'].includes(p.status)).length;
-    const outOfStock = rawProducts.filter(p => p.stock <= 0).length;
-
-    return [
-      { title: "Tổng sản phẩm", value: total, icon: <DropboxOutlined />, color: "#1890ff" },
-      { title: "Đang hoạt động", value: approved, icon: <CheckCircleOutlined />, color: "#52c41a" },
-      { title: "Chờ phê duyệt", value: pending, icon: <ClockCircleOutlined />, color: "#faad14" },
-      { title: "Hết hàng", value: outOfStock, icon: <StopOutlined />, color: "#ff4d4f" }
-=======
     const approved = rawProducts.filter((p) => p.status === "approved").length;
-    const pending = rawProducts.filter((p) =>
-      ["pending", "pending_update"].includes(p.status)
-    ).length;
+    const pending = rawProducts.filter((p) => ["pending", "pending_update"].includes(p.status)).length;
     const outOfStock = rawProducts.filter((p) => p.stock <= 0).length;
     const importRequest = importRequestProducts.length;
 
@@ -229,7 +217,6 @@ export default function ProductsPage() {
         icon: <ImportOutlined />,
         color: "#13c2c2",
       },
->>>>>>> Stashed changes
     ];
   }, [rawProducts, importRequestProducts]);
 
@@ -388,13 +375,9 @@ export default function ProductsPage() {
     }
   };
 
+
   const tabItems = [
     { key: "all", label: `Tất cả (${statsItems[0].value})` },
-<<<<<<< Updated upstream
-    { key: "approved", label: `Đang bán (${statsItems[1].value})`, icon: <CheckCircleOutlined /> },
-    { key: "pending", label: `Chờ duyệt (${statsItems[2].value})`, icon: <ClockCircleOutlined /> },
-    { key: "out_of_stock", label: `Hết hàng (${statsItems[3].value})`, icon: <StopOutlined /> },
-=======
     {
       key: "approved",
       label: `Đang bán (${statsItems[1].value})`,
@@ -415,7 +398,6 @@ export default function ProductsPage() {
       label: `Được yêu cầu nhập (${statsItems[4].value})`,
       icon: <ImportOutlined />,
     },
->>>>>>> Stashed changes
     { key: "rejected", label: "Đã huỷ / Từ chối" },
   ];
 

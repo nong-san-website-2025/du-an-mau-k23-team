@@ -63,14 +63,6 @@ const demoGenderData = [
   { name: "Khác", value: 50 },
 ];
 
-// Placeholder cho phân bố địa lý
-const demoGeoData = [
-  { city: "TP. Hồ Chí Minh", percent: 45 },
-  { city: "Hà Nội", percent: 30 },
-  { city: "Đà Nẵng", percent: 15 },
-  { city: "Cần Thơ", percent: 10 },
-];
-
 export default function ReportCustomersPage() {
   const [filter, setFilter] = useState("day");
   const [loading, setLoading] = useState(true);
@@ -78,6 +70,7 @@ export default function ReportCustomersPage() {
   const [trendData, setTrendData] = useState([]);
   const [topCustomers, setTopCustomers] = useState([]);
   const [segmentationData, setSegmentationData] = useState([]);
+  const [geoData, setGeoData] = useState([]);
 
   useEffect(() => {
     fetchCustomerStatistics();
@@ -132,6 +125,20 @@ export default function ReportCustomersPage() {
       setStatsData(formattedStats);
       setTopCustomers(data.topCustomers || []);
       setSegmentationData(data.segmentationData || []);
+      
+      // Xử lý dữ liệu địa lý
+      if (data.geoDistribution && data.geoDistribution.length > 0) {
+        const totalGeo = data.geoDistribution.reduce((sum, item) => sum + item.count, 0);
+        const formattedGeo = data.geoDistribution
+          .map(item => ({
+            city: item.city,
+            percent: totalGeo > 0 ? Math.round((item.count / totalGeo) * 100) : 0,
+          }))
+          .sort((a, b) => b.percent - a.percent);
+        setGeoData(formattedGeo);
+      } else {
+        setGeoData([]);
+      }
       
       // Mock trend data nếu API chưa trả về list
       const chartData = data.trendData || [
@@ -370,24 +377,26 @@ export default function ReportCustomersPage() {
                     loading={loading}
                 >
                     <div style={{ padding: '0 10px' }}>
-                        {demoGeoData.map((item, index) => (
+                        {geoData.length > 0 ? geoData.map((item, index) => (
                             <div key={index} style={{ marginBottom: 20 }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
                                     <Text>{item.city}</Text>
                                     <Text strong>{item.percent}%</Text>
                                 </div>
-                                <Progress 
-                                    percent={item.percent} 
-                                    showInfo={false} 
-                                    size="small" 
+                                <Progress
+                                    percent={item.percent}
+                                    showInfo={false}
+                                    size="small"
                                     strokeColor={index === 0 ? '#faad14' : '#1890ff'} // Top 1 màu vàng
                                 />
                             </div>
-                        ))}
-                        <Empty 
-                            image={Empty.PRESENTED_IMAGE_SIMPLE} 
-                            description={<Text type="secondary">Dữ liệu bản đồ nhiệt chi tiết chưa sẵn sàng</Text>} 
-                        />
+                        )) : (
+                          <Empty
+                              image={Empty.PRESENTED_IMAGE_SIMPLE}
+                              description={<Text type="secondary">Chưa có dữ liệu phân bố khu vực</Text>}
+                          />
+                        )
+                        }
                     </div>
                 </Card>
             </Col>

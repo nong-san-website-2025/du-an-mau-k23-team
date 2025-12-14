@@ -22,8 +22,7 @@ export const productApi = {
     });
   },
 
-<<<<<<< Updated upstream
-=======
+
   // ==================== 1.5. LẤY DANH SÁCH SẢN PHẨM CÓ YÊU CẦU NHẬP ====================
   getImportRequestProducts: () =>
     api.get("/sellers/productseller/with-import-requests/", {
@@ -32,7 +31,7 @@ export const productApi = {
 
   
 
->>>>>>> Stashed changes
+
   // ==================== 2. DANH MỤC & HIỂN THỊ ====================
   getCategories: () =>
     api.get("/products/categories/", { headers: getAuthHeaders() }),
