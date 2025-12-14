@@ -523,6 +523,28 @@ class ProductViewSet(viewsets.ModelViewSet):
         product.save()
         return Response({"message": "Rejected"}, status=200)
 
+    @action(detail=True, methods=["post"], url_path="request-import", permission_classes=[IsAdminUser])
+    def request_import(self, request, pk=None):
+        product = self.get_object()
+        product.import_request_at = now()
+        product.save(update_fields=["import_request_at"])
+        return Response({"message": "Đã gửi yêu cầu nhập sản phẩm thành công"}, status=200)
+
+    @action(detail=False, methods=["get"], url_path="with-import-requests", permission_classes=[IsAuthenticated])
+    def with_import_requests(self, request):
+        seller_id = request.user.seller.id if hasattr(request.user, 'seller') else None
+        if not seller_id:
+            return Response({"detail": "Chỉ seller mới có quyền xem"}, status=403)
+        
+        products = Product.objects.filter(
+            seller_id=seller_id,
+            status='approved',
+            import_request_at__isnull=False
+        ).order_by('-import_request_at')
+        
+        serializer = self.get_serializer(products, many=True)
+        return Response(serializer.data)
+
     @action(detail=True, methods=["post"], url_path="self-reject", permission_classes=[IsAuthenticated])
     def self_reject(self, request, pk=None):
         product = self.get_object()

@@ -98,4 +98,7 @@ export const productApi = {
 
   rejectUpdate: (productId) =>
     api.post(`/products/${productId}/reject_update/`, {}, { headers: getAuthHeaders() }),
+
+  requestImport: (productId) =>
+    api.post(`/products/${productId}/request-import/`, {}, { headers: getAuthHeaders() }),
 };

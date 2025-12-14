@@ -88,6 +88,8 @@ class Product(models.Model):
 
     season_start = models.DateField(null=True, blank=True)
     season_end = models.DateField(null=True, blank=True)
+    
+    import_request_at = models.DateTimeField(null=True, blank=True, db_index=True)
 
     def __str__(self):
         return self.name

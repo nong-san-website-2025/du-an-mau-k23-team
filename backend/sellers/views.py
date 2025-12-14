@@ -274,6 +274,31 @@ class SellerProductsAPIView(APIView):
         return Response(serializer.data)
 
 
+class SellerImportRequestProductsAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if getattr(request.user.role, "name", "") != "seller":
+            return Response({"detail": "Bạn chưa được duyệt làm seller"}, status=403)
+
+        seller, created = Seller.objects.get_or_create(
+            user=request.user,
+            defaults={
+                "store_name": f"Shop {request.user.username}",
+                "status": "approved",
+            }
+        )
+
+        products = Product.objects.filter(
+            seller=seller,
+            status='approved',
+            import_request_at__isnull=False
+        ).order_by('-import_request_at')
+
+        serializer = ProductListSerializer(products, many=True, context={'request': request})
+        return Response(serializer.data)
+
+
 class SellerMeAPIView(APIView):
     permission_classes = [IsAuthenticated]
 

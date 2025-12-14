@@ -106,7 +106,12 @@ class ProductSerializer(serializers.ModelSerializer):
             "estimated_quantity", "preordered_quantity", 'ordered_quantity',
             "is_coming_soon", "is_out_of_stock", "available_quantity",
             "total_preordered", "user_preordered", "features", "main_image",
+<<<<<<< Updated upstream
             "commission_rate", "pending_update", "comparison_data"
+=======
+            "commission_rate", "pending_update", "comparison_data", 'weight_g', 'reject_reason',
+            'import_request_at',
+>>>>>>> Stashed changes
         ]
         read_only_fields = ["status", "seller"]
 
@@ -332,7 +337,12 @@ class ProductListSerializer(serializers.ModelSerializer):
             "estimated_quantity", "preordered_quantity",
             "is_coming_soon", "is_out_of_stock", "available_quantity",
             "total_preordered", "user_preordered", "features", "store", "main_image",
+<<<<<<< Updated upstream
             "commission_rate", "pending_update", "comparison_data"
+=======
+            "commission_rate", "pending_update", "comparison_data", 'is_reup', 'weight_g',
+            'reject_reason', 'import_request_at',
+>>>>>>> Stashed changes
         ]
         read_only_fields = ["id", "created_at", "updated_at", "seller"]
 

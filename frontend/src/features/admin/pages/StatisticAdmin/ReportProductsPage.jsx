@@ -17,6 +17,7 @@ import {
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Cell, Tooltip as RechartsTooltip } from "recharts";
 
 import api from "../../../login_register/services/api";
+import { productApi } from "../../services/productApi";
 import AdminPageLayout from "../../components/AdminPageLayout";
 import StatsSection from "../../components/common/StatsSection";
 
@@ -28,6 +29,7 @@ export default function ReportProductsPage() {
   const [outOfStock, setOutOfStock] = useState([]);
   const [stats, setStats] = useState({ topCount: 0, lowStockCount: 0, outOfStockCount: 0, complaintRate: 0 });
   const [loading, setLoading] = useState(false);
+  const [requestingProductId, setRequestingProductId] = useState(null);
 
   // --- 1. Tải và Xử lý dữ liệu ---
   const loadData = useCallback(async () => {
@@ -56,6 +58,20 @@ export default function ReportProductsPage() {
       setLoading(false);
     }
   }, []);
+
+  // --- 1.5. Gửi yêu cầu nhập sản phẩm ---
+  const handleRequestImport = async (productId, productName) => {
+    setRequestingProductId(productId);
+    try {
+      await productApi.requestImport(productId);
+      message.success(`Đã gửi yêu cầu nhập cho: ${productName}`);
+    } catch (err) {
+      console.error(err);
+      message.error("Lỗi khi gửi yêu cầu nhập");
+    } finally {
+      setRequestingProductId(null);
+    }
+  };
 
   useEffect(() => {
     loadData();
@@ -162,7 +178,8 @@ export default function ReportProductsPage() {
             size="small"
             type={record.stock === 0 ? "primary" : "default"}
             danger={record.stock === 0}
-            onClick={() => message.info(`Yêu cầu nhập hàng: ${record.name}`)}
+            loading={requestingProductId === record.id}
+            onClick={() => handleRequestImport(record.id, record.name)}
           >
             Nhập
           </Button>
