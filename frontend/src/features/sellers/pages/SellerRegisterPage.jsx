@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom"; // <--- 1. Import useNavigate
 import {
   Form,
   Input,
@@ -10,12 +11,14 @@ import {
   Steps,
   Modal,
   Radio,
+  Result, // <--- 2. Import Result để hiển thị thông báo
 } from "antd";
 import {
   UploadOutlined,
   ShopOutlined,
   CheckCircleOutlined,
   ClockCircleOutlined,
+  SmileOutlined, // Icon cho Result
 } from "@ant-design/icons";
 import { useAuth } from "../../login_register/services/AuthContext";
 
@@ -23,6 +26,7 @@ const { Step } = Steps;
 
 export default function SellerRegisterPage() {
   const [form] = Form.useForm();
+  const navigate = useNavigate(); // <--- 3. Khởi tạo navigate
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [sellerStatus, setSellerStatus] = useState(null);
@@ -44,6 +48,7 @@ export default function SellerRegisterPage() {
   useEffect(() => {
     fetchSeller();
     fetchUser();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ===== FETCH SELLER =====
@@ -147,7 +152,6 @@ export default function SellerRegisterPage() {
         body: formData,
         headers: {
           Authorization: `Bearer ${token}`,
-          // KHÔNG set Content-Type !!!
         },
       });
 
@@ -168,7 +172,7 @@ export default function SellerRegisterPage() {
     }
   };
 
-  // ===== OPEN SHOP =====
+  // ===== OPEN SHOP (ACTIVATE) =====
   const handleOpenShop = async () => {
     try {
       const res = await fetch(`${process.env.REACT_APP_API_URL}/sellers/activate/`, {
@@ -180,6 +184,9 @@ export default function SellerRegisterPage() {
       message.success("Cửa hàng đã mở!");
       setSellerStatus("active");
       setRole("seller");
+      
+      // Sau khi kích hoạt thành công, có thể redirect luôn hoặc để user tự bấm
+      // navigate("/seller/dashboard"); 
     } catch (e) {
       message.error(e.message);
     }
@@ -207,7 +214,48 @@ export default function SellerRegisterPage() {
           <Step title="Hoạt động" icon={<CheckCircleOutlined />} />
         </Steps>
 
-        {/* MODAL CHỌN TYPE */}
+        {/* --- TRƯỜNG HỢP 1: PENDING (CHỜ DUYỆT) --- */}
+        {sellerStatus === "pending" && (
+          <Result
+            icon={<ClockCircleOutlined />}
+            title="Đăng ký của bạn đang chờ phê duyệt"
+            subTitle="Vui lòng quay lại sau khi quản trị viên xác nhận thông tin của bạn."
+          />
+        )}
+
+        {/* --- TRƯỜNG HỢP 2: APPROVED (ĐÃ DUYỆT - CẦN KÍCH HOẠT) --- */}
+        {sellerStatus === "approved" && (
+          <Result
+            icon={<SmileOutlined />}
+            title="Chúc mừng! Hồ sơ đã được duyệt"
+            subTitle="Bạn đã sẵn sàng để bắt đầu kinh doanh chưa?"
+            extra={[
+              <Button type="primary" key="console" onClick={handleOpenShop}>
+                Kích hoạt cửa hàng ngay
+              </Button>,
+            ]}
+          />
+        )}
+
+        {/* --- TRƯỜNG HỢP 3: ACTIVE (ĐANG HOẠT ĐỘNG - VÀO DASHBOARD) --- */}
+        {sellerStatus === "active" && (
+          <Result
+            status="success"
+            title="Cửa hàng đang hoạt động!"
+            subTitle="Truy cập trang quản lý để đăng bán sản phẩm."
+            extra={[
+              <Button 
+                type="primary" 
+                key="dashboard" 
+                onClick={() => navigate("/seller-center/dashboard")} // Thay đường dẫn dashboard thực tế của bạn vào đây
+              >
+                Vào trang quản lý người bán
+              </Button>,
+            ]}
+          />
+        )}
+
+        {/* --- TRƯỜNG HỢP 0: CHƯA CÓ STATUS -> HIỆN MODAL CHỌN LOẠI --- */}
         {!sellerStatus && (
           <Modal
             open={showTypeModal}
@@ -237,7 +285,7 @@ export default function SellerRegisterPage() {
           </Modal>
         )}
 
-        {/* FORM */}
+        {/* --- FORM ĐĂNG KÝ (CHỈ HIỆN KHI CHƯA CÓ STATUS VÀ ĐÃ TẮT MODAL) --- */}
         {!sellerStatus && !showTypeModal && (
           <Form
             form={form}
@@ -245,6 +293,7 @@ export default function SellerRegisterPage() {
             onFinish={handleSubmit}
             style={{ marginTop: 30 }}
           >
+            {/* ... (Giữ nguyên các trường Form của bạn như cũ) ... */}
             <Form.Item
               name="store_name"
               label="Tên cửa hàng"

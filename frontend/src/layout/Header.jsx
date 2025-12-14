@@ -11,7 +11,9 @@ import UserActions from "./Header/UserActions";
 import TopBar from "./Header/TopBar";
 import { useAuth } from "../features/login_register/services/AuthContext";
 
-import useSellerStatus from "../services/hooks/useSellerStatus";
+// 👇 1. BỎ IMPORT NÀY (Để tránh xung đột hoặc dùng cache cũ)
+// import useSellerStatus from "../services/hooks/useSellerStatus"; 
+
 import useSearch from "../services/hooks/useSearch";
 
 export default function Header({ shouldFetchProfile = true }) {
@@ -23,7 +25,49 @@ export default function Header({ shouldFetchProfile = true }) {
 
   const navigate = useNavigate();
 
-  const { storeName, sellerStatus } = useSellerStatus(shouldFetchProfile);
+  // 👇 2. THAY THẾ HOOK useSellerStatus BẰNG STATE VÀ API TRỰC TIẾP
+  // const { storeName, sellerStatus } = useSellerStatus(shouldFetchProfile); // Bỏ dòng này
+  
+  const [sellerStatus, setSellerStatus] = useState(null);
+  const [storeName, setStoreName] = useState(""); 
+  const token = localStorage.getItem("token");
+
+  // 👇 3. THÊM useEffect ĐỂ GỌI API STATUS NGAY TẠI ĐÂY
+  useEffect(() => {
+    const fetchSellerStatus = async () => {
+      if (!token) {
+        setSellerStatus(null);
+        return;
+      }
+
+      try {
+        // Gọi API lấy thông tin Seller của tôi
+        const res = await fetch(`/api/sellers/me/`, { // Lưu ý: check lại đường dẫn API của bạn có /api hay không
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          // Cập nhật State
+          setSellerStatus(data.status ? data.status.toLowerCase() : null); 
+          setStoreName(data.store_name || "");
+        } else {
+          // Nếu lỗi 404 (chưa đăng ký) hoặc lỗi khác
+          setSellerStatus(null);
+        }
+      } catch (error) {
+        console.error("Lỗi lấy trạng thái seller:", error);
+        setSellerStatus(null);
+      }
+    };
+
+    fetchSellerStatus();
+  }, [token]); // Chạy lại khi token thay đổi (đăng nhập/đăng xuất)
+
+  // -------------------------------------------------------------
+
   const {
     search,
     setSearch,
@@ -66,8 +110,9 @@ export default function Header({ shouldFetchProfile = true }) {
       .then((data) => setPopularItems(data.items || []))
       .catch((err) => console.error("Failed to load popular items", err));
   }, []);
+  
   const handleLogout = async () => {
-    await logout(); // gọi logout từ AuthContext
+    await logout();
     setShowProfileDropdown(false);
     navigate("/login", { replace: true });
   };
@@ -105,7 +150,10 @@ export default function Header({ shouldFetchProfile = true }) {
               position: "relative",
             }}
           >
-            <div className="w-100 d-flex justify-content-center justify-content-md-start" style={{ paddingBottom: 5 }}>
+            <div
+              className="w-100 d-flex justify-content-center justify-content-md-start"
+              style={{ paddingBottom: 5 }}
+            >
               <Logo greenText={greenText} />
             </div>
 
@@ -160,10 +208,10 @@ export default function Header({ shouldFetchProfile = true }) {
                         borderRadius: "16px",
                         fontSize: "13px",
                         cursor: "pointer",
-                        whiteSpace: "nowrap", // ← không xuống dòng
-                        overflow: "hidden", // ← ẩn phần tràn
-                        textOverflow: "clip", // ← hiển thị "..." khi tràn
-                        maxWidth: "100px", // ← giới hạn độ rộng (bắt buộc để ellipsis hoạt động)
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "clip",
+                        maxWidth: "100px",
                       }}
                     >
                       {item.name}
@@ -189,6 +237,8 @@ export default function Header({ shouldFetchProfile = true }) {
                 hoveredDropdown={hoveredDropdown}
                 setHoveredDropdown={setHoveredDropdown}
                 storeName={storeName}
+                
+                // 👇 4. TRUYỀN STATE VỪA LẤY ĐƯỢC VÀO ĐÂY
                 sellerStatus={sellerStatus}
               />
             </div>

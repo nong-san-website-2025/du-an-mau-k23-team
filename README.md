@@ -34,6 +34,7 @@
 
     cd ../frontend
     npm install --legacy-peer-deps
+    npm install dayjs --legacy-peer-deps
     # Chạy frontend
     npm start
 
