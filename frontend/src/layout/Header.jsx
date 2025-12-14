@@ -1,21 +1,22 @@
 import React, { useState } from "react";
-import { useHeaderLogic } from "../hooks/useHeaderLogic"; // Import hook vừa tạo
+// Import Hooks: Ưu tiên dùng Hook để tách biệt logic (Separation of Concerns)
+import { useHeaderLogic } from "../hooks/useHeaderLogic";
 import useUserProfile from "../features/users/services/useUserProfile";
 import { useCart } from "../features/cart/services/CartContext";
+import useSellerStatus from "../services/hooks/useSellerStatus"; // Giữ lại Hook này
+import useSearch from "../services/hooks/useSearch";
 
 // Styles
-import styles from "../styles/Header.module.css"; // Giả sử dùng CSS Module
+import styles from "../styles/Header.module.css";
 
 // Sub-components
 import Logo from "./Header/Logo";
 import SearchBoxWithSuggestions from "./Header/SearchBoxWithSuggestions";
 import UserActions from "./Header/UserActions";
 import TopBar from "./Header/TopBar";
-import useSellerStatus from "../services/hooks/useSellerStatus";
-import useSearch from "../services/hooks/useSearch";
 
 export default function Header({ shouldFetchProfile = true }) {
-  // 1. Logic extracted to custom hooks
+  // 1. Logic extracted to custom hooks (Giữ kiến trúc của HEAD)
   const { 
     popularItems, 
     handleLogout, 
@@ -26,8 +27,11 @@ export default function Header({ shouldFetchProfile = true }) {
 
   const userProfile = useUserProfile();
   const { cartItems } = useCart();
-  const { storeName, sellerStatus } = useSellerStatus(shouldFetchProfile);
   
+  // MERGE DECISION: Sử dụng useSellerStatus thay vì gọi API trực tiếp tại đây.
+  // Nếu code của MinhKhanh fix lỗi API, hãy mang logic fetch đó vào trong file useSellerStatus.js
+  const { storeName, sellerStatus } = useSellerStatus(shouldFetchProfile);
+
   const {
     search,
     setSearch,
@@ -57,6 +61,7 @@ export default function Header({ shouldFetchProfile = true }) {
     navigate(`/search?query=${encodeURIComponent(search)}`);
   };
 
+  // Wrapper để xử lý state UI khi logout
   const onLogoutClick = () => handleLogout(setShowProfileDropdown);
 
   return (
@@ -67,8 +72,8 @@ export default function Header({ shouldFetchProfile = true }) {
       <header className={styles.headerWrapper}>
         <TopBar />
         
+        {/* MERGE DECISION: Giữ lại Layout Grid của HEAD vì responsive tốt hơn Inline Styles của MinhKhanh */}
         <div className={styles.mainBar}>
-          {/* Sử dụng Grid system của Bootstrap để layout responsive tốt hơn */}
           <div className={`container-fluid ${styles.containerCustom}`}>
             <div className="row w-100 align-items-center m-0">
               
