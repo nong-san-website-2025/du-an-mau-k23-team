@@ -96,6 +96,9 @@ class Address(models.Model):
     is_default = models.BooleanField(default=False)
 
     # Thông tin GHN
+    province_id = models.IntegerField(
+        null=True, blank=True, help_text='GHN ProvinceID'
+    )
     district_id = models.IntegerField(
         null=True, blank=True, help_text='GHN DistrictID (bắt buộc nếu tính phí GHN)'
     )

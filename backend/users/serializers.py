@@ -276,6 +276,7 @@ from rest_framework import serializers
 from .models import Address
 
 class AddressSerializer(serializers.ModelSerializer):
+    province_id = serializers.IntegerField(required=True)
     province_code = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     district_code = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     ward_code = serializers.CharField(required=False, allow_blank=True, allow_null=True)
@@ -289,13 +290,14 @@ class AddressSerializer(serializers.ModelSerializer):
         """
         Validate dữ liệu khi tạo địa chỉ mới
         """
+        province_id = data.get('province_id')
         district_id = data.get('district_id')
         ward_code = data.get('ward_code')
 
-        # Nếu có GHN shipping thì 2 trường này bắt buộc
-        if district_id is None or ward_code is None:
+        # Nếu có GHN shipping thì 3 trường này bắt buộc
+        if province_id is None or district_id is None or ward_code is None:
             raise serializers.ValidationError(
-                "Cần cung cấp district_id và ward_code từ GHN khi tính phí vận chuyển."
+                "Cần cung cấp province_id, district_id và ward_code từ GHN khi tính phí vận chuyển."
             )
         return data
 

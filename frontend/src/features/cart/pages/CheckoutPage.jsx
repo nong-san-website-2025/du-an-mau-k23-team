@@ -2,70 +2,98 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "../services/CartContext";
-import { 
-  Row, Col, Typography, Divider, Button, Input, Modal, message, 
-  Card, Avatar
+import {
+  Row,
+  Col,
+  Typography,
+  Divider,
+  Button,
+  Input,
+  Modal,
+  message,
+  Card,
+  Avatar,
+  Space,
+  Image
 } from "antd";
-import { TagOutlined, FileTextOutlined, ShopOutlined } from "@ant-design/icons";
+import {
+  TagOutlined,
+  FileTextOutlined,
+  ShopOutlined,
+  PictureOutlined,
+  EnvironmentOutlined,
+  ShoppingOutlined
+} from "@ant-design/icons";
 
 // Styles
 import "../styles/CheckoutPage.css";
 
 // API & Services
 import API from "../../login_register/services/api";
-import { getSellerDetail } from "../../sellers/services/sellerService"; // ✅ Import service lấy thông tin shop
+import { getSellerDetail } from "../../sellers/services/sellerService";
 
 // Components
 import useCheckoutLogic from "../hooks/useCheckoutLogic";
 import AddressSelector from "../components/AddressSelector";
 import VoucherSection from "../components/VoucherSection";
-import PaymentMethod from "../components/PaymentMethod"; 
+import PaymentMethod from "../components/PaymentMethod";
 import PaymentButton from "../components/PaymentButton";
 import AddressAddForm from "../../users/components/Address/AddressAddForm";
-import { intcomma } from "../../../utils/format"; // Hoặc import formatVND của bạn
+import { intcomma } from "../../../utils/format";
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
 
 const CheckoutPage = () => {
   const navigate = useNavigate();
-  // Lấy cartItems, lưu ý ta chỉ render những item ĐÃ ĐƯỢC CHỌN (selected)
   const { cartItems } = useCart();
-  
-  // Lọc ra các sản phẩm được chọn để thanh toán
-  const checkoutItems = cartItems.filter(item => item.selected);
 
-  // State quản lý Modal & Loading
+  // Lọc sản phẩm được chọn
+  const checkoutItems = cartItems.filter((item) => item.selected);
+
   const [isAddAddressModalOpen, setIsAddAddressModalOpen] = useState(false);
   const [isSavingAddress, setIsSavingAddress] = useState(false);
-  
-  // ✅ State lưu thông tin các cửa hàng (để hiển thị tên/avatar shop)
-  const [sellerInfos, setSellerInfos] = useState({}); 
+  const [sellerInfos, setSellerInfos] = useState({});
 
-  // Lấy data từ hook logic
   const {
-    shippingFee, selectedAddressId, manualEntry, discount, payment,
-    isLoading, addresses, total, totalAfterDiscount,
-    selectedItems, selectedAddress, customerName, customerPhone,
-    addressText, note, 
-    setSelectedAddressId, setManualEntry, setPayment, setNote,
-    handleApplyVoucher, handleOrder, 
+    shippingFee,
+    selectedAddressId,
+    manualEntry,
+    discount,
+    payment,
+    isLoading,
+    addresses,
+    total,
+    totalAfterDiscount,
+    selectedItems,
+    selectedAddress,
+    customerName,
+    customerPhone,
+    addressText,
+    note,
+    setSelectedAddressId,
+    setManualEntry,
+    setPayment,
+    setNote,
+    handleApplyVoucher,
+    handleOrder,
     fetchAddresses,
-    setAddresses 
+    setAddresses,
   } = useCheckoutLogic();
 
-  const isAddressValid = (selectedAddressId && selectedAddress?.location) ||
+  const isAddressValid =
+    (selectedAddressId && selectedAddress?.location) ||
     (manualEntry && customerName && customerPhone && addressText);
-  const isReadyToOrder = selectedItems.length > 0 && isAddressValid && shippingFee > 0;
+  const isReadyToOrder =
+    selectedItems.length > 0 && isAddressValid && shippingFee > 0;
 
-  // ----------------------------------------------------------------
-  // ✅ 1. LOGIC LOAD THÔNG TIN SELLER (Giống CartPage)
-  // ----------------------------------------------------------------
+  // 1. LOGIC LOAD SELLER INFO
   useEffect(() => {
     const loadSellerInfos = async () => {
       const storeIds = new Set();
       checkoutItems.forEach((item) => {
-        const storeId = item.product_data?.store?.id || item.product?.store?.id;
+        const storeId =
+          item.product_data?.store?.id || item.product?.store?.id;
         if (storeId) storeIds.add(storeId);
       });
 
@@ -76,7 +104,7 @@ const CheckoutPage = () => {
             const sellerData = await getSellerDetail(storeId);
             newSellerInfos[storeId] = sellerData;
           } catch (err) {
-            console.warn(`❌ Không tải được thông tin seller ${storeId}:`, err);
+            console.warn(`❌ Lỗi tải thông tin seller ${storeId}:`, err);
             newSellerInfos[storeId] = { store_name: "Cửa hàng", image: null };
           }
         }
@@ -88,13 +116,12 @@ const CheckoutPage = () => {
       loadSellerInfos();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cartItems]); // Chạy lại khi cart thay đổi
+  }, [cartItems]);
 
-  // ----------------------------------------------------------------
-  // ✅ 2. LOGIC NHÓM SẢN PHẨM THEO STORE ID
-  // ----------------------------------------------------------------
+  // 2. GROUP ITEMS BY STORE
   const groupedItems = checkoutItems.reduce((acc, item) => {
-    const storeId = item.product_data?.store?.id || item.product?.store?.id || "store-less";
+    const storeId =
+      item.product_data?.store?.id || item.product?.store?.id || "store-less";
     if (!acc[storeId]) {
       acc[storeId] = { items: [] };
     }
@@ -102,9 +129,7 @@ const CheckoutPage = () => {
     return acc;
   }, {});
 
-  // ----------------------------------------------------------------
-  // LOGIC ĐỊA CHỈ (Giữ nguyên)
-  // ----------------------------------------------------------------
+  // 3. LOGIC ADDRESS
   const handleAddressAddedSuccess = async (newAddressData) => {
     try {
       setIsSavingAddress(true);
@@ -116,7 +141,7 @@ const CheckoutPage = () => {
         setAddresses((prevList) => [...prevList, createdAddress]);
         setSelectedAddressId(createdAddress.id);
       } else {
-        if (typeof fetchAddresses === 'function') await fetchAddresses();
+        if (typeof fetchAddresses === "function") await fetchAddresses();
       }
       setIsAddAddressModalOpen(false);
     } catch (error) {
@@ -132,7 +157,7 @@ const CheckoutPage = () => {
       return (
         <PaymentButton
           amount={totalAfterDiscount}
-          orderData={{}} // Điền order data thực tế
+          orderData={{}}
           disabled={!isReadyToOrder || isLoading}
         />
       );
@@ -145,10 +170,51 @@ const CheckoutPage = () => {
         loading={isLoading}
         onClick={handleOrder}
         disabled={!isReadyToOrder}
-        style={{ height: 48, fontSize: 16, fontWeight: 600, background: '#00b96b', borderColor: '#00b96b' }}
+        style={{
+          height: 48,
+          fontSize: 16,
+          fontWeight: 600,
+          background: "#00b96b",
+          borderColor: "#00b96b",
+        }}
       >
         Đặt hàng
       </Button>
+    );
+  };
+
+  // --- SUB-COMPONENT: RENDER IMAGE WITH FALLBACK ---
+  const ProductImage = ({ src, alt }) => {
+    if (!src) {
+      return (
+        <div
+          style={{
+            width: 80,
+            height: 80,
+            background: "#f5f5f5",
+            borderRadius: 6,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            border: "1px solid #eee",
+          }}
+        >
+          <PictureOutlined style={{ fontSize: 24, color: "#bfbfbf" }} />
+        </div>
+      );
+    }
+    return (
+      <img
+        src={src}
+        alt={alt}
+        style={{
+          width: 80,
+          height: 80,
+          objectFit: "cover",
+          borderRadius: 6,
+          border: "1px solid #f0f0f0",
+        }}
+      />
     );
   };
 
@@ -169,9 +235,7 @@ const CheckoutPage = () => {
               onAddNew={() => setIsAddAddressModalOpen(true)}
             />
 
-            {/* ----------------------------------------------------- */}
-            {/* ✅ 3. HIỂN THỊ DANH SÁCH THEO NHÓM CỬA HÀNG */}
-            {/* ----------------------------------------------------- */}
+            {/* ✅ KHU VỰC HIỂN THỊ DANH SÁCH SẢN PHẨM (ĐÃ REFACTOR) */}
             <div className="checkout-product-groups" style={{ marginBottom: 20 }}>
               {Object.entries(groupedItems).map(([storeId, { items }]) => {
                 const sellerInfo = sellerInfos[storeId] || {};
@@ -179,66 +243,162 @@ const CheckoutPage = () => {
                 const storeImage = sellerInfo.image;
 
                 return (
-                  <Card 
-                    key={storeId} 
-                    className="checkout-card" 
-                    bodyStyle={{ padding: '16px' }}
-                    style={{ marginBottom: 16 }}
+                  <Card
+                    key={storeId}
+                    className="checkout-card"
+                    bodyStyle={{ padding: "0" }} // Reset padding để custom bên trong
+                    style={{ marginBottom: 16, overflow: "hidden" }}
                   >
-                    {/* Header Shop */}
-                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12, borderBottom: '1px solid #f0f0f0', paddingBottom: 8 }}>
-                      <Avatar src={storeImage} icon={<ShopOutlined />} size="small" style={{ marginRight: 8 }} />
-                      <Text strong>{storeName}</Text>
+                    {/* Header Shop - Thiết kế tách biệt */}
+                    <div
+                      style={{
+                        padding: "12px 16px",
+                        borderBottom: "1px solid #f0f0f0",
+                        display: "flex",
+                        alignItems: "center",
+                        background: "#fafafa",
+                      }}
+                    >
+                      <Space>
+                        <Avatar
+                          src={storeImage}
+                          icon={<ShopOutlined />}
+                          size="small"
+                          style={{ backgroundColor: "#87d068" }}
+                        />
+                        <Text strong style={{ fontSize: 15 }}>
+                          {storeName}
+                        </Text>
+                        <Divider type="vertical" />
+                        <Button
+                          type="link"
+                          size="small"
+                          icon={<ShopOutlined />}
+                          style={{ padding: 0 }}
+                        >
+                          Xem Shop
+                        </Button>
+                      </Space>
                     </div>
 
-                    {/* List Items trong Shop đó */}
-                    {items.map((item) => {
-                      const prod = item.product_data || item.product || {};
-                      const price = Number(prod.price) || 0;
-                      const qty = Number(item.quantity) || 1;
-                      
-                      return (
-                        <div key={item.id || prod.id} style={{ display: 'flex', marginBottom: 12 }}>
-                          <div style={{ marginRight: 12 }}>
-                             <img 
-                               src={prod.image} 
-                               alt={prod.name} 
-                               style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 4, background: '#f5f5f5' }} 
-                             />
+                    {/* List Items - Sử dụng Grid System */}
+                    <div style={{ padding: "16px" }}>
+                      {items.map((item, index) => {
+                        const prod = item.product_data || item.product || {};
+                        const price = Number(prod.price) || 0;
+                        const qty = Number(item.quantity) || 1;
+                        const subtotal = price * qty;
+
+                        return (
+                          <div key={item.id || prod.id}>
+                            <Row
+                              gutter={[16, 16]}
+                              align="middle"
+                              style={{ flexWrap: "nowrap" }} // Ngăn vỡ layout trên mobile nhỏ
+                            >
+                              {/* Cột 1: Ảnh sản phẩm */}
+                              <Col flex="80px">
+                                <ProductImage src={prod.image} alt={prod.name} />
+                              </Col>
+
+                              {/* Cột 2: Thông tin chi tiết */}
+                              <Col flex="auto">
+                                <div style={{ display: 'flex', flexDirection: 'column', height: '80px', justifyContent: 'space-between' }}>
+                                    <div>
+                                        <Text
+                                          ellipsis={{ tooltip: prod.name }}
+                                          style={{
+                                            fontSize: 15,
+                                            fontWeight: 500,
+                                            marginBottom: 4,
+                                            maxWidth: "100%",
+                                            display: "block",
+                                          }}
+                                        >
+                                          {prod.name}
+                                        </Text>
+                                        
+                                    </div>
+                                    
+                                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end'}}>
+                                         <Text style={{ fontSize: 13 }}>
+                                            Đơn giá: {intcomma(price)}₫
+                                          </Text>
+                                          <Text type="secondary">x{qty}</Text>
+                                    </div>
+                                </div>
+                              </Col>
+
+                              {/* Cột 3: Thành tiền (Căn phải) - Ẩn trên mobile quá nhỏ nếu cần */}
+                              <Col
+                                flex="100px"
+                                style={{ textAlign: "right", alignSelf: "flex-end", paddingBottom: 4 }}
+                              >
+                                <Text strong style={{ color: "#fa541c", fontSize: 16 }}>
+                                  {intcomma(subtotal)}₫
+                                </Text>
+                              </Col>
+                            </Row>
+
+                            {/* Divider giữa các sản phẩm (trừ sản phẩm cuối) */}
+                            {index < items.length - 1 && (
+                              <Divider style={{ margin: "16px 0" }} dashed />
+                            )}
                           </div>
-                          <div style={{ flex: 1 }}>
-                            <Text ellipsis style={{ width: '100%', display: 'block' }}>{prod.name}</Text>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
-                              <Text type="secondary" style={{ fontSize: 13 }}>x{qty}</Text>
-                              <Text strong>{intcomma(price * qty)}₫</Text>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                    
-                    {/* (Optional) Có thể thêm phần chọn đơn vị vận chuyển riêng cho từng shop tại đây */}
+                        );
+                      })}
+                    </div>
+
+                    {/* Footer Shop - Nơi đặt shipping method riêng cho shop (Future proof) */}
+                    <div
+                      style={{
+                        padding: "12px 16px",
+                        borderTop: "1px dashed #f0f0f0",
+                        background: "#fff",
+                      }}
+                    >
+                      <Row align="middle" justify="space-between">
+                         <Col>
+                            <Space size={4}>
+                                <EnvironmentOutlined style={{color: '#1890ff'}}/>
+                                <Text type="secondary" style={{fontSize: 13}}>Đơn vị vận chuyển:</Text>
+                                <Text style={{fontSize: 13}}>Giao Hàng Nhanh (Tiêu chuẩn)</Text>
+                            </Space>
+                         </Col>
+                         <Col>
+                            {/* Chỗ để hiển thị phí ship riêng nếu API hỗ trợ split order */}
+                         </Col>
+                      </Row>
+                    </div>
                   </Card>
                 );
               })}
-              
+
+              {/* Empty State */}
               {checkoutItems.length === 0 && (
-                <div style={{ textAlign: 'center', padding: 20 }}>
-                  <Text type="secondary">Chưa có sản phẩm nào được chọn.</Text>
-                  <Button type="link" onClick={() => navigate('/cart')}>Quay lại giỏ hàng</Button>
+                <div style={{ textAlign: "center", padding: 40, background: '#fff', borderRadius: 8 }}>
+                  <ShoppingOutlined /> {/* Giả sử có icon này hoặc dùng Empty của Antd */}
+                  <Text type="secondary" style={{display: 'block', margin: '10px 0'}}>Chưa có sản phẩm nào được chọn.</Text>
+                  <Button type="primary" onClick={() => navigate("/cart")}>
+                    Quay lại giỏ hàng
+                  </Button>
                 </div>
               )}
             </div>
 
             <div className="checkout-card">
-              <div className="card-header"><TagOutlined /> Mã giảm giá</div>
+              <div className="card-header">
+                <TagOutlined /> Mã giảm giá
+              </div>
               <VoucherSection total={total} onApply={handleApplyVoucher} />
             </div>
 
             <PaymentMethod payment={payment} setPayment={setPayment} />
 
             <div className="checkout-card">
-              <div className="card-header fs-5 mb-2" ><FileTextOutlined /> Ghi chú</div>
+              <div className="card-header fs-5 mb-2">
+                <FileTextOutlined /> Ghi chú
+              </div>
               <TextArea
                 rows={2}
                 placeholder="Lời nhắn cho người bán hoặc shipper..."
@@ -273,14 +433,31 @@ const CheckoutPage = () => {
 
               <div className="summary-row total">
                 <Text>Tổng cộng</Text>
-                <div style={{ textAlign: 'right' }}>
-                  <div className="total-price">{intcomma(totalAfterDiscount)}₫</div>
+                <div style={{ textAlign: "right" }}>
+                  <div className="total-price">
+                    {intcomma(totalAfterDiscount)}₫
+                  </div>
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    (Đã bao gồm VAT nếu có)
+                  </Text>
                 </div>
               </div>
 
               <div className="mobile-hide-btn" style={{ marginTop: 24 }}>
                 {renderCheckoutAction()}
-                {!isReadyToOrder && <Text type="danger" style={{ fontSize: 12, marginTop: 8, display: 'block', textAlign: 'center' }}>Vui lòng điền đủ thông tin giao hàng</Text>}
+                {!isReadyToOrder && (
+                  <Text
+                    type="danger"
+                    style={{
+                      fontSize: 12,
+                      marginTop: 8,
+                      display: "block",
+                      textAlign: "center",
+                    }}
+                  >
+                    Vui lòng điền đủ thông tin giao hàng
+                  </Text>
+                )}
               </div>
             </div>
           </Col>
@@ -290,17 +467,16 @@ const CheckoutPage = () => {
       {/* === MOBILE BAR === */}
       <div className="mobile-bottom-bar">
         <div>
-          <Text type="secondary" style={{ fontSize: 12 }}>Tổng thanh toán</Text>
-          <div style={{ color: '#ff4d4f', fontWeight: 700, fontSize: 18 }}>
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            Tổng thanh toán
+          </Text>
+          <div style={{ color: "#ff4d4f", fontWeight: 700, fontSize: 18 }}>
             {intcomma(totalAfterDiscount)}₫
           </div>
         </div>
-        <div style={{ width: '50%' }}>
-          {renderCheckoutAction()}
-        </div>
+        <div style={{ width: "50%" }}>{renderCheckoutAction()}</div>
       </div>
 
-      {/* Modal thêm địa chỉ (Giữ nguyên) */}
       <Modal
         title="Thêm địa chỉ mới"
         open={isAddAddressModalOpen}
@@ -312,17 +488,16 @@ const CheckoutPage = () => {
         bodyStyle={{ maxHeight: "70vh", overflowY: "auto", padding: "20px" }}
         style={{ top: 50 }}
       >
-        <AddressAddForm 
-            onSuccess={handleAddressAddedSuccess}
-            onCancel={() => setIsAddAddressModalOpen(false)}
+        <AddressAddForm
+          onSuccess={handleAddressAddedSuccess}
+          onCancel={() => setIsAddAddressModalOpen(false)}
         />
         {isSavingAddress && (
-             <div style={{ textAlign: 'center', marginTop: 10 }}>
-                 <Text type="secondary">Đang lưu dữ liệu...</Text>
-             </div>
+          <div style={{ textAlign: "center", marginTop: 10 }}>
+            <Text type="secondary">Đang lưu dữ liệu...</Text>
+          </div>
         )}
       </Modal>
-
     </div>
   );
 };

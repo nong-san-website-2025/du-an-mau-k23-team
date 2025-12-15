@@ -37,26 +37,24 @@ class Command(BaseCommand):
         count_exist = 0
 
         for user in seller_users:
-            # Chọn ngẫu nhiên một địa điểm hợp lệ
             location = random.choice(GHN_SAMPLE_LOCATIONS)
-            
-            # Tạo địa chỉ đầy đủ giả lập
             street_address = fake.street_address()
             full_address = f"{street_address}, {location['address_prefix']}"
 
-            seller, created = Seller.objects.get_or_create(
+            # SỬ DỤNG update_or_create thay vì get_or_create
+            seller, created = Seller.objects.update_or_create(
                 user=user,
                 defaults={
                     "store_name": fake.company(),
                     "bio": fake.text(max_nb_chars=200),
-                    # Sử dụng địa chỉ khớp với location đã chọn để dữ liệu trông thật hơn
-                    "address": full_address, 
+                    "address": full_address,
                     "phone": user.phone if user.phone else fake.phone_number(),
                     "status": random.choice(status_choices),
-                    # GHN Data
+                    
+                    # Dữ liệu GHN sẽ luôn được cập nhật kể cả user cũ
                     "district_id": location["district_id"],
                     "ward_code": location["ward_code"],
-                    # Business Type ngẫu nhiên
+                    
                     "business_type": random.choice([c[0] for c in Seller.BUSINESS_TYPE_CHOICES]),
                     "tax_code": fake.isbn13().replace("-", "") if random.choice([True, False]) else None
                 }
@@ -64,13 +62,10 @@ class Command(BaseCommand):
 
             if created:
                 count_created += 1
-                self.stdout.write(self.style.SUCCESS(f"✅ Created Seller: {seller.store_name} (GHN Dist: {location['district_id']})"))
+                self.stdout.write(self.style.SUCCESS(f"✅ Created: {seller.store_name}"))
             else:
                 count_exist += 1
-                # (Optional) Nếu muốn update lại location cho seller cũ thì uncomment dòng dưới
-                # seller.district_id = location["district_id"]
-                # seller.ward_code = location["ward_code"]
-                # seller.save()
-                # self.stdout.write(self.style.WARNING(f"⚠️ Updated GHN info for {seller.store_name}"))
+                # Thông báo đã update
+                self.stdout.write(self.style.WARNING(f"🔄 Updated: {seller.store_name} with GHN ID {location['district_id']}"))
 
         self.stdout.write(self.style.SUCCESS(f"Hoàn tất! Mới: {count_created}, Tồn tại: {count_exist}"))

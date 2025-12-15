@@ -1,3 +1,4 @@
+// src/components/Address/AddressCard.jsx
 import React, { useState } from "react";
 import { Card, Button, Space, Typography, Tag } from "antd";
 import {
@@ -8,93 +9,96 @@ import {
   DeleteOutlined,
   EnvironmentOutlined,
 } from "@ant-design/icons";
-import AddressEditForm from "./AddressEditForm";
 import { formatLocationName } from "./utils";
 
 const { Text } = Typography;
 
 const AddressCard = ({
   address,
-  isEditing,
-  setEditingAddress,
-  onEdit,
+  onEdit, // Hàm mở modal từ cha
   onDelete,
   setDefaultAddress,
   provinces = [],
-  fetchDistrictsByProvince,
-  fetchWardsByDistrict,
 }) => {
   const locationName = formatLocationName(address, provinces);
   const [showActions, setShowActions] = useState(false);
-
-  if (isEditing) {
-    return (
-      <Card style={{ marginBottom: 16 }}>
-        <AddressEditForm
-          address={address}
-          onEdit={onEdit}
-          setEditingAddress={setEditingAddress}
-          provinces={provinces}
-          fetchDistrictsByProvince={fetchDistrictsByProvince}
-          fetchWardsByDistrict={fetchWardsByDistrict}
-        />
-      </Card>
-    );
-  }
 
   return (
     <Card
       style={{ marginBottom: 16, cursor: "pointer" }}
       type={address.is_default ? "inner" : "default"}
+      // Viền xanh nếu là mặc định
+      className={address.is_default ? "address-card-default" : ""}
+      bodyStyle={address.is_default ? { background: "#f6ffed", border: "1px solid #b7eb8f" } : {}}
       onClick={() => setShowActions(!showActions)}
+      hoverable
     >
-      <Space style={{ width: "100%" }} align="center" size={16} wrap>
-        {/* Thông tin địa chỉ */}
-        <Space size={12} style={{ flex: 1 }}>
-          <UserOutlined />
-          <Text strong>{address.recipient_name}</Text>
-          {address.is_default && <Tag color="gold" icon={<StarOutlined />}>Mặc định</Tag>}
-          <PhoneOutlined /> <Text>{address.phone}</Text>
-          <EnvironmentOutlined /> <Text>{locationName || address.location}</Text>
-        </Space>
+      <Space style={{ width: "100%" }} align="start" size={16} wrap>
+        
+        {/* Thông tin hiển thị */}
+        <div style={{ flex: 1 }}>
+            <Space direction="vertical" size={4}>
+                <Space>
+                    <UserOutlined style={{ color: '#8c8c8c'}} />
+                    <Text strong style={{ fontSize: 16 }}>{address.recipient_name}</Text>
+                    {address.is_default && <Tag color="green" icon={<StarOutlined />}>Mặc định</Tag>}
+                </Space>
+                
+                <Space>
+                    <PhoneOutlined style={{ color: '#8c8c8c'}} />
+                    <Text type="secondary">{address.phone}</Text>
+                </Space>
+                
+                <Space align="start">
+                    <EnvironmentOutlined style={{ color: '#8c8c8c', marginTop: 4}} />
+                    <Text>{locationName || address.location}</Text>
+                </Space>
+            </Space>
+        </div>
 
-        {/* Nút hành động (ẩn/trải khi click) */}
+        {/* Nút hành động (Sửa / Xóa / Mặc định) */}
         {(showActions || address.is_default) && (
-          <Space>
-            {!address.is_default && (
-              <Button
-                type="primary"
-                shape="circle"
-                icon={<StarOutlined />}
-                size="small"
-                title="Đặt làm mặc định"
-                onClick={(e) => {
-                  e.stopPropagation(); // tránh toggle showActions
-                  setDefaultAddress(address.id);
-                }}
-              />
-            )}
-            <Button
-              shape="circle"
-              icon={<EditOutlined />}
-              size="small"
-              title="Chỉnh sửa"
-              onClick={(e) => {
-                e.stopPropagation();
-                setEditingAddress(address.id);
-              }}
-            />
-            <Button
-              danger
-              shape="circle"
-              icon={<DeleteOutlined />}
-              size="small"
-              title="Xóa địa chỉ"
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete(address);
-              }}
-            />
+          <Space direction="vertical" align="end">
+            <Space>
+                {!address.is_default && (
+                <Button
+                    type="text"
+                    style={{ color: '#faad14' }}
+                    icon={<StarOutlined />}
+                    size="small"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        setDefaultAddress(address.id);
+                    }}
+                >
+                    Thiết lập mặc định
+                </Button>
+                )}
+            </Space>
+            
+            <Space>
+                <Button
+                    icon={<EditOutlined />}
+                    size="small"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onEdit(); // Gọi hàm mở Modal
+                    }}
+                >
+                    Sửa
+                </Button>
+                <Button
+                    danger
+                    icon={<DeleteOutlined />}
+                    size="small"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onDelete();
+                    }}
+                >
+                    Xóa
+                </Button>
+            </Space>
           </Space>
         )}
       </Space>

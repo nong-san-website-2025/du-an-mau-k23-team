@@ -9,7 +9,7 @@ import { MAIN_COLOR, ACCENT_COLOR } from "../constants/profileConstants";
 
 // Import Custom Hooks
 import useProfileData from "../hooks/useProfileData";
-import useAddressLogic from "../hooks/useAddressLogic";
+import useAddressLogic from "../../cart/hooks/useCheckoutLogic";
 import useWalletLogic from "../hooks/useWalletLogic";
 
 // Import Components

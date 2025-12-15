@@ -1,182 +1,260 @@
-import React, { useState, useEffect } from "react";
+// src/components/Address/AddressEditForm.jsx
+import React, { useState, useEffect, useMemo } from "react";
+import { Form, Input, Select, Button, Row, Col, Spin, Alert } from "antd";
+import { getProvinces, getDistricts, getWards } from "../../../../services/api/ghnApi";
+
+const { Option } = Select;
+
+const isValidProvinceName = (name) => {
+  if (!name || typeof name !== 'string') return false;
+  if (/[0-9!@#$%^&*()_+=\[\]{};:'"\\|,.<>?/`~]/.test(name)) return false;
+  if (/test/i.test(name)) return false;
+  return true;
+};
 
 const AddressEditForm = ({
   address,
-  onEdit,
-  setEditingAddress,
+  onSave,
+  onCancel,
   provinces = [],
   fetchDistrictsByProvince,
   fetchWardsByDistrict,
 }) => {
-  const [formData, setFormData] = useState({
-    recipient_name: "",
-    phone: "",
-    location: "",
-    province_id: "",
-    district_id: "",
-    ward_id: "",
-  });
-
+  const [form] = Form.useForm();
   const [districts, setDistricts] = useState([]);
   const [wards, setWards] = useState([]);
+  const [isReady, setIsReady] = useState(false);
+  const [pendingFormValues, setPendingFormValues] = useState(null);
 
-  // Load dữ liệu khi address thay đổi
+  const selectedProvince = Form.useWatch("province_id", form);
+  const selectedDistrict = Form.useWatch("district_id", form);
+
+  const filteredProvinces = useMemo(() => {
+    return provinces.filter(p => isValidProvinceName(p.ProvinceName));
+  }, [provinces]);
+
+  // --- 1. LOGIC KHỞI TẠO DỮ LIỆU ---
   useEffect(() => {
-    if (!address) return;
-    setFormData({
-      recipient_name: address.recipient_name || "",
-      phone: address.phone || "",
-      location: address.location || "",
-      province_id: address.province_id || "",
-      district_id: address.district_id || "",
-      ward_id: address.ward_id || "",
-    });
-  }, [address]);
+    const initForm = async () => {
+      if (!address) return;
+      setIsReady(false);
 
-  useEffect(() => {
-    const loadDistricts = async () => {
-      if (!formData.province_id) {
-        setDistricts([]);
-        setFormData((prev) => ({ ...prev, district_id: "", ward_id: "" }));
-        return;
-      }
-      try {
-        const data = await fetchDistrictsByProvince(formData.province_id);
-        setDistricts(data || []);
+      let pId = address.province_id || address.province_code;
+      const dId = address.district_id || address.district_code;
+      const wCode = address.ward_code || address.ward_id;
 
-        // Nếu đang edit, giữ district_id cũ nếu có trong list
-        if (formData.district_id) {
-          const exists = data.find(
-            (d) => d.DistrictID === formData.district_id
-          );
-          if (!exists)
-            setFormData((prev) => ({ ...prev, district_id: "", ward_id: "" }));
+      // Fallback: Lấy province_id từ tên tỉnh trong location
+      if (!pId && address.location) {
+        try {
+          const locationParts = (address.location || '').split(',').map(p => p.trim());
+          if (locationParts && locationParts.length > 0) {
+            const provinceName = locationParts[locationParts.length - 1];
+            const matchingProvince = filteredProvinces.find(p => p.ProvinceName === provinceName);
+            if (matchingProvince) {
+              pId = matchingProvince.ProvinceID;
+            }
+          }
+        } catch (e) {
+          console.error("Error parsing location:", e);
         }
-      } catch (err) {
-        console.error(err);
+      }
+
+      const provinceID = pId ? Number(pId) : null;
+      const districtID = dId ? Number(dId) : null;
+      const wardCode = wCode ? String(wCode) : null;
+
+      try {
+        // A. Tải danh sách Huyện
+        let districtsList = [];
+        if (provinceID) {
+          const distData = await getDistricts(provinceID);
+          districtsList = distData || [];
+        }
+
+        // B. Tải danh sách Xã
+        let wardsList = [];
+        if (districtID) {
+          const wardData = await getWards(districtID);
+          wardsList = wardData || [];
+        }
+
+        // C. Update state với dữ liệu lấy được
+        setDistricts(districtsList);
+        setWards(wardsList);
+
+        // D. Store form values để set sau (đợi state update)
+        setPendingFormValues({
+          recipient_name: address.recipient_name,
+          phone: address.phone,
+          address_detail: address.location ? address.location.split(',')[0] : '', 
+          province_id: provinceID, 
+          district_id: districtID,
+          ward_code: wardCode,
+        });
+
+      } catch (error) {
+        console.error("Lỗi init form:", error);
         setDistricts([]);
+        setWards([]);
+      } finally {
+        setIsReady(true);
       }
     };
-    loadDistricts();
-  }, [formData.province_id, fetchDistrictsByProvince]);
 
-  // Load wards
+    initForm();
+  }, [address, form, filteredProvinces]);
+
+  // --- 1B. SET FORM VALUES AFTER DISTRICTS/WARDS LOADED ---
   useEffect(() => {
-    const loadWards = async () => {
-      if (!formData.district_id) {
-        setWards([]);
-        setFormData((prev) => ({ ...prev, ward_id: "" }));
-        return;
-      }
-      try {
-        const data = await fetchWardsByDistrict(formData.district_id);
-        setWards(data || []);
+    if (pendingFormValues && isReady) {
+      form.setFieldsValue(pendingFormValues);
+      setPendingFormValues(null);
+    }
+  }, [pendingFormValues, isReady, form]);
 
-        // Nếu đang edit, giữ ward_id cũ nếu có trong list
-        if (formData.ward_id) {
-          const exists = data.find((w) => w.WardCode === formData.ward_id);
-          if (!exists) setFormData((prev) => ({ ...prev, ward_id: "" }));
-        }
-      } catch (err) {
-        console.error(err);
-        setWards([]);
-      }
+  // --- 2. LOGIC KHI NGƯỜI DÙNG CHỌN LẠI TỈNH ---
+  useEffect(() => {
+    if (!isReady || !selectedProvince) return;
+    
+    const oldProvId = address?.province_id || address?.province_code;
+    const hasChanged = selectedProvince && Number(selectedProvince) !== Number(oldProvId);
+
+    if (hasChanged) {
+      getDistricts(selectedProvince)
+        .then(data => {
+          setDistricts(data || []);
+          form.setFieldsValue({ district_id: null, ward_code: null });
+          setWards([]);
+        })
+        .catch(err => {
+          console.error("Lỗi load huyện:", err);
+          setDistricts([]);
+        });
+    }
+  }, [selectedProvince, isReady, address]);
+
+  // --- 3. LOGIC KHI NGƯỜI DÙNG CHỌN LẠI HUYỆN ---
+  useEffect(() => {
+    if (!isReady || !selectedDistrict) return;
+    
+    const oldDistId = address?.district_id || address?.district_code;
+    const hasChanged = selectedDistrict && Number(selectedDistrict) !== Number(oldDistId);
+
+    if (hasChanged) {
+      getWards(selectedDistrict)
+        .then(data => {
+          setWards(data || []);
+          form.setFieldsValue({ ward_code: null });
+        })
+        .catch(err => {
+          console.error("Lỗi load xã:", err);
+          setWards([]);
+        });
+    }
+  }, [selectedDistrict, isReady, address]);
+
+
+  // --- 4. SUBMIT FORM ---
+  const onFinish = (values) => {
+    // Tìm tên để ghép chuỗi location hiển thị
+    const p = filteredProvinces.find(x => x.ProvinceID === values.province_id);
+    const d = districts.find(x => x.DistrictID === values.district_id);
+    const w = wards.find(x => String(x.WardCode) === String(values.ward_code));
+
+    // Ghép chuỗi địa chỉ
+    const fullLocation = [
+        values.address_detail.trim(),
+        w?.WardName,
+        d?.DistrictName,
+        p?.ProvinceName
+    ].filter(Boolean).join(", ");
+
+    const payload = {
+        ...values,
+        location: fullLocation,
+        // Đảm bảo gửi đủ 3 trường ID
+        province_id: values.province_id,
+        district_id: values.district_id, 
+        ward_code: values.ward_code
     };
-    loadWards();
-  }, [formData.district_id, fetchWardsByDistrict]); 
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onEdit(formData);
-    setEditingAddress(null);
+    onSave(payload);
   };
 
   return (
-    <form onSubmit={handleSubmit} className="address-edit-form">
-      <input
-        type="text"
-        name="recipient_name"
-        value={formData.recipient_name}
-        onChange={handleChange}
-        placeholder="Họ và tên người nhận"
-        required
-      />
-      <input
-        type="text"
-        name="phone"
-        value={formData.phone}
-        onChange={handleChange}
-        placeholder="Số điện thoại"
-        required
-      />
-      <input
-        type="text"
-        name="location"
-        value={formData.location}
-        onChange={handleChange}
-        placeholder="Địa chỉ chi tiết"
-        required
-      />
+    <Spin spinning={!isReady} tip="Đang tải dữ liệu...">
+        {/* Thông báo nhắc nhở nếu data cũ bị lỗi */}
+        {isReady && !form.getFieldValue("province_id") && (
+            <Alert 
+                message="Dữ liệu Tỉnh/Thành cũ bị thiếu. Vui lòng chọn lại!" 
+                type="warning" 
+                showIcon 
+                style={{marginBottom: 16}}
+            />
+        )}
 
-      <select
-        name="province_id"
-        value={formData.province_id}
-        onChange={handleChange}
-      >
-        <option value="">Chọn tỉnh/thành</option>
-        {provinces.map((p) => (
-          <option key={p.ProvinceID} value={p.ProvinceID}>
-            {p.ProvinceName}
-          </option>
-        ))}
-      </select>
+        <Form form={form} layout="vertical" onFinish={onFinish}>
+            <Row gutter={16}>
+                <Col span={12}>
+                    <Form.Item name="recipient_name" label="Họ tên" rules={[{ required: true }]}>
+                        <Input placeholder="Tên người nhận" />
+                    </Form.Item>
+                </Col>
+                <Col span={12}>
+                    <Form.Item name="phone" label="Số điện thoại" rules={[{ required: true }]}>
+                        <Input placeholder="Số điện thoại" />
+                    </Form.Item>
+                </Col>
+            </Row>
 
-      <select
-        name="district_id"
-        value={formData.district_id}
-        onChange={handleChange}
-        disabled={!districts.length}
-      >
-        <option value="">Chọn quận/huyện</option>
-        {districts.map((d) => (
-          <option key={d.DistrictID} value={d.DistrictID}>
-            {d.DistrictName}
-          </option>
-        ))}
-      </select>
+            <Row gutter={16}>
+                <Col span={8}>
+                    <Form.Item name="province_id" label="Tỉnh/Thành" rules={[{ required: true, message: "Vui lòng chọn Tỉnh" }]}>
+                        <Select placeholder="Chọn Tỉnh" showSearch optionFilterProp="children">
+                            {filteredProvinces.map(p => (
+                                <Option key={p.ProvinceID} value={p.ProvinceID}>{p.ProvinceName}</Option>
+                            ))}
+                        </Select>
+                    </Form.Item>
+                </Col>
+                <Col span={8}>
+                    <Form.Item name="district_id" label="Quận/Huyện" rules={[{ required: true, message: "Vui lòng chọn Huyện" }]}>
+                        <Select 
+                            placeholder="Chọn Quận" 
+                            disabled={!districts.length}
+                            showSearch optionFilterProp="children"
+                        >
+                            {districts.map(d => (
+                                <Option key={d.DistrictID} value={d.DistrictID}>{d.DistrictName}</Option>
+                            ))}
+                        </Select>
+                    </Form.Item>
+                </Col>
+                <Col span={8}>
+                    <Form.Item name="ward_code" label="Phường/Xã" rules={[{ required: true, message: "Vui lòng chọn Xã" }]}>
+                        <Select 
+                            placeholder="Chọn Xã" 
+                            disabled={!wards.length}
+                            showSearch optionFilterProp="children"
+                        >
+                            {wards.map(w => (
+                                <Option key={w.WardCode} value={w.WardCode}>{w.WardName}</Option>
+                            ))}
+                        </Select>
+                    </Form.Item>
+                </Col>
+            </Row>
 
-      <select
-        name="ward_id"
-        value={formData.ward_id}
-        onChange={handleChange}
-        disabled={!wards.length}
-      >
-        <option value="">Chọn phường/xã</option>
-        {wards.map((w) => (
-          <option key={w.WardCode} value={w.WardCode}>
-            {w.WardName}
-          </option>
-        ))}
-      </select>
+            <Form.Item name="address_detail" label="Địa chỉ chi tiết" rules={[{ required: true }]}>
+                <Input.TextArea rows={2} placeholder="Số nhà, tên đường..." />
+            </Form.Item>
 
-      <div className="form-actions">
-        <button type="submit" className="save-btn">
-          Lưu
-        </button>
-        <button
-          type="button"
-          className="cancel-btn"
-          onClick={() => setEditingAddress(null)}
-        >
-          Hủy
-        </button>
-      </div>
-    </form>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                <Button onClick={onCancel}>Hủy bỏ</Button>
+                <Button type="primary" htmlType="submit">Lưu thay đổi</Button>
+            </div>
+        </Form>
+    </Spin>
   );
 };
 
