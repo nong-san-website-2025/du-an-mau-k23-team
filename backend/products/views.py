@@ -607,12 +607,32 @@ class ProductViewSet(viewsets.ModelViewSet):
         product.save(update_fields=["is_hidden"])
         return Response({"hidden": product.is_hidden, "message": "Đã thay đổi trạng thái hiển thị"})
 
-    @action(detail=True, methods=["post"])
+    @action(detail=True, methods=["post"], permission_classes=[IsAdminUser])
     def ban(self, request, pk=None):
         product = self.get_object()
+        
+        # 1. Lấy lý do từ client gửi lên
+        reason = request.data.get('reason', '').strip()
+        
+        # 2. Cập nhật trạng thái
         product.status = "banned"
-        product.save()
-        return Response({"message": "Banned"}, status=200)
+        
+        # 3. Lưu lý do khóa (tái sử dụng trường reject_reason hoặc tạo field mới lock_reason tùy bạn)
+        if reason:
+            product.reject_reason = reason
+        else:
+            product.reject_reason = "Sản phẩm bị khóa bởi Admin (Không có lý do cụ thể)"
+            
+        # 4. Ẩn sản phẩm khỏi trang chủ/search
+        product.is_hidden = True 
+        
+        product.save(update_fields=["status", "reject_reason", "is_hidden"])
+        
+        return Response({
+            "message": "Đã khóa sản phẩm thành công", 
+            "id": product.id,
+            "status": "banned"
+        }, status=200)
 
     @action(detail=True, methods=["post"], permission_classes=[IsAuthenticated])
     def unban(self, request, pk=None):

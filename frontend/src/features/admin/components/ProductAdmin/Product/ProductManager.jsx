@@ -32,20 +32,24 @@ import {
   CloseCircleOutlined,
   DiffOutlined,
   PictureOutlined,
-  LockOutlined, // Icon Khóa
+  LockOutlined,
+  UnlockOutlined, // Icon Mở khóa
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 import ProductStatusTag from "./ProductStatusTag"; // Giả định component này
 import { intcomma } from "../../../../../utils/format"; // Giả định utils này
+import ButtonAction from "../../../../../components/ButtonAction"; // Component tái sử dụng vừa tạo
 
 const { Text, Paragraph } = Typography;
 const { TextArea } = Input;
 
 // --- Helper Functions ---
 const checkIsPending = (status) => ["pending", "pending_update"].includes(status?.toLowerCase());
-const checkIsApproved = (status) => status?.toLowerCase() === "active" || status?.toLowerCase() === "approved"; // Điều chỉnh tùy theo value status thật của bạn
+const checkIsApproved = (status) => ["active", "approved"].includes(status?.toLowerCase());
+const checkIsBanned = (status) => ["banned", "locked"].includes(status?.toLowerCase());
 
 // --- SUB-COMPONENT: Product Card (Grid View) ---
+// Giữ nguyên giao diện GridView như cũ để đảm bảo trải nghiệm người dùng
 const ProductGridItem = ({ record, isSelected, onSelect, onView, onApprove, onOpenReject, onCompare, onOpenLock }) => {
   const isPending = checkIsPending(record.status);
   const isApproved = checkIsApproved(record.status);
@@ -158,7 +162,8 @@ const ProductManager = ({
   data,
   onApprove,
   onReject,
-  onLock, // <--- Props hàm xử lý khóa sản phẩm
+  onLock,
+  onUnban, // Prop mới để mở khóa
   onView,
   onViewShop,
   onCompare,
@@ -167,9 +172,10 @@ const ProductManager = ({
   viewModeProp = "table"
 }) => {
   const [viewMode, setViewMode] = useState(viewModeProp);
+  
   // Modal states
   const [rejectModal, setRejectModal] = useState({ open: false, ids: [], reason: "", quickReason: "" });
-  const [lockModal, setLockModal] = useState({ open: false, ids: [], reason: "" }); // <--- State cho Modal Khóa
+  const [lockModal, setLockModal] = useState({ open: false, ids: [], reason: "" });
 
   React.useEffect(() => { setViewMode(viewModeProp) }, [viewModeProp]);
 
@@ -191,7 +197,7 @@ const ProductManager = ({
     setRejectModal({ ...rejectModal, open: false });
   };
 
-  // --- Lock Logic (Mới) ---
+  // --- Lock Logic ---
   const openLock = (ids) => setLockModal({ open: true, ids: Array.isArray(ids) ? ids : [ids], reason: "" });
   const confirmLock = () => {
       if (!lockModal.reason.trim()) return message.error("Vui lòng nhập lý do khóa sản phẩm!");
@@ -199,7 +205,7 @@ const ProductManager = ({
       setLockModal({ ...lockModal, open: false });
   };
 
-  // Re-up History Popover Content (Giữ nguyên)
+  // Re-up History Popover Content
   const renderReupHistory = (history) => (
     <div style={{ width: 320, maxHeight: 400, overflowY: 'auto', padding: 8 }}>
       <div style={{ marginBottom: 16, padding: '8px 12px', background: '#fff2f0', border: '1px solid #ffccc7', borderRadius: 6 }}>
@@ -293,47 +299,74 @@ const ProductManager = ({
       render: (st) => <ProductStatusTag status={st} />
     },
     {
-      title: "Thao tác", // Đổi tên cột
+      title: "Thao tác",
       key: "action",
       width: 140,
       fixed: 'right',
       render: (_, r) => {
           const isPending = checkIsPending(r.status);
           const isApproved = checkIsApproved(r.status);
+          const isBanned = checkIsBanned(r.status);
 
-          return (
-            <Space>
-              {/* Nút Xem chi tiết - Luôn hiển thị */}
-              <Tooltip title="Chi tiết">
-                <Button type="text" shape="circle" icon={<EyeOutlined />} onClick={() => onView(r)} />
-              </Tooltip>
+          // Cấu hình danh sách hành động sử dụng ButtonAction
+          const actions = [
+            // 1. Xem chi tiết (Luôn hiện)
+            {
+              actionType: "view",
+              icon: <EyeOutlined />,
+              tooltip: "Chi tiết",
+              onClick: () => onView(r)
+            },
+            // 2. So sánh (Chỉ hiện khi Pending Update)
+            {
+              actionType: "update",
+              icon: <DiffOutlined />,
+              tooltip: "So sánh thay đổi",
+              show: r.status === "pending_update",
+              onClick: () => onCompare(r)
+            },
+            // 3. Duyệt (Chỉ hiện khi Pending thường)
+            {
+              actionType: "approve",
+              icon: <CheckOutlined />,
+              tooltip: "Duyệt sản phẩm",
+              show: r.status === "pending",
+              onClick: () => onApprove(r.id)
+            },
+            // 4. Từ chối (Hiện khi Pending hoặc Update)
+            {
+              actionType: "reject",
+              icon: <CloseOutlined />,
+              tooltip: "Từ chối",
+              show: isPending,
+              onClick: () => openReject(r.id)
+            },
+            // 5. KHÓA (Hiện khi đang Approved/Active - Màu Vàng Cam)
+            {
+              actionType: "lock",
+              icon: <LockOutlined />,
+              tooltip: "Khóa sản phẩm",
+              show: isApproved,
+              buttonProps: { style: { color: '#faad14' } }, // Override màu vàng
+              onClick: () => openLock(r.id)
+            },
+            // 6. MỞ KHÓA (Hiện khi đang Banned - Màu Xanh Lá)
+            {
+              actionType: "unlock",
+              icon: <UnlockOutlined />,
+              tooltip: "Mở khóa lại",
+              show: isBanned,
+              confirm: {
+                title: "Mở khóa sản phẩm này?",
+                description: "Sản phẩm sẽ được hiển thị lại trên sàn.",
+                okText: "Mở khóa",
+                cancelText: "Hủy"
+              },
+              onClick: () => onUnban && onUnban(r.id)
+            }
+          ];
 
-              {/* Nút cho trạng thái Chờ duyệt */}
-              {isPending && (
-                  <>
-                     {r.status === "pending_update" ? (
-                        <Tooltip title="So sánh">
-                          <Button type="text" shape="circle" icon={<DiffOutlined style={{ color: '#1890ff' }} />} onClick={() => onCompare(r)} />
-                        </Tooltip>
-                      ) : (
-                        <Tooltip title="Duyệt">
-                          <Button type="text" shape="circle" icon={<CheckOutlined style={{ color: '#52c41a' }} />} onClick={() => onApprove(r.id)} />
-                        </Tooltip>
-                      )}
-                      <Tooltip title="Từ chối">
-                        <Button type="text" shape="circle" icon={<CloseOutlined style={{ color: '#ff4d4f' }} />} onClick={() => openReject(r.id)} />
-                      </Tooltip>
-                  </>
-              )}
-
-              {/* Nút cho trạng thái Đã duyệt (Khóa) */}
-              {isApproved && (
-                  <Tooltip title="Khóa sản phẩm">
-                      <Button type="text" shape="circle" icon={<LockOutlined style={{ color: '#faad14' }} />} onClick={() => openLock(r.id)} />
-                  </Tooltip>
-              )}
-            </Space>
-          );
+          return <ButtonAction actions={actions} record={r} />;
       }
     }
   ];
@@ -377,7 +410,7 @@ const ProductManager = ({
                 onApprove={onApprove}
                 onCompare={onCompare}
                 onOpenReject={openReject}
-                onOpenLock={openLock} // Truyền prop mở modal khóa
+                onOpenLock={openLock}
               />
             </List.Item>
           )}
@@ -409,7 +442,7 @@ const ProductManager = ({
                 </Button>
               </>
             ) : (
-                // Nếu chọn các item đã duyệt, có thể hiện nút Khóa hàng loạt (tùy chọn)
+               // Nếu chọn các item đã duyệt, hiển thị nút Khóa hàng loạt
                <Button type="default" shape="round" icon={<LockOutlined />} style={{color: '#faad14', borderColor: '#faad14'}} onClick={() => openLock(selectedRowKeys)}>
                   Khóa ({selectedRowKeys.length})
                </Button>
@@ -443,7 +476,7 @@ const ProductManager = ({
         )}
       </Modal>
 
-      {/* --- LOCK MODAL (MỚI) --- */}
+      {/* --- LOCK MODAL --- */}
       <Modal
         title={<Space><LockOutlined style={{ color: '#faad14' }} /> Xác nhận khóa sản phẩm</Space>}
         open={lockModal.open}
@@ -463,7 +496,7 @@ const ProductManager = ({
             placeholder="Ví dụ: Hết hàng, vi phạm chính sách sau kiểm duyệt, yêu cầu từ cơ quan chức năng..."
             value={lockModal.reason}
             onChange={e => setLockModal({ ...lockModal, reason: e.target.value })}
-          />
+         />
       </Modal>
     </div>
   );

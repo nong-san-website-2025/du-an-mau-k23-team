@@ -22,16 +22,17 @@ import {
   FileTextOutlined,
   RocketOutlined,
   SearchOutlined,
+  LockOutlined, // <--- 1. Import thêm icon Lock
 } from "@ant-design/icons";
 import axios from "axios";
 
 // Import Components
-import ProductManager from "../../components/ProductAdmin/Product/ProductManager"; 
+import ProductManager from "../../components/ProductAdmin/Product/ProductManager";
 import SellerSelect from "../../components/ProductAdmin/Product/SellerSelect";
 import CategorySelect from "../../components/ProductAdmin/Product/CategorySelect";
 import AdminPageLayout from "../../components/AdminPageLayout";
 import ProductDetailDrawer from "../../components/ProductAdmin/Product/ProductDetailModal";
-import ProductComparisonModal from "../../components/ProductAdmin/Product/ProductComparisonModal"; // Import Modal So sánh
+import ProductComparisonModal from "../../components/ProductAdmin/Product/ProductComparisonModal";
 import ShopDetailDrawer from "../../components/ProductAdmin/Product/ShopDetailDrawer";
 
 const { Text } = Typography;
@@ -91,7 +92,7 @@ const ApprovalProductsPage = () => {
   const [shopDrawerVisible, setShopDrawerVisible] = useState(false);
   const [selectedShopProfile, setSelectedShopProfile] = useState(null);
 
-  // --- STATE MỚI CHO COMPARISON MODAL ---
+  // Comparison Modal
   const [comparisonModalVisible, setComparisonModalVisible] = useState(false);
   const [selectedComparisonProduct, setSelectedComparisonProduct] = useState(null);
 
@@ -132,23 +133,25 @@ const ApprovalProductsPage = () => {
       let matchesTab = false;
       if (activeTab === "all") matchesTab = true;
       else if (activeTab === "action_required") matchesTab = ["pending", "pending_update"].includes(item.status);
+      else if (activeTab === "banned") matchesTab = ["banned", "locked"].includes(item.status); // <--- 2. Logic cho tab Banned
       else matchesTab = item.status === activeTab;
+      
       if (!matchesTab) return false;
 
       // 2. Risk Filter
       if (["action_required", "pending"].includes(activeTab)) {
         if (riskFilter === "suspicious" && !((item.ai_score >= 80) || item.is_flagged)) return false;
         if (riskFilter === "new_shop") {
-            const createdDate = item.seller?.created_at ? new Date(item.seller.created_at) : new Date(0);
-            if ((new Date() - createdDate) / (86400000) > 7) return false;
+          const createdDate = item.seller?.created_at ? new Date(item.seller.created_at) : new Date(0);
+          if ((new Date() - createdDate) / (86400000) > 7) return false;
         }
         if (riskFilter === "reup" && !item.is_reup) return false;
       }
 
       // 3. Search & Common Filters
       const searchKey = searchTerm.toLowerCase();
-      const matchesSearch = (item.name || "").toLowerCase().includes(searchKey) || 
-                            (item.seller?.store_name || "").toLowerCase().includes(searchKey);
+      const matchesSearch = (item.name || "").toLowerCase().includes(searchKey) ||
+        (item.seller?.store_name || "").toLowerCase().includes(searchKey);
       const matchesSeller = sellerFilter ? String(item.seller?.id) === String(sellerFilter) : true;
       const matchesCategory = categoryFilter ? String(item.category_id) === String(categoryFilter) : true;
 
@@ -161,29 +164,85 @@ const ApprovalProductsPage = () => {
     const ids = Array.isArray(idOrIds) ? idOrIds : [idOrIds];
     if (ids.length === 0) return;
     const hideLoading = message.loading("Đang xử lý...", 0);
-    
-    try {
-        await Promise.all(ids.map(id => {
-            if (isReject) return api.post(`/products/${id}/reject/`, { reason }, { headers: getAuthHeaders() });
-            else return api.post(`/products/${id}/approve/`, {}, { headers: getAuthHeaders() });
-        }));
 
-        hideLoading();
-        message.success(`Đã ${isReject ? "từ chối" : "duyệt"} thành công.`);
-        fetchProducts();
-        setSelectedRowKeys([]);
-        setDrawerVisible(false);
-        setComparisonModalVisible(false); // Đóng modal so sánh nếu đang mở
+    try {
+      await Promise.all(ids.map(id => {
+        if (isReject) return api.post(`/products/${id}/reject/`, { reason }, { headers: getAuthHeaders() });
+        else return api.post(`/products/${id}/approve/`, {}, { headers: getAuthHeaders() });
+      }));
+
+      hideLoading();
+      message.success(`Đã ${isReject ? "từ chối" : "duyệt"} thành công.`);
+      fetchProducts();
+      setSelectedRowKeys([]);
+      setDrawerVisible(false);
+      setComparisonModalVisible(false); 
     } catch (e) {
-        hideLoading();
-        message.error("Có lỗi xảy ra khi xử lý.");
+      hideLoading();
+      message.error("Có lỗi xảy ra khi xử lý.");
     }
   };
 
-  // --- Handler mở modal so sánh ---
+  const processLock = async (idOrIds, reason) => {
+    const ids = Array.isArray(idOrIds) ? idOrIds : [idOrIds];
+    if (ids.length === 0) return;
+
+    const hideLoading = message.loading("Đang xử lý khóa sản phẩm...", 0);
+
+    try {
+      await Promise.all(
+        ids.map((id) =>
+          api.post(
+            `/products/${id}/ban/`,
+            { reason: reason }, 
+            { headers: getAuthHeaders() }
+          )
+        )
+      );
+
+      hideLoading();
+      message.warning(`Đã khóa ${ids.length} sản phẩm.`);
+      fetchProducts();
+      setSelectedRowKeys([]); 
+    } catch (e) {
+      hideLoading();
+      console.error(e);
+      message.error("Có lỗi xảy ra khi khóa sản phẩm.");
+    }
+  };
+
+  // --- 3. Hàm xử lý MỞ KHÓA (Unban) ---
+  const processUnban = async (idOrIds) => {
+     const ids = Array.isArray(idOrIds) ? idOrIds : [idOrIds];
+     if (ids.length === 0) return;
+ 
+     const hideLoading = message.loading("Đang mở khóa sản phẩm...", 0);
+ 
+     try {
+       await Promise.all(
+         ids.map((id) =>
+           api.post(
+             `/products/${id}/unban/`, 
+             {}, 
+             { headers: getAuthHeaders() }
+           )
+         )
+       );
+ 
+       hideLoading();
+       message.success(`Đã mở khóa ${ids.length} sản phẩm.`);
+       fetchProducts();
+       setSelectedRowKeys([]); 
+     } catch (e) {
+       hideLoading();
+       console.error(e);
+       message.error("Có lỗi xảy ra khi mở khóa sản phẩm.");
+     }
+  };
+
   const handleCompare = (product) => {
-      setSelectedComparisonProduct(product);
-      setComparisonModalVisible(true);
+    setSelectedComparisonProduct(product);
+    setComparisonModalVisible(true);
   };
 
   // --- Stats ---
@@ -191,18 +250,19 @@ const ApprovalProductsPage = () => {
     action: data.filter((i) => ["pending", "pending_update"].includes(i.status)).length,
     approved: data.filter((i) => i.status === "approved").length,
     rejected: data.filter((i) => i.status === "rejected").length,
+    banned: data.filter((i) => ["banned", "locked"].includes(i.status)).length, // <--- 4. Đếm số lượng banned
   }), [data]);
 
   const riskCounts = useMemo(() => {
-     const pendings = data.filter(i => ["pending", "pending_update"].includes(i.status));
-     return {
-         all: pendings.length,
-         new_shop: pendings.filter(i => {
-             const d = i.seller?.created_at ? new Date(i.seller.created_at) : new Date(0);
-             return (new Date() - d) / (86400000) <= 7;
-         }).length,
-         reup: pendings.filter(i => i.is_reup).length
-     }
+    const pendings = data.filter(i => ["pending", "pending_update"].includes(i.status));
+    return {
+      all: pendings.length,
+      new_shop: pendings.filter(i => {
+        const d = i.seller?.created_at ? new Date(i.seller.created_at) : new Date(0);
+        return (new Date() - d) / (86400000) <= 7;
+      }).length,
+      reup: pendings.filter(i => i.is_reup).length
+    }
   }, [data]);
 
   // --- Card Component ---
@@ -234,18 +294,22 @@ const ApprovalProductsPage = () => {
       <div style={{ maxWidth: 1400, margin: "0 auto" }}>
         <Card bordered={false} bodyStyle={{ padding: 0 }} style={{ borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
           <div style={{ background: '#fafafa', padding: "16px 24px 0" }}>
-             <Tabs
-                activeKey={activeTab}
-                onChange={(k) => { setActiveTab(k); setRiskFilter("all"); }}
-                size="large"
-                items={[
-                    { label: <Space><WarningOutlined /> Cần xử lý <Badge count={tabCounts.action} style={{ backgroundColor: '#faad14' }} /></Space>, key: "action_required" },
-                    { label: <Space><CheckCircleOutlined /> Đã duyệt <span style={{color: '#999'}}>({tabCounts.approved})</span></Space>, key: "approved" },
-                    { label: <Space><CloseCircleOutlined /> Từ chối <span style={{color: '#999'}}>({tabCounts.rejected})</span></Space>, key: "rejected" },
-                    { label: "Tất cả", key: "all" },
-                ]}
-                style={{ marginBottom: 0 }}
-             />
+            <Tabs
+              activeKey={activeTab}
+              onChange={(k) => { setActiveTab(k); setRiskFilter("all"); }}
+              size="large"
+              items={[
+                { label: <Space><WarningOutlined /> Cần xử lý <Badge count={tabCounts.action} style={{ backgroundColor: '#faad14' }} /></Space>, key: "action_required" },
+                { label: <Space><CheckCircleOutlined /> Đã duyệt <span style={{ color: '#999' }}>({tabCounts.approved})</span></Space>, key: "approved" },
+                
+                // <--- 5. Thêm Tab Đã khóa vào giao diện
+                { label: <Space><LockOutlined /> Đã khóa <span style={{ color: '#999' }}>({tabCounts.banned})</span></Space>, key: "banned" },
+                
+                { label: <Space><CloseCircleOutlined /> Từ chối <span style={{ color: '#999' }}>({tabCounts.rejected})</span></Space>, key: "rejected" },
+                { label: "Tất cả", key: "all" },
+              ]}
+              style={{ marginBottom: 0 }}
+            />
           </div>
 
           <div style={{ padding: 24 }}>
@@ -261,27 +325,32 @@ const ApprovalProductsPage = () => {
             )}
 
             <div style={{ marginBottom: 20, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                <Input prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />} placeholder="Tìm kiếm..." style={{ width: 300 }} value={searchTerm} onChange={e => setSearchTerm(e.target.value)} allowClear />
-                <SellerSelect style={{ width: 200 }} onChange={setSellerFilter} placeholder="Lọc theo Shop" />
-                <CategorySelect style={{ width: 200 }} onChange={setCategoryFilter} placeholder="Lọc theo Danh mục" />
+              <Input prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />} placeholder="Tìm kiếm..." style={{ width: 300 }} value={searchTerm} onChange={e => setSearchTerm(e.target.value)} allowClear />
+              <SellerSelect style={{ width: 200 }} onChange={setSellerFilter} placeholder="Lọc theo Shop" />
+              <CategorySelect style={{ width: 200 }} onChange={setCategoryFilter} placeholder="Lọc theo Danh mục" />
             </div>
 
             {loading ? (
-                 <div style={{ textAlign: "center", padding: "60px 0" }}><Spin tip="Đang tải dữ liệu..." size="large" /></div>
+              <div style={{ textAlign: "center", padding: "60px 0" }}><Spin tip="Đang tải dữ liệu..." size="large" /></div>
             ) : filteredData.length === 0 ? (
-                 <Empty description="Không có sản phẩm nào phù hợp" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+              <Empty description="Không có sản phẩm nào phù hợp" image={Empty.PRESENTED_IMAGE_SIMPLE} />
             ) : (
-                <ProductManager
-                    data={filteredData}
-                    selectedRowKeys={selectedRowKeys}
-                    setSelectedRowKeys={setSelectedRowKeys}
-                    onApprove={(ids) => processApproval(ids, false)}
-                    onReject={(ids, reason) => processApproval(ids, true, reason)}
-                    onView={(r) => { setSelectedProduct(r); setDrawerVisible(true); }}
-                    onViewShop={(s) => { setSelectedShopProfile(s); setShopDrawerVisible(true); }}
-                    onCompare={handleCompare} // Truyền handler so sánh xuống component con
-                    viewModeProp={riskFilter === "new_shop" ? "grid" : "table"}
-                />
+              <ProductManager
+                data={filteredData}
+                selectedRowKeys={selectedRowKeys}
+                setSelectedRowKeys={setSelectedRowKeys}
+                onApprove={(ids) => processApproval(ids, false)}
+                onReject={(ids, reason) => processApproval(ids, true, reason)}
+                onLock={(ids, reason) => processLock(ids, reason)}
+                
+                // <--- 6. Truyền hàm xử lý mở khóa xuống ProductManager
+                onUnban={(ids) => processUnban(ids)}
+                
+                onView={(r) => { setSelectedProduct(r); setDrawerVisible(true); }}
+                onViewShop={(s) => { setSelectedShopProfile(s); setShopDrawerVisible(true); }}
+                onCompare={handleCompare}
+                viewModeProp={riskFilter === "new_shop" ? "grid" : "table"}
+              />
             )}
           </div>
         </Card>
@@ -295,8 +364,7 @@ const ApprovalProductsPage = () => {
         onApprove={() => processApproval(selectedProduct?.id, false)}
         onReject={() => processApproval(selectedProduct?.id, true, "Chi tiết")}
       />
-      
-      {/* --- COMPARISON MODAL (ĐÃ KHÔI PHỤC) --- */}
+
       <ProductComparisonModal
         visible={comparisonModalVisible}
         product={selectedComparisonProduct}
