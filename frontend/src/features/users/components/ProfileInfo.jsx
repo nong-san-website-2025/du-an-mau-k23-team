@@ -27,6 +27,8 @@ import {
   ClockCircleOutlined,
   MailOutlined,
   PhoneOutlined,
+  CrownOutlined,
+  StarOutlined,
 } from "@ant-design/icons";
 import { Badge, Tag, Space, Divider, Descriptions, Empty } from "antd";
 
@@ -44,7 +46,11 @@ const ProfileInfo = ({
   addresses = [],
   onOpenFollowingModal,
   onOpenFollowersModal,
-  deleteAddress, // <--- Đảm bảo đã lấy biến này ra
+  deleteAddress,
+  memberTier,
+  memberTierColor,
+  totalOrders,
+  totalSpent,
 }) => {
   const objectUrlRef = useRef(null);
   const [editingFields, setEditingFields] = useState({});
@@ -307,8 +313,29 @@ const ProfileInfo = ({
 
             <Divider />
 
-            <Row gutter={16} style={{ marginTop: 16 }}>
-              <Col span={12}>
+            <div style={{ textAlign: "center", marginBottom: 24 }}>
+              <div style={{ marginBottom: 8 }}>
+                {memberTierColor === 'gold' && (
+                  <CrownOutlined style={{ fontSize: 32, color: '#faad14' }} />
+                )}
+                {memberTierColor === 'silver' && (
+                  <StarOutlined style={{ fontSize: 32, color: '#c0c0c0' }} />
+                )}
+                {memberTierColor === 'default' && (
+                  <UserOutlined style={{ fontSize: 32, color: '#8c8c8c' }} />
+                )}
+              </div>
+              <div style={{
+                fontSize: 18,
+                fontWeight: 600,
+                color: memberTierColor === 'gold' ? '#faad14' : memberTierColor === 'silver' ? '#c0c0c0' : '#8c8c8c',
+              }}>
+                {memberTier || "Thành viên"}
+              </div>
+            </div>
+
+            <Row gutter={16}>
+              <Col xs={12} sm={12}>
                 <Card
                   bordered={false}
                   style={{
@@ -326,7 +353,7 @@ const ProfileInfo = ({
                   />
                 </Card>
               </Col>
-              <Col span={12}>
+              <Col xs={12} sm={12}>
                 <Card
                   bordered={false}
                   style={{
@@ -482,6 +509,10 @@ ProfileInfo.propTypes = {
   addresses: PropTypes.array,
   onOpenFollowingModal: PropTypes.func,
   onOpenFollowersModal: PropTypes.func,
+  memberTier: PropTypes.string,
+  memberTierColor: PropTypes.string,
+  totalOrders: PropTypes.number,
+  totalSpent: PropTypes.number,
 };
 
 ProfileInfo.defaultProps = {
@@ -491,6 +522,10 @@ ProfileInfo.defaultProps = {
   addresses: [],
   onOpenFollowingModal: () => {},
   onOpenFollowersModal: () => {},
+  memberTier: "Thành viên",
+  memberTierColor: "default",
+  totalOrders: 0,
+  totalSpent: 0,
 };
 
 export default ProfileInfo;

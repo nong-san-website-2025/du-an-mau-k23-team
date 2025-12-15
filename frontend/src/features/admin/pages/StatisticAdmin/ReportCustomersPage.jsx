@@ -180,14 +180,10 @@ export default function ReportCustomersPage() {
       title: "Hạng thành viên",
       key: "tier",
       render: (_, record) => {
-        // Mock logic phân hạng dựa trên chi tiêu (bạn có thể lấy field thật từ DB)
-        const spent = record.spent || 0;
-        let color = "default";
-        let tier = "Thành viên";
-        if (spent > 50000000) { color = "gold"; tier = "VIP Vàng"; }
-        else if (spent > 10000000) { color = "cyan"; tier = "Thân thiết"; }
+        const tier = record.tier || "Thành viên";
+        const tierColor = record.tierColor || "default";
         
-        return <Tag color={color}>{tier}</Tag>;
+        return <Tag color={tierColor}>{tier}</Tag>;
       }
     },
     {

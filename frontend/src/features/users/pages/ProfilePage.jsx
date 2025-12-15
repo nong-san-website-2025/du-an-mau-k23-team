@@ -50,6 +50,10 @@ function ProfilePage() {
     showFollowersModal,
     setShowFollowersModal,
     handleUnfollow,
+    memberTier,
+    memberTierColor,
+    totalOrders,
+    totalSpent,
   } = useProfileData();
 
   const {
@@ -138,6 +142,10 @@ function ProfilePage() {
                   addresses={addresses}
                   onOpenFollowingModal={() => setShowFollowingModal(true)}
                   onOpenFollowersModal={() => setShowFollowersModal(true)}
+                  memberTier={memberTier}
+                  memberTierColor={memberTierColor}
+                  totalOrders={totalOrders}
+                  totalSpent={totalSpent}
                 />
 
                 {/* Modals for following/followers (Sử dụng component tách riêng) */}

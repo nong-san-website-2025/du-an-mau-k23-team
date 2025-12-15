@@ -994,12 +994,26 @@ def customer_statistics_report(request):
         order_count__gt=0
     ).order_by('-total_spent')[:10]
     
+    def calculate_tier(order_count, total_spent):
+        total_spent = float(total_spent or 0)
+        
+        if order_count >= 50 and total_spent >= 10000000:
+            return {'tier': 'Kim cương', 'color': 'gold'}
+        elif order_count >= 25 and total_spent >= 10000000:
+            return {'tier': 'Vàng', 'color': 'cyan'}
+        elif order_count >= 10 and total_spent >= 250000:
+            return {'tier': 'Bạc', 'color': 'silver'}
+        else:
+            return {'tier': 'Thành viên', 'color': 'default'}
+    
     top_customers_data = [
         {
-            'name': customer.get_full_name() or customer.username,
+            'name': customer.full_name or customer.get_full_name() or customer.username,
             'email': customer.email,
             'orders': customer.order_count,
             'spent': float(customer.total_spent or 0),
+            'tier': calculate_tier(customer.order_count, customer.total_spent)['tier'],
+            'tierColor': calculate_tier(customer.order_count, customer.total_spent)['color'],
         }
         for customer in top_customers
     ]
