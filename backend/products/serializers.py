@@ -304,6 +304,7 @@ class ProductListSerializer(serializers.ModelSerializer):
 
     images = ProductImageSerializer(many=True, read_only=True)  # ✅ Thêm field images
     
+    
     seller = serializers.PrimaryKeyRelatedField(read_only=True)
     seller_name = serializers.SerializerMethodField()
     sold_count = serializers.SerializerMethodField()

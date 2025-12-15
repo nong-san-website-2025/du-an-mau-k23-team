@@ -31,3 +31,18 @@ export function intcommaGeneral(x: number | string | null | undefined): string {
 
   return `${intFormatted}.${decimal}`;
 }
+
+export function resolveImageUrl(imagePath: string | undefined): string {
+  if (!imagePath) return "";
+  
+  if (imagePath.startsWith("http")) {
+    return imagePath;
+  }
+  
+  const baseUrl = "http://10.0.2.2:8000";
+  if (imagePath.startsWith("/")) {
+    return `${baseUrl}${imagePath}`;
+  }
+  
+  return `${baseUrl}/media/${imagePath}`;
+}

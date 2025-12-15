@@ -1,181 +1,57 @@
 import React, { useState, useEffect } from "react";
 import {
   IonPage,
-  IonButton,
-  IonIcon,
+  IonHeader,
+  IonToolbar,
   IonContent,
   IonGrid,
   IonRow,
   IonCol,
-  IonCard,
-  IonCardContent,
-  IonText,
-  IonInfiniteScroll,
-  IonInfiniteScrollContent,
   IonSearchbar,
   IonSkeletonText,
-  IonHeader,
-  IonToolbar,
+  IonInfiniteScroll,
+  IonInfiniteScrollContent,
+  IonText,
+  IonIcon,
+  IonButton,
   useIonToast,
-  IonBadge,
+  IonCard,
+  IonCardContent,
 } from "@ionic/react";
-import { cartOutline, searchOutline, refreshOutline } from "ionicons/icons";
+import { searchOutline, refreshOutline, cartOutline } from "ionicons/icons";
 import { useHistory } from "react-router-dom";
+
+// --- IMPORTS CUSTOM ---
 import { productApi } from "../api/productApi";
 import { useCart } from "../context/CartContext";
-import AppHeader from "../components/AppHeader"; // Giả sử bạn đã có component này
-import ProductImage from "../components/ProductImage";
-import { intcomma } from "../utils/formatPrice";
+import AppHeader from "../components/AppHeader"; // Header chung của App
+// 👇 Import Component ProductCard đã tách
+import ProductCard from "../components/Product/ProductCard";
+import { Product } from "../types/models"; // Lấy Product từ nguồn gốc
 
-// --- TYPE DEFINITIONS ---
-interface Product {
-  id: number;
-  name: string;
-  brand?: string;
-  price: number;
-  image?: string;
-  unit?: string; // Ví dụ: bao, chai, gói
-}
-
-// 1. Skeleton Component: Hiển thị khi đang tải
+// --- SKELETON COMPONENT (Loading State) ---
+// Giữ lại skeleton ở đây để Home tự quản lý trạng thái loading của grid
 const ProductSkeleton: React.FC = () => (
-  <IonCol size="6" size-md="4" size-lg="3">
+  <IonCol size="6" size-md="4" size-lg="3" style={{ padding: "6px" }}>
     <IonCard
       className="ion-no-margin"
       style={{
-        borderRadius: "12px",
+        borderRadius: "16px",
         boxShadow: "none",
         border: "1px solid #f0f0f0",
       }}
     >
-      <IonSkeletonText animated style={{ height: "150px", width: "100%" }} />
+      <IonSkeletonText animated style={{ height: "0", paddingBottom: "100%", width: "100%" }} />
       <IonCardContent>
-        <IonSkeletonText animated style={{ width: "60%", height: "20px" }} />
-        <IonSkeletonText
-          animated
-          style={{ width: "40%", height: "20px", marginTop: "10px" }}
-        />
-        <IonSkeletonText
-          animated
-          style={{
-            width: "100%",
-            height: "40px",
-            marginTop: "15px",
-            borderRadius: "8px",
-          }}
-        />
+        <IonSkeletonText animated style={{ width: "80%", height: "20px", marginBottom: "8px" }} />
+        <IonSkeletonText animated style={{ width: "40%", height: "24px" }} />
       </IonCardContent>
     </IonCard>
   </IonCol>
 );
 
-// 2. Product Card Component: Card sản phẩm hoàn chỉnh
-interface ProductCardProps {
-  product: Product;
-  onClick: () => void;
-  onAddToCart: (e: React.MouseEvent) => void;
-}
-
-const ProductCard: React.FC<ProductCardProps> = ({
-  product,
-  onClick,
-  onAddToCart,
-}) => (
-  <IonCol size="6" size-md="4" size-lg="3" style={{ padding: "6px" }}>
-    <IonCard
-      button={true}
-      onClick={onClick}
-      className="ion-activatable ripple-parent"
-      style={{
-        margin: "0",
-        borderRadius: "16px",
-        height: "100%",
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "space-between",
-        boxShadow: "0 4px 16px rgba(0,0,0,0.08)", // Bóng nhẹ, hiện đại
-      }}
-    >
-      {/* Vùng hình ảnh */}
-      <div style={{ position: "relative" }}>
-        <ProductImage src={product.image} alt={product.name} height="160px" />
-
-        {/* Badge thương hiệu (giữ nguyên) */}
-        {product.brand && (
-          <IonBadge
-            color="light"
-            style={{
-              position: "absolute",
-              top: "8px",
-              left: "8px",
-              opacity: 0.9,
-            }}
-          >
-            {product.brand}
-          </IonBadge>
-        )}
-      </div>
-
-      {/* Vùng thông tin */}
-      <div
-        style={{
-          padding: "12px",
-          flexGrow: 1,
-          display: "flex",
-          flexDirection: "column",
-        }}
-      >
-        <IonText color="dark">
-          <h3
-            style={{
-              fontSize: "1rem",
-              fontWeight: "600",
-              margin: "0 0 4px",
-              display: "-webkit-box",
-              WebkitLineClamp: 2, // Giới hạn 2 dòng tên cho gọn
-              WebkitBoxOrient: "vertical",
-              overflow: "hidden",
-            }}
-          >
-            {product.name}
-          </h3>
-        </IonText>
-
-        <div style={{ marginTop: "auto", paddingTop: "8px" }}>
-          <IonText style={{ color: "#4caf50" }}>
-            <h2 style={{ fontSize: "1.2rem", fontWeight: "bold", margin: 0 }}>
-              {intcomma(product.price)}
-              <span style={{ textDecoration: "underline", paddingLeft: 6 }}>đ</span>
-            </h2>
-          </IonText>
-          {product.unit && (
-            <IonText color="medium" style={{ fontSize: "0.8rem" }}>
-              /{product.unit}
-            </IonText>
-          )}
-        </div>
-      </div>
-
-      {/* Nút Mua Hàng To Rõ */}
-      <div style={{ padding: "0 8px 12px" }}>
-        <IonButton
-          expand="block"
-          color="success"
-          shape="round" // Bo tròn mềm mại
-          strong={true}
-          onClick={onAddToCart}
-          style={{ height: "45px", "--box-shadow": "none" }} // Tăng chiều cao để dễ bấm
-        >
-          <IonIcon icon={cartOutline} slot="start" />
-          Chọn Mua
-        </IonButton>
-      </div>
-    </IonCard>
-  </IonCol>
-);
-
-// --- MAIN PAGE ---
 const Home: React.FC = () => {
+  // --- STATE ---
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [displayedProducts, setDisplayedProducts] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -183,24 +59,29 @@ const Home: React.FC = () => {
   const [error, setError] = useState<boolean>(false);
   const [hasMore, setHasMore] = useState(true);
 
+  // --- HOOKS ---
   const { addToCart } = useCart();
   const history = useHistory();
   const [present] = useIonToast();
 
-  const ITEMS_PER_LOAD = 12; // Số chẵn chia hết cho 2 (cột) đẹp hơn
+  const ITEMS_PER_LOAD = 12;
 
-  // Hàm tải dữ liệu
+  // --- LOGIC: FETCH DATA ---
   const fetchProducts = async () => {
     try {
       setLoading(true);
       setError(false);
-      const data = await productApi.getAllProducts();
+      const data = await productApi.getAllProducts(); // API của bạn
+      
+      // Giả lập hoặc xử lý dữ liệu chuẩn
       setAllProducts(data);
-      // Init view
+      
+      // Init view: Chỉ hiện 12 sản phẩm đầu tiên
       setDisplayedProducts(data.slice(0, ITEMS_PER_LOAD));
       if (data.length <= ITEMS_PER_LOAD) setHasMore(false);
+      
     } catch (err) {
-      console.error(err);
+      console.error("Lỗi tải sản phẩm:", err);
       setError(true);
     } finally {
       setLoading(false);
@@ -211,29 +92,34 @@ const Home: React.FC = () => {
     fetchProducts();
   }, []);
 
-  // Xử lý tìm kiếm (Client-side filtering cho mượt)
+  // --- LOGIC: SEARCH ---
   useEffect(() => {
     if (searchTerm.trim() === "") {
+      // Nếu không tìm kiếm -> Reset về danh sách phân trang ban đầu
       setDisplayedProducts(allProducts.slice(0, ITEMS_PER_LOAD));
       setHasMore(allProducts.length > ITEMS_PER_LOAD);
     } else {
+      // Nếu đang tìm kiếm -> Filter client-side
+      const lowerTerm = searchTerm.toLowerCase();
       const filtered = allProducts.filter(
         (p) =>
-          p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          p.brand?.toLowerCase().includes(searchTerm.toLowerCase())
+          p.name.toLowerCase().includes(lowerTerm) ||
+          p.brand?.toLowerCase().includes(lowerTerm)
       );
       setDisplayedProducts(filtered);
-      setHasMore(false); // Khi search thì hiện hết, tắt infinite scroll tạm thời
+      setHasMore(false); // Tắt infinite scroll khi đang search
     }
   }, [searchTerm, allProducts]);
 
-  // Infinite Scroll Logic
+  // --- LOGIC: INFINITE SCROLL ---
   const loadMore = (e: CustomEvent<void>) => {
+    // Nếu đang search thì không load thêm
     if (searchTerm !== "") {
       (e.target as HTMLIonInfiniteScrollElement).complete();
       return;
     }
 
+    // Giả lập delay mạng để thấy spinner quay
     setTimeout(() => {
       const currentLength = displayedProducts.length;
       const nextProducts = allProducts.slice(
@@ -250,34 +136,39 @@ const Home: React.FC = () => {
     }, 500);
   };
 
+  // --- LOGIC: ADD TO CART ---
   const handleAddToCart = (e: React.MouseEvent, product: Product) => {
-    e.stopPropagation(); // Chặn click vào card
+    e.stopPropagation(); // Ngăn sự kiện click lan ra Card (tránh chuyển trang)
     addToCart({ ...product }, 1);
 
-    // Toast phản hồi thân thiện
     present({
       message: `Đã thêm "${product.name}" vào giỏ!`,
       duration: 1500,
       position: "bottom",
       color: "success",
       icon: cartOutline,
+      cssClass: "custom-toast", // Bạn có thể thêm class này vào global.css nếu muốn
     });
   };
 
   return (
     <IonPage id="home-page">
+      {/* Header chung */}
       <AppHeader />
 
-      {/* Thanh tìm kiếm dính (Sticky) */}
+      {/* Header riêng của trang Home chứa thanh tìm kiếm */}
       <IonHeader collapse="condense" className="ion-no-border">
-        <IonToolbar>
+        <IonToolbar style={{ "--background": "#f7f9fc" }}>
           <IonSearchbar
             value={searchTerm}
             onIonInput={(e) => setSearchTerm(e.detail.value!)}
             placeholder="Tìm tên thuốc, phân bón..."
             searchIcon={searchOutline}
-            className="ion-padding-horizontal"
-            style={{ "--border-radius": "20px" }}
+            className="ion-padding-horizontal custom-searchbar"
+            style={{ 
+                "--border-radius": "12px",
+                "--box-shadow": "0 2px 8px rgba(0,0,0,0.05)"
+            }}
           />
         </IonToolbar>
       </IonHeader>
@@ -287,77 +178,84 @@ const Home: React.FC = () => {
         className="ion-padding-bottom"
         style={{ "--background": "#f7f9fc" }}
       >
-        {" "}
-        {/* Màu nền nhẹ dịu mắt */}
-        {/* Refresh kéo xuống để tải lại */}
-        <div className="ion-padding-horizontal">
-          {/* Nếu cần Refresher thì thêm IonRefresher vào đây */}
-        </div>
         <IonGrid className="ion-no-padding ion-padding-top">
-          {/* TRẠNG THÁI LOADING: Hiện khung xương */}
+          
+          {/* 1. TRẠNG THÁI LOADING */}
           {loading && (
             <IonRow className="ion-padding-horizontal">
-              {[...Array(6)].map((_, i) => (
+              {[...Array(8)].map((_, i) => (
                 <ProductSkeleton key={i} />
               ))}
             </IonRow>
           )}
 
-          {/* TRẠNG THÁI LỖI: Nút thử lại */}
+          {/* 2. TRẠNG THÁI LỖI */}
           {!loading && error && (
             <div
               className="ion-text-center ion-padding"
-              style={{ marginTop: "50px" }}
+              style={{ marginTop: "60px" }}
             >
               <IonIcon
                 icon={refreshOutline}
-                style={{ fontSize: "64px", color: "#ccc" }}
+                style={{ fontSize: "64px", color: "#ccc", marginBottom: "16px" }}
               />
               <IonText color="medium">
-                <p>Mạng chập chờn hoặc có lỗi xảy ra.</p>
+                <p style={{ fontSize: "16px" }}>Không thể tải dữ liệu.</p>
               </IonText>
               <IonButton
                 onClick={fetchProducts}
                 color="dark"
                 fill="outline"
                 shape="round"
+                size="small"
+                style={{ marginTop: "16px" }}
               >
-                Thử tải lại
+                Thử lại ngay
               </IonButton>
             </div>
           )}
 
-          {/* TRẠNG THÁI CÓ DỮ LIỆU */}
+          {/* 3. HIỂN THỊ DỮ LIỆU */}
           {!loading && !error && (
             <>
               {displayedProducts.length === 0 ? (
-                <div className="ion-text-center ion-padding">
+                <div className="ion-text-center ion-padding" style={{ marginTop: "40px" }}>
                   <IonText color="medium">
-                    <p>Không tìm thấy sản phẩm nào.</p>
+                    <p>Không tìm thấy sản phẩm nào phù hợp.</p>
                   </IonText>
                 </div>
               ) : (
                 <IonRow className="ion-padding-horizontal">
                   {displayedProducts.map((product) => (
-                    <ProductCard
-                      key={product.id}
-                      product={product}
-                      onClick={() => history.push(`/product/${product.id}`)}
-                      onAddToCart={(e) => handleAddToCart(e, product)}
-                    />
+                    <IonCol 
+                      size="6" 
+                      size-md="4" 
+                      size-lg="3" 
+                      key={product.id} 
+                      style={{ padding: "6px" }}
+                    >
+                      {/* --- SỬ DỤNG COMPONENT ĐÃ TÁCH --- */}
+                      <ProductCard
+                        product={product}
+                        onClick={() => history.push(`/product/${product.id}`)}
+                        onAddToCart={(e) => handleAddToCart(e, product)}
+                      />
+                    </IonCol>
                   ))}
                 </IonRow>
               )}
             </>
           )}
         </IonGrid>
+
+        {/* INFINITE SCROLL */}
         <IonInfiniteScroll
           onIonInfinite={loadMore}
           threshold="100px"
           disabled={!hasMore}
         >
           <IonInfiniteScrollContent
-            loadingSpinner="dots"
+            loadingSpinner="bubbles"
             loadingText="Đang tải thêm sản phẩm..."
           />
         </IonInfiniteScroll>

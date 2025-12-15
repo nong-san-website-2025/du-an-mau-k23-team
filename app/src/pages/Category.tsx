@@ -1,176 +1,198 @@
-import React, { useState } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import useCategories from "../hooks/useCategories";
 import { useHistory } from "react-router-dom";
-
 import {
   IonPage,
   IonHeader,
   IonToolbar,
   IonTitle,
-  IonButtons,
-  IonButton,
-  IonIcon,
-  IonSearchbar,
   IonContent,
   IonGrid,
   IonRow,
   IonCol,
-  IonCard,
-  IonCardHeader,
-  IonCardTitle,
+  IonSearchbar,
   IonSkeletonText,
+  IonRippleEffect,
+  IonIcon,
+  IonRefresher,
+  IonRefresherContent,
+  IonButtons,
+  IonButton,
 } from "@ionic/react";
-import { searchOutline } from "ionicons/icons";
+import { fileTrayOutline, refreshOutline, filterOutline } from "ionicons/icons";
+import "../styles/Category.css";
+import ProductImage from "../components/Product/ProductImage";
+
+// --- THAY ĐỔI 1: Import Interface gốc từ file types chung ---
+// Dùng "as CategoryModel" để không bị trùng tên với Component Category ở dưới
+import { Category as CategoryModel } from "../types/models";
+
+// --- THAY ĐỔI 2: Kế thừa (Extend) từ Global Type ---
+// Lúc này CategoryItem sẽ có đủ: id, name, image (string|null), icon (string|null)
+interface CategoryItem extends CategoryModel {
+  itemCount?: number; // Chỉ cần khai báo thêm field riêng của UI
+}
+
+// Tách nhỏ Component Card để code gọn và dễ tái sử dụng
+const CategoryCard: React.FC<{
+  category: CategoryItem;
+  onClick: (id: string | number) => void;
+}> = React.memo(({ category, onClick }) => {
+  
+  // Logic xử lý ảnh an toàn: Ưu tiên image -> icon -> undefined (tránh null gây lỗi)
+  const imageSource = category.image ?? category.icon ?? undefined;
+
+  return (
+    <div
+      className="category-card ion-activatable ripple-parent"
+      onClick={() => onClick(category.id)}
+    >
+      <div className="card-image-wrapper">
+        {/* Component tự xử lý link ảnh, fallback lỗi, icon */}
+        <ProductImage
+          src={imageSource} 
+          alt={category.name}
+          className="real-image" // Class này giúp set position absolute
+        />
+        
+        {/* Overlay gradient giúp text dễ đọc hơn */}
+        <div className="image-overlay"></div>
+      </div>
+      
+      <div className="category-info">
+        <h3 className="category-name">{category.name}</h3>
+        {category.itemCount !== undefined && (
+          <span className="category-count">{category.itemCount} sản phẩm</span>
+        )}
+      </div>
+      <IonRippleEffect type="bounded" className="custom-ripple" />
+    </div>
+  );
+});
 
 const Category: React.FC = () => {
-  const categories = useCategories(); // Custom hook lấy danh mục
+  // Giả lập hàm refresh data
+  // Ép kiểu categories về CategoryItem[] nếu hook trả về type khác, hoặc để tự động nếu hook đã chuẩn
+  const { categories, refreshCategories } = useCategories();
   const [searchQuery, setSearchQuery] = useState("");
   const history = useHistory();
 
-  // Lọc danh mục theo từ khóa
-  const filteredCategories = categories.filter((cat) =>
-    cat.name.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredCategories = useMemo(() => {
+    const query = searchQuery.toLowerCase().trim();
+    if (!query) return categories;
+    return categories.filter((cat) => cat.name.toLowerCase().includes(query));
+  }, [categories, searchQuery]);
+
+  const handleNavigate = useCallback(
+    (id: string | number) => {
+      history.push(`/category/${id}`);
+    },
+    [history]
   );
+
+  const handleRefresh = async (event: CustomEvent) => {
+    // Nếu hook useCategories có export hàm refresh thì gọi ở đây
+    if (refreshCategories) await refreshCategories();
+    // Timeout giả lập để UX mượt hơn (người dùng thấy spinner quay 1 chút)
+    setTimeout(() => {
+      event.detail.complete();
+    }, 1000);
+  };
 
   return (
     <IonPage>
-      {/* ===== HEADER ===== */}
-      <IonHeader translucent={true}>
-        <IonToolbar color="light">
-          <IonTitle style={{ fontWeight: 700 }}>Danh Mục</IonTitle>
+      {/* Header Minimalist & Clean */}
+      <IonHeader className="ion-no-border category-header">
+        <IonToolbar>
+          <IonTitle className="page-title">Khám Phá</IonTitle>
           <IonButtons slot="end">
+            {/* Thêm nút Filter nếu sau này cần lọc sâu hơn */}
             <IonButton>
-              <IonIcon icon={searchOutline} />
+              <IonIcon icon={filterOutline} />
             </IonButton>
           </IonButtons>
         </IonToolbar>
+
+        <IonToolbar className="search-toolbar-wrapper">
+          <IonSearchbar
+            value={searchQuery}
+            onIonChange={(e) => setSearchQuery(e.detail.value!)}
+            placeholder="Tìm loại nông sản, hạt giống..."
+            className="greenfarm-searchbar"
+            inputMode="search"
+            showClearButton="focus"
+            animated
+          />
+        </IonToolbar>
       </IonHeader>
 
-      {/* ===== CONTENT ===== */}
-      <IonContent
-        fullscreen
-        style={{
-          "--background": "#f9fafb",
-          padding: "12px",
-        }}
-      >
-        {/* ===== SEARCH BAR ===== */}
-        <IonSearchbar
-          value={searchQuery}
-          onIonChange={(e) => setSearchQuery(e.detail.value!)}
-          placeholder="Tìm danh mục hoặc sản phẩm..."
-          debounce={200}
-          style={{
-            "--background": "#ffffff",
-            "--border-radius": "12px",
-            "--box-shadow": "0 1px 4px rgba(0,0,0,0.08)",
-            marginBottom: "12px",
-          }}
-        />
+      <IonContent fullscreen className="category-bg">
+        {/* Pull to Refresh - Tính năng bắt buộc cho App hiện đại */}
+        <IonRefresher slot="fixed" onIonRefresh={handleRefresh}>
+          <IonRefresherContent
+            pullingIcon={refreshOutline}
+            pullingText="Kéo để làm mới"
+            refreshingSpinner="crescent"
+          />
+        </IonRefresher>
 
-        {/* ===== HIỂN THỊ NỘI DUNG ===== */}
-        {categories.length === 0 ? (
-          // === Loading Skeleton (khi đang tải danh mục) ===
-          <IonGrid>
-            <IonRow>
-              {[...Array(6)].map((_, i) => (
-                <IonCol size="6" key={i}>
-                  <IonCard
-                    style={{
-                      borderRadius: "12px",
-                      overflow: "hidden",
-                      backgroundColor: "#fff",
-                    }}
-                  >
-                    <IonSkeletonText
-                      animated
-                      style={{
-                        width: "100%",
-                        height: "120px",
-                        borderRadius: "12px 12px 0 0",
-                      }}
-                    />
-                    <IonCardHeader>
+        <div className="content-padder">
+          {/* Header nhỏ hiển thị số lượng kết quả - Tăng trải nghiệm UX */}
+          {searchQuery && (
+            <div className="search-result-label">
+              Tìm thấy {filteredCategories.length} kết quả cho "{searchQuery}"
+            </div>
+          )}
+
+          {categories.length === 0 ? (
+            /* ===== SKELETON LOADING ===== */
+            <IonGrid>
+              <IonRow>
+                {[...Array(6)].map((_, i) => (
+                  <IonCol size="6" sizeMd="4" sizeLg="3" key={i}>
+                    <div className="skeleton-card">
+                      <IonSkeletonText animated className="sk-img" />
                       <IonSkeletonText
                         animated
-                        style={{ width: "60%", height: "14px" }}
+                        className="sk-text"
+                        style={{ width: "70%" }}
                       />
-                    </IonCardHeader>
-                  </IonCard>
-                </IonCol>
-              ))}
-            </IonRow>
-          </IonGrid>
-        ) : filteredCategories.length === 0 ? (
-          // === Trường hợp không tìm thấy danh mục ===
-          <div
-            style={{
-              textAlign: "center",
-              marginTop: "50px",
-              color: "#888",
-              fontSize: "15px",
-            }}
-          >
-            Không tìm thấy danh mục nào.
-          </div>
-        ) : (
-          // === Hiển thị danh mục thật ===
-          <IonGrid>
-            <IonRow>
-              {filteredCategories.map((cat) => (
-                <IonCol size="6" key={cat.id}>
-                  <IonCard
-                    button
-                    onClick={() => history.push(`/category/${cat.id}`)}
-                    style={{
-                      borderRadius: "12px",
-                      overflow: "hidden",
-                      backgroundColor: "#ffffff",
-                      boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-                      transition: "transform 0.15s ease",
-                    }}
-                    onMouseDown={(e) =>
-                      (e.currentTarget.style.transform = "scale(0.97)")
-                    }
-                    onMouseUp={(e) =>
-                      (e.currentTarget.style.transform = "scale(1)")
-                    }
+                    </div>
+                  </IonCol>
+                ))}
+              </IonRow>
+            </IonGrid>
+          ) : filteredCategories.length === 0 ? (
+            /* ===== EMPTY STATE ===== */
+            <div className="empty-state">
+              <div className="empty-icon-circle">
+                <IonIcon icon={fileTrayOutline} />
+              </div>
+              <h3>Không tìm thấy danh mục</h3>
+              <p>Thử tìm kiếm với từ khóa khác xem sao nhé!</p>
+            </div>
+          ) : (
+            /* ===== GRID DANH MỤC ===== */
+            <IonGrid className="ion-no-padding">
+              <IonRow>
+                {/* Lưu ý: cast 'cat as CategoryItem' nếu hook trả về type thiếu itemCount 
+                   nhưng ở đây vì extends nên TS sẽ tự hiểu là tương thích
+                */}
+                {filteredCategories.map((cat) => (
+                  <IonCol
+                    size="6"
+                    sizeMd="4"
+                    sizeLg="3"
+                    key={cat.id}
+                    className="category-col"
                   >
-                    <div
-                      style={{
-                        width: "100%",
-                        height: "120px",
-                        background:
-                          cat.image || cat.icon
-                            ? `url(${
-                                cat.image || cat.icon
-                              }) center/cover no-repeat`
-                            : "#e0e0e0",
-                      }}
-                    ></div>
-
-                    <IonCardHeader
-                      style={{ textAlign: "center", padding: "8px 4px" }}
-                    >
-                      <IonCardTitle
-                        style={{
-                          fontSize: "14px",
-                          fontWeight: 600,
-                          color: "#2e7d32",
-                          lineHeight: 1.3,
-                        }}
-                      >
-                        {cat.name.length > 25
-                          ? cat.name.substring(0, 25) + "..."
-                          : cat.name}
-                      </IonCardTitle>
-                    </IonCardHeader>
-                  </IonCard>
-                </IonCol>
-              ))}
-            </IonRow>
-          </IonGrid>
-        )}
+                    <CategoryCard category={cat} onClick={handleNavigate} />
+                  </IonCol>
+                ))}
+              </IonRow>
+            </IonGrid>
+          )}
+        </div>
       </IonContent>
     </IonPage>
   );

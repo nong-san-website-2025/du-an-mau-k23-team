@@ -1,0 +1,143 @@
+/* Biến màu chủ đạo GreenFarm */
+:root {
+  --gf-primary: #2e7d32; /* Xanh lá đậm */
+  --gf-bg-light: #f4f7f5; /* Nền xám xanh rất nhạt */
+  --gf-card-bg: #ffffff;
+  --gf-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --gf-radius: 16px;
+}
+
+.category-bg {
+  --background: var(--gf-bg-light);
+}
+
+.category-header ion-toolbar {
+  --background: var(--gf-bg-light);
+}
+
+.page-title {
+  font-weight: 700;
+  font-size: 24px;
+  color: #1a1a1a;
+  padding-left: 8px;
+}
+
+/* --- Searchbar Customization --- */
+.greenfarm-searchbar {
+  --background: #fff;
+  --box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  --border-radius: 12px;
+  --placeholder-color: #888;
+  --icon-color: var(--gf-primary);
+  padding-top: 0;
+  padding-bottom: 12px;
+}
+
+/* --- Card Styles (Quan trọng) --- */
+.category-col {
+  padding: 8px; /* Khoảng cách giữa các card */
+}
+
+.category-card {
+  background: var(--gf-card-bg);
+  border-radius: var(--gf-radius);
+  overflow: hidden;
+  position: relative;
+  box-shadow: var(--gf-shadow);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Hiệu ứng Active khi chạm vào trên mobile */
+.category-card:active {
+  transform: scale(0.98);
+}
+
+.card-image-wrapper {
+  width: 100%;
+  padding-top: 100%; /* Tạo khung vuông 1:1 - Chuẩn Instagram/Shopee */
+  position: relative;
+  background-color: #eceff1;
+}
+
+.real-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* Giữ ảnh không bị méo */
+  transition: transform 0.5s ease;
+}
+
+/* Hiệu ứng Zoom nhẹ khi hover (Desktop) */
+.category-card:hover .real-image {
+  transform: scale(1.05);
+}
+
+.category-info {
+  padding: 12px;
+  text-align: center;
+  background: #fff;
+  z-index: 2;
+}
+
+.category-name {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #333;
+  
+  /* Cắt text nếu quá dài (2 dòng) */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.category-count {
+  display: block;
+  font-size: 12px;
+  color: #888;
+  margin-top: 4px;
+}
+
+/* --- Skeleton & Empty State --- */
+.skeleton-card {
+  background: #fff;
+  border-radius: var(--gf-radius);
+  padding: 10px;
+  height: 180px;
+}
+.sk-img {
+  width: 100%;
+  height: 120px;
+  border-radius: 12px;
+}
+.sk-text {
+  margin-top: 10px;
+  height: 14px;
+  border-radius: 4px;
+}
+
+.empty-state {
+  text-align: center;
+  margin-top: 60px;
+  padding: 20px;
+}
+.empty-icon-circle {
+  background: #e8f5e9;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+}
+.empty-icon-circle ion-icon {
+  font-size: 40px;
+  color: var(--gf-primary);
+}

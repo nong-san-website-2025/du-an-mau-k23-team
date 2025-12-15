@@ -1,0 +1,74 @@
+/* src/styles/SubCategory.css */
+
+:root {
+  --gf-bg-secondary: #f4f6f8;
+}
+
+.subcategory-page {
+  --background: var(--gf-bg-secondary);
+}
+
+/* Header tinh gọn */
+.subcategory-header ion-toolbar {
+  --background: var(--gf-bg-secondary); /* Đồng màu nền để tạo cảm giác liền mạch */
+  --border-width: 0; 
+}
+
+.header-title {
+  font-weight: 700;
+  font-size: 20px;
+  color: #1a1a1a;
+}
+
+/* Container cho list */
+.subcategory-list-container {
+  padding: 16px;
+}
+
+/* Style cho từng Item (Biến IonItem thành Card) */
+.subcategory-item {
+  --background: #ffffff;
+  --min-height: 60px; /* Tăng chiều cao để dễ bấm */
+  --padding-start: 16px;
+  --inner-padding-end: 16px;
+  border-radius: 12px;
+  margin-bottom: 12px; /* Khoảng cách giữa các item */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04); /* Đổ bóng cực nhẹ */
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Hiệu ứng khi bấm vào */
+.subcategory-item.item-has-active-state:active {
+  transform: scale(0.98);
+  box-shadow: none;
+}
+
+.subcategory-label {
+  font-weight: 600;
+  font-size: 16px;
+  color: #333;
+  letter-spacing: 0.3px;
+}
+
+/* Icon mũi tên */
+.arrow-icon {
+  color: #bbb;
+  font-size: 20px;
+  opacity: 0.8;
+}
+
+/* Empty State */
+.empty-state-sub {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 60vh;
+  color: #888;
+}
+
+.empty-state-sub ion-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  color: #cfd8dc;
+}

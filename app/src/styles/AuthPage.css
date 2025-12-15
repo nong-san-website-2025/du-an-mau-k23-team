@@ -1,0 +1,116 @@
+/* AuthPage.css */
+
+/* --- Base Variables --- */
+.auth-page {
+  --background: #f4f5f8;
+  --primary-green: #2E7D32;
+}
+
+/* --- Header Background --- */
+.auth-header-bg {
+  background: linear-gradient(135deg, #2E7D32 0%, #1B5E20 100%);
+  height: 35%; /* Fixed height for visual header */
+  border-bottom-left-radius: 40px;
+  border-bottom-right-radius: 40px;
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: white;
+  z-index: 1;
+}
+
+.brand-container { text-align: center; margin-top: -40px; }
+.logo-circle {
+  width: 80px; height: 80px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 10px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+}
+.logo-circle ion-icon { font-size: 40px; color: #fff; }
+.brand-container h1 { margin: 0; font-weight: 700; font-size: 28px; }
+
+/* --- Form Container --- */
+.auth-form-container {
+  position: absolute;
+  top: 25%; /* Bắt đầu đè lên header */
+  left: 0; right: 0; bottom: 0; /* Kéo dài xuống đáy */
+  padding: 0 16px;
+  z-index: 10;
+  overflow-y: auto; /* Cho phép cuộn nếu màn hình nhỏ hoặc form dài */
+  /* Ẩn thanh cuộn cho đẹp */
+  scrollbar-width: none; 
+}
+.auth-form-container::-webkit-scrollbar { display: none; }
+
+.form-content {
+  background: white;
+  border-radius: 24px;
+  padding: 24px;
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.08);
+  margin-bottom: 30px; /* Khoảng trống dưới cùng */
+  
+  /* Hiệu ứng mượt khi chiều cao thay đổi */
+  transition: all 0.3s ease-in-out; 
+}
+
+.auth-title {
+  color: #333; font-weight: 700; margin-top: 0;
+  transition: color 0.3s;
+}
+
+/* --- Inputs --- */
+.input-group { margin-bottom: 16px; }
+.custom-input {
+  --background: #fff;
+  --border-color: #e0e0e0;
+  --border-radius: 12px;
+  --highlight-color-focused: var(--primary-green);
+  --padding-start: 8px;
+}
+.custom-input ion-icon[slot="start"] { color: #888; margin-right: 8px;}
+
+/* --- Buttons --- */
+.auth-btn {
+  --background: var(--primary-green);
+  --background-hover: #1B5E20;
+  font-weight: 600; height: 48px;
+  --box-shadow: 0 4px 10px rgba(46, 125, 50, 0.2);
+}
+
+.toggle-view-btn {
+  font-weight: 700;
+  --color: var(--primary-green);
+  text-transform: none;
+}
+
+/* --- Utilities --- */
+.divider {
+  text-align: center; position: relative; margin: 20px 0;
+}
+.divider::before {
+  content: ""; position: absolute; left: 0; top: 50%; width: 100%; height: 1px; background: #eee; z-index: 1;
+}
+.divider span {
+  background: white; padding: 0 10px; color: #888; font-size: 13px; position: relative; z-index: 2;
+}
+.forgot-password ion-button { font-size: 12px; text-transform: none; }
+
+/* --- Animations (Chuẩn Senior UX) --- */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in-animation {
+  animation: fadeIn 0.4s ease-out;
+}
+
+.slide-in {
+  animation: fadeIn 0.4s ease-out;
+}
+
+.custom-loading { --spinner-color: var(--primary-green); }

@@ -8,10 +8,12 @@ import Tab3 from "../pages/Favorite";
 import Tab4 from "../pages/Notification";
 import Tab5 from "../pages/Profile";
 import CartPage from "../pages/CartPage";
-import Subcategory from "../pages/Product/SubCategory";
-import ProductList from "../pages/Product/ProductList"; 
-import ProductDetail from "../pages/Product/ProductDetail";
-import LoginPage from "../pages/Login";
+import Subcategory from "../components/Product/SubCategory";
+import ProductList from "../components/Product/ProductList";
+import ProductDetail from "../components/Product/ProductDetail";
+import LoginPage from "../pages/Auth/AuthPage";
+import CheckoutPage from "../pages/CheckoutPage"; // <--- Import trang mới
+import AuthPage from "../pages/Auth/AuthPage";
 
 const AppRoutes: React.FC = () => {
   return (
@@ -26,9 +28,15 @@ const AppRoutes: React.FC = () => {
         path="/subcategory/:subcategoryId/products"
         component={ProductList}
       />
+      <Route exact path="/checkout">
+        <CheckoutPage />
+      </Route>
 
       <Route exact path="/product/:id" component={ProductDetail} />
       <Route exact path="/login" component={LoginPage} />
+      <Route exact path="/register">
+        <AuthPage />
+      </Route>
       <Route path="/favorite" component={Tab3} />
       <Route path="/notification" component={Tab4} />
       <Route path="/profile" component={Tab5} />

@@ -5,7 +5,7 @@ const config: CapacitorConfig = {
   appName: "app",
   webDir: "dist",
   server: {
-    url: "http://172.18.96.1:8100/", // cho emulator
+    url: "http://192.168.2.3:8100", // cho emulator
     cleartext: true,
   },
 };

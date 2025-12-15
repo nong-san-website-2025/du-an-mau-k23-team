@@ -6,7 +6,7 @@ class CategoryAdmin(admin.ModelAdmin):
     list_filter = ('status', 'is_featured')
     search_fields = ('name', 'key')
     list_editable = ('commission_rate',)
-    fields = ('name', 'key', 'status', 'image', 'is_featured', 'commission_rate', 'reject_reason')
+    fields = ('name', 'key', 'status', 'image', 'is_featured', 'commission_rate')
 
 admin.site.register(Category, CategoryAdmin)
 admin.site.register(Subcategory)

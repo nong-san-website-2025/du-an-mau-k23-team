@@ -1,225 +1,275 @@
-// src/pages/Profile.tsx
 import React from "react";
 import {
   IonPage,
   IonContent,
   IonButton,
   IonIcon,
+  IonText,
+  IonSpinner,
+  IonAvatar,
+  IonItem,
+  IonLabel,
+  IonList,
+  IonCard,
+  IonCardContent,
   IonGrid,
   IonRow,
   IonCol,
-  IonText,
+  IonBadge,
+  useIonRouter
 } from "@ionic/react";
 import {
   settingsOutline,
   notificationsOutline,
-  personOutline,
   logOutOutline,
+  personOutline,
+  walletOutline,
+  cubeOutline,
+  starOutline,
+  ticketOutline,
+  locationOutline,
+  callOutline,
+  mailOutline,
+  helpCircleOutline,
+  chevronForwardOutline,
+  shieldCheckmarkOutline,
+  timeOutline
 } from "ionicons/icons";
-import { useAuth } from "../context/AuthContext"; // 👈 Dùng context
+import { useAuth } from "../context/AuthContext";
+import "../styles/Profile.css"; 
 
 const Profile: React.FC = () => {
-  const heroHeight = "120px";
-  const backgroundColor = "#4caf50";
-  const { user, logout, loading } = useAuth(); // 👈 Lấy user và hàm logout
+  const { user, logout, loading } = useAuth();
+  const router = useIonRouter();
 
-  React.useEffect(() => {
-    alert(
-      `Profile loaded. User: ${
-        user ? user.username : "null"
-      }, Loading: ${loading}`
-    );
-  }, [user, loading]);
-
-  // 👇 Lấy chữ cái đầu của username (viết hoa)
   const getInitials = (username?: string): string => {
-    if (!username) return "?";
-    return username.charAt(0).toUpperCase();
+    return username ? username.charAt(0).toUpperCase() : "?";
   };
 
   const handleLogout = async () => {
+    // Thực tế nên có Alert xác nhận ở đây
     await logout();
-    // Sau logout, user = null → giao diện tự cập nhật
+    router.push("/login", "root", "replace");
   };
 
   if (loading) {
     return (
       <IonPage>
-        <IonContent className="ion-padding">
-          <IonText>Đang tải thông tin...</IonText>
+        <IonContent className="ion-text-center ion-padding">
+          <div className="center-loading">
+            <IonSpinner name="crescent" color="success" />
+            <p>Đang tải dữ liệu...</p>
+          </div>
         </IonContent>
       </IonPage>
     );
   }
 
-  return (
-    <IonPage>
-      {/* Hero background */}
-      <div
-        style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          right: 0,
-          height: heroHeight,
-          background: backgroundColor,
-          zIndex: 1,
-        }}
-      >
-        {/* Toolbar icons */}
-        <div
-          style={{
-            height: "40px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "flex-end",
-            paddingRight: "16px",
-          }}
-        >
-          <IonButton
-            style={{
-              margin: "0",
-              "--background": "transparent",
-              "--box-shadow": "none",
-            }}
-          >
-            <IonIcon icon={settingsOutline} size="large" color="light" />
-          </IonButton>
-          <IonButton
-            style={{
-              margin: "0",
-              "--background": "transparent",
-              "--box-shadow": "none",
-            }}
-          >
-            <IonIcon icon={notificationsOutline} size="large" color="light" />
-          </IonButton>
+  // --- SUB-COMPONENTS ---
+
+  // 1. Header cho Khách (Chưa đăng nhập)
+  const GuestHeader = () => (
+    <div className="profile-header guest-mode">
+      <div className="header-content ion-text-center">
+        <div className="guest-avatar-box">
+          <IonIcon icon={personOutline} />
         </div>
+        <h2>Chào mừng bạn!</h2>
+        <p className="sub-text">Đăng nhập để tích điểm và theo dõi đơn hàng</p>
+        
+        <div className="auth-actions">
+           {/* Nút Đăng nhập (Màu trắng, chữ xanh) */}
+          <IonButton 
+            routerLink="/login" 
+            color="light" 
+            expand="block"
+            className="action-btn login-btn"
+          >
+            Đăng nhập
+          </IonButton>
 
-        {/* Avatar & buttons */}
-        <div
-          style={{
-            height: `calc(${heroHeight} - 40px)`,
-            display: "flex",
-            alignItems: "center",
-            padding: "0 16px",
-          }}
-        >
-          <IonGrid style={{ height: "100%" }}>
-            <IonRow
-              className="ion-align-items-center"
-              style={{ height: "100%" }}
-            >
-              {/* Buttons: Login/Register or Logout */}
-              <IonCol size="7">
-                {user ? (
-                  <IonButton
-                    onClick={handleLogout}
-                    style={{
-                      borderRadius: "8px",
-                      textTransform: "none",
-                      fontWeight: "600",
-                      height: "36px",
-                      fontSize: "14px",
-                      "--background": "rgba(255,255,255,0.2)",
-                      "--color": "white",
-                    }}
-                  >
-                    <IonIcon icon={logOutOutline} slot="start" />
-                    Đăng xuất
-                  </IonButton>
-                ) : (
-                  <div style={{ display: "flex", gap: "8px" }}>
-                    <IonButton
-                      routerLink="/login"
-                      style={{
-                        borderRadius: "8px",
-                        textTransform: "none",
-                        fontWeight: "400",
-                        height: "36px",
-                        width: "120px",
-                        fontSize: "14px",
-                        "--background": "white",
-                        "--color": backgroundColor,
-                      }}
-                    >
-                      Đăng nhập
-                    </IonButton>
-                    <IonButton
-                      fill="outline"
-                      routerLink="/register"
-                      style={{
-                        borderRadius: "8px",
-                        textTransform: "none",
-                        fontWeight: "600",
-                        height: "36px",
-                        width: "120px",
-                        fontSize: "14px",
-                        "--color": "white",
-                        "--border-color": "white",
-                        "--background": "transparent",
-                      }}
-                    >
-                      Đăng ký
-                    </IonButton>
-                  </div>
-                )}
-              </IonCol>
-
-              {/* Avatar */}
-              <IonCol size="5" className="ion-text-center">
-                <div
-                  style={{
-                    width: "50px",
-                    height: "50px",
-                    borderRadius: "50%",
-                    background: user ? "white" : "rgba(255, 255, 255, 0.2)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    marginLeft: "auto",
-                    marginRight: "16px",
-                    color: user ? backgroundColor : "white",
-                    fontWeight: "bold",
-                    fontSize: "20px",
-                  }}
-                >
-                  {user ? (
-                    getInitials(user.username)
-                  ) : (
-                    <IonIcon
-                      icon={personOutline}
-                      color="light"
-                      style={{ fontSize: "24px" }}
-                    />
-                  )}
-                </div>
-              </IonCol>
-            </IonRow>
-          </IonGrid>
+          {/* Nút Đăng ký (Viền trắng, nền trong suốt) */}
+          <IonButton 
+            routerLink="/register" 
+            fill="outline" 
+            color="light" 
+            expand="block"
+            className="action-btn register-btn"
+          >
+            Đăng ký
+          </IonButton>
         </div>
       </div>
+    </div>
+  );
 
-      {/* Scrollable content */}
-      <IonContent
-        style={{
-          paddingTop: heroHeight,
-        }}
-        className="ion-padding"
-      >
-        {user ? (
-          <div>
-            <h2>Xin chào, {user.username}!</h2>
-            <IonText color="medium">
-              <p>Vai trò: {user.role}</p>
-            </IonText>
-            {/* Thêm: Lịch sử đơn hàng, cài đặt, v.v. */}
-          </div>
-        ) : (
-          <IonText color="medium">
-            Vui lòng đăng nhập để xem thông tin cá nhân.
-          </IonText>
-        )}
+  // 2. Header cho User (Đã đăng nhập)
+  const UserHeader = () => (
+    <div className="profile-header">
+      <div className="header-top-bar">
+        <IonText color="light" className="header-title">Hồ sơ</IonText>
+        <div className="header-icons">
+          <IonButton fill="clear" color="light" className="icon-btn">
+            <IonIcon icon={notificationsOutline} />
+            <IonBadge color="danger" className="noti-badge">3</IonBadge>
+          </IonButton>
+          <IonButton fill="clear" color="light" className="icon-btn">
+            <IonIcon icon={settingsOutline} />
+          </IonButton>
+        </div>
+      </div>
+      
+      <div className="user-card-info">
+        <div className="avatar-section">
+            <IonAvatar className="main-avatar">
+               {user?.avatar_url ? (
+                   <img src={user.avatar_url} alt="avatar" />
+               ) : (
+                   <span>{getInitials(user?.username)}</span>
+               )}
+            </IonAvatar>
+            {user?.role === 'seller' && (
+                <div className="badge-role seller">
+                    <IonIcon icon={shieldCheckmarkOutline} /> Seller
+                </div>
+            )}
+        </div>
+        
+        <div className="text-section">
+            <h2 className="fullname">{user?.first_name || user?.username}</h2>
+            <div className="membership-tag">
+                <IonIcon icon={starOutline} /> Thành viên Bạc
+            </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // 3. Order Status Bar (Đơn hàng)
+  const OrderStatusBar = () => (
+      <IonCard className="order-status-card">
+          <IonCardContent className="no-padding">
+              <div className="card-title">
+                  <span>Đơn mua</span>
+                  <IonButton fill="clear" size="small" color="medium">
+                      Xem lịch sử <IonIcon icon={chevronForwardOutline} slot="end"/>
+                  </IonButton>
+              </div>
+              <IonGrid>
+                  <IonRow className="ion-text-center">
+                      <IonCol>
+                          <div className="status-icon-wrapper warning">
+                              <IonIcon icon={walletOutline} />
+                              <IonBadge color="danger" className="count-badge">1</IonBadge>
+                          </div>
+                          <IonLabel>Chờ TT</IonLabel>
+                      </IonCol>
+                      <IonCol>
+                          <div className="status-icon-wrapper primary">
+                              <IonIcon icon={cubeOutline} />
+                          </div>
+                          <IonLabel>Vận chuyển</IonLabel>
+                      </IonCol>
+                      <IonCol>
+                          <div className="status-icon-wrapper success">
+                              <IonIcon icon={starOutline} />
+                          </div>
+                          <IonLabel>Đánh giá</IonLabel>
+                      </IonCol>
+                      <IonCol>
+                          <div className="status-icon-wrapper danger">
+                              <IonIcon icon={timeOutline} /> {/* Đổi icon thành Lịch sử/Trả hàng tuỳ ý */}
+                          </div>
+                          <IonLabel>Trả hàng</IonLabel>
+                      </IonCol>
+                  </IonRow>
+              </IonGrid>
+          </IonCardContent>
+      </IonCard>
+  );
+
+  return (
+    <IonPage className="profile-page">
+      <IonContent fullscreen scrollY={false}>
+        
+        {/* HEADER AREA */}
+        {user ? <UserHeader /> : <GuestHeader />}
+
+        {/* BODY AREA */}
+        <div className="profile-body-container">
+            
+            {user && <OrderStatusBar />}
+
+            {/* Menu Group 1: Tài khoản */}
+            {user && (
+                <div className="menu-group">
+                    <IonList inset={true} lines="full">
+                         <IonItem button detail={true} className="menu-item">
+                            <div className="menu-icon blue-bg" slot="start">
+                                <IonIcon icon={mailOutline} />
+                            </div>
+                            <IonLabel>
+                                <h3>Email</h3>
+                                <p>{user.email}</p>
+                            </IonLabel>
+                        </IonItem>
+                         <IonItem button detail={true} className="menu-item">
+                            <div className="menu-icon green-bg" slot="start">
+                                <IonIcon icon={callOutline} />
+                            </div>
+                            <IonLabel>
+                                <h3>Số điện thoại</h3>
+                                <p>{user.phone_number || "Liên kết ngay"}</p>
+                            </IonLabel>
+                        </IonItem>
+                        <IonItem button detail={true} className="menu-item">
+                            <div className="menu-icon orange-bg" slot="start">
+                                <IonIcon icon={locationOutline} />
+                            </div>
+                            <IonLabel>Sổ địa chỉ</IonLabel>
+                        </IonItem>
+                         <IonItem button detail={true} className="menu-item">
+                            <div className="menu-icon red-bg" slot="start">
+                                <IonIcon icon={ticketOutline} />
+                            </div>
+                            <IonLabel>Kho Voucher</IonLabel>
+                        </IonItem>
+                    </IonList>
+                </div>
+            )}
+
+            {/* Menu Group 2: Cài đặt & Hỗ trợ */}
+            <div className="menu-group">
+                <IonList inset={true} lines="full">
+                     <IonItem button detail={true} className="menu-item">
+                        <div className="menu-icon gray-bg" slot="start">
+                            <IonIcon icon={helpCircleOutline} />
+                        </div>
+                        <IonLabel>Trung tâm hỗ trợ</IonLabel>
+                     </IonItem>
+                     <IonItem button detail={true} className="menu-item">
+                        <div className="menu-icon dark-bg" slot="start">
+                            <IonIcon icon={settingsOutline} />
+                        </div>
+                        <IonLabel>Cài đặt tài khoản</IonLabel>
+                     </IonItem>
+                     
+                     {user && (
+                        <IonItem button onClick={handleLogout} detail={false} lines="none" className="menu-item logout-item">
+                            <div className="menu-icon" slot="start" style={{background: 'transparent'}}>
+                                <IonIcon icon={logOutOutline} color="danger"/>
+                            </div>
+                            <IonLabel color="danger" style={{fontWeight: 600}}>Đăng xuất</IonLabel>
+                        </IonItem>
+                     )}
+                </IonList>
+            </div>
+            
+            <div className="app-version">
+                <p>GreenFarm v1.0.0</p>
+            </div>
+        </div>
+
       </IonContent>
     </IonPage>
   );

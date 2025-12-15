@@ -1,39 +1,48 @@
-import React, { useState } from "react";
+// src/features/checkout/pages/CheckoutPage.jsx
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "../services/CartContext";
-import { Row, Col, Typography, Divider, Button, Input, Modal, message } from "antd";
-import { TagOutlined, FileTextOutlined } from "@ant-design/icons";
+import { 
+  Row, Col, Typography, Divider, Button, Input, Modal, message, 
+  Card, Avatar
+} from "antd";
+import { TagOutlined, FileTextOutlined, ShopOutlined } from "@ant-design/icons";
 
 // Styles
 import "../styles/CheckoutPage.css";
 
-// API
+// API & Services
 import API from "../../login_register/services/api";
+import { getSellerDetail } from "../../sellers/services/sellerService"; // ✅ Import service lấy thông tin shop
 
 // Components
 import useCheckoutLogic from "../hooks/useCheckoutLogic";
 import AddressSelector from "../components/AddressSelector";
-import ProductList from "../components/ProductList";
 import VoucherSection from "../components/VoucherSection";
 import PaymentMethod from "../components/PaymentMethod"; 
 import PaymentButton from "../components/PaymentButton";
-import { intcomma } from "../../../utils/format";
-
-// Import form thêm địa chỉ
 import AddressAddForm from "../../users/components/Address/AddressAddForm";
+import { intcomma } from "../../../utils/format"; // Hoặc import formatVND của bạn
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
 
 const CheckoutPage = () => {
   const navigate = useNavigate();
+  // Lấy cartItems, lưu ý ta chỉ render những item ĐÃ ĐƯỢC CHỌN (selected)
   const { cartItems } = useCart();
+  
+  // Lọc ra các sản phẩm được chọn để thanh toán
+  const checkoutItems = cartItems.filter(item => item.selected);
 
   // State quản lý Modal & Loading
   const [isAddAddressModalOpen, setIsAddAddressModalOpen] = useState(false);
   const [isSavingAddress, setIsSavingAddress] = useState(false);
+  
+  // ✅ State lưu thông tin các cửa hàng (để hiển thị tên/avatar shop)
+  const [sellerInfos, setSellerInfos] = useState({}); 
 
-  // Lấy data từ hook
+  // Lấy data từ hook logic
   const {
     shippingFee, selectedAddressId, manualEntry, discount, payment,
     isLoading, addresses, total, totalAfterDiscount,
@@ -42,58 +51,88 @@ const CheckoutPage = () => {
     setSelectedAddressId, setManualEntry, setPayment, setNote,
     handleApplyVoucher, handleOrder, 
     fetchAddresses,
-    setAddresses // <--- Lấy hàm này để cập nhật list thủ công
+    setAddresses 
   } = useCheckoutLogic();
 
   const isAddressValid = (selectedAddressId && selectedAddress?.location) ||
     (manualEntry && customerName && customerPhone && addressText);
   const isReadyToOrder = selectedItems.length > 0 && isAddressValid && shippingFee > 0;
 
-  // --- HÀM XỬ LÝ QUAN TRỌNG: THÊM VÀ HIỆN NGAY ---
+  // ----------------------------------------------------------------
+  // ✅ 1. LOGIC LOAD THÔNG TIN SELLER (Giống CartPage)
+  // ----------------------------------------------------------------
+  useEffect(() => {
+    const loadSellerInfos = async () => {
+      const storeIds = new Set();
+      checkoutItems.forEach((item) => {
+        const storeId = item.product_data?.store?.id || item.product?.store?.id;
+        if (storeId) storeIds.add(storeId);
+      });
+
+      const newSellerInfos = { ...sellerInfos };
+      for (const storeId of storeIds) {
+        if (!sellerInfos[storeId]) {
+          try {
+            const sellerData = await getSellerDetail(storeId);
+            newSellerInfos[storeId] = sellerData;
+          } catch (err) {
+            console.warn(`❌ Không tải được thông tin seller ${storeId}:`, err);
+            newSellerInfos[storeId] = { store_name: "Cửa hàng", image: null };
+          }
+        }
+      }
+      setSellerInfos(newSellerInfos);
+    };
+
+    if (checkoutItems.length > 0) {
+      loadSellerInfos();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cartItems]); // Chạy lại khi cart thay đổi
+
+  // ----------------------------------------------------------------
+  // ✅ 2. LOGIC NHÓM SẢN PHẨM THEO STORE ID
+  // ----------------------------------------------------------------
+  const groupedItems = checkoutItems.reduce((acc, item) => {
+    const storeId = item.product_data?.store?.id || item.product?.store?.id || "store-less";
+    if (!acc[storeId]) {
+      acc[storeId] = { items: [] };
+    }
+    acc[storeId].items.push(item);
+    return acc;
+  }, {});
+
+  // ----------------------------------------------------------------
+  // LOGIC ĐỊA CHỈ (Giữ nguyên)
+  // ----------------------------------------------------------------
   const handleAddressAddedSuccess = async (newAddressData) => {
     try {
-      setIsSavingAddress(true); // Bật loading
-
-      // 1. GỌI API LƯU
+      setIsSavingAddress(true);
       const response = await API.post("users/addresses/", newAddressData);
-      
-      // 2. LẤY DỮ LIỆU ĐỊA CHỈ VỪA TẠO TỪ SERVER
-      // (Response thường trả về object đầy đủ gồm cả ID vừa tạo)
       const createdAddress = response.data;
-
       message.success("Thêm địa chỉ giao hàng thành công!");
 
-      // 3. CẬP NHẬT TRỰC TIẾP VÀO DANH SÁCH (QUAN TRỌNG)
-      // Không cần chờ fetchAddresses, ta nhét thẳng vào state addresses
       if (createdAddress && createdAddress.id) {
         setAddresses((prevList) => [...prevList, createdAddress]);
-        
-        // 4. TỰ ĐỘNG CHỌN ĐỊA CHỈ MỚI
         setSelectedAddressId(createdAddress.id);
       } else {
-        // Fallback: Nếu API server trả về lạ, thì mới gọi fetch lại
         if (typeof fetchAddresses === 'function') await fetchAddresses();
       }
-
-      // 5. Đóng Modal
       setIsAddAddressModalOpen(false);
-
     } catch (error) {
-      console.error("Lỗi khi lưu địa chỉ:", error);
-      const errorMsg = error.response?.data?.detail || "Không thể lưu địa chỉ. Vui lòng thử lại!";
+      const errorMsg = error.response?.data?.detail || "Lỗi lưu địa chỉ!";
       message.error(errorMsg);
     } finally {
-      setIsSavingAddress(false); // Tắt loading
+      setIsSavingAddress(false);
     }
   };
 
-  // Render nút thanh toán
   const renderCheckoutAction = () => {
     if (payment === "Ví điện tử") {
       return (
         <PaymentButton
           amount={totalAfterDiscount}
-          orderData={{ /* Logic data order */ }}
+          orderData={{}} // Điền order data thực tế
           disabled={!isReadyToOrder || isLoading}
         />
       );
@@ -122,7 +161,7 @@ const CheckoutPage = () => {
           {/* === CỘT TRÁI === */}
           <Col xs={24} lg={16}>
             <AddressSelector
-              addresses={addresses} // List này sẽ tự cập nhật ngay lập tức nhờ logic trên
+              addresses={addresses}
               selectedAddressId={selectedAddressId}
               onSelect={setSelectedAddressId}
               manualEntry={manualEntry}
@@ -130,7 +169,66 @@ const CheckoutPage = () => {
               onAddNew={() => setIsAddAddressModalOpen(true)}
             />
 
-            <ProductList cartItems={cartItems} onEditCart={() => navigate("/cart")} />
+            {/* ----------------------------------------------------- */}
+            {/* ✅ 3. HIỂN THỊ DANH SÁCH THEO NHÓM CỬA HÀNG */}
+            {/* ----------------------------------------------------- */}
+            <div className="checkout-product-groups" style={{ marginBottom: 20 }}>
+              {Object.entries(groupedItems).map(([storeId, { items }]) => {
+                const sellerInfo = sellerInfos[storeId] || {};
+                const storeName = sellerInfo.store_name || "Cửa hàng";
+                const storeImage = sellerInfo.image;
+
+                return (
+                  <Card 
+                    key={storeId} 
+                    className="checkout-card" 
+                    bodyStyle={{ padding: '16px' }}
+                    style={{ marginBottom: 16 }}
+                  >
+                    {/* Header Shop */}
+                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12, borderBottom: '1px solid #f0f0f0', paddingBottom: 8 }}>
+                      <Avatar src={storeImage} icon={<ShopOutlined />} size="small" style={{ marginRight: 8 }} />
+                      <Text strong>{storeName}</Text>
+                    </div>
+
+                    {/* List Items trong Shop đó */}
+                    {items.map((item) => {
+                      const prod = item.product_data || item.product || {};
+                      const price = Number(prod.price) || 0;
+                      const qty = Number(item.quantity) || 1;
+                      
+                      return (
+                        <div key={item.id || prod.id} style={{ display: 'flex', marginBottom: 12 }}>
+                          <div style={{ marginRight: 12 }}>
+                             <img 
+                               src={prod.image} 
+                               alt={prod.name} 
+                               style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 4, background: '#f5f5f5' }} 
+                             />
+                          </div>
+                          <div style={{ flex: 1 }}>
+                            <Text ellipsis style={{ width: '100%', display: 'block' }}>{prod.name}</Text>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
+                              <Text type="secondary" style={{ fontSize: 13 }}>x{qty}</Text>
+                              <Text strong>{intcomma(price * qty)}₫</Text>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    
+                    {/* (Optional) Có thể thêm phần chọn đơn vị vận chuyển riêng cho từng shop tại đây */}
+                  </Card>
+                );
+              })}
+              
+              {checkoutItems.length === 0 && (
+                <div style={{ textAlign: 'center', padding: 20 }}>
+                  <Text type="secondary">Chưa có sản phẩm nào được chọn.</Text>
+                  <Button type="link" onClick={() => navigate('/cart')}>Quay lại giỏ hàng</Button>
+                </div>
+              )}
+            </div>
 
             <div className="checkout-card">
               <div className="card-header"><TagOutlined /> Mã giảm giá</div>
@@ -157,7 +255,7 @@ const CheckoutPage = () => {
               <Title level={4}>Đơn hàng</Title>
 
               <div className="summary-row">
-                <Text type="secondary">Tạm tính</Text>
+                <Text type="secondary">Tạm tính ({checkoutItems.length} sp)</Text>
                 <Text>{intcomma(total)}₫</Text>
               </div>
 
@@ -182,7 +280,7 @@ const CheckoutPage = () => {
 
               <div className="mobile-hide-btn" style={{ marginTop: 24 }}>
                 {renderCheckoutAction()}
-                {!isReadyToOrder && <Text type="danger" style={{ fontSize: 12, marginTop: 8, display: 'block', textAlign: 'center' }}>Vui lòng điền đủ thông tin</Text>}
+                {!isReadyToOrder && <Text type="danger" style={{ fontSize: 12, marginTop: 8, display: 'block', textAlign: 'center' }}>Vui lòng điền đủ thông tin giao hàng</Text>}
               </div>
             </div>
           </Col>
@@ -194,7 +292,7 @@ const CheckoutPage = () => {
         <div>
           <Text type="secondary" style={{ fontSize: 12 }}>Tổng thanh toán</Text>
           <div style={{ color: '#ff4d4f', fontWeight: 700, fontSize: 18 }}>
-            {totalAfterDiscount.toLocaleString('vi-VN')}₫
+            {intcomma(totalAfterDiscount)}₫
           </div>
         </div>
         <div style={{ width: '50%' }}>
@@ -202,7 +300,7 @@ const CheckoutPage = () => {
         </div>
       </div>
 
-      {/* === MODAL THÊM ĐỊA CHỈ === */}
+      {/* Modal thêm địa chỉ (Giữ nguyên) */}
       <Modal
         title="Thêm địa chỉ mới"
         open={isAddAddressModalOpen}

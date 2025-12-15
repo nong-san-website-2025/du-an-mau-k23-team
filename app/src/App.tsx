@@ -24,7 +24,7 @@ setupIonicReact();
 
 if (Capacitor.isNativePlatform()) {
   StatusBar.setOverlaysWebView({ overlay: false });
-  StatusBar.setBackgroundColor({ color: "#4caf50" }); // trùng màu header
+  StatusBar.setBackgroundColor({ color: "#2E7D32" }); // trùng màu header
   StatusBar.setStyle({ style: Style.Light }); // biểu tượng trắng
 }
 

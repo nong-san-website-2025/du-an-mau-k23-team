@@ -2,9 +2,15 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { API } from "../api/api";
 import type { User, GuestCartItem, CartResponseItem } from "../types/models";
-import { SecureStorage } from "../utils/secureStorage"; // ✅ Import mới
+import { SecureStorage } from "../utils/secureStorage";
 
+// Định nghĩa kiểu cho User đã đăng nhập
 type AuthUser = User & { isAuthenticated: true; token: string };
+
+interface LoginResponse {
+  access: string;
+  refresh: string;
+}
 
 interface AuthContextType {
   user: AuthUser | null;
@@ -46,6 +52,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // ==========================================
+  // 1. INIT AUTH
+  // ==========================================
   useEffect(() => {
     const initAuth = async () => {
       try {
@@ -53,82 +62,104 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
         if (!token) {
           setUser(null);
-          setLoading(false);
           return;
         }
 
-        const userData = await API.get<User>("/users/me/", true);
+        const userData = await API.get<User>("/users/me/");
         setUser({ ...userData, isAuthenticated: true, token });
-      } catch (err) {
+      } catch (err: unknown) { // ✅ Dùng unknown thay vì any
         console.error("AuthProvider init error:", err);
         setUser(null);
       } finally {
-        setLoading(false); // 👈 đảm bảo dòng này luôn chạy
+        setLoading(false);
       }
     };
 
     initAuth();
+    
+    const handleLogoutEvent = () => logout();
+    window.addEventListener('user-logged-out', handleLogoutEvent);
+
+    return () => {
+        window.removeEventListener('user-logged-out', handleLogoutEvent);
+    }
   }, []);
 
+  // ==========================================
+  // 2. LOGIN
+  // ==========================================
   const login = async (username: string, password: string) => {
     try {
-      const tokens = await API.post<{ access: string; refresh: string }>(
+      // Xác định rõ kiểu trả về <LoginResponse> và kiểu data gửi đi
+      const tokens = await API.post<LoginResponse, {username: string, password: string}>(
         "/users/login/",
-        {
-          username,
-          password,
-        }
+        { username, password }
       );
 
       await SecureStorage.setToken(tokens.access);
       if (tokens.refresh) await SecureStorage.setRefreshToken(tokens.refresh);
 
-      const userData = await API.get<User>("/users/me/", true);
+      const userData = await API.get<User>("/users/me/");
+      
       const authUser: AuthUser = {
         ...userData,
         isAuthenticated: true,
         token: tokens.access,
       };
+      
       setUser(authUser);
       window.dispatchEvent(new CustomEvent("user-logged-in"));
+      
       return { success: true, role: userData.role, token: tokens.access };
-    } catch (err: unknown) {
-      const error = err as Error;
-      return { success: false, error: error.message || "Login failed" };
+    } catch (err: unknown) { // ✅ Strict Error Handling
+      const errorMessage = err instanceof Error ? err.message : "Đăng nhập thất bại";
+      return { success: false, error: errorMessage };
     }
   };
 
+  // ==========================================
+  // 3. LOGOUT (Sync Cart Logic)
+  // ==========================================
   const logout = async () => {
     try {
       const token = await SecureStorage.getToken();
+      
       if (token) {
-        const serverCart = await API.get<CartResponseItem[]>(
-          "/cartitems/",
-          true
-        );
-        const guestCart: GuestCartItem[] = serverCart.map((item) => ({
-          product: item.product_data?.id || item.product,
-          quantity: item.quantity,
-          product_data: {
-            id: item.product_data?.id || item.product,
-            name: item.product_data?.name || "Unknown Product",
-            price: item.product_data?.price || 0,
-            image: item.product_data?.image || "",
-          },
-        }));
+        const serverCart = await API.get<CartResponseItem[]>("/cartitems/");
+        
+        // Map dữ liệu Strict Type
+        const guestCart: GuestCartItem[] = serverCart.map((item) => {
+            // Lấy product_data an toàn (nếu null thì dùng fallback)
+            const pData = item.product_data;
+
+            return {
+                product: item.product, 
+                quantity: item.quantity,
+                product_data: {
+                    // Dùng Nullish Coalescing (??) để fallback giá trị mặc định
+                    id: pData?.id ?? item.product,
+                    name: pData?.name ?? "Unknown Product",
+                    price: pData?.price ?? 0,
+                    image: pData?.image ?? "",
+                },
+            };
+        });
+
         if (guestCart.length > 0) {
           await SecureStorage.setGuestCart(JSON.stringify(guestCart));
         }
       }
-    } catch (e) {
+    } catch (e: unknown) { // ✅ Catch error an toàn
       console.warn("Cart sync on logout failed", e);
     }
 
-    await SecureStorage.removeToken();
-    await SecureStorage.removeRefreshToken();
+    await SecureStorage.clearAuth();
     setUser(null);
   };
 
+  // ==========================================
+  // 4. LOGIN WITH TOKEN
+  // ==========================================
   const loginWithToken = async (
     accessToken: string,
     refreshToken: string | null = null
@@ -136,20 +167,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     try {
       await SecureStorage.setToken(accessToken);
       if (refreshToken) await SecureStorage.setRefreshToken(refreshToken);
-      const userData = await API.get<User>("/users/me/", true);
+      
+      const userData = await API.get<User>("/users/me/");
       setUser({ ...userData, isAuthenticated: true, token: accessToken });
+      
       window.dispatchEvent(new CustomEvent("user-logged-in"));
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("loginWithToken failed:", err);
-      await SecureStorage.removeToken();
-      await SecureStorage.removeRefreshToken();
+      await SecureStorage.clearAuth();
       setUser(null);
     }
   };
 
+  // ==========================================
+  // 5. REGISTER
+  // ==========================================
   const register = async (payload: Record<string, unknown>) => {
     try {
       const data = await API.post("/users/register/", payload);
+      
       if (
         typeof payload.username === "string" &&
         typeof payload.password === "string"
@@ -157,12 +193,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         await login(payload.username, payload.password);
       }
       return { success: true, data };
-    } catch (err: unknown) {
-      const error = err as Error;
-      return { success: false, error: error.message || "Register failed" };
+    } catch (err: unknown) { // ✅ Strict Error Handling
+      const errorMessage = err instanceof Error ? err.message : "Đăng ký thất bại";
+      return { success: false, error: errorMessage };
     }
   };
 
+  // ==========================================
+  // 6. GOOGLE LOGIN
+  // ==========================================
   const googleLogin = async (googleResponse: {
     access: string;
     refresh: string;
@@ -170,7 +209,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     try {
       await SecureStorage.setToken(googleResponse.access);
       await SecureStorage.setRefreshToken(googleResponse.refresh);
-      const userData = await API.get<User>("/users/me/", true);
+      
+      const userData = await API.get<User>("/users/me/");
+      
       setUser({
         ...userData,
         isAuthenticated: true,
@@ -178,9 +219,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       });
       window.dispatchEvent(new CustomEvent("user-logged-in"));
       return { success: true, user: userData };
-    } catch (err: unknown) {
-      const error = err as Error;
-      return { success: false, error: error.message || "Google login failed" };
+    } catch (err: unknown) { // ✅ Strict Error Handling
+      const errorMessage = err instanceof Error ? err.message : "Đăng nhập Google thất bại";
+      return { success: false, error: errorMessage };
     }
   };
 
