@@ -64,6 +64,7 @@ export default function ProductsPage() {
   // Filter States
   const [activeTab, setActiveTab] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
+  const [importRequestProducts, setImportRequestProducts] = useState([]);
 
   // Detail & Gallery States
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -98,13 +99,15 @@ export default function ProductsPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [catRes, prodRes] = await Promise.all([
+      const [catRes, prodRes, importRes] = await Promise.all([
         productApi.getCategories(),
         productApi.getSellerProducts(),
+        productApi.getImportRequestProducts().catch(() => ({ data: [] })),
       ]);
 
       const categoriesData = catRes.data.results || catRes.data || [];
       const productsData = prodRes.data.results || prodRes.data || [];
+      const importData = importRes.data || [];
 
       // Map Category Name vào Product
       const mapped = productsData.map((p) => {
@@ -124,6 +127,7 @@ export default function ProductsPage() {
 
       setCategories(categoriesData);
       setRawProducts(sorted);
+      setImportRequestProducts(importData);
     } catch (err) {
       message.error("Không thể tải dữ liệu sản phẩm");
       console.error(err);
@@ -169,22 +173,34 @@ export default function ProductsPage() {
         case "out_of_stock":
           result = result.filter((p) => p.stock <= 0);
           break;
+        case "import_request":
+          result = importRequestProducts;
+          if (searchTerm) {
+            const lowerKey = searchTerm.toLowerCase();
+            result = result.filter(
+              (p) =>
+                p.name.toLowerCase().includes(lowerKey) ||
+                String(p.id).includes(lowerKey) ||
+                p.category_name.toLowerCase().includes(lowerKey)
+            );
+          }
+          break;
         default:
           break;
       }
     }
     setFilteredProducts(result);
-  }, [rawProducts, searchTerm, activeTab]);
+  }, [rawProducts, searchTerm, activeTab, importRequestProducts]);
 
   // ==================== 5. STATS CALCULATION ====================
+
 
   const statsItems = useMemo(() => {
     const total = rawProducts.length;
     const approved = rawProducts.filter((p) => p.status === "approved").length;
-    const pending = rawProducts.filter((p) =>
-      ["pending", "pending_update"].includes(p.status)
-    ).length;
+    const pending = rawProducts.filter((p) => ["pending", "pending_update"].includes(p.status)).length;
     const outOfStock = rawProducts.filter((p) => p.stock <= 0).length;
+    const importRequest = importRequestProducts.length;
 
     return [
       {
@@ -211,8 +227,14 @@ export default function ProductsPage() {
         icon: <StopOutlined />,
         color: "#ff4d4f",
       },
+      {
+        title: "Được yêu cầu nhập",
+        value: importRequest,
+        icon: <ImportOutlined />,
+        color: "#13c2c2",
+      },
     ];
-  }, [rawProducts]);
+  }, [rawProducts, importRequestProducts]);
 
   // ==================== 6. HANDLERS ====================
 
@@ -461,6 +483,7 @@ export default function ProductsPage() {
     }
   };
 
+
   const tabItems = [
     { key: "all", label: `Tất cả (${statsItems[0].value})` },
     {
@@ -477,6 +500,11 @@ export default function ProductsPage() {
       key: "out_of_stock",
       label: `Hết hàng (${statsItems[3].value})`,
       icon: <StopOutlined />,
+    },
+    {
+      key: "import_request",
+      label: `Được yêu cầu nhập (${statsItems[4].value})`,
+      icon: <ImportOutlined />,
     },
     { key: "rejected", label: "Đã huỷ / Từ chối" },
   ];

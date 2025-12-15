@@ -14,6 +14,7 @@ from .views import (
     ShopViewSet,    SellerLockAPIView,
     SellerByStatusAPIView,
     SellerProductsAPIView,
+    SellerImportRequestProductsAPIView,
     SellerMeAPIView,
     SellerActivateAPIView,
 )
@@ -52,6 +53,7 @@ urlpatterns = [
     path('activity/<int:seller_id>/', views.seller_activity_history, name='seller-activity'),
     
     # Products and Orders
+    path('productseller/with-import-requests/', views.SellerImportRequestProductsAPIView.as_view(), name='seller-products-import-requests'),
     path('<int:seller_id>/products/', views.seller_products_list, name='seller-products'),
     path('<int:seller_id>/orders/', views.seller_orders_list, name='seller-orders'),
     

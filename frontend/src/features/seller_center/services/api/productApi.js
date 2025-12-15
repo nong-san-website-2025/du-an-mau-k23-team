@@ -22,7 +22,13 @@ export const productApi = {
     });
   },
 
-  
+
+  // ==================== 1.5. LẤY DANH SÁCH SẢN PHẨM CÓ YÊU CẦU NHẬP ====================
+  getImportRequestProducts: () =>
+    api.get("/sellers/productseller/with-import-requests/", {
+      headers: getAuthHeaders(),
+    }),
+
 
   // ==================== 2. DANH MỤC & HIỂN THỊ ====================
   getCategories: () =>
