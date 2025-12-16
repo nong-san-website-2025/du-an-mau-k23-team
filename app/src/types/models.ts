@@ -56,33 +56,39 @@ export interface ProductImage {
 export interface Product {
   id: number;
   name: string;
-  price: number; // Nên để number để tính toán, chỉ format khi render
+  price: number;
   description?: string;
   
   unit?: string;
-  // Hình ảnh
-  image?: string | null; // Ảnh đại diện chính (thumbnail)
-  images?: ProductImage[]; // Danh sách ảnh chi tiết
   
-  // Quan hệ (Union Type: ID hoặc Object)
+  // --- SỬA ĐOẠN NÀY ---
+  image?: string | null;      // Ảnh đại diện (string)
+  images?: ProductImage[];    // Danh sách ảnh
+  
+  // 👉 BỔ SUNG THÊM FIELD NÀY ĐỂ KHỚP VỚI JSON
+  main_image?: ProductImage | null; 
+  
+  // 👉 Bổ sung thêm giá khuyến mãi (thấy JSON có trả về)
+  discounted_price?: number;
+  discount_percent?: number;
+  // ---------------------
+
   category?: number | Category;
   subcategory?: number | Subcategory;
   subcategory_name?: string;
   
-  // Store (Quan trọng cho logic Giỏ hàng)
   store?: number | Store | null;
-  store_name?: string; // Field tiện ích nếu backend flatten dữ liệu
+  store_name?: string; 
   
-  // Khác
   brand?: string;
   inventory_qty?: number;
   preorder?: boolean;
   rating_average?: number;
   created_at?: string;
 
-  ordered_quantity?: number;     // Số lượng đã đặt
-  expected_quantity?: number;    // Số lượng dự kiến về
-  estimated_quantity?: number;   // (Dự phòng nếu backend trả tên khác)
+  ordered_quantity?: number;    
+  expected_quantity?: number;    
+  estimated_quantity?: number;   
   stock?: number;
 }
 

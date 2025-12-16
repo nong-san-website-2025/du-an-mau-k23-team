@@ -14,6 +14,7 @@ import ProductDetail from "../components/Product/ProductDetail";
 import LoginPage from "../pages/Auth/AuthPage";
 import CheckoutPage from "../pages/CheckoutPage"; // <--- Import trang mới
 import AuthPage from "../pages/Auth/AuthPage";
+import AddressBookPage from "../pages/User/AddressBookPage";
 
 const AppRoutes: React.FC = () => {
   return (
@@ -36,6 +37,9 @@ const AppRoutes: React.FC = () => {
       <Route exact path="/login" component={LoginPage} />
       <Route exact path="/register">
         <AuthPage />
+      </Route>
+      <Route path="/address-book" exact={true}>
+        <AddressBookPage/>
       </Route>
       <Route path="/favorite" component={Tab3} />
       <Route path="/notification" component={Tab4} />

@@ -26,13 +26,14 @@ import {
   mailOutline,
   callOutline,
 } from "ionicons/icons";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../context/AuthContext"; // Đảm bảo đường dẫn đúng
 import { useLocation } from "react-router-dom";
-import "../../styles/AuthPage.css"; // Đổi tên file css tương ứng
+import "../../styles/AuthPage.css";
 
 const AuthPage: React.FC = () => {
   const location = useLocation();
   const isRegisterRoute = location.pathname === "/register";
+  
   // --- STATE QUẢN LÝ ---
   const [isLoginView, setIsLoginView] = useState(!isRegisterRoute);
   const [loading, setLoading] = useState(false);
@@ -42,55 +43,116 @@ const AuthPage: React.FC = () => {
   const [formData, setFormData] = useState({
     username: "",
     password: "",
-    confirmPassword: "", // Chỉ dùng cho đăng ký
-    email: "", // Chỉ dùng cho đăng ký
-    phone: "", // Chỉ dùng cho đăng ký
+    confirmPassword: "",
+    email: "",
+    phone: "",
   });
 
-  const { login } = useAuth(); // Giả sử bạn sẽ có thêm hàm register trong context sau này
+  // Lấy cả login và register từ Context
+  const { login, register } = useAuth(); 
   const router = useIonRouter();
   const [presentToast] = useIonToast();
 
-  // --- LOGIC XỬ LÝ ---
+  // --- LOGIC HELPER ---
 
   const handleInputChange = (key: string, value: string) => {
     setFormData((prev) => ({ ...prev, [key]: value }));
   };
 
+  // Validate form đăng ký (Logic chuẩn Senior: Validate Client trước)
+  const validateRegisterForm = () => {
+    const { username, email, password, confirmPassword } = formData;
+    
+    if (!username || !email || !password || !confirmPassword) {
+      return "Vui lòng điền đầy đủ thông tin bắt buộc!";
+    }
+
+    // Validate Email cơ bản
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return "Email không hợp lệ!";
+    }
+
+    if (password !== confirmPassword) {
+      return "Mật khẩu nhập lại không khớp!";
+    }
+
+    if (password.length < 8) {
+      return "Mật khẩu phải có ít nhất 8 ký tự!";
+    }
+
+    if (!/[A-Z]/.test(password)) {
+      return "Mật khẩu phải chứa ít nhất 1 ký tự in hoa!";
+    }
+
+    if (!/\d/.test(password)) {
+      return "Mật khẩu phải chứa ít nhất 1 số!";
+    }
+
+    return null; // Không có lỗi
+  };
+
+  // --- XỬ LÝ SUBMIT ---
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // 1. Validate chung
-    if (!formData.username || !formData.password) {
-      presentToast({
-        message: "Vui lòng nhập đầy đủ thông tin!",
-        duration: 2000,
-        color: "warning",
-      });
-      return;
-    }
-
-    // 2. Logic riêng cho Đăng ký
+    // 1. Xử lý ĐĂNG KÝ
     if (!isLoginView) {
-      if (formData.password !== formData.confirmPassword) {
+      const validationError = validateRegisterForm();
+      if (validationError) {
         presentToast({
-          message: "Mật khẩu nhập lại không khớp!",
-          duration: 2000,
-          color: "danger",
+          message: validationError,
+          duration: 3000,
+          color: "warning",
+          position: "top",
         });
         return;
       }
-      // TODO: Gọi hàm register từ AuthContext ở đây
-      // await register(...)
-      presentToast({
-        message: "Tính năng đăng ký đang phát triển",
-        duration: 2000,
-        color: "secondary",
-      });
+
+      setLoading(true);
+      
+      // Map data cho khớp với Serializer của Django (thường cần password2 hoặc confirm_password)
+      const registerPayload = {
+        username: formData.username,
+        email: formData.email,
+        phone: formData.phone,
+        password: formData.password,
+        password2: formData.confirmPassword, // Gửi field này để backend validate khớp pass
+      };
+
+      const res = await register(registerPayload);
+      setLoading(false);
+
+      if (res.success) {
+        presentToast({
+          message: "Đăng ký thành công! Chào mừng đến GreenFarm.",
+          duration: 2000,
+          color: "success",
+        });
+        // Vì AuthContext.register đã tự gọi login bên trong, ta chỉ cần redirect
+        router.push("/", "root", "replace");
+      } else {
+        // Hiển thị lỗi cụ thể từ Server (VD: Username đã tồn tại)
+        presentToast({
+          message: res.error || "Đăng ký thất bại. Vui lòng thử lại.",
+          duration: 3000,
+          color: "danger",
+        });
+      }
       return;
     }
 
-    // 3. Logic Đăng nhập
+    // 2. Xử lý ĐĂNG NHẬP
+    if (!formData.username || !formData.password) {
+        presentToast({
+            message: "Vui lòng nhập tên đăng nhập và mật khẩu!",
+            duration: 2000,
+            color: "warning",
+        });
+        return;
+    }
+
     setLoading(true);
     const result = await login(formData.username, formData.password);
     setLoading(false);
@@ -104,24 +166,23 @@ const AuthPage: React.FC = () => {
       router.push("/", "root", "replace");
     } else {
       presentToast({
-        message: result.error || "Lỗi xác thực",
+        message: result.error || "Sai tên đăng nhập hoặc mật khẩu",
         duration: 3000,
         color: "danger",
       });
     }
   };
 
-  // Hàm chuyển đổi view và reset form
   const toggleView = () => {
     setIsLoginView(!isLoginView);
-    // Tuỳ chọn: Reset form khi chuyển tab để sạch sẽ
-    // setFormData({ username: "", password: "", confirmPassword: "", email: "", phone: "" });
+    // Reset nhẹ các field nhạy cảm khi chuyển tab, giữ lại username nếu có
+    setFormData(prev => ({ ...prev, password: "", confirmPassword: "" }));
   };
 
   return (
     <IonPage className="auth-page">
       <IonContent fullscreen scrollY={false}>
-        {/* HEADER (Giữ nguyên) */}
+        {/* HEADER */}
         <div className="auth-header-bg">
           <div className="brand-container">
             <div className="logo-circle">
@@ -139,7 +200,6 @@ const AuthPage: React.FC = () => {
           }`}
         >
           <div className="form-content">
-            {/* Title & Toggle */}
             <div className="ion-text-center ion-margin-bottom">
               <h2 className="auth-title">
                 {isLoginView ? "Đăng Nhập" : "Đăng Ký Tài Khoản"}
@@ -147,7 +207,7 @@ const AuthPage: React.FC = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="fade-in-animation">
-              {/* --- CÁC TRƯỜNG CHUNG --- */}
+              {/* Username */}
               <div className="input-group">
                 <IonInput
                   className="custom-input"
@@ -168,7 +228,7 @@ const AuthPage: React.FC = () => {
                 </IonInput>
               </div>
 
-              {/* --- CÁC TRƯỜNG CHỈ CÓ Ở ĐĂNG KÝ --- */}
+              {/* Các trường Đăng ký thêm */}
               {!isLoginView && (
                 <>
                   <div className="input-group slide-in">
@@ -214,6 +274,7 @@ const AuthPage: React.FC = () => {
                 </>
               )}
 
+              {/* Password */}
               <div className="input-group">
                 <IonInput
                   className="custom-input"
@@ -246,7 +307,7 @@ const AuthPage: React.FC = () => {
                 </IonInput>
               </div>
 
-              {/* Confirm Password cho Đăng ký */}
+              {/* Confirm Password */}
               {!isLoginView && (
                 <div className="input-group slide-in">
                   <IonInput
@@ -270,7 +331,7 @@ const AuthPage: React.FC = () => {
                 </div>
               )}
 
-              {/* Forgot Password (Chỉ hiện khi Login) */}
+              {/* Forgot Password Link */}
               {isLoginView && (
                 <div className="forgot-password ion-text-end">
                   <IonButton
@@ -278,13 +339,14 @@ const AuthPage: React.FC = () => {
                     size="small"
                     color="medium"
                     className="no-ripple"
+                    // Thêm action quên mật khẩu sau này
                   >
                     Quên mật khẩu?
                   </IonButton>
                 </div>
               )}
 
-              {/* Action Button */}
+              {/* Submit Button */}
               <IonButton
                 expand="block"
                 type="submit"
@@ -306,7 +368,7 @@ const AuthPage: React.FC = () => {
               </IonButton>
             </form>
 
-            {/* Social Divider (Chỉ hiện khi Login cho gọn) */}
+            {/* Social Login (Giữ nguyên) */}
             {isLoginView && (
               <>
                 <div className="divider">
@@ -320,6 +382,7 @@ const AuthPage: React.FC = () => {
                         fill="outline"
                         color="danger"
                         className="social-btn"
+                        // Thêm logic Google login
                       >
                         <IonIcon icon={logoGoogle} />
                       </IonButton>
@@ -358,7 +421,7 @@ const AuthPage: React.FC = () => {
 
         <IonLoading
           isOpen={loading}
-          message="Đang xử lý..."
+          message="Vui lòng chờ..."
           spinner="crescent"
           cssClass="custom-loading"
         />

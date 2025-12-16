@@ -1,0 +1,85 @@
+/* src/pages/Address/AddressBook.css */
+
+/* Nền xám nhẹ làm nổi bật các Card trắng */
+ion-content {
+  --background: #f4f5f8;
+}
+
+/* --- ADDRESS CARD STYLING --- */
+.address-card-sliding {
+  margin-bottom: 16px;
+  border-radius: 16px;
+  background: transparent;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); /* Bóng đổ mềm */
+  overflow: hidden;
+}
+
+.address-item-inner {
+  --background: #ffffff;
+  --padding-start: 16px;
+  --padding-end: 16px;
+  --padding-top: 12px;
+  --padding-bottom: 12px;
+  border-radius: 16px; /* Bo góc card */
+}
+
+/* Typography Custom */
+.addr-name {
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: #1a1a1a;
+  margin-right: 8px;
+}
+
+.addr-phone {
+  font-weight: 500;
+  color: #444;
+}
+
+.addr-detail {
+  font-size: 0.9rem;
+  color: #666;
+  line-height: 1.4;
+  margin-top: 4px;
+}
+
+/* Badge Mặc định */
+.badge-default {
+  background-color: rgba(45, 211, 111, 0.1);
+  color: #2dd36f;
+  font-size: 0.7rem;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+/* --- SKELETON LOADING --- */
+.skeleton-card {
+  background: white;
+  margin-bottom: 16px;
+  padding: 16px;
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+/* --- EMPTY STATE --- */
+.empty-state-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 60vh;
+  text-align: center;
+}
+
+.empty-icon-circle {
+  width: 100px;
+  height: 100px;
+  background-color: rgba(45, 211, 111, 0.1); /* Màu xanh GreenFarm nhạt */
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+}

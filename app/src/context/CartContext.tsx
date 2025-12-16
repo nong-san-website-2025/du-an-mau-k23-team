@@ -13,21 +13,17 @@ import { Product, CartItem as ModelCartItem } from "../types/models";
 
 // ================== Type Definitions ==================
 
-// 1. Dữ liệu chuẩn dùng trong App (UI)
 export interface CartItem extends ModelCartItem {
   selected?: boolean;
-  // product_data luôn tồn tại trong UI để render
   product_data?: Product;
 }
 
-// 2. Dữ liệu thô từ API hoặc LocalStorage (có thể thiếu trường, hoặc product là ID)
-// Interface này giúp thay thế 'any' khi xử lý dữ liệu đầu vào không đồng nhất
 interface RawCartItem {
   id?: number;
-  product?: number | string | Product; // Có thể là ID hoặc Object
-  product_id?: number | string; // Một số API trả về field này
+  product?: number | string | Product;
+  product_id?: number | string;
   quantity: number;
-  product_data?: Product; // Có thể chưa có
+  product_data?: Product;
   selected?: boolean;
   preorder?: boolean;
 }
@@ -37,7 +33,6 @@ interface CartContextType {
   loading: boolean;
   cartItemCount: number;
 
-  // Actions
   addToCart: (
     product: Product,
     quantity?: number,
@@ -49,24 +44,19 @@ interface CartContextType {
   clearSelectedItems: () => Promise<void>;
   fetchCart: () => Promise<void>;
 
-  // Selection
   selectAllItems: () => void;
   deselectAllItems: () => void;
   toggleItem: (productId: number | string) => void;
   selectOnlyByProductId: (productId: number | string) => void;
 
-  // Helper
   getItemProductId: (item: CartItem | RawCartItem) => string;
 }
 
 // ================== Helper ==================
 
-// Helper lấy ID sản phẩm an toàn từ nhiều nguồn dữ liệu khác nhau
 export const getItemProductId = (item: CartItem | RawCartItem): string => {
-  // Ưu tiên lấy từ product_data đã normalized
   if (item.product_data?.id) return String(item.product_data.id);
 
-  // Kiểm tra nếu product là Object Product
   if (
     typeof item.product === "object" &&
     item.product !== null &&
@@ -75,7 +65,6 @@ export const getItemProductId = (item: CartItem | RawCartItem): string => {
     return String(item.product.id);
   }
 
-  // Kiểm tra nếu product là ID (number/string)
   if (
     item.product &&
     (typeof item.product === "string" || typeof item.product === "number")
@@ -83,7 +72,6 @@ export const getItemProductId = (item: CartItem | RawCartItem): string => {
     return String(item.product);
   }
 
-  // Fallback sang product_id
   if (item.product_id) return String(item.product_id);
 
   return "";
@@ -112,11 +100,10 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
     (message: string, type: "success" | "danger" | "warning" = "success") => {
       present({
         message: message,
-        duration: 1500, // Thời gian hiện (ms)
-        position: "bottom", // 'top', 'middle', 'bottom'
-        color: type, // Màu theo theme Ionic (success, danger, warning, dark...)
-        icon: undefined, // Có thể thêm icon nếu muốn
-        cssClass: "my-custom-toast", // Class CSS nếu muốn custom thêm
+        duration: 1500,
+        position: "bottom",
+        color: type,
+        cssClass: "my-custom-toast",
       });
     },
     [present]
@@ -150,41 +137,36 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
       let rawItems: RawCartItem[] = [];
 
       if (isAuthenticated()) {
-        const res = await API.get<RawCartItem[]>("/cartitems/", true);
+        // FIX: Bỏ tham số 'true'
+        const res = await API.get<RawCartItem[]>("/cartitems/");
         rawItems = Array.isArray(res) ? res : [];
       } else {
         rawItems = getGuestCart();
       }
 
-      // Xử lý chuẩn hóa dữ liệu (Normalize)
-      // Chuyển đổi RawCartItem -> CartItem (đảm bảo product_data luôn tồn tại)
       const normalizedItems: CartItem[] = await Promise.all(
         rawItems.map(async (item) => {
-          // 1. Nếu đã có đầy đủ thông tin
           if (item.product_data?.name) {
             return {
               ...item,
-              product: item.product_data.id, // Chuẩn hóa product thành ID
+              product: item.product_data.id,
               product_data: item.product_data,
               selected: item.selected ?? true,
             } as CartItem;
           }
 
-          // 2. Nếu thiếu thông tin, cần fetch bổ sung
           try {
             const pid = getItemProductId(item);
             if (!pid) throw new Error("Product ID not found");
 
             const prod = await productApi.getProduct(Number(pid));
 
-            // Xử lý ảnh (Fallback logic)
             const primaryImage =
               prod.image ||
               prod.images?.find((img) => img.is_primary)?.image ||
               prod.images?.[0]?.image ||
               "";
 
-            // Tạo product_data hoàn chỉnh
             const fullProductData: Product = {
               ...prod,
               image: primaryImage,
@@ -200,32 +182,29 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
               ...item,
               id: item.id,
               quantity: item.quantity,
-              product: prod.id, // Lưu ID
+              product: prod.id,
               product_data: fullProductData,
               selected: item.selected ?? true,
             } as CartItem;
           } catch (e) {
             console.warn(`Lỗi chuẩn hóa item ${item.id}:`, e);
-            // Trả về item lỗi nhẹ để không crash app, nhưng đánh dấu
             return {
               ...item,
               product: item.product || 0,
               quantity: item.quantity,
               selected: false,
-              product_data: item.product_data, // Có thể undefined
+              product_data: item.product_data,
             } as CartItem;
           }
         })
       );
 
-      // Lọc bỏ những item bị lỗi quá nặng (không có product_data sau khi normalize)
       const validItems = normalizedItems.filter(
         (i) => i.product_data && i.product_data.id
       );
       setCartItems(validItems);
     } catch (err) {
       console.error("Lỗi fetch giỏ hàng:", err);
-      // Nếu lỗi mạng, có thể set empty hoặc giữ state cũ tùy policy
     } finally {
       setLoading(false);
     }
@@ -242,8 +221,8 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
       if (guestCart.length > 0 && !isSyncing) {
         setIsSyncing(true);
         try {
-          // Lấy giỏ hàng hiện tại trên server để check trùng
-          const userCartRes = await API.get<RawCartItem[]>("/cartitems/", true);
+          // FIX: Bỏ tham số 'true'
+          const userCartRes = await API.get<RawCartItem[]>("/cartitems/");
           const userCart = Array.isArray(userCartRes) ? userCartRes : [];
 
           for (const guestItem of guestCart) {
@@ -253,17 +232,16 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
             );
 
             if (existing && existing.id) {
-              await API.patch(
-                `/cartitems/${existing.id}/`,
-                { quantity: existing.quantity + guestItem.quantity },
-                true
-              );
+              // FIX: Bỏ tham số 'true'
+              await API.patch(`/cartitems/${existing.id}/`, {
+                quantity: existing.quantity + guestItem.quantity,
+              });
             } else {
-              await API.post(
-                "/cartitems/",
-                { product_id: guestPid, quantity: guestItem.quantity },
-                true
-              );
+              // FIX: Bỏ tham số 'true'
+              await API.post("/cartitems/", {
+                product_id: guestPid,
+                quantity: guestItem.quantity,
+              });
             }
           }
 
@@ -281,7 +259,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
     window.addEventListener("user-logged-in", handleUserLoggedIn);
     return () =>
       window.removeEventListener("user-logged-in", handleUserLoggedIn);
-  }, [getGuestCart, fetchCart, isSyncing]);
+  }, [getGuestCart, fetchCart, isSyncing, showToast]); // FIX: Thêm showToast vào dependency
 
   // --- 3. Actions ---
 
@@ -292,18 +270,15 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
   ) => {
     setLoading(true);
     try {
-      const targetProduct = productInfo || product; // Fallback
+      const targetProduct = productInfo || product;
 
       if (isAuthenticated()) {
-        await API.post(
-          "/cartitems/",
-          {
-            product_id: targetProduct.id,
-            quantity,
-            preorder: !!targetProduct.preorder,
-          },
-          true
-        );
+        // FIX: Bỏ tham số 'true'
+        await API.post("/cartitems/", {
+          product_id: targetProduct.id,
+          quantity,
+          preorder: !!targetProduct.preorder,
+        });
         showToast("Đã thêm vào giỏ hàng");
       } else {
         const items = getGuestCart();
@@ -314,7 +289,6 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
         if (existing) {
           existing.quantity += quantity;
         } else {
-          // Lưu cấu trúc đầy đủ cho Guest
           items.push({
             product: targetProduct.id,
             quantity,
@@ -329,7 +303,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
       await fetchCart();
     } catch (err) {
       console.error("Add to cart error:", err);
-      showToast("Không thể thêm vào giỏ");
+      showToast("Không thể thêm vào giỏ", "danger");
     } finally {
       setLoading(false);
     }
@@ -338,7 +312,6 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
   const updateQuantity = async (productId: number | string, newQty: number) => {
     if (newQty < 1) return removeFromCart(productId);
 
-    // Optimistic Update (Cập nhật UI trước khi gọi API)
     setCartItems((prev) =>
       prev.map((item) =>
         getItemProductId(item) === String(productId)
@@ -353,7 +326,8 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
           (i) => getItemProductId(i) === String(productId)
         );
         if (item && item.id) {
-          await API.patch(`/cartitems/${item.id}/`, { quantity: newQty }, true);
+          // FIX: Bỏ tham số 'true'
+          await API.patch(`/cartitems/${item.id}/`, { quantity: newQty });
         }
       } else {
         const items = getGuestCart();
@@ -365,12 +339,11 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
           saveGuestCart(items);
         }
       }
-      // Fetch lại để đồng bộ chính xác (quan trọng để tính giá, khuyến mãi từ server)
       await fetchCart();
     } catch (err) {
       console.error(err);
-      showToast("Lỗi cập nhật số lượng");
-      await fetchCart(); // Revert state nếu lỗi
+      showToast("Lỗi cập nhật số lượng", "danger");
+      await fetchCart();
     }
   };
 
@@ -382,7 +355,8 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
           (i) => getItemProductId(i) === String(productId)
         );
         if (item && item.id) {
-          await API.delete(`/cartitems/${item.id}/`, true);
+          // FIX: Bỏ tham số 'true'
+          await API.delete(`/cartitems/${item.id}/`);
         }
       } else {
         const items = getGuestCart();
@@ -395,7 +369,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
       showToast("Đã xóa sản phẩm");
     } catch (err) {
       console.error(err);
-      showToast("Không thể xóa sản phẩm");
+      showToast("Không thể xóa sản phẩm", "danger");
     } finally {
       setLoading(false);
     }
@@ -405,10 +379,9 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
     setLoading(true);
     try {
       if (isAuthenticated()) {
-        // Tối ưu: Dùng Promise.all để xóa song song
         const deletePromises = cartItems.map((item) =>
           item.id
-            ? API.delete(`/cartitems/${item.id}/`, true)
+            ? API.delete(`/cartitems/${item.id}/`) // FIX: Bỏ tham số 'true'
             : Promise.resolve()
         );
         await Promise.all(deletePromises);
@@ -418,7 +391,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
       showToast("Giỏ hàng đã được làm trống");
     } catch (err) {
       console.error(err);
-      showToast("Lỗi khi làm trống giỏ hàng");
+      showToast("Lỗi khi làm trống giỏ hàng", "danger");
     } finally {
       setLoading(false);
     }
@@ -433,13 +406,12 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
       if (isAuthenticated()) {
         const deletePromises = selected.map((item) =>
           item.id
-            ? API.delete(`/cartitems/${item.id}/`, true)
+            ? API.delete(`/cartitems/${item.id}/`) // FIX: Bỏ tham số 'true'
             : Promise.resolve()
         );
         await Promise.all(deletePromises);
       } else {
         const items = getGuestCart();
-        // Giữ lại các item KHÔNG được chọn (so sánh bằng ID)
         const remaining = items.filter(
           (rawItem) =>
             !selected.some(
@@ -453,7 +425,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
       showToast("Đã xóa các sản phẩm đã chọn");
     } catch (err) {
       console.error(err);
-      showToast("Lỗi khi xóa sản phẩm");
+      showToast("Lỗi khi xóa sản phẩm", "danger");
     } finally {
       setLoading(false);
     }

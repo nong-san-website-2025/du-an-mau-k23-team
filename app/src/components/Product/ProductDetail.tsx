@@ -9,7 +9,7 @@ import {
   useIonAlert,
 } from "@ionic/react";
 import { warningOutline, cartOutline, heart } from "ionicons/icons";
-import { useParams } from "react-router-dom"; // Bỏ useHistory nếu không dùng
+import { useParams } from "react-router-dom";
 
 // --- HOOKS & API ---
 import { useCart } from "../../context/CartContext";
@@ -18,7 +18,8 @@ import { reviewApi } from "../../api/reviewApi";
 import AppHeader from "../../components/AppHeader";
 
 // --- TYPES ---
-import { Product, Store } from "../../types/models"; // Import thêm Store
+// Lưu ý: Đảm bảo interface Product trong models.ts đã có field main_image
+import { Product, Store } from "../../types/models";
 
 // --- IMPORT COMPONENTS ---
 import ProductHero from "./ProductDetail/ProductHero";
@@ -28,17 +29,16 @@ import ProductFooter from "./ProductDetail/ProductFooter";
 
 import "../../styles/ProductDetail.css";
 
-// Interface mở rộng
+// Interface mở rộng cho chi tiết sản phẩm
 interface ProductDetailData extends Product {
   ordered_quantity?: number;
   expected_quantity?: number;
   estimated_quantity?: number;
   status: string;
-  // Bổ sung các field có thể thiếu trong Product gốc
-  stock?: number; 
+  stock?: number;
 }
 
-// Interface cho Wishlist Item (để tránh any)
+// Interface cho Item trong danh sách yêu thích
 interface WishlistItem {
   id: number;
   name: string;
@@ -52,16 +52,38 @@ const ProductDetail: React.FC = () => {
   const [presentToast] = useIonToast();
   const [presentAlert] = useIonAlert();
 
-  // State
+  // --- STATE ---
   const [product, setProduct] = useState<ProductDetailData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [isFavorite, setIsFavorite] = useState(false);
   const [reviewsCount, setReviewsCount] = useState(0);
-  // const [relatedProducts, setRelatedProducts] = useState<Product[]>([]); // Tạm ẩn nếu chưa dùng
 
-  // Computed Logic
+  // --- 🔥 HÀM LẤY ẢNH (NO ANY) ---
+  const getProductImage = useCallback((p: ProductDetailData | null): string | undefined => {
+    if (!p) return undefined;
+
+    // 1. Ưu tiên lấy từ main_image (đã khai báo trong interface Product)
+    if (p.main_image && typeof p.main_image === 'object' && p.main_image.image) {
+        return p.main_image.image;
+    }
+    
+    // 2. Nếu không, lấy ảnh đầu tiên trong mảng images
+    if (p.images && Array.isArray(p.images) && p.images.length > 0) {
+      return p.images[0].image;
+    }
+
+    // 3. Cuối cùng mới check trường 'image' string
+    if (typeof p.image === 'string' && p.image) {
+      return p.image;
+    }
+
+    return undefined;
+  }, []);
+  // ------------------------------------
+
+  // Computed Logic: Kiểm tra đặt trước hoặc hết hàng
   const isPreorder = useMemo(() => {
     if (!product) return false;
     const s = (product.status || "").toLowerCase().trim();
@@ -73,8 +95,9 @@ const ProductDetail: React.FC = () => {
   const stockVal = product ? (product.inventory_qty ?? product.stock ?? 0) : 0;
   const isOutOfStock = stockVal <= 0;
 
-  // Effects
+  // --- EFFECTS ---
   useEffect(() => {
+    // Kiểm tra trạng thái yêu thích từ LocalStorage
     const checkFavorite = () => {
       try {
         const listJson = localStorage.getItem("wishlist");
@@ -85,6 +108,7 @@ const ProductDetail: React.FC = () => {
       }
     };
 
+    // Tải dữ liệu từ API
     const fetchData = async () => {
       setLoading(true);
       setError(null);
@@ -92,21 +116,19 @@ const ProductDetail: React.FC = () => {
         const pid = Number(id);
         if (isNaN(pid)) throw new Error("ID không hợp lệ");
 
-        // Gọi API song song
+        // Gọi API song song: Lấy Product + Reviews
         const [prodData, reviewData] = await Promise.all([
           productApi.getProduct(pid),
           reviewApi.getReviews(pid).catch(() => []),
-          // productApi.getAllProducts().catch(() => []), // Tạm ẩn related
         ]);
 
-        // Ép kiểu an toàn
         const detailData = prodData as ProductDetailData;
 
-        // Logic fix store name
+        // Chuẩn hóa dữ liệu Store (tránh lỗi readonly prop)
         if (detailData.store && typeof detailData.store === "object") {
-          const s = detailData.store as Store; // Ép kiểu về Store
+          const s = detailData.store as Store; 
           if (!s.store_name && s.name) {
-             // TypeScript không cho sửa trực tiếp prop readonly, nên clone ra
+             // Clone ra object mới để gán store_name
              detailData.store = { ...s, store_name: s.name };
           }
         }
@@ -114,12 +136,7 @@ const ProductDetail: React.FC = () => {
         setProduct(detailData);
         if (Array.isArray(reviewData)) setReviewsCount(reviewData.length);
         
-        // if (Array.isArray(relatedData)) {
-        //   setRelatedProducts(relatedData.filter((p) => p.id !== pid).slice(0, 5));
-        // }
-
       } catch (err: unknown) {
-        // Xử lý lỗi unknown chuẩn TypeScript
         let msg = "Lỗi tải trang";
         if (err instanceof Error) msg = err.message;
         setError(msg);
@@ -132,7 +149,7 @@ const ProductDetail: React.FC = () => {
     checkFavorite();
   }, [id]);
 
-  // Handlers
+  // --- HANDLERS ---
   const handleToggleFavorite = useCallback(() => {
     if (!product) return;
     try {
@@ -140,14 +157,16 @@ const ProductDetail: React.FC = () => {
       let list: WishlistItem[] = listJson ? JSON.parse(listJson) : [];
       
       if (isFavorite) {
+        // Xóa khỏi danh sách
         list = list.filter((item) => String(item.id) !== String(product.id));
         presentToast({ message: "Đã xóa khỏi yêu thích", duration: 1500, color: "medium" });
         setIsFavorite(false);
       } else {
+        // Thêm vào danh sách (Lưu URL ảnh chuẩn)
         list.push({
           id: product.id,
           name: product.name,
-          image: product.image,
+          image: getProductImage(product), // Dùng hàm lấy ảnh chuẩn
           price: product.price,
         });
         presentToast({ message: "Đã thích", duration: 1500, color: "success", icon: heart });
@@ -157,7 +176,7 @@ const ProductDetail: React.FC = () => {
     } catch (e) {
       console.error(e);
     }
-  }, [product, isFavorite, presentToast]);
+  }, [product, isFavorite, presentToast, getProductImage]);
 
   const handleChangeQuantity = useCallback((delta: number) => {
     setQuantity((prev) => Math.max(1, prev + delta));
@@ -171,9 +190,18 @@ const ProductDetail: React.FC = () => {
       const ordered = product.ordered_quantity || 0;
       const remaining = Math.max(maxQty - ordered, 0);
 
-      // Sửa lỗi AlertButton: Truyền object thay vì string
-      if (remaining <= 0) return presentAlert("Sản phẩm đã hết suất đặt trước!", [{ text: "OK" }]);
-      if (quantity > remaining) return presentAlert(`Chỉ còn ${remaining} suất!`, [{ text: "OK" }]);
+      // Alert hiển thị khi hết suất
+      if (remaining <= 0) return presentAlert({
+        header: "Thông báo",
+        message: "Sản phẩm đã hết suất đặt trước!",
+        buttons: ["OK"]
+      });
+      
+      if (quantity > remaining) return presentAlert({
+        header: "Thông báo",
+        message: `Chỉ còn ${remaining} suất!`,
+        buttons: ["OK"]
+      });
     }
 
     try {
@@ -187,13 +215,12 @@ const ProductDetail: React.FC = () => {
       });
       setQuantity(1);
     } catch (err) {
-      // Biến err chưa dùng -> bỏ qua hoặc log
       console.error(err); 
       presentToast({ message: "Lỗi thêm vào giỏ hàng", color: "danger", duration: 2000 });
     }
   };
 
-  // Render Loading/Error
+  // --- RENDER LOADING / ERROR ---
   if (loading) {
     return (
       <IonPage>
@@ -220,33 +247,31 @@ const ProductDetail: React.FC = () => {
     );
   }
 
+  // --- RENDER CHÍNH ---
   return (
     <IonPage>
       <AppHeader showBack title="Chi tiết sản phẩm" showSearch={false} />
 
       <IonContent>
-        {/* 1. HERO IMAGE */}
+        {/* Truyền URL ảnh đã xử lý vào Hero */}
         <ProductHero
-          image={product.image}
+          image={getProductImage(product)} 
           name={product.name}
           isFavorite={isFavorite}
           onToggleFavorite={handleToggleFavorite}
         />
 
-        {/* 2. MAIN INFO */}
         <ProductInfo
           product={product}
           reviewsCount={reviewsCount}
           isPreorder={isPreorder}
         />
 
-        {/* 3. STORE INFO */}
-        {/* Chỉ render nếu store là object hợp lệ để tránh lỗi Type */}
+        {/* Kiểm tra Store tồn tại và là object */}
         {product.store && typeof product.store === 'object' && (
            <StoreCard store={product.store as Store} />
         )}
 
-        {/* 4. DESCRIPTION */}
         <div className="section-card">
           <h3 style={{ fontSize: "18px", fontWeight: "bold", marginTop: 0 }}>
             Thông tin chi tiết
@@ -256,7 +281,6 @@ const ProductDetail: React.FC = () => {
 
       </IonContent>
 
-      {/* 6. FOOTER ACTION */}
       <ProductFooter
         quantity={quantity}
         isPreorder={isPreorder}

@@ -7,37 +7,36 @@ import axios, {
 import { SecureStorage } from '../utils/secureStorage';
 
 // =================================================================
-// TYPE DEFINITIONS (Định nghĩa kiểu dữ liệu chặt chẽ)
+// TYPE DEFINITIONS (Giữ nguyên)
 // =================================================================
-
-// 1. Cấu trúc lỗi trả về từ Django REST Framework
 interface ApiErrorResponse {
   detail?: string;
   message?: string;
   code?: string;
-  [key: string]: unknown; // Cho phép các field lỗi validation khác (ví dụ: { "email": ["Invalid"] })
+  [key: string]: unknown;
 }
 
-// 2. Cấu trúc của hàng đợi các request bị lỗi chờ Refresh Token
 interface FailedRequestPromise {
   resolve: (token: string | null) => void;
   reject: (error: unknown) => void;
 }
 
-// 3. Cấu trúc response khi refresh token thành công
 interface RefreshTokenResponse {
   access: string;
   refresh?: string;
 }
 
 // =================================================================
-// CONFIGURATION
+// CONFIGURATION (✅ SỬA PHẦN NÀY)
 // =================================================================
 
-const API_URL = "http://192.168.2.3:8000/api";
+// 1. Lấy Root Domain từ biến môi trường (Giống file format.ts)
+// VD: "http://192.168.2.3:8000" (Không có /api)
+const BASE_URL = import.meta.env.VITE_API_URL || "http://192.168.2.3:8000";
 
+// 2. Tạo Instance chuyên dùng cho API Data
 const axiosInstance = axios.create({
-  baseURL: API_URL,
+  baseURL: `${BASE_URL}/api`, // 👉 Nối thêm /api ở đây
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -48,12 +47,11 @@ const axiosInstance = axios.create({
 // INTERCEPTORS
 // =================================================================
 
-// 1. REQUEST INTERCEPTOR
+// 1. REQUEST INTERCEPTOR (Giữ nguyên)
 axiosInstance.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
     const token = await SecureStorage.getToken();
     if (token) {
-      // Đảm bảo headers tồn tại trước khi gán
       if (!config.headers) {
         config.headers = new axios.AxiosHeaders();
       }
@@ -68,7 +66,6 @@ axiosInstance.interceptors.request.use(
 let isRefreshing = false;
 let failedQueue: FailedRequestPromise[] = [];
 
-// Hàm xử lý hàng đợi: Duyệt qua các promise đang chờ và resolve/reject chúng
 const processQueue = (error: unknown, token: string | null = null) => {
   failedQueue.forEach((prom) => {
     if (error) {
@@ -85,10 +82,8 @@ axiosInstance.interceptors.response.use(
   async (error: AxiosError<ApiErrorResponse>) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
-    // Nếu lỗi là 401 và chưa từng retry
     if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
       
-      // Nếu đang refresh, xếp request này vào hàng đợi
       if (isRefreshing) {
         return new Promise<string | null>((resolve, reject) => {
           failedQueue.push({ resolve, reject });
@@ -115,26 +110,23 @@ axiosInstance.interceptors.response.use(
             throw new Error("No refresh token available");
         }
 
-        // Gọi API refresh
-        const { data } = await axios.post<RefreshTokenResponse>(`${API_URL}/users/token/refresh/`, {
+        // ✅ SỬA URL CHỖ GỌI REFRESH TOKEN
+        // Vì dùng axios gốc (không qua instance), phải truyền Full URL
+        const { data } = await axios.post<RefreshTokenResponse>(`${BASE_URL}/api/users/token/refresh/`, {
           refresh: refreshToken,
         });
 
         const newAccessToken = data.access;
         
-        // Lưu token mới
         await SecureStorage.setToken(newAccessToken);
         
-        // Update header mặc định cho các request sau
         axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${newAccessToken}`;
         
-        // Update header cho request hiện tại đang bị lỗi
         if (!originalRequest.headers) {
              originalRequest.headers = new axios.AxiosHeaders();
         }
         originalRequest.headers.set('Authorization', `Bearer ${newAccessToken}`);
 
-        // Xử lý hàng đợi
         processQueue(null, newAccessToken);
         
         return axiosInstance(originalRequest);
@@ -142,6 +134,7 @@ axiosInstance.interceptors.response.use(
       } catch (refreshError) {
         processQueue(refreshError, null);
         await SecureStorage.clearAuth();
+        // Dispatch event để App.tsx biết mà chuyển về trang Login
         window.dispatchEvent(new CustomEvent('user-logged-out'));
         return Promise.reject(refreshError);
       } finally {
@@ -149,19 +142,15 @@ axiosInstance.interceptors.response.use(
       }
     }
 
-    // Xử lý Error Message chặt chẽ hơn (không dùng any)
+    // Phần xử lý lỗi giữ nguyên vì bạn viết đã tốt rồi
     let errorMessage = "Lỗi kết nối server";
-    
     if (error.response && error.response.data) {
         const data = error.response.data;
-        // Kiểm tra từng trường hợp cụ thể của API Django
         if (data.detail) {
             errorMessage = data.detail;
         } else if (data.message) {
             errorMessage = data.message;
         } else {
-            // Trường hợp lỗi validation fields (ví dụ: { "password": ["Too short"] })
-            // Ta lấy value đầu tiên của key đầu tiên để hiển thị
             const keys = Object.keys(data);
             if (keys.length > 0) {
                 const firstKey = keys[0];
@@ -182,19 +171,14 @@ axiosInstance.interceptors.response.use(
 );
 
 // =================================================================
-// API WRAPPER (Strict Typed)
+// API WRAPPER (Giữ nguyên)
 // =================================================================
-
 export const API = {
-  // T: Kiểu dữ liệu trả về (Response Type)
-  // P: Kiểu dữ liệu của Params (Query parameters)
   get: async <T, P = Record<string, unknown>>(url: string, params?: P): Promise<T> => {
     const response = await axiosInstance.get<T>(url, { params });
     return response.data;
   },
 
-  // T: Response Type
-  // D: Data Body Type (Payload)
   post: async <T, D = unknown>(url: string, data: D, config?: AxiosRequestConfig): Promise<T> => {
     const response = await axiosInstance.post<T>(url, data, config);
     return response.data;

@@ -19,8 +19,6 @@ const useCheckoutLogic = () => {
   const [shippingFeePerSeller, setShippingFeePerSeller] = useState({});
   const [addresses, setAddresses] = useState([]);
   const [selectedAddressId, setSelectedAddressId] = useState(null);
-  const [showAddressForm, setShowAddressForm] = useState(false);
-  const [newAddress, setNewAddress] = useState(null);
 
   // State cho nhập thủ công
   const [manualEntry, setManualEntry] = useState(false);

@@ -27,7 +27,7 @@ SECRET_KEY = os.environ.get(
 DEBUG = os.environ.get("DEBUG", "True") == "True"
 
 ALLOWED_HOSTS = [
-    "*"
+    "*", '192.168.2.3'
 ]
 
 DEBUG = True

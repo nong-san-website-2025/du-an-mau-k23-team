@@ -89,6 +89,6 @@
     border-color: #1e1e1e;
   }
   .header-title {
-    color: #fff;
+    color: #fff !important;
   }
 }

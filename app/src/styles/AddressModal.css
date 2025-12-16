@@ -1,0 +1,55 @@
+.content-background {
+  --background: #f8f9fa;
+}
+
+/* Modern Input Item */
+.modern-input-item {
+  --background: #ffffff;
+  --border-radius: 16px;
+  --padding-start: 10px;
+  --inner-padding-end: 10px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+  border: 1px solid #e0e0e0;
+  transition: all 0.2s ease;
+}
+
+.modern-input-item:focus-within {
+  border-color: var(--ion-color-primary);
+  box-shadow: 0 4px 12px rgba(var(--ion-color-primary-rgb), 0.15);
+  transform: translateY(-1px);
+}
+
+/* Group Box cho Select (Tỉnh/Huyện/Xã) */
+.address-group-box {
+  background: #ffffff;
+  border-radius: 16px;
+  border: 1px solid #e0e0e0;
+  overflow: hidden;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+}
+
+.modern-select-item {
+  --background: #fff;
+  --padding-start: 16px;
+}
+
+/* Error Styles */
+.has-error .modern-input-item {
+  border-color: var(--ion-color-danger);
+  --highlight-color-focused: var(--ion-color-danger);
+}
+
+.error-text {
+  color: var(--ion-color-danger);
+  font-size: 0.75rem;
+  margin: 4px 0 0 12px;
+  font-weight: 500;
+}
+
+/* Setting Card */
+.setting-card {
+  background: #eefcf4; /* Màu nền xanh rất nhạt */
+  border-radius: 16px;
+  border: 1px solid rgba(var(--ion-color-primary-rgb), 0.1);
+  padding: 5px 0;
+}
