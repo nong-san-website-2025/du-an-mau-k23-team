@@ -27,7 +27,7 @@ SECRET_KEY = os.environ.get(
 DEBUG = os.environ.get("DEBUG", "True") == "True"
 
 ALLOWED_HOSTS = [
-    "*", '192.168.2.3'
+    "*", '192.168.2.3', '192.168.68.117'
 ]
 
 DEBUG = True
@@ -214,6 +214,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://192.168.2.9:8100",
     "http://192.168.1.59:8100",
     "http://192.168.2.3:8100",
+    "http://192.168.68.117:8100",
 ]
 CORS_ALLOW_METHODS = [
     'DELETE',
