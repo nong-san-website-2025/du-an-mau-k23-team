@@ -451,34 +451,63 @@ export default function ProductsPage() {
   // --- Submit Form ---
   const handleSubmitForm = async (formData) => {
     try {
-      if (!formData.has("original_price")) {
+      // Validate cơ bản
+      if (!formData.has("original_price") && !editingProduct) {
         message.error("Lỗi: Giá gốc không được gửi từ form!");
         return;
       }
+
       if (!editingProduct) {
+        // --- LOGIC TẠO MỚI ---
         formData.append("status", "pending");
         await productApi.createProduct(formData);
         message.success("Thêm mới thành công, chờ duyệt");
       } else {
-        const hasImages = Array.from(formData.entries()).some(
-          ([k]) => k === "images"
+        // --- LOGIC CẬP NHẬT (SỬA LẠI ĐỂ GỬI DUYỆT) ---
+
+        // Kiểm tra xem sản phẩm có đang bị từ chối hoặc khóa không
+        const isRejected = ["rejected", "banned"].includes(
+          editingProduct.status
         );
-        if (!hasImages) {
-          const plain = {};
-          for (let [k, v] of formData.entries()) {
-            if (k !== "images" && k !== "primary_image_index") plain[k] = v;
+
+        // Nếu sản phẩm bị từ chối, ta ép trạng thái về 'pending' để Gửi duyệt lại
+        if (isRejected) {
+          // Kiểm tra formData là FormData object hay Plain object
+          if (formData instanceof FormData) {
+            formData.set("status", "pending"); // Dùng set để ghi đè nếu có
+          } else {
+            formData.status = "pending";
           }
+        }
+
+        const hasImages = Array.from(
+          formData instanceof FormData ? formData.entries() : []
+        ).some(([k]) => k === "images");
+
+        if (!hasImages && !(formData instanceof FormData)) {
+          // Trường hợp update JSON thường
+          const plain = { ...formData }; // copy
+          if (isRejected) plain.status = "pending"; // Gán lại status
+
           await productApi.updateProduct(editingProduct.id, plain, {
             headers: { "Content-Type": "application/json" },
           });
         } else {
+          // Trường hợp update có file ảnh (FormData)
           await productApi.updateProduct(editingProduct.id, formData);
         }
-        message.success("Cập nhật thành công");
+
+        if (isRejected) {
+          message.success("Đã cập nhật và gửi yêu cầu duyệt lại!");
+        } else {
+          message.success("Cập nhật thành công");
+        }
       }
+
       setModalVisible(false);
-      fetchData();
-    } catch {
+      fetchData(); // Load lại bảng để thấy trạng thái mới
+    } catch (err) {
+      console.error(err);
       message.error("Lỗi khi lưu dữ liệu");
     }
   };
@@ -617,9 +646,10 @@ export default function ProductsPage() {
               animation: "fadeIn 0.3s ease",
             }}
           >
-            <Text strong style={{ color: "#1890ff" }}>
-              Đã chọn {selectedRowKeys.length} sản phẩm
-            </Text>
+            {" "}
+            <Text strong style={{ color: "#db0f0fff" }}>
+              Đã chọn {selectedRowKeys.length} sản phẩm{" "}
+            </Text>{" "}
             <Space>
               {/* Nút Ẩn / Hiện Hàng Loạt */}
               <Button
@@ -636,13 +666,9 @@ export default function ProductsPage() {
                 icon={<DeleteOutlined />}
                 onClick={handleBulkDelete}
               >
-                Xóa ({selectedRowKeys.length})
-              </Button>
-              
-              <Button type="text" onClick={() => setSelectedRowKeys([])}>
-                Bỏ chọn
-              </Button>
-            </Space>
+                Xóa tất cả{" "}
+              </Button>{" "}
+            </Space>{" "}
           </div>
         )}
 
@@ -686,6 +712,12 @@ export default function ProductsPage() {
         onSubmit={handleSubmitForm}
         initialValues={editingProduct}
         categories={categories}
+        rejectionReason={
+          editingProduct &&
+          ["rejected", "banned"].includes(editingProduct.status)
+            ? editingProduct.reject_reason // Giả định API trả về field 'reject_reason'
+            : null
+        }
       />
 
       <ImportProductModal

@@ -200,25 +200,41 @@ class ProductSerializer(serializers.ModelSerializer):
         return product
     
     def update(self, instance, validated_data):
-        # 👇 Xử lý riêng field `image`
-            image = validated_data.pop('image', None)
-            if image is not None:
-                instance.image = image
-            # 👇 Xử lý features như cũ
-            features_data = validated_data.pop('features', None)
+        # 👇 1. Xử lý riêng field `image`
+        image = validated_data.pop('image', None)
+        if image is not None:
+            instance.image = image
+            
+        # 👇 2. Xử lý features
+        features_data = validated_data.pop('features', None)
 
-            # Cập nhật các trường còn lại
-            for attr, value in validated_data.items():
-                setattr(instance, attr, value)
-            instance.save()
+        # 👇 3. LOGIC SỬA TRẠNG THÁI TỪ CHỐI -> CHỜ DUYỆT (MỚI THÊM)
+        # Vì status là read_only, nó không nằm trong validated_data.
+        # Ta phải lấy trực tiếp từ request data.
+        request = self.context.get('request')
+        if request and instance.status == 'rejected':
+            # Lấy status từ form gửi lên
+            new_status = request.data.get('status') 
+            
+            # Chỉ cho phép đổi nếu người dùng gửi lên 'pending'
+            if new_status == 'pending':
+                instance.status = 'pending'
+                instance.reject_reason = None # Xóa lý do từ chối cũ cho sạch
+                # instance.is_hidden = False # (Tuỳ chọn) Nếu muốn hiện lại ngay
 
-            # Cập nhật features
-            if features_data is not None:
-                instance.features.all().delete()
-                for feature in features_data:
-                    ProductFeature.objects.create(product=instance, **feature)
+        # 👇 4. Cập nhật các trường thông thường
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        
+        instance.save()
 
-            return instance
+        # 👇 5. Lưu lại features (nếu có thay đổi)
+        if features_data is not None:
+            instance.features.all().delete()
+            for feature in features_data:
+                ProductFeature.objects.create(product=instance, **feature)
+
+        return instance
         
     is_coming_soon = serializers.SerializerMethodField()
     is_out_of_stock = serializers.SerializerMethodField()

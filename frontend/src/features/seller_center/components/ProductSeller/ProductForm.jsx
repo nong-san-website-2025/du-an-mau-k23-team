@@ -14,28 +14,45 @@ import {
   Radio,
   Space,
   message,
+  Alert,
 } from "antd";
-import { UploadOutlined } from "@ant-design/icons";
+import { UploadOutlined, ExclamationCircleOutlined } from "@ant-design/icons";
 
 const { Option } = Select;
 const { TextArea } = Input;
 const { Title, Text } = Typography;
 
-// 🟢 REGEX: Cho phép Tiếng Việt, Số, Khoảng trắng và các dấu cơ bản (., - & ())
-// Chặn các ký tự đặc biệt như @ # $ % ^ * [ ] { } < >
-const VIETNAMESE_REGEX = /^[a-zA-Z0-9\s\u00C0-\u1EF9\(\)\,\.\-\&]+$/;
+const VIETNAMESE_REGEX = /^[a-zA-Z0-9\s\u00C0-\u1EF9\(\)\,\.\-\&\/]+$/;
 
-const ProductForm = ({ visible, onCancel, onSubmit, initialValues, categories = [] }) => {
+const ProductForm = ({
+  visible,
+  onCancel,
+  onSubmit,
+  initialValues,
+  categories = [],
+}) => {
   const [form] = Form.useForm();
   const [availability, setAvailability] = useState("available");
-
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [subcategories, setSubcategories] = useState([]);
-
   const [fileList, setFileList] = useState([]);
   const [primaryImage, setPrimaryImage] = useState(null);
 
-  // Xử lý logic Category
+  // --- LOGIC CHECK TỪ CHỐI ---
+  const isRejected = initialValues?.status === "rejected";
+
+  const getRejectReason = () => {
+    if (!initialValues) return null;
+    return (
+      initialValues.reject_reason ||
+      initialValues.admin_note ||
+      initialValues.reason ||
+      initialValues.note ||
+      initialValues.message ||
+      "Sản phẩm chưa đạt yêu cầu."
+    );
+  };
+
   const handleCategoryChange = (categoryId) => {
     setSelectedCategory(categoryId);
     const selected = categories.find((cat) => cat.id === categoryId);
@@ -46,7 +63,7 @@ const ProductForm = ({ visible, onCancel, onSubmit, initialValues, categories = 
   useEffect(() => {
     if (visible) {
       if (initialValues) {
-        // --- CHẾ ĐỘ EDIT ---
+        // --- EDIT MODE ---
         form.setFieldsValue({
           ...initialValues,
           availability_status: initialValues.availability_status || "available",
@@ -72,7 +89,9 @@ const ProductForm = ({ visible, onCancel, onSubmit, initialValues, categories = 
 
         if (categories.length > 0 && initialValues.subcategory) {
           const foundCategory = categories.find((cat) =>
-            cat.subcategories?.some((sub) => sub.id === initialValues.subcategory)
+            cat.subcategories?.some(
+              (sub) => sub.id === initialValues.subcategory
+            )
           );
           if (foundCategory) {
             setSelectedCategory(foundCategory.id);
@@ -81,14 +100,18 @@ const ProductForm = ({ visible, onCancel, onSubmit, initialValues, categories = 
           }
         }
       } else {
-        // --- CHẾ ĐỘ ADD NEW ---
+        // --- ADD MODE ---
         form.resetFields();
         setAvailability("available");
         setFileList([]);
         setPrimaryImage(null);
         setSelectedCategory(null);
         setSubcategories([]);
-        form.setFieldsValue({ unit: 'kg', stock: 0, availability_status: 'available' });
+        form.setFieldsValue({
+          unit: "kg",
+          stock: 0,
+          availability_status: "available",
+        });
       }
     }
   }, [visible, initialValues, categories, form]);
@@ -106,35 +129,43 @@ const ProductForm = ({ visible, onCancel, onSubmit, initialValues, categories = 
           message.error("Vui lòng nhập giá gốc hợp lệ!");
           return;
         }
+
         const formData = new FormData();
+        
+        // 1. Đưa dữ liệu từ Form vào FormData
         Object.entries(values).forEach(([key, value]) => {
-          if (key === 'original_price') {
+          if (key === "original_price") {
             formData.append(key, value);
           } else if (value !== undefined && value !== null) {
             formData.append(key, value);
           }
         });
-        
-        if (!formData.has('original_price')) {
-          message.error("Lỗi: Giá gốc không được gửi!");
-          return;
-        }
 
+        // 2. Xử lý ảnh
         const primaryFile = fileList.find((file) => file.uid === primaryImage);
         if (primaryFile?.originFileObj) {
           formData.append("image", primaryFile.originFileObj);
         }
-
-        const newImages = fileList.filter(f => f.originFileObj && f.uid !== primaryImage);
+        const newImages = fileList.filter(
+          (f) => f.originFileObj && f.uid !== primaryImage
+        );
         newImages.forEach((file) => {
-          formData.append('images', file.originFileObj);
+          formData.append("images", file.originFileObj);
         });
+
+        // 3. QUAN TRỌNG: Ghi đè status thành 'pending' nếu đang sửa hàng bị từ chối
+        // Sử dụng .set() để đảm bảo nó ghi đè bất kỳ giá trị status nào trước đó
+        if (isRejected) {
+          console.log("Đang gửi duyệt lại sản phẩm bị từ chối..."); // Log kiểm tra
+          formData.set("status", "pending"); 
+          // Nếu backend của bạn dùng số: formData.set("status", 1); // 1 = pending
+        }
 
         onSubmit(formData);
       })
       .catch((err) => {
-        message.error("Vui lòng kiểm tra lại các trường báo đỏ!");
-        console.log(err);
+        message.error("Vui lòng kiểm tra các trường nhập liệu!");
+        console.error(err);
       });
   };
 
@@ -143,11 +174,15 @@ const ProductForm = ({ visible, onCancel, onSubmit, initialValues, categories = 
       open={visible}
       centered
       title={
-        <Title level={4} style={{ margin: 0 }}>
-          {initialValues ? "Cập nhật sản phẩm" : "Thêm sản phẩm mới"}
-        </Title>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Title level={4} style={{ margin: 0 }}>
+            {initialValues 
+              ? (isRejected ? "Sửa & Gửi duyệt lại" : "Cập nhật sản phẩm") 
+              : "Thêm sản phẩm mới"}
+          </Title>
+        </div>
       }
-      okText={initialValues ? "Lưu thay đổi" : "Thêm sản phẩm"}
+      okText={initialValues ? (isRejected ? "Gửi duyệt lại" : "Lưu thay đổi") : "Thêm sản phẩm"}
       cancelText="Hủy"
       onCancel={onCancel}
       onOk={handleOk}
@@ -155,8 +190,29 @@ const ProductForm = ({ visible, onCancel, onSubmit, initialValues, categories = 
       style={{ top: 20 }}
       destroyOnClose
       maskClosable={false}
-      styles={{ body: { maxHeight: "80vh", overflowY: "auto", padding: "24px" } }}
+      styles={{
+        body: { maxHeight: "80vh", overflowY: "auto", padding: "24px" },
+      }}
     >
+      {isRejected && (
+        <Alert
+          message="Sản phẩm này cần sửa để được duyệt lại"
+          description={
+            <div style={{ marginTop: 4 }}>
+              <Text strong>Lý do Admin từ chối: </Text>
+              <Text type="danger">{getRejectReason()}</Text>
+              <div style={{ marginTop: 8, fontSize: 13, color: '#666' }}>
+                Sau khi sửa thông tin, nhấn nút <b>"Gửi duyệt lại"</b> để chuyển trạng thái sang Chờ duyệt.
+              </div>
+            </div>
+          }
+          type="error"
+          showIcon
+          icon={<ExclamationCircleOutlined style={{ fontSize: 24, top: 12 }} />}
+          style={{ marginBottom: 24, border: '1px solid #ffccc7', background: '#fff2f0' }}
+        />
+      )}
+
       <Form
         form={form}
         layout="vertical"
@@ -166,10 +222,10 @@ const ProductForm = ({ visible, onCancel, onSubmit, initialValues, categories = 
         <Row gutter={24}>
           <Col xs={24} md={10}>
             <Card
-              title="Thư viện ảnh sản phẩm"
+              title="Thư viện ảnh"
               bordered={false}
-              style={{ borderRadius: 12, boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }}
               extra={<Text type="secondary">Tối đa 6 ảnh</Text>}
+              style={{ borderRadius: 12, boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }}
             >
               <Upload
                 listType="picture-card"
@@ -182,14 +238,14 @@ const ProductForm = ({ visible, onCancel, onSubmit, initialValues, categories = 
                 {fileList.length < 6 && (
                   <div>
                     <UploadOutlined style={{ fontSize: 20 }} />
-                    <div style={{ marginTop: 8 }}>Tải ảnh lên</div>
+                    <div style={{ marginTop: 8 }}>Tải ảnh</div>
                   </div>
                 )}
               </Upload>
               {fileList.length > 0 && (
                 <>
                   <Divider orientation="left" style={{ margin: "12px 0" }}>
-                    Chọn ảnh đại diện
+                    Ảnh đại diện
                   </Divider>
                   <Radio.Group
                     value={primaryImage}
@@ -199,9 +255,23 @@ const ProductForm = ({ visible, onCancel, onSubmit, initialValues, categories = 
                       {fileList.map((file) => (
                         <Radio key={file.uid} value={file.uid}>
                           <img
-                            src={file.url || (file.originFileObj ? URL.createObjectURL(file.originFileObj) : '')}
+                            src={
+                              file.url ||
+                              (file.originFileObj
+                                ? URL.createObjectURL(file.originFileObj)
+                                : "")
+                            }
                             alt="img"
-                            style={{ width: 60, height: 60, objectFit: "cover", borderRadius: 8, border: primaryImage === file.uid ? "2px solid #1677ff" : "1px solid #ccc" }}
+                            style={{
+                              width: 60,
+                              height: 60,
+                              objectFit: "cover",
+                              borderRadius: 8,
+                              border:
+                                primaryImage === file.uid
+                                  ? "2px solid #1677ff"
+                                  : "1px solid #ccc",
+                            }}
                           />
                         </Radio>
                       ))}
@@ -218,55 +288,30 @@ const ProductForm = ({ visible, onCancel, onSubmit, initialValues, categories = 
               bordered={false}
               style={{ borderRadius: 12, boxShadow: "0 2px 8px rgba(0,0,0,0.05)", marginBottom: 16 }}
             >
-              {/* 🛡️ VALIDATE TÊN SẢN PHẨM */}
-
-
-              {/* 🛡️ VALIDATE THƯƠNG HIỆU & XUẤT XỨ */}
               <Row gutter={12}>
                 <Col span={12}>
                   <Form.Item
                     label="Tên sản phẩm"
                     name="name"
                     rules={[
-                      { required: true, message: "Vui lòng nhập tên sản phẩm" },
-                      { whitespace: true, message: "Tên không được để trống" },
-                      { min: 10, message: "Tên sản phẩm quá ngắn (tối thiểu 10 ký tự)" },
-                      { max: 255, message: "Tên sản phẩm quá dài (tối đa 255 ký tự)" },
-                      {
-                        pattern: VIETNAMESE_REGEX,
-                        message: "Tên không được chứa ký tự đặc biệt (@, #, $, <, >...)"
-                      }
+                      { required: true, message: "Nhập tên sản phẩm" },
+                      { pattern: VIETNAMESE_REGEX, message: "Ký tự không hợp lệ" },
                     ]}
                   >
-                    <Input placeholder="VD: Gạo ST25 Ông Cua Chính Hãng..." count={{ show: true, max: 255 }} />
+                    <Input placeholder="VD: Gạo ST25..." />
                   </Form.Item>
                 </Col>
                 <Col span={12}>
-                  <Form.Item
-                    label="Nơi sản xuất / Xuất xứ"
-                    name="location"
-                    rules={[
-                      { max: 100, message: "Tối đa 100 ký tự" },
-                      { pattern: VIETNAMESE_REGEX, message: "Không chứa ký tự lạ" }
-                    ]}
-                  >
-                    <Input placeholder="VD: Đà Lạt, Bến Tre..." count={{ show: true, max: 100 }} />
+                  <Form.Item label="Nơi sản xuất" name="location">
+                    <Input placeholder="VD: Đà Lạt" />
                   </Form.Item>
                 </Col>
               </Row>
 
               <Row gutter={12}>
                 <Col span={12}>
-                  <Form.Item
-                    label="Danh mục"
-                    name="category"
-                    rules={[{ required: true, message: "Vui lòng chọn danh mục" }]}
-                  >
-                    <Select
-                      placeholder="Chọn danh mục"
-                      onChange={handleCategoryChange}
-                      loading={categories.length === 0}
-                    >
+                  <Form.Item label="Danh mục" name="category" rules={[{ required: true }]}>
+                    <Select placeholder="Chọn danh mục" onChange={handleCategoryChange}>
                       {categories.map((cat) => (
                         <Option key={cat.id} value={cat.id}>{cat.name}</Option>
                       ))}
@@ -274,15 +319,8 @@ const ProductForm = ({ visible, onCancel, onSubmit, initialValues, categories = 
                   </Form.Item>
                 </Col>
                 <Col span={12}>
-                  <Form.Item
-                    label="Nhóm sản phẩm"
-                    name="subcategory"
-                    rules={[{ required: true, message: "Vui lòng chọn nhóm" }]}
-                  >
-                    <Select
-                      placeholder={selectedCategory ? "Chọn nhóm sản phẩm" : "Chọn danh mục trước"}
-                      disabled={!selectedCategory}
-                    >
+                  <Form.Item label="Nhóm sản phẩm" name="subcategory" rules={[{ required: true }]}>
+                    <Select placeholder="Chọn nhóm" disabled={!selectedCategory}>
                       {subcategories.map((sub) => (
                         <Option key={sub.id} value={sub.id}>{sub.name}</Option>
                       ))}
@@ -294,63 +332,35 @@ const ProductForm = ({ visible, onCancel, onSubmit, initialValues, categories = 
               <Row gutter={12}>
                 <Col span={12}>
                   <Form.Item
-                    label="Giá gốc (VNĐ)"
+                    label="Giá gốc"
                     name="original_price"
-                    initialValue={initialValues?.original_price || null}
-                    rules={[
-                      { required: true, message: "Vui lòng nhập giá gốc" },
-                      { type: 'number', min: 1000, message: "Giá tối thiểu là 1,000đ" },
-                      { type: 'number', max: 1000000000, message: "Giá trị quá lớn" }
-                    ]}
+                    rules={[{ required: true }]}
                   >
-                    <InputNumber
-                      style={{ width: "100%" }}
-                      placeholder="Nhập giá gốc (VD: 50000)"
-                      formatter={(v) => v ? `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",") : ""}
-                      parser={(v) => v.replace(/\$\s?|(,*)/g, "")}
-                    />
+                    <InputNumber style={{ width: "100%" }} formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")} />
                   </Form.Item>
                 </Col>
                 <Col span={12}>
                   <Form.Item
-                    label="Giá khuyến mãi"
+                    label="Giá KM"
                     name="discounted_price"
-                    dependencies={['original_price']}
-                    rules={[
-                      ({ getFieldValue }) => ({
-                        validator(_, value) {
-                          if (!value || getFieldValue('original_price') >= value) {
-                            return Promise.resolve();
-                          }
-                          return Promise.reject(new Error('Giá KM phải nhỏ hơn giá gốc!'));
-                        },
-                      }),
-                    ]}
                   >
-                    <InputNumber
-                      style={{ width: "100%" }}
-                      min={0}
-                      formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
-                      parser={(v) => v.replace(/\$\s?|(,*)/g, "")}
-                    />
+                    <InputNumber style={{ width: "100%" }} formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")} />
                   </Form.Item>
                 </Col>
               </Row>
 
               <Row gutter={12}>
                 <Col span={12}>
-                  <Form.Item label="Tồn kho" name="stock" initialValue={0}>
-                    <InputNumber style={{ width: "100%" }} min={0} max={999999} />
+                  <Form.Item label="Tồn kho" name="stock">
+                    <InputNumber style={{ width: "100%" }} min={0} />
                   </Form.Item>
                 </Col>
                 <Col span={12}>
-                  <Form.Item label="Đơn vị tính" name="unit" initialValue="kg">
+                  <Form.Item label="Đơn vị" name="unit">
                     <Select>
-                      <Option value="kg">Kilogram (kg)</Option>
-                      <Option value="g">Gram (g)</Option>
-                      <Option value="l">Lít (l)</Option>
-                      <Option value="ml">Milliliter (ml)</Option>
-                      <Option value="unit">Cái / Chiếc</Option>
+                      <Option value="kg">kg</Option>
+                      <Option value="g">gram</Option>
+                      <Option value="unit">Cái/Hộp</Option>
                     </Select>
                   </Form.Item>
                 </Col>
@@ -358,60 +368,39 @@ const ProductForm = ({ visible, onCancel, onSubmit, initialValues, categories = 
             </Card>
 
             <Card
-              title="Thông tin chi tiết"
+              title="Chi tiết"
               bordered={false}
               style={{ borderRadius: 12, boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }}
             >
-              <Form.Item
-                label="Trạng thái hàng hóa"
-                name="availability_status"
-                rules={[{ required: true, message: "Vui lòng chọn trạng thái" }]}
-              >
+              <Form.Item label="Trạng thái hàng" name="availability_status">
                 <Select onChange={handleAvailabilityChange}>
                   <Option value="available">Có sẵn</Option>
-                  <Option value="coming_soon">Sắp có (Mùa vụ)</Option>
+                  <Option value="coming_soon">Sắp có</Option>
                   <Option value="out_of_stock">Hết hàng</Option>
                 </Select>
               </Form.Item>
 
-              {/* 🛡️ VALIDATE MÔ TẢ */}
               <Form.Item
-                label="Mô tả sản phẩm"
+                label="Mô tả"
                 name="description"
-                rules={[
-                  { required: true, message: "Vui lòng nhập mô tả" },
-                  { min: 20, message: "Mô tả quá ngắn, hãy viết chi tiết hơn (tối thiểu 20 ký tự)" }
-                ]}
+                rules={[{ required: true, message: "Vui lòng nhập mô tả" }]}
               >
-                <TextArea
-                  rows={5}
-                  placeholder="Nhập mô tả chi tiết, thành phần, hướng dẫn sử dụng..."
-                  showCount
-                  maxLength={5000}
-                />
+                <TextArea rows={4} />
               </Form.Item>
 
               {availability === "coming_soon" && (
                 <>
-                  <Divider orientation="left">🗓️ Thông tin Mùa vụ</Divider>
+                  <Divider orientation="left">Mùa vụ</Divider>
                   <Row gutter={12}>
                     <Col span={12}>
-                      <Form.Item label="Bắt đầu mùa vụ" name="season_start">
-                        <Input type="date" />
-                      </Form.Item>
+                      <Form.Item label="Bắt đầu" name="season_start"><Input type="date" /></Form.Item>
                     </Col>
                     <Col span={12}>
-                      <Form.Item label="Kết thúc mùa vụ" name="season_end">
-                        <Input type="date" />
-                      </Form.Item>
+                      <Form.Item label="Kết thúc" name="season_end"><Input type="date" /></Form.Item>
                     </Col>
                   </Row>
-                  <Form.Item
-                    label="Sản lượng dự kiến (Cho phép đặt trước)"
-                    name="estimated_quantity"
-                    help="Khách hàng có thể đặt trước tối đa số lượng này"
-                  >
-                    <InputNumber style={{ width: "100%" }} min={0} />
+                  <Form.Item label="SL Dự kiến" name="estimated_quantity">
+                    <InputNumber style={{ width: "100%" }} />
                   </Form.Item>
                 </>
               )}

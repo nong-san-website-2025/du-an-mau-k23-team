@@ -1,5 +1,5 @@
 import React from "react";
-import { Table, Typography, Image, Avatar, Tag, Tooltip, Grid, Badge, Space } from "antd";
+import { Table, Typography, Image, Avatar, Tag, Tooltip, Grid, Space } from "antd";
 import {
   EditOutlined,
   DeleteOutlined,
@@ -8,10 +8,8 @@ import {
   EyeInvisibleOutlined,
   CalendarOutlined,
   InfoCircleOutlined,
-  RiseOutlined,
-  FallOutlined,
-  ShopOutlined,
-  BarcodeOutlined
+  BarcodeOutlined,
+  HistoryOutlined // Icon thêm cho trạng thái pending update
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { intcomma } from "../../../../utils/format";
@@ -31,10 +29,11 @@ const ProductTable = ({
   onRow,
   rowSelection,
 }) => {
+  // Ưu tiên dùng Hook của Antd: Chuẩn hơn và reactive tốt hơn matchMedia thủ công
   const screens = useBreakpoint();
   const isMobile = !screens.md;
 
-  // --- Helper lấy lý do từ chối ---
+  // --- Helper lấy lý do từ chối (Giữ từ HEAD) ---
   const getRejectReason = (record) => {
     return record.reject_reason || record.admin_note || record.reason || record.message;
   };
@@ -44,13 +43,15 @@ const ProductTable = ({
     {
       title: "Sản phẩm",
       key: "name",
-      width: 280, // Đủ rộng để hiển thị tên
+      width: 280,
       fixed: isMobile ? undefined : "left",
       render: (_, record) => {
         let imageUrl = null;
         if (Array.isArray(record.images) && record.images.length > 0) {
           imageUrl = record.images.find((img) => img.is_primary)?.image || record.images[0]?.image;
         }
+        // Logic từ MinhKhanh: Check trạng thái chờ update
+        const isPendingUpdate = record.status === "pending_update";
 
         return (
           <div className="flex gap-3 items-center">
@@ -76,13 +77,16 @@ const ProductTable = ({
                   {record.name}
                 </Text>
               </Tooltip>
-              <div className="flex items-center gap-2">
+              
+              <div className="flex items-center gap-2 flex-wrap">
                 <Text type="secondary" className="text-[11px] flex items-center gap-1">
                   <BarcodeOutlined /> #{record.id}
                 </Text>
-                {record.status === "pending_update" && (
-                  <Tag color="orange" className="text-[10px] m-0 border-0 bg-orange-50 text-orange-600 px-1 py-0 leading-tight">
-                    Chờ duyệt
+                
+                {/* Logic hiển thị Tag Pending Update (Merge từ MinhKhanh) */}
+                {isPendingUpdate && (
+                  <Tag color="orange" icon={<HistoryOutlined />} className="text-[10px] m-0 border-0 bg-orange-50 text-orange-600 px-1 py-0 leading-tight">
+                    Chờ duyệt cập nhật
                   </Tag>
                 )}
               </div>
@@ -92,14 +96,14 @@ const ProductTable = ({
       },
     },
 
-    // ── 2. DANH MỤC (Tách riêng) ──
+    // ── 2. DANH MỤC ──
     {
       title: "Danh mục",
       key: "category",
       width: 150,
       render: (_, record) => (
         <div className="flex flex-col justify-center">
-          <span className="text-[13px] font-medium text-gray-700">{record.category_name || "---"}</span>/
+          <span className="text-[13px] font-medium text-gray-700">{record.category_name || "---"}</span>
           {record.subcategory_name && (
             <span className="text-[11px] text-gray-400">{record.subcategory_name}</span>
           )}
@@ -107,7 +111,7 @@ const ProductTable = ({
       ),
     },
 
-    // ── 3. GIÁ (Tách riêng - Căn phải) ──
+    // ── 3. GIÁ BÁN (Tách riêng theo UI HEAD cho thoáng) ──
     {
       title: "Giá bán",
       key: "price",
@@ -130,7 +134,7 @@ const ProductTable = ({
       },
     },
 
-    // ── 4. TỒN KHO (Tách riêng - Có cảnh báo màu sắc) ──
+    // ── 4. KHO & ĐÃ BÁN (Tách riêng - Có cảnh báo màu sắc từ HEAD) ──
     {
       title: "Kho & Đã bán",
       key: "stock",
@@ -160,10 +164,7 @@ const ProductTable = ({
       },
     },
 
-    // ── 5. MÙA VỤ (Tách riêng - Layout gọn) ──
-
-
-    // ── 6. TRẠNG THÁI (Tách riêng) ──
+    // ── 5. TRẠNG THÁI ──
     {
       title: "Trạng thái",
       key: "status",
@@ -185,11 +186,11 @@ const ProductTable = ({
               <div className="scale-90"><StatusTag status={record.availability_status} type="availability" /></div>
             )}
 
-            {/* Nút xem lý do từ chối */}
+            {/* Nút xem lý do từ chối (UX quan trọng) */}
             {isRejected && rejectReason && (
               <Tooltip title={rejectReason} color="#f5222d" overlayStyle={{ maxWidth: 300 }}>
                 <div className="flex items-center gap-1 text-red-500 text-[11px] cursor-pointer hover:underline">
-                  <InfoCircleOutlined /> 
+                  <InfoCircleOutlined /> Chi tiết
                 </div>
               </Tooltip>
             )}
@@ -197,6 +198,8 @@ const ProductTable = ({
         );
       },
     },
+
+    // ── 6. THỜI GIAN MÙA VỤ ──
     {
       title: "Thời gian mùa vụ",
       key: "season",
@@ -226,7 +229,7 @@ const ProductTable = ({
       },
     },
 
-    // ── 7. THAO TÁC ──
+    // ── 7. THAO TÁC (Merge Logic kiểm tra quyền xóa từ cả 2) ──
     {
       title: "Xử lý",
       key: "action",
@@ -235,7 +238,14 @@ const ProductTable = ({
       align: "center",
       render: (_, record) => {
         const isBanned = record.status === "banned";
-        const canDelete = !record.sold && !record.ordered_quantity && !isBanned;
+        const isRejected = record.status === "rejected";
+        const isApproved = record.status === "approved";
+        
+        // Logic xóa an toàn: Kết hợp điều kiện chặt chẽ
+        const canDelete =
+          (record.sold === 0 || !record.sold) &&
+          (record.ordered_quantity === 0 || !record.ordered_quantity) &&
+          !isBanned;
 
         const actions = [
           {
@@ -247,24 +257,34 @@ const ProductTable = ({
           },
           {
             actionType: "toggle_hide",
-            show: record.status === "approved",
+            show: isApproved, // Chỉ hiện khi đã duyệt
             icon: record.is_hidden ? <EyeOutlined /> : <EyeInvisibleOutlined />,
-            tooltip: record.is_hidden ? "Hiện lại" : "Tạm ẩn",
+            tooltip: record.is_hidden ? "Hiển thị lại" : "Tạm ẩn", // Text tooltip rõ nghĩa từ MinhKhanh
             onClick: () => onToggleHide(record),
           },
           {
             actionType: "edit",
             show: true,
             icon: <EditOutlined />,
-            tooltip: "Sửa",
+            // Tooltip chi tiết theo ngữ cảnh từ MinhKhanh
+            tooltip: isBanned
+              ? "Sản phẩm bị khóa"
+              : isRejected
+                ? "Sửa lỗi & Gửi duyệt lại"
+                : "Chỉnh sửa",
             onClick: onEdit,
-            buttonProps: { disabled: isBanned },
+            buttonProps: {
+              disabled: isBanned,
+              style: isRejected
+                ? { color: "#fa8c16", borderColor: "#fa8c16" } // Highlight màu cam nếu cần sửa lỗi
+                : undefined,
+            },
           },
           {
             actionType: "delete",
             show: canDelete,
             icon: <DeleteOutlined />,
-            tooltip: "Xóa",
+            tooltip: "Xóa vĩnh viễn",
             onClick: () => onDelete(record.id),
             confirm: {
               title: "Xóa vĩnh viễn?",
@@ -299,20 +319,24 @@ const ProductTable = ({
         ),
       }}
 
-      // Scroll responsive
+      // Scroll responsive tốt (Lấy từ HEAD)
       scroll={{ x: 1300, y: 'calc(100vh - 260px)' }}
       sticky
       onRow={onRow}
       rowSelection={rowSelection}
 
-      // Row Styling: Hover nhẹ nhàng, nền trắng
-      rowClassName={(record) =>
-        `align-middle hover:bg-slate-50 transition-colors text-[13px] ${record.is_hidden ? "opacity-60 bg-gray-50" : "bg-white"
-        }`
-      }
+      // Row Styling: Merge logic highlight màu đỏ khi rejected
+      rowClassName={(record) => {
+        let classes = "align-middle text-[13px] transition-colors ";
+        if (record.is_hidden) classes += "opacity-60 bg-gray-50 ";
+        else if (record.status === "rejected") classes += "bg-red-50 hover:bg-red-100 "; // Highlight rejected
+        else classes += "bg-white hover:bg-slate-50 ";
+        
+        return classes;
+      }}
       size="middle"
     />
   );
 };
 
-export default ProductTable;  
+export default ProductTable;
