@@ -23,7 +23,7 @@ const ProductTable = ({
   onDelete,
   onToggleHide,
   onRow,
-  rowSelection
+  rowSelection,
 }) => {
   const [isMobile, setIsMobile] = useState(false);
 
@@ -37,30 +37,6 @@ const ProductTable = ({
         : mql.removeListener(handler);
     };
   }, []);
-
-  // --- HÀM LẤY LÝ DO TỪ CHỐI (CẬP NHẬT MẠNH HƠN) ---
-  const getRejectReason = (record) => {
-    // 1. Kiểm tra ưu tiên các trường văn bản từ Admin
-    // Bạn hãy check xem backend trả về tên biến nào trong các tên dưới đây:
-    const reasonText =
-      record.reject_reason || // Tên phổ biến 1
-      record.admin_note ||    // Tên phổ biến 2
-      record.reason ||        // Tên phổ biến 3
-      record.note ||          // Tên phổ biến 4
-      record.message;         // Tên phổ biến 5
-
-    // Nếu tìm thấy nội dung text, trả về ngay lập tức
-    if (reasonText && reasonText.trim() !== "") {
-      return reasonText;
-    }
-
-    // 2. Nếu Admin KHÔNG ghi gì cả, mới dùng lý do mặc định
-    if (record.status === "rejected") {
-      return "Vi phạm chính sách (Admin không để lại ghi chú cụ thể)";
-    }
-
-    return null;
-  };
 
   const columns = [
     // ── 1. CỘT SẢN PHẨM ─────────────────────
@@ -76,7 +52,7 @@ const ProductTable = ({
           imageUrl = primary?.image || record.images[0]?.image;
         }
         const isPendingUpdate = record.status === "pending_update";
-        
+
         return (
           <div style={{ display: "flex", gap: 12 }}>
             <div onClick={(e) => e.stopPropagation()}>
@@ -110,14 +86,7 @@ const ProductTable = ({
                 justifyContent: "center",
               }}
             >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  marginBottom: 4,
-                }}
-              >
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <Text
                   strong
                   ellipsis={{ tooltip: record.name }}
@@ -126,18 +95,13 @@ const ProductTable = ({
                   {record.name}
                 </Text>
                 {isPendingUpdate && (
-                  <Tag
-                    color="orange"
-                    icon={<HistoryOutlined />}
-                    style={{ margin: 0, fontSize: 11 }}
-                  >
+                  <Tag color="orange" icon={<HistoryOutlined />}>
                     Chờ duyệt cập nhật
                   </Tag>
                 )}
               </div>
               <Text type="secondary" style={{ fontSize: 12 }}>
-                ID: #{record.id}{" "}
-                {isPendingUpdate && " • Đã gửi yêu cầu cập nhật"}
+                ID: #{record.id}
               </Text>
             </div>
           </div>
@@ -151,9 +115,7 @@ const ProductTable = ({
       width: 180,
       render: (_, record) => (
         <Space direction="vertical" size={0}>
-          <Text style={{ fontSize: 13 }}>
-            {record.category_name || "---"}
-          </Text>
+          <Text style={{ fontSize: 13 }}>{record.category_name || "---"}</Text>
           <Text type="secondary" style={{ fontSize: 12 }}>
             {record.subcategory_name || "---"}
           </Text>
@@ -196,29 +158,17 @@ const ProductTable = ({
         </div>
       ),
     },
-    // ── 4. TRẠNG THÁI (Đã chỉnh sửa để hiện đúng lý do Admin nhập) ─────────────────────
+    // ── 4. TRẠNG THÁI (ĐÃ SỬA: CHỈ HIỆN TAG, ẨN LÝ DO) ─────────────────────
     {
       title: "Trạng thái",
       key: "status_col",
-      width: 170,
+      width: 140, // Thu nhỏ width lại chút vì đã bỏ text dài
       align: "center",
       render: (_, record) => {
         let showStatus = record.status;
+        // Logic ẩn hiển thị approved nhưng hidden
         if (record.status === "approved" && record.is_hidden) {
           showStatus = "hidden";
-        }
-
-        const isRejected =
-          record.status === "rejected" || record.status === "banned";
-        
-        // Gọi hàm lấy lý do
-        const rejectReasonText = getRejectReason(record);
-
-        // LOG DỮ LIỆU ĐỂ KIỂM TRA (DEBUG)
-        // Nếu bạn vẫn không thấy hiện lý do, hãy mở F12 -> Console 
-        // và xem dòng "Check Record Rejected" này có chứa trường nào không.
-        if (isRejected) {
-           console.log(`Debug Record ID ${record.id}:`, record);
         }
 
         return (
@@ -232,33 +182,7 @@ const ProductTable = ({
               status={record.availability_status}
               type="availability"
             />
-
-            {/* HIỂN THỊ LÝ DO TỪ CHỐI */}
-            {isRejected && rejectReasonText && (
-              <div
-                style={{
-                  marginTop: 6,
-                  padding: "6px 8px",
-                  background: "#fff1f0",
-                  border: "1px dashed #ffccc7",
-                  borderRadius: 4,
-                  width: "100%",
-                  textAlign: "left",
-                }}
-              >
-                <Text
-                  type="danger"
-                  style={{
-                    fontSize: 11,
-                    display: "block",
-                    lineHeight: 1.3,
-                  }}
-                >
-                  <span style={{ fontWeight: 700 }}>Admin: </span>
-                  {rejectReasonText}
-                </Text>
-              </div>
-            )}
+            {/* ĐÃ XÓA PHẦN HIỂN THỊ LÝ DO TỪ CHỐI TẠI ĐÂY */}
           </Space>
         );
       },
@@ -275,12 +199,7 @@ const ProductTable = ({
               —
             </Text>
           );
-        const start = record.season_start
-          ? dayjs(record.season_start).format("DD/MM/YYYY")
-          : "?";
-        const end = record.season_end
-          ? dayjs(record.season_end).format("DD/MM/YYYY")
-          : "?";
+
         return (
           <div
             style={{
@@ -302,7 +221,13 @@ const ProductTable = ({
                 Mùa vụ
               </Text>
               <Text style={{ fontSize: 12 }}>
-                {start} - {end}
+                {record.season_start
+                  ? dayjs(record.season_start).format("DD/MM")
+                  : "?"}{" "}
+                -{" "}
+                {record.season_end
+                  ? dayjs(record.season_end).format("DD/MM")
+                  : "?"}
               </Text>
             </div>
             <Space
@@ -330,6 +255,7 @@ const ProductTable = ({
       align: "center",
       render: (_, record) => {
         const isBanned = record.status === "banned";
+        const isRejected = record.status === "rejected";
         const isApproved = record.status === "approved";
 
         const canDelete =
@@ -348,29 +274,33 @@ const ProductTable = ({
           {
             actionType: "toggle_hide",
             show: isApproved,
-            icon: record.is_hidden ? (
-              <EyeOutlined />
-            ) : (
-              <EyeInvisibleOutlined />
-            ),
-            tooltip: record.is_hidden
-              ? "Hiển thị lại sản phẩm"
-              : "Tạm ẩn sản phẩm",
+            icon: record.is_hidden ? <EyeOutlined /> : <EyeInvisibleOutlined />,
+            tooltip: record.is_hidden ? "Hiển thị lại" : "Tạm ẩn",
             onClick: () => onToggleHide(record),
           },
           {
             actionType: "edit",
             show: true,
             icon: <EditOutlined />,
-            tooltip: isBanned ? "Sản phẩm bị khóa" : "Chỉnh sửa",
+            tooltip: isBanned
+              ? "Sản phẩm bị khóa"
+              : isRejected
+                ? "Sửa lỗi & Gửi duyệt lại"
+                : "Chỉnh sửa",
             onClick: onEdit,
-            buttonProps: { disabled: isBanned },
+            buttonProps: {
+              disabled: isBanned,
+              // Nút vẫn màu cam để gây chú ý người bán cần sửa
+              style: isRejected
+                ? { color: "#fa8c16", borderColor: "#fa8c16" }
+                : undefined,
+            },
           },
           {
             actionType: "delete",
             show: canDelete,
             icon: <DeleteOutlined />,
-            tooltip: "Xóa vĩnh viễn (Chưa có đơn hàng)",
+            tooltip: "Xóa vĩnh viễn",
             onClick: () => onDelete(record.id),
             confirm: {
               title: "Xóa vĩnh viễn sản phẩm?",
@@ -384,11 +314,7 @@ const ProductTable = ({
 
         return (
           <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              width: "100%",
-            }}
+            style={{ display: "flex", justifyContent: "center", width: "100%" }}
           >
             <ButtonAction actions={actions} record={record} />
           </div>
@@ -408,17 +334,10 @@ const ProductTable = ({
         showTotal: (total) => `Tổng ${total} sản phẩm`,
       }}
       scroll={{ x: 1160, y: 480 }}
-      sticky={{ offsetHeader: 0 }}
       onRow={onRow}
       rowSelection={rowSelection}
       rowClassName={(record) =>
-        `cursor-pointer hover:bg-slate-50 ${
-          record.is_hidden ? "opacity-60 bg-gray-50" : ""
-        } ${
-          record.status === "pending_update"
-            ? "ant-table-row-pending-update"
-            : ""
-        }`
+        `cursor-pointer hover:bg-slate-50 ${record.is_hidden ? "opacity-60 bg-gray-50" : ""} ${record.status === "rejected" ? "bg-red-50" : ""}`
       }
       size="small"
       bordered

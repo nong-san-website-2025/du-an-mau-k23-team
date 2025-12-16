@@ -7,9 +7,9 @@
 .stat-card {
   border-radius: 12px;
   /* Thêm dòng này: Viền xám nhạt */
-  border: 1px solid #d9d9d9; 
+  border: 1px solid #d9d9d9;
   /* Giữ bóng nhẹ hoặc bỏ đi tùy ý */
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06); 
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   transition: all 0.3s ease;
   height: 100%;
 }
@@ -45,7 +45,7 @@
 .stat-value {
   margin: 0 !important;
   font-weight: 700;
-  font-family: 'Roboto', sans-serif;
+  font-family: "Roboto", sans-serif;
 }
 
 .stat-trend {
@@ -57,8 +57,12 @@
   font-weight: 500;
 }
 
-.trend-up { color: #52c41a; }
-.trend-down { color: #cf1322; }
+.trend-up {
+  color: #52c41a;
+}
+.trend-down {
+  color: #cf1322;
+}
 
 .stat-icon-wrapper {
   width: 56px;
