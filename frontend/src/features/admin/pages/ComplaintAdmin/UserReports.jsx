@@ -7,10 +7,10 @@ import {
     CloseCircleOutlined, 
     UndoOutlined,
     DeleteOutlined,
-    SendOutlined, // Icon cho hành động Duyệt/Giải quyết
+    SendOutlined, 
 } from "@ant-design/icons";
 
-// Import Components (Giữ nguyên cấu trúc import của bạn)
+// Đảm bảo đường dẫn import đúng với cấu trúc dự án của bạn
 import ComplaintDetailModal from "../../components/ComplaintAdmin/ComplaintDetailModal";
 import ComplaintResolveModal from "../../components/ComplaintAdmin/ComplaintResolveModal";
 import AdminPageLayout from "../../components/AdminPageLayout";
@@ -20,13 +20,12 @@ import ButtonAction from "../../../../components/ButtonAction";
 const API_URL = "http://localhost:8000/api/complaints/";
 
 const UserReports = () => {
+    // --- KHAI BÁO STATE (Biến) ---
     const [reports, setReports] = useState([]);
     const [loading, setLoading] = useState(false);
     
-    // --- State cho chức năng chọn dòng (checkbox) ---
-    // 1. Dùng cho Xóa (chọn các dòng đã xử lý: resolved/rejected)
+    // State checkbox
     const [selectedDeleteKeys, setSelectedDeleteKeys] = useState([]); 
-    // 2. Dùng cho Duyệt (chọn các dòng đang chờ: pending)
     const [selectedResolveKeys, setSelectedResolveKeys] = useState([]); 
 
     // Modal State
@@ -35,6 +34,7 @@ const UserReports = () => {
     const [resolveModalVisible, setResolveModalVisible] = useState(false);
     const [resolveComplaint, setResolveComplaint] = useState(null);
 
+    // --- HÀM CALL API ---
     const refreshReports = async () => {
         setLoading(true);
         try {
@@ -54,7 +54,6 @@ const UserReports = () => {
             // Sắp xếp: Pending lên đầu
             listData.sort((a, b) => (a.status === 'pending' ? -1 : 1));
             
-            // Ensure seller_name is included or defaulted
             listData = listData.map(item => ({
                 ...item,
                 seller_name: item.seller_name || "Không xác định"
@@ -75,7 +74,7 @@ const UserReports = () => {
         refreshReports();
     }, []);
 
-    // --- LOGIC XỬ LÝ HÀNH ĐỘNG ĐƠN LẺ (API) ---
+    // --- CÁC HÀM XỬ LÝ (Đặt bên trong UserReports để nhận diện được biến reports, selectedDeleteKeys) ---
 
     const handleReject = async (record) => {
         try {
@@ -117,18 +116,26 @@ const UserReports = () => {
         }
     };
 
-    // --- LOGIC XỬ LÝ HÀNG LOẠT (API) ---
-
-    // 1. Xử lý Xóa Hàng Loạt (cho các dòng đã resolved/rejected)
+    // --- LOGIC XỬ LÝ XÓA HÀNG LOẠT (Đã fix logic an toàn) ---
     const handleDeleteBatch = async () => {
-        if (selectedDeleteKeys.length === 0) return;
+        // Kiểm tra an toàn: Lọc lại một lần nữa để chắc chắn KHÔNG chứa pending
+        // Biến 'reports' và 'selectedDeleteKeys' được lấy từ State phía trên
+        const safeDeleteKeys = selectedDeleteKeys.filter(id => {
+            const item = reports.find(r => r.id === id);
+            return item && item.status !== 'pending';
+        });
+
+        if (safeDeleteKeys.length === 0) {
+            message.warning("Không có mục nào hợp lệ để xóa (Đơn chờ duyệt không thể xóa).");
+            return;
+        }
 
         setLoading(true);
         const token = localStorage.getItem("token");
         let successfulDeletes = 0;
         let failedDeletes = 0;
 
-        for (const id of selectedDeleteKeys) {
+        for (const id of safeDeleteKeys) {
             try {
                 const res = await fetch(`${API_URL}${id}/`, {
                     method: "DELETE",
@@ -155,7 +162,7 @@ const UserReports = () => {
         }
     };
     
-    // 2. Xử lý Duyệt Nhanh Hàng Loạt (cho các dòng pending)
+    // --- LOGIC DUYỆT HÀNG LOẠT ---
     const handleResolveBatch = async () => {
         if (selectedResolveKeys.length === 0) return;
 
@@ -166,7 +173,6 @@ const UserReports = () => {
 
         for (const id of selectedResolveKeys) {
             try {
-                // Giả định: duyệt hàng loạt sẽ chuyển status thành 'resolved'
                 const res = await fetch(`${API_URL}${id}/`, {
                     method: "PATCH",
                     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -195,11 +201,9 @@ const UserReports = () => {
 
     // --- Cấu hình Row Selection ---
     const rowSelection = {
-        // Tổng hợp cả hai loại keys để hiển thị trên checkbox
         selectedRowKeys: [...selectedDeleteKeys, ...selectedResolveKeys],
-        
         onChange: (newSelectedRowKeys, selectedRows) => {
-            // Tách các ID đã chọn thành 2 nhóm dựa trên trạng thái của chúng
+            // Tách các ID đã chọn thành 2 nhóm
             const deleteKeys = selectedRows
                 .filter(row => row.status !== 'pending')
                 .map(row => row.id);
@@ -307,7 +311,6 @@ const UserReports = () => {
                             okText: "Từ chối",
                             cancelText: "Hủy",
                         },
-                        // Sửa lỗi ESLint: Truyền callback nhận tham số (r)
                         onClick: (r) => handleReject(r) 
                     },
                     {
@@ -319,7 +322,6 @@ const UserReports = () => {
                             title: "Xử lý lại?",
                             description: "Chuyển trạng thái về 'Chờ xử lý'?",
                         },
-                        // Sửa lỗi ESLint: Truyền callback nhận tham số (r)
                         onClick: (r) => handleResetPending(r) 
                     }
                 ];
@@ -335,11 +337,11 @@ const UserReports = () => {
             title="QUẢN LÝ KHIẾU NẠI NGƯỜI DÙNG" 
             extra={
                 <Space>
-                    {/* 1. Nút Duyệt Nhanh Hàng Loạt */}
+                    {/* Nút Duyệt Nhanh */}
                     {selectedResolveKeys.length > 0 && (
                         <Popconfirm
                             title={`Giải quyết ${selectedResolveKeys.length} khiếu nại đang chờ?`}
-                            description="Hành động này sẽ chuyển trạng thái các khiếu nại đã chọn thành 'Đã giải quyết' (Resolved)."
+                            description="Hành động này sẽ chuyển trạng thái các khiếu nại đã chọn thành 'Đã giải quyết'."
                             onConfirm={handleResolveBatch}
                             okText="Xác nhận Duyệt"
                             cancelText="Hủy"
@@ -356,11 +358,11 @@ const UserReports = () => {
                         </Popconfirm>
                     )}
                 
-                    {/* 2. Nút Xóa Hàng Loạt */}
+                    {/* Nút Xóa Hàng Loạt */}
                     {selectedDeleteKeys.length > 0 && (
                         <Popconfirm
-                            title={`Xóa ${selectedDeleteKeys.length} khiếu nại đã xử lý?`}
-                            description="Các khiếu nại này sẽ bị xóa vĩnh viễn khỏi hệ thống."
+                            title={`Xóa ${selectedDeleteKeys.length} khiếu nại đã hoàn tất?`}
+                            description="LƯU Ý: Chỉ xóa các đơn đã Giải quyết/Từ chối. Đơn đang chờ (Pending) sẽ được giữ lại."
                             onConfirm={handleDeleteBatch}
                             okText="Xác nhận Xóa"
                             cancelText="Hủy"
@@ -377,7 +379,6 @@ const UserReports = () => {
                         </Popconfirm>
                     )}
                     
-                    {/* 3. Nút Làm Mới */}
                     <Button 
                         type="primary" 
                         icon={<ReloadOutlined />} 
@@ -401,14 +402,12 @@ const UserReports = () => {
                 />
             </Card>
 
-            {/* Modal Xem chi tiết */}
             <ComplaintDetailModal
                 visible={detailModalVisible}
                 complaint={detailComplaint}
                 onClose={() => setDetailModalVisible(false)}
             />
 
-            {/* Modal Xử lý */}
             <ComplaintResolveModal
                 visible={resolveModalVisible}
                 complaint={resolveComplaint}
