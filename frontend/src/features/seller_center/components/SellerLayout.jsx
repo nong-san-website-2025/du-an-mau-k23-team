@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import { Layout, Drawer, Grid, theme } from "antd";
 import { Outlet } from "react-router-dom";
-import SellerSidebar from "./SellerSidebar";
-import SellerTopbar from "./SellerTopbar";
-import "../styles/SellerLayout.css";
+import SellerSidebar from "./SellerSidebar"; // Check path
+import SellerTopbar from "./SellerTopbar";   // Check path
+import "../styles/SellerLayout.css"; // Check path
 
 const { Content } = Layout;
 const { useBreakpoint } = Grid;
@@ -14,7 +14,6 @@ export default function SellerLayout() {
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
 
   const { token } = theme.useToken();
-
   const isMobile = !screens.md;
 
   const toggleSidebar = () => {
@@ -25,20 +24,20 @@ export default function SellerLayout() {
     }
   };
 
-  const marginLeft = isMobile ? 0 : collapsed ? 80 : 250;
-
   return (
-    <Layout style={{ minHeight: "100vh", backgroundColor: "#f8fafc" }}>
+    <Layout style={{ minHeight: "100vh" }}>
+      {/* Desktop Sidebar */}
       {!isMobile && (
         <SellerSidebar collapsed={collapsed} isMobile={false} />
       )}
 
+      {/* Mobile Drawer Sidebar */}
       {isMobile && (
         <Drawer
           placement="left"
           onClose={() => setMobileDrawerOpen(false)}
           open={mobileDrawerOpen}
-          width={250}
+          width={260}
           bodyStyle={{ padding: 0 }}
           closable={false}
         >
@@ -50,29 +49,22 @@ export default function SellerLayout() {
         </Drawer>
       )}
 
+      {/* Main Layout Area */}
       <Layout
-        className="seller-main-layout transition-all duration-300 ease-in-out"
-        style={{ marginLeft: marginLeft, backgroundColor: "#f8fafc" }}
+        style={{
+          // Logic margin giống Admin
+          marginLeft: isMobile ? 0 : (collapsed ? 80 : 260),
+          transition: "all 0.2s ease",
+          minHeight: "100vh",
+          background: '#f5f5f5' // Nền xám nhạt đồng bộ
+        }}
       >
-        <div className="sticky top-0 z-20 w-full">
-          <SellerTopbar onToggleSidebar={toggleSidebar} />
-        </div>
+        <SellerTopbar collapsed={collapsed} onToggleSidebar={toggleSidebar} />
 
-        <Content style={{ overflow: "visible", backgroundColor: "#f8fafc" }}>
-          <div
-            className="seller-content-wrapper"
-            style={{
-              padding: isMobile ? "16px" : "24px",
-              minHeight: "calc(100vh - 64px)",
-              background: token.colorBgContainer,
-              borderRadius: isMobile ? "8px" : "12px",
-              margin: isMobile ? "12px 0" : "24px",
-              marginLeft: isMobile ? "12px" : "24px",
-              marginRight: isMobile ? "12px" : "24px",
-              boxShadow: "0 1px 4px rgba(0, 0, 0, 0.08)",
-            }}
-          >
-            <Outlet />
+        <Content style={{ margin: "24px 24px 0", overflow: "initial" }}>
+          <Outlet />
+          <div style={{ textAlign: "center", padding: "24px 0", color: "#9ca3af", fontSize: "13px" }}>
+            GreenFarm Seller ©2025 Created by GreenFarm Dev Team
           </div>
         </Content>
       </Layout>

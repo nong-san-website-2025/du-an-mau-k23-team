@@ -1,75 +1,66 @@
-/* ===========================
-   SIDEBAR LAYOUT
-=========================== */
-.sidebar {
-  position: fixed;
-  top: 30px;
-  left: 0;
-  width: 250px;
-  height: calc(100vh - 70px);
-  background: #ffffff;
-  border-right: 1px solid #e5e7eb;
-  overflow-y: auto;
-  padding-top: 12px;
-}
+/* src/styles/AdminSidebar.css */
 
-/* Xóa underline và giữ màu mặc định */
-.sidebar a {
-  text-decoration: none;
-  color: inherit;
+/* Tùy chỉnh thanh cuộn cho đẹp */
+.custom-sidebar::-webkit-scrollbar {
+  width: 5px;
+}
+.custom-sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-sidebar::-webkit-scrollbar-thumb {
+  background: #e2e8f0;
+  border-radius: 4px;
+}
+.custom-sidebar::-webkit-scrollbar-thumb:hover {
+  background: #cbd5e1;
 }
 
 /* ===========================
-   MENU ITEM — NORMAL
+   MENU ITEM STYLING
 =========================== */
-.ant-menu-item,
-.ant-menu-submenu-title {
-  font-weight: 500 !important;
-  color: #344054 !important; /* Màu text chuẩn admin dashboard */
-  border-radius: 8px !important;
-  padding-left: 14px !important;
+
+/* Style cho các mục menu cấp 1 và tiêu đề submenu */
+.custom-sidebar .ant-menu-item,
+.custom-sidebar .ant-menu-submenu-title {
+  font-weight: 500;
+  color: #4b5563 !important; /* Màu xám đậm chuyên nghiệp */
+  margin-bottom: 4px;
+  border-radius: 6px !important;
+  width: calc(100% - 16px) !important; /* Canh lề 2 bên 8px */
+  margin-left: 8px !important;
+  transition: all 0.2s ease;
 }
 
-/* ===========================
-   HOVER STATE
-=========================== */
-.ant-menu-item:hover,
-.ant-menu-submenu-title:hover {
-  background-color: #E6F8EC !important; /* Xanh pastel dễ nhìn */
-  color: #22C55E !important; /* Green-500 */
+/* HOVER STATE: Nền xanh nhạt, chữ xanh đậm */
+.custom-sidebar .ant-menu-item:hover,
+.custom-sidebar .ant-menu-submenu-title:hover {
+  background-color: #f0fdf4 !important; /* Green-50 */
+  color: #16a34a !important; /* Green-600 */
 }
 
-/* ===========================
-   ACTIVE (SELECTED) ITEM
-=========================== */
-.ant-menu-item-selected {
-  background-color: #D1F5DB !important; /* Xanh lá đậm hơn hover */
-  color: #15803D !important; /* Green-600 */
-  font-weight: 600 !important;
+/* ACTIVE/SELECTED STATE: Nền xanh, chữ đậm */
+.custom-sidebar .ant-menu-item-selected {
+  background-color: #dcfce7 !important; /* Green-100 */
+  color: #15803d !important; /* Green-700 */
+  font-weight: 600;
 }
 
-/* Icon khi active */
-.ant-menu-item-selected .anticon {
-  color: #15803D !important;
+/* SUBMENU: Khi menu con mở ra */
+.custom-sidebar .ant-menu-submenu-open > .ant-menu-submenu-title {
+  color: #16a34a !important;
+  font-weight: 600;
 }
 
-/* ===========================
-   SUBMENU OPEN / ACTIVE
-=========================== */
-.ant-menu-submenu-open > .ant-menu-submenu-title {
-  background-color: #F2FFF5 !important;
-  color: #22C55E !important;
-  font-weight: 600 !important;
-  border-radius: 8px;
+/* Điều chỉnh lề cho menu con cấp 2 */
+.custom-sidebar .ant-menu-sub .ant-menu-item {
+    background: transparent !important;
 }
 
-/* ===========================
-   REMOVE DEFAULT INDENT ISSUE
-=========================== */
-.ant-menu-sub.ant-menu-inline {
-  background: transparent !important;
+/* Icon colors */
+.custom-sidebar .ant-menu-item .anticon,
+.custom-sidebar .ant-menu-submenu-title .anticon {
+    font-size: 16px;
 }
-
-.custom-menu .ant-menu-submenu .ant-menu-item {
-  padding-left: 38px !important; /* Điều chỉnh giá trị này */
+.custom-sidebar .ant-menu-item-selected .anticon {
+    color: #15803d;
 }

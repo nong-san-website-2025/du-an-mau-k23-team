@@ -380,12 +380,12 @@ export default function ReportRevenuePage() {
     <AdminPageLayout
       title={
         <Space size={12}>
-          <DollarCircleOutlined style={{ fontSize: "28px", color: "#2563eb" }} />
           <Title level={2} style={{ margin: 0, color: "#1f2937", fontWeight: '700' }}>
             THỐNG KÊ DOANH THU
           </Title>
         </Space>
       }
+      
       extra={
         <Space>
           <Dropdown menu={{ items: exportMenu }} placement="bottomRight">

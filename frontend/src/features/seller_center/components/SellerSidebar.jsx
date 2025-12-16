@@ -1,5 +1,5 @@
-import React, { useMemo } from "react";
-import { Menu, Layout, Tooltip } from "antd";
+import React, { useMemo, useState, useEffect } from "react";
+import { Menu, Layout, Badge } from "antd";
 import {
   DashboardOutlined,
   ShopOutlined,
@@ -13,7 +13,9 @@ import {
   WalletOutlined,
 } from "@ant-design/icons";
 import { useNavigate, useLocation } from "react-router-dom";
-import "../styles/SellerSidebar.css";
+// Chúng ta sẽ dùng chung file CSS của Admin để đồng bộ, 
+// hoặc tạo file mới copy nội dung từ AdminSidebar.css sang SellerSidebar.css
+import "../../admin/styles/AdminSidebar.css"; 
 
 const { Sider } = Layout;
 
@@ -28,7 +30,17 @@ export default function SellerSidebar({ collapsed, isMobile, onItemClick }) {
       label: "Tổng quan",
     },
     { type: "divider" },
-    { key: "/seller-center/messages", icon: <WechatOutlined />, label: "Tin nhắn" },
+    { 
+        key: "/seller-center/messages", 
+        icon: <WechatOutlined />, 
+        label: (
+            <div className="d-flex justify-content-between align-items-center w-100">
+              <span>Tin nhắn</span>
+              {/* Ví dụ Badge tin nhắn chưa đọc */}
+              <Badge count={0} size="small" offset={[5, 0]} />
+            </div>
+        )
+    },
     {
       key: "products",
       icon: <AppstoreOutlined />,
@@ -72,15 +84,17 @@ export default function SellerSidebar({ collapsed, isMobile, onItemClick }) {
     {
       key: "/seller-center/store/info",
       icon: <ShopOutlined />,
-      label: "Cửa hàng",
+      label: "Hồ sơ Cửa hàng",
     },
   ];
 
   const defaultOpenKeys = useMemo(() => {
+    // Logic mở menu cha khi đang ở menu con
     const foundParent = menuItems.find((item) =>
       item.children?.some((child) => child.key === location.pathname)
     );
-    return foundParent ? [foundParent.key] : [];
+    // Mặc định mở luôn các mục quan trọng
+    return foundParent ? [foundParent.key] : ['products', 'orders'];
   }, [location.pathname]);
 
   const handleMenuClick = ({ key }) => {
@@ -93,59 +107,59 @@ export default function SellerSidebar({ collapsed, isMobile, onItemClick }) {
       trigger={null}
       collapsible
       collapsed={collapsed}
-      width={250}
+      width={260} // Đồng bộ độ rộng với Admin (260px)
       theme="light"
-      className="seller-sidebar h-screen left-0 top-0 bottom-0 z-50"
+      className="custom-sidebar" // Dùng class chung để ăn CSS màu xanh
       style={{
+        overflow: 'auto',
+        height: '100vh',
         position: isMobile ? "relative" : "fixed",
-        borderRight: "1px solid #e5e7eb",
-        boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)",
+        left: 0,
+        top: 0,
+        bottom: 0,
+        zIndex: 100,
+        boxShadow: "2px 0 8px 0 rgba(29,35,41,.05)",
+        borderRight: "1px solid #f0f0f0"
       }}
     >
       {/* --- LOGO AREA --- */}
-      <div
-        className="flex items-center justify-center cursor-pointer border-b border-gray-200 bg-white px-4 transition-all duration-300"
-        style={{ height: 64 }}
+      <div 
+        className="d-flex align-items-center justify-content-center" 
+        style={{ 
+          height: 64, 
+          position: 'sticky', 
+          top: 0, 
+          zIndex: 1, 
+          background: '#fff',
+          borderBottom: '1px solid #f0f0f0',
+          cursor: 'pointer'
+        }}
+        onClick={() => navigate('/seller-center/dashboard')}
       >
-        <Tooltip
-          title={collapsed ? "Seller Center" : ""}
-          placement="right"
-        >
-          <img
-            src="/assets/logo/defaultLogo.png"
-            alt="Seller"
-            className="h-10 w-auto object-contain transition-all duration-300"
-          />
-        </Tooltip>
-
+        <img
+          src="/assets/logo/defaultLogo.png" // Dùng chung logo với Admin cho đồng bộ
+          alt="Seller"
+          style={{ height: 36 }}
+        />
         {!collapsed && (
-          <span
-            className="ml-2 font-bold text-gray-800 whitespace-nowrap transition-opacity duration-200 custom-title-logo"
-            style={{ fontSize: "26px", fontWeight: 600, marginTop: 10 }}
+          <span 
+            className="ms-2 fs-5 fw-bold text-success" 
+            style={{ whiteSpace: 'nowrap', transition: 'all 0.3s' }}
           >
+            Kênh Người Bán
           </span>
         )}
       </div>
 
-      {/* --- SCROLLABLE MENU AREA --- */}
-      <div
-        className="seller-sidebar-menu overflow-y-auto"
-        style={{ height: "calc(100vh - 64px)" }}
-      >
-        <Menu
-          mode="inline"
-          selectedKeys={[location.pathname]}
-          defaultOpenKeys={defaultOpenKeys}
-          items={menuItems}
-          onClick={handleMenuClick}
-          style={{
-            borderRight: 0,
-            paddingTop: "8px",
-            paddingBottom: "8px",
-          }}
-          className="seller-menu"
-        />
-      </div>
+      {/* --- MENU AREA --- */}
+      <Menu
+        mode="inline"
+        selectedKeys={[location.pathname]}
+        defaultOpenKeys={defaultOpenKeys}
+        items={menuItems}
+        onClick={handleMenuClick}
+        style={{ borderRight: 0, paddingTop: 10, paddingBottom: 60 }}
+      />
     </Sider>
   );
 }

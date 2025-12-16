@@ -7,40 +7,33 @@ import {
   Typography,
   Space,
   theme,
-  Skeleton,
   Spin,
-  Input,
 } from "antd";
 import {
-  MenuOutlined,
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
   UserOutlined,
   LogoutOutlined,
-  SearchOutlined,
+  ShopOutlined
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
-import sellerService from "../services/api/sellerService";
+import sellerService from "../services/api/sellerService"; // Check path import này nhé
 
 const { Header } = Layout;
 const { Text } = Typography;
 
-const getAvatarLabel = (name) => {
-  if (!name) return "?";
-  const firstWord = name.trim().split(/\s+/)[0] || name.trim().charAt(0);
-  return firstWord.charAt(0).toUpperCase();
-};
-
-export default function SellerTopbar({ onToggleSidebar }) {
+export default function SellerTopbar({ collapsed, onToggleSidebar }) {
   const navigate = useNavigate();
   const { token } = theme.useToken();
 
   const [seller, setSeller] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [searchValue, setSearchValue] = useState("");
 
   useEffect(() => {
     const fetchSellerProfile = async () => {
       try {
         setLoading(true);
+        // Giả lập hoặc gọi API thật
         const data = await sellerService.getMe();
         setSeller(data);
       } catch (error) {
@@ -57,104 +50,83 @@ export default function SellerTopbar({ onToggleSidebar }) {
     {
       key: "info",
       label: (
-        <div
-          className="flex flex-col px-2 py-1 cursor-default"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {loading ? (
-            <Skeleton.Input active size="small" style={{ width: 100 }} />
-          ) : (
-            <>
-              <Text strong>{seller?.store_name || "Chưa đặt tên Shop"}</Text>
-              <Text type="secondary" className="text-xs truncate w-40">
-                {seller?.email || seller?.name || "Seller"}
-              </Text>
-            </>
-          )}
+        <div className="d-flex flex-column px-2 py-1" style={{ cursor: "default" }}>
+            <Text strong>{seller?.store_name || "Cửa hàng của tôi"}</Text>
+            <Text type="secondary" style={{ fontSize: 12 }}>
+                {seller?.email || "seller@example.com"}
+            </Text>
         </div>
       ),
     },
     { type: "divider" },
-    { key: "profile", icon: <UserOutlined />, label: "Cửa hàng" },
-    { type: "divider" },
+    { 
+        key: "profile", 
+        icon: <ShopOutlined />, 
+        label: "Hồ sơ cửa hàng",
+        onClick: () => navigate("/seller-center/store/info")
+    },
     {
       key: "logout",
       icon: <LogoutOutlined />,
       label: "Đăng xuất",
       danger: true,
+      onClick: () => {
+          localStorage.removeItem("accessToken");
+          navigate("/login");
+      }
     },
   ];
-
-  const handleSearch = (value) => {
-    setSearchValue(value);
-  };
 
   return (
     <Header
       style={{
-        padding: "0 24px",
+        padding: 0,
         background: token.colorBgContainer,
+        position: "sticky",
+        top: 0,
+        zIndex: 99,
         display: "flex",
-        justifyContent: "space-between",
         alignItems: "center",
-        boxShadow: "0 1px 8px rgba(0, 0, 0, 0.06)",
-        height: 64,
-        borderBottom: `1px solid ${token.colorBorder}`,
+        justifyContent: "space-between",
+        paddingRight: 24,
+        boxShadow: "0 1px 3px rgba(0,0,0,0.05)", // Shadow nhẹ giống Admin
+        height: 64
       }}
     >
-      {/* Left: Toggle Button */}
-      <div className="flex items-center">
-        {onToggleSidebar && (
-          <Button
-            type="text"
-            icon={<MenuOutlined />}
-            onClick={onToggleSidebar}
-            style={{ fontSize: "16px", width: 40, height: 40 }}
-            className="hover:bg-gray-100 transition-colors duration-200"
-          />
-        )}
+      {/* Left: Toggle Button & Title */}
+      <div className="d-flex align-items-center">
+        <Button
+          type="text"
+          icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+          onClick={onToggleSidebar}
+          style={{ fontSize: "16px", width: 64, height: 64 }}
+        />
+        <h5 className="m-0 ms-2 text-secondary" style={{ fontWeight: 700, letterSpacing: '0.5px' }}>
+             SELLER CENTER
+        </h5>
       </div>
-
 
       {/* Right: User Profile */}
       <Space size={16}>
-        <Dropdown
-          menu={{
-            items: userMenuItems,
-            onClick: ({ key }) => {
-              if (key === "logout") {
-                localStorage.removeItem("accessToken");
-                navigate("/login");
-              } else if (key === "profile") {
-                navigate("/seller-center/store/info");
-              }
-            },
-          }}
-          placement="bottomRight"
-          arrow
-          trigger={["click"]}
-        >
-          <div
-            className="flex items-center gap-2 px-3 py-1.5 rounded-full cursor-pointer hover:bg-gray-50 transition-colors duration-200"
-            style={{ height: "48px" }}
+        <Dropdown menu={{ items: userMenuItems }} placement="bottomRight" arrow trigger={["click"]}>
+          <div 
+            className="d-flex align-items-center gap-2 p-1 px-2 rounded hover-bg-light" 
+            style={{ cursor: "pointer", transition: 'background 0.3s' }}
           >
             {loading ? (
-              <Spin size="small" />
+                <Spin size="small" />
             ) : (
-              <>
-                <Avatar
-                  size={36}
-                  style={{
-                    backgroundColor: token.colorPrimary,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                  src={seller?.avatar}
-                  icon={!seller?.avatar && <UserOutlined />}
-                >
-                </Avatar>
-              </>
+                <>
+                    <span className="fw-semibold d-none d-md-block text-secondary">
+                        {seller?.name || "Seller User"}
+                    </span>
+                    <Avatar
+                        size="large"
+                        src={seller?.avatar}
+                        icon={<UserOutlined />}
+                        style={{ border: '1px solid #e5e7eb' }}
+                    />
+                </>
             )}
           </div>
         </Dropdown>

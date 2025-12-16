@@ -194,7 +194,7 @@ export default function ReportOrdersPage() {
 
   return (
     <AdminPageLayout
-      title={<Title level={2} style={{ margin: 0 }}>THỐNG KÊ ĐƠN HÀNG</Title>}
+      title="THỐNG KÊ ĐƠN HÀNG"
       extra={
         <Space wrap>
           <Select value={timeFilter} onChange={handleTimeChange} style={{ width: 120 }}>

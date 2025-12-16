@@ -203,8 +203,7 @@ export default function ReportProductsPage() {
 
   return (
     <AdminPageLayout
-      title={<Title level={2} style={{ margin: 0, color: "#1f2937" }}>THỐNG KÊ SẢN PHẨM</Title>}
-      extra={
+      title="THỐNG KÊ SẢN PHẨM" extra={
         <Tooltip title="Làm mới dữ liệu">
           <Button icon={<ReloadOutlined />} onClick={loadData} loading={loading} type="primary" shape="round">
             Làm mới
