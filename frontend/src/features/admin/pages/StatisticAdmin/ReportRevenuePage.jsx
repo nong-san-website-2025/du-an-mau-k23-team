@@ -152,7 +152,7 @@ export default function ReportRevenuePage() {
     }
 
     // Thêm Byte Order Mark (BOM) để đảm bảo hiển thị tiếng Việt có dấu trong Excel/Sheets
-    const BOM = "\uFEFF"; 
+    const BOM = "\uFEFF";
     const csvData = stats.daily_revenue.map(item => ({
       'Ngày': item.date,
       'Doanh thu tổng': item.revenue || 0,
@@ -161,8 +161,8 @@ export default function ReportRevenuePage() {
 
     const csvContent = [
       Object.keys(csvData[0]).map(header => `"${header}"`).join(','),
-      ...csvData.map(row => 
-        Object.values(row).map(value => 
+      ...csvData.map(row =>
+        Object.values(row).map(value =>
           `"${String(value).replace(/"/g, '""')}"`
         ).join(',')
       )
@@ -214,8 +214,8 @@ export default function ReportRevenuePage() {
   // === TÍNH TOÁN CÁC CHỈ SỐ KPI ĐỘNG ===
   const revenueChangePercent = stats.prev_total_revenue
     ? ((stats.total_revenue - stats.prev_total_revenue) /
-        Math.abs(stats.prev_total_revenue)) * // Sử dụng Math.abs để tránh chia cho 0 hoặc giá trị âm nếu có lỗi data
-      100
+      Math.abs(stats.prev_total_revenue)) * // Sử dụng Math.abs để tránh chia cho 0 hoặc giá trị âm nếu có lỗi data
+    100
     : stats.total_revenue > 0 ? 100 : 0; // Nếu kỳ trước bằng 0, tăng 100% (hoặc 0 nếu kỳ này cũng bằng 0)
 
   const totalOrders = stats.success_orders_count + stats.cancelled_orders_count + stats.pending_orders_count;
@@ -364,8 +364,8 @@ export default function ReportRevenuePage() {
   // === TÍNH TOÁN THÔNG SỐ PHỤ ===
   const maxRevenueDay = stats.daily_revenue?.length > 0
     ? stats.daily_revenue.reduce((max, day) =>
-        (day.revenue || 0) > (max.revenue || 0) ? day : max
-      )
+      (day.revenue || 0) > (max.revenue || 0) ? day : max
+    )
     : null;
 
   const avgDailyRevenue = stats.daily_revenue?.length > 0
@@ -378,14 +378,11 @@ export default function ReportRevenuePage() {
   // === RENDER COMPONENT ===
   return (
     <AdminPageLayout
-      title={
-        <Space size={12}>
-          <Title level={2} style={{ margin: 0, color: "#1f2937", fontWeight: '700' }}>
-            THỐNG KÊ DOANH THU
-          </Title>
-        </Space>
-      }
-      
+      title=
+
+      "THỐNG KÊ DOANH THU"
+
+
       extra={
         <Space>
           <Dropdown menu={{ items: exportMenu }} placement="bottomRight">
@@ -479,7 +476,7 @@ export default function ReportRevenuePage() {
               value={intcomma(stats.platform_revenue)}
               icon={<DollarCircleOutlined />}
               color="#c026d3"
-              // Không hiển thị trend nếu không có prev_platform_revenue
+            // Không hiển thị trend nếu không có prev_platform_revenue
             />
           </Col>
 
@@ -529,7 +526,7 @@ export default function ReportRevenuePage() {
           </div>
         )}
       </Card>
-      
+
 
       {/* Thống kê tổng quan */}
       <Row gutter={[24, 24]} className="mt-6">
@@ -640,9 +637,9 @@ export default function ReportRevenuePage() {
           </Space>
         }
         extra={
-            <Text type="secondary">
-                Khoảng thời gian: {dayjs(dateRange[0]).format('DD/MM')} - {dayjs(dateRange[1]).format('DD/MM/YYYY')}
-            </Text>
+          <Text type="secondary">
+            Khoảng thời gian: {dayjs(dateRange[0]).format('DD/MM')} - {dayjs(dateRange[1]).format('DD/MM/YYYY')}
+          </Text>
         }
       >
         <Table
