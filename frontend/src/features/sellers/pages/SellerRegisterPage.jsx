@@ -12,11 +12,10 @@ import {
   Row,
   Col,
   Typography,
-  Card,
   Divider,
-  Tag,
   Space,
   Alert,
+  Select,
 } from "antd";
 import {
   InboxOutlined,
@@ -36,6 +35,7 @@ import { getProvinces, getDistricts, getWards } from "../../../services/api/ghnA
 const { Step } = Steps;
 const { Title, Text, Paragraph } = Typography;
 const { Dragger } = Upload;
+const { Option } = Select; // <--- Thêm dòng này để dùng Option
 
 // --- STYLES (CSS-in-JS) ---
 const styles = {
@@ -146,12 +146,12 @@ export default function SellerRegisterPage() {
     }
   }, [selectedProvinceId]);
 
- const fetchDistrictsData = async () => {
+  const fetchDistrictsData = async () => {
     try {
       const data = await getDistricts(selectedProvinceId);
       // Lọc dữ liệu
       const cleanData = data.filter(d => isValidProvinceName(d.DistrictName));
-      
+
       setDistricts(cleanData);
       setWards([]);
       setSelectedDistrictId(null);
@@ -172,7 +172,7 @@ export default function SellerRegisterPage() {
       const data = await getWards(selectedDistrictId);
       // Lọc dữ liệu
       const cleanData = data.filter(w => isValidProvinceName(w.WardName));
-      
+
       setWards(cleanData);
       setSelectedWardCode(null);
     } catch (err) {
@@ -606,36 +606,131 @@ export default function SellerRegisterPage() {
                     onFinish={handleSubmit}
                     size="large"
                   >
+                    {/* --- BẮT ĐẦU ĐOẠN CODE CẬP NHẬT --- */}
                     <Divider orientation="left">1. Thông tin gian hàng</Divider>
                     <Row gutter={24}>
                       <Col xs={24} md={12}>
                         <Form.Item
                           name="store_name"
                           label="Tên cửa hàng"
-                          rules={[{ required: true }]}
+                          rules={[{ required: true, message: "Vui lòng nhập tên cửa hàng" }]}
                         >
-                          <Input placeholder="Ví dụ: Shop Thời Trang A" />
+                          <Input placeholder="Ví dụ: GreenFarm Official" />
                         </Form.Item>
                       </Col>
                       <Col xs={24} md={12}>
                         <Form.Item
                           name="phone"
                           label="Số điện thoại"
-                          rules={[{ required: true }]}
+                          rules={[{ required: true, message: "Vui lòng nhập số điện thoại" }]}
                         >
                           <Input placeholder="0912 xxx xxx" />
                         </Form.Item>
                       </Col>
                       <Col xs={24} md={12}>
-                        <Form.Item name="email" label="Email liên hệ">
+                        <Form.Item
+                          name="email"
+                          label="Email liên hệ"
+                          rules={[{ type: 'email', message: "Email không hợp lệ" }]}
+                        >
                           <Input placeholder="contact@shop.com" />
                         </Form.Item>
                       </Col>
+
+                      {/* --- PHẦN ĐỊA CHỈ GHN --- */}
                       <Col xs={24} md={12}>
-                        <Form.Item name="address" label="Địa chỉ lấy hàng">
-                          <Input placeholder="Số nhà, đường, phường/xã..." />
+                        <Form.Item
+                          label="Tỉnh / Thành phố"
+                          required
+                          help={!selectedProvinceId && submitting ? "Vui lòng chọn Tỉnh/Thành" : ""}
+                          validateStatus={!selectedProvinceId && submitting ? "error" : ""}
+                        >
+                          <Select
+                            showSearch
+                            placeholder="Chọn Tỉnh/Thành"
+                            optionFilterProp="children"
+                            onChange={(value) => setSelectedProvinceId(value)}
+                            value={selectedProvinceId}
+                            filterOption={(input, option) =>
+                              option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
+                            }
+                          >
+                            {provinces.map((p) => (
+                              <Option key={p.ProvinceID} value={p.ProvinceID}>
+                                {p.ProvinceName}
+                              </Option>
+                            ))}
+                          </Select>
                         </Form.Item>
                       </Col>
+
+                      <Col xs={24} md={12}>
+                        <Form.Item
+                          label="Quận / Huyện"
+                          required
+                          help={!selectedDistrictId && submitting ? "Vui lòng chọn Quận/Huyện" : ""}
+                          validateStatus={!selectedDistrictId && submitting ? "error" : ""}
+                        >
+                          <Select
+                            showSearch
+                            placeholder="Chọn Quận/Huyện"
+                            optionFilterProp="children"
+                            onChange={(value) => setSelectedDistrictId(value)}
+                            value={selectedDistrictId}
+                            disabled={!selectedProvinceId}
+                            loading={!districts.length && selectedProvinceId}
+                            filterOption={(input, option) =>
+                              option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
+                            }
+                          >
+                            {districts.map((d) => (
+                              <Option key={d.DistrictID} value={d.DistrictID}>
+                                {d.DistrictName}
+                              </Option>
+                            ))}
+                          </Select>
+                        </Form.Item>
+                      </Col>
+
+                      <Col xs={24} md={12}>
+                        <Form.Item
+                          label="Phường / Xã"
+                          required
+                          help={!selectedWardCode && submitting ? "Vui lòng chọn Phường/Xã" : ""}
+                          validateStatus={!selectedWardCode && submitting ? "error" : ""}
+                        >
+                          <Select
+                            showSearch
+                            placeholder="Chọn Phường/Xã"
+                            optionFilterProp="children"
+                            onChange={(value) => setSelectedWardCode(value)}
+                            value={selectedWardCode}
+                            disabled={!selectedDistrictId}
+                            loading={!wards.length && selectedDistrictId}
+                            filterOption={(input, option) =>
+                              option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
+                            }
+                          >
+                            {wards.map((w) => (
+                              <Option key={w.WardCode} value={w.WardCode}>
+                                {w.WardName}
+                              </Option>
+                            ))}
+                          </Select>
+                        </Form.Item>
+                      </Col>
+
+                      <Col span={24}>
+                        <Form.Item
+                          name="address"
+                          label="Địa chỉ cụ thể (Số nhà, Tên đường)"
+                          rules={[{ required: true, message: "Vui lòng nhập địa chỉ cụ thể" }]}
+                        >
+                          <Input placeholder="Ví dụ: 123 Đường Nguyễn Văn Linh" />
+                        </Form.Item>
+                      </Col>
+                      {/* --- KẾT THÚC PHẦN ĐỊA CHỈ --- */}
+
                       <Col span={24}>
                         <Form.Item name="bio" label="Giới thiệu">
                           <Input.TextArea
@@ -645,6 +740,7 @@ export default function SellerRegisterPage() {
                         </Form.Item>
                       </Col>
                     </Row>
+                    {/* --- KẾT THÚC ĐOẠN CODE CẬP NHẬT --- */}
 
                     <Divider orientation="left">
                       2. Giấy tờ pháp lý & Hình ảnh
