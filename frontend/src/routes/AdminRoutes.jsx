@@ -115,6 +115,9 @@ export const adminRoutes = [
       <Route path="settings/marketing" element={<MarketingAutomationPage />} />
       <Route path="settings/loyalty" element={<LoyaltySettingsPage />} />
       <Route path="settings/theme" element={<ThemeSettingsPage />} />
+
+
+      <Route path="test-ui" element={<NotificationsPage />} />
     </Route>
   </Route>,
 ];

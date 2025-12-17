@@ -13,6 +13,7 @@ import {
   TagOutlined,
   CommentOutlined,
   BankOutlined,
+  BugOutlined,
 } from "@ant-design/icons";
 import axios from "axios";
 import "../styles/AdminSidebar.css";
@@ -77,9 +78,16 @@ const Sidebar = () => {
         {
           key: "/admin/sellers/approval",
           label: (
-            <div className="menu-badge-item" style={{ justifyContent: "space-between", display: "flex", alignItems: "center" }}>
+            <div
+              className="menu-badge-item"
+              style={{
+                justifyContent: "space-between",
+                display: "flex",
+                alignItems: "center",
+              }}
+            >
               <span>Duyệt cửa hàng</span>
-              <Badge count={pendingSellers} size="small" overflowCount={99}  />
+              <Badge count={pendingSellers} size="small" overflowCount={99} />
             </div>
           ),
         },
@@ -200,6 +208,19 @@ const Sidebar = () => {
           key: "/admin/promotions",
           label: "Quản lý khuyến mãi",
         },
+      ],
+    },
+
+    {
+      key: "test-ui-group", // Key của menu cha
+      icon: <BugOutlined />, // Icon màu đỏ nổi bật
+      label: "Thông báo",
+      children: [
+        {
+          key: "/admin/notifications", // Key này phải khớp chính xác với Route path trong AdminRoutes
+          label: "Quản lý thông báo",
+        },
+        // Bro có thể thêm các công cụ test khác ở đây sau này
       ],
     },
   ];
