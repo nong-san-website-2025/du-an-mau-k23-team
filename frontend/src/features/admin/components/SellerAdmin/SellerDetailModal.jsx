@@ -234,6 +234,10 @@ export default function SellerDetailDrawer({
                 <Descriptions.Item label="Mã số thuế">
                   {currentSeller.tax_code || "—"}
                 </Descriptions.Item>
+
+                <Descriptions.Item label="Mô tả cửa hàng" span={2}>
+                  {currentSeller.bio || "—"}
+                </Descriptions.Item>
               </Descriptions>
 
               {/* HIỂN THỊ CCCD / GIẤY PHÉP KINH DOANH */}

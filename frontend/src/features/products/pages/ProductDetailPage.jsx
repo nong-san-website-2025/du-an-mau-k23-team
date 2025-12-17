@@ -54,6 +54,9 @@ const ProductDetailPage = () => {
   const [hasReviewed, setHasReviewed] = useState(false);
   const [myReview, setMyReview] = useState(null);
 
+  // Description expand state
+  const [expandDescription, setExpandDescription] = useState(false);
+
   // Reset trạng thái đếm view khi ID sản phẩm thay đổi (khi user chuyển từ SP này sang SP khác)
   useEffect(() => {
     viewIncremented.current = false;
@@ -568,19 +571,42 @@ const ProductDetailPage = () => {
         <Title level={4} style={{ marginBottom: 8 }}>
           Mô tả sản phẩm
         </Title>
-        <Paragraph
+        <div
           style={{
-            fontSize: 16,
-            lineHeight: 1.7,
-            color: "#444",
-            minHeight: 40,
+            maxHeight: expandDescription ? "none" : "500px",
+            overflow: expandDescription ? "visible" : "hidden",
+            transition: "all 0.3s ease-in-out",
+            position: "relative",
           }}
         >
-          {product.description || (
-            <Text type="secondary">Chưa có mô tả cho sản phẩm này.</Text>
-          )}
-        </Paragraph>
-        <div style={{ display: "flex", gap: 24, marginTop: 8 }}>
+          <Paragraph
+            style={{
+              fontSize: 16,
+              lineHeight: 1.7,
+              color: "#444",
+              minHeight: 40,
+              whiteSpace: "pre-wrap",
+              wordWrap: "break-word",
+            }}
+          >
+            {product.description || (
+              <Text type="secondary">Chưa có mô tả cho sản phẩm này.</Text>
+            )}
+          </Paragraph>
+        </div>
+
+        {product.description && product.description.length > 500 && (
+          <div style={{ textAlign: "center", marginTop: 16 }}>
+            <Button
+              type="primary"
+              onClick={() => setExpandDescription(!expandDescription)}
+            >
+              {expandDescription ? "Ẩn bớt" : "Xem chi tiết mô tả sản phẩm"}
+            </Button>
+          </div>
+        )}
+
+        <div style={{ display: "flex", gap: 24, marginTop: 24 }}>
           <div>
             <Text strong>Đơn vị:</Text>
             <Text style={{ marginLeft: 8 }}>

@@ -332,7 +332,7 @@ const ProductForm = ({
               <Row gutter={12}>
                 <Col span={12}>
                   <Form.Item
-                    label="Giá gốc"
+                    label="Giá Bán"
                     name="original_price"
                     rules={[{ required: true }]}
                   >
@@ -383,9 +383,12 @@ const ProductForm = ({
               <Form.Item
                 label="Mô tả"
                 name="description"
-                rules={[{ required: true, message: "Vui lòng nhập mô tả" }]}
+                rules={[
+                  { required: true, message: "Vui lòng nhập mô tả" },
+                  { max: 1250, message: "Mô tả không được vượt quá 1250 ký tự" }
+                ]}
               >
-                <TextArea rows={4} />
+                <TextArea rows={4} maxLength={1250} showCount />
               </Form.Item>
 
               {availability === "coming_soon" && (
