@@ -41,6 +41,9 @@ from django.db.models import Sum, Count, F, Q
 from django.db.models.functions import TruncDate, Coalesce
 from django.db import models
 
+from django.core.cache import cache
+from vnpay_python.vnpay import vnpay
+
 
 
 
@@ -234,6 +237,57 @@ class OrderViewSet(viewsets.ModelViewSet):
                 .order_by('-quantity_sold')[:10]
         )
         return Response(top_products)
+    
+
+    @action(detail=True, methods=['post'], url_path='create_payment_url')
+    def create_payment_url(self, request, pk=None):
+        """
+        Tạo URL thanh toán VNPAY cho đơn hàng
+        """
+        try:
+            order = self.get_object()
+        except Order.DoesNotExist:
+            return Response({'error': 'Order not found'}, status=404)
+
+        # Kiểm tra nếu đơn đã thanh toán rồi
+        if order.status in ['success', 'shipping', 'delivered']:
+            return Response({'error': 'Đơn hàng đã được thanh toán'}, status=400)
+
+        # Tính toán số tiền (VNPAY yêu cầu số tiền * 100)
+        amount = int(order.total_price * 100)
+        
+        # Cấu hình tham số VNPAY
+        order_type = "billpayment"
+        order_desc = f"Thanh toan don hang {order.id}"
+        bank_code = request.data.get('bank_code', '') # Tùy chọn, nếu user chọn bank trước
+        language = 'vn'
+        ip_addr = get_client_ip(request)
+
+        # Build URL
+        vnp = VNPAY()
+        vnp.requestData['vnp_Version'] = '2.1.0'
+        vnp.requestData['vnp_Command'] = 'pay'
+        vnp.requestData['vnp_TmnCode'] = settings.VNPAY_TMN_CODE
+        vnp.requestData['vnp_Amount'] = amount
+        vnp.requestData['vnp_CurrCode'] = 'VND'
+        vnp.requestData['vnp_TxnRef'] = str(order.id) # Mã đơn hàng của bạn
+        vnp.requestData['vnp_OrderInfo'] = order_desc
+        vnp.requestData['vnp_OrderType'] = order_type
+        vnp.requestData['vnp_Locale'] = language
+        
+        # URL Callback (IPN) - Quan trọng: Phải là Public URL (hoặc dùng ngrok nếu localhost)
+        # Ví dụ: https://api.yourdomain.com/api/orders/payment_ipn/
+        # Ở đây mình không set vnp_IpAddr trong requestData nếu local đôi khi lỗi, tùy config
+        vnp.requestData['vnp_CreateDate'] = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
+        vnp.requestData['vnp_IpAddr'] = ip_addr
+        vnp.requestData['vnp_ReturnUrl'] = settings.VNPAY_RETURN_URL
+
+        if bank_code:
+            vnp.requestData['vnp_BankCode'] = bank_code
+
+        vnpay_payment_url = vnp.get_payment_url(settings.VNPAY_URL, settings.VNPAY_HASH_SECRET)
+
+        return Response({'payment_url': vnpay_payment_url})
 
     
     @action(detail=False, methods=['get'], url_path='recent')
@@ -494,6 +548,98 @@ class OrderViewSet(viewsets.ModelViewSet):
                 amount=total_amount,
                 action=f"Cộng điểm khi thanh toán đơn hàng #{order.id}" + (f" và {len(created_orders)-1} đơn khác" if len(created_orders) > 1 else "")
             )
+
+
+    # Tìm đoạn này trong class OrderViewSet
+    def create(self, request, *args, **kwargs):
+        # 1. Lấy danh sách hàng muốn mua từ request
+        items_data = request.data.get('items', [])
+        
+        # Biến này để lưu lại những món đã trừ kho thành công (để hoàn lại nếu có lỗi sau đó)
+        locked_products = {} 
+
+        from products.models import Product # Import model để query nếu Redis thiếu
+
+        try:
+            # 2. VÒNG LẶP KIỂM TRA TỒN KHO REDIS
+            for item in items_data:
+                product_id = item.get('product') or item.get('product_id')
+                quantity = int(item.get('quantity', 1))
+                
+                # Tạo key Redis
+                redis_key = f"product_stock:{product_id}"
+
+                # === ĐOẠN FIX: KIỂM TRA & KHỞI TẠO KEY NẾU THIẾU ===
+                if cache.get(redis_key) is None:
+                        try:
+                            prod = Product.objects.get(id=product_id)
+                            
+                            # --- TỰ ĐỘNG DÒ TÌM TÊN TRƯỜNG TỒN KHO ---
+                            # Thử lấy 'stock', nếu không có thì thử 'quantity', không có nữa thì thử 'inventory'
+                            current_stock = getattr(prod, 'stock', getattr(prod, 'quantity', getattr(prod, 'inventory', 0)))
+                            # -----------------------------------------
+                            
+                            # Lưu vào Redis
+                            cache.set(redis_key, current_stock, timeout=None)
+                        except Product.DoesNotExist:
+                            raise ValueError(f"Sản phẩm ID {product_id} không tồn tại")
+                    # ====================================================
+
+                # --- ATOMIC DECREMENT ---
+                # Lệnh này trừ kho và trả về kết quả ngay lập tức
+                remaining = cache.decr(redis_key, quantity)
+
+                # Lưu lại để nếu lát nữa lỗi thì cộng lại (rollback)
+                locked_products[product_id] = quantity
+
+                # Nếu trừ xong mà thấy âm -> Nghĩa là người khác đã mua hết trước đó
+                if remaining < 0:
+                    raise ValueError(f"Sản phẩm ID {product_id} vừa hết hàng!")
+
+            # 3. NẾU QUA ĐƯỢC BƯỚC TRÊN -> CHO PHÉP TẠO ĐƠN VÀO DB
+            response = super().create(request, *args, **kwargs)
+            return response
+
+        except ValueError as e:
+            # Trường hợp hết hàng
+            self._rollback_stock(locked_products)
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            # Trường hợp lỗi bất ngờ
+            self._rollback_stock(locked_products)
+            
+            # --- IN LỖI RA TERMINAL ĐỂ DEBUG ---
+            import traceback
+            traceback.print_exc() 
+            print(f"🔴 LỖI CHI TIẾT: {str(e)}") 
+            # -----------------------------------
+
+            # Trả về lỗi chi tiết cho Frontend xem luôn (thay vì giấu đi)
+            return Response({"error": f"Lỗi Server: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    def _rollback_stock(self, locked_products):
+        """Hàm hoàn lại kho vào Redis nếu giao dịch thất bại"""
+        for p_id, qty in locked_products.items():
+            redis_key = f"product_stock:{p_id}"
+            cache.incr(redis_key, qty) # Cộng ngược lại
+
+
+    def update_redis_stock():
+        products = Product.objects.all()
+        for p in products:
+            # Key phải giống hệt key trong hàm create ở trên
+            cache.set(f"product_stock:{p.id}", p.inventory_count, timeout=None)
+        print("Đã đồng bộ tồn kho từ SQL sang Redis thành công!")
+
+    @action(detail=True, methods=['get'], url_path='check-status')
+    def check_status(self, request, pk=None):
+        """API nhẹ để Frontend check trạng thái liên tục"""
+        try:
+            # Chỉ lấy trường status cho nhẹ database
+            order = Order.objects.only('status').get(pk=pk)
+            return Response({'status': order.status})
+        except Order.DoesNotExist:
+            return Response({'status': 'not_found'}, status=404)
 
 
 @api_view(["GET"])
@@ -988,3 +1134,63 @@ def dashboard_stats(request):
         "topProducts": top_products,
         "recentOrders": recent_orders
     })
+
+
+def get_client_ip(request):
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(',')[0]
+    else:
+        ip = request.META.get('REMOTE_ADDR')
+    return ip
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny]) # Quan trọng: VNPAY không có token login
+def payment_ipn(request):
+    """
+    VNPAY gọi vào đây để báo trạng thái thanh toán (Server-to-Server)
+    """
+    inputData = request.GET
+    if not inputData:
+        return Response({'RspCode': '99', 'Message': 'Invalid Params'})
+
+    vnp = VNPAY()
+    vnp.responseData = inputData.dict()
+
+    order_id = inputData.get('vnp_TxnRef')
+    amount = inputData.get('vnp_Amount')
+    vnp_ResponseCode = inputData.get('vnp_ResponseCode')
+    
+    # Kiểm tra Checksum
+    if vnp.validate_response(settings.VNPAY_HASH_SECRET):
+        try:
+            # Check DB xem đơn hàng có tồn tại không
+            order = Order.objects.get(id=order_id)
+            
+            # Kiểm tra số tiền (Frontend gửi lên có thể sai, phải check lại)
+            if order.total_price * 100 != int(amount):
+                 return Response({'RspCode': '04', 'Message': 'Invalid Amount'})
+            
+            # Kiểm tra xem đơn đã check rồi chưa
+            if order.status == 'success':
+                return Response({'RspCode': '02', 'Message': 'Order Already Confirmed'})
+            
+            if vnp_ResponseCode == '00':
+                # --- THANH TOÁN THÀNH CÔNG ---
+                order.status = 'success' # Hoặc 'pending' -> 'shipping' tùy logic bạn
+                order.payment_status = True # Nếu bạn có trường này
+                order.save()
+                
+                # Logic cộng điểm hoặc thông báo seller ở đây (nếu cần)
+                
+                return Response({'RspCode': '00', 'Message': 'Confirm Success'})
+            else:
+                # Thanh toán lỗi
+                return Response({'RspCode': '00', 'Message': 'Payment Failed'})
+                
+        except Order.DoesNotExist:
+            return Response({'RspCode': '01', 'Message': 'Order Not Found'})
+    else:
+        # Sai checksum (có thể là giả mạo)
+        return Response({'RspCode': '97', 'Message': 'Invalid Checksum'})

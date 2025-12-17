@@ -17,6 +17,7 @@ import {
   Tag,
   Space,
   Alert,
+  Select,
 } from "antd";
 import {
   InboxOutlined,
@@ -31,11 +32,16 @@ import {
   InfoCircleOutlined,
 } from "@ant-design/icons";
 import { useAuth } from "../../login_register/services/AuthContext";
-import { getProvinces, getDistricts, getWards } from "../../../services/api/ghnApi";
+import {
+  getProvinces,
+  getDistricts,
+  getWards,
+} from "../../../services/api/ghnApi";
 
 const { Step } = Steps;
 const { Title, Text, Paragraph } = Typography;
 const { Dragger } = Upload;
+const { Option } = Select;
 
 // --- STYLES (CSS-in-JS) ---
 const styles = {
@@ -112,7 +118,7 @@ export default function SellerRegisterPage() {
   const { setRole } = useAuth();
 
   const isValidProvinceName = (name) => {
-    if (!name || typeof name !== 'string') return false;
+    if (!name || typeof name !== "string") return false;
     // Regex này sẽ loại bỏ: "Quận 1", "Phường 12", "TP. HCM", "Bà Rịa - Vũng Tàu"...
     // Chỉ giữ lại: "Hà Nội", "Ba Đình", "Hoàn Kiếm"...
     if (/[0-9!@#$%^&*()_+=\[\]{};:'"\\|,.<>?/`~]/.test(name)) return false;
@@ -132,7 +138,7 @@ export default function SellerRegisterPage() {
     try {
       const data = await getProvinces();
       // Lọc dữ liệu bằng hàm isValidProvinceName
-      const cleanData = data.filter(p => isValidProvinceName(p.ProvinceName));
+      const cleanData = data.filter((p) => isValidProvinceName(p.ProvinceName));
       setProvinces(cleanData);
     } catch (err) {
       console.error("Lỗi tải tỉnh/thành:", err);
@@ -146,12 +152,12 @@ export default function SellerRegisterPage() {
     }
   }, [selectedProvinceId]);
 
- const fetchDistrictsData = async () => {
+  const fetchDistrictsData = async () => {
     try {
       const data = await getDistricts(selectedProvinceId);
       // Lọc dữ liệu
-      const cleanData = data.filter(d => isValidProvinceName(d.DistrictName));
-      
+      const cleanData = data.filter((d) => isValidProvinceName(d.DistrictName));
+
       setDistricts(cleanData);
       setWards([]);
       setSelectedDistrictId(null);
@@ -171,15 +177,14 @@ export default function SellerRegisterPage() {
     try {
       const data = await getWards(selectedDistrictId);
       // Lọc dữ liệu
-      const cleanData = data.filter(w => isValidProvinceName(w.WardName));
-      
+      const cleanData = data.filter((w) => isValidProvinceName(w.WardName));
+
       setWards(cleanData);
       setSelectedWardCode(null);
     } catch (err) {
       console.error("Lỗi tải phường/xã:", err);
     }
   };
-
 
   // --- API CALLS ---
   const fetchSeller = async () => {
@@ -228,16 +233,29 @@ export default function SellerRegisterPage() {
     return (await res.json()).exists;
   };
 
+  useEffect(() => {
+    let intervalId;
+
+    // Chỉ chạy polling khi trạng thái là 'pending'
+    if (sellerStatus === "pending") {
+      intervalId = setInterval(() => {
+        // Gọi lại hàm fetchSeller để lấy trạng thái mới nhất
+        fetchSeller();
+      }, 3000); // 3000ms = 3 giây gọi 1 lần
+    }
+
+    // Dọn dẹp interval khi component unmount hoặc status thay đổi
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [sellerStatus]);
+
   // --- HANDLERS ---
   const handleSubmit = async (values) => {
     setSubmitting(true);
     try {
-      // Validate GHN address fields
-      if (!selectedDistrictId || !selectedWardCode) {
-        message.error("Vui lòng chọn quận/huyện và phường/xã!");
-        setSubmitting(false);
-        return;
-      }
+      // --- BỎ ĐOẠN KIỂM TRA QUẬN/HUYỆN Ở ĐÂY ---
+      // (Đã xóa đoạn if (!selectedDistrictId || !selectedWardCode)...)
 
       const exist = await checkStoreName(values.store_name);
       if (exist) {
@@ -245,6 +263,7 @@ export default function SellerRegisterPage() {
         setSubmitting(false);
         return;
       }
+
       const formData = new FormData();
       if (token) {
         const payload = JSON.parse(atob(token.split(".")[1]));
@@ -253,6 +272,7 @@ export default function SellerRegisterPage() {
       formData.append("business_type", userType);
 
       Object.entries(values).forEach(([key, val]) => {
+        // Loại bỏ các key file ra để xử lý riêng (giữ nguyên logic cũ của bạn)
         if (
           !["business_license", "cccd_front", "cccd_back", "image"].includes(
             key
@@ -262,11 +282,10 @@ export default function SellerRegisterPage() {
         }
       });
 
-      // Append GHN address fields
-      formData.append("district_id", selectedDistrictId);
-      formData.append("ward_code", selectedWardCode);
+      // --- BỎ ĐOẠN APPEND DISTRICT_ID VÀ WARD_CODE Ở ĐÂY ---
+      // (Đã xóa đoạn formData.append("district_id", ...))
 
-      // append files
+      // append files (Giữ nguyên)
       const appendFile = (key, file) => {
         if (file) formData.append(key, file.originFileObj || file);
       };
@@ -275,6 +294,7 @@ export default function SellerRegisterPage() {
       appendFile("cccd_back", cccdBack);
       appendFile("image", shopImage);
 
+      // Gửi API
       const res = await fetch(
         `${process.env.REACT_APP_API_URL}/sellers/register/`,
         {

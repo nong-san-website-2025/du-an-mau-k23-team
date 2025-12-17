@@ -29,6 +29,18 @@ const formatMessageTime = (isoString) => {
 export default function SellerMessages() {
   // ================= STATE & LOGIC (GIỮ NGUYÊN) =================
   const { token: antdToken } = useToken(); // Sử dụng Token của Antd để đồng bộ màu
+
+  const token = useMemo(() => localStorage.getItem("token"), []);
+
+  const currentUserId = useMemo(() => {
+    try {
+      if (!token) return null;
+      const payload = JSON.parse(atob(token.split(".")[1]));
+      return payload.user_id || payload.id || payload.sub || null;
+    } catch (e) {
+      return null;
+    }
+  }, [token]);
   
   const [loadingConvs, setLoadingConvs] = useState(false);
   const [conversations, setConversations] = useState([]);
@@ -40,12 +52,32 @@ export default function SellerMessages() {
   const listRef = useRef(null);
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const [drawerVisible, setDrawerVisible] = useState(false);
+  const [isPartnerTyping, setIsPartnerTyping] = useState(false);
+  const typingTimeoutRef = useRef(null);
 
   useEffect(() => {
     const handleResize = () => setWindowWidth(window.innerWidth);
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  useEffect(() => {
+    if (!token || !currentUserId) return;
+    
+    // Kết nối vào group updates của riêng user này
+    const url = `ws://localhost:8000/ws/updates/?token=${encodeURIComponent(token)}`;
+    const updateWs = new WebSocket(url);
+
+    updateWs.onmessage = (event) => {
+        const payload = JSON.parse(event.data);
+        if (payload.event === "sidebar_refresh") {
+            // Khi có khách mới hoặc tin mới, tự động fetch lại list hoặc chèn vào đầu list
+            fetchConversations(); 
+            antdMessage.info(`Bạn có tin nhắn mới từ ${payload.data.sender_name || 'khách hàng'}`);
+        }
+    };
+    return () => updateWs.close();
+}, [token, currentUserId]);
 
   const isMobile = windowWidth < 768;
   const [buyerProfile, setBuyerProfile] = useState(null);
@@ -85,17 +117,6 @@ export default function SellerMessages() {
     setProfiles((prev) => ({ ...prev, [id]: { ...(prev[id] || {}), ...data } }));
   };
 
-  const token = useMemo(() => localStorage.getItem("token"), []);
-
-  const currentUserId = useMemo(() => {
-    try {
-      if (!token) return null;
-      const payload = JSON.parse(atob(token.split(".")[1]));
-      return payload.user_id || payload.id || payload.sub || null;
-    } catch (e) {
-      return null;
-    }
-  }, [token]);
 
   const fetchConversations = async () => {
     if (!token) return;

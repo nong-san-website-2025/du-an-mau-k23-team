@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useCart } from "../services/CartContext";
-import { toast } from "react-toastify"; // Hoặc dùng message của Antd tùy bạn
+import { toast } from "react-toastify";
 import API from "../../login_register/services/api";
 import { applyVoucher } from "../../admin/services/promotionServices";
 import { message, notification } from "antd";
@@ -20,7 +20,7 @@ const useCheckoutLogic = () => {
   const [addresses, setAddresses] = useState([]);
   const [selectedAddressId, setSelectedAddressId] = useState(null);
 
-  // State cho nhập thủ công
+  // State nhập thủ công (Vãng lai)
   const [manualEntry, setManualEntry] = useState(false);
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
@@ -31,42 +31,32 @@ const useCheckoutLogic = () => {
     wardCode: undefined,
   });
 
-  // State thanh toán & voucher
   const [note, setNote] = useState("");
   const [voucherCode, setVoucherCode] = useState("");
   const [discount, setDiscount] = useState(0);
   const [payment, setPayment] = useState("Thanh toán khi nhận hàng");
   const [isLoading, setIsLoading] = useState(false);
 
-  // --- 1. MEMOIZED VALUES ---
-
-  // Lấy object địa chỉ đang chọn
+  // --- MEMOIZED VALUES ---
   const selectedAddress = useMemo(() => {
     return addresses.find((a) => a.id === selectedAddressId) || null;
   }, [addresses, selectedAddressId]);
 
-  // Tổng tiền hàng (chưa ship/voucher)
-  const total = useMemo(() => {
-    return cartItems
-      .filter((item) => item.selected)
-      .reduce((sum, item) => {
-        const product = item.product_data || item.product || {};
-        const price = parseFloat(product.price) || 0;
-        return sum + price * (parseInt(item.quantity) || 0);
-      }, 0);
-  }, [cartItems]);
-
-  // Items được chọn để mua
   const selectedItems = useMemo(() => {
     return cartItems.filter((i) => i.selected);
   }, [cartItems]);
 
-  // Tổng thanh toán cuối cùng
+  const total = useMemo(() => {
+    return selectedItems.reduce((sum, item) => {
+      const product = item.product_data || item.product || {};
+      const price = parseFloat(product.price) || 0;
+      return sum + price * (parseInt(item.quantity) || 0);
+    }, 0);
+  }, [selectedItems]);
+
   const totalAfterDiscount = Math.max(total + shippingFee - discount, 0);
 
-  // --- 2. HÀM XỬ LÝ API CƠ BẢN (Address) ---
-
-  // Hàm lấy danh sách địa chỉ (Dùng useCallback để gọi lại được khi cần)
+  // --- ADDRESS LOGIC (FETCH & CRUD) ---
   const fetchAddresses = useCallback(async () => {
     if (!token) return;
     try {
@@ -74,108 +64,107 @@ const useCheckoutLogic = () => {
       const list = res.data || [];
       setAddresses(list);
 
-      // Nếu chưa chọn địa chỉ nào thì chọn mặc định
       if (!selectedAddressId) {
         const def = list.find((a) => a.is_default);
         if (def) {
           setSelectedAddressId(def.id);
-          // Cập nhật luôn form thủ công để hiển thị đẹp
-          setCustomerName(def.recipient_name || "");
-          setCustomerPhone(def.phone || "");
-          setAddressText(def.location || "");
         } else if (list.length > 0) {
-          // Nếu không có mặc định thì chọn cái đầu tiên
           setSelectedAddressId(list[0].id);
         }
       }
     } catch (err) {
-      console.error("Lỗi tải địa chỉ:", err);
-      // Không cần toast lỗi ở đây để tránh spam khi mới vào trang
+      console.error("Fetch address error", err);
     }
   }, [token, selectedAddressId]);
 
-  // Hàm xóa địa chỉ
-  const deleteAddress = async (id) => {
-    try {
-      await API.delete(`users/addresses/${id}/`);
-      notification.success({
-        message: "Thành công",
-        description: "Đã xóa địa chỉ!",
-        placement: "topRight",
-      });
-      fetchAddresses();
-      if (selectedAddressId === id) {
-        setSelectedAddressId(null);
-      }
-    } catch (error) {
-      notification.error({
-        message: "Lỗi",
-        description: "Không thể xóa địa chỉ này.",
-        placement: "topRight",
-      });
-    }
-  };
-
-  // Hàm sửa địa chỉ
-  const editAddress = async (id, updatedData) => {
-    try {
-      await API.put(`users/addresses/${id}/`, updatedData);
-      notification.success({
-        message: "Thành công",
-        description: "Đã cập nhật địa chỉ!",
-        placement: "topRight",
-      });
-      fetchAddresses();
-    } catch (error) {
-      notification.error({
-        message: "Lỗi",
-        description: "Không thể cập nhật địa chỉ.",
-        placement: "topRight",
-      });
-      throw error;
-    }
-  };
-
-  // Hàm thiết lập địa chỉ mặc định
-  const setDefaultAddress = async (id) => {
-    try {
-      await API.patch(`users/addresses/${id}/set_default/`);
-      notification.success({
-        message: "Thành công",
-        description: "Đã thiết lập địa chỉ mặc định!",
-        placement: "topRight",
-      });
-      fetchAddresses();
-    } catch (error) {
-      notification.error({
-        message: "Lỗi",
-        description: "Không thể thiết lập địa chỉ mặc định.",
-        placement: "topRight",
-      });
-    }
-  };
-
-  // Gọi fetchAddresses khi component mount
   useEffect(() => {
     fetchAddresses();
   }, [fetchAddresses]);
 
-  // --- 3. LOGIC TÍNH PHÍ SHIP (GHN) ---
+  // Các hàm CRUD Address giữ nguyên...
+  const deleteAddress = async (id) => {
+    try {
+      await API.delete(`users/addresses/${id}/`);
+      notification.success({ message: "Đã xóa địa chỉ!" });
+      setAddresses((prev) => prev.filter((item) => item.id !== id));
+      if (selectedAddressId === id) setSelectedAddressId(null);
+    } catch (error) {
+      notification.error({ message: "Không thể xóa địa chỉ này." });
+    }
+  };
 
+  const editAddress = async (id, updatedData) => {
+    try {
+      const res = await API.put(`users/addresses/${id}/`, updatedData);
+      notification.success({ message: "Đã cập nhật địa chỉ!" });
+      setAddresses((prev) =>
+        prev.map((item) => (item.id === id ? res.data : item))
+      );
+    } catch (error) {
+      notification.error({ message: "Lỗi cập nhật địa chỉ." });
+    }
+  };
+
+  const setDefaultAddress = async (id) => {
+    try {
+      await API.patch(`users/addresses/${id}/set_default/`);
+      notification.success({ message: "Đã thiết lập mặc định!" });
+      fetchAddresses();
+    } catch (error) {
+      notification.error({ message: "Lỗi thiết lập mặc định." });
+    }
+  };
+
+  const addAddress = async (newAddressData) => {
+    if (!token) return;
+    try {
+      const res = await API.post("users/addresses/", newAddressData);
+      setAddresses((prev) => [...prev, res.data]);
+      message.success("Thêm địa chỉ thành công!");
+      return res.data;
+    } catch (error) {
+      message.error("Thêm địa chỉ thất bại");
+      throw error;
+    }
+  };
+
+  const handleSaveManualAddress = async () => {
+    if (!token) return;
+    if (!geoManual.provinceId || !geoManual.districtId || !geoManual.wardCode) {
+      toast.error("Vui lòng chọn đầy đủ Tỉnh/Quận/Phường!");
+      return;
+    }
+    const payload = {
+      recipient_name: customerName,
+      phone: customerPhone,
+      location: addressText,
+      province_code: geoManual.provinceId,
+      district_id: geoManual.districtId,
+      ward_code: geoManual.wardCode,
+      is_default: false,
+    };
+    try {
+      const res = await API.post("users/addresses/", payload);
+      setAddresses((prev) => [...prev, res.data]);
+      setSelectedAddressId(res.data.id);
+      setManualEntry(false);
+      toast.success("Lưu địa chỉ mới thành công!");
+    } catch (error) {
+      toast.error("Không thể lưu địa chỉ.");
+    }
+  };
+
+  // --- SHIPPING LOGIC ---
   useEffect(() => {
-    // Nếu chưa chọn địa chỉ và không nhập thủ công -> ko tính
     if (!manualEntry && !selectedAddress) return;
 
-    // Kiểm tra thông tin tỉnh/huyện/xã
     const to_district_id = manualEntry
       ? geoManual.districtId
       : selectedAddress?.district_id;
-
     const to_ward_code = manualEntry
       ? geoManual.wardCode
       : selectedAddress?.ward_code;
 
-    // Nếu thiếu thông tin địa lý -> Reset phí về 0
     if (!to_district_id || !to_ward_code) {
       setShippingFee(0);
       setShippingFeePerSeller({});
@@ -186,12 +175,9 @@ const useCheckoutLogic = () => {
     const calculateShipping = async () => {
       setShippingFee(0);
       setShippingStatus("loading");
-
-      // Nhóm hàng theo người bán (Seller)
       const sellerGroups = {};
 
       selectedItems.forEach((item) => {
-        // Logic tìm Seller ID
         const sellerId =
           item.product_data?.store?.id ||
           item.product_data?.seller ||
@@ -202,14 +188,11 @@ const useCheckoutLogic = () => {
         if (!sellerId) return;
         if (!sellerGroups[sellerId]) sellerGroups[sellerId] = 0;
 
-        // Logic tính cân nặng
         const productData = item.product_data || item.product || {};
-        // Nếu không có cân nặng, giả định 200g/sp
         let weightPerItem = 200;
         if (productData.weight_g && parseInt(productData.weight_g) > 0) {
           weightPerItem = parseInt(productData.weight_g);
         }
-
         const quantity = parseInt(item.quantity) || 1;
         sellerGroups[sellerId] += quantity * weightPerItem;
       });
@@ -226,18 +209,15 @@ const useCheckoutLogic = () => {
       }
 
       try {
-        // Gọi API tính phí
         const res = await API.post("delivery/fee-per-seller/", {
           sellers: sellersPayload,
           to_district_id: parseInt(to_district_id),
           to_ward_code: String(to_ward_code),
         });
 
-        // Cập nhật phí
         const totalFee = res.data?.total_shipping_fee || 0;
         setShippingFee(totalFee);
 
-        // Cập nhật chi tiết phí từng shop (để hiển thị UI nếu cần)
         const feesDetail = {};
         if (res.data?.sellers) {
           Object.keys(res.data.sellers).forEach((key) => {
@@ -249,17 +229,20 @@ const useCheckoutLogic = () => {
         setShippingFeePerSeller(feesDetail);
         setShippingStatus("success");
       } catch (error) {
-        console.error("Lỗi tính phí ship:", error);
-        setShippingFee(0); // Hoặc set 30k mặc định nếu muốn
+        console.error("Shipping calc error:", error);
+        setShippingFee(0);
         setShippingStatus("error");
       }
     };
 
-    calculateShipping();
+    const timer = setTimeout(() => {
+      calculateShipping();
+    }, 500);
+
+    return () => clearTimeout(timer);
   }, [manualEntry, geoManual, selectedAddress, selectedItems]);
 
-  // --- 4. CÁC HÀM XỬ LÝ SỰ KIỆN (Voucher, Order, Save Address) ---
-
+  // --- VOUCHER LOGIC ---
   const handleApplyVoucher = useCallback(
     async (code) => {
       if (!token) return;
@@ -284,66 +267,19 @@ const useCheckoutLogic = () => {
     [token, total]
   );
 
-  const addAddress = async (newAddressData) => {
-    if (!token) return;
-    try {
-      // Gọi API thêm mới
-      const res = await API.post("users/addresses/", newAddressData);
-
-      // Cập nhật lại danh sách địa chỉ ngay lập tức
-      setAddresses((prev) => [...prev, res.data]);
-
-      message.success("Thêm địa chỉ thành công!");
-
-      return res.data; // Trả về data để component con biết là xong
-    } catch (error) {
-      console.error("Lỗi thêm địa chỉ:", error);
-      message.error("Thêm địa chỉ thất bại");
-      throw error; // Ném lỗi để AddressAddForm bắt được và tắt loading
-    }
-  };
-
-  const handleSaveManualAddress = async () => {
-    if (!token) return;
-    if (!geoManual.provinceId || !geoManual.districtId || !geoManual.wardCode) {
-      toast.error("Vui lòng chọn đầy đủ Tỉnh/Quận/Phường!");
-      return;
-    }
-
-    const payload = {
-      recipient_name: customerName,
-      phone: customerPhone,
-      location: addressText,
-      province_code: geoManual.provinceId,
-      district_id: geoManual.districtId,
-      ward_code: geoManual.wardCode,
-      is_default: false,
-    };
-
-    try {
-      const res = await API.post("users/addresses/", payload);
-      setAddresses((prev) => [...prev, res.data]);
-      setSelectedAddressId(res.data.id);
-      setManualEntry(false);
-      toast.success("Lưu địa chỉ mới thành công!");
-    } catch (error) {
-      toast.error("Không thể lưu địa chỉ.");
-    }
-  };
-
+  // --- HANDLE ORDER (ĐÃ SỬA ĐỔI) ---
   const handleOrder = async () => {
     if (!token) {
       notification.warning({ message: "Vui lòng đăng nhập để đặt hàng!" });
       navigate("/login?redirect=/checkout");
-      return;
+      return null;
     }
 
     if (selectedItems.length === 0) {
       notification.error({ message: "Giỏ hàng trống!" });
-      return;
+      return null;
     }
 
-    // Xác định thông tin người nhận
     const finalName = manualEntry
       ? customerName
       : selectedAddress?.recipient_name;
@@ -352,10 +288,26 @@ const useCheckoutLogic = () => {
 
     if (!finalName || !finalPhone || !finalLocation) {
       notification.error({
-        message: "Vui lòng cung cấp đủ thông tin giao hàng!",
+        message: "Vui lòng điền đủ tên, số điện thoại và địa chỉ!",
       });
-      return;
+      return null;
     }
+
+    const cleanItems = selectedItems.map((item) => {
+      let productId = item.product;
+      if (typeof item.product === "object" && item.product !== null) {
+        productId = item.product.id;
+      }
+      if (!productId && item.product_data) {
+        productId = item.product_data.id;
+      }
+
+      return {
+        product: parseInt(productId),
+        quantity: parseInt(item.quantity) || 1,
+        price: parseFloat(item.product?.price || item.product_data?.price || 0),
+      };
+    });
 
     const orderData = {
       total_price: totalAfterDiscount,
@@ -363,52 +315,65 @@ const useCheckoutLogic = () => {
       customer_name: finalName,
       customer_phone: finalPhone,
       address: finalLocation,
-      note: note,
-      payment_method: payment === "Ví điện tử" ? "vnpay" : "cod",
-      items: selectedItems.map((item) => ({
-        product: item.product?.id || item.product, // ID sản phẩm
-        quantity: parseInt(item.quantity) || 1,
-        price: parseFloat(item.product?.price) || 0,
-      })),
-      // Nếu backend cần gửi thêm mã voucher
+      note: note || "",
+      payment_method: payment === "Ví điện tử" ? "banking" : "cod",
+      items: cleanItems,
       voucher_code: voucherCode || null,
     };
 
     try {
       setIsLoading(true);
-      await API.post("orders/", orderData);
+      const res = await API.post("orders/", orderData);
 
-      // Xóa giỏ hàng sau khi đặt thành công
+      // --- TẠO ĐƠN THÀNH CÔNG ---
+      const newOrderId = res.data.id;
       await clearCart();
+      notification.success({ message: "Đặt hàng thành công!" });
 
-      notification.success({
-        message: "Đặt hàng thành công!",
-        description: "Cảm ơn bạn đã mua sắm tại GreenFarm.",
-      });
+      if (payment === "Thanh toán qua VNPAY") {
+        navigate(`/payment/waiting/${newOrderId}`);
+      } else {
+        navigate(`/orders?tab=active`);
+      }
 
-      navigate("/orders?tab=pending");
+      return newOrderId;
     } catch (error) {
-      console.error("Order error:", error);
+      console.error("❌ LỖI API:", error);
+      const backendData = error.response?.data;
+
+      // ⚠️ QUAN TRỌNG: Kiểm tra lỗi HẾT HÀNG để ném ra cho CheckoutPage xử lý Modal
+      // Backend cần trả về key 'unavailable_items'
+      if (backendData && backendData.unavailable_items) {
+        throw error; // Ném lỗi ra ngoài để component bắt lấy
+      }
+
+      // Xử lý các lỗi thông thường khác (không phải hết hàng)
+      let errorMsg = "Có lỗi xảy ra khi đặt hàng.";
+      if (backendData) {
+        if (typeof backendData.error === "string") errorMsg = backendData.error;
+        else if (typeof backendData.detail === "string")
+          errorMsg = backendData.detail;
+        else if (typeof backendData === "string") errorMsg = backendData;
+      }
+
       notification.error({
         message: "Đặt hàng thất bại",
-        description: "Vui lòng thử lại sau.",
+        description: errorMsg,
       });
+
+      return null;
     } finally {
       setIsLoading(false);
     }
   };
 
-  // --- RETURN ---
   return {
-    // Data
     addresses,
     selectedAddress,
     selectedAddressId,
     shippingFee,
     shippingStatus,
     shippingFeePerSeller,
-
-    // Form Inputs
     manualEntry,
     customerName,
     customerPhone,
@@ -419,16 +384,14 @@ const useCheckoutLogic = () => {
     geoManual,
     payment,
     isLoading,
-
-    // Totals
     total,
     totalAfterDiscount,
     selectedItems,
 
-    // Actions/Setters
+    // Actions
     addAddress,
-    editAddress,
     deleteAddress,
+    editAddress,
     setDefaultAddress,
     fetchAddresses,
     setSelectedAddressId,
@@ -439,8 +402,6 @@ const useCheckoutLogic = () => {
     setNote,
     setGeoManual,
     setPayment,
-
-    // Logic Handlers
     handleApplyVoucher,
     handleSaveManualAddress,
     handleOrder,

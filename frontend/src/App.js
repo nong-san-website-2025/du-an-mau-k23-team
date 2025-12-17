@@ -11,6 +11,7 @@ import ScrollToTop from "./utils/ScrollToTop.js";
 import { useEffect } from "react";
 // 👇 Import component cầu nối vừa tạo (hoặc copy code vào file này)
 import SSEConnectionHandler from "./components/SSEConnectionHandler"; 
+import PaymentWaiting from "./features/cart/pages/PaymentWaiting";
 
 function App() {
   useEffect(() => {
@@ -43,6 +44,7 @@ function App() {
                 path="/verify-email/:uid/:token"
                 element={<VerifyEmailPage />}
               />
+              <Route path="/payment/waiting/:orderId" element={<PaymentWaiting />} />
               <Route path="/vnpay-return" element={<VnpayReturn />} />
             </Routes>
           </CartProvider>

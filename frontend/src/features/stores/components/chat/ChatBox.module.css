@@ -225,3 +225,38 @@
 .skeletonItem.theirs {
   width: 60%;
 }
+
+
+.typingIndicator {
+  display: flex;
+  align-items: center;
+  padding: 8px 16px;
+  gap: 8px;
+}
+
+.typingDots {
+  display: flex;
+  gap: 3px;
+}
+
+.typingDot {
+  width: 6px;
+  height: 6px;
+  background-color: #999;
+  border-radius: 50%;
+  animation: typingAnimation 1.4s infinite ease-in-out;
+}
+
+.typingDot:nth-child(2) { animation-delay: 0.2s; }
+.typingDot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes typingAnimation {
+  0%, 80%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-5px); }
+}
+
+.typingText {
+  font-size: 13px;
+  color: #888;
+  font-style: italic;
+}
