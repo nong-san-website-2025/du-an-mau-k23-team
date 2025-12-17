@@ -1,7 +1,7 @@
 import React from "react";
 import { ShoppingCart } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import "../styles//UserActions.css";
+import "../styles/UserActions.css";
 
 const CartDropdown = ({
   cartCount,
@@ -35,30 +35,47 @@ const CartDropdown = ({
 
       {showDropdown && (
         <div className="dropdown-panel cart-panel">
-          <div className="dropdown-header">Sản phẩm trong giỏ hàng</div>
-          
-          {cartItems.length === 0 ? (
-            <div className="empty-state">Giỏ hàng trống</div>
-          ) : (
-            <>
-              {cartItems.slice(0, 4).map((item) => (
-                <div key={item.id || item.product_id} className="cart-item" onClick={handleToCart}>
-                  <img
-                    src={item.product?.image || "/media/products/default.png"}
-                    alt="Product"
-                    className="cart-thumb"
-                  />
-                  <span className="cart-name">
-                    {item.product?.name || "Sản phẩm"}
-                  </span>
-                  <span className="cart-qty">x{item.quantity}</span>
-                </div>
-              ))}
-              <button className="view-all-btn" onClick={handleToCart}>
-                Xem giỏ hàng
-              </button>
-            </>
-          )}
+          <div className="dropdown-header">Sản phẩm mới thêm</div>
+
+          <div className="cart-scroll-area">
+            {cartItems.length === 0 ? (
+              <div className="empty-state">Giỏ hàng đang trống</div>
+            ) : (
+              <>
+                {cartItems.slice(0, 4).map((item) => (
+                  <div
+                    key={item.id || item.product_id}
+                    className="cart-item"
+                    onClick={handleToCart}
+                  >
+                    <img
+                      src={item.product?.image || "/media/products/default.png"}
+                      alt="Product"
+                      className="cart-thumb"
+                      style={{
+                        marginRight: "4px",
+                      }} /* Đẩy ảnh xa chữ thêm xíu */
+                    />
+                    <div className="cart-info" style={{ flex: 1 }}>
+                      <div className="cart-name">
+                        {item.product?.name || "Sản phẩm"}
+                      </div>
+                      <div
+                        className="cart-qty"
+                        style={{ fontSize: "13px", color: "#16a34a" }}
+                      >
+                        x{item.quantity}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
+
+          <button className="view-all-btn" onClick={handleToCart}>
+            Xem giỏ hàng của tôi
+          </button>
         </div>
       )}
     </div>

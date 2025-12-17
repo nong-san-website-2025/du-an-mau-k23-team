@@ -95,7 +95,16 @@ class ConversationConsumer(AsyncJsonWebsocketConsumer):
         await self.accept()
 
     async def disconnect(self, close_code):
+        # Khi khách/seller tắt trình duyệt hoặc ngắt kết nối
+        if self.user.is_authenticated:
+            await self.update_user_last_seen()
+        
         await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
+
+    @database_sync_to_async
+    def update_user_last_seen(self):
+        # Cập nhật thời gian cuối cùng hoạt động vào DB
+        User.objects.filter(pk=self.user.id).update(last_login=timezone.now())
 
     async def receive_json(self, content, **kwargs):
         msg_type = content.get('type')
@@ -200,5 +209,14 @@ class ConversationConsumer(AsyncJsonWebsocketConsumer):
         # Gửi tín hiệu xuống Client để Sidebar tự fetch lại hoặc chèn thêm dòng mới
         await self.send_json({
             "event": "sidebar_refresh",
+            "data": event["data"]
+        })
+
+
+    async def sidebar_update(self, event):
+    # Hàm này nhận dữ liệu từ signals.py gửi qua group_send
+    # Sau đó gửi trực tiếp cho trình duyệt qua WebSocket
+        await self.send_json({
+            "event": event["event"],
             "data": event["data"]
         })

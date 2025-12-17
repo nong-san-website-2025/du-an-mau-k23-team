@@ -189,6 +189,9 @@ class Notification(models.Model):
         ('wallet', 'Ví tiền'),
         ('voucher', 'Voucher'),
         ('system', 'Hệ thống'),
+        ('order', 'Đơn hàng'),
+        ('chat', 'Tin nhắn'),
+        ('promo', 'Khuyến mãi'),
     )
     
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="notifications")

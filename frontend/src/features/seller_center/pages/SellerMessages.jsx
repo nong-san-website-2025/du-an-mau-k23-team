@@ -112,6 +112,24 @@ export default function SellerMessages() {
     return buyerId;
   };
 
+  const getStatusText = (lastLogin) => {
+    if (!lastLogin) return "Ngoại tuyến";
+    
+    const now = new Date();
+    const lastSeen = new Date(lastLogin);
+    const diffInSeconds = Math.floor((now - lastSeen) / 1000);
+
+    if (diffInSeconds < 60) return "Vừa mới hoạt động";
+    
+    const diffInMinutes = Math.floor(diffInSeconds / 60);
+    if (diffInMinutes < 60) return `Hoạt động ${diffInMinutes} phút trước`;
+    
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    if (diffInHours < 24) return `Hoạt động ${diffInHours} giờ trước`;
+    
+    return `Hoạt động ${Math.floor(diffInHours / 24)} ngày trước`;
+};
+
   const mergeProfileIntoCache = (id, data) => {
     if (!id || !data) return;
     setProfiles((prev) => ({ ...prev, [id]: { ...(prev[id] || {}), ...data } }));

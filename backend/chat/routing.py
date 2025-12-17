@@ -1,11 +1,10 @@
-from django.urls import re_path
-from .consumers import ChatConsumer
-from .consumers import ConversationConsumer
+# chat/routing.py
+from django.urls import path
+from chat.consumers import ChatConsumer, ConversationConsumer
+from notifications.consumers import NotificationConsumer 
 
 websocket_urlpatterns = [
-    # Legacy: user connects with seller_id; kept for backward-compat
-    re_path(r"^ws/chat/(?P<seller_id>\d+)/$", ChatConsumer.as_asgi()),
-
-    # New: conversation-based WebSocket ensures both buyer and seller join the same room
-    re_path(r"^ws/chat/conv/(?P<conversation_id>\d+)/$", ConversationConsumer.as_asgi()),
+    path('ws/chat/<int:seller_id>/', ChatConsumer.as_asgi()),
+    path('ws/chat/conv/<int:conversation_id>/', ConversationConsumer.as_asgi()),
+    path('ws/updates/<int:user_id>/', NotificationConsumer.as_asgi()),
 ]

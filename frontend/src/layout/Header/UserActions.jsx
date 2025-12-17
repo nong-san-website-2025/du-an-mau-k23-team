@@ -6,6 +6,7 @@ import CartDropdown from "../components/CartDropdown";
 import UserProfileDropdown from "../components/UserProfileDropdown";
 import "../styles/UserActions.css";
 
+
 export default function UserActions(props) {
   const {
     cartCount,

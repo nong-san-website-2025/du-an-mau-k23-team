@@ -1,12 +1,12 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
-import sseManager from "../../utils/sseService"; // Adjust path if needed
 
 export const useNotificationLogic = (userId, navigate) => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [unified, setUnified] = useState([]);
   const [dropdownLoaded, setDropdownLoaded] = useState(false);
+  const token = localStorage.getItem("token");
 
-  // Helper: Get notifications from LocalStorage
+  // 1. Helper: Lấy thông báo từ LocalStorage
   const getLocalNotifications = () => {
     try {
       return JSON.parse(localStorage.getItem("notifications")) || [];
@@ -15,125 +15,94 @@ export const useNotificationLogic = (userId, navigate) => {
     }
   };
 
-  // 1. Fetch unread count (Lightweight)
+  // 2. Fetch unread count (Gọi API Django)
   const fetchUnreadCount = useCallback(async () => {
-    if (!userId) return;
+    if (!userId || !token) return;
     try {
-      const { fetchUnreadCount: svcFetch } = await import(
-        "../../features/users/services/notificationService"
-      );
-      const count = await svcFetch();
-      setUnreadCount(count);
+      const response = await fetch(`http://localhost:8000/api/notifications/`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json();
+      const list = Array.isArray(data) ? data : data.results || [];
+      setUnreadCount(list.filter((n) => !n.is_read).length);
     } catch (e) {
       setUnreadCount(0);
     }
-  }, [userId]);
+  }, [userId, token]);
 
-  // 2. Derive unread from cache (Instant UI feedback)
-  const deriveUnreadFromCache = useCallback(async () => {
-    if (!userId) return;
-    try {
-      const localList = getLocalNotifications();
-      const svc = await import("../../features/users/services/notificationService");
-      const readSet = svc.getReadIds(userId);
-      const unread = localList.filter((n) => !readSet.has(String(n.id))).length;
-      setUnreadCount(unread);
-    } catch (e) {
-      // ignore
-    }
-  }, [userId]);
+  // 3. Fetch Unified Notifications (Heavy) - Sửa để tương thích Django
+  const fetchNotifications = useCallback(
+    async (force = false) => {
+      if (!userId || !token) return [];
+      try {
+        const response = await fetch(
+          `http://localhost:8000/api/notifications/`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+        const data = await response.json();
+        const list = Array.isArray(data) ? data : data.results || [];
 
-  // 3. Fetch Unified Notifications (Heavy)
-  const fetchNotifications = useCallback(async (force = false) => {
-    try {
-      const svc = await import("../../features/users/services/notificationService");
-      const list = await svc.fetchUnifiedNotifications(userId, force);
-      return svc.annotateRead(list, userId);
-    } catch (e) {
-      return [];
-    }
-  }, [userId]);
+        // Đồng bộ hóa các field từ Django sang định dạng UI của bạn
+        return list.map((n) => ({
+          ...n,
+          read: n.is_read, // Django dùng is_read
+          time: n.created_at, // Django dùng created_at
+        }));
+      } catch (e) {
+        return [];
+      }
+    },
+    [userId, token]
+  );
 
-  // 4. Enrich Notifications with Order Info
+  // 4. Logic làm giàu dữ liệu (Giữ nguyên logic Order của bạn)
   const enrichTopNotifications = useCallback(async (notificationsList) => {
     if (!notificationsList?.length) return notificationsList;
-    try {
-      const { default: axiosInstance } = await import(
-        "../../features/admin/services/axiosInstance"
-      );
-      const top = notificationsList.slice(0, 3);
-      const ids = top
-        .map((n) => n.metadata?.order_id || n.order_id || n.id)
-        .filter(Boolean)
-        .map((v) => String(v).replace(/^db-/, ""));
-
-      if (!ids.length) return notificationsList;
-
-      // ... (Giữ nguyên logic fetch orders như cũ)
-      // Tóm gọn để tiết kiệm không gian hiển thị: Fetch orders và map vào notifications
-      // Đây là logic mock để giữ cấu trúc, bạn paste logic fetch orders cũ vào đây
-      return notificationsList; 
-    } catch (e) {
-      return notificationsList;
-    }
+    return notificationsList; // Giữ nguyên hàm fetch order của bạn ở đây
   }, []);
 
-  // 5. Calculate unread from unified list
-  const computeUnreadFromUnified = useCallback(async (force = false) => {
-    try {
-      const list = await fetchNotifications(force);
-      const svc = await import("../../features/users/services/notificationService");
-      const readSet = svc.getReadIds(userId);
-      const unread = list.filter(n => !n.read && !readSet.has(String(n.id))).length;
-      setUnreadCount(unread);
-      return list;
-    } catch (e) {
-      return [];
-    }
-  }, [userId, fetchNotifications]);
-
-  // Main Effect: Init, SSE, Polling
+  // --- THAY THẾ SSE BẰNG WEBSOCKET TẠI ĐÂY ---
   useEffect(() => {
-    let mounted = true;
-    deriveUnreadFromCache().then(() => computeUnreadFromUnified(false));
+    if (!userId || !token) return;
 
-    let sseCleanup = null;
-    if (userId) {
-      sseManager.connect(userId);
-      const handleSSE = (data) => {
-        if (!mounted) return;
-        (async () => {
-          const list = await computeUnreadFromUnified(true);
-          if (dropdownLoaded) {
-            const enriched = await enrichTopNotifications(list);
-            setUnified(enriched);
-          }
-        })();
-      };
-      sseManager.addListener(handleSSE);
-      sseCleanup = () => {
-        sseManager.removeListener(handleSSE);
-        sseManager.disconnect();
-      };
-    }
+    // Khởi tạo danh sách ban đầu
+    fetchNotifications(true).then((list) => {
+      setUnified(list);
+      setUnreadCount(list.filter((n) => !n.read).length);
+    });
 
-    const POLL_MS = 5000;
-    const pollId = setInterval(() => {
-        if (!mounted) return;
-        fetchUnreadCount();
-        if (dropdownLoaded) {
-            fetchNotifications(true).then(enrichTopNotifications).then(setUnified);
+    // Kết nối WebSocket
+    const ws = new WebSocket(
+      `ws://localhost:8000/ws/updates/${userId}/?token=${token}`
+    );
+
+    ws.onmessage = (event) => {
+      try {
+        const payload = JSON.parse(event.data);
+        console.log("🔔 Đã nhận thông báo mới:", payload);
+
+        // Kiểm tra đúng tên event mà Django gửi qua
+        if (payload.event === "new_notification") {
+          // 1. Tăng số lượng chưa đọc trên chuông
+          setUnreadCount((prev) => prev + 1);
+
+          // 2. Thêm thông báo mới vào đầu danh sách hiển thị
+          // 'payload.data' là object thông báo từ Serializer của Django
+          setUnified((prev) => [payload.data, ...prev]);
+
+          // 3. (Tùy chọn) Có thể phát âm thanh 'ting' ở đây
+          // new Audio('/assets/notification-sound.mp3').play();
         }
-    }, POLL_MS);
-
-    return () => {
-      mounted = false;
-      if (sseCleanup) sseCleanup();
-      clearInterval(pollId);
+      } catch (error) {
+        console.error("Lỗi xử lý tin nhắn WS:", error);
+      }
     };
-  }, [userId, deriveUnreadFromCache, computeUnreadFromUnified, dropdownLoaded, enrichTopNotifications, fetchNotifications, fetchUnreadCount]);
+    return () => ws.close();
+  }, [userId, token, fetchNotifications, enrichTopNotifications]);
 
-  // Actions exposed to UI
+  // 5. Actions cho UI
   const handleHover = async () => {
     if (!dropdownLoaded) {
       const list = await fetchNotifications(true);
@@ -144,11 +113,15 @@ export const useNotificationLogic = (userId, navigate) => {
   };
 
   const handleMarkAllRead = async () => {
+    if (!token) return;
     try {
-      const svc = await import("../../features/users/services/notificationService");
-      await svc.markAllAsRead(userId);
-      const annotated = svc.annotateRead(unified || [], userId);
-      setUnified(annotated);
+      await fetch(`http://localhost:8000/api/notifications/mark_all_as_read/`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setUnified((prev) =>
+        prev.map((n) => ({ ...n, read: true, is_read: true }))
+      );
       setUnreadCount(0);
     } catch (e) {
       console.error(e);
@@ -157,19 +130,10 @@ export const useNotificationLogic = (userId, navigate) => {
   };
 
   const sortedNotifications = useMemo(() => {
-    const arr = [...(unified || [])];
-    arr.sort((a, b) => {
-        const tA = new Date(a.time || a.ts || 0).getTime();
-        const tB = new Date(b.time || b.ts || 0).getTime();
-        return tB - tA;
-    });
-    return arr;
+    return [...unified].sort(
+      (a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()
+    );
   }, [unified]);
 
-  return {
-    unreadCount,
-    sortedNotifications,
-    handleHover,
-    handleMarkAllRead,
-  };
+  return { unreadCount, sortedNotifications, handleHover, handleMarkAllRead };
 };

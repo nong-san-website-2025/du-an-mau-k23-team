@@ -29,7 +29,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  
+
   /* UX: Sử dụng cubic-bezier để tạo độ nảy đàn hồi */
   transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
@@ -100,14 +100,20 @@
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .dropdown-header {
   font-weight: 700;
   font-size: 17px;
-  padding: 0 18px 10px;
+  padding: 16px 20px !important;
   color: #16a34a;
   border-bottom: 1px solid #f0f0f0;
   margin-bottom: 8px;
@@ -181,7 +187,7 @@
   font-weight: 600;
   color: #166534;
   font-size: 15px;
-  margin-bottom: 4px;
+  margin-left: 10px;
 }
 
 .noti-meta {
@@ -240,7 +246,7 @@
 
 /* --- User Menu --- */
 .user-menu-avatar {
-  border: 2px solid #22C55E;
+  border: 2px solid #22c55e;
   box-shadow: 0 2px 8px rgba(34, 197, 94, 0.15);
 }
 
@@ -256,7 +262,7 @@
   border-radius: 8px;
   padding: 0;
   overflow: hidden;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
   min-width: 240px;
 }
 
@@ -268,7 +274,7 @@
 }
 
 .user-menu-avatar {
-  border: 2px solid #22C55E;
+  border: 2px solid #22c55e;
   box-shadow: 0 2px 8px rgba(34, 197, 94, 0.15);
   margin-bottom: 8px;
 }
@@ -308,7 +314,7 @@
 
 /* Style riêng cho item Seller */
 .seller-item-active {
-  background-color: #22C55E !important;
+  background-color: #22c55e !important;
   color: white !important;
 }
 
@@ -320,3 +326,111 @@
   background-color: #16a34a !important;
 }
 
+.noti-panel::before {
+  content: "";
+  position: absolute;
+  top: -20px; /* Độ cao bằng đúng khoảng cách trống giữa nút và bảng */
+  left: 0;
+  right: 0;
+  height: 20px;
+  background: transparent; /* Vùng này tàng hình */
+}
+
+/* Đảm bảo dropdown có vị trí tuyệt đối */
+.noti-panel {
+  margin-top: 10px; /* Điều chỉnh khoảng cách theo ý muốn */
+  position: absolute;
+  /* Các thuộc tính cũ của bạn... */
+}
+
+.dropdown-header span {
+  padding: 0 0 0 13px;
+  margin: 15px 0 0 0;
+}
+
+.view-all-btn {
+  display: block;
+  width: 100%;
+  padding: 14px 20px !important; /* Padding footer bằng nhau */
+  background: #f9fafb;
+  border: none;
+  border-top: 1px solid #f5f5f5;
+  color: #16a34a;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+/* --- Khung chung cho tất cả Dropdown --- */
+.dropdown-panel {
+  position: absolute;
+  top: 100%;
+  right: -5px;
+  width: 360px;
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+  border: 1px solid #f0f0f0;
+
+  /* Đẩy bảng xuống xa nút (ví dụ 15px) */
+  margin-top: 15px;
+
+  z-index: 2000;
+  overflow: visible; /* QUAN TRỌNG: Để hiện cái lớp đệm tàng hình */
+}
+
+/* TẠO CẦU NỐI TÀNG HÌNH */
+.dropdown-panel::before {
+  content: "";
+  position: absolute;
+  /* Kéo lớp đệm này lên trên để chạm vào nút bấm */
+  top: -20px;
+  left: 0;
+  right: 0;
+  height: 20px; /* Độ cao phải lớn hơn margin-top để trùm lên khe hở */
+  background: transparent; /* Tàng hình nhưng vẫn nhận chuột */
+  z-index: -1;
+}
+
+/* --- Đồng bộ Header & Footer --- */
+.dropdown-header {
+  padding: 16px 20px !important; /* Đẩy chữ vào trong bằng nhau */
+  font-size: 16px;
+  font-weight: 700;
+  border-bottom: 1px solid #f5f5f5;
+  color: #333;
+}
+
+.view-all-btn {
+  display: block;
+  width: 100%;
+  padding: 14px 20px !important; /* Padding footer bằng nhau */
+  background: #f9fafb;
+  border: none;
+  border-top: 1px solid #f5f5f5;
+  color: #16a34a;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+}
+
+/* --- Đồng bộ khoảng cách Item bên trong --- */
+.noti-item,
+.cart-item {
+  padding: 12px 20px !important; /* Tất cả nội dung đều lùi vào 20px */
+  display: flex;
+  align-items: center;
+  gap: 12px; /* Khoảng cách giữa icon/ảnh và chữ luôn là 12px */
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

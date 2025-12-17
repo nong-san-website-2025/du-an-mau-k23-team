@@ -74,6 +74,7 @@ INSTALLED_APPS = [
 
     'system_settings',
 
+    'notifications',
     
 ]
 
