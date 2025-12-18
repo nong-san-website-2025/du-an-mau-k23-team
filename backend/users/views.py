@@ -997,9 +997,9 @@ def customer_statistics_report(request):
     def calculate_tier(order_count, total_spent):
         total_spent = float(total_spent or 0)
         
-        if order_count >= 50 and total_spent >= 10000000:
+        if order_count >= 50 and total_spent >= 100000000:
             return {'tier': 'Kim cương', 'color': 'gold'}
-        elif order_count >= 25 and total_spent >= 10000000:
+        elif order_count >= 25 and total_spent >= 1250000:
             return {'tier': 'Vàng', 'color': 'cyan'}
         elif order_count >= 10 and total_spent >= 250000:
             return {'tier': 'Bạc', 'color': 'silver'}

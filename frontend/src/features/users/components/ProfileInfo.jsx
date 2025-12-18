@@ -15,6 +15,8 @@ import {
   Tooltip,
   Alert,
   Statistic,
+  Modal,
+  Table,
 } from "antd";
 import {
   UserOutlined,
@@ -56,6 +58,7 @@ const ProfileInfo = ({
   const [editingFields, setEditingFields] = useState({});
   const [tempForm, setTempForm] = useState(form);
   const [resendingEmail, setResendingEmail] = useState(false);
+  const [tierModalVisible, setTierModalVisible] = useState(false);
 
   useEffect(() => {
     setTempForm(form);
@@ -325,12 +328,23 @@ const ProfileInfo = ({
                   <UserOutlined style={{ fontSize: 32, color: '#8c8c8c' }} />
                 )}
               </div>
-              <div style={{
-                fontSize: 18,
-                fontWeight: 600,
-                color: memberTierColor === 'gold' ? '#faad14' : memberTierColor === 'silver' ? '#c0c0c0' : '#8c8c8c',
-              }}>
-                {memberTier || "Thành viên"}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                <div style={{
+                  fontSize: 18,
+                  fontWeight: 600,
+                  color: memberTierColor === 'gold' ? '#faad14' : memberTierColor === 'silver' ? '#c0c0c0' : '#8c8c8c',
+                }}>
+                  {memberTier || "Thành viên"}
+                </div>
+                <Tooltip title="Xem điều kiện xếp hạng">
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<InfoCircleOutlined />}
+                    onClick={() => setTierModalVisible(true)}
+                    style={{ fontSize: 14, color: '#1890ff' }}
+                  />
+                </Tooltip>
               </div>
             </div>
 
@@ -492,7 +506,65 @@ const ProfileInfo = ({
         </Col>
       </Row>
 
-
+      {/* Modal hiển thị điều kiện xếp hạng */}
+      <Modal
+        title="Điều kiện xếp hạng thành viên"
+        open={tierModalVisible}
+        onCancel={() => setTierModalVisible(false)}
+        footer={[
+          <Button key="close" type="primary" onClick={() => setTierModalVisible(false)}>
+            Đóng
+          </Button>,
+        ]}
+        width={600}
+      >
+        <Table
+          dataSource={[
+            {
+              key: 1,
+              tier: "🥈 Bạc",
+              orders: 10,
+              spent: "250,000 VND",
+            },
+            {
+              key: 2,
+              tier: "🥇 Vàng",
+              orders: 25,
+              spent: "1,250,000 VND",
+            },
+            {
+              key: 3,
+              tier: "💎 Kim cương",
+              orders: 50,
+              spent: "100,000,000 VND",
+            },
+          ]}
+          columns={[
+            {
+              title: "Hạng",
+              dataIndex: "tier",
+              key: "tier",
+            },
+            {
+              title: "Số đơn hàng",
+              dataIndex: "orders",
+              key: "orders",
+            },
+            {
+              title: "Tổng chi tiêu",
+              dataIndex: "spent",
+              key: "spent",
+            },
+          ]}
+          pagination={false}
+          bordered
+        />
+        <div style={{ marginTop: 16, padding: "12px", background: "#f5f5f5", borderRadius: 4 }}>
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            💡 <strong>Lưu ý:</strong> Bạn cần đáp ứng <strong>cả hai</strong> điều kiện (số đơn hàng <strong>VÀ</strong> tổng chi tiêu) để nâng cao hạng thành viên.
+          </Text>
+        </div>
+      </Modal>
     </Card>
   );
 };

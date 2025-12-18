@@ -732,10 +732,18 @@ export default function SellerRegisterPage() {
                       {/* --- KẾT THÚC PHẦN ĐỊA CHỈ --- */}
 
                       <Col span={24}>
-                        <Form.Item name="bio" label="Giới thiệu">
+                        <Form.Item 
+                          name="bio" 
+                          label="Giới thiệu"
+                          rules={[
+                            { max: 500, message: "Mô tả không được vượt quá 500 ký tự" }
+                          ]}
+                        >
                           <Input.TextArea
                             rows={2}
                             placeholder="Mô tả ngắn gọn về cửa hàng..."
+                            maxLength={500}
+                            showCount
                           />
                         </Form.Item>
                       </Col>
