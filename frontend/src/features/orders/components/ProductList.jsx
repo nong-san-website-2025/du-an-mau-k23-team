@@ -1,7 +1,7 @@
 // components/ProductList.jsx
 import React from "react";
-import { List, Space, Image, Typography, Tag, Button, Tooltip, Divider } from "antd";
-import { WarningOutlined, StarOutlined, ShoppingOutlined } from "@ant-design/icons";
+import { List, Space, Image, Typography, Tag, Button, Tooltip, Divider, Badge } from "antd";
+import { WarningOutlined, StarOutlined, ShoppingOutlined, SyncOutlined, CheckCircleOutlined, CloseCircleOutlined } from "@ant-design/icons";
 import { intcomma } from "./../../../utils/format";
 import NoImage from "../../../components/shared/NoImage";
 import { resolveProductImage } from "../utils";
@@ -14,19 +14,38 @@ const ProductList = ({
   cardStyle,
   sectionTitleStyle,
   isMobile,
-  status,
+  status, // Trạng thái đơn hàng (Order Status)
   ratedProducts,
   onRate,
-  // Props for Complaint Logic
-  openComplaint,
+  // Logic Khiếu nại
+  activeComplaintItem, // ID của OrderItem đang mở form (thay vì object boolean)
   toggleComplaint,
-  complaintTexts,
+  complaintText,
   onChangeText,
   complaintFiles,
   onChangeFiles,
-  sendingByProduct,
+  isSendingComplaint,
   sendComplaint,
 }) => {
+  
+  // Hàm render trạng thái của từng món hàng (Item Status)
+  const renderItemStatus = (item) => {
+    switch (item.status) {
+      case 'REFUND_REQUESTED':
+        return <Tag icon={<SyncOutlined spin />} color="processing">Đang yêu cầu hoàn tiền</Tag>;
+      case 'SELLER_REJECTED':
+        return <Tag icon={<CloseCircleOutlined />} color="error">Shop từ chối</Tag>;
+      case 'DISPUTE_TO_ADMIN':
+        return <Tag icon={<WarningOutlined />} color="warning">Đang khiếu nại lên Sàn</Tag>;
+      case 'REFUND_APPROVED':
+        return <Tag icon={<CheckCircleOutlined />} color="success">Đã hoàn tiền</Tag>;
+      case 'REFUND_REJECTED':
+        return <Tag icon={<CloseCircleOutlined />} color="default">Từ chối hoàn tiền</Tag>;
+      default:
+        return null;
+    }
+  };
+
   return (
     <div style={cardStyle}>
       <h3 style={sectionTitleStyle}>
@@ -35,17 +54,24 @@ const ProductList = ({
       </h3>
       <List
         dataSource={order.items || []}
-        rowKey={(item) => `${order.id}-${item.product}-${item.price}`}
+        rowKey={(item) => item.id} // Quan trọng: Dùng ID của OrderItem
         split
         locale={{ emptyText: "Không có sản phẩm" }}
         renderItem={(item) => {
           const productTotal = Number(item.price || 0) * Number(item.quantity || 0);
           const imageSrc = resolveProductImage(item.product_image || "");
-          const isComplaintOpen = openComplaint[item.product];
+          
+          // Kiểm tra xem form của item này có đang mở không
+          const isFormVisible = activeComplaintItem === item.id;
+
+          // Logic hiển thị nút khiếu nại:
+          // 1. Đơn hàng phải thành công (completed/delivered)
+          // 2. Item chưa từng bị khiếu nại (NORMAL) hoặc đã bị từ chối (để kiện tiếp - logic này tùy bạn xử lý ở form escalate)
+          const canComplaint = (status === "completed" || status === "delivered") && item.status === "NORMAL";
 
           return (
             <List.Item
-              key={`${order.id}-${item.product}`}
+              key={item.id}
               style={{
                 padding: "16px 12px",
                 background: "#fff",
@@ -75,46 +101,55 @@ const ProductList = ({
                     <Text type="secondary" style={{ fontSize: isMobile ? 13 : 14 }}>
                       {intcomma(item.price)}đ × {item.quantity}
                     </Text>
-                    {item.category_name && <Tag color="blue">{item.category_name}</Tag>}
+                    {/* Hiển thị trạng thái khiếu nại nếu có */}
+                    {renderItemStatus(item)}
+                    
                     <Text strong style={{ fontSize: isMobile ? 15 : 16, display: "block", marginTop: 4 }}>
                       Thành tiền: {intcomma(productTotal)}đ
                     </Text>
                   </Space>
 
-                  {status === "completed" && (
-                    <Space size="small" style={{ marginTop: 12 }}>
+                  <Space size="small" style={{ marginTop: 12, flexWrap: "wrap" }}>
+                    {canComplaint && (
                       <Button
                         size="small"
                         type="primary"
-                        ghost
+                        ghost // Nút viền, nền trắng cho đỡ gắt
+                        danger // Màu đỏ để thể hiện tính chất khiếu nại
                         icon={<WarningOutlined />}
-                        onClick={() => toggleComplaint(item.product)}
+                        onClick={() => toggleComplaint(item.id)} // Truyền ID OrderItem
                       >
-                        Khiếu nại
+                        Yêu cầu hoàn tiền
                       </Button>
-                      {!ratedProducts.has(item.product) && (
-                        <Tooltip title="Đánh giá sản phẩm">
-                          <Button size="small" icon={<StarOutlined />} onClick={() => onRate(item)}>
-                            Đánh giá
-                          </Button>
-                        </Tooltip>
-                      )}
-                    </Space>
-                  )}
+                    )}
+                    
+                    {/* Nút đánh giá (Giữ nguyên logic cũ) */}
+                    {(status === "completed" || status === "delivered") && !ratedProducts.has(item.product) && (
+                      <Tooltip title="Đánh giá sản phẩm">
+                        <Button size="small" icon={<StarOutlined />} onClick={() => onRate(item)}>
+                          Đánh giá
+                        </Button>
+                      </Tooltip>
+                    )}
+                  </Space>
                 </div>
               </div>
 
-              {/* Render Complaint Form Overlay */}
+              {/* Form Khiếu nại */}
               <ComplaintForm
-                visible={isComplaintOpen}
-                onClose={() => toggleComplaint(item.product)}
-                productId={item.product}
+                visible={isFormVisible}
+                onClose={() => toggleComplaint(null)} // Đóng form
+                orderItemId={item.id} // ID quan trọng nhất
+                productName={item.product_name}
                 productPrice={item.price}
                 productQuantity={item.quantity}
-                text={complaintTexts[item.product] || ""}
-                files={complaintFiles[item.product] || []}
-                isLoading={!!sendingByProduct[item.product]}
+                
+                text={complaintText}
+                files={complaintFiles}
+                
+                isLoading={isSendingComplaint}
                 isMobile={isMobile}
+                
                 onChangeText={onChangeText}
                 onChangeFiles={onChangeFiles}
                 onSubmit={sendComplaint}
@@ -123,6 +158,8 @@ const ProductList = ({
           );
         }}
       />
+      
+      {/* Phần tổng tiền giữ nguyên */}
       <Divider style={{ margin: "16px 0" }} />
       <div style={{ textAlign: "right", padding: "12px 16px", background: "#f0f9ff", borderRadius: 8 }}>
         <Space direction="vertical" size={4} align="end">

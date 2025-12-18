@@ -8,156 +8,108 @@ const { Title, Text } = Typography;
 const DetailModal = ({ visible, onCancel, complaint }) => {
   if (!complaint) return null;
 
+  // Cập nhật Map status mới
   const getStatusConfig = (status) => {
     const config = {
-      pending: { color: "orange", text: "Chờ xử lý" },
-      resolved: { color: "green", text: "Đã xử lý" },
-      rejected: { color: "red", text: "Đã từ chối" },
+      pending: { color: "orange", text: "Chờ Shop phản hồi" },
+      negotiating: { color: "purple", text: "Đang thương lượng (Shop từ chối)" },
+      admin_review: { color: "blue", text: "Đang chờ Sàn phán quyết" },
+      resolved_refund: { color: "green", text: "Thành công (Đã hoàn tiền)" },
+      resolved_reject: { color: "red", text: "Đã đóng (Không hoàn tiền)" },
+      cancelled: { color: "default", text: "Đã hủy" },
     };
-    return config[status] || { color: "default", text: "Không xác định" };
-  };
-
-  const getResolutionText = (resolution_type) => {
-    const config = {
-      refund_full: "Hoàn tiền toàn bộ",
-      refund_partial: "Hoàn tiền một phần",
-      replace: "Đổi sản phẩm",
-      voucher: "Tặng voucher/điểm thưởng",
-      reject: "Từ chối khiếu nại",
-    };
-    return config[resolution_type] || "Không xác định";
+    return config[status] || { color: "default", text: status };
   };
 
   const { color: statusColor, text: statusText } = getStatusConfig(complaint.status);
 
-  const mediaList = Array.isArray(complaint.media_urls)
-    ? complaint.media_urls.filter(Boolean)
-    : [];
+  // Serializer mới trả về 'media' là danh sách object {id, file}
+  // Cần map ra url
+  const mediaList = complaint.media?.map(m => m.file) || [];
 
   return (
     <Modal
-      title={
-        <div>
-          <Title level={4} style={{ margin: 0 }}>
-            Chi tiết khiếu nại #{complaint.id}
-          </Title>
-          <Text type="secondary" style={{ fontSize: 13 }}>
-            Thông tin chi tiết và minh chứng liên quan
-          </Text>
-        </div>
-      }
+      title={<Title level={4}>Chi tiết khiếu nại #{complaint.id}</Title>}
       open={visible}
       footer={null}
       onCancel={onCancel}
       width={760}
-      styles={{
-        body: { padding: "24px" },
-      }}
     >
-      {/* Grid 2 cột chính */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "28px" }}>
-        {/* Cột trái: Thông tin người dùng & sản phẩm */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-          <InfoGroup title="Người khiếu nại">
-            <InfoRow label="Họ và tên" value={complaint.complainant_name || "—"} />
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
+        
+        {/* Cột Trái */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+          <InfoGroup title="Thông tin người mua">
+            <InfoRow label="Họ tên" value={complaint.created_by_name} />
+            <InfoRow label="Email" value={complaint.created_by_email} />
           </InfoGroup>
 
-          <InfoGroup title="Thông tin sản phẩm">
-            <InfoRow label="Tên sản phẩm" value={complaint.product_name || "—"} />
-            <InfoRow label="Mã sản phẩm" value={complaint.product_id || "—"} />
-            <InfoRow label="Số lượng" value={complaint.quantity ?? 1} />
-            <InfoRow
-              label="Đơn giá"
-              value={formatVND(complaint.unit_price ?? complaint.product_price ?? 0)}
+          <InfoGroup title="Sản phẩm yêu cầu">
+            <InfoRow label="Sản phẩm" value={complaint.product_name} />
+            <InfoRow label="Mã đơn" value={`#${complaint.order_id}`} />
+            {complaint.order_code && <InfoRow label="Vận đơn" value={complaint.order_code} />}
+            <InfoRow label="Số lượng mua" value={complaint.purchase_quantity} />
+            <InfoRow 
+                label="Giá mua" 
+                value={formatVND(complaint.purchase_price)} 
             />
-            <InfoRow label="Mã đơn hàng" value={complaint.order_id ? `#${complaint.order_id}` : "—"} />
+            <Divider style={{margin: '8px 0'}}/>
+            <InfoRow 
+                label="Tổng hoàn dự kiến" 
+                value={<Text type="danger" strong>{formatVND(complaint.purchase_price * complaint.purchase_quantity)}</Text>} 
+            />
           </InfoGroup>
         </div>
 
-        {/* Cột phải: Trạng thái, thời gian, lý do */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-          <InfoGroup title="Xử lý khiếu nại">
-            <InfoRow label="Trạng thái">
-              <Tag color={statusColor} style={{ fontSize: 14, padding: "4px 10px" }}>
-                {statusText}
-              </Tag>
+        {/* Cột Phải */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+          <InfoGroup title="Trạng thái xử lý">
+            <InfoRow label="Hiện tại">
+              <Tag color={statusColor}>{statusText}</Tag>
             </InfoRow>
-            <InfoRow
-              label="Thời gian tạo"
-              value={
-                complaint.created_at
-                  ? moment(complaint.created_at).format("HH:mm DD/MM/YYYY")
-                  : "—"
-              }
-            />
+            <InfoRow label="Ngày tạo" value={moment(complaint.created_at).format("HH:mm DD/MM/YYYY")} />
           </InfoGroup>
 
           <InfoGroup title="Nội dung khiếu nại">
-            <div style={{ lineHeight: 1.6, whiteSpace: "pre-wrap", color: "#000" }}>
-              {complaint.reason || "—"}
+            <div style={{ background: '#f5f5f5', padding: 10, borderRadius: 6, minHeight: 60 }}>
+                {complaint.reason}
             </div>
           </InfoGroup>
+
+          {/* Hiển thị phản hồi của Shop nếu có */}
+          {complaint.seller_response && (
+             <InfoGroup title="Phản hồi của Shop">
+                <div style={{ background: '#fff7e6', padding: 10, borderRadius: 6, border: '1px solid #ffd591' }}>
+                    {complaint.seller_response}
+                </div>
+             </InfoGroup>
+          )}
+
+           {/* Hiển thị phán quyết của Admin nếu có */}
+           {complaint.admin_notes && (
+             <InfoGroup title="Phán quyết của Sàn">
+                <div style={{ background: '#e6f7ff', padding: 10, borderRadius: 6, border: '1px solid #91d5ff' }}>
+                    {complaint.admin_notes}
+                </div>
+             </InfoGroup>
+          )}
         </div>
       </div>
 
-      {/* Hình thức xử lý (khi đã xử lý) */}
-      {(complaint.status === "resolved" || complaint.status === "rejected") && complaint.resolution_type && (
-        <>
-          <Divider style={{ margin: "24px 0 16px" }} />
-          <div>
-            <Text strong style={{ marginBottom: 12, display: "block", fontSize: 15 }}>
-              Hình thức xử lý
-            </Text>
-            <Tag color={complaint.status === "resolved" ? "green" : "red"} style={{ fontSize: 14, padding: "6px 14px" }}>
-              {getResolutionText(complaint.resolution_type)}
-            </Tag>
-          </div>
-        </>
-      )}
-
-      {/* Minh chứng (full-width dưới 2 cột) */}
+      {/* Minh chứng */}
       {mediaList.length > 0 && (
         <>
-          <Divider style={{ margin: "24px 0 16px" }} />
-          <div>
-            <Text strong style={{ marginBottom: 12, display: "block", fontSize: 15 }}>
-              Minh chứng ({mediaList.length})
-            </Text>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))",
-                gap: 14,
-              }}
-            >
-              {mediaList.map((url, idx) => (
-                <div
-                  key={idx}
-                  style={{
-                    borderRadius: 8,
-                    overflow: "hidden",
-                    boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-                    aspectRatio: isImageUrl(url) ? "4/3" : "16/9",
-                    background: "#000",
-                  }}
-                >
-                  {isImageUrl(url) ? (
-                    <Image
-                      src={url}
-                      alt={`evidence-${idx}`}
-                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                      preview={{ mask: "Xem" }}
-                    />
-                  ) : (
-                    <video
-                      src={url}
-                      controls
-                      style={{ width: "100%", height: "100%", outline: "none" }}
-                    />
-                  )}
-                </div>
-              ))}
-            </div>
+          <Divider orientation="left">Hình ảnh / Video bằng chứng</Divider>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            {mediaList.map((url, idx) => (
+              <Image
+                key={idx}
+                src={url}
+                width={100}
+                height={100}
+                style={{ objectFit: "cover", borderRadius: 8, border: "1px solid #eee" }}
+              />
+            ))}
           </div>
         </>
       )}
@@ -165,27 +117,18 @@ const DetailModal = ({ visible, onCancel, complaint }) => {
   );
 };
 
-// Nhóm thông tin có tiêu đề
+// Helper Components (Giữ nguyên như cũ)
 const InfoGroup = ({ title, children }) => (
-  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-    <Text strong style={{ fontSize: 14, color: "#1D1D1F" }}>
-      {title}
-    </Text>
-    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      {children}
-    </div>
+  <div style={{ marginBottom: 12 }}>
+    <Text strong style={{ display: 'block', marginBottom: 8 }}>{title}</Text>
+    {children}
   </div>
 );
 
-// Hàng thông tin chi tiết
 const InfoRow = ({ label, value, children }) => (
-  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-    <Text type="secondary" style={{ fontSize: 13, minWidth: 90, flexShrink: 0 }}>
-      {label}:
-    </Text>
-    <div style={{ textAlign: "right", flex: 1, overflowWrap: "break-word", paddingLeft: 12 }}>
-      {children || <Text style={{ fontSize: 15, color: "#000" }}>{value}</Text>}
-    </div>
+  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+    <Text type="secondary">{label}:</Text>
+    <div>{children || <Text>{value || "—"}</Text>}</div>
   </div>
 );
 

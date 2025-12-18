@@ -1,13 +1,15 @@
 // components/ComplaintForm.jsx
 import React from "react";
-import { Typography, Button, Space } from "antd";
-import { MessageOutlined } from "@ant-design/icons";
+import { Typography, Button, Space, Upload, message } from "antd";
+import { MessageOutlined, InboxOutlined, DeleteOutlined } from "@ant-design/icons";
+import { intcomma } from "./../../../utils/format";
 
 const { Text, Title } = Typography;
 
 const ComplaintForm = ({
   visible,
-  productId,
+  orderItemId, // Nhận ID Order Item
+  productName,
   productPrice,
   productQuantity,
   text,
@@ -21,6 +23,16 @@ const ComplaintForm = ({
 }) => {
   if (!visible) return null;
 
+  // Xử lý khi bấm nút Gửi
+  const handleSubmit = () => {
+    if (!text || text.trim().length < 10) {
+      message.error("Vui lòng nhập lý do chi tiết (tối thiểu 10 ký tự)");
+      return;
+    }
+    // Gọi hàm submit ở cha, truyền ID item
+    onSubmit(orderItemId);
+  };
+
   return (
     <div
       style={{
@@ -29,7 +41,7 @@ const ComplaintForm = ({
         left: 0,
         width: "100vw",
         height: "100vh",
-        background: "rgba(0,0,0,0.5)",
+        background: "rgba(0,0,0,0.6)", // Tối hơn xíu cho tập trung
         zIndex: 9999,
         display: "flex",
         alignItems: "center",
@@ -44,9 +56,9 @@ const ComplaintForm = ({
         style={{
           background: "#fff",
           boxShadow: "0 12px 48px rgba(0,0,0,0.2)",
-          borderRadius: 20,
-          padding: isMobile ? 24 : 40,
-          maxWidth: isMobile ? "92%" : 520,
+          borderRadius: 16,
+          padding: isMobile ? 20 : 32,
+          maxWidth: 500,
           width: "100%",
           position: "relative",
           maxHeight: "90vh",
@@ -56,86 +68,99 @@ const ComplaintForm = ({
         <button
           style={{
             position: "absolute",
-            top: 16,
-            right: 16,
+            top: 12,
+            right: 12,
             cursor: "pointer",
-            fontSize: 24,
+            fontSize: 20,
             color: "#8c8c8c",
-            fontWeight: 400,
             border: "none",
-            background: "#f5f5f5",
+            background: "transparent",
             width: 32,
             height: 32,
-            borderRadius: "50%",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            transition: "all 0.2s",
+            display: "flex", alignItems: "center", justifyContent: "center"
           }}
           onClick={onClose}
         >
-          ×
+          ✕
         </button>
 
-        <Title level={4} style={{ marginBottom: 24, color: "#262626" }}>
-          Gửi khiếu nại sản phẩm
+        <Title level={4} style={{ marginBottom: 16, textAlign: 'center' }}>
+          Yêu cầu Hoàn tiền / Trả hàng
         </Title>
+        
+        {/* Thông tin tóm tắt sản phẩm đang kiện */}
+        <div style={{ background: "#f5f5f5", padding: 12, borderRadius: 8, marginBottom: 20 }}>
+            <Text strong>{productName}</Text>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
+                <Text type="secondary">Số lượng: {productQuantity}</Text>
+                <Text type="secondary">Giá mua: {intcomma(productPrice)}đ</Text>
+            </div>
+            <div style={{ marginTop: 4, borderTop: "1px dashed #d9d9d9", paddingTop: 4 }}>
+                 <Text type="danger" strong>Số tiền hoàn dự kiến: {intcomma(productPrice * productQuantity)}đ</Text>
+            </div>
+        </div>
 
         <div style={{ marginBottom: 20 }}>
-          <label style={{ fontWeight: 600, fontSize: 15, display: "block", marginBottom: 8 }}>
-            Nội dung khiếu nại <Text type="danger">*</Text>
+          <label style={{ fontWeight: 600, fontSize: 14, display: "block", marginBottom: 8 }}>
+            Lý do khiếu nại <Text type="danger">*</Text>
           </label>
           <textarea
-            rows={5}
+            rows={4}
             value={text}
-            onChange={(e) => onChangeText(productId, e.target.value)}
-            placeholder="Mô tả chi tiết vấn đề bạn gặp phải..."
+            onChange={(e) => onChangeText(e.target.value)}
+            placeholder="Ví dụ: Sản phẩm bị vỡ, giao sai màu, thiếu phụ kiện..."
             style={{
               width: "100%",
               padding: 12,
               borderRadius: 8,
-              border: "1.5px solid #d9d9d9",
-              background: "#fafafa",
+              border: "1px solid #d9d9d9",
               outline: "none",
+              resize: "vertical",
+              fontSize: 14
             }}
           />
         </div>
 
         <div style={{ marginBottom: 24 }}>
-          <label style={{ fontWeight: 600, fontSize: 15, display: "block", marginBottom: 8 }}>
-            Ảnh/Video minh chứng <Text type="secondary" style={{ fontSize: 13, fontWeight: 400 }}>(không bắt buộc)</Text>
+          <label style={{ fontWeight: 600, fontSize: 14, display: "block", marginBottom: 8 }}>
+            Hình ảnh / Video bằng chứng
           </label>
-          <input
-            type="file"
-            multiple
-            accept="image/*,video/*"
-            onChange={(e) => onChangeFiles(productId, e.target.files)}
-            style={{
-              fontSize: 14,
-              padding: 10,
-              borderRadius: 8,
-              border: "1.5px solid #d9d9d9",
-              background: "#fafafa",
-              width: "100%",
-            }}
-          />
-          {files?.length > 0 && (
-            <Text type="secondary" style={{ fontSize: 12, marginTop: 8, display: "block" }}>
-              Đã chọn {files.length} tệp
-            </Text>
+          
+          {/* Custom File Input đơn giản */}
+          <div style={{ border: "1px dashed #d9d9d9", borderRadius: 8, padding: 16, textAlign: "center", position: 'relative' }}>
+              <input 
+                type="file" 
+                multiple 
+                accept="image/*,video/*"
+                onChange={(e) => onChangeFiles(e.target.files)}
+                style={{ position: 'absolute', width: '100%', height: '100%', top:0, left:0, opacity: 0, cursor: 'pointer' }}
+              />
+              <InboxOutlined style={{ fontSize: 24, color: "#1890ff" }} />
+              <div style={{ marginTop: 8 }}>Nhấn để chọn ảnh hoặc video</div>
+          </div>
+
+          {files && files.length > 0 && (
+              <div style={{ marginTop: 12 }}>
+                  <Text type="secondary">Đã chọn {files.length} tệp:</Text>
+                  <ul style={{ paddingLeft: 20, marginTop: 4, fontSize: 13, color: "#595959" }}>
+                      {Array.from(files).map((f, index) => (
+                          <li key={index}>{f.name}</li>
+                      ))}
+                  </ul>
+              </div>
           )}
         </div>
 
-        <Space size="middle" style={{ width: "100%", justifyContent: "flex-end" }}>
-          <Button onClick={onClose} size="large">Hủy</Button>
+        <Space style={{ width: "100%", justifyContent: "flex-end" }}>
+          <Button onClick={onClose}>Đóng</Button>
           <Button
             type="primary"
-            size="large"
-            onClick={() => onSubmit(productId, productPrice, productQuantity)}
+            danger
+            onClick={handleSubmit}
             loading={isLoading}
             icon={<MessageOutlined />}
           >
-            Gửi khiếu nại
+            Gửi yêu cầu
           </Button>
         </Space>
       </div>

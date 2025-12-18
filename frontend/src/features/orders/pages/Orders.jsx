@@ -60,7 +60,7 @@ const Orders = () => {
   const tabList = [
     { key: "pending", label: "Chờ xác nhận" },
     { key: "shipping", label: "Chờ lấy hàng" },
-    { key: "delivery", label: "Chờ giao hàng" },
+    { key: "delivered", label: "Chờ giao hàng" },
     { key: "completed", label: "Đã nhận hàng" },
     { key: "cancelled", label: "Đã huỷ" },
   ];

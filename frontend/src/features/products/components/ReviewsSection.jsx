@@ -1,136 +1,220 @@
 // src/components/ProductDetail/ReviewsSection.jsx
-import React, { useMemo } from "react"; // Thêm useMemo để tối ưu hiệu năng
-import { Card, Button, Input, Rate, List, Space, Typography, Tag } from "antd"; // Thêm Tag nếu muốn hiện trạng thái cho chính chủ
-import { AiFillStar } from "react-icons/ai";
+import React, { useMemo } from "react";
+import { 
+  Card, 
+  Rate, 
+  List, 
+  Typography, 
+  Tag, 
+  Avatar, 
+  Row, 
+  Col, 
+  Progress, 
+  Divider,
+  Space
+} from "antd";
+import { UserOutlined, ShopOutlined, CheckCircleFilled, WarningFilled } from "@ant-design/icons";
 
-const { TextArea } = Input;
-const { Title, Text } = Typography;
+const { Title, Text, Paragraph } = Typography;
 
-const ReviewsSection = ({
-  user,
-  reviews,
-  myReview,
-  newComment,
-  newRating,
-  hasReviewed,
-  onNewCommentChange,
-  onNewRatingChange,
-  onSubmitReview,
-}) => {
+// --- SUB-COMPONENT: Hiển thị 1 dòng review ---
+const ReviewItem = ({ review, isMyReview = false }) => {
+  const { user_name, rating, comment, created_at, replies, is_hidden } = review;
+
+  return (
+    <div style={{ padding: "16px 0" }}>
+      <Row gutter={[16, 16]} wrap={false}>
+        {/* Cột Avatar */}
+        <Col flex="40px">
+          <Avatar 
+            size="large" 
+            icon={<UserOutlined />} 
+            style={{ backgroundColor: isMyReview ? '#1890ff' : '#f56a00' }}
+          >
+            {user_name ? user_name.charAt(0).toUpperCase() : "U"}
+          </Avatar>
+        </Col>
+
+        {/* Cột Nội dung */}
+        <Col flex="auto">
+          {/* Header: Tên + Ngày + Tag (nếu là my review) */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+            <Space>
+              <Text strong style={{ fontSize: 16 }}>
+                {isMyReview ? "Bạn (Đánh giá của tôi)" : user_name}
+              </Text>
+              {isMyReview && is_hidden && (
+                <Tag icon={<WarningFilled />} color="error">Đã bị ẩn</Tag>
+              )}
+              {isMyReview && !is_hidden && (
+                <Tag icon={<CheckCircleFilled />} color="success">Đã duyệt</Tag>
+              )}
+            </Space>
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              {new Date(created_at).toLocaleDateString("vi-VN")}
+            </Text>
+          </div>
+
+          {/* Rating */}
+          <div style={{ marginBottom: 8 }}>
+            <Rate disabled value={rating} style={{ fontSize: 14 }} />
+          </div>
+
+          {/* Comment Content */}
+          <Paragraph 
+            style={{ 
+              color: is_hidden ? "#999" : "inherit",
+              fontStyle: is_hidden ? "italic" : "normal",
+              marginBottom: 12
+            }}
+          >
+            {is_hidden ? "Nội dung đánh giá này đã bị ẩn do vi phạm tiêu chuẩn cộng đồng." : comment}
+          </Paragraph>
+
+          {/* Seller Reply Section */}
+          {Array.isArray(replies) && replies.length > 0 && (
+            <div
+              style={{
+                backgroundColor: "#f9f9f9",
+                borderLeft: "4px solid #00b96b", // Màu thương hiệu GreenFarm
+                padding: "12px 16px",
+                borderRadius: "0 8px 8px 0",
+                marginTop: 12,
+              }}
+            >
+              {replies.map((rp) => (
+                <div key={rp.id}>
+                  <div style={{ display: "flex", alignItems: "center", marginBottom: 6 }}>
+                    <ShopOutlined style={{ color: "#00b96b", marginRight: 8, fontSize: 16 }} />
+                    <Text strong style={{ color: "#00b96b" }}>Phản hồi từ Cửa hàng</Text>
+                    <Divider type="vertical" />
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                      {rp.created_at ? new Date(rp.created_at).toLocaleDateString("vi-VN") : ""}
+                    </Text>
+                  </div>
+                  <Text style={{ whiteSpace: "pre-wrap", color: "#555" }}>
+                    {rp.reply_text || rp.comment || rp.detail || ""}
+                  </Text>
+                </div>
+              ))}
+            </div>
+          )}
+        </Col>
+      </Row>
+    </div>
+  );
+};
+
+// --- SUB-COMPONENT: Tổng quan đánh giá (Header) ---
+const RatingSummary = ({ reviews }) => {
+  if (!reviews || reviews.length === 0) return null;
+
+  const total = reviews.length;
+  const average = (reviews.reduce((acc, cur) => acc + cur.rating, 0) / total).toFixed(1);
   
-  // ✅ LOGIC SENIOR: Lọc review hiển thị
-  // 1. Nếu là Admin/Seller (có cờ is_staff/seller): Có thể muốn xem hết -> Tùy logic bạn, ở đây tôi làm cho User thường.
-  // 2. User thường: Chỉ hiện review không bị ẩn (is_hidden === false)
+  // Đếm số lượng từng sao
+  const counts = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+  reviews.forEach(r => {
+    const rounded = Math.round(r.rating);
+    if (counts[rounded] !== undefined) counts[rounded]++;
+  });
+
+  return (
+    <div style={{ marginBottom: 32, padding: "20px", background: "#fafafa", borderRadius: 8 }}>
+      <Row gutter={[32, 16]} align="middle">
+        {/* Bên trái: Điểm trung bình to đùng */}
+        <Col xs={24} sm={8} style={{ textAlign: "center" }}>
+           <div style={{ fontSize: 48, fontWeight: "bold", color: "#00b96b", lineHeight: 1 }}>
+             {average}
+           </div>
+           <Rate disabled allowHalf value={parseFloat(average)} style={{ color: "#00b96b" }} />
+           <div style={{ marginTop: 8, color: "#666" }}>{total} đánh giá</div>
+        </Col>
+
+        {/* Bên phải: Progress bar từng dòng */}
+        <Col xs={24} sm={16}>
+          {[5, 4, 3, 2, 1].map(star => (
+            <Row key={star} gutter={8} align="middle" style={{ marginBottom: 4 }}>
+              <Col span={3} style={{ textAlign: "right", whiteSpace: 'nowrap' }}>
+                <Text type="secondary">{star} sao</Text>
+              </Col>
+              <Col flex="auto">
+                <Progress 
+                  percent={(counts[star] / total) * 100} 
+                  showInfo={false} 
+                  strokeColor="#00b96b" 
+                  trailColor="#e6e6e6"
+                  size="small"
+                />
+              </Col>
+              <Col span={3} style={{ textAlign: "right" }}>
+                <Text type="secondary">{counts[star]}</Text>
+              </Col>
+            </Row>
+          ))}
+        </Col>
+      </Row>
+    </div>
+  );
+};
+
+// --- MAIN COMPONENT ---
+const ReviewsSection = ({ user, reviews, myReview }) => {
+  
   const visibleReviews = useMemo(() => {
     if (!reviews) return [];
     return reviews.filter(r => !r.is_hidden);
   }, [reviews]);
 
   return (
-    <Card title={`Đánh giá & Bình luận (${visibleReviews.length})`} style={{ marginTop: 24 }}>
-      {user ? (
-        myReview ? (
-          <Card
+    <Card 
+      bordered={false} 
+      style={{ marginTop: 24, boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }} // Thêm shadow nhẹ
+      bodyStyle={{ padding: "24px 32px" }}
+    >
+      <Title level={4} style={{ marginBottom: 24 }}>Đánh giá sản phẩm</Title>
+
+      {/* 1. Phần tổng quan điểm số */}
+      <RatingSummary reviews={visibleReviews} />
+
+      {/* 2. Review của tôi (Nổi bật) */}
+      {user && myReview && (
+        <>
+          <div 
             style={{ 
-                backgroundColor: myReview.is_hidden ? "#fff1f0" : "#f6ffed", // Đổi màu nếu bị ẩn
-                border: myReview.is_hidden ? "1px solid #ffa39e" : "1px solid #b7eb8f" 
+              border: `1px solid ${myReview.is_hidden ? '#ffccc7' : '#b7eb8f'}`, 
+              backgroundColor: myReview.is_hidden ? '#fff2f0' : '#f6ffed',
+              borderRadius: 8, 
+              padding: "0 16px",
+              marginBottom: 32 
             }}
           >
-            <Space>
-                <Text type={myReview.is_hidden ? "danger" : "success"} strong>
-                    {myReview.is_hidden ? "Đánh giá của bạn đã bị ẩn" : "Bạn đã đánh giá sản phẩm này"}
-                </Text>
-                {myReview.is_hidden && <Tag color="red">Vi phạm tiêu chuẩn cộng đồng</Tag>}
-            </Space>
-            
-            <div style={{ marginTop: 8 }}>
-              <Rate disabled value={myReview.rating} />
-            </div>
-            <p style={{ color: myReview.is_hidden ? '#999' : 'inherit' }}>{myReview.comment}</p>
-            <Text type="secondary">
-              {new Date(myReview.created_at).toLocaleString()}
-            </Text>
-          </Card>
-        ) : (
-          /* ... Giữ nguyên phần Form nhập đánh giá ... */
-          <div style={{ marginBottom: 24 }}>
-            <Space direction="vertical" style={{ width: "100%" }}>
-              <Space>
-                <Text>Đánh giá:</Text>
-                <Rate value={newRating} onChange={onNewRatingChange} />
-              </Space>
-              <TextArea
-                rows={3}
-                placeholder="Viết bình luận..."
-                value={newComment}
-                onChange={(e) => onNewCommentChange(e.target.value)}
-              />
-              <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                <Button type="primary" onClick={onSubmitReview}>
-                  Gửi đánh giá
-                </Button>
-              </div>
-            </Space>
+            <ReviewItem review={myReview} isMyReview={true} />
           </div>
-        )
-      ) : (
-        <Text type="secondary">Đăng nhập để đánh giá</Text>
+          {visibleReviews.length > 0 && <Divider orientation="left">Đánh giá từ khách hàng khác</Divider>}
+        </>
       )}
 
+      {/* 3. Danh sách Review */}
       <List
-        // ✅ CHỈNH SỬA Ở ĐÂY: Thay 'reviews' bằng 'visibleReviews'
-        dataSource={visibleReviews} 
-        
-        locale={{ emptyText: "Chưa có đánh giá nào" }}
-        renderItem={(r) => (
-          <List.Item
-            style={{ padding: "12px 0", borderBottom: "1px solid #f0f0f0" }}
-          >
-            <div>
-              <Text strong>{r.user_name}</Text>
-              <Rate disabled value={r.rating} style={{ marginLeft: 8 }} />
-            </div>
-            <p>{r.comment}</p>
-            <Text type="secondary">
-              {new Date(r.created_at).toLocaleString()}
-            </Text>
-
-            {/* Render seller / admin replies */}
-            {Array.isArray(r.replies) && r.replies.length > 0 && (
-              <div style={{ marginTop: 8 }}>
-                {r.replies.map((rp) => (
-                  <div
-                    key={rp.id}
-                    style={{
-                      background: "#f6ffed",
-                      border: "1px solid #e6f4ea",
-                      padding: 10,
-                      borderRadius: 8,
-                      marginTop: 8,
-                      color: "#14532d",
-                    }}
-                  >
-                    <div style={{ fontWeight: 700, marginBottom: 6 }}>
-                      Cửa hàng
-                      <span style={{ fontWeight: 400, marginLeft: 8, color: "#4b5563", fontSize: 12 }}>
-                        {rp.created_at ? new Date(rp.created_at).toLocaleString() : ""}
-                      </span>
-                    </div>
-                    <Text
-                      ellipsis={{
-                        rows: 3,
-                        expandable: true,
-                        symbol: "Xem thêm",
-                      }}
-                      style={{ whiteSpace: "pre-wrap" }}
-                    >
-                      {rp.reply_text || rp.comment || rp.detail || ""}
-                    </Text>
-                  </div>
-                ))}
-              </div>
-            )}
-          </List.Item>
+        dataSource={visibleReviews}
+        locale={{ emptyText: "Chưa có đánh giá nào cho sản phẩm này." }}
+        itemLayout="vertical"
+        pagination={{
+          pageSize: 5,
+          hideOnSinglePage: true,
+          onChange: () => {
+             // Scroll nhẹ lên đầu list khi chuyển trang nếu cần
+          }
+        }}
+        renderItem={(item) => (
+          // Chỉ render nếu không phải là myReview (để tránh lặp lại nếu myReview nằm trong list trả về)
+          (!myReview || item.id !== myReview.id) ? (
+            <List.Item style={{ padding: 0 }}>
+               <ReviewItem review={item} />
+               <Divider style={{ margin: "0" }} />
+            </List.Item>
+          ) : null
         )}
       />
     </Card>

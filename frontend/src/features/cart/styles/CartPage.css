@@ -10,7 +10,7 @@
 
 .card-elevated {
   border-radius: 8px;
-  box-shadow: 0 1px 6px rgba(16,24,40,0.06);
+  box-shadow: 0 1px 6px rgba(16, 24, 40, 0.06);
 }
 
 .store-group {
@@ -49,7 +49,7 @@
   gap: 12px;
   align-items: center;
   padding: 8px 4px;
-  color: rgba(0,0,0,0.65);
+  color: rgba(0, 0, 0, 0.65);
   font-weight: 600;
 }
 
@@ -184,17 +184,65 @@
 }
 
 /* Small polish */
-.clickable { cursor: pointer; }
-.no-image { display:flex; align-items:center; justify-content:center; height:90px; }
+.clickable {
+  cursor: pointer;
+}
+.no-image {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 90px;
+}
 
 /* Accessibility focus outline */
-.clickable:focus { outline: 2px solid rgba(22,163,74,0.25); outline-offset: 3px; }
+.clickable:focus {
+  outline: 2px solid rgba(22, 163, 74, 0.25);
+  outline-offset: 3px;
+}
 
 /* Summary popover custom rows */
-.summary-row { display:flex; justify-content:space-between; padding:6px 0; }
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+}
 
 /* end of CartPage.css */
 
 .normal-font {
   font-weight: lighter !important;
+}
+
+.btn-checkout {
+  background-color: #2e7d32; /* Xanh đậm hơn, sang hơn */
+  color: white;
+  width: 100%;
+  padding: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  border-radius: 4px;
+  transition: all 0.3s;
+}
+
+.btn-checkout:hover {
+  background-color: #1b5e20 !important; /* Xanh đậm hơn khi hover */
+  box-shadow: 0 4px 12px rgba(46, 125, 50, 0.3);
+  color: white !important;
+  border: none !important;
+}
+
+/* Nút Xóa tất cả (Sửa lại) */
+.btn-delete-all {
+    background: transparent !important;
+    color: #757575 !important; /* Màu xám nhạt */
+    border: none !important;
+    font-size: 13px !important;
+    text-decoration: underline !important;
+    margin-top: 10px !important;
+    cursor: pointer !important;
+    width: 100% !important; /* Căn giữa dưới nút thanh toán */
+}
+
+.btn-delete-all:hover {
+    color: #F44336 !important; /* Chỉ đỏ lên khi hover vào */
 }

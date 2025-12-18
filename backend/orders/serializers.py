@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from .models import Order, OrderItem, Complaint
+from .models import Order, OrderItem
+from complaints.models import Complaint
 from .models import Preorder
 
 class PreOrderSerializer(serializers.ModelSerializer):

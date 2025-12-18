@@ -181,3 +181,21 @@
     padding-bottom: 80px; /* Chừa chỗ cho bottom bar */
   }
 }
+
+.btn-checkout {
+  background-color: #2e7d32; /* Xanh đậm hơn, sang hơn */
+  color: white;
+  width: 100%;
+  padding: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  border-radius: 4px;
+  transition: all 0.3s;
+}
+
+.btn-checkout:hover {
+  background-color: #1b5e20 !important; /* Xanh đậm hơn khi hover */
+  box-shadow: 0 4px 12px rgba(46, 125, 50, 0.3);
+  color: white !important;
+  border: none !important;
+}

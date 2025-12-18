@@ -1,166 +1,207 @@
-# backend/app/views.py
-from rest_framework import viewsets
-from .models import Complaint, ComplaintMedia
-from .serializers import ComplaintSerializer
-from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
-from rest_framework.response import Response
-from rest_framework import status
+# backend/complaints/views.py
+from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
-from decimal import Decimal
+from rest_framework.response import Response
+from django.db import transaction
 from django.db.models import Q
-from rest_framework.views import APIView
+from decimal import Decimal
+from django.conf import settings
+
+# Import Models
+from .models import Complaint, ComplaintMedia
+from orders.models import OrderItem, Order
+from wallet.models import Wallet 
+
+# Import Serializers
+from .serializers import ComplaintSerializer
 
 class ComplaintViewSet(viewsets.ModelViewSet):
     queryset = Complaint.objects.all().order_by('-created_at')
     serializer_class = ComplaintSerializer
-    permission_classes = [AllowAny]  # 👈 đảm bảo chỉ user login mới gửi complaint
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        qs = super().get_queryset()
-        user = getattr(self.request, "user", None)
-        if not user or user.is_anonymous:
-            return qs.none()
-        if user.is_staff or user.is_superuser:
-            return qs
-        # Customers see their own complaints; sellers see complaints for their products
-        return qs.filter(Q(user=user) | Q(product__seller__user=user))
+        user = self.request.user
+        if getattr(user, 'is_staff', False) or getattr(user, 'is_superuser', False):
+            return Complaint.objects.all().order_by('-created_at')
+        
+        # Buyer: Xem khiếu nại mình tạo
+        # Seller: Xem khiếu nại liên quan đến sản phẩm shop mình bán
+        # Lưu ý: Cần điều chỉnh query seller tùy theo model Seller của bạn
+        return Complaint.objects.filter(
+            Q(user=user) | 
+            Q(order_item__product__seller__user=user) 
+        ).distinct().order_by('-created_at')
 
+    # ==========================================
+    # 1. BUYER: TẠO KHIẾU NẠI
+    # ==========================================
     def create(self, request, *args, **kwargs):
         files = request.FILES.getlist('media')
-        product_id = request.data.get('product')
+        # Lấy ID của Item trong đơn hàng (KHÔNG PHẢI Product ID)
+        order_item_id = request.data.get('order_item_id') 
         reason = request.data.get('reason')
-        if not product_id:
-            return Response({'error': 'Thiếu product'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not order_item_id:
+            return Response({'error': 'Thiếu order_item_id'}, status=status.HTTP_400_BAD_REQUEST)
         if not reason:
             return Response({'error': 'Thiếu lý do khiếu nại'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Parse quantity and unit price if provided by frontend; fallback to defaults
         try:
-            quantity = int(request.data.get('quantity') or 1)
-        except Exception:
-            quantity = 1
-        unit_price_raw = request.data.get('unit_price')
+            order_item = OrderItem.objects.get(id=order_item_id)
+            
+            # Check quyền: Chỉ người mua đơn này mới được kiện
+            if order_item.order.user != request.user:
+                return Response({'error': 'Bạn không sở hữu đơn hàng này'}, status=403)
+            
+            # Check trạng thái: Không thể kiện nếu đã xong
+            if order_item.status in ['REFUND_REQUESTED', 'REFUND_APPROVED', 'DISPUTE_TO_ADMIN']:
+                return Response({'error': 'Sản phẩm này đang được xử lý khiếu nại'}, status=400)
 
-        try:
-            complaint = Complaint.objects.create(
-                user=request.user,
-                product_id=product_id,
-                reason=reason,
-                quantity=quantity,
-            )
-            # If unit_price not provided or invalid, fallback to current product price
-            try:
-                if unit_price_raw is not None and str(unit_price_raw) != "":
-                    complaint.unit_price = Decimal(str(unit_price_raw))
-                else:
-                    complaint.unit_price = complaint.product.price
-            except Exception:
-                complaint.unit_price = complaint.product.price
-            complaint.save()
+            with transaction.atomic():
+                # Tạo Complaint
+                complaint = Complaint.objects.create(
+                    order_item=order_item,
+                    user=request.user,
+                    reason=reason,
+                    status='pending'
+                )
 
-            for f in files:
-                ComplaintMedia.objects.create(complaint=complaint, file=f)
+                # Lưu ảnh
+                for f in files:
+                    ComplaintMedia.objects.create(complaint=complaint, file=f)
+
+                # Cập nhật trạng thái OrderItem & Order
+                order_item.status = 'REFUND_REQUESTED'
+                order_item.save()
+                
+                # Block tiền Seller
+                order_item.order.is_disputed = True
+                order_item.order.save(update_fields=['is_disputed'])
+
             serializer = self.get_serializer(complaint)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        except OrderItem.DoesNotExist:
+            return Response({'error': 'Không tìm thấy sản phẩm'}, status=404)
         except Exception as e:
-            return Response({'error': f'Lỗi khi tạo khiếu nại: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': str(e)}, status=400)
 
-    def perform_create(self, serializer):
-        # Không cần dùng nữa, đã custom create
-        pass
-
-    @action(detail=True, methods=['post'])
-    def resolve(self, request, pk=None):
-        """
-        Seller (owner of the product) or Admin resolves a complaint.
-        - resolution_type: one of ['refund_full','refund_partial','replace','voucher','reject']
-        - amount (required for refund_partial): integer/decimal string (VNĐ)
-        Credits the user's wallet on refund_*.
-        """
+    # ==========================================
+    # 2. SELLER: PHẢN HỒI (CHẤP NHẬN / TỪ CHỐI)
+    # ==========================================
+    @action(detail=True, methods=['post'], url_path='seller-respond')
+    def seller_respond(self, request, pk=None):
         complaint = self.get_object()
+        action_type = request.data.get('action') # 'accept' hoặc 'reject'
+        reason = request.data.get('reason', '') # Lý do nếu từ chối
+        
+        # Check quyền chủ shop
+        try:
+            # Giả sử quan hệ: Product -> Seller -> User
+            is_seller = complaint.order_item.product.seller.user == request.user
+        except AttributeError:
+            is_seller = False
+            
+        if not is_seller:
+             return Response({'error': 'Bạn không phải người bán sản phẩm này'}, status=403)
 
-        # Permission: allow staff OR product owner (seller)
-        user = request.user
-        is_owner = hasattr(complaint.product, 'seller') and getattr(complaint.product.seller, 'user_id', None) == user.id
-        if not (user and (user.is_staff or user.is_superuser or is_owner)):
-            return Response({'detail': 'Not allowed'}, status=status.HTTP_403_FORBIDDEN)
+        if complaint.status != 'pending':
+            return Response({'error': 'Chỉ xử lý được khiếu nại đang chờ'}, status=400)
 
-        resolution_type = request.data.get('resolution_type')
-        amount_raw = request.data.get('amount')
+        with transaction.atomic():
+            complaint.seller_response = reason
+            
+            if action_type == 'accept':
+                # Seller đồng ý -> Hoàn tiền
+                complaint.status = 'resolved_refund'
+                complaint.order_item.status = 'REFUND_APPROVED'
+                self._process_refund_wallet(complaint)
+                
+            elif action_type == 'reject':
+                # Seller từ chối -> Chuyển sang trạng thái thương lượng
+                complaint.status = 'negotiating'
+                complaint.order_item.status = 'SELLER_REJECTED'
+            
+            else:
+                 return Response({'error': 'Action không hợp lệ'}, status=400)
 
-        valid_types = {'refund_full', 'refund_partial', 'replace', 'voucher', 'reject'}
-        if resolution_type not in valid_types:
-            return Response({'error': 'Invalid resolution_type'}, status=status.HTTP_400_BAD_REQUEST)
+            complaint.save()
+            complaint.order_item.save()
+            self._check_and_unlock_order(complaint.order_item.order)
 
-        # Default status based on resolution
-        complaint.status = 'resolved' if resolution_type != 'reject' else 'rejected'
-        complaint.resolution_type = resolution_type
+        return Response({'message': 'Đã phản hồi', 'status': complaint.status})
 
-        wallet_balance = None
+    # ==========================================
+    # 3. BUYER: KHIẾU NẠI LÊN SÀN (ESCALATE)
+    # ==========================================
+    @action(detail=True, methods=['post'], url_path='escalate')
+    def escalate(self, request, pk=None):
+        complaint = self.get_object()
+        
+        if complaint.user != request.user:
+            return Response({'error': 'Không có quyền'}, status=403)
+            
+        if complaint.status != 'negotiating':
+            return Response({'error': 'Chỉ được khiếu nại khi Seller đã từ chối'}, status=400)
 
-        from wallet.models import Wallet
+        complaint.status = 'admin_review'
+        complaint.order_item.status = 'DISPUTE_TO_ADMIN'
+        complaint.save()
+        complaint.order_item.save()
+            
+        return Response({'message': 'Đã gửi yêu cầu lên Admin'})
 
-        if resolution_type == 'refund_partial':
-            if amount_raw is None:
-                return Response({'error': 'amount is required for refund_partial'}, status=status.HTTP_400_BAD_REQUEST)
-            try:
-                amount = Decimal(str(amount_raw))
-            except Exception:
-                return Response({'error': 'Invalid amount'}, status=status.HTTP_400_BAD_REQUEST)
-            if amount <= 0:
-                return Response({'error': 'Amount must be > 0'}, status=status.HTTP_400_BAD_REQUEST)
+    # ==========================================
+    # 4. ADMIN: PHÁN QUYẾT
+    # ==========================================
+    @action(detail=True, methods=['post'], url_path='admin-resolve')
+    def admin_resolve(self, request, pk=None):
+        if not getattr(request.user, 'is_admin', False): # Hoặc check is_staff
+            return Response({'error': 'Chỉ Admin mới có quyền'}, status=403)
 
-            # Credit wallet
+        complaint = self.get_object()
+        decision = request.data.get('decision') # 'refund_buyer' hoặc 'release_seller'
+        note = request.data.get('note', '')
+
+        with transaction.atomic():
+            complaint.admin_notes = note
+            
+            if decision == 'refund_buyer':
+                complaint.status = 'resolved_refund'
+                complaint.order_item.status = 'REFUND_APPROVED'
+                self._process_refund_wallet(complaint)
+                
+            elif decision == 'release_seller':
+                complaint.status = 'resolved_reject'
+                complaint.order_item.status = 'REFUND_REJECTED'
+                # Tiền sẽ về seller khi hoàn tất đơn
+            else:
+                return Response({'error': 'Decision không hợp lệ'}, status=400)
+
+            complaint.save()
+            complaint.order_item.save()
+            self._check_and_unlock_order(complaint.order_item.order)
+
+        return Response({'message': 'Admin đã xử lý', 'result': decision})
+
+    # --- HELPERS ---
+    def _process_refund_wallet(self, complaint):
+        # Tính tiền dựa trên giá lúc mua * số lượng
+        amount = complaint.order_item.price * complaint.order_item.quantity
+        amount = amount.quantize(Decimal('1'))
+        
+        if amount > 0:
             wallet, _ = Wallet.objects.get_or_create(user=complaint.user)
             wallet.balance = (wallet.balance or Decimal('0')) + amount
             wallet.save()
-            wallet_balance = wallet.balance
 
-        elif resolution_type == 'refund_full':
-            # Credit full amount = unit_price * quantity (fallback to product.price)
-            unit_price = complaint.unit_price or complaint.product.price
-            try:
-                amount = (unit_price or Decimal('0')) * Decimal(complaint.quantity or 1)
-                # Wallet uses 0 decimal places (VND). Quantize to integer VND.
-                amount = amount.quantize(Decimal('1'))
-            except Exception:
-                amount = Decimal('0')
-            if amount > 0:
-                wallet, _ = Wallet.objects.get_or_create(user=complaint.user)
-                wallet.balance = (wallet.balance or Decimal('0')) + amount
-                wallet.save()
-                wallet_balance = wallet.balance
-
-        complaint.save()
-        data = self.get_serializer(complaint).data
-        if wallet_balance is not None:
-            data['wallet_balance'] = str(wallet_balance)
-        return Response(data, status=status.HTTP_200_OK)
-    
-    @action(detail=False, methods=['get'])
-    def recent(self, request):
-        """
-        Trả về 10 khiếu nại mới nhất
-        """
-        recent = Complaint.objects.order_by('-created_at')[:10]
-        serializer = self.get_serializer(recent, many=True)
-        return Response(serializer.data)
-
-
-    @action(detail=False, methods=['get'])
-    def orders_with_complaints(self, request):
-        """
-        Trả về danh sách các đơn hàng có ít nhất 1 sản phẩm bị khiếu nại
-        """
-        orders = Order.objects.filter(
-            items__product__complaint__isnull=False
-        ).distinct()
-        serializer = OrderWithComplaintSerializer(orders, many=True)
-        return Response(serializer.data)
-    
-# class RecentComplaintsView(APIView):
-#     def get(self, request):
-#         recent = Complaint.objects.order_by('-created_at')[:10]
-#         serializer = ComplaintSerializer(recent, many=True)
-#         return Response(serializer.data)
-    
+    def _check_and_unlock_order(self, order):
+        # Nếu không còn complaint nào dang dở -> Mở khóa đơn
+        active = Complaint.objects.filter(
+            order_item__order=order
+        ).exclude(status__in=['resolved_refund', 'resolved_reject', 'cancelled']).exists()
+        
+        if not active:
+            order.is_disputed = False
+            order.save(update_fields=['is_disputed'])

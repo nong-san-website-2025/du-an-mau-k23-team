@@ -391,16 +391,13 @@ function CartPage() {
                 <Button
                   block
                   size="large"
-                  style={{
-                    backgroundColor: "#16a34a",
-                    color: "#fff",
-                    border: "none",
-                  }}
+
                   disabled={selectedItemsData.length === 0}
                   onClick={() => navigate("/checkout")}
                   aria-disabled={selectedItemsData.length === 0}
+                  className="btn-checkout"
                 >
-                  Thanh toán ngay
+                  THANH TOÁN NGAY
                 </Button>
 
                 <Button
@@ -412,6 +409,7 @@ function CartPage() {
                     color: "#fff",
                     border: "none",
                   }}
+                  className="btn-delete-all"
                 >
                   Xóa tất cả
                 </Button>

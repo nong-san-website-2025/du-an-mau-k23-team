@@ -1,56 +1,37 @@
-from rest_framework import viewsets, permissions, status
-from rest_framework.decorators import action
+from rest_framework import viewsets, permissions, status, generics
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
-from django.db.models import Q, Sum, Count, F
-from django.db.models.functions.datetime import TruncDate
-from django.utils import timezone
-from datetime import timedelta
-from django.db import transaction
-import logging
-from django.conf import settings
-from .models import Order, Complaint
-from .serializers import OrderSerializer, OrderCreateSerializer
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
-from .services import complete_order, OrderProcessingError
-from orders.models import OrderItem
-from django.utils.timezone import now, timedelta
-from rest_framework.decorators import api_view, permission_classes
-from promotions.models import Voucher, UserVoucher
-from users.models import PointHistory
-from orders.models import Preorder
-from orders.serializers import PreOrderSerializer
-from rest_framework import generics
-
-from django.db.models import Sum, Count, Q
+from django.db.models import Q, Sum, Count, F, OuterRef, Subquery, Case, When
+from django.db.models.functions import TruncDate, Coalesce
+from django.db import transaction, models
 from django.utils import timezone
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAdminUser
-from rest_framework.response import Response
+from django.conf import settings
 from django.contrib.auth import get_user_model
-from .models import Order, OrderItem, Complaint
-from products.models import Product
-from django.db.models import Sum, OuterRef, Subquery
-from products.models import ProductImage
 from django.http import StreamingHttpResponse
+import logging
 import json
 import time
 from datetime import datetime, timedelta
-from django.utils import timezone
 
-from django.db.models import Sum, Count, F, Q
-from django.db.models.functions import TruncDate, Coalesce
-from django.db import models
+# Import Models
+from .models import Order, OrderItem, Preorder
+from complaints.models import Complaint
+from products.models import Product, ProductImage
+from promotions.models import Voucher, UserVoucher
+from users.models import PointHistory
 
-
-
-
+# Import Serializers & Services
+from .serializers import OrderSerializer, OrderCreateSerializer, PreOrderSerializer
+from .services import complete_order, OrderProcessingError
 
 User = get_user_model()
-
-
 logger = logging.getLogger(__name__)
 
 
+# =========================================================
+# USER STATS VIEWS
+# =========================================================
 
 @api_view(['GET'])
 @permission_classes([IsAdminUser])
@@ -61,9 +42,10 @@ def user_behavior_stats(request, user_id):
         return Response({"error": "User not found"}, status=404)
 
     # === 1. Đơn hàng "thành công" (tính chi tiêu & tần suất) ===
+    # Cập nhật status theo model mới: completed, delivered, shipping...
     successful_orders = Order.objects.filter(
         user=user,
-        status__in=['success', 'delivered', 'shipping', 'out_for_delivery', 'ready_to_pick', 'picking']
+        status__in=['completed', 'delivered', 'shipping', 'out_for_delivery', 'ready_to_pick', 'picking']
     )
     total_orders = successful_orders.count()
     total_spent = successful_orders.aggregate(
@@ -71,52 +53,51 @@ def user_behavior_stats(request, user_id):
     )['total'] or 0
 
     # === 2. Tần suất mua trong 90 ngày ===
-    ninety_days_ago = timezone.now() - timezone.timedelta(days=90)
+    ninety_days_ago = timezone.now() - timedelta(days=90)
     purchase_frequency_90d = successful_orders.filter(
         created_at__gte=ninety_days_ago
     ).count()
 
-    # === 3. Tỷ lệ hoàn hàng: đếm đơn có status = 'returned' ===
+    # === 3. Tỷ lệ hoàn hàng: status = 'returned' ===
     total_returned = Order.objects.filter(user=user, status='returned').count()
     return_rate = round((total_returned / total_orders) * 100, 1) if total_orders > 0 else 0
 
     # === 4. Tỷ lệ khiếu nại ===
-    total_complaints = Complaint.objects.filter(order__user=user).count()
+    total_complaints = Complaint.objects.filter(user=user).count()
     complaint_rate = round((total_complaints / total_orders) * 100, 1) if total_orders > 0 else 0
 
-    # === 5. Sản phẩm yêu thích (mua nhiều nhất từ đơn thành công) ===
+    # === 5. Sản phẩm yêu thích (mua nhiều nhất từ đơn completed/delivered) ===
     purchased_products_qs = (
         OrderItem.objects.filter(
             order__user=user,
-            order__status__in=['success'],
+            order__status__in=['completed', 'delivered'], # Chỉ lấy đơn đã giao hoặc hoàn tất
         )
         .select_related('product')
-        .values('product_id', 'product__name', 'product__image')
+        .values('product_id', 'product__name', 'product__image') # Model mới dùng product_image snapshot trong OrderItem nếu cần
         .annotate(purchase_count=Sum('quantity'))
         .order_by('-purchase_count')[:5]
     )
 
     purchased_products = []
     for item in purchased_products_qs:
+        # Ưu tiên lấy ảnh từ Product hiện tại, nếu không lấy từ snapshot OrderItem (nếu bạn có lưu snapshot)
         image_url = None
-        if item['product__image']:
-            image_url = request.build_absolute_uri(settings.MEDIA_URL + item['product__image'])
-        else:
-            image_url = None
-
+        if item.get('product__image'):
+             image_url = request.build_absolute_uri(settings.MEDIA_URL + item['product__image'])
+        
         purchased_products.append({
             "id": item['product_id'],
             "name": item['product__name'],
             "image": image_url,
             "purchase_count": item['purchase_count'],
-            "view_count": 0  # bạn có thể bỏ nếu chưa có log view
+            "view_count": 0 
         })
 
-    # === 6. Danh mục quan tâm (danh mục có nhiều đơn nhất) ===
+    # === 6. Danh mục quan tâm ===
     categories_qs = (
         OrderItem.objects.filter(
             order__user=user,
-            order__status__in=['success', 'delivered', 'shipping', 'out_for_delivery', 'ready_to_pick', 'picking']
+            order__status__in=['completed', 'delivered', 'shipping']
         )
         .select_related('product__subcategory__category')
         .values('product__subcategory__category_id', 'product__subcategory__category__name')
@@ -135,7 +116,7 @@ def user_behavior_stats(request, user_id):
 
     return Response({
         "total_orders": total_orders,
-        "total_spent": int(total_spent),  # React mong đợi số nguyên
+        "total_spent": int(total_spent),
         "purchase_frequency_90d": purchase_frequency_90d,
         "return_rate": return_rate,
         "complaint_rate": complaint_rate,
@@ -157,17 +138,21 @@ def user_orders(request, user_id):
     return Response(serializer.data)
 
 
+# =========================================================
+# ORDER VIEWSET
+# =========================================================
+
 class OrderViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action in [
             'list', 'retrieve', 'create', 
             'seller_pending', 'seller_processing', 
-            'seller_success', 'seller_approve', 'seller_complete',
+            'seller_completed_orders', 'seller_approve', 'seller_complete',
             'seller_cancelled', 'cancel'
         ]:
             return [IsAuthenticated()]
-        elif self.action in ['admin_list', 'admin_detail']:
-            return [IsAuthenticated()]  # sẽ check is_admin trong method
+        elif self.action in ['admin_list', 'admin_detail', 'admin_soft_delete', 'admin_restore']:
+            return [IsAuthenticated()] # Logic check admin nằm trong method
         return [AllowAny()]
 
     def get_serializer_class(self):
@@ -177,14 +162,12 @@ class OrderViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
+        # Mặc định lấy các đơn chưa bị xóa mềm
         queryset = Order.objects.all()
 
-        # Admin xem tất cả
-       # Admin xem tất cả
         if self.action == 'admin_list' and getattr(user, 'is_admin', False):
-            pass
+            pass # Admin thấy hết
         elif self.action == 'get_detail':
-            # Không filter theo user — quyền sẽ được kiểm tra trong get_object()
             pass
         elif user.is_authenticated:
             queryset = queryset.filter(user=user)
@@ -194,7 +177,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         if status_param:
             queryset = queryset.filter(status=status_param)
 
-        # Auto-approve sau 10 phút
+        # Auto-approve sau 10 phút (Logic cũ giữ nguyên)
         ten_minutes_ago = timezone.now() - timedelta(minutes=10)
         stale_pending = Order.objects.filter(status='pending', created_at__lte=ten_minutes_ago)
         if stale_pending.exists():
@@ -212,11 +195,10 @@ class OrderViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'], url_path='top-products')
     def top_products(self, request):
-        """Top sản phẩm bán chạy (kèm số lượng đã đặt tổng cộng)"""
-        from products.models import Product
-
+        """Top sản phẩm bán chạy (dựa trên đơn hàng completed)"""
         top_products = (
              OrderItem.objects
+                .filter(order__status='completed') # Đã sửa thành completed
                 .values(
                     'product_id',
                     'product__name',
@@ -225,7 +207,6 @@ class OrderViewSet(viewsets.ModelViewSet):
                 .annotate(
                     quantity_sold=Sum('quantity'),
                     revenue=Sum('price'),
-                    # ✅ Lấy ảnh đầu tiên của sản phẩm qua Subquery
                     first_image=Subquery(
                         ProductImage.objects.filter(product=OuterRef('product_id'))
                         .values('image')[:1]
@@ -235,7 +216,6 @@ class OrderViewSet(viewsets.ModelViewSet):
         )
         return Response(top_products)
 
-    
     @action(detail=False, methods=['get'], url_path='recent')
     def recent_orders(self, request):
         """10 đơn gần nhất"""
@@ -248,59 +228,64 @@ class OrderViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["get"], url_path="detail")
     def get_detail(self, request, pk=None):
-        """Lấy chi tiết đơn hàng gồm thông tin khách hàng + danh sách sản phẩm"""
         order = self.get_object()
         serializer = OrderSerializer(order, context={"request": request})
         return Response(serializer.data)
+
     # ========================
     # Seller APIs
     # ========================
     @action(detail=False, methods=['get'], url_path='seller/pending')
     def seller_pending(self, request):
-        """Đơn chờ xác nhận cho seller"""
         seller = getattr(request.user, 'seller', None)
         if not seller:
             return Response({'error': 'Chỉ seller mới có quyền truy cập'}, status=403)
 
-        from products.models import Product
         seller_product_ids = Product.objects.filter(seller=seller).values_list('id', flat=True)
         qs = Order.objects.filter(items__product_id__in=seller_product_ids, status='pending').distinct()
         return Response(self.get_serializer(qs, many=True).data)
 
     @action(detail=False, methods=['get'], url_path='seller/processing')
     def seller_processing(self, request):
-        """Đơn đang shipping"""
+        """Đang vận chuyển"""
         seller = getattr(request.user, 'seller', None)
         if not seller:
             return Response({'error': 'Chỉ seller mới có quyền truy cập'}, status=403)
 
-        from products.models import Product
         seller_product_ids = Product.objects.filter(seller=seller).values_list('id', flat=True)
         qs = Order.objects.filter(items__product_id__in=seller_product_ids, status='shipping').distinct()
         return Response(self.get_serializer(qs, many=True).data)
 
     @action(detail=False, methods=['get'], url_path='seller/cancelled')
     def seller_cancelled(self, request):
-        """Đơn đã bị hủy"""
         seller = getattr(request.user, 'seller', None)
         if not seller:
             return Response({'error': 'Chỉ seller mới có quyền truy cập'}, status=403)
 
-        from products.models import Product
         seller_product_ids = Product.objects.filter(seller=seller).values_list('id', flat=True)
         qs = Order.objects.filter(items__product_id__in=seller_product_ids, status='cancelled').distinct()
         return Response(self.get_serializer(qs, many=True).data)
 
     @action(detail=False, methods=['get'], url_path='seller/complete')
     def seller_completed_orders(self, request):
-        """Đơn đã hoàn tất"""
+        """Đơn đã hoàn tất (Completed) và Đã giao (Delivered)"""
         seller = getattr(request.user, 'seller', None)
         if not seller:
             return Response({'error': 'Chỉ seller mới có quyền truy cập'}, status=403)
 
-        from products.models import Product
         seller_product_ids = Product.objects.filter(seller=seller).values_list('id', flat=True)
-        orders = Order.objects.filter(items__product_id__in=seller_product_ids, status='success').distinct()
+        
+        # === SỬA DÒNG NÀY ===
+        # Cũ: chỉ lấy 'completed'
+        # orders = Order.objects.filter(items__product_id__in=seller_product_ids, status='completed').distinct()
+        
+        # Mới: Lấy cả 'delivered' và 'completed'
+        orders = Order.objects.filter(
+            items__product_id__in=seller_product_ids, 
+            status__in=['delivered', 'completed']
+        ).distinct()
+        # ====================
+        
         return Response(self.get_serializer(orders, many=True).data)
 
     @action(detail=True, methods=['post'], url_path='seller/approve')
@@ -324,7 +309,7 @@ class OrderViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'], url_path='seller/complete')
     def seller_complete(self, request, pk=None):
-        """Seller xác nhận hoàn tất giao hàng"""
+        """Seller xác nhận hoàn tất đơn (Delivered -> Completed)"""
         seller = getattr(request.user, 'seller', None)
         if not seller:
             return Response({'error': 'Chỉ seller mới có quyền cập nhật'}, status=403)
@@ -333,8 +318,17 @@ class OrderViewSet(viewsets.ModelViewSet):
             order = Order.objects.get(pk=pk)
         except Order.DoesNotExist:
             return Response({'error': 'Không tìm thấy đơn hàng'}, status=404)
+        
+        # [MỚI] Kiểm tra tranh chấp
+        if order.is_disputed:
+            return Response({'error': 'Đơn hàng đang có tranh chấp/khiếu nại, không thể hoàn tất.'}, status=400)
+
+        # Thường thì phải Delivered mới được Completed
+        if order.status not in ['delivered', 'shipping']: 
+             return Response({'error': 'Đơn hàng chưa giao thành công, không thể hoàn tất'}, status=400)
 
         try:
+            # Service complete_order cần được cập nhật để set status='completed'
             updated_order = complete_order(order, seller)
         except OrderProcessingError as e:
             return Response({'error': str(e)}, status=400)
@@ -346,10 +340,6 @@ class OrderViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'], url_path='cancel')
     def cancel(self, request, pk=None):
-        """Hủy đơn nếu đang ở trạng thái pending hoặc shipping.
-        - Seller: phải sở hữu ít nhất một sản phẩm trong đơn.
-        - Buyer: phải là chủ sở hữu đơn hàng.
-        """
         try:
             order = Order.objects.get(pk=pk)
         except Order.DoesNotExist:
@@ -359,20 +349,17 @@ class OrderViewSet(viewsets.ModelViewSet):
             return Response({'error': 'Chỉ hủy được đơn đang chờ xác nhận hoặc đang giao'}, status=400)
 
         user = request.user
-
-        # Buyer: chủ sở hữu đơn được hủy trực tiếp
+        
+        # Buyer hủy
         if order.user_id == user.id:
             order.status = 'cancelled'
             order.save(update_fields=['status'])
             return Response({'message': 'Đơn hàng đã được hủy', 'status': order.status})
 
-        # Seller: cần sở hữu ít nhất một sản phẩm trong đơn
+        # Seller hủy
         seller = getattr(user, 'seller', None)
         if seller:
-            from products.models import Product
-            seller_product_ids = set(
-                Product.objects.filter(seller=seller).values_list('id', flat=True)
-            )
+            seller_product_ids = set(Product.objects.filter(seller=seller).values_list('id', flat=True))
             order_product_ids = set(order.items.values_list('product_id', flat=True))
             if seller_product_ids.intersection(order_product_ids):
                 order.status = 'cancelled'
@@ -383,7 +370,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         return Response({'error': 'Bạn không có quyền hủy đơn hàng này'}, status=403)
 
     # ========================
-    # Admin APIs
+    # Admin APIs (quản lý soft delete)
     # ========================
     @action(detail=False, methods=['get'], url_path='admin-list')
     def admin_list(self, request):
@@ -396,7 +383,8 @@ class OrderViewSet(viewsets.ModelViewSet):
         if not getattr(request.user, 'is_admin', False):
             return Response({'error': 'Chỉ admin mới có quyền'}, status=403)
         try:
-            order = Order.objects.get(pk=pk)
+            # Dùng all_objects để tìm cả đơn đã xóa
+            order = Order.all_objects.get(pk=pk)
         except Order.DoesNotExist:
             return Response({'error': 'Không tìm thấy đơn hàng'}, status=404)
         return Response(self.get_serializer(order).data)
@@ -428,7 +416,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             return Response({'error': 'Không tìm thấy đơn hàng'}, status=404)
 
     # ========================
-    # Create order + voucher + points
+    # Create Order (Voucher + Points)
     # ========================
     def perform_create(self, serializer):
         order = serializer.save(user=self.request.user)
@@ -466,7 +454,7 @@ class OrderViewSet(viewsets.ModelViewSet):
                     elif voucher.freeship_amount:
                         discount = float(voucher.freeship_amount)
 
-                    discount = min(discount, order.total_price)
+                    discount = min(discount, float(order.total_price))
                     order.total_price -= discount
                     order.voucher = voucher
                     order.save(update_fields=["total_price", "voucher"])
@@ -475,18 +463,16 @@ class OrderViewSet(viewsets.ModelViewSet):
             except Exception as e:
                 logger.error(f"Lỗi xử lý voucher: {e}")
 
-        # tích điểm
-        points_earned = (order.total_price // 1000) * 10
-        # Tích điểm dựa trên tất cả orders đã tạo
+        # Tích điểm
         created_orders = getattr(serializer, '_created_orders', [order])
         total_amount = sum(o.total_price for o in created_orders)
-        points_earned = (total_amount // 1000) * 10
+        points_earned = (int(total_amount) // 1000) * 10
+        
         if points_earned > 0:
             user = self.request.user
             user.points += points_earned
             user.save()
-            # Lưu lịch sử tích điểm với order đầu tiên
-            from users.models import PointHistory
+            
             PointHistory.objects.create(
                 user=user,
                 order_id=str(order.id),
@@ -496,17 +482,22 @@ class OrderViewSet(viewsets.ModelViewSet):
             )
 
 
+# =========================================================
+# OTHER PRODUCT API
+# =========================================================
+
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
-def top_products(request):
-    filter_type = request.query_params.get("filter", "month")  # mặc định = tháng
-    today = now().date()
+def top_products_filter(request):
+    """API riêng lẻ để filter top product"""
+    filter_type = request.query_params.get("filter", "month") 
+    today = timezone.now().date()
 
     if filter_type == "today":
         start_date = today
     elif filter_type == "week":
-        start_date = today - timedelta(days=today.weekday())  # đầu tuần (thứ 2)
-    else:  # month
+        start_date = today - timedelta(days=today.weekday())
+    else: # month
         start_date = today.replace(day=1)
 
     items = (
@@ -515,8 +506,8 @@ def top_products(request):
         .values(
             product_id=F("product__id"),
             product_name=F("product__name"),
-            shop_name=F("product__shop__name"),
-            thumbnail=F("product__thumbnail"),
+            shop_name=F("product__seller__store_name"), # Giả sử product có relation seller
+            # thumbnail=F("product__thumbnail"), # Nếu model Product có thumbnail
         )
         .annotate(
             quantity_sold=Sum("quantity"),
@@ -524,15 +515,14 @@ def top_products(request):
             )
         .order_by("-quantity_sold")[:10]
     )
-
     return Response(list(items))
 
 
+# =========================================================
+# PREORDER VIEWS (Giữ nguyên logic cũ)
+# =========================================================
 
 class PreorderDeleteView(generics.DestroyAPIView):
-    """
-    Xóa sản phẩm đặt trước (chỉ người đặt mới được xóa)
-    """
     queryset = Preorder.objects.all()
     serializer_class = PreOrderSerializer
     permission_classes = [IsAuthenticated]
@@ -583,25 +573,23 @@ class PreorderListCreateView(generics.ListCreateAPIView):
         output_serializer = PreOrderSerializer(preorder, context=self.get_serializer_context())
 
         return Response(output_serializer.data, status=status.HTTP_201_CREATED)
+    
     def get_serializer_context(self):
         context = super().get_serializer_context()
-        context['request'] = self.request  # ✅ để build_absolute_uri hoạt động
+        context['request'] = self.request
         return context
 
 
-# 📊 Thống kê doanh thu cho admin
+# =========================================================
+# STATS & REPORT FOR ADMIN
+# =========================================================
+
 @api_view(['GET'])
 @permission_classes([IsAdminUser])
 def revenue_report(request):
     """
-    Lấy dữ liệu thống kê doanh thu
-    Params: start_date, end_date (YYYY-MM-DD)
-    Bao gồm: doanh thu từ đơn hàng thành công và doanh thu sàn (commission)
+    Báo cáo doanh thu (Thay success = completed)
     """
-    from datetime import datetime
-    from products.models import Category
-
-    # Get date range từ query params
     start_date = request.query_params.get('start_date')
     end_date = request.query_params.get('end_date')
 
@@ -614,33 +602,30 @@ def revenue_report(request):
     except ValueError:
         return Response({"error": "Invalid date format (use YYYY-MM-DD)"}, status=400)
 
-    # Query orders
+    # Query orders (lọc theo range và chưa xóa)
     orders = Order.objects.filter(
         created_at__date__gte=start.date(),
-        created_at__date__lte=end.date()
+        created_at__date__lte=end.date(),
+        is_deleted=False
     )
 
-    # Tính toán stats
-    success_orders = orders.filter(status='success')
-    pending_orders = orders.filter(status__in=['pending', 'processing', 'shipping'])
+    # Thay đổi: Chỉ tính doanh thu đơn 'completed' (Đã đối soát)
+    success_orders = orders.filter(status='completed')
+    pending_orders = orders.filter(status__in=['pending', 'shipping'])
     cancelled_orders = orders.filter(status='cancelled')
 
     total_revenue = success_orders.aggregate(total=Sum('total_price'))['total'] or 0
 
-    # Tính doanh thu sàn (commission)
-    # Duyệt qua từng order item và tính commission dựa trên category
+    # Tính doanh thu sàn (Commission) dựa trên success_orders
     platform_revenue = 0.0
-    
     success_order_items = OrderItem.objects.filter(
-        order__status='success',
-        order__created_at__date__gte=start.date(),
-        order__created_at__date__lte=end.date()
+        order__in=success_orders
     ).select_related('product', 'product__category')
     
     for item in success_order_items:
         if item.product and item.product.category:
             category = item.product.category
-            commission_rate = category.commission_rate  # Lấy commission_rate từ category
+            commission_rate = getattr(category, 'commission_rate', 0.0)
             item_amount = float(item.price) * item.quantity
             commission = item_amount * commission_rate
             platform_revenue += commission
@@ -652,19 +637,18 @@ def revenue_report(request):
         revenue=Sum('total_price')
     ).order_by('date')
     
-    # Tính daily platform revenue (commission)
+    # Tính daily platform revenue
     daily_platform_revenue = []
     for day in daily_revenue:
         day_items = OrderItem.objects.filter(
-            order__status='success',
+            order__status='completed', # completed
             order__created_at__date=day['date']
         ).select_related('product', 'product__category')
         
         day_commission = 0.0
         for item in day_items:
             if item.product and item.product.category:
-                category = item.product.category
-                commission_rate = category.commission_rate
+                commission_rate = getattr(item.product.category, 'commission_rate', 0.0)
                 item_amount = float(item.price) * item.quantity
                 commission = item_amount * commission_rate
                 day_commission += commission
@@ -677,7 +661,7 @@ def revenue_report(request):
 
     return Response({
         'total_revenue': float(total_revenue),
-        'platform_revenue': platform_revenue,  # Doanh thu sàn (commission)
+        'platform_revenue': platform_revenue,
         'success_orders_count': success_orders.count(),
         'pending_orders_count': pending_orders.count(),
         'cancelled_orders_count': cancelled_orders.count(),
@@ -689,19 +673,18 @@ def revenue_report(request):
 @permission_classes([IsAdminUser])
 def order_statistics_report(request):
     """
-    Lấy dữ liệu thống kê đơn hàng cho báo cáo admin
+    Thống kê tổng quan cho Admin
     """
-    # Tổng đơn hàng
     total_orders = Order.objects.count()
 
-    # Tổng doanh thu (chỉ tính đơn thành công)
+    # Tổng doanh thu (chỉ tính completed/delivered cho chắc chắn)
     total_revenue = Order.objects.filter(
-        status__in=['success', 'delivered']
+        status__in=['completed', 'delivered']
     ).aggregate(total=Sum('total_price'))['total'] or 0
 
-    # Tỷ lệ giao đúng hẹn (giả sử đơn success/delivered là đúng hẹn)
+    # Tỷ lệ giao đúng hẹn (Dựa vào status completed/delivered)
     successful_deliveries = Order.objects.filter(
-        status__in=['success', 'delivered']
+        status__in=['completed', 'delivered']
     ).count()
     on_time_rate = round((successful_deliveries / total_orders * 100), 1) if total_orders > 0 else 0
 
@@ -709,25 +692,18 @@ def order_statistics_report(request):
     cancelled_orders = Order.objects.filter(status='cancelled').count()
     cancel_rate = round((cancelled_orders / total_orders * 100), 1) if total_orders > 0 else 0
 
-    # Dữ liệu trạng thái đơn hàng cho biểu đồ tròn
+    # Biểu đồ trạng thái (Cập nhật Status Map mới)
     order_status_data = Order.objects.values('status').annotate(
         count=Count('id')
     ).order_by('status')
 
-    # Map status to Vietnamese labels
     status_labels = {
-        'pending': 'Chờ xử lý',
-        'shipping': 'Đang giao',
-        'success': 'Hoàn tất',
-        'delivered': 'Đã giao',
+        'pending': 'Chờ xác nhận',
+        'shipping': 'Đang vận chuyển',
+        'delivered': 'Đã giao hàng',
+        'completed': 'Hoàn thành', # Mới
         'cancelled': 'Đã hủy',
-        'ready_to_pick': 'Sẵn sàng lấy',
-        'picking': 'Đang lấy',
-        'out_for_delivery': 'Đang giao',
-        'delivery_failed': 'Giao thất bại',
-        'lost': 'Mất hàng',
-        'damaged': 'Hỏng hóc',
-        'returned': 'Trả lại'
+        'returned': 'Trả hàng/Hoàn tiền', # Mới
     }
 
     order_status_chart_data = [
@@ -738,8 +714,7 @@ def order_statistics_report(request):
         for item in order_status_data
     ]
 
-    # Dữ liệu hiệu suất giao hàng theo ngày trong tuần (mock data cho giờ)
-    # Trong thực tế, cần có trường thời gian giao hàng thực tế
+    # Mock Data cho Delivery Time & Shipping Cost (Giữ nguyên như cũ)
     delivery_time_data = [
         {'name': 'T7', 'avg': 2.1, 'late': 15},
         {'name': 'CN', 'avg': 2.5, 'late': 21},
@@ -750,8 +725,6 @@ def order_statistics_report(request):
         {'name': 'T6', 'avg': 2.4, 'late': 16},
     ]
 
-    # Dữ liệu chi phí vận chuyển theo đơn vị giao hàng (mock data)
-    # Trong thực tế, cần tích hợp với API GHN hoặc lưu trong database
     shipping_cost_data = [
         {'name': 'GHN', 'cost': 1200000},
         {'name': 'GHTK', 'cost': 1500000},
@@ -774,17 +747,14 @@ def order_statistics_report(request):
 
 def order_notifications_sse(request):
     """
-    SSE endpoint for real-time order notifications for admins
+    SSE endpoint for real-time order notifications
     """
-    # Authenticate user from token in query params
     token = request.GET.get('token')
     if not token:
         return Response({'error': 'Token required'}, status=401)
 
     try:
         from rest_framework_simplejwt.tokens import AccessToken
-        from django.contrib.auth import get_user_model
-        User = get_user_model()
         access_token = AccessToken(token)
         user = User.objects.get(id=access_token['user_id'])
         request.user = user
@@ -796,9 +766,12 @@ def order_notifications_sse(request):
 
     def event_stream():
         last_id = 0
+        # Nếu muốn lấy last_id hiện tại để không bắn lại tin cũ:
+        # last_order = Order.objects.last()
+        # if last_order: last_id = last_order.id
+        
         while True:
-            # Get new orders since last check
-            new_orders = Order.objects.filter(id__gt=last_id).order_by('id')[:10]  # Limit to prevent overload
+            new_orders = Order.objects.filter(id__gt=last_id).order_by('id')[:10]
             if new_orders.exists():
                 for order in new_orders:
                     data = {
@@ -811,7 +784,7 @@ def order_notifications_sse(request):
                     }
                     yield f"data: {json.dumps(data)}\n\n"
                     last_id = max(last_id, order.id)
-            time.sleep(1)  # Check every second
+            time.sleep(2) 
 
     response = StreamingHttpResponse(
         event_stream(),
@@ -826,10 +799,8 @@ def order_notifications_sse(request):
 @permission_classes([IsAdminUser])
 def dashboard_stats(request):
     """
-    API tổng hợp dữ liệu cho Dashboard Báo cáo Doanh thu
-    Params: start_date (YYYY-MM-DD), end_date (YYYY-MM-DD)
+    Dashboard Stats tổng hợp (Completed used for Revenue)
     """
-    # 1. Xử lý tham số ngày tháng
     today = timezone.now().date()
     start_str = request.query_params.get('start_date')
     end_str = request.query_params.get('end_date')
@@ -838,7 +809,6 @@ def dashboard_stats(request):
         try:
             start_date = datetime.strptime(start_str, '%Y-%m-%d').date()
             end_date = datetime.strptime(end_str, '%Y-%m-%d').date()
-            # Thêm thời gian để bao gồm cả ngày cuối cùng (23:59:59)
             end_datetime = datetime.combine(end_date, datetime.max.time())
             end_datetime = timezone.make_aware(end_datetime)
             start_datetime = datetime.combine(start_date, datetime.min.time())
@@ -846,49 +816,42 @@ def dashboard_stats(request):
         except ValueError:
              return Response({"error": "Invalid date format"}, status=400)
     else:
-        # Mặc định 7 ngày qua
         end_datetime = timezone.now()
         start_datetime = end_datetime - timedelta(days=7)
 
-    # 2. Queryset cơ bản (Lọc theo ngày và không bị xóa mềm)
+    # Base Queryset
     orders = Order.objects.filter(
         created_at__range=(start_datetime, end_datetime),
         is_deleted=False
     )
 
-    # 3. Tính toán KPI Stats
+    # KPI Stats
     total_orders = orders.count()
     
-    # Doanh thu chỉ tính các đơn thành công/đã giao
-    revenue_orders = orders.filter(status__in=['success', 'delivered', 'completed'])
+    # Revenue: Chỉ tính Completed
+    revenue_orders = orders.filter(status='completed')
     total_revenue = revenue_orders.aggregate(
         total=Coalesce(Sum('total_price'), 0.0, output_field=models.DecimalField())
     )['total']
 
-    # Tỷ lệ hủy và hoàn trả
+    # Tỷ lệ
     cancelled_count = orders.filter(status='cancelled').count()
     returned_count = orders.filter(status='returned').count()
 
     cancel_rate = round((cancelled_count / total_orders * 100), 2) if total_orders > 0 else 0
     return_rate = round((returned_count / total_orders * 100), 2) if total_orders > 0 else 0
     
-    # AOV (Average Order Value)
     avg_order_value = round(total_revenue / revenue_orders.count()) if revenue_orders.exists() else 0
 
-    # 4. Biểu đồ Trend (Area Chart) - Group by Date
+    # Trend Chart
     trend_data = (
         orders
         .annotate(date=TruncDate('created_at'))
         .values('date')
-        .annotate(
-            orders=Count('id'),
-            # Chỉ cộng doanh thu nếu đơn đó thành công (sử dụng Case/When hoặc filter trước đó rồi merge - ở đây tính tổng orders created để xem traffic)
-            # Để đơn giản cho biểu đồ overview: Revenue lấy theo ngày của các đơn ĐÃ THÀNH CÔNG trong khoảng đó
-        )
+        .annotate(orders=Count('id'))
         .order_by('date')
     )
 
-    # Query riêng cho revenue theo ngày (chỉ tính đơn success)
     revenue_trend = (
         revenue_orders
         .annotate(date=TruncDate('created_at'))
@@ -897,10 +860,33 @@ def dashboard_stats(request):
         .order_by('date')
     )
     
-    # Merge 2 list trend
     chart_trend = []
-    # Tạo dict để lookup nhanh
-            # 8. Thống kê phương thức thanh toán
+    rev_dict = {item['date']: item['revenue'] for item in revenue_trend}
+    
+    for item in trend_data:
+        chart_trend.append({
+            "date": item['date'].strftime('%d/%m'),
+            "orders": item['orders'],
+            "revenue": rev_dict.get(item['date'], 0)
+        })
+
+    # Status Chart
+    status_map = {
+        'pending': 'Chờ xác nhận', 
+        'shipping': 'Đang vận chuyển', 
+        'delivered': 'Đã giao hàng',
+        'completed': 'Hoàn thành', 
+        'cancelled': 'Đã hủy', 
+        'returned': 'Trả hàng'
+    }
+    
+    status_data_qs = orders.values('status').annotate(value=Count('id'))
+    chart_status = []
+    for item in status_data_qs:
+        label = status_map.get(item['status'], item['status'])
+        chart_status.append({"name": label, "value": item['value']})
+
+    # Payment Methods
     payment_methods_qs = (
         orders
         .values('payment_method')
@@ -913,36 +899,12 @@ def dashboard_stats(request):
             "name": item['payment_method'] or "Khác",
             "value": item['count']
         })
-    rev_dict = {item['date']: item['revenue'] for item in revenue_trend}
-    
-    for item in trend_data:
-        chart_trend.append({
-            "date": item['date'].strftime('%d/%m'),
-            "orders": item['orders'],
-            "revenue": rev_dict.get(item['date'], 0)
-        })
 
-    # 5. Biểu đồ Status (Pie Chart)
-    status_map = {
-        'pending': 'Chờ xác nhận', 'shipping': 'Đang giao', 
-        "paymentMethods": payment_methods,
-        'success': 'Hoàn thành', 'cancelled': 'Đã hủy', 
-        'returned': 'Hoàn trả', 'delivered': 'Đã giao'
-    }
-    
-    status_data_qs = orders.values('status').annotate(value=Count('id'))
-    chart_status = []
-    for item in status_data_qs:
-        # Gom các trạng thái nhỏ lẻ vào 'Khác' hoặc hiển thị hết
-        label = status_map.get(item['status'], item['status'])
-        chart_status.append({"name": label, "value": item['value']})
-
-    # 6. Top Products (Lấy từ OrderItem của các orders trong range)
-    # Lưu ý: cần import models ở đầu file hoặc bên trong function
+    # Top Products
     top_products_qs = (
         OrderItem.objects
-        .filter(order__in=revenue_orders) # Chỉ tính sản phẩm trong đơn thành công
-        .values('product__id', 'product__name', 'product_image')
+        .filter(order__in=revenue_orders)
+        .values('product__id', 'product__name') # Bỏ product_image nếu không chắc chắn join, dùng snapshot nếu cần
         .annotate(
             sold=Sum('quantity'),
             revenue=Sum(F('quantity') * F('price'))
@@ -952,22 +914,27 @@ def dashboard_stats(request):
 
     top_products = []
     for p in top_products_qs:
+        # Lấy ảnh
+        img = None
+        prod_img = ProductImage.objects.filter(product_id=p['product__id']).first()
+        if prod_img:
+            img = request.build_absolute_uri(settings.MEDIA_URL + str(prod_img.image))
+            
         top_products.append({
             "id": p['product__id'],
             "name": p['product__name'],
             "sold": p['sold'],
             "revenue": p['revenue'],
-            "img": p['product_image'] if p['product_image'] else "https://via.placeholder.com/40"
+            "img": img or "https://via.placeholder.com/40"
         })
 
-    # 7. Recent Orders (Lấy 10 đơn gần đây nhất)
+    # Recent Orders
     recent_orders_qs = orders.select_related('user').order_by('-created_at')[:10]
-    
     recent_orders = []
     for order in recent_orders_qs:
         recent_orders.append({
             "id": order.id,
-            "customer": (order.user.full_name or order.user.username) if order.user else 'N/A',    
+            "customer": (order.user.full_name or order.user.username) if order.user else 'Khách lạ',    
             "total": float(order.total_price) if order.total_price else 0,
             "status": order.status,
             "date": order.created_at.strftime('%Y-%m-%d')
@@ -983,7 +950,8 @@ def dashboard_stats(request):
         },
         "chartData": {
             "trend": chart_trend,
-            "status": chart_status
+            "status": chart_status,
+            "paymentMethods": payment_methods,
         },
         "topProducts": top_products,
         "recentOrders": recent_orders

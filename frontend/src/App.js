@@ -8,29 +8,16 @@ import { sellerRoutes } from "./routes/SellerRoutes.jsx";
 import VerifyEmailPage from "./features/login_register/components/VerifyEmailPage.jsx";
 import VnpayReturn from "./pages/VnpayReturn";
 import ScrollToTop from "./utils/ScrollToTop.js";
-import { useEffect } from "react";
-// 👇 Import component cầu nối vừa tạo (hoặc copy code vào file này)
-import SSEConnectionHandler from "./components/SSEConnectionHandler"; 
+
+
 
 function App() {
-  useEffect(() => {
-    const navigationEntries = performance.getEntriesByType("navigation");
-    const isReload =
-      navigationEntries.length > 0 && navigationEntries[0].type === "reload";
-
-    if (isReload) {
-      localStorage.removeItem("searchValue");
-    }
-  }, []);
-
-
   return (
     <div className="main-container">
       <BrowserRouter>
         <AuthProvider>
-          {/* 👇 ĐẶT Ở ĐÂY: Nằm trong AuthProvider để dùng được useAuth */}
-          <SSEConnectionHandler />
-          
+
+
           <CartProvider>
             <ScrollToTop />
             <Routes>

@@ -1,5 +1,5 @@
 // OrderTab.jsx
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { Collapse, Tag, Typography, Skeleton, Empty, Space, Button, Popconfirm, message, Row, Col, Divider, Tooltip } from "antd";
 import { CloseCircleOutlined, MessageOutlined, ReloadOutlined } from "@ant-design/icons";
 import API from "../../login_register/services/api";
@@ -12,7 +12,6 @@ import OrderTimeline from "../components/OrderTimeline";
 import OrderInfo from "../components/OrderInfo";
 import ProductList from "../components/ProductList";
 import RatingModal from "../components/RatingModal";
-import SuccessModal from "../components/SuccessModal";
 
 const { Panel } = Collapse;
 const { Text } = Typography;
@@ -24,14 +23,13 @@ const OrderTab = ({ status }) => {
   const [cancelingOrderIds, setCancelingOrderIds] = useState(new Set());
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
 
-  // Complaint UI state
-  const [openComplaint, setOpenComplaint] = useState({});
-  const [complaintTexts, setComplaintTexts] = useState({});
-  const [complaintFiles, setComplaintFiles] = useState({});
-  const [sendingByProduct, setSendingByProduct] = useState({});
-  const [successModalVisible, setSuccessModalVisible] = useState(false);
+  // --- 1. STATE CHO KHIẾU NẠI (COMPLAINT) ---
+  const [activeComplaintItem, setActiveComplaintItem] = useState(null); // ID của OrderItem đang mở form
+  const [complaintText, setComplaintText] = useState("");
+  const [complaintFiles, setComplaintFiles] = useState([]);
+  const [isSendingComplaint, setIsSendingComplaint] = useState(false);
 
-  // Rating UI state
+  // --- 2. STATE CHO ĐÁNH GIÁ (RATING) ---
   const [ratingModalVisible, setRatingModalVisible] = useState(false);
   const [ratingProduct, setRatingProduct] = useState(null);
   const [ratingValue, setRatingValue] = useState(0);
@@ -44,59 +42,91 @@ const OrderTab = ({ status }) => {
   const cardStyle = { background: "#fafafa", borderRadius: 12, padding: "20px", border: "1px solid #f0f0f0", minHeight: "100%" };
   const sectionTitleStyle = { fontWeight: 600, fontSize: 16, marginBottom: 16, color: "#262626", display: "flex", alignItems: "center", gap: 8 };
 
-  const toggleComplaint = (productId) => {
-    setOpenComplaint((prev) => ({ ...prev, [productId]: !prev[productId] }));
-  };
+  // --- 3. HÀM FETCH ĐƠN HÀNG (Tách ra để tái sử dụng) ---
+  const fetchOrders = useCallback(() => {
+    setLoading(true);
+    // XÓA DÒNG NÀY: const statusParam = status === "completed" ? "success" : status;
 
-  const onChangeText = (productId, val) => {
-    setComplaintTexts((prev) => ({ ...prev, [productId]: val }));
-  };
+    // Sử dụng trực tiếp status từ props
+    API.get(`orders/?status=${status}`)
+      .then((res) => {
+        setOrders(res.data.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)));
+      })
+      .catch((err) => {
+        console.error(err);
+        message.error("Không thể tải đơn hàng");
+        setOrders([]);
+      })
+      .finally(() => setLoading(false));
+  }, [status]);
 
-  const onChangeFiles = (productId, files) => {
-    setComplaintFiles((prev) => ({ ...prev, [productId]: Array.from(files) }));
-  };
+  useEffect(() => {
+    fetchOrders();
+  }, [fetchOrders]);
 
-  const sendComplaint = async (productId, unitPrice, quantity) => {
-    const token = localStorage.getItem("token");
-    if (!token) return message.info("Bạn cần đăng nhập để gửi khiếu nại");
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
-    const reason = (complaintTexts[productId] || "").trim();
-    if (!reason) return message.warning("Vui lòng nhập nội dung khiếu nại");
-
-    try {
-      setSendingByProduct((prev) => ({ ...prev, [productId]: true }));
-      const formData = new FormData();
-      formData.append("product", productId);
-      formData.append("reason", reason);
-      if (quantity != null) formData.append("quantity", String(quantity));
-      if (unitPrice != null) formData.append("unit_price", String(unitPrice));
-      (complaintFiles[productId] || []).forEach((file) => formData.append("media", file));
-
-      const res = await fetch("http://localhost:8000/api/complaints/", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
-      });
-
-      if (!res.ok) throw new Error(`Lỗi API: ${res.status}`);
-
-      setComplaintTexts((prev) => ({ ...prev, [productId]: "" }));
-      setComplaintFiles((prev) => ({ ...prev, [productId]: [] }));
-      setOpenComplaint((prev) => ({ ...prev, [productId]: false }));
-      setSuccessModalVisible(true);
-    } catch (error) {
-      console.error(error);
-      message.error("Gửi khiếu nại thất bại!");
-    } finally {
-      setSendingByProduct((prev) => ({ ...prev, [productId]: false }));
+  // --- 4. LOGIC KHIẾU NẠI ---
+  const toggleComplaint = (orderItemId) => {
+    setActiveComplaintItem(orderItemId);
+    // Reset form khi mở mới hoặc đóng
+    if (orderItemId) {
+      setComplaintText("");
+      setComplaintFiles([]);
     }
   };
 
+  const handleChangeText = (val) => setComplaintText(val);
+  const handleChangeFiles = (files) => setComplaintFiles(files);
+
+  const handleSendComplaint = async (orderItemId) => {
+    if (!complaintText.trim()) return message.warning("Vui lòng nhập lý do");
+
+    setIsSendingComplaint(true);
+    try {
+      const formData = new FormData();
+      // Backend yêu cầu: order_item_id
+      formData.append("order_item_id", orderItemId);
+      formData.append("reason", complaintText);
+
+      // Append files
+      if (complaintFiles && complaintFiles.length > 0) {
+        for (let i = 0; i < complaintFiles.length; i++) {
+          formData.append("media", complaintFiles[i]);
+        }
+      }
+
+      // Gọi API ComplaintViewSet
+      await API.post("complaints/", formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+
+      message.success("Gửi yêu cầu hoàn tiền thành công!");
+      toggleComplaint(null); // Đóng form
+
+      // Gọi lại API lấy đơn hàng để cập nhật trạng thái (Tag: Đang yêu cầu hoàn tiền)
+      fetchOrders();
+
+    } catch (error) {
+      console.error(error);
+      const errorMsg = error.response?.data?.error || "Gửi khiếu nại thất bại";
+      message.error(errorMsg);
+    } finally {
+      setIsSendingComplaint(false);
+    }
+  };
+
+  // --- 5. LOGIC HỦY ĐƠN & MUA LẠI ---
   const handleCancelOrder = async (orderId) => {
     setCancelingOrderIds((prev) => new Set(prev).add(orderId));
     try {
       await API.post(`orders/${orderId}/cancel/`);
       message.success(`Đơn #${orderId} đã được huỷ`);
+      // Update local state để không cần load lại trang
       setOrders((prev) => prev.filter((order) => order.id !== orderId));
     } catch (error) {
       message.error(error?.response?.data?.error || "Hủy đơn thất bại");
@@ -115,7 +145,7 @@ const OrderTab = ({ status }) => {
       let successCount = 0;
       for (const item of items) {
         await addToCart(item.product, item.quantity || 1, {
-          id: item.product,
+          id: item.product, // Product ID
           name: item.product_name,
           price: item.price,
           image: item.product_image,
@@ -131,8 +161,14 @@ const OrderTab = ({ status }) => {
     }
   };
 
-  const handleRating = (product) => {
-    setRatingProduct(product);
+  // --- 6. LOGIC ĐÁNH GIÁ ---
+  const handleRating = (item) => {
+    // Lưu ý: item ở đây là OrderItem, cần lấy product ID từ nó
+    setRatingProduct({
+      product: item.product, // Product ID
+      name: item.product_name,
+      image: item.product_image
+    });
     setRatingValue(0);
     setRatingComment("");
     setRatingModalVisible(true);
@@ -145,8 +181,6 @@ const OrderTab = ({ status }) => {
 
     try {
       setSubmittingRating(true);
-
-      // 👇 SỬA ĐƯỜNG DẪN Ở ĐÂY: đổi "reviews/" thành "reviews/add/"
       await API.post("reviews/add/", {
         product: ratingProduct.product,
         rating: ratingValue,
@@ -154,27 +188,11 @@ const OrderTab = ({ status }) => {
       });
 
       message.success("Gửi đánh giá thành công!");
-
       setRatedProducts((prev) => new Set([...prev, ratingProduct.product]));
       setRatingModalVisible(false);
-      setRatingValue(0);
-      setRatingComment("");
-
     } catch (error) {
       console.error("Lỗi đánh giá:", error);
-
-      // Nếu token hết hạn, API mới sẽ trả về 401, Axios interceptor (nếu có) sẽ xử lý
-      // Hoặc hiển thị thông báo lỗi chi tiết
-      if (error.response) {
-        if (error.response.status === 401) {
-          message.error("Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.");
-        } else {
-          const errorMsg = error.response.data.detail || "Gửi đánh giá thất bại.";
-          message.error(errorMsg);
-        }
-      } else {
-        message.error("Lỗi kết nối server.");
-      }
+      message.error(error.response?.data?.detail || "Gửi đánh giá thất bại.");
     } finally {
       setSubmittingRating(false);
     }
@@ -183,29 +201,23 @@ const OrderTab = ({ status }) => {
   const handleChatWithShop = (order) => {
     const firstItem = order.items?.[0];
     if (!firstItem) return message.warning("Không tìm thấy thông tin shop");
-    const sellerId = firstItem.store?.id || firstItem.seller_id;
-    if (!sellerId) return message.warning("Không tìm thấy thông tin shop");
+    // Logic tìm sellerId tùy thuộc vào data trả về từ API OrderDetail
+    // Với serializer mới, có thể cần check lại field store/seller
+    const sellerId = firstItem.store?.id || firstItem.product_seller_id;
+
+    if (!sellerId) {
+      // Fallback nếu API OrderItem chưa trả về seller_id, thử lấy từ product detail (nếu có)
+      // Hoặc bắn event chung
+      message.info("Chức năng chat đang được cập nhật cho đơn hàng này");
+      return;
+    }
 
     window.dispatchEvent(new CustomEvent("chat:open", {
       detail: { sellerId, sellerName: firstItem.store_name || "Shop", sellerImage: firstItem.store?.image }
     }));
   };
 
-  useEffect(() => {
-    const handleResize = () => setWindowWidth(window.innerWidth);
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
-  useEffect(() => {
-    setLoading(true);
-    const statusParam = status === "completed" ? "success" : status;
-    API.get(`orders/?status=${statusParam}`)
-      .then((res) => setOrders(res.data.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))))
-      .catch(() => { message.error("Không thể tải đơn hàng"); setOrders([]); })
-      .finally(() => setLoading(false));
-  }, [status]);
-
+  // --- RENDER ---
   if (loading) return <div className="flex justify-center items-center min-h-[300px]"><Skeleton active paragraph={{ rows: 4 }} /></div>;
   if (!orders.length) return <div className="flex justify-center items-center min-h-[400px]" style={{ flexDirection: "column" }}><Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Chưa có đơn hàng nào" /></div>;
 
@@ -214,7 +226,7 @@ const OrderTab = ({ status }) => {
       <div style={{ maxWidth: isMobile ? "100%" : 1200, margin: "0 auto", paddingBottom: 32, paddingLeft: isMobile ? 16 : 24, paddingRight: isMobile ? 16 : 24 }}>
         <Collapse accordion bordered={false} style={{ background: "transparent" }}>
           {orders.map((order) => {
-            const orderStatus = statusMap[order.status];
+            const orderStatus = statusMap[order.status] || { label: order.status, color: 'default', icon: null };
             const canCancel = cancellableStatuses.has(order.status);
 
             return (
@@ -225,6 +237,8 @@ const OrderTab = ({ status }) => {
                     <Space size="middle" style={{ flexWrap: "wrap" }}>
                       <Space>{orderStatus.icon} <Text strong>Đơn hàng #{order.id}</Text></Space>
                       <Tag color={orderStatus.color} icon={orderStatus.icon}>{orderStatus.label}</Tag>
+                      {/* Hiển thị thêm tag nếu đơn hàng đang có tranh chấp tổng */}
+                      {order.is_disputed && <Tag color="error">Đang có khiếu nại</Tag>}
                     </Space>
                     <Space size="middle" style={{ flexWrap: "wrap", justifyContent: "flex-end", alignItems: "center" }}>
                       {canCancel && (
@@ -258,14 +272,16 @@ const OrderTab = ({ status }) => {
                       status={status}
                       ratedProducts={ratedProducts}
                       onRate={handleRating}
-                      openComplaint={openComplaint}
+
+                      // --- Props mới cho Khiếu nại ---
+                      activeComplaintItem={activeComplaintItem}
                       toggleComplaint={toggleComplaint}
-                      complaintTexts={complaintTexts}
-                      onChangeText={onChangeText}
+                      complaintText={complaintText}
+                      onChangeText={handleChangeText}
                       complaintFiles={complaintFiles}
-                      onChangeFiles={onChangeFiles}
-                      sendingByProduct={sendingByProduct}
-                      sendComplaint={sendComplaint}
+                      onChangeFiles={handleChangeFiles}
+                      isSendingComplaint={isSendingComplaint}
+                      sendComplaint={handleSendComplaint}
                     />
                   </Col>
                 </Row>
@@ -281,8 +297,6 @@ const OrderTab = ({ status }) => {
           })}
         </Collapse>
       </div>
-
-      <SuccessModal open={successModalVisible} onCancel={() => setSuccessModalVisible(false)} isMobile={isMobile} />
 
       <RatingModal
         open={ratingModalVisible}

@@ -1,7 +1,7 @@
 import React from "react";
 import { Bell } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useNotificationLogic } from "../hooks/useNotificationLogic"; // Import hook
+// ❌ ĐÃ XÓA IMPORT HOOK useNotificationLogic
 import "../styles/UserActions.css";
 
 const NotificationDropdown = ({
@@ -10,14 +10,23 @@ const NotificationDropdown = ({
   setShowDropdown,
 }) => {
   const navigate = useNavigate();
-  const {
-    unreadCount,
-    sortedNotifications,
-    handleHover,
-    handleMarkAllRead
-  } = useNotificationLogic(userId, navigate);
 
-  // Helper render text
+  // 🛠️ THAY THẾ HOOK BẰNG DỮ LIỆU TĨNH (MẶC ĐỊNH)
+  // Vì không dùng hook nữa, ta gán cứng các biến này để JSX bên dưới không bị lỗi "undefined"
+  const unreadCount = 0; 
+  const sortedNotifications = []; // Mảng rỗng -> Luôn hiện "Không có thông báo"
+  
+  const handleHover = () => {
+    // Không làm gì cả
+  };
+
+  const handleMarkAllRead = () => {
+    // Khi click vào icon hoặc nút xem tất cả -> Chuyển sang trang thông báo
+    navigate("/notifications");
+    setShowDropdown(false);
+  };
+
+  // Helper render text (Giữ nguyên logic hiển thị text phòng khi sau này dùng lại)
   const getNotiContent = (noti) => {
     const md = noti.metadata || {};
     const isReply = (noti.type || "").toLowerCase() === "review_reply" || md.reply_text;
@@ -52,7 +61,7 @@ const NotificationDropdown = ({
     >
       <button
         className="action-btn"
-        onClick={handleMarkAllRead}
+        onClick={handleMarkAllRead} // Click vào chuông sẽ chuyển trang
         aria-label="Thông báo"
       >
         <Bell size={22} className="icon-default" />

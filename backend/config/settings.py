@@ -282,5 +282,5 @@ VNPAY_CONFIG = {
 # ... code cũ ...
 
 # Cấu hình Meilisearch Cloud
-MEILI_HOST = 'https://ms-7b1d44a1cc8f-36421.sgp.meilisearch.io'  # <-- Dán URL của bạn vào đây
-MEILI_API_KEY = 'd611238018e51274246622efd4717bc5996905c1'         # <-- Dán Admin API Key vào đây
+MEILI_HOST = 'https://ms-5a732ed64ac6-36761.sgp.meilisearch.io'  # <-- Dán URL của bạn vào đây
+MEILI_API_KEY = 'ae12a2d9360ed927ccb1531f175c6f8fe3910e3e'         # <-- Dán Admin API Key vào đây

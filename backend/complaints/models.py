@@ -1,49 +1,56 @@
 from django.db import models
 from django.conf import settings
-from cloudinary.models import CloudinaryField
+from orders.models import OrderItem # Import từ app orders
 
 class Complaint(models.Model):
-    STATUS_CHOICES = (
-        ('pending', 'Pending'),
-        ('resolved', 'Resolved'),
-        ('rejected', 'Rejected'),
-    )
+    # Các trạng thái theo quy trình tranh chấp chuẩn
+    STATUS_CHOICES = [
+        ("pending", "Chờ người bán phản hồi"),    
+        ("negotiating", "Đang thương lượng"),     
+        ("admin_review", "Sàn đang xem xét"),     
+        ("resolved_refund", "Đã hoàn tiền"),      
+        ("resolved_reject", "Từ chối hoàn tiền"), 
+        ("cancelled", "Đã hủy khiếu nại"),        
+    ]
 
+    # QUAN TRỌNG: Liên kết với OrderItem thay vì Product
+    # Để biết chính xác khách kiện món nào, giá bao nhiêu tại thời điểm mua
+    # Thêm null=True vào
+    order_item = models.ForeignKey(OrderItem, on_delete=models.CASCADE, related_name="complaints", null=True)
+    
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name="complaints"
     )
-    product = models.ForeignKey(
-        "products.Product",
-        on_delete=models.CASCADE,
-        related_name="complaints"
-    )
+    
+    # Lý do khiếu nại
     reason = models.TextField()
-    # Store quantity and unit price at the time of complaint for accurate refunds
-    quantity = models.PositiveIntegerField(default=1)
-    unit_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    
+    # Phản hồi của Seller
+    seller_response = models.TextField(blank=True, null=True)
+    
+    # Phán quyết của Admin
+    admin_notes = models.TextField(blank=True, null=True)
+    
+    status = models.CharField(max_length=50, choices=STATUS_CHOICES, default="pending")
     created_at = models.DateTimeField(auto_now_add=True)
-
-    RESOLUTION_CHOICES = (
-        ('refund_full', 'Hoàn tiền toàn bộ'),
-        ('refund_partial', 'Hoàn tiền một phần'),
-        ('replace', 'Đổi sản phẩm'),
-        ('voucher', 'Tặng voucher/điểm thưởng'),
-        ('reject', 'Từ chối khiếu nại'),
-    )
-    resolution_type = models.CharField(max_length=30, choices=RESOLUTION_CHOICES, null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.user} - {self.product} ({self.status})"
+        return f"Complaint #{self.id} - {self.user.username} - Item: {self.order_item.product.name}"
 
+# Tách riêng bảng Media để 1 khiếu nại có thể up nhiều ảnh/video
 class ComplaintMedia(models.Model):
     complaint = models.ForeignKey(
-        Complaint, related_name='media', on_delete=models.CASCADE
+        Complaint, 
+        related_name='media', # Để query ngược: complaint.media.all()
+        on_delete=models.CASCADE
     )
-    file = models.FileField(upload_to="complaints/")  # Lưu file về local
+    # Lưu file (ảnh/video)
+    file = models.FileField(upload_to="complaints/%Y/%m/%d/") 
+    
+    uploaded_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return str(self.file)
+        return f"Media for Complaint #{self.complaint.id}"

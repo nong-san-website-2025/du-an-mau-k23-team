@@ -78,7 +78,7 @@ const CheckoutPage = () => {
     handleApplyVoucher,
     handleOrder,
     fetchAddresses,
-    setAddresses,
+    addAddress,
   } = useCheckoutLogic();
 
   const isAddressValid =
@@ -130,24 +130,28 @@ const CheckoutPage = () => {
   }, {});
 
   // 3. LOGIC ADDRESS
+  // 3. LOGIC ADDRESS - ĐÃ SỬA LẠI
   const handleAddressAddedSuccess = async (newAddressData) => {
     try {
       setIsSavingAddress(true);
-      const response = await API.post("users/addresses/", newAddressData);
-      const createdAddress = response.data;
-      message.success("Thêm địa chỉ giao hàng thành công!");
 
+      // SỬA: Dùng hàm addAddress từ hook thay vì gọi API thủ công
+      // Hàm này trong hook đã bao gồm việc gọi API và cập nhật state list địa chỉ rồi
+      const createdAddress = await addAddress(newAddressData);
+
+      // Nếu tạo thành công (hàm addAddress trả về data)
       if (createdAddress && createdAddress.id) {
-        setAddresses((prevList) => [...prevList, createdAddress]);
-        setSelectedAddressId(createdAddress.id);
-      } else {
-        if (typeof fetchAddresses === "function") await fetchAddresses();
+        setSelectedAddressId(createdAddress.id); // Tự động chọn địa chỉ mới tạo
       }
+
+      // Đóng modal
       setIsAddAddressModalOpen(false);
+
     } catch (error) {
-      const errorMsg = error.response?.data?.detail || "Lỗi lưu địa chỉ!";
-      message.error(errorMsg);
+      // Lỗi chi tiết đã được xử lý hoặc log trong hook
+      console.error("Lỗi khi thêm địa chỉ:", error);
     } finally {
+      // Tắt loading (quan trọng để nút không quay mãi)
       setIsSavingAddress(false);
     }
   };
@@ -173,10 +177,12 @@ const CheckoutPage = () => {
         style={{
           height: 48,
           fontSize: 16,
-          fontWeight: 600,
-          background: "#00b96b",
-          borderColor: "#00b96b",
+          fontWeight: 700,
+          background: "#2e7d32",
+          border: "none",
+          textTransform: "uppercase",
         }}
+        className="btn-checkout"
       >
         Đặt hàng
       </Button>
@@ -304,28 +310,28 @@ const CheckoutPage = () => {
                               {/* Cột 2: Thông tin chi tiết */}
                               <Col flex="auto">
                                 <div style={{ display: 'flex', flexDirection: 'column', height: '80px', justifyContent: 'space-between' }}>
-                                    <div>
-                                        <Text
-                                          ellipsis={{ tooltip: prod.name }}
-                                          style={{
-                                            fontSize: 15,
-                                            fontWeight: 500,
-                                            marginBottom: 4,
-                                            maxWidth: "100%",
-                                            display: "block",
-                                          }}
-                                        >
-                                          {prod.name}
-                                        </Text>
-                                        
-                                    </div>
-                                    
-                                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end'}}>
-                                         <Text style={{ fontSize: 13 }}>
-                                            Đơn giá: {intcomma(price)}₫
-                                          </Text>
-                                          <Text type="secondary">x{qty}</Text>
-                                    </div>
+                                  <div>
+                                    <Text
+                                      ellipsis={{ tooltip: prod.name }}
+                                      style={{
+                                        fontSize: 15,
+                                        fontWeight: 500,
+                                        marginBottom: 4,
+                                        maxWidth: "100%",
+                                        display: "block",
+                                      }}
+                                    >
+                                      {prod.name}
+                                    </Text>
+
+                                  </div>
+
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                                    <Text style={{ fontSize: 13 }}>
+                                      Đơn giá: {intcomma(price)}₫
+                                    </Text>
+                                    <Text type="secondary">x{qty}</Text>
+                                  </div>
                                 </div>
                               </Col>
 
@@ -358,16 +364,16 @@ const CheckoutPage = () => {
                       }}
                     >
                       <Row align="middle" justify="space-between">
-                         <Col>
-                            <Space size={4}>
-                                <EnvironmentOutlined style={{color: '#1890ff'}}/>
-                                <Text type="secondary" style={{fontSize: 13}}>Đơn vị vận chuyển:</Text>
-                                <Text style={{fontSize: 13}}>Giao Hàng Nhanh (Tiêu chuẩn)</Text>
-                            </Space>
-                         </Col>
-                         <Col>
-                            {/* Chỗ để hiển thị phí ship riêng nếu API hỗ trợ split order */}
-                         </Col>
+                        <Col>
+                          <Space size={4}>
+                            <EnvironmentOutlined style={{ color: '#1890ff' }} />
+                            <Text type="secondary" style={{ fontSize: 13 }}>Đơn vị vận chuyển:</Text>
+                            <Text style={{ fontSize: 13 }}>Giao Hàng Nhanh (Tiêu chuẩn)</Text>
+                          </Space>
+                        </Col>
+                        <Col>
+                          {/* Chỗ để hiển thị phí ship riêng nếu API hỗ trợ split order */}
+                        </Col>
                       </Row>
                     </div>
                   </Card>
@@ -378,7 +384,7 @@ const CheckoutPage = () => {
               {checkoutItems.length === 0 && (
                 <div style={{ textAlign: "center", padding: 40, background: '#fff', borderRadius: 8 }}>
                   <ShoppingOutlined /> {/* Giả sử có icon này hoặc dùng Empty của Antd */}
-                  <Text type="secondary" style={{display: 'block', margin: '10px 0'}}>Chưa có sản phẩm nào được chọn.</Text>
+                  <Text type="secondary" style={{ display: 'block', margin: '10px 0' }}>Chưa có sản phẩm nào được chọn.</Text>
                   <Button type="primary" onClick={() => navigate("/cart")}>
                     Quay lại giỏ hàng
                   </Button>

@@ -1,72 +1,68 @@
 import React from "react";
-import { Modal, Radio, Space, InputNumber, Input, Typography } from "antd";
-import { formatVND, computeFullRefundAmount } from "../../../../utils/complaintHelpers";
+import { Modal, Input, Typography, Descriptions } from "antd";
+import { formatVND } from "../../../../utils/complaintHelpers";
 
 const { Text } = Typography;
 
-const ApproveModal = ({ open, onCancel, onOk, approveModal, setApproveModal }) => {
-  const { method, amount, record, note } = approveModal;
+const ApproveModal = ({ 
+  open, 
+  onCancel, 
+  onOk, 
+  record, // Nhận trực tiếp record
+  note,   // Nhận trực tiếp note
+  setNote // Hàm set note
+}) => {
+  
+  // Tính toán số tiền sẽ hoàn (Dựa trên Serializer mới: purchase_price * purchase_quantity)
+  const refundAmount = record 
+    ? (record.purchase_price || 0) * (record.purchase_quantity || 1) 
+    : 0;
 
   return (
     <Modal
-      title={`Duyệt khiếu nại #${record?.id || ""}`}
+      title="Xác nhận Hoàn tiền"
       open={open}
       onCancel={onCancel}
       onOk={onOk}
-      okText="Xác nhận"
-      cancelText="Hủy"
+      okText="Đồng ý hoàn tiền"
+      okButtonProps={{ type: "primary" }} // Màu xanh mặc định thay vì danger
+      cancelText="Hủy bỏ"
     >
-      <div style={{ display: "grid", gap: 12 }}>
-        <div>
-          <div className="mb-2">Hình thức xử lý</div>
-          <Radio.Group
-            value={method}
-            onChange={(e) =>
-              setApproveModal((s) => ({ ...s, method: e.target.value }))
-            }
-          >
-            <Space direction="vertical">
-              <Radio value="refund_full">Hoàn tiền đầy đủ</Radio>
-              <Radio value="refund_partial">Hoàn tiền một phần</Radio>
-              <Radio value="replace">Đổi sản phẩm</Radio>
-              <Radio value="reject">Từ chối khiếu nại</Radio>
-            </Space>
-          </Radio.Group>
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <div style={{ background: "#f6ffed", border: "1px solid #b7eb8f", padding: 12, borderRadius: 6 }}>
+            <Text type="success">
+                Hành động này sẽ chấp nhận khiếu nại và hoàn tiền về Ví cho khách hàng.
+            </Text>
         </div>
 
-        {method === "refund_partial" && (
-          <div>
-            <div className="mb-2">Số tiền hoàn (VNĐ)</div>
-            <InputNumber
-              min={1000}
-              step={1000}
-              style={{ width: "100%" }}
-              value={amount}
-              onChange={(v) => setApproveModal((s) => ({ ...s, amount: v || 0 }))}
-              formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
-              parser={(value) => String(value ?? "").replace(/\s|,/g, "")}
+        {record && (
+            <Descriptions column={1} size="small" bordered>
+                <Descriptions.Item label="Sản phẩm">
+                    {record.product_name}
+                </Descriptions.Item>
+                <Descriptions.Item label="Số lượng">
+                    {record.purchase_quantity}
+                </Descriptions.Item>
+                <Descriptions.Item label="Đơn giá mua">
+                    {formatVND(record.purchase_price)}
+                </Descriptions.Item>
+                <Descriptions.Item label="Tổng tiền hoàn">
+                    <Text strong type="danger" style={{ fontSize: 16 }}>
+                        {formatVND(refundAmount)}
+                    </Text>
+                </Descriptions.Item>
+            </Descriptions>
+        )}
+
+        <div>
+            <div style={{ marginBottom: 8, fontWeight: 500 }}>Lời nhắn cho khách hàng (Tùy chọn):</div>
+            <Input.TextArea
+            rows={3}
+            placeholder="Ví dụ: Shop đã kiểm tra và đồng ý hoàn tiền cho bạn..."
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
             />
-          </div>
-        )}
-
-        {method === "refund_full" && (
-          <div>
-            <div className="mb-2">Số tiền hoàn (đầy đủ)</div>
-            <div>
-              <Text strong>
-                {formatVND(computeFullRefundAmount(record))}
-              </Text>
-            </div>
-          </div>
-        )}
-
-        <div className="mt-3">Ghi chú</div>
-        <Input.TextArea
-          rows={3}
-          placeholder="Nhập ghi chú cho quyết định xử lý"
-          value={note}
-          onChange={(e) => setApproveModal((s) => ({ ...s, note: e.target.value }))}
-        />
+        </div>
       </div>
     </Modal>
   );

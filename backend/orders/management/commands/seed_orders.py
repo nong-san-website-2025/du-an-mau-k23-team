@@ -12,7 +12,7 @@ from products.models import Product
 User = get_user_model()
 
 class Command(BaseCommand):
-    help = 'Seed dữ liệu đơn hàng khớp với model Product hiện tại'
+    help = 'Seed dữ liệu đơn hàng khớp với model Order/OrderItem mới (có xử lý tranh chấp)'
 
     def add_arguments(self, parser):
         parser.add_argument('--days', type=int, default=180, help='Số ngày lùi về quá khứ')
@@ -23,7 +23,7 @@ class Command(BaseCommand):
         days_range = kwargs['days']
         total_orders = kwargs['amount']
 
-        # Lấy users và products (Chỉ lấy sản phẩm đã duyệt và không ẩn)
+        # Lấy users và products
         users = list(User.objects.all())
         products = list(Product.objects.filter(status='approved', is_hidden=False))
 
@@ -36,11 +36,15 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS(f'Đang tạo {total_orders} đơn hàng từ {len(products)} sản phẩm...'))
 
-        # Cấu hình tỉ lệ trạng thái đơn hàng (Ưu tiên đã giao để biểu đồ đẹp)
+        # Cấu hình tỉ lệ trạng thái đơn hàng
+        # Lưu ý: 'success' cũ giờ là 'completed'
         STATUS_WEIGHTS = [
-            ('delivered', 0.6), ('success', 0.15), 
-            ('cancelled', 0.1), ('returned', 0.05),
-            ('shipping', 0.05), ('pending', 0.05)
+            ('completed', 0.5),   # Đã hoàn thành (nhiều nhất)
+            ('delivered', 0.2),   # Đã giao, chưa hoàn thành (có thể khiếu nại)
+            ('shipping', 0.1),    # Đang giao
+            ('pending', 0.1),     # Chờ xác nhận
+            ('cancelled', 0.05),  # Đã hủy
+            ('returned', 0.05)    # Trả hàng/Hoàn tiền (toàn bộ)
         ]
         status_choices = [s[0] for s in STATUS_WEIGHTS]
         weights = [s[1] for s in STATUS_WEIGHTS]
@@ -56,65 +60,91 @@ class Command(BaseCommand):
             random_seconds = random.randint(0, 86400)
             created_at_fake = timezone.now() - timedelta(days=random_days, seconds=random_seconds)
 
-            # Tạo đơn hàng header
+            # Tạo Order Header
             order = Order.objects.create(
                 user=user,
                 customer_name=f"{user.last_name} {user.first_name}".strip() or user.username,
                 customer_phone=fake.phone_number(),
                 address=fake.address(),
-                note=fake.sentence() if random.random() > 0.7 else "",
+                note=fake.sentence() if random.random() > 0.8 else "",
                 payment_method=random.choice(['Thanh toán khi nhận hàng', 'VNPay', 'Chuyển khoản']),
                 status=status,
-                stock_deducted=status in ['shipping', 'delivered', 'success'],
-                sold_counted=status in ['delivered', 'success'],
-                ghn_order_code=fake.uuid4() if status in ['shipping', 'delivered'] else None
+                # Logic boolean fields
+                stock_deducted=status in ['shipping', 'delivered', 'completed', 'returned'],
+                sold_counted=status in ['completed'], # Chỉ tính đã bán khi completed (hoặc delivered tùy logic bạn)
+                ghn_order_code=fake.uuid4() if status in ['shipping', 'delivered', 'completed', 'returned'] else None,
+                is_disputed=False, # Mặc định False, sẽ cập nhật sau nếu có item tranh chấp
+                created_at=created_at_fake # Sẽ bị override bởi auto_now_add, cần update lại sau save
             )
-
-            # Chọn ngẫu nhiên 1-5 sản phẩm cho đơn này
+            
+            # Hack để override created_at vì auto_now_add=True
+            order.created_at = created_at_fake 
+            
+            # Chọn sản phẩm
             num_items = random.randint(1, 5)
             selected_products = random.sample(products, k=min(len(products), num_items))
             
             current_total = 0
-            
+            has_active_dispute = False # Cờ để kiểm tra xem đơn này có đang tranh chấp không
+
             for product in selected_products:
-                qty = random.randint(1, 5)
+                qty = random.randint(1, 3)
                 
-                # --- LOGIC GIÁ (QUAN TRỌNG) ---
-                # Kiểm tra xem có giá giảm không, nếu có dùng giá giảm, không thì dùng giá gốc
-                if product.discounted_price and product.discounted_price > 0:
-                    final_price = product.discounted_price
-                else:
-                    final_price = product.original_price
-                
-                # Xử lý ảnh (tránh lỗi nếu không có ảnh)
+                # Logic giá
+                final_price = product.discounted_price if (product.discounted_price and product.discounted_price > 0) else product.original_price
                 img_url = product.image.url if product.image else ""
                 
+                # --- LOGIC SEED STATUS CHO ITEM (QUAN TRỌNG) ---
+                item_status = 'NORMAL'
+                
+                # Chỉ sinh ra trạng thái hoàn tiền/tranh chấp nếu đơn hàng đã giao hoặc đang ở trạng thái completed
+                # Và tỉ lệ xảy ra thấp (ví dụ 10% trong số các đơn đã giao)
+                if status in ['delivered', 'completed'] and random.random() < 0.15:
+                    dispute_choices = [
+                        ('REFUND_REQUESTED', 0.4), # Mới yêu cầu
+                        ('SELLER_REJECTED', 0.2),  # Shop từ chối -> Chờ Buyer phản hồi
+                        ('DISPUTE_TO_ADMIN', 0.2), # Đã khiếu nại lên sàn
+                        ('REFUND_APPROVED', 0.1),  # Đã xong (tiền về buyer)
+                        ('REFUND_REJECTED', 0.1)   # Đã xong (tiền về seller)
+                    ]
+                    d_statuses = [d[0] for d in dispute_choices]
+                    d_weights = [d[1] for d in dispute_choices]
+                    item_status = random.choices(d_statuses, weights=d_weights, k=1)[0]
+                
+                # Nếu đơn hàng tổng là 'returned', tất cả item nên là REFUND_APPROVED hoặc REQUESTED
+                if status == 'returned':
+                    item_status = 'REFUND_APPROVED'
+
                 # Tạo OrderItem
                 OrderItem.objects.create(
                     order=order,
                     product=product,
                     product_image=img_url,
-                    unit=product.unit,  # Lấy từ model Product
+                    unit=product.unit,
                     quantity=qty,
-                    price=final_price   # Lưu giá tại thời điểm mua
+                    price=final_price,
+                    status=item_status
                 )
+                
                 current_total += final_price * qty
+                
+                # Kiểm tra xem item này có gây ra trạng thái "Đang tranh chấp" cho Order không
+                # Các trạng thái chưa kết thúc:
+                if item_status in ['REFUND_REQUESTED', 'SELLER_REJECTED', 'DISPUTE_TO_ADMIN']:
+                    has_active_dispute = True
 
-            # Cập nhật tổng tiền đơn hàng
-            shipping_fee = random.choice([0, 15000, 30000])
+            # Cập nhật lại Order Header
+            shipping_fee = random.choice([0, 16500, 32000])
             order.total_price = current_total + shipping_fee
             order.shipping_fee = shipping_fee
             
-            # Ghi đè thời gian tạo (Để vẽ biểu đồ lịch sử)
-            order.created_at = created_at_fake
+            # Cập nhật cờ tranh chấp
+            order.is_disputed = has_active_dispute
             
-            # Logic xóa mềm nếu cần (nhưng ở đây giữ lại để hiện thống kê)
-            # order.is_deleted = False 
-
-            order.save()
+            # Save lại lần nữa để cập nhật total và is_disputed
+            order.save() 
+            
             count += 1
-
-            # In tiến độ mỗi 50 đơn
             if count % 50 == 0:
                 self.stdout.write(f" -> Đã tạo {count} đơn...")
 

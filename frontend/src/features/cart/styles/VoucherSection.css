@@ -1,0 +1,93 @@
+/* --- VOUCHER BAR (Thanh chọn ở màn hình chính) --- */
+.voucher-bar-trigger {
+    border: 1px solid #d9d9d9;
+    background-color: #fff;
+    padding: 12px 16px;
+    border-radius: 4px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    margin-top: 10px;
+}
+
+.voucher-bar-trigger:hover {
+    border-color: #2E7D32; /* Màu xanh GreenFarm */
+    background-color: #F1F8E9;
+}
+
+.voucher-icon-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #2E7D32;
+    font-weight: 500;
+}
+
+/* --- VOUCHER TICKET (Hình dáng vé trong Modal) --- */
+.voucher-ticket {
+    display: flex;
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    overflow: hidden;
+    position: relative;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+.voucher-ticket:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    border-color: #2E7D32;
+}
+
+.voucher-ticket.disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background: #f5f5f5;
+}
+
+/* Phần bên trái (Màu xanh) */
+.ticket-left {
+    background: linear-gradient(135deg, #2E7D32 0%, #4CAF50 100%);
+    width: 100px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    padding: 10px;
+    text-align: center;
+    position: relative;
+    /* Tạo đường răng cưa ngăn cách */
+    border-right: 2px dashed #fff; 
+}
+
+/* Phần bên phải (Thông tin) */
+.ticket-right {
+    flex: 1;
+    padding: 12px 16px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+/* Nút chọn tròn (Radio custom) */
+.ticket-radio {
+    position: absolute;
+    top: 50%;
+    right: 15px;
+    transform: translateY(-50%);
+}
+
+/* Tag loại giảm giá */
+.voucher-tag {
+    font-size: 10px;
+    text-transform: uppercase;
+    background: rgba(255,255,255,0.2);
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-bottom: 4px;
+}

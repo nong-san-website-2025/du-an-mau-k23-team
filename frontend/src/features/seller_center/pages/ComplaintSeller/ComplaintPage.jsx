@@ -3,31 +3,22 @@ import { Button, message, Modal, Space, Tag, Typography } from "antd";
 import ComplaintTable from "../../components/ComplaintSeller/ComplaintTable";
 import ApproveModal from "../../components/ComplaintSeller/ApproveModal";
 import DetailModal from "../../components/ComplaintSeller/DetailModal";
-import BulkActionButtons from "../../components/ComplaintSeller/BulkActionButtons";
-import {
-  formatVND,
-  computeFullRefundAmount,
-  pushNotification,
-} from "../../../../utils/complaintHelpers";
 import moment from "moment";
 
 export default function ComplaintPage() {
   const [complaints, setComplaints] = useState([]);
   const [loading, setLoading] = useState(false);
   const [filtered, setFiltered] = useState([]);
-  const [selectedRowKeys, setSelectedRowKeys] = useState([]);
   const [searchKeyword, setSearchKeyword] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
 
-  const token =
-    typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
+  // Modal duyệt (Chỉ còn Đồng ý hoàn tiền)
   const [approveModal, setApproveModal] = useState({
     open: false,
     record: null,
-    method: "refund_full",
-    amount: 0,
-    note: "",
+    note: "", // Lời nhắn cho khách (tùy chọn)
   });
 
   const [detailModalVisible, setDetailModalVisible] = useState(false);
@@ -52,166 +43,95 @@ export default function ComplaintPage() {
   };
 
   useEffect(() => {
-    if (!token) return;
-    fetchComplaints();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (token) fetchComplaints();
   }, [token]);
 
   /* ===== search and filter ===== */
-  const applyFilters = (keyword = searchKeyword, status = statusFilter) => {
-    const lower = keyword.toLowerCase();
-    setFiltered(
-      complaints.filter(
-        (c) =>
-          (c.complainant_name?.toLowerCase().includes(lower) ||
-            c.product_name?.toLowerCase().includes(lower) ||
-            String(c.id).includes(lower)) &&
-          (!status || c.status === status)
-      )
-    );
-  };
+  useEffect(() => {
+    const lower = searchKeyword.toLowerCase();
+    const result = complaints.filter((c) => {
+      const matchText =
+        (c.created_by_name?.toLowerCase().includes(lower) ||
+          c.product_name?.toLowerCase().includes(lower) ||
+          String(c.id).includes(lower));
 
-  const handleSearch = (kw) => {
-    setSearchKeyword(kw);
-    applyFilters(kw, statusFilter);
-  };
+      const matchStatus = statusFilter === 'all' || c.status === statusFilter;
 
-  const handleStatusFilterChange = (status) => {
-    setStatusFilter(status);
-    applyFilters(searchKeyword, status);
-  };
+      return matchText && matchStatus;
+    });
+    setFiltered(result);
+  }, [searchKeyword, statusFilter, complaints]);
 
-  /* ===== CRUD / actions ===== */
-  const updateRow = (updated) =>
-    setComplaints((prev) =>
-      prev.map((c) => (c.id === updated.id ? updated : c))
-    );
 
-  const resolveComplaint = async (record, resolution_type, amount, note) => {
+  /* ===== ACTIONS (QUAN TRỌNG: GỌI ĐÚNG API BACKEND MỚI) ===== */
+
+  // 1. Shop Đồng ý hoàn tiền
+  const handleSellerAccept = async (record, note) => {
     try {
-      const body = { resolution_type };
-      if (resolution_type === "refund_partial") body.amount = amount;
-      if (note) body.note = note;
-
-      const res = await fetch(
-        `http://localhost:8000/api/complaints/${record.id}/resolve/`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(body),
-        }
-      );
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err?.error || `HTTP ${res.status}`);
-      }
-      const data = await res.json();
-      updateRow(data);
-
-      let title = "Khiếu nại đã xử lý";
-      if (resolution_type === "reject") title = "Khiếu nại bị từ chối";
-      if (resolution_type === "refund_full") title = "Hoàn tiền đầy đủ";
-      if (resolution_type === "refund_partial") title = "Hoàn tiền một phần";
-      if (resolution_type === "replace") title = "Đổi sản phẩm";
-
-      let extra = "";
-      if (resolution_type === "refund_full")
-        extra = ` - Số tiền: ${formatVND(computeFullRefundAmount(record))}`;
-      if (resolution_type === "refund_partial")
-        extra = ` - Số tiền: ${formatVND(amount)}`;
-
-      pushNotification({
-        type: "complaint",
-        title,
-        message: `#${record.id} - ${record.product_name || "Sản phẩm"} - ${record.complainant_name || "Khách hàng"}${extra}`,
+      const res = await fetch(`http://localhost:8000/api/complaints/${record.id}/seller-respond/`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          action: 'accept',
+          reason: note // Backend dùng field 'reason' để lưu phản hồi
+        }),
       });
 
-      message.success(`Đã cập nhật khiếu nại #${record.id}`);
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Lỗi xử lý");
+      }
+
+      message.success(`Đã chấp nhận hoàn tiền cho khiếu nại #${record.id}`);
+      setApproveModal({ open: false, record: null, note: "" });
+      fetchComplaints(); // Reload lại data
     } catch (e) {
-      message.error(`Cập nhật thất bại: ${e.message}`);
+      message.error(e.message);
     }
   };
 
-  const handleReject = (id) => {
+  // 2. Shop Từ chối
+  const handleSellerReject = (record) => {
+    let rejectReason = "";
     Modal.confirm({
-      title: "Xác nhận từ chối khiếu nại?",
+      title: "Từ chối hoàn tiền?",
+      content: (
+        <div>
+          <p>Bạn có chắc muốn từ chối yêu cầu này? Khách hàng có thể khiếu nại lên Sàn.</p>
+          <input
+            placeholder="Nhập lý do từ chối..."
+            className="ant-input"
+            onChange={(e) => rejectReason = e.target.value}
+          />
+        </div>
+      ),
       onOk: async () => {
+        if (!rejectReason.trim()) {
+          message.warning("Vui lòng nhập lý do từ chối");
+          return Promise.reject();
+        }
         try {
-          const res = await fetch(
-            `http://localhost:8000/api/complaints/${id}/`,
-            {
-              method: "PATCH",
-              headers: {
-                Authorization: `Bearer ${token}`,
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({ status: "rejected" }),
-            }
-          );
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          message.success("Đã từ chối khiếu nại!");
+          const res = await fetch(`http://localhost:8000/api/complaints/${record.id}/seller-respond/`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              action: 'reject',
+              reason: rejectReason
+            }),
+          });
+
+          if (!res.ok) throw new Error("Lỗi khi từ chối");
+
+          message.success("Đã từ chối yêu cầu. Trạng thái chuyển sang Thương lượng.");
           fetchComplaints();
         } catch (e) {
-          message.error("Lỗi khi cập nhật!");
-        }
-      },
-    });
-  };
-
-  const handleResetPending = (id) => {
-    Modal.confirm({
-      title: "Chuyển khiếu nại về trạng thái chờ xử lý?",
-      onOk: async () => {
-        try {
-          const res = await fetch(
-            `http://localhost:8000/api/complaints/${id}/`,
-            {
-              method: "PATCH",
-              headers: {
-                Authorization: `Bearer ${token}`,
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({ status: "pending" }),
-            }
-          );
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          message.success("Đã chuyển về trạng thái chờ!");
-          fetchComplaints();
-        } catch (e) {
-          message.error("Lỗi khi cập nhật!");
-        }
-      },
-    });
-  };
-
-  /* ===== bulk actions ===== */
-  const bulkUpdate = (status) => {
-    Modal.confirm({
-      title: `${status === "resolved" ? "Xử lý" : "Từ chối"} ${selectedRowKeys.length} khiếu nại?`,
-      onOk: async () => {
-        try {
-          await Promise.all(
-            selectedRowKeys.map((id) =>
-              fetch(`http://localhost:8000/api/complaints/${id}/`, {
-                method: "PATCH",
-                headers: {
-                  "Content-Type": "application/json",
-                  Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify({ status }),
-              })
-            )
-          );
-          message.success(
-            `Đã ${status === "resolved" ? "xử lý" : "từ chối"} ${selectedRowKeys.length} khiếu nại!`
-          );
-          setSelectedRowKeys([]);
-          fetchComplaints();
-        } catch (err) {
-          message.error("Lỗi hàng loạt!");
+          message.error("Có lỗi xảy ra");
         }
       },
     });
@@ -220,107 +140,95 @@ export default function ComplaintPage() {
   /* ===== columns ===== */
   const columns = [
     {
-      title: "Người gửi",
-      dataIndex: "complainant_name",
-      key: "complainant_name",
+      title: "Người mua",
+      dataIndex: "created_by_name", // Khớp serializer
+      key: "created_by_name",
       width: 160,
-      align: "center",
     },
     {
       title: "Sản phẩm",
       dataIndex: "product_name",
       key: "product_name",
       width: 220,
-      align: "center",
+      render: (text, record) => (
+        <Space>
+          <img src={record.product_image} alt="" style={{ width: 30, height: 30, objectFit: 'cover', borderRadius: 4 }} />
+          <Typography.Text ellipsis style={{ maxWidth: 150 }}>{text}</Typography.Text>
+        </Space>
+      )
     },
     {
-      title: "Nội dung",
+      title: "Lý do",
       dataIndex: "reason",
       key: "reason",
-      align: "center",
-      render: (t) => (
-        <Typography.Text
-          ellipsis={{ tooltip: t }}
-          style={{ maxWidth: 360, display: "inline-block" }}
-        >
-          {t}
-        </Typography.Text>
-      ),
+      ellipsis: true,
     },
     {
       title: "Trạng thái",
       dataIndex: "status",
       key: "status",
-      width: 140,
+      width: 150,
       align: "center",
       render: (s) => {
         const map = {
-          pending: "Chờ xử lý",
-          resolved: "Đã xử lý",
-          rejected: "Đã từ chối",
+          pending: { text: "Chờ xử lý", color: "orange" },
+          negotiating: { text: "Đang thương lượng", color: "purple" }, // Shop đã từ chối
+          admin_review: { text: "Chờ Sàn xử lý", color: "blue" },
+          resolved_refund: { text: "Đã hoàn tiền", color: "green" },
+          resolved_reject: { text: "Đã hủy/Từ chối", color: "red" },
+          cancelled: { text: "Khách hủy", color: "default" },
         };
-        const color =
-          s === "resolved" ? "green" : s === "rejected" ? "red" : "orange";
-        return <Tag color={color}>{map[s] || "Không xác định"}</Tag>;
+        const conf = map[s] || { text: s, color: "default" };
+        return <Tag color={conf.color}>{conf.text}</Tag>;
       },
     },
     {
-      title: "Thời gian",
+      title: "Ngày tạo",
       dataIndex: "created_at",
       key: "created_at",
-      width: 180,
-      align: "center",
-      render: (t) => moment(t).format("HH:mm DD/MM/YYYY"),
+      width: 150,
+      render: (t) => moment(t).format("DD/MM/YYYY"),
     },
     {
       title: "Hành động",
       key: "action",
-      width: 320,
-      className: "no-row-click",
+      width: 200,
       align: "center",
       render: (_, record) => (
         <div onClick={(e) => e.stopPropagation()}>
-          <Space>
-            {record.status === "pending" ? (
-              <>
-                <Button
-                  type="primary"
-                  onClick={() =>
-                    setApproveModal({
-                      open: true,
-                      record,
-                      method: "refund_full",
-                      amount: 0,
-                      note: "",
-                    })
-                  }
-                >
-                  Duyệt
-                </Button>
-                <Button danger onClick={() => handleReject(record.id)}>
-                  Từ chối
-                </Button>
-              </>
-            ) : (
-              <Button onClick={() => handleResetPending(record.id)}>
-                Hoàn tác
+          {record.status === "pending" && (
+            <Space>
+              <Button
+                type="primary"
+                size="small"
+                onClick={() => setApproveModal({ open: true, record, note: "" })}
+              >
+                Đồng ý
               </Button>
-            )}
-          </Space>
+              <Button
+                danger
+                size="small"
+                onClick={() => handleSellerReject(record)}
+              >
+                Từ chối
+              </Button>
+            </Space>
+          )}
+          {record.status === "negotiating" && <Tag>Đã từ chối</Tag>}
+          {record.status === "resolved_refund" && <Tag color="success">Hoàn tất</Tag>}
         </div>
       ),
     },
   ];
 
-  /* ===== render ===== */
   return (
     <>
       <ComplaintTable
         loading={loading}
         filtered={filtered}
         columns={columns}
-        onSearch={handleSearch}
-        onStatusFilterChange={handleStatusFilterChange}
+        onSearch={setSearchKeyword}
+        onStatusFilterChange={setStatusFilter}
         statusFilter={statusFilter}
         onRefresh={fetchComplaints}
         onRowClick={(record) => {
@@ -329,44 +237,21 @@ export default function ComplaintPage() {
         }}
       />
 
-      {/* Extra buttons for bulk actions */}
-      <div style={{ marginTop: 16, textAlign: "right" }}>
-        <BulkActionButtons
-          selectedCount={selectedRowKeys.length}
-          onBulkResolve={() => bulkUpdate("resolved")}
-          onBulkReject={() => bulkUpdate("rejected")}
-        />
-      </div>
-
+      {/* Modal Đồng ý hoàn tiền */}
       <ApproveModal
         open={approveModal.open}
-        onCancel={() =>
-          setApproveModal({
-            open: false,
-            record: null,
-            method: "refund_full",
-            amount: 0,
-            note: "",
-          })
-        }
-        onOk={() => {
-          const { method, amount, record, note } = approveModal;
-          if (method === "refund_partial" && (!amount || amount <= 0)) {
-            message.warning("Nhập số tiền hợp lệ");
-            return;
-          }
-          resolveComplaint(record, method, amount, note).finally(() =>
-            setApproveModal({
-              open: false,
-              record: null,
-              method: "refund_full",
-              amount: 0,
-              note: "",
-            })
-          );
-        }}
-        approveModal={approveModal}
-        setApproveModal={setApproveModal}
+
+        // Truyền record trực tiếp để hiển thị thông tin tiền nong
+        record={approveModal.record}
+
+        // Truyền note và hàm setNote
+        note={approveModal.note}
+        setNote={(val) => setApproveModal({ ...approveModal, note: val })}
+
+        onCancel={() => setApproveModal({ ...approveModal, open: false })}
+
+        // Khi bấm OK -> Gọi API handleSellerAccept
+        onOk={() => handleSellerAccept(approveModal.record, approveModal.note)}
       />
 
       <DetailModal

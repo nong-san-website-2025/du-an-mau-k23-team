@@ -1,0 +1,88 @@
+/* 1. Container chính của thẻ Địa chỉ */
+.checkout-address-card {
+    background: #fff;
+    padding: 20px 24px;
+    margin-bottom: 16px;
+    position: relative;
+    border-radius: 4px; /* Bo nhẹ */
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05); /* Đổ bóng rất nhẹ cho sang */
+    overflow: hidden; /* Để cắt phần thừa của sọc màu */
+    transition: all 0.3s;
+}
+
+/* Hiệu ứng sọc màu trang trí ở mép trên (Signature của Sàn TMĐT) */
+.checkout-address-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 3px; /* Độ dày sọc */
+    /* Tạo sọc chéo Đỏ - Xanh lá (Hợp với GreenFarm) */
+    background-image: repeating-linear-gradient(
+        45deg,
+        #ff5722,       /* Màu đỏ cam */
+        #ff5722 30px,
+        transparent 30px,
+        transparent 40px,
+        #2E7D32 40px,  /* Màu xanh lá cây */
+        #2E7D32 70px,
+        transparent 70px,
+        transparent 80px
+    );
+}
+
+/* Header: Icon + Tiêu đề */
+.address-header-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 12px;
+    color: #2E7D32; /* Màu chủ đạo GreenFarm */
+    font-size: 16px;
+    font-weight: 500;
+}
+
+.address-header-icon {
+    margin-right: 8px;
+    font-size: 18px;
+    color: #ff5722; /* Icon màu cam đỏ cho nổi bật */
+}
+
+/* Nội dung địa chỉ */
+.address-details {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.user-info-text {
+    font-size: 15px;
+    color: #222;
+}
+
+.phone-divider {
+    margin: 0 8px;
+    color: #e0e0e0;
+}
+
+.location-text {
+    color: #666;
+    margin-top: 4px;
+    display: block;
+}
+
+/* Style cho trường hợp chưa có địa chỉ (Dashed Box) */
+.empty-address-box {
+    border: 1px dashed #2E7D32;
+    background-color: #f9fbe7; /* Nền xanh siêu nhạt */
+    text-align: center;
+    padding: 30px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.empty-address-box:hover {
+    background-color: #f1f8e9;
+    border-color: #1b5e20;
+}

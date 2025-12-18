@@ -4,7 +4,7 @@ from .views import (
     ProductViewSet, CategoryViewSet, SearchAPIView, ReviewListCreateView, 
     SubcategoryViewSet, top_products, FeaturedCategoryListView,
     products_by_seller, my_products_simple_list, products_by_subcategory,
-    smart_search # <--- 1. NHỚ IMPORT HÀM NÀY
+    smart_search_suggestion # <--- 1. NHỚ IMPORT HÀM NÀY
 )
 from . import views
 
@@ -17,7 +17,7 @@ router.register("", ProductViewSet, basename='products')
 # URL patterns
 urlpatterns = [
     # --- ✅ MỚI THÊM: Đặt dòng này lên ĐẦU hoặc TRƯỚC router ---
-    path('smart-search/', smart_search, name='smart-search'), 
+    path('smart-search/', smart_search_suggestion, name='smart-search'), 
     # -----------------------------------------------------------
 
     path('top-products/', top_products, name='top-products'),

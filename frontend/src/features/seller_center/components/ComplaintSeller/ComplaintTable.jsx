@@ -45,9 +45,10 @@ const ComplaintTable = ({
             options={[
               { value: 'all', label: 'Tất cả' },
               { value: 'pending', label: 'Chờ xử lý' },
-              { value: 'processing', label: 'Đang xử lý' },
-              { value: 'resolved', label: 'Đã xử lý' },
-              { value: 'rejected', label: 'Từ chối' },
+              { value: 'negotiating', label: 'Đang thương lượng' },
+              { value: 'admin_review', label: 'Sàn đang xử lý' },
+              { value: 'resolved_refund', label: 'Đã hoàn tiền' },
+              { value: 'resolved_reject', label: 'Đã từ chối/Hủy' },
             ]}
           />
           <Button

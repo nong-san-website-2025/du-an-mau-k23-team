@@ -16,7 +16,7 @@ export const statusMap = {
     step: 0,
   },
   shipping: {
-    label: "Chờ lấy hàng",
+    label: "Đang vận chuyển",
     color: "blue",
     icon: <ShoppingOutlined />,
     step: 1,
@@ -27,11 +27,23 @@ export const statusMap = {
     icon: <TruckOutlined />,
     step: 2,
   },
-  success: {
+  delivered: {
     label: "Đã giao hàng",
+    color: "cyan",
+    icon: <TruckOutlined />,
+    step: 2,
+  },
+  completed: {
+    label: "Hoàn thành",
     color: "green",
     icon: <CheckCircleOutlined />,
     step: 3,
+  },
+  returned: {
+    label: "Trả hàng/Hoàn tiền",
+    color: "orange",
+    icon: <CloseCircleOutlined />,
+    step: -1,
   },
   cancelled: {
     label: "Đã huỷ",

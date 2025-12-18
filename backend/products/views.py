@@ -329,60 +329,63 @@ class ProductViewSet(viewsets.ModelViewSet):
 
     # ✅ ĐÃ SỬA: Logic Get Queryset
     def get_queryset(self):
-        queryset = Product.objects.select_related('subcategory__category', 'seller').prefetch_related('images').all()
+        # 1. Base Queryset: Luôn eager loading để tránh N+1 query
+        queryset = Product.objects.select_related('subcategory__category', 'seller__user').prefetch_related('images')
+        
         user = self.request.user
+        params = self.request.query_params
 
+        # 2. Bypass cho các action chi tiết (update/delete/retrieve)
+        # Để logic permission check (is_owner) ở view xử lý, không lọc ở đây để tránh 404 giả
         if self.action in ['retrieve', 'update', 'partial_update', 'destroy', 'toggle_hide', 'set_primary_image']:
             return queryset
 
-        # 1. Nếu là Admin: Thấy tất cả
-        if user.is_authenticated and user.is_staff:
-            pass
-        
-        # 2. Nếu là Seller (xem sản phẩm của mình): Thấy tất cả (để quản lý)
-        # Lưu ý: Cần kiểm tra filter query param để biết có đang filter theo seller_id của mình không
-        elif user.is_authenticated and hasattr(user, 'seller') and str(user.seller.id) == self.request.query_params.get('seller'):
-             pass # Cho phép thấy sản phẩm ẩn của chính mình
+        # 3. Logic Filter theo quyền hạn
+        is_admin = user.is_authenticated and user.is_staff
+        # Check xem user có đang xem shop của chính mình không
+        is_viewing_own_shop = False
+        if user.is_authenticated and hasattr(user, 'seller'):
+            filter_seller_id = params.get('seller')
+            if filter_seller_id and str(user.seller.id) == str(filter_seller_id):
+                is_viewing_own_shop = True
 
-        # 3. Khách hàng / Public: Chỉ thấy Approved và KHÔNG ẨN
+        if is_admin or is_viewing_own_shop:
+            # Admin và Chủ shop xem được tất cả (cả ẩn, cả chưa duyệt)
+            pass 
         else:
+            # Khách hàng / Shop khác xem: BẮT BUỘC lọc hàng Approved & Active
             queryset = queryset.filter(
-                status='approved', 
-                is_hidden=False,            # 👈 BẮT BUỘC: Không lấy sản phẩm ẩn
-                subcategory__status='active',          
-                subcategory__category__status='active' 
-            )
+                status='approved',
+                is_hidden=False,
+                subcategory__status='active',
+                subcategory__category__status='active'
+            ).exclude(status='banned')
 
-        # ----- Filter theo query params -----
-        params = self.request.query_params
+        # 4. Filter cơ bản (Chỉ giữ lại các filter logic DB cần thiết)
         if 'category' in params:
-            queryset = queryset.filter(Q(subcategory__category__key=params['category']) | Q(subcategory__category__id=params['category']))
+            cat_key = params['category']
+            # Hỗ trợ filter cả theo ID hoặc theo Slug
+            if cat_key.isdigit():
+                queryset = queryset.filter(subcategory__category__id=cat_key)
+            else:
+                queryset = queryset.filter(subcategory__category__key=cat_key)
+                
         if 'subcategory' in params:
-            queryset = queryset.filter(subcategory__name=params['subcategory'])
+            queryset = queryset.filter(subcategory__id=params['subcategory']) # Nên filter theo ID chuẩn hơn Name
+            
         if 'seller' in params:
             queryset = queryset.filter(seller_id=params['seller'])
-        if 'seller_name' in params:
-            queryset = queryset.filter(seller__user__username__icontains=params['seller_name'])
-        if 'search' in params:
+
+        # LƯU Ý: Nếu đã có API Search riêng, hạn chế dùng filter 'search' ở đây (vì nó chậm)
+        # Chỉ giữ lại nếu cần thiết cho trang Admin quản lý
+        if 'search' in params: 
             s = params['search']
             queryset = queryset.filter(
-                Q(name__icontains=s) | Q(description__icontains=s) | Q(brand__icontains=s) | Q(seller__user__username__icontains=s)
+                Q(name__icontains=s) | Q(seller__user__username__icontains=s)
             )
 
-        # Admin, seller thấy tất cả - khách hàng chỉ thấy approved & not hidden
-        if not (user.is_authenticated and user.is_staff) and not (user.is_authenticated and hasattr(user, 'seller') and str(user.seller.id) == params.get('seller')):
-            # Chỉ filter category/subcategory status cho khách hàng
-            queryset = queryset.filter(
-                subcategory__status='active',
-                subcategory__category__status='active',
-                status='approved',
-                is_hidden=False
-            )
-        else:
-            # Admin và seller thấy tất cả, không filter status
-            pass
-        
-        return queryset.order_by(self.request.query_params.get('ordering', '-created_at'))
+        ordering = params.get('ordering', '-created_at')
+        return queryset.order_by(ordering)
 
     # ✅ ĐÃ SỬA: Logic Retrieve (Chi tiết sản phẩm)
     def retrieve(self, request, *args, **kwargs):
@@ -924,23 +927,23 @@ class ReviewListCreateView(generics.ListCreateAPIView):
     
 @api_view(['GET'])
 @permission_classes([AllowAny])
-def smart_search(request):
+def smart_search_suggestion(request): # Đổi tên cho rõ nghĩa
+    """
+    API dùng cho thanh search bar (Dropdown gợi ý).
+    Chỉ trả về top 5-10 kết quả gọn nhẹ.
+    """
     query = request.GET.get('q', '').strip()
-    
-    # Cấu trúc trả về mặc định để Frontend không lỗi
-    empty_response = {'products': [], 'shops': [], 'categories': []}
-
     if not query:
-        return Response(empty_response)
+        return Response({'products': [], 'shops': [], 'categories': []})
 
     try:
-        # Gọi xuống Service Meilisearch
-        result = search_service.search(query)
+        # Search giới hạn 6-8 items để gợi ý nhanh
+        result = search_service.search(query, limit=10) 
         hits = result.get('hits', [])
         
         response_data = {
             'products': [],
-            'shops': [],
+            'shops': [], 
             'categories': []
         }
 
@@ -948,33 +951,77 @@ def smart_search(request):
         seen_cats = set()
 
         for item in hits:
-            # 1. Product list
+            # Chỉ lấy field cần thiết để hiển thị trên dropdown nhỏ
             response_data['products'].append({
                 'id': item['id'],
-                'name': item['name'],
-                # Lấy tên đã highlight (có thẻ <em>)
-                'highlighted_name': item['_formatted']['name'] if '_formatted' in item else item['name'], 
-                'price': item['price'],
-                'image': item['image'],
-                'sold': item['sold']
+                'name': item.get('_formatted', {}).get('name', item['name']), # Lấy tên highlight
+                'slug': item.get('slug', ''),
+                'image': item.get('image', ''),
+                'price': item.get('price', 0),
+                'original_price': item.get('original_price', 0),
             })
 
-            # 2. Shop Suggestion
-            if item.get('store_name') and item['store_name'] not in seen_shops:
-                response_data['shops'].append(item['store_name'])
-                seen_shops.add(item['store_name'])
+            # Gợi ý Shop (tối đa 3 shop)
+            store_name = item.get('store_name')
+            if store_name and store_name not in seen_shops and len(seen_shops) < 3:
+                response_data['shops'].append({'name': store_name})
+                seen_shops.add(store_name)
 
-            # 3. Category Suggestion
-            if item.get('category_name') and item['category_name'] not in seen_cats:
+            # Gợi ý Category (tối đa 3 cat)
+            cat_name = item.get('category_name')
+            if cat_name and cat_name not in seen_cats and len(seen_cats) < 3:
                 response_data['categories'].append({
-                    'name': item['category_name'],
+                    'name': cat_name,
                     'slug': item.get('category_slug', '')
                 })
-                seen_cats.add(item['category_name'])
+                seen_cats.add(cat_name)
 
         return Response(response_data)
 
     except Exception as e:
-        print(f"⚠️ Search Error: {e}")
-        # Nếu lỗi (VD: chưa chạy sync), trả về rỗng để web không chết
-        return Response(empty_response)
+        logger.error(f"Search Suggestion Error: {e}")
+        return Response({'products': [], 'shops': [], 'categories': []})
+    
+class ProductFullSearchView(APIView):
+    """
+    API cho trang kết quả tìm kiếm đầy đủ (Có lọc giá, sort, phân trang).
+    URL: /api/products/search/full/?q=...&sort=price:asc&limit=20
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        try:
+            query = request.query_params.get('q', '')
+            limit = int(request.query_params.get('limit', 20))
+            offset = int(request.query_params.get('offset', 0))
+            sort_param = request.query_params.get('sort', None)
+            sort = [sort_param] if sort_param else ['sold:desc'] # Mặc định sort theo bán chạy
+
+            # Xử lý filter giá từ frontend gửi lên
+            filter_query = []
+            min_price = request.query_params.get('min_price')
+            max_price = request.query_params.get('max_price')
+            rating = request.query_params.get('rating')
+
+            if min_price: filter_query.append(f"price >= {min_price}")
+            if max_price: filter_query.append(f"price <= {max_price}")
+            if rating: filter_query.append(f"rating >= {rating}")
+
+            # Gọi Meilisearch
+            search_result = search_service.search(
+                query=query, 
+                limit=limit, 
+                offset=offset,
+                sort=sort,
+                filter_query=filter_query
+            )
+
+            return Response({
+                'data': search_result['hits'], 
+                'total': search_result['estimatedTotalHits'],
+                'limit': limit,
+                'offset': offset
+            })
+        except Exception as e:
+            logger.error(f"Full Search Error: {e}")
+            return Response({'error': 'Lỗi hệ thống tìm kiếm'}, status=500)
