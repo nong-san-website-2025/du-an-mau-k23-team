@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   Button,
   Tag,
@@ -8,28 +8,80 @@ import {
   Modal,
   Descriptions,
   Table,
+  notification,
 } from "antd";
 import API from "../../../login_register/services/api";
 import OrdersBaseLayout from "../../components/OrderSeller/OrdersBaseLayout";
 import "../../styles/OrderPage.css";
+// 1. Import socket.io
+import io from "socket.io-client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 export default function OrdersNew() {
   const queryClient = useQueryClient();
+  const socketRef = useRef(null); // Ref giữ kết nối socket
 
-  // ✅ Fetch danh sách đơn hàng
-  const {
-    data: orders = [],
-    isLoading,
-    isError,
-  } = useQuery({
+  // ✅ Fetch danh sách đơn hàng ban đầu
+  const { data: orders = [], isLoading } = useQuery({
     queryKey: ["sellerOrders", "pending"],
     queryFn: async () => {
       const res = await API.get("orders/seller/pending/");
       return res.data.sort((a, b) => b.id - a.id);
     },
-    refetchInterval: 10000, // refetch 15s/lần để cập nhật realtime
+    // Không dùng refetchInterval nữa
   });
+
+  // ✅ LOGIC SOCKET.IO REAL-TIME
+  useEffect(() => {
+    // Chỉ kết nối nếu chưa có socket
+    if (!socketRef.current) {
+      // SỬA: Lấy đúng key "token"
+      const token = localStorage.getItem("token");
+
+      if (token) {
+        // Kết nối Socket
+        socketRef.current = io(process.env.REACT_APP_API_URL, {
+          auth: { token }, // Gửi token để Backend xác thực Shop
+          transports: ["websocket"],
+        });
+
+        // Lắng nghe sự kiện 'new_order'
+        socketRef.current.on("new_order", (newOrder) => {
+          console.log("🔥 Shop nhận đơn mới:", newOrder);
+
+          // A. Thông báo góc màn hình
+          notification.success({
+            message: "🎉 Có đơn hàng mới!",
+            description: `Đơn #${newOrder.id} - ${Number(newOrder.total_price).toLocaleString()}đ`,
+            placement: "bottomRight",
+            duration: 5,
+          });
+
+          // B. Cập nhật thẳng vào Cache (Hiển thị ngay lập tức)
+          queryClient.setQueryData(["sellerOrders", "pending"], (oldData) => {
+            const currentList = oldData || [];
+            // Kiểm tra trùng lặp
+            if (currentList.find((o) => o.id === newOrder.id))
+              return currentList;
+            // Chèn lên đầu
+            return [newOrder, ...currentList];
+          });
+        });
+
+        socketRef.current.on("connect_error", (err) => {
+          console.error("Lỗi kết nối Socket:", err.message);
+        });
+      }
+    }
+
+    // Cleanup khi component unmount
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
+    };
+  }, [queryClient]);
 
   // ✅ Mutations (Duyệt và Hủy đơn)
   const approveMutation = useMutation({
@@ -50,6 +102,7 @@ export default function OrdersNew() {
     onError: () => message.error("Lỗi khi hủy đơn"),
   });
 
+  // Đồng bộ state filter
   useEffect(() => {
     setFiltered(orders);
   }, [orders]);
@@ -59,9 +112,10 @@ export default function OrdersNew() {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [tick, setTick] = useState(0);
 
+  // Bộ đếm thời gian
   useEffect(() => {
     const interval = setInterval(() => {
-      setTick((t) => t + 1); // cứ mỗi giây render lại => cập nhật màu và text
+      setTick((t) => t + 1);
     }, 1000);
     return () => clearInterval(interval);
   }, []);
@@ -178,7 +232,7 @@ export default function OrdersNew() {
       align: "center",
       width: 240,
       onHeaderCell: () => ({
-        style: { paddingRight: 16, paddingLeft: 10 }
+        style: { paddingRight: 16, paddingLeft: 10 },
       }),
       render: (_, r) => (
         <div style={{ paddingRight: 14, paddingLeft: 6 }}>
@@ -195,7 +249,8 @@ export default function OrdersNew() {
                 type="primary"
                 size="middle"
                 loading={
-                  approveMutation.isPending && approveMutation.variables === r.id
+                  approveMutation.isPending &&
+                  approveMutation.variables === r.id
                 }
                 disabled={cancelMutation.isPending}
                 style={{ minWidth: 90 }}
@@ -211,7 +266,10 @@ export default function OrdersNew() {
               onConfirm={() => cancelMutation.mutate(r.id)}
               okText="Từ chối"
               cancelText="Quay lại"
-              okButtonProps={{ danger: true, loading: cancelMutation.isPending }}
+              okButtonProps={{
+                danger: true,
+                loading: cancelMutation.isPending,
+              }}
             >
               <Button
                 size="middle"
