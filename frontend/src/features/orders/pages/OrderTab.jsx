@@ -42,12 +42,10 @@ const OrderTab = ({ status }) => {
   const cardStyle = { background: "#fafafa", borderRadius: 12, padding: "20px", border: "1px solid #f0f0f0", minHeight: "100%" };
   const sectionTitleStyle = { fontWeight: 600, fontSize: 16, marginBottom: 16, color: "#262626", display: "flex", alignItems: "center", gap: 8 };
 
-  // --- 3. HÀM FETCH ĐƠN HÀNG (Tách ra để tái sử dụng) ---
+  // --- 3. HÀM FETCH ĐƠN HÀNG ---
   const fetchOrders = useCallback(() => {
     setLoading(true);
-    // XÓA DÒNG NÀY: const statusParam = status === "completed" ? "success" : status;
-
-    // Sử dụng trực tiếp status từ props
+    // Sử dụng trực tiếp status từ props (Logic HEAD)
     API.get(`orders/?status=${status}`)
       .then((res) => {
         setOrders(res.data.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)));
@@ -70,10 +68,9 @@ const OrderTab = ({ status }) => {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // --- 4. LOGIC KHIẾU NẠI ---
+  // --- 4. LOGIC KHIẾU NẠI (Giữ nguyên HEAD) ---
   const toggleComplaint = (orderItemId) => {
     setActiveComplaintItem(orderItemId);
-    // Reset form khi mở mới hoặc đóng
     if (orderItemId) {
       setComplaintText("");
       setComplaintFiles([]);
@@ -89,27 +86,22 @@ const OrderTab = ({ status }) => {
     setIsSendingComplaint(true);
     try {
       const formData = new FormData();
-      // Backend yêu cầu: order_item_id
       formData.append("order_item_id", orderItemId);
       formData.append("reason", complaintText);
 
-      // Append files
       if (complaintFiles && complaintFiles.length > 0) {
         for (let i = 0; i < complaintFiles.length; i++) {
           formData.append("media", complaintFiles[i]);
         }
       }
 
-      // Gọi API ComplaintViewSet
       await API.post("complaints/", formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
 
       message.success("Gửi yêu cầu hoàn tiền thành công!");
-      toggleComplaint(null); // Đóng form
-
-      // Gọi lại API lấy đơn hàng để cập nhật trạng thái (Tag: Đang yêu cầu hoàn tiền)
-      fetchOrders();
+      toggleComplaint(null); 
+      fetchOrders(); // Reload để cập nhật tag trạng thái
 
     } catch (error) {
       console.error(error);
@@ -120,13 +112,12 @@ const OrderTab = ({ status }) => {
     }
   };
 
-  // --- 5. LOGIC HỦY ĐƠN & MUA LẠI ---
+  // --- 5. LOGIC HỦY ĐƠN & MUA LẠI (Giữ nguyên HEAD) ---
   const handleCancelOrder = async (orderId) => {
     setCancelingOrderIds((prev) => new Set(prev).add(orderId));
     try {
       await API.post(`orders/${orderId}/cancel/`);
       message.success(`Đơn #${orderId} đã được huỷ`);
-      // Update local state để không cần load lại trang
       setOrders((prev) => prev.filter((order) => order.id !== orderId));
     } catch (error) {
       message.error(error?.response?.data?.error || "Hủy đơn thất bại");
@@ -145,7 +136,7 @@ const OrderTab = ({ status }) => {
       let successCount = 0;
       for (const item of items) {
         await addToCart(item.product, item.quantity || 1, {
-          id: item.product, // Product ID
+          id: item.product,
           name: item.product_name,
           price: item.price,
           image: item.product_image,
@@ -161,11 +152,10 @@ const OrderTab = ({ status }) => {
     }
   };
 
-  // --- 6. LOGIC ĐÁNH GIÁ ---
+  // --- 6. LOGIC ĐÁNH GIÁ (Merge xử lý lỗi từ TruongAn1) ---
   const handleRating = (item) => {
-    // Lưu ý: item ở đây là OrderItem, cần lấy product ID từ nó
     setRatingProduct({
-      product: item.product, // Product ID
+      product: item.product,
       name: item.product_name,
       image: item.product_image
     });
@@ -192,7 +182,17 @@ const OrderTab = ({ status }) => {
       setRatingModalVisible(false);
     } catch (error) {
       console.error("Lỗi đánh giá:", error);
-      message.error(error.response?.data?.detail || "Gửi đánh giá thất bại.");
+      // [MERGE] Tích hợp kiểm tra lỗi 401 từ nhánh TruongAn1
+      if (error.response) {
+        if (error.response.status === 401) {
+          message.error("Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.");
+        } else {
+          const errorMsg = error.response.data.detail || "Gửi đánh giá thất bại.";
+          message.error(errorMsg);
+        }
+      } else {
+        message.error("Lỗi kết nối server.");
+      }
     } finally {
       setSubmittingRating(false);
     }
@@ -201,13 +201,9 @@ const OrderTab = ({ status }) => {
   const handleChatWithShop = (order) => {
     const firstItem = order.items?.[0];
     if (!firstItem) return message.warning("Không tìm thấy thông tin shop");
-    // Logic tìm sellerId tùy thuộc vào data trả về từ API OrderDetail
-    // Với serializer mới, có thể cần check lại field store/seller
     const sellerId = firstItem.store?.id || firstItem.product_seller_id;
 
     if (!sellerId) {
-      // Fallback nếu API OrderItem chưa trả về seller_id, thử lấy từ product detail (nếu có)
-      // Hoặc bắn event chung
       message.info("Chức năng chat đang được cập nhật cho đơn hàng này");
       return;
     }
@@ -226,6 +222,7 @@ const OrderTab = ({ status }) => {
       <div style={{ maxWidth: isMobile ? "100%" : 1200, margin: "0 auto", paddingBottom: 32, paddingLeft: isMobile ? 16 : 24, paddingRight: isMobile ? 16 : 24 }}>
         <Collapse accordion bordered={false} style={{ background: "transparent" }}>
           {orders.map((order) => {
+            // Giữ logic hiển thị status của HEAD
             const orderStatus = statusMap[order.status] || { label: order.status, color: 'default', icon: null };
             const canCancel = cancellableStatuses.has(order.status);
 
@@ -237,7 +234,6 @@ const OrderTab = ({ status }) => {
                     <Space size="middle" style={{ flexWrap: "wrap" }}>
                       <Space>{orderStatus.icon} <Text strong>Đơn hàng #{order.id}</Text></Space>
                       <Tag color={orderStatus.color} icon={orderStatus.icon}>{orderStatus.label}</Tag>
-                      {/* Hiển thị thêm tag nếu đơn hàng đang có tranh chấp tổng */}
                       {order.is_disputed && <Tag color="error">Đang có khiếu nại</Tag>}
                     </Space>
                     <Space size="middle" style={{ flexWrap: "wrap", justifyContent: "flex-end", alignItems: "center" }}>
@@ -249,7 +245,9 @@ const OrderTab = ({ status }) => {
                         </div>
                       )}
                       <div style={{ textAlign: "right" }}>
-                        <Text strong style={{ color: "#52c41a", display: "block", fontSize: isMobile ? 15 : 17 }}>{intcomma(order.total_price)}đ</Text>
+                        <Text strong style={{ color: "#52c41a", display: "block", fontSize: isMobile ? 15 : 17 }}>
+                            {intcomma(order.total_amount || order.total_price)}đ
+                        </Text>
                         <Text type="secondary" style={{ fontSize: 12 }}>{new Date(order.created_at).toLocaleString("vi-VN")}</Text>
                       </div>
                     </Space>
@@ -260,9 +258,17 @@ const OrderTab = ({ status }) => {
                 <OrderTimeline status={order.status} orderId={order.id} />
                 <Divider style={{ margin: "24px 0" }} />
                 <Row gutter={[24, 24]}>
+                  {/* Cột Trái: Thông tin người nhận & Chi tiết thanh toán */}
                   <Col xs={24} lg={10}>
-                    <OrderInfo order={order} cardStyle={cardStyle} sectionTitleStyle={sectionTitleStyle} isMobile={isMobile} />
+                    <OrderInfo 
+                        order={order} 
+                        cardStyle={cardStyle} 
+                        sectionTitleStyle={sectionTitleStyle} 
+                        isMobile={isMobile} 
+                    />
                   </Col>
+                  
+                  {/* Cột Phải: Danh sách sản phẩm */}
                   <Col xs={24} lg={14}>
                     <ProductList
                       order={order}

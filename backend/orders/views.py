@@ -58,9 +58,7 @@ def user_behavior_stats(request, user_id):
         status__in=['completed', 'delivered', 'shipping', 'out_for_delivery', 'ready_to_pick', 'picking']
     )
     total_orders = successful_orders.count()
-    total_spent = successful_orders.aggregate(
-        total=Sum('total_price')
-    )['total'] or 0
+    total_spent = successful_orders.aggregate(total=Sum('total_price'))['total'] or 0
 
     # === 2. Tần suất mua trong 90 ngày ===
     ninety_days_ago = timezone.now() - timedelta(days=90)
@@ -78,7 +76,7 @@ def user_behavior_stats(request, user_id):
 
     # === 5. Sản phẩm yêu thích (mua nhiều nhất từ đơn completed/delivered) ===
     purchased_products_qs = (
-        OrderItem.objects.filter(
+        OrderItem.objects.filter( 
             order__user=user,
             order__status__in=['completed', 'delivered'], # Chỉ lấy đơn đã giao hoặc hoàn tất
         )
@@ -116,12 +114,8 @@ def user_behavior_stats(request, user_id):
     )
 
     interested_categories = [
-        {
-            "id": item['product__subcategory__category_id'],
-            "name": item['product__subcategory__category__name']
-        }
-        for item in categories_qs
-        if item['product__subcategory__category_id']
+        {"id": item['product__subcategory__category_id'], "name": item['product__subcategory__category__name']}
+        for item in categories_qs if item['product__subcategory__category_id']
     ]
 
     return Response({
@@ -182,7 +176,6 @@ class OrderViewSet(viewsets.ModelViewSet):
         elif user.is_authenticated:
             queryset = queryset.filter(user=user)
 
-        # Filter status
         status_param = self.request.query_params.get('status')
         if status_param:
             # --- [MỚI] Xử lý lọc đơn Trả hàng/Hoàn tiền cho Buyer ---
@@ -213,15 +206,15 @@ class OrderViewSet(viewsets.ModelViewSet):
                 except OrderProcessingError as e:
                     logger.error(f"Lỗi trừ tồn kho khi auto-approve đơn #{order.id}: {e}")
 
-        # Search
         search = self.request.query_params.get('search')
         if search:
             queryset = queryset.filter(
-                Q(customer_name__icontains=search) |
-                Q(customer_phone__icontains=search)
+                Q(customer_name__icontains=search) | Q(customer_phone__icontains=search)
             )
         
         return queryset.order_by('-created_at')
+
+    # --- ACTIONS ---
 
     @action(detail=False, methods=['get'], url_path='top-products')
     def top_products(self, request):
@@ -238,8 +231,7 @@ class OrderViewSet(viewsets.ModelViewSet):
                     quantity_sold=Sum('quantity'),
                     revenue=Sum('price'),
                     first_image=Subquery(
-                        ProductImage.objects.filter(product=OuterRef('product_id'))
-                        .values('image')[:1]
+                        ProductImage.objects.filter(product=OuterRef('product_id')).values('image')[:1]
                     ),
                 )
                 .order_by('-quantity_sold')[:10]
@@ -299,7 +291,6 @@ class OrderViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'], url_path='recent')
     def recent_orders(self, request):
-        """10 đơn gần nhất"""
         user = request.user
         qs = Order.objects.all().order_by('-created_at')
         if not getattr(user, 'is_admin', False):
@@ -399,19 +390,14 @@ class OrderViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'], url_path='seller/approve')
     def seller_approve(self, request, pk=None):
-        """Seller duyệt đơn (pending -> shipping)"""
         seller = getattr(request.user, 'seller', None)
-        if not seller:
-            return Response({'error': 'Chỉ seller mới có quyền duyệt'}, status=403)
-
+        if not seller: return Response({'error': 'Chỉ seller mới có quyền duyệt'}, status=403)
         try:
             order = Order.objects.get(pk=pk)
         except Order.DoesNotExist:
             return Response({'error': 'Không tìm thấy đơn hàng'}, status=404)
-
         if order.status != 'pending':
             return Response({'error': 'Chỉ duyệt được đơn pending'}, status=400)
-
         order.status = 'shipping'
         order.save(update_fields=['status'])
         
@@ -426,11 +412,10 @@ class OrderViewSet(viewsets.ModelViewSet):
     def seller_complete(self, request, pk=None):
         """Seller xác nhận hoàn tất đơn (Delivered -> Completed)"""
         seller = getattr(request.user, 'seller', None)
-        if not seller:
-            return Response({'error': 'Chỉ seller mới có quyền cập nhật'}, status=403)
-
+        if not seller: return Response({'error': 'Chỉ seller mới có quyền cập nhật'}, status=403)
         try:
             order = Order.objects.get(pk=pk)
+            updated_order = complete_order(order, seller)
         except Order.DoesNotExist:
             return Response({'error': 'Không tìm thấy đơn hàng'}, status=404)
         
@@ -447,12 +432,14 @@ class OrderViewSet(viewsets.ModelViewSet):
             updated_order = complete_order(order, seller)
         except OrderProcessingError as e:
             return Response({'error': str(e)}, status=400)
-        except Exception as e:
+        except Exception:
             logger.exception("Lỗi không xác định khi hoàn tất đơn")
             return Response({'error': 'Lỗi không xác định'}, status=500)
-
         return Response({'message': 'Hoàn tất đơn hàng', 'status': updated_order.status})
 
+    # ========================
+    # [FIX] HỦY ĐƠN VÀ HOÀN VOUCHER
+    # ========================
     @action(detail=True, methods=['post'], url_path='cancel')
     def cancel(self, request, pk=None):
         try:
@@ -463,6 +450,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         if order.status not in ['pending', 'shipping']:
             return Response({'error': 'Chỉ hủy được đơn đang chờ xác nhận hoặc đang giao'}, status=400)
 
+        # Quyền hủy đơn (User chính chủ hoặc Seller có sản phẩm trong đơn)
         user = request.user
         
         # Buyer hủy
@@ -482,21 +470,40 @@ class OrderViewSet(viewsets.ModelViewSet):
                 return Response({'message': 'Đơn hàng đã được hủy', 'status': order.status})
             return Response({'error': 'Bạn không có quyền với đơn hàng này'}, status=403)
 
-        return Response({'error': 'Bạn không có quyền hủy đơn hàng này'}, status=403)
+        # --- LOGIC HOÀN VOUCHER ---
+        # Kiểm tra xem đơn hàng có dùng voucher không (nếu Order model có field voucher)
+        # Nếu chưa có field voucher trong Order, bạn phải thêm vào models.py trước
+        if hasattr(order, 'voucher') and order.voucher:
+            # Tìm UserVoucher của người mua
+            uv = UserVoucher.objects.filter(user=order.user, voucher=order.voucher).first()
+            if uv:
+                # Gọi hàm hoàn lại lượt dùng (đã thêm trong models.py)
+                uv.restore_usage()
+                
+                # Giảm số lượng dùng Global của Voucher gốc (nếu có tracking)
+                if hasattr(order.voucher, 'used_quantity') and order.voucher.used_quantity > 0:
+                    order.voucher.used_quantity = F('used_quantity') - 1
+                    order.voucher.save(update_fields=['used_quantity'])
+
+        # Cập nhật trạng thái hủy
+        order.status = 'cancelled'
+        order.save(update_fields=['status'])
+        
+        return Response({'message': 'Đơn hàng đã được hủy và hoàn voucher', 'status': order.status})
+
+    # --- ADMIN ACTIONS ---
 
     # ========================
     # Admin APIs (quản lý soft delete)
     # ========================
     @action(detail=False, methods=['get'], url_path='admin-list')
     def admin_list(self, request):
-        if not getattr(request.user, 'is_admin', False):
-            return Response({'error': 'Chỉ admin mới có quyền'}, status=403)
+        if not getattr(request.user, 'is_admin', False): return Response({'error': 'Chỉ admin mới có quyền'}, status=403)
         return Response(self.get_serializer(self.get_queryset(), many=True).data)
 
     @action(detail=True, methods=['get'], url_path='admin-detail')
     def admin_detail(self, request, pk=None):
-        if not getattr(request.user, 'is_admin', False):
-            return Response({'error': 'Chỉ admin mới có quyền'}, status=403)
+        if not getattr(request.user, 'is_admin', False): return Response({'error': 'Chỉ admin mới có quyền'}, status=403)
         try:
             # Dùng all_objects để tìm cả đơn đã xóa
             order = Order.all_objects.get(pk=pk)
@@ -506,12 +513,10 @@ class OrderViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['patch'], url_path='admin-soft-delete')
     def admin_soft_delete(self, request, pk=None):
-        if not getattr(request.user, 'is_admin', False):
-            return Response({'error': 'Chỉ admin mới có quyền'}, status=403)
+        if not getattr(request.user, 'is_admin', False): return Response({'error': 'Chỉ admin mới có quyền'}, status=403)
         try:
             order = Order.all_objects.get(pk=pk)
-            if order.is_deleted:
-                return Response({'error': 'Đơn hàng đã bị ẩn'}, status=400)
+            if order.is_deleted: return Response({'error': 'Đơn hàng đã bị ẩn'}, status=400)
             order.soft_delete()
             return Response({'message': 'Đã ẩn đơn hàng'})
         except Order.DoesNotExist:
@@ -519,12 +524,10 @@ class OrderViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['patch'], url_path='admin-restore')
     def admin_restore(self, request, pk=None):
-        if not getattr(request.user, 'is_admin', False):
-            return Response({'error': 'Chỉ admin mới có quyền'}, status=403)
+        if not getattr(request.user, 'is_admin', False): return Response({'error': 'Chỉ admin mới có quyền'}, status=403)
         try:
             order = Order.all_objects.get(pk=pk)
-            if not order.is_deleted:
-                return Response({'error': 'Đơn hàng chưa bị ẩn'}, status=400)
+            if not order.is_deleted: return Response({'error': 'Đơn hàng chưa bị ẩn'}, status=400)
             order.restore()
             return Response({'message': 'Đã khôi phục đơn hàng'})
         except Order.DoesNotExist:
@@ -534,18 +537,27 @@ class OrderViewSet(viewsets.ModelViewSet):
     # Create Order (Voucher + Points)
     # ========================
     def perform_create(self, serializer):
-        order = serializer.save(user=self.request.user)
-        code = self.request.data.get("voucher_code") or self.request.data.get("voucher_id")
+        # Bọc toàn bộ quá trình trong transaction để đảm bảo tính toàn vẹn dữ liệu
+        with transaction.atomic():
+            # 1. Lưu đơn hàng (Serializer của bạn có thể đã xử lý voucher trong hàm create)
+            # Nếu Serializer ĐÃ xử lý, thì order này đã được trừ tiền và voucher đã được trừ lượt.
+            order = serializer.save(user=self.request.user)
+            
+            # --- LOGIC DỰ PHÒNG (FALLBACK) ---
+            # Nếu Serializer KHÔNG xử lý voucher (ví dụ bạn dùng serializer cũ),
+            # thì đoạn code dưới đây sẽ chạy để đảm bảo voucher vẫn được xử lý.
+            # Lưu ý: Nếu Serializer đã xử lý, bạn nên xóa hoặc comment đoạn này để tránh trừ 2 lần
+            # Tuy nhiên, hàm mark_used_once() có check số lượng, nên nếu trừ rồi thì nó sẽ chặn lại, khá an toàn.
+            
+            code = self.request.data.get("voucher_code")
+            # Chỉ xử lý nếu có code và đơn hàng chưa được gắn voucher (tức là serializer chưa làm gì)
+            has_voucher_field = hasattr(order, 'voucher')
+            if code and has_voucher_field and not order.voucher:
+                uv = UserVoucher.objects.select_for_update().filter(
+                    user=self.request.user, voucher__code=code
+                ).select_related("voucher").first()
 
-        if code:
-            try:
-                with transaction.atomic():
-                    uv = UserVoucher.objects.select_for_update().select_related("voucher").filter(
-                        user=self.request.user, voucher__code=code
-                    ).first()
-                    if not uv:
-                        raise ValueError("Voucher không thuộc về bạn")
-
+                if uv and uv.remaining_for_user() > 0:
                     voucher = uv.voucher
                     if not voucher.active:
                         raise ValueError("Voucher đã tắt")
@@ -575,8 +587,13 @@ class OrderViewSet(viewsets.ModelViewSet):
                     order.save(update_fields=["total_price", "voucher"])
 
                     uv.mark_used_once()
-            except Exception as e:
-                logger.error(f"Lỗi xử lý voucher: {e}")
+                    if hasattr(voucher, 'used_quantity'):
+                        voucher.used_quantity = F('used_quantity') + 1
+                        voucher.save(update_fields=['used_quantity'])
+                    
+                    # Gắn voucher vào đơn
+                    order.voucher = voucher
+                    order.save(update_fields=['voucher'])
 
         # Tích điểm
         created_orders = getattr(serializer, '_created_orders', [order])
@@ -596,6 +613,9 @@ class OrderViewSet(viewsets.ModelViewSet):
                 action=f"Cộng điểm khi thanh toán đơn hàng #{order.id}" + (f" và {len(created_orders)-1} đơn khác" if len(created_orders) > 1 else "")
             )
 
+# =========================================
+# OTHER VIEWS
+# =========================================
 
 # =========================================================
 # OTHER PRODUCT API
@@ -646,17 +666,10 @@ class PreorderDeleteView(generics.DestroyAPIView):
         preorder_id = kwargs.get("pk")
         preorder = Preorder.objects.filter(id=preorder_id, user=request.user).first()
         if not preorder:
-            return Response(
-                {"error": "Không tìm thấy đơn đặt trước"},
-                status=status.HTTP_404_NOT_FOUND
-            )
-
+            return Response({"error": "Không tìm thấy đơn đặt trước"}, status=404)
         preorder.delete()
-        return Response(
-            {"message": "Xóa đặt trước thành công"},
-            status=status.HTTP_204_NO_CONTENT
-        )
-    
+        return Response({"message": "Xóa đặt trước thành công"}, status=204)
+
 class PreorderListCreateView(generics.ListCreateAPIView):
     queryset = Preorder.objects.all()
     serializer_class = PreOrderSerializer
@@ -668,13 +681,9 @@ class PreorderListCreateView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         product = self.request.data.get("product")
         quantity = int(self.request.data.get("quantity", 1))
-
         preorder, created = Preorder.objects.get_or_create(
-            user=self.request.user,
-            product_id=product,
-            defaults={"quantity": quantity}
+            user=self.request.user, product_id=product, defaults={"quantity": quantity}
         )
-
         if not created:
             preorder.quantity += quantity
             preorder.save()
@@ -683,10 +692,8 @@ class PreorderListCreateView(generics.ListCreateAPIView):
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-
         preorder = self.perform_create(serializer)
         output_serializer = PreOrderSerializer(preorder, context=self.get_serializer_context())
-
         return Response(output_serializer.data, status=status.HTTP_201_CREATED)
     
     def get_serializer_context(self):
@@ -715,7 +722,7 @@ def revenue_report(request):
         start = datetime.strptime(start_date, '%Y-%m-%d')
         end = datetime.strptime(end_date, '%Y-%m-%d')
     except ValueError:
-        return Response({"error": "Invalid date format (use YYYY-MM-DD)"}, status=400)
+        return Response({"error": "Invalid date format"}, status=400)
 
     # Query orders (lọc theo range và chưa xóa)
     orders = Order.objects.filter(
@@ -742,15 +749,9 @@ def revenue_report(request):
             category = item.product.category
             commission_rate = getattr(category, 'commission_rate', 0.0)
             item_amount = float(item.price) * item.quantity
-            commission = item_amount * commission_rate
-            platform_revenue += commission
+            platform_revenue += item_amount * commission_rate
 
-    # Group by date for chart
-    daily_revenue = success_orders.values(
-        date=TruncDate('created_at')
-    ).annotate(
-        revenue=Sum('total_price')
-    ).order_by('date')
+    daily_revenue = success_orders.values(date=TruncDate('created_at')).annotate(revenue=Sum('total_price')).order_by('date')
     
     # Tính daily platform revenue
     daily_platform_revenue = []
@@ -778,11 +779,10 @@ def revenue_report(request):
         'total_revenue': float(total_revenue),
         'platform_revenue': platform_revenue,
         'success_orders_count': success_orders.count(),
-        'pending_orders_count': pending_orders.count(),
-        'cancelled_orders_count': cancelled_orders.count(),
+        'pending_orders_count': orders.filter(status__in=['pending', 'processing', 'shipping']).count(),
+        'cancelled_orders_count': orders.filter(status='cancelled').count(),
         'daily_revenue': daily_platform_revenue
     })
-
 
 @api_view(['GET'])
 @permission_classes([IsAdminUser])
@@ -802,8 +802,6 @@ def order_statistics_report(request):
         status__in=['completed', 'delivered']
     ).count()
     on_time_rate = round((successful_deliveries / total_orders * 100), 1) if total_orders > 0 else 0
-
-    # Tỷ lệ hủy
     cancelled_orders = Order.objects.filter(status='cancelled').count()
     cancel_rate = round((cancelled_orders / total_orders * 100), 1) if total_orders > 0 else 0
 
@@ -820,60 +818,44 @@ def order_statistics_report(request):
         'cancelled': 'Đã hủy',
         'returned': 'Trả hàng/Hoàn tiền', # Mới
     }
-
+    
     order_status_chart_data = [
-        {
-            'name': status_labels.get(item['status'], item['status']),
-            'value': item['count']
-        }
+        {'name': status_labels.get(item['status'], item['status']), 'value': item['count']}
         for item in order_status_data
     ]
 
     # Mock Data cho Delivery Time & Shipping Cost (Giữ nguyên như cũ)
     delivery_time_data = [
-        {'name': 'T7', 'avg': 2.1, 'late': 15},
-        {'name': 'CN', 'avg': 2.5, 'late': 21},
-        {'name': 'T2', 'avg': 1.9, 'late': 10},
-        {'name': 'T3', 'avg': 2.2, 'late': 13},
-        {'name': 'T4', 'avg': 2.3, 'late': 18},
-        {'name': 'T5', 'avg': 2.0, 'late': 12},
+        {'name': 'T7', 'avg': 2.1, 'late': 15}, {'name': 'CN', 'avg': 2.5, 'late': 21},
+        {'name': 'T2', 'avg': 1.9, 'late': 10}, {'name': 'T3', 'avg': 2.2, 'late': 13},
+        {'name': 'T4', 'avg': 2.3, 'late': 18}, {'name': 'T5', 'avg': 2.0, 'late': 12},
         {'name': 'T6', 'avg': 2.4, 'late': 16},
     ]
-
     shipping_cost_data = [
-        {'name': 'GHN', 'cost': 1200000},
-        {'name': 'GHTK', 'cost': 1500000},
-        {'name': 'Viettel Post', 'cost': 900000},
-        {'name': 'J&T', 'cost': 1100000},
+        {'name': 'GHN', 'cost': 1200000}, {'name': 'GHTK', 'cost': 1500000},
+        {'name': 'Viettel Post', 'cost': 900000}, {'name': 'J&T', 'cost': 1100000},
     ]
 
     return Response({
-        'orderSummary': {
-            'totalOrders': total_orders,
-            'revenue': float(total_revenue),
-            'onTimeRate': on_time_rate,
-            'cancelRate': cancel_rate,
-        },
+        'orderSummary': {'totalOrders': total_orders, 'revenue': float(total_revenue), 'onTimeRate': on_time_rate, 'cancelRate': cancel_rate},
         'orderStatusData': order_status_chart_data,
         'deliveryTimeData': delivery_time_data,
         'shippingCostData': shipping_cost_data,
     })
-
 
 def order_notifications_sse(request):
     """
     SSE endpoint for real-time order notifications
     """
     token = request.GET.get('token')
-    if not token:
-        return Response({'error': 'Token required'}, status=401)
-
+    if not token: return Response({'error': 'Token required'}, status=401)
+    
     try:
         from rest_framework_simplejwt.tokens import AccessToken
         access_token = AccessToken(token)
         user = User.objects.get(id=access_token['user_id'])
         request.user = user
-    except Exception as e:
+    except Exception:
         return Response({'error': 'Invalid token'}, status=401)
 
     if not getattr(request.user, 'is_admin', False):
@@ -890,25 +872,18 @@ def order_notifications_sse(request):
             if new_orders.exists():
                 for order in new_orders:
                     data = {
-                        'type': 'new_order',
-                        'order_id': order.id,
-                        'customer_name': order.customer_name,
-                        'total_price': float(order.total_price),
-                        'status': order.status,
-                        'created_at': order.created_at.isoformat()
+                        'type': 'new_order', 'order_id': order.id,
+                        'customer_name': order.customer_name, 'total_price': float(order.total_price),
+                        'status': order.status, 'created_at': order.created_at.isoformat()
                     }
                     yield f"data: {json.dumps(data)}\n\n"
                     last_id = max(last_id, order.id)
             time.sleep(2) 
 
-    response = StreamingHttpResponse(
-        event_stream(),
-        content_type='text/event-stream'
-    )
+    response = StreamingHttpResponse(event_stream(), content_type='text/event-stream')
     response['Cache-Control'] = 'no-cache'
     response['Connection'] = 'keep-alive'
     return response
-
 
 @api_view(['GET'])
 @permission_classes([IsAdminUser])
@@ -952,7 +927,6 @@ def dashboard_stats(request):
     # Tỷ lệ
     cancelled_count = orders.filter(status='cancelled').count()
     returned_count = orders.filter(status='returned').count()
-
     cancel_rate = round((cancelled_count / total_orders * 100), 2) if total_orders > 0 else 0
     return_rate = round((returned_count / total_orders * 100), 2) if total_orders > 0 else 0
     

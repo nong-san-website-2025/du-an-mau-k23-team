@@ -1,16 +1,14 @@
-// src/features/cart/hooks/useCheckoutLogic.js
-
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useCart } from "../services/CartContext";
 import { toast } from "react-toastify";
 import API from "../../login_register/services/api";
-import { applyVoucher } from "../../admin/services/promotionServices";
 import { message, notification } from "antd";
 import { useNavigate } from "react-router-dom";
 
 const useCheckoutLogic = () => {
   const navigate = useNavigate();
-  const { cartItems, clearCart } = useCart();
+  // [MERGE] Lấy clearSelectedItems từ TruongAn1 để chỉ xóa các món đã mua
+  const { cartItems, clearCart, clearSelectedItems } = useCart();
   const token = localStorage.getItem("token");
 
   // --- STATE QUẢN LÝ ---
@@ -32,6 +30,8 @@ const useCheckoutLogic = () => {
   });
 
   const [note, setNote] = useState("");
+  
+  // State Voucher & Payment
   const [voucherCode, setVoucherCode] = useState("");
   const [discount, setDiscount] = useState(0);
   const [payment, setPayment] = useState("Thanh toán khi nhận hàng");
@@ -56,7 +56,7 @@ const useCheckoutLogic = () => {
 
   const totalAfterDiscount = Math.max(total + shippingFee - discount, 0);
 
-  // --- ADDRESS LOGIC (FETCH & CRUD) ---
+  // --- ADDRESS LOGIC (FETCH & CRUD - Từ HEAD) ---
   const fetchAddresses = useCallback(async () => {
     if (!token) return;
     try {
@@ -81,7 +81,6 @@ const useCheckoutLogic = () => {
     fetchAddresses();
   }, [fetchAddresses]);
 
-  // Các hàm CRUD Address giữ nguyên...
   const deleteAddress = async (id) => {
     try {
       await API.delete(`users/addresses/${id}/`);
@@ -154,7 +153,7 @@ const useCheckoutLogic = () => {
     }
   };
 
-  // --- SHIPPING LOGIC ---
+  // --- SHIPPING LOGIC (Giữ logic HEAD vì hỗ trợ nhiều seller) ---
   useEffect(() => {
     if (!manualEntry && !selectedAddress) return;
 
@@ -242,33 +241,28 @@ const useCheckoutLogic = () => {
     return () => clearTimeout(timer);
   }, [manualEntry, geoManual, selectedAddress, selectedItems]);
 
-  // --- VOUCHER LOGIC ---
-  const handleApplyVoucher = useCallback(
-    async (code) => {
-      if (!token) return;
-      if (!code) {
+  // --- VOUCHER LOGIC (Logic TruongAn1 - Hỗ trợ object data) ---
+  const handleApplyVoucher = useCallback((data) => {
+    if (!data) {
         setDiscount(0);
         setVoucherCode("");
         return;
-      }
-      try {
-        const res = await applyVoucher(code, total);
-        setDiscount(res?.discount || 0);
-        setVoucherCode(code);
-        message.success(
-          `Đã áp dụng voucher: giảm ${res?.discount?.toLocaleString()}đ`
-        );
-      } catch (err) {
-        setDiscount(0);
-        setVoucherCode("");
-        message.error("Voucher không hợp lệ hoặc hết hạn!");
-      }
-    },
-    [token, total]
-  );
+    }
+    // Set tổng tiền giảm (Shop + Ship)
+    setDiscount(data.totalDiscount || 0);
 
-  // --- HANDLE ORDER (ĐÃ SỬA ĐỔI) ---
-  const handleOrder = async () => {
+    // Lấy code để gửi backend (ưu tiên shop voucher hoặc ship voucher)
+    // Lưu ý: Backend cần hỗ trợ nhận cả 2 code nếu muốn lưu lịch sử dùng cả 2
+    // Ở đây ta tạm lấy 1 code đại diện hoặc logic tùy backend của bạn
+    let code = "";
+    if (data.shopVoucher) code = data.shopVoucher.voucher.code;
+    else if (data.shipVoucher) code = data.shipVoucher.voucher.code;
+    
+    setVoucherCode(code);
+  }, []);
+
+  // --- HANDLE ORDER (MERGED) ---
+  const handleOrder = async (extraPayload = {}) => {
     if (!token) {
       notification.warning({ message: "Vui lòng đăng nhập để đặt hàng!" });
       navigate("/login?redirect=/checkout");
@@ -293,6 +287,7 @@ const useCheckoutLogic = () => {
       return null;
     }
 
+    // Mapping items chuẩn (Logic HEAD)
     const cleanItems = selectedItems.map((item) => {
       let productId = item.product;
       if (typeof item.product === "object" && item.product !== null) {
@@ -316,9 +311,10 @@ const useCheckoutLogic = () => {
       customer_phone: finalPhone,
       address: finalLocation,
       note: note || "",
-      payment_method: payment === "Ví điện tử" ? "banking" : "cod",
+      payment_method: payment === "Ví điện tử" ? "banking" : "cod", // Logic HEAD map đúng với VNPAY
       items: cleanItems,
       voucher_code: voucherCode || null,
+      ...extraPayload // Cho phép ghi đè từ UI (ví dụ shop_voucher_code, ship_voucher_code)
     };
 
     try {
@@ -327,10 +323,18 @@ const useCheckoutLogic = () => {
 
       // Thành công
       const newOrderId = res.data.id;
-      await clearCart();
+      
+      // [QUAN TRỌNG] Chỉ xóa các món đã chọn (Logic TruongAn1)
+      if (clearSelectedItems) {
+        await clearSelectedItems();
+      } else {
+        await clearCart(); // Fallback
+      }
+      
       notification.success({ message: "Đặt hàng thành công!" });
 
-      if (payment === "Thanh toán qua VNPAY") {
+      // Điều hướng
+      if (payment === "Ví điện tử" || payment === "Thanh toán qua VNPAY") {
         navigate(`/payment/waiting/${newOrderId}`);
       } else {
         navigate(`/orders?tab=active`);
@@ -341,18 +345,16 @@ const useCheckoutLogic = () => {
       console.error("❌ LỖI API:", error);
       const backendData = error.response?.data;
 
-      // [QUAN TRỌNG] Kiểm tra đúng cấu trúc JSON từ Backend vừa sửa
+      // [QUAN TRỌNG] Bắt lỗi hết hàng (Logic HEAD)
       if (backendData && backendData.unavailable_items) {
-        // Ném lỗi này ra để CheckoutPage.jsx bắt được và hiện Modal
-        // Chúng ta ném cả object response data để bên kia đọc được unavailable_items
         throw { response: { data: backendData } };
       }
 
-      // Các lỗi khác thì hiện thông báo góc
+      // Các lỗi khác
       let errorMsg = "Có lỗi xảy ra khi đặt hàng.";
       if (backendData) {
-        if (typeof backendData.detail === "string")
-          errorMsg = backendData.detail;
+        if (backendData.voucher_code) errorMsg = backendData.voucher_code[0]; // Lỗi voucher
+        else if (typeof backendData.detail === "string") errorMsg = backendData.detail;
         else if (typeof backendData === "string") errorMsg = backendData;
       }
 
@@ -361,6 +363,12 @@ const useCheckoutLogic = () => {
         description: errorMsg,
       });
 
+      // Reset voucher nếu lỗi (Logic TruongAn1)
+      if (errorMsg.toLowerCase().includes("voucher")) {
+          setVoucherCode("");
+          setDiscount(0);
+      }
+
       return null;
     } finally {
       setIsLoading(false);
@@ -368,6 +376,7 @@ const useCheckoutLogic = () => {
   };
 
   return {
+    // State
     addresses,
     selectedAddress,
     selectedAddressId,
@@ -405,6 +414,7 @@ const useCheckoutLogic = () => {
     handleApplyVoucher,
     handleSaveManualAddress,
     handleOrder,
+    addAddress, // Đảm bảo export hàm này cho UI dùng
   };
 };
 

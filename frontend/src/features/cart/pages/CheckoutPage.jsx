@@ -16,7 +16,6 @@ import {
   Avatar,
   Space,
   List,
-  Tag,
 } from "antd";
 import {
   TagOutlined,
@@ -33,7 +32,6 @@ import {
 import "../styles/CheckoutPage.css";
 
 // API & Services
-import API from "../../login_register/services/api";
 import { getSellerDetail } from "../../sellers/services/sellerService";
 
 // Components
@@ -60,21 +58,28 @@ const CheckoutPage = () => {
   const [isSavingAddress, setIsSavingAddress] = useState(false);
   const [sellerInfos, setSellerInfos] = useState({});
 
-  // State cho Modal hết hàng
+  // State cho Modal hết hàng (Từ HEAD)
   const [isStockModalOpen, setIsStockModalOpen] = useState(false);
   const [unavailableItems, setUnavailableItems] = useState([]);
+
+  // State quản lý Voucher Combo (Từ TruongAn1)
+  const [voucherData, setVoucherData] = useState({
+    shopDiscount: 0,
+    shipDiscount: 0,
+    selectedShopVoucher: null,
+    selectedShipVoucher: null,
+  });
 
   // --- HOOK LOGIC ---
   const {
     shippingFee,
     selectedAddressId,
     manualEntry,
-    discount,
     payment,
     isLoading,
     addresses,
     total,
-    totalAfterDiscount,
+    // totalAfterDiscount: Hook cũ tính, ta sẽ tự tính lại ở đây cho chuẩn combo
     selectedItems,
     selectedAddress,
     customerName,
@@ -85,11 +90,16 @@ const CheckoutPage = () => {
     setManualEntry,
     setPayment,
     setNote,
-    handleApplyVoucher,
-    handleOrder,
-    fetchAddresses,
+    handleOrder: originalHandleOrder, // Đổi tên để wrap lại logic
     addAddress,
   } = useCheckoutLogic();
+
+  // --- TÍNH TOÁN TỔNG TIỀN (Logic TruongAn1) ---
+  // Subtotal + Ship - ShopDiscount - ShipDiscount (Đảm bảo không âm)
+  const finalTotal = Math.max(
+    0,
+    total + shippingFee - voucherData.shopDiscount - voucherData.shipDiscount
+  );
 
   // Validate điều kiện đặt hàng
   const isAddressValid =
@@ -99,7 +109,7 @@ const CheckoutPage = () => {
   const isReadyToOrder =
     selectedItems.length > 0 && isAddressValid && shippingFee > 0;
 
-  // 1. LOGIC LOAD SELLER INFO
+  // 1. LOGIC LOAD SELLER INFO (Từ HEAD)
   useEffect(() => {
     const loadSellerInfos = async () => {
       const storeIds = new Set();
@@ -129,7 +139,7 @@ const CheckoutPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cartItems]);
 
-  // 2. GROUP ITEMS BY STORE
+  // 2. GROUP ITEMS BY STORE (Từ HEAD - UI xịn hơn)
   const groupedItems = checkoutItems.reduce((acc, item) => {
     const storeId =
       item.product_data?.store?.id || item.product?.store?.id || "store-less";
@@ -140,49 +150,50 @@ const CheckoutPage = () => {
     return acc;
   }, {});
 
-  // 3. XỬ LÝ ĐẶT HÀNG (WRAPPER)
+  // 3. XỬ LÝ VOUCHER (Từ TruongAn1)
+  const onApplyVoucher = (data) => {
+    // data: { shopVoucher, shipVoucher, shopDiscount, shipDiscount, totalDiscount }
+    setVoucherData(data);
+  };
+
+  // 4. XỬ LÝ ĐẶT HÀNG (MERGED: Payload của TruongAn1 + Error Handling của HEAD)
   const onPlaceOrder = async () => {
     try {
-      // Gọi handleOrder từ hook logic
-      // Hook đã được sửa để throw error nếu gặp lỗi unavailable_items
-      await handleOrder();
+      // Chuẩn bị payload mở rộng (Voucher Combo)
+      const orderPayload = {
+        shop_voucher_code: voucherData.selectedShopVoucher?.voucher?.code,
+        ship_voucher_code: voucherData.selectedShipVoucher?.voucher?.code,
+        // Các logic khác đã được hook xử lý
+      };
+
+      // Gọi handleOrder từ hook logic với payload mới
+      await originalHandleOrder(orderPayload);
     } catch (error) {
       const responseData = error.response?.data;
 
-      // Kiểm tra key 'unavailable_items' trả về từ Backend
+      // Kiểm tra key 'unavailable_items' trả về từ Backend (Logic HEAD)
       if (responseData && responseData.unavailable_items) {
         setUnavailableItems(responseData.unavailable_items);
         setIsStockModalOpen(true);
       } else {
-        // Các lỗi khác đã được handleOrder hiển thị notification
-        // hoặc xử lý thêm ở đây nếu cần
         console.error("Order error:", error);
       }
     }
   };
 
-  // 4. XỬ LÝ THÊM ĐỊA CHỈ MỚI
+  // 5. XỬ LÝ THÊM ĐỊA CHỈ MỚI (Từ HEAD)
   const handleAddressAddedSuccess = async (newAddressData) => {
     try {
       setIsSavingAddress(true);
-
-      // SỬA: Dùng hàm addAddress từ hook thay vì gọi API thủ công
-      // Hàm này trong hook đã bao gồm việc gọi API và cập nhật state list địa chỉ rồi
       const createdAddress = await addAddress(newAddressData);
 
-      // Nếu tạo thành công (hàm addAddress trả về data)
       if (createdAddress && createdAddress.id) {
-        setSelectedAddressId(createdAddress.id); // Tự động chọn địa chỉ mới tạo
+        setSelectedAddressId(createdAddress.id);
       }
-
-      // Đóng modal
       setIsAddAddressModalOpen(false);
-
     } catch (error) {
-      // Lỗi chi tiết đã được xử lý hoặc log trong hook
       console.error("Lỗi khi thêm địa chỉ:", error);
     } finally {
-      // Tắt loading (quan trọng để nút không quay mãi)
       setIsSavingAddress(false);
     }
   };
@@ -193,8 +204,13 @@ const CheckoutPage = () => {
     if (payment === "Ví điện tử") {
       return (
         <PaymentButton
-          amount={totalAfterDiscount}
-          orderData={{}}
+          amount={finalTotal}
+          orderData={{
+            vouchers: [
+              voucherData.selectedShopVoucher,
+              voucherData.selectedShipVoucher,
+            ].filter(Boolean),
+          }}
           disabled={!isReadyToOrder || isLoading}
         />
       );
@@ -205,16 +221,14 @@ const CheckoutPage = () => {
         size="large"
         block
         loading={isLoading}
-        // QUAN TRỌNG: Gọi onPlaceOrder để bắt lỗi try/catch
-        onClick={onPlaceOrder}
+        onClick={onPlaceOrder} // Gọi hàm đã merge
         disabled={!isReadyToOrder}
         className="btn-checkout"
       >
         {payment === "Thanh toán qua VNPAY"
           ? "Thanh toán & Đặt hàng"
-          : "Đặt hàng"}
+          : `Đặt hàng (${intcomma(finalTotal)}₫)`}
       </Button>
-      
     );
   };
 
@@ -269,7 +283,7 @@ const CheckoutPage = () => {
               onAddNew={() => setIsAddAddressModalOpen(true)}
             />
 
-            {/* DANH SÁCH SẢN PHẨM */}
+            {/* DANH SÁCH SẢN PHẨM (Group by Store - Style HEAD) */}
             <div
               className="checkout-product-groups"
               style={{ marginBottom: 20 }}
@@ -411,13 +425,14 @@ const CheckoutPage = () => {
                       <Row align="middle" justify="space-between">
                         <Col>
                           <Space size={4}>
-                            <EnvironmentOutlined style={{ color: '#1890ff' }} />
-                            <Text type="secondary" style={{ fontSize: 13 }}>Đơn vị vận chuyển:</Text>
-                            <Text style={{ fontSize: 13 }}>Giao Hàng Nhanh (Tiêu chuẩn)</Text>
+                            <EnvironmentOutlined style={{ color: "#1890ff" }} />
+                            <Text type="secondary" style={{ fontSize: 13 }}>
+                              Đơn vị vận chuyển:
+                            </Text>
+                            <Text style={{ fontSize: 13 }}>
+                              Giao Hàng Nhanh (Tiêu chuẩn)
+                            </Text>
                           </Space>
-                        </Col>
-                        <Col>
-                          {/* Chỗ để hiển thị phí ship riêng nếu API hỗ trợ split order */}
                         </Col>
                       </Row>
                     </div>
@@ -427,9 +442,21 @@ const CheckoutPage = () => {
 
               {/* Empty State */}
               {checkoutItems.length === 0 && (
-                <div style={{ textAlign: "center", padding: 40, background: '#fff', borderRadius: 8 }}>
-                  <ShoppingOutlined /> {/* Giả sử có icon này hoặc dùng Empty của Antd */}
-                  <Text type="secondary" style={{ display: 'block', margin: '10px 0' }}>Chưa có sản phẩm nào được chọn.</Text>
+                <div
+                  style={{
+                    textAlign: "center",
+                    padding: 40,
+                    background: "#fff",
+                    borderRadius: 8,
+                  }}
+                >
+                  <ShoppingOutlined style={{ fontSize: 40, color: "#ccc" }} />
+                  <Text
+                    type="secondary"
+                    style={{ display: "block", margin: "10px 0" }}
+                  >
+                    Chưa có sản phẩm nào được chọn.
+                  </Text>
                   <Button type="primary" onClick={() => navigate("/cart")}>
                     Quay lại giỏ hàng
                   </Button>
@@ -440,9 +467,13 @@ const CheckoutPage = () => {
             {/* Voucher & Payment */}
             <div className="checkout-card">
               <div className="card-header">
-                <TagOutlined /> Mã giảm giá
+                <TagOutlined /> GreenFarm Voucher
               </div>
-              <VoucherSection total={total} onApply={handleApplyVoucher} />
+              <VoucherSection
+                total={total}
+                shippingFee={shippingFee}
+                onApply={onApplyVoucher}
+              />
             </div>
 
             <PaymentMethod payment={payment} setPayment={setPayment} />
@@ -467,9 +498,7 @@ const CheckoutPage = () => {
               <Title level={4}>Đơn hàng</Title>
 
               <div className="summary-row">
-                <Text type="secondary">
-                  Tạm tính ({checkoutItems.length} sp)
-                </Text>
+                <Text type="secondary">Tạm tính ({checkoutItems.length} sp)</Text>
                 <Text>{intcomma(total)}₫</Text>
               </div>
 
@@ -478,19 +507,31 @@ const CheckoutPage = () => {
                 <Text>{intcomma(shippingFee)}₫</Text>
               </div>
 
-              <div className="summary-row">
-                <Text type="secondary">Giảm giá</Text>
-                <Text type="success">-{intcomma(discount)}₫</Text>
-              </div>
+              {/* Hiển thị chi tiết từng loại giảm giá (Logic TruongAn1) */}
+              {voucherData.shopDiscount > 0 && (
+                <div className="summary-row">
+                  <Text type="secondary">Giảm giá Shop</Text>
+                  <Text type="success">
+                    -{intcomma(voucherData.shopDiscount)}₫
+                  </Text>
+                </div>
+              )}
+
+              {voucherData.shipDiscount > 0 && (
+                <div className="summary-row">
+                  <Text type="secondary">Hỗ trợ phí ship</Text>
+                  <Text style={{ color: "#1677ff" }}>
+                    -{intcomma(voucherData.shipDiscount)}₫
+                  </Text>
+                </div>
+              )}
 
               <Divider style={{ margin: "12px 0" }} />
 
               <div className="summary-row total">
                 <Text>Tổng cộng</Text>
                 <div style={{ textAlign: "right" }}>
-                  <div className="total-price">
-                    {intcomma(totalAfterDiscount)}₫
-                  </div>
+                  <div className="total-price">{intcomma(finalTotal)}₫</div>
                   <Text type="secondary" style={{ fontSize: 12 }}>
                     (Đã bao gồm VAT)
                   </Text>
@@ -525,13 +566,13 @@ const CheckoutPage = () => {
             Tổng thanh toán
           </Text>
           <div style={{ color: "#ff4d4f", fontWeight: 700, fontSize: 18 }}>
-            {intcomma(totalAfterDiscount)}₫
+            {intcomma(finalTotal)}₫
           </div>
         </div>
         <div style={{ width: "50%" }}>{renderCheckoutAction()}</div>
       </div>
 
-      {/* === MODAL THÊM ĐỊA CHỈ === */}
+      {/* === MODAL THÊM ĐỊA CHỈ (HEAD) === */}
       <Modal
         title="Thêm địa chỉ mới"
         open={isAddAddressModalOpen}
@@ -553,7 +594,7 @@ const CheckoutPage = () => {
         )}
       </Modal>
 
-      {/* === MODAL CẢNH BÁO HẾT HÀNG (MỚI) === */}
+      {/* === MODAL CẢNH BÁO HẾT HÀNG (HEAD) === */}
       <Modal
         open={isStockModalOpen}
         title={

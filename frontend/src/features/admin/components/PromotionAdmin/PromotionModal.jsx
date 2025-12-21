@@ -242,7 +242,7 @@ export default function PromotionModal({ open, onCancel, onSave, detail, categor
                 <Col span={12}>
                     <Form.Item 
                         name="limit_usage" 
-                        label="Tổng lượt sử dụng tối đa"
+                        label="Tổng số lượng voucher muốn phát hành"
                         help="Tổng số lượng voucher phát hành (Ví dụ: 100)"
                         rules={[{ required: true, message: "Nhập tổng số lượng" }]}
                     >

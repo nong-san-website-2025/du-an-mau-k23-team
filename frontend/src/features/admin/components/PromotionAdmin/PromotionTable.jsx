@@ -5,7 +5,14 @@ import dayjs from "dayjs";
 
 const { Text } = Typography;
 
-export default function PromotionTable({ data, loading, onView, onEdit, onDelete }) {
+export default function PromotionTable({ 
+    data, 
+    loading, 
+    onView, 
+    onEdit, 
+    onDelete, 
+    rowSelection 
+}) {
   
   const columns = [
     {
@@ -20,39 +27,45 @@ export default function PromotionTable({ data, loading, onView, onEdit, onDelete
         </Space>
       ),
     },
-    // [SỬA LẠI] Cột Loại Voucher hiển thị tiếng Việt & Màu sắc chuẩn
     {
       title: "Loại",
       key: "voucher_type",
-      width: 180,
+      width: 150,
       align: "center",
       render: (_, record) => {
-        // Logic kiểm tra Freeship: Dựa vào backend trả về hoặc giá trị tiền
         const isFreeship = 
             record.voucher_type === 'freeship' || 
             (record.freeship_amount && record.freeship_amount > 0) ||
             record.discount_type === 'freeship';
         
         if (isFreeship) {
-            return <Tag color="purple">Miễn phí vận chuyển</Tag>;
+            return <Tag color="purple">Freeship</Tag>;
         }
-        return <Tag color="blue">Voucher thường</Tag>;
+        return <Tag color="blue">Giảm giá</Tag>;
       },
     },
     {
       title: "Thời gian áp dụng",
       key: "time",
       width: 220,
-      render: (_, record) => (
-        <div style={{ fontSize: 12 }}>
-          <div style={{ marginBottom: 4 }}>
-             <span style={{ color: '#888' }}>BĐ:</span> {record.start ? dayjs(record.start).format("DD/MM/YYYY HH:mm") : "--"}
-          </div>
-          <div>
-             <span style={{ color: '#888' }}>KT:</span> {record.end ? dayjs(record.end).format("DD/MM/YYYY HH:mm") : "--"}
-          </div>
-        </div>
-      ),
+      render: (_, record) => {
+        // [FIX] Kiểm tra kỹ tên trường thời gian từ API trả về
+        const start = record.start_at || record.start;
+        const end = record.end_at || record.end;
+
+        return (
+            <div style={{ fontSize: 12 }}>
+              <div style={{ marginBottom: 4 }}>
+                 <span style={{ color: '#888', marginRight: 4 }}>BĐ:</span> 
+                 {start ? dayjs(start).format("DD/MM/YYYY HH:mm") : <span style={{color:'#ccc'}}>--</span>}
+              </div>
+              <div>
+                 <span style={{ color: '#888', marginRight: 4 }}>KT:</span> 
+                 {end ? dayjs(end).format("DD/MM/YYYY HH:mm") : <span style={{color:'#ccc'}}>--</span>}
+              </div>
+            </div>
+        );
+      },
     },
     {
       title: "Trạng thái",
@@ -66,14 +79,13 @@ export default function PromotionTable({ data, loading, onView, onEdit, onDelete
         : <Tag color="default">Tạm dừng</Tag>
       ),
     },
-    // [SỬA LẠI] Cột Sử dụng: Xử lý null thành "KGH" (Không giới hạn)
     {
       title: "Sử dụng",
       key: "usage",
       align: "center",
       width: 120,
       render: (_, record) => {
-          const used = record.issued_count || 0;
+          const used = record.used_quantity || record.issued_count || 0;
           const total = record.total_quantity;
           
           if (total === null || total === undefined) {
@@ -120,6 +132,10 @@ export default function PromotionTable({ data, loading, onView, onEdit, onDelete
       columns={columns}
       dataSource={data}
       loading={loading}
+      rowSelection={rowSelection ? {
+          type: 'checkbox',
+          ...rowSelection,
+      } : undefined}
       pagination={{ pageSize: 10, showSizeChanger: true }}
       scroll={{ x: 1000 }}
     />
