@@ -744,8 +744,12 @@ def revenue_report(request):
         if item.product and item.product.category:
             category = item.product.category
             commission_rate = getattr(category, 'commission_rate', 0.0)
+            
+            # --- ĐOẠN CẦN SỬA ---
             item_amount = float(item.price) * item.quantity
-            platform_revenue += item_amount * commission_rate
+            # Ép kiểu commission_rate sang float
+            platform_revenue += item_amount * float(commission_rate)
+            # --------------------
 
     daily_revenue = success_orders.values(date=TruncDate('created_at')).annotate(revenue=Sum('total_price')).order_by('date')
     
@@ -761,8 +765,13 @@ def revenue_report(request):
         for item in day_items:
             if item.product and item.product.category:
                 commission_rate = getattr(item.product.category, 'commission_rate', 0.0)
+                
+                # --- ĐOẠN CẦN SỬA ---
                 item_amount = float(item.price) * item.quantity
-                commission = item_amount * commission_rate
+                # Ép kiểu commission_rate sang float
+                commission = item_amount * float(commission_rate)
+                # --------------------
+                
                 day_commission += commission
         
         daily_platform_revenue.append({

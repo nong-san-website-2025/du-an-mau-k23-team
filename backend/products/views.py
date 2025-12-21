@@ -316,8 +316,7 @@ class SubcategoryViewSet(viewsets.ModelViewSet):
 class ProductViewSet(viewsets.ModelViewSet):
     permission_classes = [AllowAny]
     queryset = Product.objects.select_related('subcategory__category', 'seller').prefetch_related('images').all()
-    parser_classes = [MultiPartParser, FormParser]
-
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
 
     # ✅ ĐÃ SỬA: Thêm "increment_views" vào AllowAny để fix lỗi 401
     def get_permissions(self):

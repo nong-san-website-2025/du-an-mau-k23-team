@@ -103,7 +103,7 @@ export default function Footer() {
               <div className={styles.socialGroup}>
                 <Text className={styles.socialLabel}>Kết nối:</Text>
                 <Space size="middle">
-                  <a href="https://facebook.com" target="_blank" rel="noreferrer" className={`${styles.socialIcon} ${styles.fb}`}>
+                  <a href="https://www.facebook.com/profile.php?id=61579026964994" target="_blank" rel="noreferrer" className={`${styles.socialIcon} ${styles.fb}`}>
                     <FacebookFilled />
                   </a>
                   <a href="https://tiktok.com" target="_blank" rel="noreferrer" className={`${styles.socialIcon} ${styles.tt}`}>
