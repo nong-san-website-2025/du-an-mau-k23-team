@@ -69,6 +69,40 @@
 }
 
 /* =========================================
+   1.1. MOBILE RESPONSIVE (iPhone 14 Pro Max ~430px)
+   ========================================= */
+@media (max-width: 480px) {
+  .search-container {
+    padding-left: 0; /* Tránh bị lệch, chiếm toàn bộ chiều ngang trên mobile */
+    max-width: 100%;
+  }
+
+  .search-input-wrapper {
+    border-radius: 10px;
+  }
+
+  .search-input {
+    height: 40px; /* Giảm nhẹ chiều cao để vừa tỉ lệ 430px */
+    font-size: 14px;
+    padding: 0 12px;
+  }
+
+  .search-btn {
+    width: 36px;
+    height: 36px; /* Bằng với chiều cao input để cân đối */
+    margin-right: 6px;
+  }
+
+  .search-dropdown {
+    width: 100%;
+    left: 0;
+    top: 100%;
+    max-height: 60vh; /* Hạn chế chiều cao để không tràn màn hình */
+    overflow-y: auto;
+  }
+}
+
+/* =========================================
    2. DROPDOWN (Đã chỉnh sửa để khớp với Wrapper)
    ========================================= */
 .search-dropdown {
