@@ -5,6 +5,8 @@ from .models import Preorder
 from products.models import Product
 from decimal import Decimal
 
+from django.db import transaction
+
 # =========================================
 # PREORDER SERIALIZER
 # =========================================
@@ -118,7 +120,7 @@ class OrderItemSerializer(serializers.ModelSerializer):
 class OrderCreateSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, required=False, write_only=True)
     # [NEW] Thêm field voucher_code
-    voucher_code = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    voucher_code = serializers.CharField(write_only=True, required=False, allow_blank=True, allow_null=True,)
 
     class Meta:
         model = Order

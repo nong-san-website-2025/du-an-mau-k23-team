@@ -313,7 +313,7 @@ const useCheckoutLogic = () => {
       note: note || "",
       payment_method: payment === "Ví điện tử" ? "banking" : "cod", // Logic HEAD map đúng với VNPAY
       items: cleanItems,
-      voucher_code: voucherCode || null,
+      voucher_code: voucherCode || "",
       ...extraPayload // Cho phép ghi đè từ UI (ví dụ shop_voucher_code, ship_voucher_code)
     };
 

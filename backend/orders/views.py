@@ -19,10 +19,6 @@ from django.db.models import Sum, Count, F, Q
 from django.db.models.functions import TruncDate, Coalesce
 from django.db import models
 
-from django.core.cache import cache
-from vnpay_python.vnpay import vnpay
-
-
 
 # Import Models
 from .models import Order, OrderItem, Preorder
