@@ -1,16 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
-  Card,
-  Badge,
-  Container,
-  Spinner,
-  Tabs,
-  Tab,
-  Modal,
-  Table,
-  Button,
-  Pagination,
+  Card, Badge, Container, Spinner, Tabs, Tab, Modal, Button, Pagination, Row, Col, OverlayTrigger, Tooltip
 } from "react-bootstrap";
+import { 
+  FaShippingFast, FaPercent, FaCoins, FaRegCopy, FaTicketAlt, FaStore, FaCalendarAlt, FaInfoCircle, FaCheckCircle, FaTimesCircle
+} from "react-icons/fa";
+import { toast } from "react-toastify";
 import { getMyVouchers } from "../../admin/services/promotionServices";
 
 const MyVoucher = () => {
@@ -20,475 +15,218 @@ const MyVoucher = () => {
   const [selectedVoucher, setSelectedVoucher] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const vouchersPerPage = 10;
+  const vouchersPerPage = 12;
 
   const fetchData = async () => {
     const token = localStorage.getItem("token");
-    if (!token) {
-      setLoading(false);
-      return;
-    }
-
+    if (!token) return setLoading(false);
     try {
       setLoading(true);
       const res = await getMyVouchers();
-      setUserVouchers(res);
+      // Đảo ngược danh sách gốc để voucher mới nhất (thường là cuối mảng) lên đầu
+      // Hoặc nếu API trả về giảm dần theo ID/created_at thì không cần reverse
+      // Ở đây tôi dùng sort giảm dần theo ID để chắc chắn mới nhất lên đầu
+      const sortedRes = (res || []).sort((a, b) => b.id - a.id); 
+      setUserVouchers(sortedRes);
     } catch (err) {
-      console.error("Lỗi khi tải túi voucher:", err);
+      console.error("Lỗi tải túi voucher:", err);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchData();
-  }, [tab]);
+  useEffect(() => { fetchData(); }, [tab]);
 
-  // Lọc theo tab
+  // --- 1. GỘP VOUCHER ---
+  const groupedVouchers = useMemo(() => {
+    if (!userVouchers.length) return [];
+    
+    // Dùng Map để giữ thứ tự chèn (insertion order) - quan trọng để giữ voucher mới nhất ở đầu
+    const groups = new Map();
+    
+    userVouchers.forEach(uv => {
+        const v = uv.voucher;
+        if (!v) return;
+        const code = v.code; 
+
+        if (!groups.has(code)) {
+            groups.set(code, { 
+                ...uv, // Lấy thông tin của bản ghi mới nhất (vì list đã sort)
+                quantity: 0, 
+                used_count: 0, 
+                voucher: v 
+            });
+        }
+        
+        const item = groups.get(code);
+        item.quantity += (uv.quantity || 1);
+        item.used_count += (uv.used_count || 0);
+    });
+    
+    return Array.from(groups.values());
+  }, [userVouchers]);
+
+  // --- 2. LỌC ---
   const now = new Date();
-  const filteredVouchers = userVouchers.filter((uv) => {
-    const v = uv?.voucher;
+  const filteredVouchers = groupedVouchers.filter((item) => {
+    const v = item.voucher;
     if (!v) return false;
-    const isExpired = new Date(v.end_at) < now;
-    if (tab === "unused") return !uv.is_used && !isExpired;
-    if (tab === "used") return uv.is_used;
-    if (tab === "expired") return isExpired;
+    
+    const isExpired = v.end_at && new Date(v.end_at) < now;
+    const isFullyUsed = item.quantity > 0 && item.used_count >= item.quantity;
+
+    // Tab Chưa dùng: Phải chưa dùng hết VÀ chưa hết hạn
+    if (tab === "unused") return !isFullyUsed && !isExpired;
+    
+    // Tab Đã dùng: Đã dùng hết
+    if (tab === "used") return isFullyUsed;
+    
+    // Tab Hết hạn: Hết hạn nhưng chưa dùng hết (để user biết mình bỏ lỡ)
+    if (tab === "expired") return isExpired && !isFullyUsed;
+    
     return true;
   });
 
-  // Tính toán phân trang
   const indexOfLast = currentPage * vouchersPerPage;
   const indexOfFirst = indexOfLast - vouchersPerPage;
   const currentVouchers = filteredVouchers.slice(indexOfFirst, indexOfLast);
   const totalPages = Math.ceil(filteredVouchers.length / vouchersPerPage);
 
-  const handlePageChange = (pageNumber) => {
-    setCurrentPage(pageNumber);
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const getVoucherStyle = (voucher) => {
-    if (voucher.discount_type === "freeship" && voucher.freeship_amount) {
-      return {
-        bgColor: "#e6f7ff",
-        borderColor: "#91d5ff",
-        icon: "🚚",
-        color: "#1890ff",
-      };
-    } else if (
-      voucher.discount_type === "percent" &&
-      voucher.discount_percent
-    ) {
-      return {
-        bgColor: "#fffbe6",
-        borderColor: "#ffe58f",
-        icon: "🔥",
-        color: "#fa8c16",
-      };
-    } else if (voucher.discount_type === "amount" && voucher.discount_amount) {
-      return {
-        bgColor: "#f6ffed",
-        borderColor: "#b7eb8f",
-        icon: "💸",
-        color: "#52c41a",
-      };
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text);
+    toast.info("📋 Đã sao chép mã voucher");
+  };
+
+  const getStyle = (v) => {
+    if (v.discount_type === "freeship" || (v.freeship_amount > 0)) {
+      return { bg: "linear-gradient(135deg, #e6f7ff 0%, #bae7ff 100%)", border: "#91d5ff", text: "#0050b3", icon: <FaShippingFast className="fs-4"/>, label: "Freeship" };
+    } else if (v.discount_type === "percent") {
+      return { bg: "linear-gradient(135deg, #fff7e6 0%, #ffd591 100%)", border: "#ffc069", text: "#d46b08", icon: <FaPercent className="fs-4"/>, label: "Giảm %" };
     }
-    return {
-      bgColor: "#f5f5f5",
-      borderColor: "#d9d9d9",
-      icon: "🏷️",
-      color: "#595959",
-    };
+    return { bg: "linear-gradient(135deg, #f6ffed 0%, #d9f7be 100%)", border: "#b7eb8f", text: "#389e0d", icon: <FaCoins className="fs-4"/>, label: "Giảm tiền" };
   };
 
-  const openDetailModal = (uv) => {
-    setSelectedVoucher(uv);
-    setShowDetailModal(true);
+  // Helper hiển thị giá trị giảm rõ ràng
+  const renderDiscountValue = (v) => {
+      if (v.discount_type === 'freeship' || (v.freeship_amount > 0)) {
+          return `Freeship tối đa ${parseInt(v.freeship_amount).toLocaleString()}đ`;
+      }
+      if (v.discount_type === 'percent') {
+          return `Giảm ${v.discount_percent}% (Tối đa ${parseInt(v.max_discount_amount || 0).toLocaleString()}đ)`;
+      }
+      return `Giảm trực tiếp ${parseInt(v.discount_amount || 0).toLocaleString()}đ`;
   };
 
-  if (loading) {
+  const VoucherCard = ({ item }) => {
+    const v = item.voucher;
+    const info = getStyle(v);
+    const isExpired = v.end_at && new Date(v.end_at) < now;
+    const isUsed = item.quantity > 0 && item.used_count >= item.quantity;
+    const remainingQty = item.quantity - item.used_count;
+
     return (
-      <div className="text-center my-5">
-        <Spinner animation="border" style={{ color: "#1890ff" }} />
-        <div className="mt-2 text-muted">Đang tải voucher của bạn...</div>
-      </div>
+      <Col xs={12} md={6} lg={4} xl={4} className="mb-4">
+        <Card className="h-100 border-0 shadow-sm hover-shadow" style={{ borderRadius: "12px", overflow: "hidden", opacity: (isUsed||isExpired)?0.6:1 }}>
+          <div className="p-3 d-flex justify-content-between align-items-center" style={{ background: info.bg, borderBottom: `1px solid ${info.border}`, filter: (isUsed||isExpired)?'grayscale(100%)':'none' }}>
+            <div className="d-flex align-items-center gap-2">
+              <div className="p-2 bg-white rounded-circle shadow-sm" style={{ color: info.text }}>{info.icon}</div>
+              <div>
+                <div className="fw-bold" style={{ color: info.text, fontSize: "0.9rem" }}>{info.label}</div>
+                <div className="small text-muted" style={{ fontSize: "0.75rem" }}>{v.source_name || 'GreenFarm'}</div>
+              </div>
+            </div>
+            {isUsed ? <Badge bg="secondary" pill>Đã dùng</Badge> : isExpired ? <Badge bg="danger" pill>Hết hạn</Badge> : <Badge bg="success" pill>Sẵn sàng</Badge>}
+            {item.quantity > 1 && <div className="mt-1 text-end fw-bold text-dark" style={{fontSize: '0.8rem'}}>x{item.quantity}</div>}
+          </div>
+          <Card.Body className="d-flex flex-column p-3">
+            <div className="flex-grow-1">
+              <h6 className="fw-bold text-dark mb-2 text-truncate" title={v.title}>{v.title || "Voucher"}</h6>
+              <div className="my-2 p-2 bg-light rounded border border-dashed d-flex justify-content-between align-items-center">
+                <code className="fs-6 fw-bold text-primary">{v.code}</code>
+                <OverlayTrigger overlay={<Tooltip>Sao chép</Tooltip>}>
+                  <Button variant="link" size="sm" className="p-0 text-secondary" onClick={() => copyToClipboard(v.code)}><FaRegCopy /></Button>
+                </OverlayTrigger>
+              </div>
+              <div className="small text-secondary mb-1"><FaInfoCircle className="me-1 text-info"/>{renderDiscountValue(v)}</div>
+              
+              <div className="d-flex justify-content-between align-items-center mt-2 small bg-light px-2 py-1 rounded border">
+                 <span className={remainingQty > 0 ? "text-success fw-bold" : "text-muted"}>
+                    {remainingQty > 0 ? `Còn lại: ${remainingQty} lượt` : "Đã dùng hết"}
+                 </span>
+                 <span className="text-muted">Tổng: {item.quantity}</span>
+              </div>
+            </div>
+            <div className="mt-3 pt-3 border-top">
+              <Button variant="outline-primary" size="sm" className="w-100 rounded-pill" onClick={() => {setSelectedVoucher(item); setShowDetailModal(true);}}>Xem chi tiết</Button>
+            </div>
+          </Card.Body>
+        </Card>
+      </Col>
     );
-  }
+  };
+
+  if (loading) return <div className="text-center my-5 py-5"><Spinner animation="border" variant="primary"/><div className="mt-3 text-muted">Đang tải ví voucher...</div></div>;
 
   return (
-    <Container className="py-1">
-      <div className="mb-1">
-        <h5
-          className="mb-3"
-          style={{
-            color: "#1890ff",
-            fontWeight: 600,
-            fontSize: "1.3rem",
-            letterSpacing: "0.5px",
-          }}
-        >
-          🎁 Voucher của tôi
-        </h5>
-      </div>
-
-      <Tabs
-        activeKey={tab}
-        onSelect={(k) => {
-          setTab(k);
-          setCurrentPage(1);
-        }}
-        className="mb-4"
-        style={{
-          background: "#fff",
-          borderRadius: "8px",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-        }}
-      >
-        <Tab
-          eventKey="unused"
-          title={
-            <span
-              style={{
-                color: tab === "unused" ? "#1890ff" : "#8c8c8c",
-                fontWeight: tab === "unused" ? 600 : 500,
-              }}
-            >
-              Chưa sử dụng (
-              {
-                userVouchers.filter(
-                  (uv) =>
-                    uv?.voucher &&
-                    !uv.is_used &&
-                    new Date(uv?.voucher.end_at) >= now
-                ).length
-              }
-              )
-            </span>
-          }
-        />
-        <Tab
-          eventKey="used"
-          title={
-            <span
-              style={{
-                color: tab === "used" ? "#1890ff" : "#8c8c8c",
-                fontWeight: tab === "used" ? 600 : 500,
-              }}
-            >
-              Đã sử dụng ({userVouchers.filter((uv) => uv.is_used).length})
-            </span>
-          }
-        />
-        <Tab
-          eventKey="expired"
-          title={
-            <span
-              style={{
-                color: tab === "expired" ? "#1890ff" : "#8c8c8c",
-                fontWeight: tab === "expired" ? 600 : 500,
-              }}
-            >
-              Hết hạn (
-              {
-                userVouchers.filter(
-                  (uv) => uv?.voucher && new Date(uv?.voucher.end_at) < now
-                ).length
-              }
-              )
-            </span>
-          }
-        />
+    <Container className="py-2">
+      <div className="mb-4"><h4 className="fw-bold mb-1">🎁 Ví Voucher Của Tôi</h4><p className="text-muted small mb-0">Quản lý mã giảm giá của bạn</p></div>
+      <Tabs activeKey={tab} onSelect={(k)=>{setTab(k); setCurrentPage(1);}} className="mb-4 custom-tabs border-bottom-0" fill>
+        <Tab eventKey="unused" title={<span className="fw-bold">⚡ Chưa sử dụng</span>} />
+        <Tab eventKey="used" title={<span className="text-secondary">Đã sử dụng</span>} />
+        <Tab eventKey="expired" title={<span className="text-secondary">Hết hạn</span>} />
       </Tabs>
+      
+      <div className="mb-3 px-2 text-muted small fw-bold">Tìm thấy {filteredVouchers.length} loại voucher</div>
+      <Row>
+        {currentVouchers.length===0 ? <Col xs={12} className="text-center py-5 bg-light rounded"><div className="mb-3" style={{fontSize:"3rem"}}>📭</div><h6 className="text-muted">Trống trơn</h6></Col> : currentVouchers.map(item => <VoucherCard key={item.id || item.voucher.code} item={item} />)}
+      </Row>
 
-      <div className="d-flex justify-content-between align-items-center mb-2">
-        <span className="text-muted small">
-          Hiển thị: {Math.min(indexOfLast, filteredVouchers.length)} /{" "}
-          {filteredVouchers.length} voucher
-        </span>
-      </div>
+      {/* Pagination */}
+      {totalPages > 1 && <div className="d-flex justify-content-center mt-4"><Pagination><Pagination.Prev onClick={()=>handlePageChange(Math.max(1,currentPage-1))} disabled={currentPage===1}/><Pagination.Item active>{currentPage}</Pagination.Item><Pagination.Next onClick={()=>handlePageChange(Math.min(totalPages,currentPage+1))} disabled={currentPage===totalPages}/></Pagination></div>}
 
-      <div className="voucher-list">
-        {currentVouchers.length === 0 ? (
-          <div className="text-center py-3">
-            <div className="mb-3" style={{ fontSize: "2rem" }}>
-              📭
-            </div>
-            <p className="text-muted mb-0">Không có voucher nào phù hợp</p>
-          </div>
-        ) : (
-          currentVouchers.map((uv) => {
-            const v = uv?.voucher;
-            if (!v) return null;
-
-            const style = getVoucherStyle(v);
-            const isExpired = new Date(v.end_at) < now;
-            const endDate = new Date(v.end_at);
-
-            return (
-              <Card
-                key={uv.id}
-                className="mb-1 border-0 shadow-sm"
-                style={{
-                  background: style.bgColor,
-                  border: `1px solid ${style.borderColor}`,
-                  borderRadius: "8px",
-                  minHeight: "60px",
-                }}
-              >
-                <Card.Body className="d-flex align-items-center justify-content-between px-3">
-                  <div className="d-flex align-items-center flex-grow-1">
-                    <div
-                      className="d-flex align-items-center justify-content-center me-2"
-                      style={{
-                        width: "40px",
-                        height: "40px",
-                        borderRadius: "8px",
-                        backgroundColor: style.borderColor,
-                        color: "#fff",
-                        fontSize: "1rem",
-                      }}
-                    >
-                      {style.icon}
+      {/* MODAL CHI TIẾT */}
+      <Modal show={showDetailModal} onHide={()=>setShowDetailModal(false)} centered className="voucher-detail-modal">
+        {selectedVoucher && selectedVoucher.voucher && (() => {
+           const v = selectedVoucher.voucher;
+           const info = getStyle(v);
+           return (
+             <>
+              <Modal.Header closeButton style={{borderBottom:"none", background:"#f8f9fa"}}><Modal.Title className="fs-5 fw-bold"><FaTicketAlt className="text-primary me-2"/>Thông tin voucher</Modal.Title></Modal.Header>
+              <Modal.Body className="p-0">
+                <div className="p-4 text-center" style={{background:info.bg}}>
+                  <div className="d-inline-flex p-3 rounded-circle bg-white shadow-sm mb-2 fs-1" style={{color:info.text}}>{info.icon}</div>
+                  <h5 className="fw-bold mb-1">{v.title}</h5>
+                  <Badge bg="light" text="dark" className="border mt-1">{v.source_name || 'GreenFarm'}</Badge>
+                </div>
+                <div className="p-4">
+                  <div className="bg-light p-3 rounded border border-dashed text-center mb-4"><div className="text-muted small mb-1 fw-bold text-uppercase">Mã Voucher</div><div className="d-flex justify-content-center gap-2"><span className="fs-3 fw-bold text-primary">{v.code}</span><Button variant="white" size="sm" onClick={()=>copyToClipboard(v.code)}><FaRegCopy/></Button></div></div>
+                  <div className="d-flex flex-column gap-3">
+                    <div className="d-flex justify-content-between border-bottom pb-2"><span className="text-muted small"><FaTicketAlt className="me-2"/>Loại</span><span className="fw-medium">{info.label}</span></div>
+                    
+                    {/* [FIX] HIỂN THỊ RÕ RÀNG */}
+                    <div className="d-flex justify-content-between border-bottom pb-2">
+                        <span className="text-muted small"><FaCoins className="me-2"/>Giá trị giảm</span>
+                        <span className="fw-bold text-success text-end" style={{maxWidth:'60%'}}>{renderDiscountValue(v)}</span>
                     </div>
-                    <div className="flex-grow-1">
-                      <div className="d-flex align-items-center mb-1">
-                        {/* === YÊU CẦU 1: HIỂN THỊ NGUỒN GỐC === */}
-                        {v.source_name && (
-                          <Badge bg="success" className="me-2">
-                            {v.source_name}
-                          </Badge>
-                        )}
-                        <strong
-                          className="me-2"
-                          style={{
-                            color: style.color,
-                            fontSize: "1rem",
-                            fontWeight: 600,
-                          }}
-                        >
-                          {v.code}
-                        </strong>
-                        {uv.is_used && (
-                          <Badge bg="secondary" style={{ fontSize: "0.7rem" }}>
-                            Đã dùng
-                          </Badge>
-                        )}
-                        {isExpired && (
-                          <Badge bg="danger" style={{ fontSize: "0.7rem" }}>
-                            Hết hạn
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="d-flex align-items-center flex-wrap gap-2">
-                        <span
-                          className="small"
-                          style={{ color: style.color, fontWeight: 500 }}
-                        >
-                          {v.discount_type === "freeship" && v.freeship_amount
-                            ? `Freeship ${Number(v.freeship_amount).toLocaleString("vi-VN")}₫`
-                            : v.discount_type === "percent" &&
-                                v.discount_percent
-                              ? `${v.discount_percent}%`
-                              : v.discount_type === "amount" &&
-                                  v.discount_amount
-                                ? `${Number(v.discount_amount).toLocaleString("vi-VN")}₫`
-                                : "—"}
-                        </span>
-                        <small className="text-muted">
-                          Đơn tối thiểu:{" "}
-                          {v.min_order_value
-                            ? Number(v.min_order_value).toLocaleString(
-                                "vi-VN"
-                              ) + "₫"
-                            : "Không yêu cầu"}
-                        </small>
-                        <small className="text-muted">
-                          Hết hạn: {endDate.toLocaleDateString("vi-VN")}
-                        </small>
-                      </div>
-                    </div>
+
+                    <div className="d-flex justify-content-between border-bottom pb-2"><span className="text-muted small"><FaStore className="me-2"/>Đơn từ</span><span className="fw-medium">{parseInt(v.min_order_value||0).toLocaleString()}đ</span></div>
+                    <div className="d-flex justify-content-between border-bottom pb-2"><span className="text-muted small"><FaCalendarAlt className="me-2"/>Hạn dùng</span><span className="text-danger fw-medium">{v.end_at ? new Date(v.end_at).toLocaleDateString("vi-VN") : "Vĩnh viễn"}</span></div>
+                    <div className="d-flex justify-content-between align-items-center"><span className="text-muted small"><FaInfoCircle className="me-2"/>Số lượng sở hữu</span><span className="fw-bold text-primary fs-5">{selectedVoucher.quantity}</span></div>
+                    <div className="d-flex justify-content-between align-items-center"><span className="text-muted small"><FaCheckCircle className="me-2"/>Đã sử dụng</span><span className="fw-bold text-secondary fs-5">{selectedVoucher.used_count}</span></div>
                   </div>
-                  <div className="d-flex align-items-center">
-                    <Button
-                      variant="outline-primary"
-                      size="sm"
-                      onClick={() => openDetailModal(uv)}
-                      style={{
-                        borderRadius: "6px",
-                        fontSize: "0.8rem",
-                        padding: "4px 12px",
-                      }}
-                    >
-                      Chi tiết
-                    </Button>
-                  </div>
-                </Card.Body>
-              </Card>
-            );
-          })
-        )}
-      </div>
-
-      {totalPages > 1 && (
-        <div className="d-flex justify-content-center mt-4">
-          <Pagination className="mb-0">
-            {/* ... giữ nguyên code pagination ... */}
-          </Pagination>
-        </div>
-      )}
-
-      <Modal
-        show={showDetailModal}
-        onHide={() => setShowDetailModal(false)}
-        size="lg"
-      >
-        <Modal.Header closeButton>
-          <Modal.Title style={{ color: "#1890ff", fontWeight: 600 }}>
-            Chi tiết Voucher
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          {selectedVoucher && selectedVoucher.voucher && (
-            <>
-              {/* === YÊU CẦU 2: HIỂN THỊ NGUỒN GỐC TRONG MODAL === */}
-              <div className="text-center p-2 mb-3 bg-light rounded">
-                <strong>
-                  {selectedVoucher.voucher.source_name === "GreenFarm"
-                    ? "Voucher từ GreenFarm"
-                    : `Voucher của Shop: ${selectedVoucher.voucher.source_name}`}
-                </strong>
-              </div>
-              <Table bordered responsive>
-                <tbody>
-                  <tr>
-                    <td>
-                      <strong>Mã voucher:</strong>
-                    </td>
-                    <td>{selectedVoucher.voucher.code}</td>
-                  </tr>
-                  <tr>
-                    <td>
-                      <strong>Tên:</strong>
-                    </td>
-                    <td>
-                      {selectedVoucher.voucher.name ||
-                        selectedVoucher.voucher.title}
-                    </td>
-                  </tr>
-                  <tr>
-                    <td>
-                      <strong>Loại:</strong>
-                    </td>
-                    <td>
-                      {selectedVoucher.voucher.discount_type === "freeship"
-                        ? "Freeship"
-                        : selectedVoucher.voucher.discount_type === "percent"
-                          ? "Phần trăm"
-                          : selectedVoucher.voucher.discount_type === "amount"
-                            ? "Số tiền"
-                            : "Không xác định"}
-                    </td>
-                  </tr>
-                  <tr>
-                    <td>
-                      <strong>Giá trị:</strong>
-                    </td>
-                    <td>
-                      {selectedVoucher.voucher.discount_type === "freeship" &&
-                      selectedVoucher.voucher.freeship_amount
-                        ? `Freeship ${Number(selectedVoucher.voucher.freeship_amount).toLocaleString("vi-VN")}₫`
-                        : selectedVoucher.voucher.discount_type === "percent" &&
-                            selectedVoucher.voucher.discount_percent
-                          ? `${selectedVoucher.voucher.discount_percent}%`
-                          : selectedVoucher.voucher.discount_type ===
-                                "amount" &&
-                              selectedVoucher.voucher.discount_amount
-                            ? `${Number(selectedVoucher.voucher.discount_amount).toLocaleString("vi-VN")}₫`
-                            : "—"}
-                    </td>
-                  </tr>
-                  <tr>
-                    <td>
-                      <strong>Đơn tối thiểu:</strong>
-                    </td>
-                    <td>
-                      {selectedVoucher.voucher.min_order_value
-                        ? Number(
-                            selectedVoucher.voucher.min_order_value
-                          ).toLocaleString("vi-VN") + "₫"
-                        : "Không yêu cầu"}
-                    </td>
-                  </tr>
-                  <tr>
-                    <td>
-                      <strong>Hạn sử dụng:</strong>
-                    </td>
-                    <td>
-                      {new Date(
-                        selectedVoucher.voucher.start_at
-                      ).toLocaleDateString("vi-VN")}{" "}
-                      →{" "}
-                      {new Date(
-                        selectedVoucher.voucher.end_at
-                      ).toLocaleDateString("vi-VN")}
-                    </td>
-                  </tr>
-
-                  {/* === YÊU CẦU 3: SỬA LOGIC SỐ LƯỢNG === */}
-                  <tr>
-                    <td>
-                      <strong>Số lượng:</strong>
-                    </td>
-                    <td>
-                      Còn lại{" "}
-                      <strong>
-                        {(selectedVoucher?.quantity ?? 0) -
-                          (selectedVoucher?.used_count ?? 0)}
-                      </strong>{" "}
-                      / Tổng số{" "}
-                      <strong>{selectedVoucher?.quantity ?? 0}</strong>
-                    </td>{" "}
-                  </tr>
-
-                  <tr>
-                    <td>
-                      <strong>Trạng thái sử dụng:</strong>
-                    </td>
-                    <td>
-                      <Badge
-                        bg={selectedVoucher.is_used ? "secondary" : "success"}
-                      >
-                        {selectedVoucher.is_used
-                          ? "Đã sử dụng"
-                          : "Chưa sử dụng"}
-                      </Badge>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td>
-                      <strong>Ngày nhận:</strong>
-                    </td>
-                    <td>
-                      {selectedVoucher.created_at
-                        ? new Date(
-                            selectedVoucher.created_at
-                          ).toLocaleDateString("vi-VN")
-                        : "Không có thông tin"}
-                    </td>
-                  </tr>
-                </tbody>
-              </Table>
-            </>
-          )}
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowDetailModal(false)}>
-            Đóng
-          </Button>
-        </Modal.Footer>
+                </div>
+              </Modal.Body>
+              <Modal.Footer className="border-top-0 bg-light justify-content-center"><Button variant="outline-secondary" className="rounded-pill px-5" onClick={()=>setShowDetailModal(false)}>Đóng</Button></Modal.Footer>
+             </>
+           )
+        })()}
       </Modal>
     </Container>
   );
 };
-
 export default MyVoucher;

@@ -42,10 +42,9 @@ class Voucher(models.Model):
         CLAIM = "claim", "Kho voucher (người dùng phải nhận)"
         DIRECT = "direct", "Push thẳng vào tài khoản user"
 
-    # --- CÁC TRƯỜNG MỚI QUAN TRỌNG CẦN THÊM ---
     class ProductScope(models.TextChoices):
         ALL = "ALL", "Tất cả sản phẩm của cửa hàng"
-        CATEGORY = "CATEGORY", "Theo danh mục" # <--- THÊM CÁI NÀY
+        CATEGORY = "CATEGORY", "Theo danh mục" 
         SPECIFIC = "SPECIFIC", "Sản phẩm tùy chọn"
 
     product_scope = models.CharField(
@@ -60,9 +59,7 @@ class Voucher(models.Model):
         blank=True,
         help_text="Danh sách sản phẩm được áp dụng nếu product_scope là SPECIFIC"
     )
-    # ----------------------------------------------
 
-    # Các trường còn lại của bạn (đã được sửa ForeignKey)
     promotion = models.OneToOneField(
         Promotion, null=True, blank=True, on_delete=models.CASCADE, related_name="voucher"
     )
@@ -82,7 +79,7 @@ class Voucher(models.Model):
     freeship_amount = models.DecimalField(max_digits=12, decimal_places=0, null=True, blank=True)
     
     total_quantity = models.PositiveIntegerField(default=0, help_text="Tổng số lượng phát hành")
-    used_quantity = models.PositiveIntegerField(default=0, help_text="Số lượng đã sử dụng thực tế") # [NEW] Track usage tại đây thay vì count()
+    used_quantity = models.PositiveIntegerField(default=0, help_text="Số lượng đã sử dụng thực tế") 
     per_user_quantity = models.PositiveIntegerField(default=1)
     
     min_order_value = models.DecimalField(max_digits=12, decimal_places=0, null=True, blank=True)
@@ -194,16 +191,33 @@ class UserVoucher(models.Model):
     used_count = models.PositiveIntegerField(default=0)
     is_used = models.BooleanField(default=False)
     used_at = models.DateTimeField(null=True, blank=True)
+
     class Meta:
         unique_together = ("user", "voucher")
+
     def remaining_for_user(self):
+        """Trả về số lượt còn lại của user"""
         return max(0, self.quantity - self.used_count)
+
     def mark_used_once(self):
+        """Đánh dấu đã sử dụng 1 lần và lưu DB"""
         self.used_count += 1
+        self.used_at = timezone.now()
+        
+        # Nếu đã dùng hết số lượng cho phép -> Đánh dấu là đã dùng xong (is_used = True)
         if self.used_count >= self.quantity:
             self.is_used = True
-            from django.utils.timezone import now
-            self.used_at = now()
-        self.save()
+            
+        self.save(update_fields=['used_count', 'is_used', 'used_at'])
+
+    def restore_usage(self):
+        """Hoàn lại 1 lượt sử dụng (Dùng khi hủy đơn)"""
+        if self.used_count > 0:
+            self.used_count -= 1
+            # Nếu voucher đang bị đánh dấu là hết lượt (is_used=True), mở lại (is_used=False)
+            if self.is_used:
+                self.is_used = False
+            self.save(update_fields=['used_count', 'is_used'])
+
     def __str__(self):
         return f"{self.user.username} - {self.voucher.code} - {self.used_count}/{self.quantity}"

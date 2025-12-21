@@ -1,12 +1,18 @@
 import React, { useEffect, useState } from "react";
-import { Button, message, Card, Space } from "antd";
-import { PlusOutlined, CloudUploadOutlined } from "@ant-design/icons";
+import { Button, message, Card, Space, Modal, Alert } from "antd";
+import { 
+    PlusOutlined, 
+    CloudUploadOutlined, 
+    DeleteOutlined, 
+    CheckSquareOutlined, 
+    CloseSquareOutlined 
+} from "@ant-design/icons";
 
 import AdminPageLayout from "../../components/AdminPageLayout";
 import PromotionFilter from "../../components/PromotionAdmin/PromotionFilter";
 import PromotionTable from "../../components/PromotionAdmin/PromotionTable";
 import PromotionModal from "../../components/PromotionAdmin/PromotionModal";
-import PromotionDetailModal from "../../components/PromotionAdmin/PromotionDetailModal";
+import PromotionDetailModal from "../../components/PromotionAdmin/PromotionDetailModal"; // Sẽ được design lại bên dưới
 import ImportVoucherModal from "../../components/PromotionAdmin/ImportVoucherModal";
 
 import {
@@ -32,6 +38,9 @@ export default function PromotionsPage() {
   const [filters, setFilters] = useState({});
   const [selectedRecord, setSelectedRecord] = useState(null);
 
+  const [selectedRowKeys, setSelectedRowKeys] = useState([]);
+  const [selectedRows, setSelectedRows] = useState([]);
+
   useEffect(() => {
     getCategories().then((res) => setCategories(res)).catch(() => {});
   }, []);
@@ -45,6 +54,7 @@ export default function PromotionsPage() {
     try {
       const res = await getPromotionsOverview(params);
       setData(Array.isArray(res) ? res : []);
+      handleDeselectAll(); 
     } catch (err) {
       console.error(err);
       message.error("Không thể tải dữ liệu khuyến mãi");
@@ -73,6 +83,7 @@ export default function PromotionsPage() {
 
   const handleViewDetail = async (record) => {
     try {
+        // [FIX] Gọi API lấy chi tiết để đảm bảo đủ dữ liệu (đặc biệt là description, list category...)
         const detailData = await getVoucher(record.id);
         setSelectedRecord(detailData);
         setDetailModalOpen(true);
@@ -83,12 +94,80 @@ export default function PromotionsPage() {
 
   const handleDelete = async (record) => {
     try {
-      await deleteVoucher(record.id);
-      message.success("Đã xóa voucher thành công");
+      if (record.used_quantity > 0) {
+          await updateVoucher(record.id, { active: false });
+          message.warning("Voucher đã có người dùng, đã chuyển sang trạng thái ẨN.");
+      } else {
+          await deleteVoucher(record.id);
+          message.success("Đã xóa voucher thành công");
+      }
       fetchData(filters);
     } catch (err) {
-      message.error("Xóa thất bại. Vui lòng thử lại.");
+      message.error("Thao tác thất bại.");
     }
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedRowKeys.length === 0) return;
+
+    Modal.confirm({
+        title: `Xử lý ${selectedRowKeys.length} voucher đã chọn?`,
+        content: (
+            <div>
+                <p>Hệ thống sẽ tự động kiểm tra:</p>
+                <ul style={{ paddingLeft: 20 }}>
+                    <li>Voucher <b>chưa sử dụng</b>: Sẽ bị xóa vĩnh viễn.</li>
+                    <li>Voucher <b>đã có người dùng</b>: Sẽ bị tắt kích hoạt (ẩn đi).</li>
+                </ul>
+            </div>
+        ),
+        okText: "Xác nhận",
+        okType: "danger",
+        cancelText: "Hủy",
+        onOk: async () => {
+            setLoading(true);
+            try {
+                let deletedCount = 0;
+                let deactivatedCount = 0;
+                
+                await Promise.all(selectedRows.map(async (row) => {
+                    try {
+                        const usage = row.used_quantity || row.issued_count || 0;
+                        if (usage > 0) {
+                            await updateVoucher(row.id, { active: false });
+                            deactivatedCount++;
+                        } else {
+                            await deleteVoucher(row.id);
+                            deletedCount++;
+                        }
+                    } catch (err) {}
+                }));
+
+                message.success(`Thành công! Đã xóa ${deletedCount} và ẩn ${deactivatedCount} voucher.`);
+                fetchData(filters);
+            } catch (err) {
+                message.error("Có lỗi xảy ra.");
+                setLoading(false);
+            }
+        }
+    });
+  };
+  
+  const selectUnusedVouchers = () => {
+      const unused = data.filter(item => !item.used_quantity && !item.issued_count);
+      const keys = unused.map(item => item.id);
+      setSelectedRowKeys(keys);
+      setSelectedRows(unused);
+      if (keys.length > 0) {
+          message.info(`Đã chọn ${keys.length} voucher chưa sử dụng.`);
+      } else {
+          message.info("Không có voucher nào chưa sử dụng.");
+      }
+  };
+
+  const handleDeselectAll = () => {
+      setSelectedRowKeys([]);
+      setSelectedRows([]);
   };
 
   const handleImportAPI = async (excelData) => {
@@ -101,56 +180,28 @@ export default function PromotionsPage() {
     }
   };
 
-  // --- [FIX QUAN TRỌNG] LOGIC CHUẨN HÓA DỮ LIỆU ---
   const processPayload = (values) => {
     const payload = { ...values };
-    
-    // 1. Map số lượng từ Form sang DB
-    // Form dùng limit_usage, DB dùng total_quantity
-    if (values.limit_usage !== undefined) {
-        payload.total_quantity = values.limit_usage;
-    }
-    if (values.limit_per_user !== undefined) {
-        payload.per_user_quantity = values.limit_per_user;
-    }
-
-    // 2. Logic Phân loại Voucher (Freeship vs Normal)
+    if (values.limit_usage !== undefined) payload.total_quantity = values.limit_usage;
+    if (values.limit_per_user !== undefined) payload.per_user_quantity = values.limit_per_user;
     if (payload.voucherType === "freeship") {
-      // Freeship: Gán giá trị vào freeship_amount, reset các trường discount về null
       payload.freeship_amount = payload.discountValue;
-      payload.discount_amount = null; 
-      payload.discount_percent = null;
-      payload.max_discount_amount = null; // Freeship ko cần trần giảm giá
+      payload.discount_amount = null; payload.discount_percent = null; payload.max_discount_amount = null;
     } else {
-      // Normal: Reset freeship về null
       payload.freeship_amount = null; 
-      
       if (payload.discountType === "percent") {
-        payload.discount_percent = payload.discountValue;
-        payload.discount_amount = null;
+        payload.discount_percent = payload.discountValue; payload.discount_amount = null;
       } else {
-        payload.discount_amount = payload.discountValue;
-        payload.discount_percent = null;
+        payload.discount_amount = payload.discountValue; payload.discount_percent = null;
       }
     }
-
-    // 3. Xử lý thời gian
     if (payload.dateRange && payload.dateRange.length === 2) {
       payload.start_at = payload.dateRange[0].toISOString();
       payload.end_at = payload.dateRange[1].toISOString();
     }
-    
-    // 4. Set mặc định Distribution Type = CLAIM (Để user nhận được)
     payload.distribution_type = 'claim'; 
-
-    // 5. Cleanup trường thừa
-    delete payload.dateRange;
-    delete payload.discountType;
-    delete payload.discountValue;
-    delete payload.voucherType; 
-    delete payload.limit_usage; 
-    delete payload.limit_per_user;
-    
+    delete payload.dateRange; delete payload.discountType; delete payload.discountValue;
+    delete payload.voucherType; delete payload.limit_usage; delete payload.limit_per_user;
     return payload;
   };
 
@@ -158,7 +209,6 @@ export default function PromotionsPage() {
     setModalLoading(true);
     try {
       const payload = processPayload(values);
-
       if (selectedRecord && selectedRecord.id) {
         await updateVoucher(selectedRecord.id, payload);
         message.success("Cập nhật thành công!");
@@ -166,63 +216,70 @@ export default function PromotionsPage() {
         await createVoucher(payload);
         message.success("Tạo mới thành công!");
       }
-      
       setModalOpen(false);
       fetchData(filters);
     } catch (err) {
-      const errorData = err.response?.data;
-      let msg = "Có lỗi xảy ra";
-      
-      // Xử lý thông báo lỗi chi tiết từ DRF
-      if (typeof errorData === 'object' && errorData !== null) {
-          if (errorData.non_field_errors) {
-              msg = errorData.non_field_errors[0]; 
-          } else {
-              const firstKey = Object.keys(errorData)[0];
-              const firstError = Array.isArray(errorData[firstKey]) ? errorData[firstKey][0] : errorData[firstKey];
-              msg = `${firstKey}: ${firstError}`;
-          }
-      }
-      message.error(msg);
+      message.error("Lỗi lưu dữ liệu.");
     } finally {
       setModalLoading(false);
     }
   };
 
+  const rowSelection = {
+    selectedRowKeys,
+    onChange: (keys, rows) => {
+        setSelectedRowKeys(keys);
+        setSelectedRows(rows);
+    },
+  };
+
   return (
-    <AdminPageLayout
-      title="QUẢN LÝ KHUYẾN MÃI"
-      breadcrumb={['Trang chủ', 'Marketing', 'Khuyến mãi']}
-    >
+    <AdminPageLayout title="QUẢN LÝ KHUYẾN MÃI" breadcrumb={['Trang chủ', 'Marketing', 'Khuyến mãi']}>
         <Card bordered={false} className="shadow-sm">
-            <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
-                 <div style={{ flex: 1, marginRight: 16 }}>
-                    <PromotionFilter
-                        onFilterChange={setFilters}
-                        onClear={() => setFilters({})}
-                    />
+            <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+                 <div style={{ flex: 1, minWidth: 200 }}>
+                    <PromotionFilter onFilterChange={setFilters} onClear={() => setFilters({})} />
                  </div>
                  
-                 <Space>
-                    <Button 
-                        icon={<CloudUploadOutlined />} 
-                        onClick={() => setImportModalOpen(true)}
-                        size="large"
-                        style={{ borderColor: '#217346', color: '#217346' }}
-                    >
+                 <Space wrap>
+                    <Button onClick={selectUnusedVouchers} icon={<CheckSquareOutlined />}>
+                        Chọn chưa dùng
+                    </Button>
+
+                    {selectedRowKeys.length > 0 && (
+                        <>
+                            <Button onClick={handleDeselectAll} icon={<CloseSquareOutlined />}>
+                                Hủy chọn
+                            </Button>
+                            <Button type="primary" danger icon={<DeleteOutlined />} onClick={handleBulkDelete}>
+                                Xóa ({selectedRowKeys.length})
+                            </Button>
+                        </>
+                    )}
+
+                    <Button icon={<CloudUploadOutlined />} onClick={() => setImportModalOpen(true)} style={{ borderColor: '#217346', color: '#217346' }}>
                         Import Excel
                     </Button>
 
-                    <Button 
-                        type="primary" 
-                        icon={<PlusOutlined />} 
-                        onClick={handleCreate}
-                        size="large"
-                    >
+                    <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
                         Tạo Voucher
                     </Button>
                  </Space>
             </div>
+
+            {selectedRowKeys.length > 0 && (
+                <Alert 
+                    message={
+                        <span>
+                            Đang chọn <b>{selectedRowKeys.length}</b> voucher. 
+                            <a onClick={handleDeselectAll} style={{ marginLeft: 12, fontWeight: 600 }}>Bỏ chọn tất cả</a>
+                        </span>
+                    } 
+                    type="info" 
+                    showIcon 
+                    style={{ marginBottom: 16 }} 
+                />
+            )}
 
             <PromotionTable
                 data={data}
@@ -230,29 +287,16 @@ export default function PromotionsPage() {
                 onView={handleViewDetail}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
+                rowSelection={rowSelection} 
             />
         </Card>
 
-      <PromotionModal
-        open={modalOpen}
-        loading={modalLoading}
-        onCancel={() => setModalOpen(false)}
-        onSave={handleSave}
-        detail={selectedRecord}
-        categories={categories}
-      />
-
-      <PromotionDetailModal
-        open={detailModalOpen}
-        onCancel={() => setDetailModalOpen(false)}
-        detail={selectedRecord}
-      />
-
-      <ImportVoucherModal
-         open={importModalOpen}
-         onCancel={() => setImportModalOpen(false)}
-         onImportAPI={handleImportAPI}
-      />
+      <PromotionModal open={modalOpen} loading={modalLoading} onCancel={() => setModalOpen(false)} onSave={handleSave} detail={selectedRecord} categories={categories} />
+      
+      {/* Detail Modal được gọi ở đây */}
+      <PromotionDetailModal open={detailModalOpen} onCancel={() => setDetailModalOpen(false)} detail={selectedRecord} />
+      
+      <ImportVoucherModal open={importModalOpen} onCancel={() => setImportModalOpen(false)} onImportAPI={handleImportAPI} />
     </AdminPageLayout>
   );
 }

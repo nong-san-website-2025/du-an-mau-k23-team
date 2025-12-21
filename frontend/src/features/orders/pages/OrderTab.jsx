@@ -1,5 +1,4 @@
-// OrderTab.jsx
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import { Collapse, Tag, Typography, Skeleton, Empty, Space, Button, Popconfirm, message, Row, Col, Divider, Tooltip } from "antd";
 import { CloseCircleOutlined, MessageOutlined, ReloadOutlined } from "@ant-design/icons";
 import API from "../../login_register/services/api";
@@ -9,7 +8,7 @@ import { intcomma } from "./../../../utils/format";
 // Imports from separated components
 import { statusMap, cancellableStatuses } from "../utils";
 import OrderTimeline from "../components/OrderTimeline";
-import OrderInfo from "../components/OrderInfo";
+import OrderInfo from "../components/OrderInfo"; // Component đã được nâng cấp
 import ProductList from "../components/ProductList";
 import RatingModal from "../components/RatingModal";
 import SuccessModal from "../components/SuccessModal";
@@ -145,8 +144,6 @@ const OrderTab = ({ status }) => {
 
     try {
       setSubmittingRating(true);
-
-      // 👇 SỬA ĐƯỜNG DẪN Ở ĐÂY: đổi "reviews/" thành "reviews/add/"
       await API.post("reviews/add/", {
         product: ratingProduct.product,
         rating: ratingValue,
@@ -154,7 +151,6 @@ const OrderTab = ({ status }) => {
       });
 
       message.success("Gửi đánh giá thành công!");
-
       setRatedProducts((prev) => new Set([...prev, ratingProduct.product]));
       setRatingModalVisible(false);
       setRatingValue(0);
@@ -162,9 +158,6 @@ const OrderTab = ({ status }) => {
 
     } catch (error) {
       console.error("Lỗi đánh giá:", error);
-
-      // Nếu token hết hạn, API mới sẽ trả về 401, Axios interceptor (nếu có) sẽ xử lý
-      // Hoặc hiển thị thông báo lỗi chi tiết
       if (error.response) {
         if (error.response.status === 401) {
           message.error("Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.");
@@ -214,7 +207,7 @@ const OrderTab = ({ status }) => {
       <div style={{ maxWidth: isMobile ? "100%" : 1200, margin: "0 auto", paddingBottom: 32, paddingLeft: isMobile ? 16 : 24, paddingRight: isMobile ? 16 : 24 }}>
         <Collapse accordion bordered={false} style={{ background: "transparent" }}>
           {orders.map((order) => {
-            const orderStatus = statusMap[order.status];
+            const orderStatus = statusMap[order.status] || { label: "Không xác định", color: "default", icon: null };
             const canCancel = cancellableStatuses.has(order.status);
 
             return (
@@ -235,7 +228,10 @@ const OrderTab = ({ status }) => {
                         </div>
                       )}
                       <div style={{ textAlign: "right" }}>
-                        <Text strong style={{ color: "#52c41a", display: "block", fontSize: isMobile ? 15 : 17 }}>{intcomma(order.total_price)}đ</Text>
+                        {/* Hiển thị Tổng tiền cuối cùng (Đã trừ voucher) */}
+                        <Text strong style={{ color: "#52c41a", display: "block", fontSize: isMobile ? 15 : 17 }}>
+                            {intcomma(order.total_amount || order.total_price)}đ
+                        </Text>
                         <Text type="secondary" style={{ fontSize: 12 }}>{new Date(order.created_at).toLocaleString("vi-VN")}</Text>
                       </div>
                     </Space>
@@ -246,9 +242,17 @@ const OrderTab = ({ status }) => {
                 <OrderTimeline status={order.status} orderId={order.id} />
                 <Divider style={{ margin: "24px 0" }} />
                 <Row gutter={[24, 24]}>
+                  {/* Cột Trái: Thông tin người nhận & Chi tiết thanh toán */}
                   <Col xs={24} lg={10}>
-                    <OrderInfo order={order} cardStyle={cardStyle} sectionTitleStyle={sectionTitleStyle} isMobile={isMobile} />
+                    <OrderInfo 
+                        order={order} 
+                        cardStyle={cardStyle} 
+                        sectionTitleStyle={sectionTitleStyle} 
+                        isMobile={isMobile} 
+                    />
                   </Col>
+                  
+                  {/* Cột Phải: Danh sách sản phẩm */}
                   <Col xs={24} lg={14}>
                     <ProductList
                       order={order}
