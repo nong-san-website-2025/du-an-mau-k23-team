@@ -87,18 +87,38 @@ class LoginView(APIView):
                 status=status.HTTP_401_UNAUTHORIZED
             )
 
-        # Check user status
+        # Check user active/locked state
+        # Block login when core flag is_active=False OR custom status != "active"
+        if not user.is_active:
+            return Response(
+                {"detail": "Tài khoản đã bị khóa.", "code": "account_locked"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Check custom status
         if user.status != "active":
             if user.status == "pending":
                 return Response(
-                    {"detail": "Tài khoản chưa được xác thực. Vui lòng kiểm tra email!"},
+                    {"detail": "Tài khoản chưa được xác thực. Vui lòng kiểm tra email!", "code": "account_pending"},
                     status=status.HTTP_403_FORBIDDEN
                 )
             elif user.status == "inactive":
                 return Response(
-                    {"detail": "Tài khoản đã bị khóa."},
+                    {"detail": "Tài khoản đã bị khóa.", "code": "account_locked"},
                     status=status.HTTP_403_FORBIDDEN
                 )
+
+        # Additional business rule: block seller if their shop is locked
+        try:
+            if user.role and user.role.name.lower() == "seller" and hasattr(user, "seller") and user.seller:
+                if user.seller.status == "locked":
+                    return Response(
+                        {"detail": "Tài khoản người bán của bạn đã bị khóa.", "code": "seller_locked"},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+        except Exception as e:
+            # Do not fail login due to check error; just log
+            print("Seller lock check failed:", e)
 
         # Generate JWT tokens
         refresh = RefreshToken.for_user(user)
@@ -321,17 +341,26 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
         data = super().validate(attrs)
 
-        # Only allow login if status is active
+        # Block if core flag is_active False
+        if not self.user.is_active:
+            raise AuthenticationFailed("Tài khoản đã bị khóa. Vui lòng liên hệ quản trị viên.")
+
+        # Only allow login if custom status is active
         if self.user.status != "active":
             if self.user.status == "pending":
-                raise AuthenticationFailed(
-                    "Tài khoản chưa được xác thực. Vui lòng kiểm tra email!"
-                )
+                raise AuthenticationFailed("Tài khoản chưa được xác thực. Vui lòng kiểm tra email!")
             elif self.user.status == "inactive":
-                raise AuthenticationFailed(
-                    "Tài khoản đã bị khóa. Vui lòng liên hệ quản trị viên."
-                )
+                raise AuthenticationFailed("Tài khoản đã bị khóa. Vui lòng liên hệ quản trị viên.")
             else:
                 raise AuthenticationFailed("Tài khoản không hợp lệ.")
+
+        # Block seller when their seller profile is locked
+        try:
+            role_name = (self.user.role.name if self.user.role else "").lower()
+            if role_name == "seller" and hasattr(self.user, "seller") and self.user.seller:
+                if self.user.seller.status == "locked":
+                    raise AuthenticationFailed("Tài khoản người bán của bạn đã bị khóa.")
+        except Exception:
+            pass
 
         return data
