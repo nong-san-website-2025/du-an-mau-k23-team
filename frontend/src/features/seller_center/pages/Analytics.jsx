@@ -36,11 +36,11 @@ const { Title, Text } = Typography;
 
 // --- Bảng màu chủ đề "Chợ Nông Sản" ---
 const THEME_COLORS = {
-  primary: '#2A9D8F',      // Xanh lá cây mòng két (màu chính)
-  secondary: '#E9C46A',    // Vàng cam (màu phụ)
-  accent: '#F4A261',       // Cam nhạt (màu nhấn)
-  danger: '#E76F51',       // Cam đỏ (màu cảnh báo)
-  background: '#F9F8F4',  // Màu nền be nhạt (giống giấy)
+  primary: '#2A9D8F',      // Xanh lá cây mòng két
+  secondary: '#E9C46A',    // Vàng cam
+  accent: '#F4A261',       // Cam nhạt
+  danger: '#E76F51',       // Cam đỏ
+  background: '#F9F8F4',   // Màu nền be nhạt
   text: '#264653'          // Màu chữ xanh đen
 };
 
@@ -60,13 +60,17 @@ export default function Analytics() {
   const [lastUpdated, setLastUpdated] = useState(null);
   const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(false);
 
-  const API_BASE = "http://localhost:8000/api/sellers";
+  // --- SỬ DỤNG ENV BIẾN MÔI TRƯỜNG ---
+  const API_URL = process.env.REACT_APP_API_URL; 
+  // Nối thêm /sellers vào API_URL gốc
+  const API_BASE = `${API_URL}/sellers`;
 
   // ===================================================================
   // KHU VỰC LOGIC - KHÔNG THAY ĐỔI
   // ===================================================================
   useEffect(() => {
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, period, dateRange]);
 
   useEffect(() => {
@@ -79,6 +83,7 @@ export default function Analytics() {
     }, 60000);
 
     return () => clearInterval(intervalId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoRefreshEnabled, activeTab, period, dateRange]);
 
   const fetchData = async (toggleLoading = true) => {
@@ -127,7 +132,7 @@ export default function Analytics() {
     } catch (error) {
       console.error("Error fetching analytics:", error);
       console.error("Error response:", error.response?.data);
-      alert(`Lỗi: ${error.response?.data?.detail || error.message}`);
+      // alert(`Lỗi: ${error.response?.data?.detail || error.message}`);
     } finally {
       if (toggleLoading) {
         setLoading(false);
@@ -141,76 +146,55 @@ export default function Analytics() {
       currency: "VND"
     }).format(value);
   };
-  // ===================================================================
-  // KẾT THÚC KHU VỰC LOGIC
-  // ===================================================================
 
-    const renderThemedKPICard = (title, value, growth, icon, color) => {
-        const isPositive = growth >= 0;
-        return (
-            <Card hoverable style={{ 
-                borderRadius: '12px', 
-                overflow: 'hidden', 
-                height: '100%'
-            }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                    <div style={{
-                        backgroundColor: `${color}20`,
-                        color: color,
-                        width: 50,
-                        height: 50,
-                        borderRadius: '8px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '24px',
-                        flexShrink: 0
-                    }}>
-                        {icon}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                        <Text type="secondary" style={{ whiteSpace: 'nowrap' }}>{title}</Text>
-                        <Title level={4} style={{ margin: 0, color: THEME_COLORS.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {value}
-                        </Title>
-                        <Text style={{ fontSize: 14, color: isPositive ? "#52c41a" : "#ff4d4f", whiteSpace: 'nowrap' }}>
-                            {isPositive ? <ArrowUpOutlined /> : <ArrowDownOutlined />}
-                            {` ${Math.abs(growth).toFixed(1)}% so với kỳ trước`}
-                        </Text>
-                    </div>
-                </div>
-            </Card>
-        );
-    };
+  const renderThemedKPICard = (title, value, growth, icon, color) => {
+    const isPositive = growth >= 0;
+    return (
+      <Card hoverable style={{
+        borderRadius: '12px',
+        overflow: 'hidden',
+        height: '100%'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div style={{
+            backgroundColor: `${color}20`,
+            color: color,
+            width: 50,
+            height: 50,
+            borderRadius: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '24px',
+            flexShrink: 0
+          }}>
+            {icon}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <Text type="secondary" style={{ whiteSpace: 'nowrap' }}>{title}</Text>
+            <Title level={4} style={{ margin: 0, color: THEME_COLORS.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {value}
+            </Title>
+            <Text style={{ fontSize: 14, color: isPositive ? "#52c41a" : "#ff4d4f", whiteSpace: 'nowrap' }}>
+              {isPositive ? <ArrowUpOutlined /> : <ArrowDownOutlined />}
+              {` ${Math.abs(growth).toFixed(1)}% so với kỳ trước`}
+            </Text>
+          </div>
+        </div>
+      </Card>
+    );
+  };
 
   const renderOverview = () => {
-    if (loading) {
-      return (
-        <Card>
-          <div style={{ textAlign: "center", padding: 50 }}>⏳ Đang tải dữ liệu...</div>
-        </Card>
-      );
-    }
-
-    if (!overviewData) {
-      return (
-        <Card>
-          <div style={{ textAlign: "center", padding: 50 }}>
-            ❌ Không có dữ liệu
-            <div style={{ marginTop: 16 }}>
-              <Space direction="vertical">
-                <Button type="primary" onClick={() => fetchData()}>
-                  Thử tải lại
-                </Button>
-                <Button onClick={() => setAutoRefreshEnabled(!autoRefreshEnabled)}>
-                  {autoRefreshEnabled ? "Tắt tự động làm mới" : "Bật tự động làm mới"}
-                </Button>
-              </Space>
-            </div>
-          </div>
-        </Card>
-      );
-    }
+    if (loading) return <Card><div style={{ textAlign: "center", padding: 50 }}>⏳ Đang tải dữ liệu...</div></Card>;
+    if (!overviewData) return (
+      <Card>
+        <div style={{ textAlign: "center", padding: 50 }}>
+          ❌ Không có dữ liệu
+          <div style={{ marginTop: 16 }}><Button type="primary" onClick={() => fetchData()}>Thử tải lại</Button></div>
+        </div>
+      </Card>
+    );
 
     const { kpis, trend_chart, top_products, funnel } = overviewData;
     const funnelData = [
@@ -221,7 +205,7 @@ export default function Analytics() {
 
     return (
       <div>
-        {/* KPI Cards - Responsive layout */}
+        {/* KPI Cards */}
         <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
           <Col xs={24} sm={12} md={8} lg={6} xl={4}>
             {renderThemedKPICard("Doanh thu", formatCurrency(kpis.revenue.value), kpis.revenue.growth, <DollarOutlined />, THEME_COLORS.primary)}
@@ -268,18 +252,10 @@ export default function Analytics() {
                   pagination={false}
                   columns={[
                     {
-                      title: "Sản phẩm",
-                      dataIndex: "name",
-                      key: "name",
+                      title: "Sản phẩm", dataIndex: "name", key: "name",
                       render: (text, record) => (
                         <div style={{ display: "flex", alignItems: "center" }}>
-                          {record.image && (
-                            <img
-                              src={record.image}
-                              alt={text}
-                              style={{ width: 45, height: 45, marginRight: 12, objectFit: "cover", borderRadius: "8px" }}
-                            />
-                          )}
+                          {record.image && <img src={record.image} alt={text} style={{ width: 45, height: 45, marginRight: 12, objectFit: "cover", borderRadius: "8px" }} />}
                           <span>{text}</span>
                         </div>
                       )
@@ -313,35 +289,10 @@ export default function Analytics() {
     );
   };
 
-  // Các hàm renderSales, renderProducts, renderTraffic không thay đổi...
   const renderSales = () => {
-    if (loading) {
-      return (
-        <Card>
-          <div style={{ textAlign: "center", padding: 50 }}>⏳ Đang tải dữ liệu...</div>
-        </Card>
-      );
-    }
+    if (loading) return <Card><div style={{ textAlign: "center", padding: 50 }}>⏳ Đang tải dữ liệu...</div></Card>;
+    if (!salesData) return <Card><div style={{ textAlign: "center", padding: 50 }}>❌ Không có dữ liệu</div></Card>;
 
-    if (!salesData) {
-      return (
-        <Card>
-          <div style={{ textAlign: "center", padding: 50 }}>
-            ❌ Không có dữ liệu
-            <div style={{ marginTop: 16 }}>
-              <Space direction="vertical">
-                <Button type="primary" onClick={() => fetchData()}>
-                  Thử tải lại
-                </Button>
-                <Button onClick={() => setAutoRefreshEnabled(!autoRefreshEnabled)}>
-                  {autoRefreshEnabled ? "Tắt tự động làm mới" : "Bật tự động làm mới"}
-                </Button>
-              </Space>
-            </div>
-          </div>
-        </Card>
-      );
-    }
     const { revenue_by_time, revenue_by_location, operational_metrics } = salesData;
 
     return (
@@ -373,53 +324,29 @@ export default function Analytics() {
           </Col>
           <Col xs={24} lg={10}>
             <Card title={<Title level={5}>Chỉ Số Vận Hành</Title>} style={{ borderRadius: '12px', height: '100%' }}>
-                <div style={{ marginBottom: 24 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}><Text>Tỷ lệ thành công</Text><Text strong>{operational_metrics.success_rate}%</Text></div>
-                    <Progress percent={operational_metrics.success_rate} showInfo={false} strokeColor={THEME_COLORS.primary} />
-                </div>
-                <div style={{ marginBottom: 24 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}><Text>Tỷ lệ hủy đơn</Text><Text strong>{operational_metrics.cancel_rate}%</Text></div>
-                    <Progress percent={operational_metrics.cancel_rate} showInfo={false} strokeColor={THEME_COLORS.danger} />
-                </div>
-                <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}><Text>Tỷ lệ trả hàng</Text><Text strong>{operational_metrics.return_rate}%</Text></div>
-                    <Progress percent={operational_metrics.return_rate} showInfo={false} strokeColor={THEME_COLORS.accent} />
-                </div>
+              <div style={{ marginBottom: 24 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}><Text>Tỷ lệ thành công</Text><Text strong>{operational_metrics.success_rate}%</Text></div>
+                <Progress percent={operational_metrics.success_rate} showInfo={false} strokeColor={THEME_COLORS.primary} />
+              </div>
+              <div style={{ marginBottom: 24 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}><Text>Tỷ lệ hủy đơn</Text><Text strong>{operational_metrics.cancel_rate}%</Text></div>
+                <Progress percent={operational_metrics.cancel_rate} showInfo={false} strokeColor={THEME_COLORS.danger} />
+              </div>
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}><Text>Tỷ lệ trả hàng</Text><Text strong>{operational_metrics.return_rate}%</Text></div>
+                <Progress percent={operational_metrics.return_rate} showInfo={false} strokeColor={THEME_COLORS.accent} />
+              </div>
             </Card>
           </Col>
         </Row>
       </div>
     );
   };
-  
-  const renderProducts = () => {
-    if (loading) {
-      return (
-        <Card>
-          <div style={{ textAlign: "center", padding: 50 }}>⏳ Đang tải dữ liệu...</div>
-        </Card>
-      );
-    }
 
-    if (!productsData) {
-      return (
-        <Card>
-          <div style={{ textAlign: "center", padding: 50 }}>
-            ❌ Không có dữ liệu
-            <div style={{ marginTop: 16 }}>
-              <Space direction="vertical">
-                <Button type="primary" onClick={() => fetchData()}>
-                  Thử tải lại
-                </Button>
-                <Button onClick={() => setAutoRefreshEnabled(!autoRefreshEnabled)}>
-                  {autoRefreshEnabled ? "Tắt tự động làm mới" : "Bật tự động làm mới"}
-                </Button>
-              </Space>
-            </div>
-          </div>
-        </Card>
-      );
-    }
+  const renderProducts = () => {
+    if (loading) return <Card><div style={{ textAlign: "center", padding: 50 }}>⏳ Đang tải dữ liệu...</div></Card>;
+    if (!productsData) return <Card><div style={{ textAlign: "center", padding: 50 }}>❌ Không có dữ liệu</div></Card>;
+
     const { product_performance, basket_analysis } = productsData;
 
     return (
@@ -427,18 +354,21 @@ export default function Analytics() {
         <Card title={<Title level={5}>Hiệu suất từng loại nông sản</Title>} style={{ marginBottom: 24, borderRadius: '12px' }}>
           <Table dataSource={product_performance} rowKey="id" scroll={{ x: 1000 }}
             columns={[
-              { title: "Sản phẩm", dataIndex: "name", key: "name", fixed: "left", width: 250, 
+              {
+                title: "Sản phẩm", dataIndex: "name", key: "name", fixed: "left", width: 250,
                 render: (text, record) => (
                   <div style={{ display: "flex", alignItems: "center" }}>
                     {record.image && <img src={record.image} alt={text} style={{ width: 40, height: 40, marginRight: 12, objectFit: "cover", borderRadius: '8px' }} />}
                     <span>{text}</span>
                   </div>
-                )},
+                )
+              },
               { title: "Lượt xem", dataIndex: "views", key: "views", sorter: (a, b) => a.views - b.views },
               { title: "Thêm giỏ hàng", dataIndex: "cart_adds", key: "cart_adds", sorter: (a, b) => a.cart_adds - b.cart_adds },
               { title: "Đã bán", dataIndex: "units_sold", key: "units_sold", sorter: (a, b) => a.units_sold - b.units_sold },
               { title: "Doanh thu", dataIndex: "revenue", key: "revenue", sorter: (a, b) => a.revenue - b.revenue, render: (value) => formatCurrency(value) },
-              { title: "Tỷ lệ chuyển đổi", dataIndex: "conversion_rate", key: "conversion_rate", sorter: (a, b) => a.conversion_rate - b.conversion_rate, 
+              {
+                title: "Tỷ lệ chuyển đổi", dataIndex: "conversion_rate", key: "conversion_rate", sorter: (a, b) => a.conversion_rate - b.conversion_rate,
                 render: (value) => {
                   let color = THEME_COLORS.danger;
                   if (value > 5) color = THEME_COLORS.primary;
@@ -470,7 +400,7 @@ export default function Analytics() {
       </div>
     );
   };
-  
+
   const renderTraffic = () => {
     if (loading) {
       return (
@@ -507,13 +437,99 @@ export default function Analytics() {
       { name: "Khách quay lại", value: customer_analysis?.returning_customers || 0 }
     ];
 
-    
+    return (
+      <div>
+        <Row gutter={[24, 24]} style={{ marginBottom: 24 }}>
+          {/* Biểu đồ nguồn truy cập */}
+          <Col xs={24} md={12}>
+            <Card title={<Title level={5}>Nguồn truy cập</Title>} style={{ borderRadius: '12px', height: '100%' }}>
+              <div style={{ height: 300 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={trafficPieData}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {trafficPieData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value) => new Intl.NumberFormat('vi-VN').format(value) + " lượt"} />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+          </Col>
+
+          {/* Biểu đồ phân tích khách hàng */}
+          <Col xs={24} md={12}>
+            <Card title={<Title level={5}>Phân loại khách hàng</Title>} style={{ borderRadius: '12px', height: '100%' }}>
+              <div style={{ height: 300 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={customerPieData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60} // Biểu đồ dạng Donut
+                      outerRadius={80}
+                      fill="#8884d8"
+                      paddingAngle={5}
+                      dataKey="value"
+                    >
+                      <Cell key="new" fill={THEME_COLORS.secondary} />
+                      <Cell key="returning" fill={THEME_COLORS.primary} />
+                    </Pie>
+                    <Tooltip formatter={(value) => new Intl.NumberFormat('vi-VN').format(value) + " khách"} />
+                    <Legend verticalAlign="bottom" height={36} />
+                    <text x="50%" y="50%" textAnchor="middle" dominantBaseline="middle" style={{ fontSize: '16px', fontWeight: 'bold', fill: THEME_COLORS.text }}>
+                      {/* Tránh lỗi chia cho 0 nếu không có khách hàng */}
+                      {customer_analysis?.total_customers > 0 
+                        ? ((customer_analysis.returning_customers / customer_analysis.total_customers) * 100).toFixed(1) 
+                        : 0}% Quay lại
+                    </text>
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+          </Col>
+        </Row>
+
+        {/* Bảng từ khóa tìm kiếm */}
+        <Card title={<Title level={5}>Từ khóa tìm kiếm hàng đầu</Title>} style={{ borderRadius: '12px' }}>
+          <Table
+            dataSource={top_keywords}
+            rowKey="keyword"
+            pagination={false}
+            columns={[
+              { title: "Từ khóa", dataIndex: "keyword", key: "keyword", render: (text) => <Tag color="blue">{text}</Tag> },
+              { title: "Lượt tìm kiếm", dataIndex: "visits", key: "visits", sorter: (a, b) => a.visits - b.visits },
+              { title: "Đơn hàng tạo ra", dataIndex: "orders", key: "orders", sorter: (a, b) => a.orders - b.orders },
+              {
+                title: "Tỷ lệ chuyển đổi",
+                key: "conversion",
+                render: (_, record) => {
+                  const rate = record.visits > 0 ? (record.orders / record.visits) * 100 : 0;
+                  return `${rate.toFixed(1)}%`;
+                }
+              }
+            ]}
+          />
+        </Card>
+      </div>
+    );
   };
-  
-  // --- Component chính ---
+
   return (
     <AnalyticsBaseLayout
-      title="THỐNG KÊ"
+      title="TRUNG TÂM PHÂN TÍCH"
       period={period}
       setPeriod={setPeriod}
       dateRange={dateRange}
@@ -524,24 +540,56 @@ export default function Analytics() {
       autoRefreshEnabled={autoRefreshEnabled}
       setAutoRefreshEnabled={setAutoRefreshEnabled}
     >
-      <Tabs activeKey={activeTab} onChange={setActiveTab} type="card" size="large">
+      <Tabs
+        activeKey={activeTab}
+        onChange={setActiveTab}
+        type="card"
+        size="large"
+        className="analytics-tabs"
+        tabBarStyle={{ marginBottom: 24 }}
+      >
         <Tabs.TabPane
-          tab={<span><DashboardOutlined /> Tổng quan</span>}
+          tab={
+            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <DashboardOutlined /> Tổng quan
+            </span>
+          }
           key="overview"
         >
           {renderOverview()}
         </Tabs.TabPane>
+
         <Tabs.TabPane
-          tab={<span><RiseOutlined /> Bán hàng</span>}
+          tab={
+            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <RiseOutlined /> Bán hàng
+            </span>
+          }
           key="sales"
         >
           {renderSales()}
         </Tabs.TabPane>
+
         <Tabs.TabPane
-          tab={<span><AppstoreOutlined /> Sản phẩm</span>}
+          tab={
+            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <AppstoreOutlined /> Sản phẩm
+            </span>
+          }
           key="products"
         >
           {renderProducts()}
+        </Tabs.TabPane>
+
+        <Tabs.TabPane
+          tab={
+            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <TeamOutlined /> Lưu lượng & Khách hàng
+            </span>
+          }
+          key="traffic"
+        >
+          {renderTraffic()}
         </Tabs.TabPane>
       </Tabs>
     </AnalyticsBaseLayout>

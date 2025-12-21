@@ -13,12 +13,14 @@ const ChangePassword = () => {
   // Khởi tạo instance Form
   const [form] = Form.useForm();
 
+  // Lấy API URL từ env
+  const API_URL = process.env.REACT_APP_API_URL;
+
   const handleSubmit = async (values) => {
     // values chứa các trường: old_password, new_password, confirm_password
 
     if (values.new_password !== values.confirm_password) {
       // Logic kiểm tra khớp mật khẩu đã được xử lý bởi Form item 'confirm_password' rule
-      // Tuy nhiên, có thể thêm kiểm tra thủ công hoặc dựa vào rule của antd
       return;
     }
 
@@ -27,8 +29,10 @@ const ChangePassword = () => {
 
     try {
       const token = localStorage.getItem("token");
+      
+      // SỬ DỤNG ENV Ở ĐÂY
       await axios.post(
-        "http://localhost:8000/api/users/change-password/",
+        `${API_URL}/users/change-password/`,
         {
           current_password: values.old_password,
           new_password: values.new_password,

@@ -1,0 +1,136 @@
+
+/* PersonalizedSection.module.css */
+
+.sectionContainer {
+    margin-bottom: 48px;
+    background: #fff;
+    padding-top: 24px;
+    /* Có thể thêm border-top nhẹ để ngăn cách */
+    border-top: 1px solid #f0f0f0; 
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 16px;
+}
+
+/* --- HEADER --- */
+.sectionHeader {
+    display: flex;
+    align-items: flex-end; /* Căn đáy để title và nút ngang hàng */
+    justify-content: space-between;
+    margin-bottom: 24px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #f0f0f0;
+}
+
+.titleGroup {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* Accent Bar: Dùng màu Cam (Orange) để tạo cảm giác "Gợi ý/Idea" khác với màu Xanh chủ đạo */
+.accentBar {
+    width: 6px;
+    height: 42px;
+    background: linear-gradient(to bottom, #faad14, #d48806); 
+    border-radius: 4px;
+}
+
+.titleWrapper {
+    display: flex;
+    flex-direction: column;
+}
+
+.title {
+    margin: 0 !important;
+    font-size: 26px !important;
+    font-weight: 800 !important;
+    color: #222;
+    line-height: 1.2;
+    text-transform: uppercase;
+}
+
+.subTitle {
+    font-size: 14px;
+    color: #888;
+    display: flex;
+    align-items: center;
+}
+
+.viewMoreBtn {
+    font-size: 14px;
+    color: #555;
+    background: #f5f5f5;
+    border-radius: 20px;
+    padding: 6px 16px;
+    height: auto;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.3s ease;
+}
+
+.viewMoreBtn:hover {
+    background: #fff7e6; /* Màu nền cam nhạt khi hover */
+    color: #d48806;
+    gap: 8px;
+}
+
+/* --- GRID CONTENT --- */
+.gridWrapper {
+    min-height: 300px;
+}
+
+/* --- SKELETON --- */
+.headerSkeleton {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 30px;
+}
+
+.skeletonCard {
+    border: 1px solid #f0f0f0;
+    border-radius: 8px;
+    overflow: hidden;
+    height: 100%;
+}
+
+.skeletonImg {
+    width: 100% !important;
+    height: 180px !important;
+}
+
+/* --- MOBILE --- */
+.mobileViewMore {
+    display: none;
+    margin-top: 24px;
+}
+
+@media (max-width: 768px) {
+    .sectionHeader {
+        align-items: center;
+        border-bottom: none; /* Mobile bỏ gạch chân cho thoáng */
+    }
+
+    /* Ẩn nút "Xem tất cả" ở header trên mobile để tiết kiệm diện tích */
+    .viewMoreBtn {
+        display: none; 
+    }
+
+    /* Hiện nút to ở dưới cùng trên mobile */
+    .mobileViewMore {
+        display: block;
+    }
+
+    .title {
+        font-size: 20px !important;
+    }
+
+    .accentBar {
+        height: 32px;
+        width: 4px;
+    }
+}

@@ -70,13 +70,7 @@ const SellerTable = ({
       key: "store_name",
       width: 250,
     },
-    {
-      title: "Mô tả cửa hàng",
-      dataIndex: "store_description",
-      key: "store_description",
-      width: 300,
-      ellipsis: true, // Tự động cắt ngắn văn bản dài và hiển thị dấu "..."
-    },
+
     {
       title: "Người đăng ký",
       dataIndex: "owner_username",
@@ -233,7 +227,6 @@ const SellerTable = ({
         bordered
         pagination={{ pageSize: 10 }}
         scroll={{ x: 1200 }}
-        scroll={{ x: 1500 }} // Tăng chiều rộng cuộn để có không gian cho cột mới
         size="small"
         onRow={onRow}
       />

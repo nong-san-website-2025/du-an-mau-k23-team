@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import { useCart } from "../../cart/services/CartContext";
 import { productApi } from "../services/productApi";
@@ -24,11 +24,19 @@ const { Text } = Typography;
 const UserProductPage = () => {
   const location = useLocation();
   const { addToCart, cartItems, updateQuantity } = useCart();
+  
+  // Tạo một cái mỏ neo (ref) để đánh dấu vị trí đầu danh sách
+  const topRef = useRef(null);
 
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Lấy API URL từ env
+  const API_URL = process.env.REACT_APP_API_URL;
+  // Tạo Base URL (bỏ /api) để dùng cho hình ảnh
+  const BASE_URL = API_URL ? API_URL.replace(/\/api\/?$/, "") : "http://localhost:8000";
 
   const {
     search,
@@ -57,6 +65,17 @@ const UserProductPage = () => {
     pageSize: 16,
   });
 
+  // useEffect cuộn trang: Dùng scrollIntoView
+  useEffect(() => {
+    if (topRef.current) {
+      topRef.current.scrollIntoView({ 
+        behavior: "smooth", 
+        block: "start" // Cuộn sao cho phần tử này nằm ở đầu khung nhìn
+      });
+    }
+  }, [currentPage]); 
+
+  // Load Data
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -72,7 +91,6 @@ const UserProductPage = () => {
         const categoryFromQuery = params.get("category");
         const subcategoryFromQuery = params.get("subcategory");
 
-        // Set category from URL
         if (categoryFromQuery) {
           const byKey = categoriesData.find((c) => c.key === categoryFromQuery);
           if (byKey) {
@@ -92,7 +110,6 @@ const UserProductPage = () => {
           }
         }
 
-        // Set subcategory from URL if provided
         if (subcategoryFromQuery) {
           setSelectedSubcategory(subcategoryFromQuery);
         }
@@ -126,9 +143,10 @@ const UserProductPage = () => {
       id: product.id,
       name: product.name,
       price: product.price,
+      // SỬ DỤNG BASE_URL ĐỂ XỬ LÝ ẢNH
       image:
         product.image && product.image.startsWith("/")
-          ? `http://localhost:8000${product.image}`
+          ? `${BASE_URL}${product.image}`
           : product.image?.startsWith("http")
             ? product.image
             : "",
@@ -170,6 +188,10 @@ const UserProductPage = () => {
 
         {/* Product Grid */}
         <Col xs={24} md={18}>
+          
+          {/* Gắn ref vào đây (ngay trên đầu danh sách sản phẩm) */}
+          <div ref={topRef} style={{ scrollMarginTop: "20px" }}></div>
+
           {loading ? (
             <div style={{ textAlign: "center", paddingTop: 50 }}>
               <Spin size="large" />
@@ -187,8 +209,7 @@ const UserProductPage = () => {
                     <ProductCard
                       key={product.id}
                       product={product}
-                      onAddToCart={handleAddToCart} // ✅ không dùng arrow function nữa
-                      // vẫn dùng hàm sẵn có
+                      onAddToCart={handleAddToCart}
                     />
                   </Col>
                 ))}

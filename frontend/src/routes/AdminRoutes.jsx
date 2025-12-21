@@ -42,8 +42,8 @@ import StatisticsPage from "../features/admin/pages/StatisticsPage";
 import SellersPage from "../features/admin/pages/Sellers/SellersPage";
 import ActiveLockedSellersPage from "../features/admin/pages/SellerPage/ActiveLockedSellersPage.jsx"; // ✅ bỏ .jsx thừa
 import ApprovalSellersPage from "../features/admin/pages/SellerPage/ApprovalSellersPage.jsx";
-import ApprovalProductsPage from "../features/admin/pages/ProductPage/ApprovalProductsPage.jsx";
-import CategoryManagementPage from "../features/admin/pages/ProductPage/CategoryManagement.jsx";
+import ApprovalProductsPage from "../features/admin/pages/ProductAdmin/ApprovalProductsPage.jsx";
+import CategoryManagementPage from "../features/admin/pages/ProductAdmin/CategoryManagement.jsx";
 import Promotions from "../features/admin/pages/Promotions/PromotionsPage.jsx";
 import FlashSale from "../features/admin/pages/Promotions/FlashSalePage.jsx";
 
@@ -115,6 +115,9 @@ export const adminRoutes = [
       <Route path="settings/marketing" element={<MarketingAutomationPage />} />
       <Route path="settings/loyalty" element={<LoyaltySettingsPage />} />
       <Route path="settings/theme" element={<ThemeSettingsPage />} />
+
+
+      <Route path="test-ui" element={<NotificationsPage />} />
     </Route>
   </Route>,
 ];

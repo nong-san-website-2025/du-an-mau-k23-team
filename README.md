@@ -35,6 +35,11 @@
     cd ../frontend
     npm install --legacy-peer-deps
     npm install dayjs --legacy-peer-deps
+    npm install socket.io-client --legacy-peer-deps
+    pip install django-redis
+    pip install channels-redis  
+    npm install lucide-react ----legacy-peer-deps
+    pip install daphne==4.1.0
     # Chạy frontend
     npm start
 
@@ -79,3 +84,6 @@ Nó sẽ tạo ra mẫu customer, selle
 
 ionic cap run android -l --external
 
+## Xuất db.json(sqlite3 -> json)
+
+python manage.py dumpdata --exclude auth.permission --exclude contenttypes > db.json

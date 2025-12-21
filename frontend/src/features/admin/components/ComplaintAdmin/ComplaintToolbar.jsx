@@ -1,7 +1,7 @@
 import React from "react";
 import { Space, Button, Modal, message } from "antd";
 
-const API_URL = "http://localhost:8000/api/complaints/";
+const API_URL = process.env.REACT_APP_API_URL;
 
 const ComplaintToolbar = ({ record, onViewDetail, onOpenResolve, refreshReports }) => {
 
@@ -11,7 +11,7 @@ const ComplaintToolbar = ({ record, onViewDetail, onOpenResolve, refreshReports 
       onOk: async () => {
         try {
           const token = localStorage.getItem("token");
-          await fetch(`${API_URL}${id}/`, {
+          await fetch(`${API_URL}/complaints${id}/`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
             body: JSON.stringify({ status: "rejected" }),

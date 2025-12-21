@@ -18,6 +18,9 @@ export default function UserAdminPage() {
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [triggerAddUser, setTriggerAddUser] = useState(false);
 
+  // Lấy API URL từ biến môi trường
+  const API_URL = process.env.REACT_APP_API_URL;
+
   // Lấy CSRF token từ cookie
   const getCookie = (name) => {
     const value = `; ${document.cookie}`;
@@ -31,7 +34,10 @@ export default function UserAdminPage() {
 
   // Fetch danh sách vai trò từ backend
   useEffect(() => {
-    fetch("http://localhost:8000/api/users/roles/list/", {
+    if (!accessToken) return; // Guard clause nếu chưa có token
+
+    // SỬ DỤNG ENV Ở ĐÂY
+    fetch(`${API_URL}/users/roles/list/`, {
       headers: {
         'Authorization': `Bearer ${accessToken}`,
         'X-CSRFToken': csrfToken,
@@ -40,11 +46,14 @@ export default function UserAdminPage() {
       .then(res => res.json())
       .then(data => setRoles(data))
       .catch(error => console.error('Error fetching roles:', error));
-  }, [accessToken, csrfToken]);
+  }, [accessToken, csrfToken, API_URL]);
 
   // Fetch danh sách user từ backend
   useEffect(() => {
-    fetch("http://localhost:8000/api/users/", {
+    if (!accessToken) return;
+
+    // SỬ DỤNG ENV Ở ĐÂY
+    fetch(`${API_URL}/users/`, {
       headers: {
         'Authorization': `Bearer ${accessToken}`,
         'X-CSRFToken': csrfToken,
@@ -56,20 +65,7 @@ export default function UserAdminPage() {
       })
       .catch(err => console.error(err))
       .finally(() => setLoading(false));
-  }, [accessToken, csrfToken]);
-
-  // Reload vai trò sau khi tạo mới (dự phòng nếu cần)
-  // const handleRoleCreated = () => {
-  //   fetch("http://localhost:8000/api/users/roles/list/", {
-  //     headers: {
-  //       'Authorization': `Bearer ${accessToken}`,
-  //       'X-CSRFToken': csrfToken,
-  //     },
-  //   })
-  //     .then(res => res.json())
-  //     .then(data => setRoles(data))
-  //     .catch(error => console.error('Error fetching roles after creation:', error));
-  // };
+  }, [accessToken, csrfToken, API_URL]);
 
   // Handle row click to open drawer
   const handleRowClick = (user) => {

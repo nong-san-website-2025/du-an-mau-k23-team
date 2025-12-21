@@ -132,7 +132,7 @@ export default function OrdersCancelled() {
       width: 50,
     },
     {
-      title: "thời Gian Hủy", // Thời gian hủy
+      title: "Thời Gian Hủy", // Thời gian hủy
       dataIndex: "updated_at",
       width: 110, // Giới hạn width để ép xuống dòng hoặc cắt bớt
       align: "center",

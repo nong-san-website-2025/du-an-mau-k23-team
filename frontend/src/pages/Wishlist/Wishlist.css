@@ -1,0 +1,118 @@
+/* Wishlist.css */
+
+.wishlist-page-wrapper {
+  background: linear-gradient(135deg, #f9fbf9 0%, #f0f9f0 100%);
+  min-height: 100vh;
+  padding-bottom: 64px;
+}
+
+.container-custom {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+/* Header Styles */
+.wishlist-header {
+  background: #fff;
+  padding: 24px 0;
+  border-bottom: 1px solid #e8f5e8;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+}
+
+.wishlist-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: #2e7d32;
+  margin: 0;
+}
+
+.wishlist-search {
+  width: 100%;
+  max-width: 360px;
+  border-radius: 24px;
+  border: 1px solid #d0f0d0;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.03);
+}
+
+.wishlist-filters {
+  margin-top: 16px;
+  display: flex;
+  gap: 8px;
+}
+
+.filter-btn {
+  border-radius: 20px;
+  font-weight: 500;
+}
+.filter-btn.success.ant-btn-primary { background-color: #e8f5e8; border-color: #52c41a; color: #2e7d32; }
+.filter-btn.danger.ant-btn-primary { background-color: #fff0f0; border-color: #ff4d4f; color: #cf1322; }
+
+/* Body Styles */
+.content-body {
+  margin-top: 32px;
+}
+
+.empty-state-wrapper {
+  background: #f8fdf8;
+  border-radius: 20px;
+  padding: 60px;
+  text-align: center;
+  border: 1px dashed #c8e6c9;
+  max-width: 600px;
+  margin: 40px auto;
+}
+.empty-state-wrapper h2 { color: #2e7d32; font-weight: 600; margin-bottom: 24px; }
+
+/* Wrapper để xử lý nút xóa nổi */
+.product-card-wrapper {
+  position: relative;
+  height: 100%;
+}
+
+.wishlist-remove-btn {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 20; /* Cao hơn ProductCard */
+  background-color: rgba(255, 255, 255, 0.9) !important;
+  color: #ff4d4f !important;
+  border: 1px solid #ffccc7 !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  opacity: 0; /* Ẩn mặc định */
+  transition: all 0.3s ease;
+  transform: scale(0.8);
+}
+
+.wishlist-remove-btn:hover {
+  background-color: #ff4d4f !important;
+  color: #fff !important;
+  border-color: #ff4d4f !important;
+}
+
+/* Hiện nút xóa khi hover vào card wrapper */
+.product-card-wrapper:hover .wishlist-remove-btn {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Section Header */
+.section-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 24px;
+}
+.section-header h2 {
+  font-size: 24px;
+  font-weight: 700;
+  color: #2e7d32;
+  margin: 0;
+  white-space: nowrap;
+}
+.section-header .divider {
+  height: 1px;
+  flex: 1;
+  background: linear-gradient(to right, #4CAF50, transparent);
+  margin-left: 16px;
+  opacity: 0.3;
+}

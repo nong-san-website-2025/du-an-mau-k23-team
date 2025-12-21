@@ -14,14 +14,19 @@ const FeaturedProductsPage = () => {
   const navigate = useNavigate();
   const { addToCart } = useCart();
 
+  // Lấy API URL từ env
+  const API_URL = process.env.REACT_APP_API_URL;
+
+  const BASE_URL = API_URL.replace('/api', '');
+
   useEffect(() => {
     const fetchProducts = async () => {
       setLoading(true);
       try {
-  const data = await productApi.getAllProducts();
+        const data = await productApi.getAllProducts();
         // Sắp xếp: bán chạy lên đầu
-  const bestSellerProducts = data.filter(p => p.is_best_seller);
-  setProducts(bestSellerProducts);
+        const bestSellerProducts = data.filter(p => p.is_best_seller);
+        setProducts(bestSellerProducts);
       } catch (err) {
         setProducts([]);
       } finally {
@@ -43,6 +48,18 @@ const FeaturedProductsPage = () => {
   const filteredProducts = products.filter(p =>
     p.name.toLowerCase().includes(search.toLowerCase())
   );
+
+  // Helper function để lấy URL ảnh chuẩn
+  const getImageUrl = (imagePath) => {
+    if (!imagePath) return "https://via.placeholder.com/400x300?text=No+Image";
+    if (imagePath.startsWith("/")) {
+      return `${BASE_URL}${imagePath}`;
+    }
+    if (imagePath.startsWith("http")) {
+      return imagePath;
+    }
+    return "";
+  };
 
   const handleAddToCart = async (e, product) => {
     e.stopPropagation();
@@ -66,12 +83,7 @@ const FeaturedProductsPage = () => {
         id: product.id,
         name: product.name,
         price: product.price,
-        image:
-          product.image && product.image.startsWith("/")
-            ? `http://localhost:8000${product.image}`
-            : product.image?.startsWith("http")
-            ? product.image
-            : "",
+        image: getImageUrl(product.image), // Sử dụng hàm helper
       }
     );
   };
@@ -114,13 +126,8 @@ const FeaturedProductsPage = () => {
                 >
                   <Card.Img
                     variant="top"
-                    src={
-                      product.image && product.image.startsWith("/")
-                        ? `http://localhost:8000${product.image}`
-                        : product.image?.startsWith("http")
-                        ? product.image
-                        : "https://via.placeholder.com/400x300?text=No+Image"
-                    }
+                    // SỬ DỤNG HÀM HELPER VÀ BASE_URL
+                    src={getImageUrl(product.image)}
                     alt={product.name}
                     style={{ height: "100%", objectFit: "cover" }}
                   />

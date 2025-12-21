@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Card, Form, Input, Button, message, Divider } from "antd";
 import axios from "axios";
 
-const API_BASE_URL = "http://localhost:8000/api";
+const API_BASE_URL = process.env.REACT_APP_API_URL;
 
 export default function AccountPage() {
   const [form] = Form.useForm();

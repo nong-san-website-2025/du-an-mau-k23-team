@@ -9,6 +9,7 @@ from django.db import transaction
 from rest_framework import generics
 from django.db import models
 from django.db.models.functions import Coalesce, Cast
+from rest_framework.parsers import MultiPartParser, FormParser # <--- Thêm FormParser
 
 from .models import Seller
 from .serializers import SellerListSerializer, SellerDetailSerializer, SellerRegisterSerializer
@@ -331,6 +332,7 @@ class ShopViewSet(viewsets.ModelViewSet):
 class ProductViewSet(viewsets.ModelViewSet):
     serializer_class = ProductSerializer
     queryset = Product.objects.all()
+    parser_classes = [MultiPartParser, FormParser]
     permission_classes = [IsAuthenticated] # Mặc định yêu cầu login
 
     def get_queryset(self):

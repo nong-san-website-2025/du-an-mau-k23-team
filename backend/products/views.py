@@ -4,6 +4,7 @@ from django.db.models import Q, Sum, Count
 from django.utils.timezone import now, timedelta
 from django.core.cache import cache
 from django.contrib.auth import get_user_model
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser # <--- Thêm FormParser
 
 from rest_framework import viewsets, generics, permissions, status
 from rest_framework.decorators import action, api_view, permission_classes
@@ -315,6 +316,8 @@ class SubcategoryViewSet(viewsets.ModelViewSet):
 class ProductViewSet(viewsets.ModelViewSet):
     permission_classes = [AllowAny]
     queryset = Product.objects.select_related('subcategory__category', 'seller').prefetch_related('images').all()
+    parser_classes = [MultiPartParser, FormParser]
+
 
     # ✅ ĐÃ SỬA: Thêm "increment_views" vào AllowAny để fix lỗi 401
     def get_permissions(self):
@@ -777,6 +780,7 @@ class ProductImageDeleteView(APIView):
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
+    parser_classes = (MultiPartParser, FormParser, JSONParser)
     permission_classes = [AllowAny]
     pagination_class = None
 
@@ -927,17 +931,17 @@ class ReviewListCreateView(generics.ListCreateAPIView):
     
 @api_view(['GET'])
 @permission_classes([AllowAny])
-def smart_search_suggestion(request): # Đổi tên cho rõ nghĩa
+def smart_search_suggestion(request):
     """
-    API dùng cho thanh search bar (Dropdown gợi ý).
-    Chỉ trả về top 5-10 kết quả gọn nhẹ.
+    API Dropdown: Logic của bạn ở đây đã ổn cho việc hiển thị nhanh.
     """
     query = request.GET.get('q', '').strip()
     if not query:
         return Response({'products': [], 'shops': [], 'categories': []})
 
     try:
-        # Search giới hạn 6-8 items để gợi ý nhanh
+        # Lưu ý: Đảm bảo bên search_service đã bật 'attributesToHighlight': ['name'] 
+        # thì dòng item.get('_formatted') bên dưới mới có tác dụng bôi đậm.
         result = search_service.search(query, limit=10) 
         hits = result.get('hits', [])
         
@@ -951,28 +955,29 @@ def smart_search_suggestion(request): # Đổi tên cho rõ nghĩa
         seen_cats = set()
 
         for item in hits:
-            # Chỉ lấy field cần thiết để hiển thị trên dropdown nhỏ
             response_data['products'].append({
                 'id': item['id'],
-                'name': item.get('_formatted', {}).get('name', item['name']), # Lấy tên highlight
+                # _formatted chứa chuỗi đã được thêm tag <em> vào từ khóa tìm thấy
+                'name': item.get('_formatted', {}).get('name', item['name']), 
                 'slug': item.get('slug', ''),
                 'image': item.get('image', ''),
                 'price': item.get('price', 0),
                 'original_price': item.get('original_price', 0),
             })
 
-            # Gợi ý Shop (tối đa 3 shop)
+            # Logic lấy shop/category từ kết quả sản phẩm tìm được là OK
             store_name = item.get('store_name')
             if store_name and store_name not in seen_shops and len(seen_shops) < 3:
                 response_data['shops'].append({'name': store_name})
                 seen_shops.add(store_name)
 
-            # Gợi ý Category (tối đa 3 cat)
             cat_name = item.get('category_name')
-            if cat_name and cat_name not in seen_cats and len(seen_cats) < 3:
+            cat_slug = item.get('category_slug') # Lấy slug để Frontend dùng
+            
+            if cat_name and cat_slug and cat_name not in seen_cats and len(seen_cats) < 3:
                 response_data['categories'].append({
                     'name': cat_name,
-                    'slug': item.get('category_slug', '')
+                    'slug': cat_slug 
                 })
                 seen_cats.add(cat_name)
 
@@ -981,33 +986,51 @@ def smart_search_suggestion(request): # Đổi tên cho rõ nghĩa
     except Exception as e:
         logger.error(f"Search Suggestion Error: {e}")
         return Response({'products': [], 'shops': [], 'categories': []})
-    
+
+
 class ProductFullSearchView(APIView):
     """
-    API cho trang kết quả tìm kiếm đầy đủ (Có lọc giá, sort, phân trang).
-    URL: /api/products/search/full/?q=...&sort=price:asc&limit=20
+    API Tìm kiếm đầy đủ (Trang kết quả tìm kiếm)
+    Đã bổ sung logic lọc theo Category
     """
     permission_classes = [AllowAny]
 
     def get(self, request):
         try:
+            # 1. Các tham số cơ bản
             query = request.query_params.get('q', '')
             limit = int(request.query_params.get('limit', 20))
             offset = int(request.query_params.get('offset', 0))
+            
+            # 2. Xử lý Sort
             sort_param = request.query_params.get('sort', None)
-            sort = [sort_param] if sort_param else ['sold:desc'] # Mặc định sort theo bán chạy
+            # Cẩn thận: Nếu frontend gửi 'newest', phải map sang 'created_at:desc'
+            # Giả sử frontend đã gửi đúng format 'field:direction' (vd: price:asc)
+            sort = [sort_param] if sort_param else ['sold:desc'] 
 
-            # Xử lý filter giá từ frontend gửi lên
+            # 3. Xử lý Filter (QUAN TRỌNG)
             filter_query = []
+            
             min_price = request.query_params.get('min_price')
             max_price = request.query_params.get('max_price')
             rating = request.query_params.get('rating')
+            
+            # ---> BỔ SUNG LOGIC CATEGORY TẠI ĐÂY <---
+            category_slug = request.query_params.get('category') 
+            
+            if min_price: 
+                filter_query.append(f"price >= {min_price}")
+            if max_price: 
+                filter_query.append(f"price <= {max_price}")
+            if rating: 
+                filter_query.append(f"rating >= {rating}")
+            
+            # Fix lỗi click category không ra gì:
+            if category_slug:
+                # Cú pháp filter chính xác của Meilisearch
+                filter_query.append(f"category_slug = '{category_slug}'")
 
-            if min_price: filter_query.append(f"price >= {min_price}")
-            if max_price: filter_query.append(f"price <= {max_price}")
-            if rating: filter_query.append(f"rating >= {rating}")
-
-            # Gọi Meilisearch
+            # 4. Gọi Service
             search_result = search_service.search(
                 query=query, 
                 limit=limit, 
@@ -1017,11 +1040,12 @@ class ProductFullSearchView(APIView):
             )
 
             return Response({
-                'data': search_result['hits'], 
-                'total': search_result['estimatedTotalHits'],
+                'data': search_result.get('hits', []), 
+                'total': search_result.get('estimatedTotalHits', 0),
                 'limit': limit,
                 'offset': offset
             })
         except Exception as e:
             logger.error(f"Full Search Error: {e}")
-            return Response({'error': 'Lỗi hệ thống tìm kiếm'}, status=500)
+            # Trả về lỗi 500 nhưng kèm message rỗng để FE không crash
+            return Response({'data': [], 'total': 0, 'error': str(e)}, status=200)

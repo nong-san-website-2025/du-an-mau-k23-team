@@ -25,7 +25,7 @@ def dashboard_data(request):
 
     # ✅ Tổng doanh thu = chỉ tính đơn thành công
     total_revenue = (
-        Order.objects.filter(status__in=["success", "delivered"])
+        Order.objects.filter(status__in=["completed", "delivered"])
         .aggregate(total=Sum("total_price"))["total"] or 0
     )
 
@@ -68,7 +68,7 @@ def dashboard_data(request):
         month = month_date.strftime("%b")
         revenue = (
             Order.objects.filter(
-                status__in=["success", "delivered"],  # chỉ tính thành công
+                status__in=["completed", "delivered"],  # chỉ tính thành công
                 created_at__year=month_date.year,
                 created_at__month=month_date.month,
             ).aggregate(total=Sum("total_price"))["total"]

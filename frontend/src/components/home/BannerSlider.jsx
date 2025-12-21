@@ -10,7 +10,10 @@ import "../../styles/home/BannerSlider.css";
 const getImageUrl = (url) => {
   if (!url) return "";
   if (url.startsWith("http")) return url;
-  return `http://localhost:8000${url}`;
+  
+  const apiUrl = process.env.REACT_APP_API_URL;
+  const baseUrl = apiUrl.replace("/api", "");
+  return `${baseUrl}${url}`;
 };
 
 export default function BannerSlider({ 

@@ -1,4 +1,3 @@
-// components/Common/StatsSection.jsx
 import React from "react";
 import { Row, Col, Card, Typography, Skeleton } from "antd";
 import { ArrowUpOutlined, ArrowDownOutlined } from "@ant-design/icons";
@@ -9,68 +8,70 @@ const { Title, Text } = Typography;
 const StatsSection = ({ items = [], loading = false }) => {
   return (
     <div className="common-stats-section">
-      <Row gutter={[24, 24]}>
-        {items.map((item, index) => (
-          <Col key={index} xs={24} sm={12} lg={24 / items.length}>
-            <Card
-              bordered={false}
-              className="stat-card"
-              hoverable
-              // --- CẬP NHẬT Ở ĐÂY ---
-              // 1. Gán sự kiện click
-              onClick={item.onClick}
-              // 2. Gán style để hiện Border và Cursor
-              style={{
-                ...item.style,
-                cursor: item.onClick ? "pointer" : "default",
-                transition: "all 0.2s", // Thêm chút hiệu ứng mượt khi đổi border
-              }}
-              // -----------------------
-            >
-              <Skeleton loading={loading} active paragraph={{ rows: 1 }} avatar>
-                <div className="stat-content">
-                  <div className="stat-info">
-                    <Text type="secondary" className="stat-title">
-                      {item.title}
-                    </Text>
-                    <Title
-                      level={2}
-                      className="stat-value"
-                      style={{ color: item.color }}
-                    >
-                      {item.value}
-                    </Title>
+      <Row gutter={[16, 16]}>
+        {items.map((item, index) => {
+          // Kiểm tra xem thẻ này có đang được chọn không
+          const isActive = item.active; 
 
-                    {/* Render Trend nếu có */}
-                    {item.trend && (
-                      <div
-                        className={`stat-trend ${item.trend > 0 ? "trend-up" : "trend-down"}`}
+          return (
+            <Col key={index} xs={24} sm={12} lg={6}>
+              <Card
+                bordered={false}
+                className="stat-card"
+                hoverable
+                onClick={item.onClick}
+                style={{
+                  ...item.style,
+                  cursor: item.onClick ? "pointer" : "default",
+                  transition: "all 0.3s ease",
+                  // Hiệu ứng Visual khi được chọn: Viền xanh + Nền hơi xanh nhẹ
+                  border: isActive ? `1px solid ${item.color}` : "1px solid transparent",
+                  backgroundColor: isActive ? "#f6ffed" : "#fff", // Màu xanh nhạt của GreenFarm theme
+                  transform: isActive ? "translateY(-2px)" : "none",
+                  boxShadow: isActive ? "0 4px 12px rgba(40, 167, 69, 0.15)" : "0 2px 8px rgba(0,0,0,0.04)"
+                }}
+              >
+                <Skeleton loading={loading} active paragraph={{ rows: 1 }} avatar>
+                  <div className="stat-content" style={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
+                    <div className="stat-info">
+                      <Text type="secondary" style={{ fontSize: 13, fontWeight: 500 }}>
+                        {item.title}
+                      </Text>
+                      <Title
+                        level={2}
+                        style={{ 
+                          margin: "4px 0 0", 
+                          color: isActive ? item.color : "#262626", // Đổi màu chữ khi active
+                          fontSize: 28 
+                        }}
                       >
-                        {item.trend > 0 ? (
-                          <ArrowUpOutlined />
-                        ) : (
-                          <ArrowDownOutlined />
-                        )}
-                        <span>{Math.abs(item.trend)}% so với tháng trước</span>
-                      </div>
-                    )}
-                  </div>
+                        {item.value}
+                      </Title>
+                    </div>
 
-                  {/* Icon có background màu */}
-                  <div
-                    className="stat-icon-wrapper"
-                    style={{
-                      backgroundColor: `${item.color}15`,
-                      color: item.color,
-                    }}
-                  >
-                    {item.icon}
+                    {/* Icon nằm trong khối tròn */}
+                    <div
+                      style={{
+                        width: 48,
+                        height: 48,
+                        borderRadius: "50%",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: 24,
+                        backgroundColor: isActive ? item.color : `${item.color}15`, // Active thì đậm, ko thì nhạt
+                        color: isActive ? "#fff" : item.color,
+                        transition: "all 0.3s"
+                      }}
+                    >
+                      {item.icon}
+                    </div>
                   </div>
-                </div>
-              </Skeleton>
-            </Card>
-          </Col>
-        ))}
+                </Skeleton>
+              </Card>
+            </Col>
+          );
+        })}
       </Row>
     </div>
   );

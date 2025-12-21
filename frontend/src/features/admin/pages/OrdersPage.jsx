@@ -1,11 +1,13 @@
-import React, { useState, useEffect, useRef } from "react";
-import { message, Input, Select, Space } from "antd";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { message, Input, Select, Space, notification } from "antd";
 import { SearchOutlined } from "@ant-design/icons";
 import adminApi from "../services/adminApi";
 import AdminPageLayout from "../components/AdminPageLayout";
 import OrderTableAntd from "../components/OrderAdmin/OrderTableAntd";
 import OrderDetailModal from "../components/OrderAdmin/OrderDetailModal";
 import { useAuth } from "../../login_register/services/AuthContext";
+// 1. SỬA: Import Socket.io thay vì dùng EventSource mặc định
+import io from "socket.io-client";
 
 import "../styles/OrdersPage.css";
 
@@ -21,7 +23,9 @@ const OrdersPage = () => {
   const [selectedOrder, setSelectedOrder] = useState(null);
 
   const { user, loading: authLoading } = useAuth();
-  const eventSourceRef = useRef(null);
+
+  // 2. SỬA: Dùng socketRef để quản lý kết nối
+  const socketRef = useRef(null);
 
   const statusOptions = [
     { value: "", label: "Tất cả trạng thái" },
@@ -34,119 +38,119 @@ const OrdersPage = () => {
     { value: "refunded", label: "Đã hoàn tiền" },
   ];
 
+  // 3. SỬA: Tách hàm fetchOrders ra và dùng useCallback để tái sử dụng
+  const fetchOrders = useCallback(async () => {
+    try {
+      // Chỉ hiện loading lần đầu, những lần update sau ngầm
+      if (orders.length === 0) setLoading(true);
+
+      const params = {};
+      if (statusFilter) params.status = statusFilter;
+      if (searchTerm.trim()) params.search = searchTerm.trim();
+
+      const data = await adminApi.getOrders(params);
+      setOrders(Array.isArray(data) ? data : []);
+      setError("");
+    } catch (err) {
+      console.error(err);
+      setError("Không thể tải danh sách đơn hàng");
+      setOrders([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [statusFilter, searchTerm]); // Hàm này sẽ tạo lại khi filter thay đổi
+
+  // ---------- EFFECT 1: Lấy dữ liệu ban đầu và khi filter ----------
   useEffect(() => {
-    const userRoleName = user?.role?.name; // ← Lấy tên role
+    const userRoleName = user?.role?.name;
     const shouldFetch =
       !authLoading && user?.isAuthenticated && userRoleName === "admin";
 
     if (shouldFetch) {
-      const timer = setTimeout(async () => {
-        try {
-          setLoading(true);
-          const params = {};
-          if (statusFilter) params.status = statusFilter;
-          if (searchTerm.trim()) params.search = searchTerm.trim();
-
-          const data = await adminApi.getOrders(params);
-          setOrders(Array.isArray(data) ? data : []);
-          setError("");
-        } catch (err) {
-          console.error(err);
-          setError("Không thể tải danh sách đơn hàng");
-          setOrders([]);
-        } finally {
-          setLoading(false);
-        }
+      // Debounce: Đợi người dùng gõ xong mới gọi API
+      const timer = setTimeout(() => {
+        fetchOrders();
       }, 300);
-
       return () => clearTimeout(timer);
-    } else {
-      // Khi auth xong mà không đủ quyền, dừng loading
-      if (!authLoading) {
-        setLoading(false);
-        setOrders([]);
-        if (user?.isAuthenticated && userRoleName !== "admin") {
-          setError("Bạn không có quyền truy cập trang này.");
-        }
-      }
+    } else if (!authLoading) {
+      setLoading(false);
     }
-  }, [
-    authLoading,
-    user?.isAuthenticated,
-    user?.role,
-    statusFilter,
-    searchTerm,
-  ]);
+  }, [authLoading, user, fetchOrders]); // fetchOrders thay đổi thì effect này chạy lại
 
-  // SSE for real-time order notifications
+  // ---------- EFFECT 2: Kết nối Socket Real-time (SỬA QUAN TRỌNG) ----------
   useEffect(() => {
     const userRoleName = user?.role?.name;
-    const isAdmin = !authLoading && user?.isAuthenticated && userRoleName === "admin";
+    const isAdmin =
+      !authLoading && user?.isAuthenticated && userRoleName === "admin";
 
-    if (isAdmin && !eventSourceRef.current) {
+    // Chỉ kết nối khi là Admin và CHƯA có kết nối
+    if (isAdmin && !socketRef.current) {
       const token = localStorage.getItem("token");
-      const eventSource = new EventSource(
-        `${process.env.REACT_APP_API_URL}/orders/admin/notifications/sse/?token=${token}`
-      );
 
-      eventSource.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          if (data.type === 'new_order') {
-            message.info(`Đơn hàng mới: ${data.customer_name} - ${data.total_price.toLocaleString()} VND`);
-            // Refresh orders list
-            const fetchOrders = async () => {
-              try {
-                const params = {};
-                if (statusFilter) params.status = statusFilter;
-                if (searchTerm.trim()) params.search = searchTerm.trim();
-                const newOrders = await adminApi.getOrders(params);
-                setOrders(Array.isArray(newOrders) ? newOrders : []);
-              } catch (err) {
-                console.error('Error refreshing orders:', err);
-              }
-            };
-            fetchOrders();
-          }
-        } catch (err) {
-          console.error('Error parsing SSE data:', err);
-        }
-      };
+      // Khởi tạo kết nối Socket
+      // Lưu ý: process.env.REACT_APP_API_URL là địa chỉ server (vd: localhost:5000)
+      socketRef.current = io(process.env.REACT_APP_API_URL, {
+        auth: { token }, // Gửi token để xác thực
+        transports: ["websocket"], // Tối ưu hóa kết nối
+        reconnection: true,
+      });
 
-      eventSource.onerror = (error) => {
-        console.error('SSE error:', error);
-        eventSource.close();
-        eventSourceRef.current = null;
-      };
+      // Lắng nghe sự kiện 'new_order'
+      socketRef.current.on("new_order", (newOrderData) => {
+        console.log("🔥 Đơn hàng mới nhận qua Socket:", newOrderData);
 
-      eventSourceRef.current = eventSource;
+        // A. Thông báo góc màn hình
+        notification.success({
+          message: "Có đơn hàng mới!",
+          description: `Khách: ${newOrderData.customer_name} - ${parseInt(newOrderData.total_price).toLocaleString()}đ`,
+          placement: "topRight",
+          duration: 5,
+        });
+
+        // B. Cập nhật bảng NGAY LẬP TỨC (Không cần gọi lại API fetchOrders)
+        setOrders((prevOrders) => {
+          // Kiểm tra trùng lặp ID
+          if (prevOrders.some((o) => o.id === newOrderData.id))
+            return prevOrders;
+          // Chèn đơn mới lên đầu danh sách
+          return [newOrderData, ...prevOrders];
+        });
+      });
+
+      // Xử lý lỗi kết nối
+      socketRef.current.on("connect_error", (err) => {
+        console.error("Socket error:", err.message);
+      });
     }
 
+    // Cleanup: Ngắt kết nối khi component bị hủy (rời trang)
     return () => {
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
-        eventSourceRef.current = null;
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
       }
     };
-  }, [authLoading, user?.isAuthenticated, user?.role, statusFilter, searchTerm]);
+  }, [authLoading, user]);
+  // QUAN TRỌNG: Dependency array chỉ có 'user'.
+  // Thay đổi 'statusFilter' hay 'searchTerm' KHÔNG làm ngắt kết nối Socket.
 
-  // ---------- Actions ----------
+  // ---------- Actions (Giữ nguyên) ----------
   const handleViewDetail = async (orderId) => {
     try {
       const orderDetail = await adminApi.getOrderDetail(orderId);
-      const updatedOrder = orders.find(o => o.id === orderId);
-      if (updatedOrder) {
-        const fullOrder = { ...updatedOrder, ...orderDetail };
-        setOrders((prev) =>
-          prev.map((order) =>
-            order.id === orderId ? fullOrder : order
-          )
-        );
-        setSelectedOrder(fullOrder);
-        setDetailVisible(true);
-      }
+      // Cập nhật thông tin chi tiết vào danh sách hiện tại
+      setOrders((prev) =>
+        prev.map((order) =>
+          order.id === orderId ? { ...order, ...orderDetail } : order
+        )
+      );
+      setSelectedOrder({
+        ...orders.find((o) => o.id === orderId),
+        ...orderDetail,
+      });
+      setDetailVisible(true);
     } catch (err) {
-      alert("Không thể tải chi tiết đơn hàng");
+      message.error("Không thể tải chi tiết đơn hàng");
     }
   };
 
@@ -164,6 +168,7 @@ const OrdersPage = () => {
         }
       );
       if (!res.ok) throw new Error(await res.text());
+
       setOrders((prev) =>
         prev.map((o) => (o.id === order.id ? { ...o, status: "cancelled" } : o))
       );
@@ -174,7 +179,7 @@ const OrdersPage = () => {
     }
   };
 
-  // ---------- Helpers ----------
+  // ---------- Helpers (Giữ nguyên) ----------
   const getStatusLabel = (status) => {
     const option = statusOptions.find((opt) => opt.value === status);
     return option ? option.label : status;
@@ -189,7 +194,7 @@ const OrdersPage = () => {
   const formatDate = (dateString) =>
     new Date(dateString).toLocaleString("vi-VN");
 
-  // ---------- Toolbar ----------
+  // ---------- Toolbar (Giữ nguyên) ----------
   const toolbar = (
     <Space wrap>
       <Input
@@ -227,7 +232,9 @@ const OrdersPage = () => {
         })}
       />
       <div className="d-flex justify-content-between align-items-center mt-4">
-        <div className="text-muted">Hiển thị {orders.length} đơn hàng</div>
+        <div className="text-muted">
+          Hiển thị {orders.length} đơn hàng mới nhất
+        </div>
       </div>
 
       {selectedOrder && (

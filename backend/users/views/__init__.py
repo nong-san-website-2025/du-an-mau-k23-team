@@ -1,6 +1,6 @@
 """
 Users app views package
-Tách các views thành modules nhỏ theo chức năng
+Organized by functionality across modules
 """
 
 from .auth import (
@@ -20,10 +20,16 @@ from .profile import (
     UserMeView,
     CurrentUserView,
     AccountView,
+    PublicUserRetrieveView,
 )
 from .address import AddressViewSet
 from .points import UserPointsView
-from .wallet import WalletBalanceView
+from .wallet import (
+    WalletBalanceView,
+    WalletTransactionHistoryView,
+    WalletDepositView,
+    WalletWithdrawView,
+)
 from .notifications import (
     NotificationViewSet,
     notification_sse_view,
@@ -39,6 +45,7 @@ from .admin import (
     RoleCreateView,
     RoleListView,
     VerifyAdminView,
+    UserListView,
     customer_statistics_report,
     toggle_user_active,
     delete_user,
@@ -63,23 +70,30 @@ __all__ = [
     'UserMeView',
     'CurrentUserView',
     'AccountView',
+    'PublicUserRetrieveView',
     
     # Address
     'AddressViewSet',
     
-    # Points & Wallet
+    # Points
     'UserPointsView',
+    
+    # Wallet
     'WalletBalanceView',
+    'WalletTransactionHistoryView',
+    'WalletDepositView',
+    'WalletWithdrawView',
     
     # Notifications
     'NotificationViewSet',
-    'NotificationSSEView',
+    'notification_sse_view',
     'TriggerNotificationView',
     'send_notification_to_user',
     
     # Admin
     'UserManagementViewSet',
     'UserViewSet',
+    'UserListView',
     'DashboardAPIView',
     'EmployeeViewSet',
     'RoleViewSet',

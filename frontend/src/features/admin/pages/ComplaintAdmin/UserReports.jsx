@@ -17,8 +17,6 @@ import AdminPageLayout from "../../components/AdminPageLayout";
 import StatusTag from "../../../../components/StatusTag"; 
 import ButtonAction from "../../../../components/ButtonAction"; 
 
-const API_URL = "http://localhost:8000/api/complaints/";
-
 const UserReports = () => {
     // --- KHAI BÁO STATE (Biến) ---
     const [reports, setReports] = useState([]);
@@ -34,12 +32,16 @@ const UserReports = () => {
     const [resolveModalVisible, setResolveModalVisible] = useState(false);
     const [resolveComplaint, setResolveComplaint] = useState(null);
 
+    // Lấy API URL từ env
+    const API_URL = process.env.REACT_APP_API_URL;
+
     // --- HÀM CALL API ---
     const refreshReports = async () => {
         setLoading(true);
         try {
             const token = localStorage.getItem("token");
-            const res = await fetch(API_URL, {
+            // SỬ DỤNG ENV Ở ĐÂY: nối thêm /complaints/
+            const res = await fetch(`${API_URL}/complaints/`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             
@@ -72,14 +74,16 @@ const UserReports = () => {
 
     useEffect(() => {
         refreshReports();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // --- CÁC HÀM XỬ LÝ (Đặt bên trong UserReports để nhận diện được biến reports, selectedDeleteKeys) ---
+    // --- CÁC HÀM XỬ LÝ ---
 
     const handleReject = async (record) => {
         try {
             const token = localStorage.getItem("token");
-            const res = await fetch(`${API_URL}${record.id}/`, {
+            // SỬ DỤNG ENV Ở ĐÂY
+            const res = await fetch(`${API_URL}/complaints/${record.id}/`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
                 body: JSON.stringify({ status: "rejected" }),
@@ -99,7 +103,8 @@ const UserReports = () => {
     const handleResetPending = async (record) => {
         try {
             const token = localStorage.getItem("token");
-            const res = await fetch(`${API_URL}${record.id}/`, {
+            // SỬ DỤNG ENV Ở ĐÂY
+            const res = await fetch(`${API_URL}/complaints/${record.id}/`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
                 body: JSON.stringify({ status: "pending" }), 
@@ -116,10 +121,8 @@ const UserReports = () => {
         }
     };
 
-    // --- LOGIC XỬ LÝ XÓA HÀNG LOẠT (Đã fix logic an toàn) ---
+    // --- LOGIC XỬ LÝ XÓA HÀNG LOẠT ---
     const handleDeleteBatch = async () => {
-        // Kiểm tra an toàn: Lọc lại một lần nữa để chắc chắn KHÔNG chứa pending
-        // Biến 'reports' và 'selectedDeleteKeys' được lấy từ State phía trên
         const safeDeleteKeys = selectedDeleteKeys.filter(id => {
             const item = reports.find(r => r.id === id);
             return item && item.status !== 'pending';
@@ -137,7 +140,8 @@ const UserReports = () => {
 
         for (const id of safeDeleteKeys) {
             try {
-                const res = await fetch(`${API_URL}${id}/`, {
+                // SỬ DỤNG ENV Ở ĐÂY
+                const res = await fetch(`${API_URL}/complaints/${id}/`, {
                     method: "DELETE",
                     headers: { Authorization: `Bearer ${token}` },
                 });
@@ -173,7 +177,8 @@ const UserReports = () => {
 
         for (const id of selectedResolveKeys) {
             try {
-                const res = await fetch(`${API_URL}${id}/`, {
+                // SỬ DỤNG ENV Ở ĐÂY
+                const res = await fetch(`${API_URL}/complaints/${id}/`, {
                     method: "PATCH",
                     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
                     body: JSON.stringify({ status: "resolved" }), 

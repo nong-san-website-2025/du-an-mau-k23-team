@@ -80,7 +80,7 @@ export default function AdminLayout() {
           <Outlet />
           
           <div style={{ textAlign: "center", padding: "24px 0", color: "#9ca3af", fontSize: "13px" }}>
-             GreenFarm Admin ©2025 Created by GreenFarm Dev Team
+             GreenFarm Admin ©2025. Phát triển bởi <span style={{ color: '#52c41a', fontWeight: 'bold' }}>GreenFarm Dev Team</span>.
           </div>
         </Content>
       </Layout>
@@ -96,7 +96,7 @@ function UserDropdown({ onLogout, navigate }) {
     const fetchProfile = async () => {
       try {
         const token = localStorage.getItem("token");
-        const apiUrl = process.env.REACT_APP_API_URL || "http://localhost:8000"; 
+        const apiUrl = process.env.REACT_APP_API_URL; 
         
         const res = await axios.get(`${apiUrl}/api/users/me/`, {
           headers: { Authorization: `Bearer ${token}` },

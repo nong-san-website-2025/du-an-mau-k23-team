@@ -2,6 +2,8 @@ from rest_framework import serializers
 from .models import Order, OrderItem
 from complaints.models import Complaint
 from .models import Preorder
+from products.models import Product
+from decimal import Decimal
 
 class PreOrderSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source='product.name', read_only=True)
@@ -83,20 +85,35 @@ class OrderItemSerializer(serializers.ModelSerializer):
 
     def get_platform_commission(self, obj):
         """Tính phí sàn = (giá × số lượng) × commission_rate"""
+        # Kiểm tra an toàn
         if not obj.product or not obj.product.category:
             return 0
-        item_amount = float(obj.price) * obj.quantity
-        commission_rate = obj.product.category.commission_rate or 0
+            
+        # 1. KHÔNG dùng float(obj.price). Giữ nguyên Decimal của Django
+        # Decimal * int = Decimal (Hợp lệ)
+        item_amount = obj.price * obj.quantity
+        
+        # 2. Lấy rate, đảm bảo nó là Decimal (kể cả khi là 0)
+        raw_rate = obj.product.category.commission_rate or 0
+        
+        # Chuyển đổi an toàn sang Decimal (dùng str để tránh sai số nếu raw_rate lỡ là float)
+        commission_rate = Decimal(str(raw_rate))
+        
+        # 3. Tính toán: Decimal * Decimal = Decimal
         return round(item_amount * commission_rate, 2)
 
     def get_seller_amount(self, obj):
-        """Tính doanh thu nhà cung cấp = tổng tiền - phí sàn"""
-        if not obj.product or not obj.product.category:
-            return round(float(obj.price) * obj.quantity, 2)
-        item_amount = float(obj.price) * obj.quantity
-        commission_rate = obj.product.category.commission_rate or 0
-        commission = item_amount * commission_rate
-        return round(item_amount - commission, 2)
+            """Số tiền người bán nhận = Tổng tiền hàng - Phí sàn"""
+            # 1. Tính tổng tiền hàng (Giữ nguyên Decimal, KHÔNG dùng float)
+            # obj.price là Decimal, obj.quantity là int -> Kết quả là Decimal
+            item_total = obj.price * obj.quantity 
+            
+            # 2. Lấy phí sàn (Hàm này đã sửa ở bước trước để trả về Decimal hoặc int/float)
+            # Để chắc chắn, ta ép kiểu Decimal cho nó luôn
+            commission = Decimal(str(self.get_platform_commission(obj)))
+
+            # 3. Trừ đi: Decimal - Decimal = Decimal (An toàn)
+            return item_total - commission
 
 
 
@@ -110,9 +127,69 @@ class OrderCreateSerializer(serializers.ModelSerializer):
         read_only_fields = ["user", "created_at"]
 
     def validate(self, attrs):
-        items = self.initial_data.get('items')
-        if not items or not isinstance(items, list) or len(items) == 0:
+        items_data = self.initial_data.get('items')
+        if not items_data or not isinstance(items_data, list) or len(items_data) == 0:
             raise serializers.ValidationError({'items': 'Danh sách sản phẩm không hợp lệ hoặc rỗng.'})
+        
+        # Danh sách chứa các sản phẩm bị lỗi tồn kho
+        unavailable_items = []
+
+        for item in items_data:
+            product_id = item.get('product')
+            # Lấy quantity, đảm bảo là số nguyên
+            try:
+                quantity = int(item.get('quantity', 0))
+            except (ValueError, TypeError):
+                continue
+
+            if not product_id:
+                continue
+            
+            try:
+                product = Product.objects.get(id=product_id)
+                
+                # Kiểm tra tồn kho (Giả sử field là stock_quantity hoặc stock)
+                current_stock = product.stock  # Hãy thay bằng tên field thực tế trong model Product của bạn
+                
+                if current_stock < quantity:
+                    # Lấy URL ảnh để hiển thị đẹp trên Modal
+                    image_url = ""
+                    if product.images.exists():
+                        # Lưu ý: request context cần thiết để build full URL
+                        request = self.context.get('request')
+                        img_path = product.images.first().image.url
+                        if request:
+                            image_url = request.build_absolute_uri(img_path)
+                        else:
+                            image_url = img_path
+
+                    # Thêm vào danh sách lỗi
+                    unavailable_items.append({
+                        "id": product.id,
+                        "name": product.name,
+                        "image": image_url,
+                        "available_quantity": current_stock,
+                        "requested_quantity": quantity
+                    })
+
+            except Product.DoesNotExist:
+                # Nếu sản phẩm không tồn tại (đã bị xóa), cũng coi là lỗi
+                unavailable_items.append({
+                    "id": product_id,
+                    "name": f"Sản phẩm ID {product_id}",
+                    "image": "",
+                    "available_quantity": 0,
+                    "requested_quantity": quantity
+                })
+
+        # Nếu có bất kỳ sản phẩm nào lỗi, chặn luôn việc tạo đơn
+        if unavailable_items:
+            # Trả về đúng key 'unavailable_items' mà React đang chờ
+            raise serializers.ValidationError({
+                "unavailable_items": unavailable_items,
+                "detail": "Một số sản phẩm trong giỏ hàng không đủ số lượng."
+            })
+
         return attrs
 
     def create(self, validated_data):
@@ -235,11 +312,22 @@ class OrderCreateSerializer(serializers.ModelSerializer):
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, required=False, read_only=True)
     user_email = serializers.CharField(source='user.email', read_only=True)
-    # Shop info derived from the first item's seller (orders can include multiple sellers theoretically)
+    
+    # Thông tin Shop
     shop_name = serializers.SerializerMethodField()
     shop_phone = serializers.SerializerMethodField()
-    total_amount = serializers.DecimalField(source='total_price', max_digits=10, decimal_places=2, read_only=True)
-    order_id = serializers.IntegerField(source='id', read_only=True)
+    
+    # [NÂNG CẤP 1] Hiển thị trạng thái tiếng Việt
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    payment_status_display = serializers.CharField(source='get_payment_status_display', read_only=True)
+    
+    # [NÂNG CẤP 2] Format thời gian đẹp cho Frontend
+    created_at_formatted = serializers.SerializerMethodField()
+    
+    # Các field tính toán tiền
+    total_amount = serializers.DecimalField(source='total_price', max_digits=12, decimal_places=2, read_only=True)
+    refunded_amount = serializers.SerializerMethodField()
+    actual_revenue = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
@@ -247,30 +335,34 @@ class OrderSerializer(serializers.ModelSerializer):
         read_only_fields = ["user", "created_at"]
 
     def get_shop_name(self, obj):
-        first_item = obj.items.first()
-        if first_item and first_item.product and first_item.product.seller:
-            return first_item.product.seller.store_name
-        return None
+        item = obj.items.first()
+        return item.product.seller.store_name if (item and item.product and item.product.seller) else None
 
     def get_shop_phone(self, obj):
-        first_item = obj.items.first()
-        if first_item and first_item.product and first_item.product.seller:
-            return first_item.product.seller.phone
-        return None
+        item = obj.items.first()
+        return item.product.seller.phone if (item and item.product and item.product.seller) else None
+
+    def get_created_at_formatted(self, obj):
+        # Trả về dạng: 14:30 20/12/2025
+        return obj.created_at.strftime("%H:%M %d/%m/%Y")
+
+    def get_refunded_amount(self, obj):
+        refunded_items = obj.items.filter(status='REFUND_APPROVED')
+        total = sum(item.price * item.quantity for item in refunded_items)
+        return total
+
+    def get_actual_revenue(self, obj):
+        refunded = self.get_refunded_amount(obj)
+        return obj.total_price - refunded
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
-        # Tính tổng giá trị từ các items nếu không có total_price
+        # Fallback hiển thị total_price nếu DB chưa update
         if not representation.get('total_price') or representation['total_price'] == '0.00':
-            total = sum(
-                float(item.price) * int(item.quantity) 
-                for item in instance.items.all()
-            )
-            # Add shipping_fee to total
-            shipping_fee = float(instance.shipping_fee or 0)
-            representation['total_price'] = str(total + shipping_fee)
+            total = sum(float(item.price) * int(item.quantity) for item in instance.items.all())
+            shipping = float(instance.shipping_fee or 0)
+            representation['total_price'] = str(total + shipping)
         return representation
-    
 
 class OrderItemCreateSerializer(serializers.ModelSerializer):
     product_id = serializers.IntegerField(write_only=True)
@@ -280,12 +372,3 @@ class OrderItemCreateSerializer(serializers.ModelSerializer):
         fields = ['product_id', 'quantity', 'price']
 
 
-
-
-
-class ComplaintSerializer(serializers.ModelSerializer):
-    order_id = serializers.IntegerField(source="order.id", read_only=True)
-
-    class Meta:
-        model = Complaint
-        fields = ["id", "order_id", "customer_name", "reason", "status", "created_at"]

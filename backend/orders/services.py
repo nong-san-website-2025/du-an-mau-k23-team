@@ -96,9 +96,9 @@ def complete_order(order, seller):
     logger.info(f"Seller {seller.id} bắt đầu hoàn tất Order #{order.id}")
 
     # 1. Kiểm tra trạng thái đơn hàng
-    if order.status not in ['shipping', 'delivery']:
-        logger.warning(f"Order #{order.id} không ở trạng thái 'shipping' hoặc 'delivery'. Hiện tại: {order.status}")
-        raise OrderProcessingError("Chỉ có thể hoàn tất đơn ở trạng thái 'shipping' hoặc 'delivery'.")
+    if order.status not in ['shipping', 'delivered']:
+        logger.warning(f"Order #{order.id} không ở trạng thái 'shipping' hoặc 'delivered'. Hiện tại: {order.status}")
+        raise OrderProcessingError("Chỉ có thể hoàn tất đơn ở trạng thái 'shipping' hoặc 'delivered'.")
 
     # 2. Kiểm tra quyền seller
     seller_product_ids = set(Product.objects.filter(seller=seller).values_list('id', flat=True))
@@ -111,7 +111,7 @@ def complete_order(order, seller):
     # 3. Giảm tồn kho (chỉ trừ một lần duy nhất)
     reduce_stock_for_order(order)
 
-    # Lấy cờ 'sold_counted' (nếu là False thì mới chạy logic 4, 5, 6)
+    # Lấy cờ 'sold_counted' (nếu là False tfhì mới chạy logic 4, 5, 6)
     sold_counted = getattr(order, 'sold_counted', False)
     
     if not sold_counted:
@@ -175,8 +175,8 @@ def complete_order(order, seller):
     else:
         logger.info(f"Order #{order.id} - Logic 'sold' và 'wallet' đã được cập nhật trước đó, bỏ qua.")
 
-    # 7. Cập nhật trạng thái đơn hàng sang 'success'
-    order.status = 'success'
+    # 7. Cập nhật trạng thái đơn hàng sang 'completed'
+    order.status = 'completed'
     
     # 8. Lưu tất cả thay đổi
     update_fields = ['status']

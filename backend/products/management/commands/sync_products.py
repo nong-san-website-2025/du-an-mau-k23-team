@@ -8,6 +8,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **kwargs):
         self.stdout.write("Bắt đầu đồng bộ...")
+        search_service.initialize_settings()
         
         # Lấy tất cả sản phẩm Active
         products = Product.objects.filter(status='approved', is_hidden=False)

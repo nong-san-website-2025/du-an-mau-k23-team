@@ -92,7 +92,7 @@ export default function ProductDetailModal({
             </Tag>
           </Space>
           <Text type="secondary" style={{ fontSize: 12 }}>
-             Cập nhật: {dayjs(product.updated_at).format("DD/MM/YYYY HH:mm")}
+            Cập nhật: {dayjs(product.updated_at).format("DD/MM/YYYY HH:mm")}
           </Text>
         </div>
       }
@@ -189,7 +189,7 @@ export default function ProductDetailModal({
           <Title level={3} style={{ marginBottom: 8, marginTop: 0, lineHeight: 1.3 }}>
             {product.name}
           </Title>
-          
+
           <Space style={{ marginBottom: 16 }}>
             <Avatar size="small" icon={<ShopOutlined />} style={{ backgroundColor: '#87d068' }} />
             <Text strong>{product.seller_name || "Cửa hàng"}</Text>
@@ -199,92 +199,93 @@ export default function ProductDetailModal({
 
           {/* Pricing Section - Clean Design */}
           <div style={{ marginBottom: 24 }}>
-             <Space align="baseline">
-                <Text style={{ fontSize: 32, fontWeight: 700, color: "#ff4d4f" }}>
-                   {intcomma(product.discounted_price)}₫
+            <Space align="baseline">
+              <Text style={{ fontSize: 32, fontWeight: 700, color: "#ff4d4f" }}>
+                {intcomma(product.discounted_price)}₫
+              </Text>
+              {product.original_price > product.discounted_price && (
+                <Text delete type="secondary" style={{ fontSize: 16 }}>
+                  {intcomma(product.original_price)}₫
                 </Text>
-                {product.original_price > product.discounted_price && (
-                   <Text delete type="secondary" style={{ fontSize: 16 }}>
-                      {intcomma(product.original_price)}₫
-                   </Text>
-                )}
-                <Tag color={product.availability_status === 'out_of_stock' ? 'red' : 'blue'}>
-                   {product.availability_status === 'out_of_stock' ? 'Hết hàng' : 'Có sẵn'}
-                </Tag>
-             </Space>
-             <div style={{ fontSize: 13, color: "#8c8c8c", marginTop: 4 }}>
-                Đơn vị tính: {product.unit || "kg"}
-             </div>
+              )}
+              <Tag color={product.availability_status === 'out_of_stock' ? 'red' : 'blue'}>
+                {product.availability_status === 'out_of_stock' ? 'Hết hàng' : 'Có sẵn'}
+              </Tag>
+            </Space>
+            <div style={{ fontSize: 13, color: "#8c8c8c", marginTop: 4 }}>
+              Đơn vị tính: {product.unit || "kg"}
+            </div>
           </div>
 
           {/* Thông số quan trọng (Grid nhỏ) */}
           <div style={{ background: "#f9f9f9", padding: 16, borderRadius: 8, marginBottom: 24 }}>
-             <Row gutter={[16, 16]}>
-                <Col span={8}>
-                   <Text type="secondary" style={{ fontSize: 12 }}>Tồn kho</Text>
-                   <div style={{ fontSize: 16, fontWeight: 600 }}>{intcomma(product.stock)}</div>
-                </Col>
-                <Col span={8} style={{ borderLeft: "1px solid #e8e8e8", paddingLeft: 16 }}>
-                   <Text type="secondary" style={{ fontSize: 12 }}>Đã bán</Text>
-                   <div style={{ fontSize: 16, fontWeight: 600 }}>{intcomma(product.sold || 0)}</div>
-                </Col>
-                <Col span={8} style={{ borderLeft: "1px solid #e8e8e8", paddingLeft: 16 }}>
-                   <Text type="secondary" style={{ fontSize: 12 }}>Hoa hồng</Text>
-                   <div style={{ fontSize: 16, fontWeight: 600, color: "#13c2c2" }}>
-                      {(product.commission_rate * 100).toFixed(1)}%
-                   </div>
-                </Col>
-             </Row>
+            <Row gutter={[16, 16]}>
+              <Col span={8}>
+                <Text type="secondary" style={{ fontSize: 12 }}>Tồn kho</Text>
+                <div style={{ fontSize: 16, fontWeight: 600 }}>{intcomma(product.stock)}</div>
+              </Col>
+              <Col span={8} style={{ borderLeft: "1px solid #e8e8e8", paddingLeft: 16 }}>
+                <Text type="secondary" style={{ fontSize: 12 }}>Đã bán</Text>
+                <div style={{ fontSize: 16, fontWeight: 600 }}>{intcomma(product.sold || 0)}</div>
+              </Col>
+              <Col span={8} style={{ borderLeft: "1px solid #e8e8e8", paddingLeft: 16 }}>
+                <Text type="secondary" style={{ fontSize: 12 }}>Phí hoa hồng sàn</Text>
+                <div style={{ fontSize: 16, fontWeight: 600, color: "#13c2c2" }}>
+                  {/* Giả sử backend trả về commission_rate dạng 0.05 hoặc 0.08 */}
+                  {product.commission_rate ? `${(product.commission_rate * 100).toFixed(1)}%` : "0%"}
+                </div>
+              </Col>
+            </Row>
           </div>
 
           {/* Mùa vụ (Nếu có) - Dùng style nhẹ nhàng hơn */}
           {isSeason && (
             <div style={{ border: "1px dashed #722ed1", background: "#f9f0ff", padding: 12, borderRadius: 8, marginBottom: 24 }}>
-               <Space style={{ color: "#722ed1", fontWeight: 600 }}>
-                  <CalendarOutlined /> Kế hoạch mùa vụ
-               </Space>
-               <Row style={{ marginTop: 8 }} align="middle">
-                  <Col span={10}>
-                     <Text style={{ fontSize: 13 }}>
-                        {dayjs(product.season_start).format("DD/MM")} - {dayjs(product.season_end).format("DD/MM/YYYY")}
-                     </Text>
-                  </Col>
-                  <Col span={14}>
-                     <Tooltip title={`Đã đặt: ${intcomma(product.ordered_quantity)} / ${intcomma(product.estimated_quantity)}`}>
-                        <div style={{ height: 6, background: "#e0d4f5", borderRadius: 3, overflow: "hidden" }}>
-                           <div style={{ width: `${Math.min((product.ordered_quantity / (product.estimated_quantity || 1)) * 100, 100)}%`, height: "100%", background: "#722ed1" }} />
-                        </div>
-                     </Tooltip>
-                  </Col>
-               </Row>
+              <Space style={{ color: "#722ed1", fontWeight: 600 }}>
+                <CalendarOutlined /> Kế hoạch mùa vụ
+              </Space>
+              <Row style={{ marginTop: 8 }} align="middle">
+                <Col span={10}>
+                  <Text style={{ fontSize: 13 }}>
+                    {dayjs(product.season_start).format("DD/MM")} - {dayjs(product.season_end).format("DD/MM/YYYY")}
+                  </Text>
+                </Col>
+                <Col span={14}>
+                  <Tooltip title={`Đã đặt: ${intcomma(product.ordered_quantity)} / ${intcomma(product.estimated_quantity)}`}>
+                    <div style={{ height: 6, background: "#e0d4f5", borderRadius: 3, overflow: "hidden" }}>
+                      <div style={{ width: `${Math.min((product.ordered_quantity / (product.estimated_quantity || 1)) * 100, 100)}%`, height: "100%", background: "#722ed1" }} />
+                    </div>
+                  </Tooltip>
+                </Col>
+              </Row>
             </div>
           )}
 
           {/* Chi tiết / Mô tả */}
           <Divider orientation="left" style={{ margin: "12px 0" }}>
-             <InfoCircleOutlined /> Chi tiết
+            <InfoCircleOutlined /> Chi tiết
           </Divider>
-          
+
           <Descriptions column={1} size="small" labelStyle={{ width: 100, color: "#8c8c8c" }}>
-             <Descriptions.Item label="Xuất xứ">{product.location || "Việt Nam"}</Descriptions.Item>
-             <Descriptions.Item label="Mô tả">
-                <Paragraph 
-                   ellipsis={!isDescExpanded ? { rows: 3, expandable: false } : false} 
-                   style={{ marginBottom: 0, whiteSpace: 'pre-line', color: "#595959" }}
+            <Descriptions.Item label="Xuất xứ">{product.location || "Việt Nam"}</Descriptions.Item>
+            <Descriptions.Item label="Mô tả">
+              <Paragraph
+                ellipsis={!isDescExpanded ? { rows: 3, expandable: false } : false}
+                style={{ marginBottom: 0, whiteSpace: 'pre-line', color: "#595959" }}
+              >
+                {product.description || "Chưa có mô tả chi tiết."}
+              </Paragraph>
+              {product.description && product.description.length > 150 && (
+                <Button
+                  type="link"
+                  size="small"
+                  onClick={() => setIsDescExpanded(!isDescExpanded)}
+                  style={{ padding: 0 }}
                 >
-                   {product.description || "Chưa có mô tả chi tiết."}
-                </Paragraph>
-                {product.description && product.description.length > 150 && (
-                   <Button 
-                      type="link" 
-                      size="small" 
-                      onClick={() => setIsDescExpanded(!isDescExpanded)}
-                      style={{ padding: 0 }}
-                   >
-                      {isDescExpanded ? "Thu gọn" : "Xem thêm"}
-                   </Button>
-                )}
-             </Descriptions.Item>
+                  {isDescExpanded ? "Thu gọn" : "Xem thêm"}
+                </Button>
+              )}
+            </Descriptions.Item>
           </Descriptions>
 
         </Col>

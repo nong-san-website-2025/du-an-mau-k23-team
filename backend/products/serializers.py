@@ -57,13 +57,35 @@ class CategorySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Category
-        fields = ['id', 'name', 'key', 'status', 'subcategories', 'image', 'is_featured']
+        fields = ['id', 'name', 'key', 'status', 'subcategories', 'image', 'is_featured', 'commission_rate']
 
     def get_image_url(self, obj):
         request = self.context.get('request')
         if obj.image and hasattr(obj.image, 'url'):
             return request.build_absolute_uri(obj.image.url) if request else obj.image.url
         return None
+    
+    # --- THÊM PHẦN NÀY ---
+    def update(self, instance, validated_data):
+        # Debug: In ra terminal xem React gửi gì lên
+        print("--- DEBUG UPDATE CATEGORY ---")
+        print(f"Dữ liệu nhận được: {validated_data}") 
+        
+        # Cập nhật từng trường thủ công để đảm bảo không bị sót
+        instance.name = validated_data.get('name', instance.name)
+        instance.key = validated_data.get('key', instance.key)
+        instance.status = validated_data.get('status', instance.status)
+        instance.image = validated_data.get('image', instance.image)
+        instance.is_featured = validated_data.get('is_featured', instance.is_featured)
+        
+        # DÒNG QUAN TRỌNG NHẤT: Ép kiểu và gán commission_rate
+        # Nếu validated_data có 'commission_rate' thì lấy, không thì giữ nguyên cũ
+        instance.commission_rate = validated_data.get('commission_rate', instance.commission_rate)
+
+        print(f"Giá trị sẽ lưu vào DB: {instance.commission_rate}")
+        
+        instance.save()
+        return instance
 
 
 class ProductFeatureSerializer(serializers.ModelSerializer):
@@ -84,6 +106,8 @@ class ProductSerializer(serializers.ModelSerializer):
     main_image = serializers.SerializerMethodField()
 
     images = ProductImageSerializer(many=True, read_only=True)  # 👈 chỉ để hiển thị
+
+    image = serializers.ImageField(required=False, allow_null=True)
     
     store = SellerListSerializer(source='seller', read_only=True)
     seller = serializers.PrimaryKeyRelatedField(read_only=True)
@@ -113,7 +137,7 @@ class ProductSerializer(serializers.ModelSerializer):
             "estimated_quantity", "preordered_quantity", 'ordered_quantity',
             "is_coming_soon", "is_out_of_stock", "available_quantity",
             "total_preordered", "user_preordered", "features", "main_image",
-            "commission_rate", "pending_update", "comparison_data", 'weight_g', 'reject_reason',
+            "commission_rate", "pending_update", "comparison_data", 'weight_g', 'reject_reason','image',
         ]
         read_only_fields = ["status", "seller"]
 
@@ -153,7 +177,7 @@ class ProductSerializer(serializers.ModelSerializer):
     def get_sold_count(self, obj):
         total = OrderItem.objects.filter(
             product=obj,
-            order__status__in=['paid', 'shipped', 'delivered', 'success']
+            order__status__in=['shipping', 'delivered', 'completed']
         ).aggregate(total=Sum('quantity'))['total']
         return total or 0
 
@@ -183,19 +207,50 @@ class ProductSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
+        # 1. Lấy features ra xử lý riêng
         features_data = validated_data.pop('features', [])
+        
+        # 2. Lấy request để xử lý user và file
         request = self.context.get("request")
-
+        
         if request and hasattr(request.user, "seller"):
             validated_data["seller"] = request.user.seller
         else:
             raise serializers.ValidationError({"seller": "Người dùng hiện tại không phải là seller"})
 
+        # 3. Tạo Product (Lưu thông tin cơ bản + Ảnh đại diện 'image' nếu có)
         product = super().create(validated_data)
 
-        # Tạo danh sách features
+        # 4. Lưu Features
         for feature in features_data:
             ProductFeature.objects.create(product=product, **feature)
+
+        # ------------------------------------------------------------------
+        # 5. XỬ LÝ DANH SÁCH ẢNH GALLERY ('images') - QUAN TRỌNG NHẤT
+        # ------------------------------------------------------------------
+        if request:
+            # 'images' là tên key bạn append trong React: formData.append("images", file)
+            gallery_files = request.FILES.getlist('images') 
+            
+            for file in gallery_files:
+                ProductImage.objects.create(product=product, image=file)
+            
+            # Logic phụ: Nếu user không chọn ảnh đại diện (image), 
+            # nhưng có up ảnh gallery, thì lấy ảnh đầu tiên làm đại diện luôn cho đỡ lỗi.
+            if not product.image and gallery_files:
+                 first_img_obj = ProductImage.objects.filter(product=product).first()
+                 if first_img_obj:
+                     first_img_obj.is_primary = True
+                     first_img_obj.save()
+                     product.image = first_img_obj.image
+                     product.save(update_fields=['image'])
+        # ------------------------------------------------------------------
+
+        # Logic phụ cũ: Nếu có ảnh đại diện (image) gửi riêng, thêm nó vào gallery luôn
+        if product.image:
+             # Kiểm tra xem ảnh này đã có trong gallery chưa để tránh trùng
+             # (Tùy logic, ở đây mình cứ tạo để đảm bảo tính nhất quán)
+             ProductImage.objects.create(product=product, image=product.image, is_primary=True)
 
         return product
     
@@ -465,7 +520,7 @@ class ProductListSerializer(serializers.ModelSerializer):
     def get_sold_count(self, obj):
         return OrderItem.objects.filter(
             product=obj,
-            order__status__in=['paid', 'shipped', 'delivered', 'success']
+            order__status__in=['shipping', 'delivered', 'completed']
         ).aggregate(total=Sum('quantity'))['total'] or 0
 
     def get_sold(self, obj):
@@ -538,10 +593,12 @@ class SubcategoryCreateSerializer(serializers.ModelSerializer):
 
 class CategoryCreateSerializer(serializers.ModelSerializer):
     subcategories = SubcategoryCreateSerializer(many=True, required=False)
+    image = serializers.ImageField(required=False) # Cho phép null để update ko cần gửi lại ảnh cũ
 
     class Meta:
         model = Category
-        fields = ['name', 'key', 'status', 'subcategories']
+        fields = ['name', 'key', 'status', 'subcategories', 'commission_rate', 'image']
+        
 
     def create(self, validated_data):
         subcategories_data = validated_data.pop('subcategories', [])

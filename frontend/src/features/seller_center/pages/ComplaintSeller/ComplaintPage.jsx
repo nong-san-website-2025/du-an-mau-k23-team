@@ -14,6 +14,9 @@ export default function ComplaintPage() {
 
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
+  // Lấy API URL từ env
+  const API_URL = process.env.REACT_APP_API_URL;
+
   // Modal duyệt (Chỉ còn Đồng ý hoàn tiền)
   const [approveModal, setApproveModal] = useState({
     open: false,
@@ -28,7 +31,8 @@ export default function ComplaintPage() {
   const fetchComplaints = async () => {
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:8000/api/complaints/", {
+      // SỬ DỤNG ENV Ở ĐÂY
+      const res = await fetch(`${API_URL}/complaints/`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -44,6 +48,7 @@ export default function ComplaintPage() {
 
   useEffect(() => {
     if (token) fetchComplaints();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   /* ===== search and filter ===== */
@@ -68,7 +73,8 @@ export default function ComplaintPage() {
   // 1. Shop Đồng ý hoàn tiền
   const handleSellerAccept = async (record, note) => {
     try {
-      const res = await fetch(`http://localhost:8000/api/complaints/${record.id}/seller-respond/`, {
+      // SỬ DỤNG ENV Ở ĐÂY
+      const res = await fetch(`${API_URL}/complaints/${record.id}/seller-respond/`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -114,7 +120,8 @@ export default function ComplaintPage() {
           return Promise.reject();
         }
         try {
-          const res = await fetch(`http://localhost:8000/api/complaints/${record.id}/seller-respond/`, {
+          // SỬ DỤNG ENV Ở ĐÂY
+          const res = await fetch(`${API_URL}/complaints/${record.id}/seller-respond/`, {
             method: "POST",
             headers: {
               Authorization: `Bearer ${token}`,

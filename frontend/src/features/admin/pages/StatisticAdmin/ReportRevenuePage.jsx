@@ -346,17 +346,7 @@ export default function ReportRevenuePage() {
           suffix={suffix}
           valueStyle={{ fontSize: "24px", fontWeight: "600", color: "#1f2937" }}
         />
-        {trend !== undefined && (
-          <div className="mt-2 flex items-center gap-1">
-            <TrendIcon style={{ color: trendColor, fontSize: "14px" }} />
-            <Text
-              style={{ color: trendColor, fontSize: "12px" }}
-              className="font-medium"
-            >
-              {trendText}% so với kỳ trước
-            </Text>
-          </div>
-        )}
+
       </Card>
     );
   };

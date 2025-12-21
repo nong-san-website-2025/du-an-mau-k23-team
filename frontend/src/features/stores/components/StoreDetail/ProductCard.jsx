@@ -3,7 +3,7 @@ import React from "react";
 import { Card, Typography, Button, Rate } from "antd";
 import { ShoppingCartOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
-import { useCart } from "../../../cart/services/CartContext"; // ✅ điều chỉnh đường dẫn nếu cần
+import { useCart } from "../../../cart/services/CartContext"; 
 import { formatVND } from "./utils/utils";
 
 const { Text } = Typography;
@@ -12,11 +12,20 @@ const ProductCard = ({ product }) => {
   const navigate = useNavigate();
   const { addToCart } = useCart();
 
+  // Lấy API URL từ env
+  const API_URL = process.env.REACT_APP_API_URL;
+  // Tạo Base URL (bỏ /api) để dùng cho hình ảnh
+  // Ví dụ: http://localhost:8000/api -> http://localhost:8000
+  const BASE_URL = API_URL ? API_URL.replace(/\/api\/?$/, "") : "http://localhost:8000";
+
   const getImageUrl = () => {
     if (!product.image) return "https://via.placeholder.com/400x300?text=No+Image";
+    // Nếu là link tuyệt đối (cloudinary, s3,...)
     if (product.image.startsWith("http")) return product.image;
-    if (product.image.startsWith("/")) return `http://localhost:8000${product.image}`;
-    return `http://localhost:8000/media/${product.image}`;
+    // Nếu là đường dẫn tương đối từ root server
+    if (product.image.startsWith("/")) return `${BASE_URL}${product.image}`;
+    // Trường hợp còn lại, giả định nằm trong /media/
+    return `${BASE_URL}/media/${product.image}`;
   };
 
   const handleAddToCart = async (e) => {

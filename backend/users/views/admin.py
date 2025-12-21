@@ -112,6 +112,38 @@ class UserManagementViewSet(viewsets.ModelViewSet):
             user = serializer.save()
             return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def update(self, request, *args, **kwargs):
+        """Update user - prevent admin from changing their own role"""
+        user_id = self.kwargs.get('pk')
+        user_obj = self.get_object()
+        
+        # Check if trying to change own role
+        if request.user.id == user_id and 'role_id' in request.data:
+            # Check if user is admin
+            if request.user.is_admin:
+                return Response(
+                    {"detail": "Admin không thể tự thay đổi vai trò của bản thân"},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+        
+        return super().update(request, *args, **kwargs)
+    
+    def partial_update(self, request, *args, **kwargs):
+        """Partial update user - prevent admin from changing their own role"""
+        user_id = self.kwargs.get('pk')
+        user_obj = self.get_object()
+        
+        # Check if trying to change own role
+        if request.user.id == user_id and 'role_id' in request.data:
+            # Check if user is admin
+            if request.user.is_admin:
+                return Response(
+                    {"detail": "Admin không thể tự thay đổi vai trò của bản thân"},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+        
+        return super().partial_update(request, *args, **kwargs)
 
 
 @api_view(["PATCH"])
@@ -244,8 +276,7 @@ def customer_statistics_report(request):
     
     # Top customers by spending
     top_customers = customers.annotate(
-        order_count=Count('orders'),
-        total_spent=Sum('orders__total_price')
+        order_count=Count('orders')
     ).filter(
         order_count__gt=0
     ).order_by('-total_spent')[:10]
@@ -261,10 +292,7 @@ def customer_statistics_report(request):
     ]
     
     # Customer segmentation
-    vip_count = customers.annotate(
-        order_count=Count('orders'),
-        total_spent=Sum('orders__total_price')
-    ).filter(total_spent__gte=10000000).count()
+    vip_count = customers.filter(total_spent__gte=10000000).count()
     
     return Response({
         'summary': {

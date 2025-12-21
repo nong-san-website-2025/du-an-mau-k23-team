@@ -42,9 +42,11 @@ export default function CategorySection({ categories = [], loading = false }) {
           ))
           : /* --- TRẠNG THÁI CÓ DỮ LIỆU --- */
           categories.map((cat) => (
-            <Link
+           <Link
               key={cat.id}
-              to={`/products?category=${encodeURIComponent(cat.name)}`}
+              // ❌ CŨ: to={`/products?category=${encodeURIComponent(cat.name)}`}
+              // ✅ MỚI: Dùng cat.slug hoặc cat.key để khớp với Backend
+              to={`/products?category=${cat.slug || cat.key}`} 
               className="category-item-antd text-decoration-none"
             >
               <div className="category-image-box">

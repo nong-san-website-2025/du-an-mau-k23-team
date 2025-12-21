@@ -10,11 +10,11 @@ import {
   UserAddOutlined,
   StopOutlined,
 } from "@ant-design/icons";
-import RevenueChart from "../components/Dashboard/RevenueChart";
-import OrderPieChart from "../components/Dashboard/OrderPieChart";
-import TopSellingProducts from "../components/Dashboard/TopSellingProducts";
-import RecentOrders from "../components/Dashboard/RecentOrders";
-import RecentDisputes from "../components/Dashboard/RecentDisputes";
+import RevenueChart from "../components/DashboardAdmin/RevenueChart";
+import OrderPieChart from "../components/DashboardAdmin/OrderPieChart";
+import TopSellingProducts from "../components/DashboardAdmin/TopSellingProducts";
+import RecentOrders from "../components/DashboardAdmin/RecentOrders";
+import RecentDisputes from "../components/DashboardAdmin/RecentDisputes";
 import { useTranslation } from "react-i18next";
 
 const { Title } = Typography;

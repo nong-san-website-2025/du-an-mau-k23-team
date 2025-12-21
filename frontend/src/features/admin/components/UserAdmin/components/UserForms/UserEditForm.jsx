@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Form, Input, Select, Button, Card, message, Spin } from "antd";
 import { updateUser, fetchRoles } from "../../api/userApi";
 import { roleLabel } from "../../roleUtils";
+import axios from "axios";
 
 const { Option } = Select;
 
@@ -15,6 +16,29 @@ export default function UserEditForm({
   const [form] = Form.useForm();
   const [roles, setRoles] = useState(propRoles || []);
   const [loading, setLoading] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+
+  // Lấy API URL từ env
+  const API_URL = process.env.REACT_APP_API_URL;
+
+  // 0. Load current user info
+  useEffect(() => {
+    let mounted = true;
+    const loadCurrentUser = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        // SỬ DỤNG ENV Ở ĐÂY
+        const response = await axios.get(`${API_URL}/users/me/`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (mounted) setCurrentUser(response.data);
+      } catch (error) {
+        console.error("Lỗi load current user:", error);
+      }
+    };
+    loadCurrentUser();
+    return () => (mounted = false);
+  }, [API_URL]); // Thêm API_URL vào dependency array
 
   // 1. Load Roles: prefer roles passed via props, otherwise fetch once on mount
   useEffect(() => {
@@ -120,6 +144,12 @@ export default function UserEditForm({
           <Select
             placeholder="Chọn vai trò"
             loading={propRolesLoading || roles.length === 0}
+            disabled={
+              currentUser &&
+              editUser &&
+              currentUser.id === editUser.id &&
+              editUser.role?.name === "admin"
+            }
           >
             {roles.map((role) => (
               <Option key={role.id} value={String(role.id)}>
@@ -128,6 +158,24 @@ export default function UserEditForm({
             ))}
           </Select>
         </Form.Item>
+
+        {currentUser &&
+          editUser &&
+          currentUser.id === editUser.id &&
+          editUser.role?.name === "admin" && (
+            <div style={{
+              padding: "8px 12px",
+              backgroundColor: "#fff7e6",
+              borderRadius: "4px",
+              borderLeft: "4px solid #faad14",
+              marginTop: "-8px",
+              marginBottom: "16px",
+              fontSize: "12px",
+              color: "#666"
+            }}>
+              ℹ️ Admin không thể tự thay đổi vai trò của bản thân
+            </div>
+          )}
 
         <Form.Item label="Trạng thái" name="is_active">
           <Input disabled />

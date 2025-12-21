@@ -9,8 +9,9 @@ import {
   Col,
   Empty,
   message,
+  Divider,
 } from "antd";
-import { ShopFilled } from "@ant-design/icons";
+import { ShopFilled, BankOutlined, IdcardOutlined } from "@ant-design/icons"; // Thêm icon
 import axios from "axios";
 import dayjs from "dayjs";
 import NoImage from "../../../../components/shared/NoImage";
@@ -29,17 +30,16 @@ const { TabPane } = Tabs;
 export default function SellerDetailDrawer({
   visible,
   onClose,
-  seller: initialSeller, // prop ban đầu từ danh sách
+  seller: initialSeller,
   onApprove,
   onReject,
   onLock,
 }) {
   const [loading, setLoading] = useState(false);
   const [analytics, setAnalytics] = useState(null);
-  const [sellerData, setSellerData] = useState(null); // dữ liệu mới nhất từ API detail
+  const [sellerData, setSellerData] = useState(null);
   const [rejectModalVisible, setRejectModalVisible] = useState(false);
 
-  // Fetch chi tiết seller (có đầy đủ cccd_front, cccd_back, business_license)
   const fetchSellerDetail = useCallback(async (id) => {
     try {
       const res = await axios.get(
@@ -50,13 +50,12 @@ export default function SellerDetailDrawer({
           },
         }
       );
-      setSellerData(res.data); // ← Có đầy đủ URL ảnh từ Serializer
+      setSellerData(res.data);
     } catch (error) {
-      // Không set sellerData → vẫn dùng initialSeller để hiển thị cơ bản
+      console.error("Lỗi fetch seller detail", error);
     }
   }, []);
 
-  // Fetch analytics
   const fetchAnalytics = async (id) => {
     setLoading(true);
     try {
@@ -75,7 +74,6 @@ export default function SellerDetailDrawer({
     }
   };
 
-  // Gọi khi drawer mở hoặc seller thay đổi
   useEffect(() => {
     if (initialSeller?.id && visible) {
       fetchAnalytics(initialSeller.id);
@@ -83,7 +81,6 @@ export default function SellerDetailDrawer({
     }
   }, [initialSeller?.id, visible, fetchSellerDetail]);
 
-  // Xử lý từ chối
   const handleActionReject = async (reason) => {
     const target = sellerData || initialSeller;
     try {
@@ -98,8 +95,8 @@ export default function SellerDetailDrawer({
       );
       message.success("Đã từ chối cửa hàng thành công!");
       setRejectModalVisible(false);
-      fetchSellerDetail(target.id); // refresh lại
-      onReject?.(); // callback cho component cha nếu cần
+      fetchSellerDetail(target.id);
+      onReject?.();
     } catch (error) {
       message.error(
         error?.response?.data?.detail || "Có lỗi khi từ chối cửa hàng!"
@@ -107,10 +104,8 @@ export default function SellerDetailDrawer({
     }
   };
 
-  // Ưu tiên dữ liệu mới nhất
   const currentSeller = sellerData || initialSeller;
 
-  // Nếu chưa có data gì cả và drawer đang mở → loading
   if (!currentSeller && visible) {
     return (
       <Drawer open={visible} onClose={onClose} width={1200} title="Đang tải...">
@@ -177,8 +172,8 @@ export default function SellerDetailDrawer({
           }
           key="1"
         >
-          <Row gutter={20}>
-            {/* Ảnh đại diện cửa hàng */}
+          <Row gutter={24}>
+            {/* Cột trái: Ảnh đại diện */}
             <Col span={5} style={{ textAlign: "center" }}>
               {currentSeller.image ? (
                 <img
@@ -186,126 +181,166 @@ export default function SellerDetailDrawer({
                   alt="Store"
                   style={{
                     width: 200,
-                    height: 150,
+                    height: 200,
                     objectFit: "cover",
                     borderRadius: 12,
                     border: "1px solid #eee",
+                    marginBottom: 10,
                   }}
                 />
               ) : (
                 <NoImage width={150} height={150} />
               )}
+              <Tag
+                color={getStatusColor(currentSeller.status)}
+                style={{ fontSize: 14, padding: "5px 15px", marginTop: 10 }}
+              >
+                {getStatusLabel(currentSeller.status).toUpperCase()}
+              </Tag>
             </Col>
 
-            {/* Thông tin chi tiết */}
+            {/* Cột phải: Thông tin chi tiết */}
             <Col span={19}>
-              <Descriptions bordered column={2}>
+              {/* 1. Thông tin hành chính */}
+              <Descriptions
+                title="Thông tin hành chính"
+                bordered
+                column={2}
+                size="small"
+                labelStyle={{ width: "160px", fontWeight: "500" }}
+              >
                 <Descriptions.Item label="Tên cửa hàng">
-                  {currentSeller.store_name}
+                  <span style={{ fontWeight: "bold", fontSize: 15 }}>
+                    {currentSeller.store_name}
+                  </span>
                 </Descriptions.Item>
                 <Descriptions.Item label="Chủ sở hữu">
                   {currentSeller.owner_username || "—"}
                 </Descriptions.Item>
+                <Descriptions.Item label="Hình thức">
+                  {getBusinessTypeLabel(currentSeller.business_type)}
+                </Descriptions.Item>
+                
+                {/* --- TRƯỜNG MỚI: CCCD/MST --- */}
+                <Descriptions.Item label="Mã số thuế">
+                  {currentSeller.tax_code || "—"}
+                </Descriptions.Item>
+                
+                <Descriptions.Item label="Số CCCD/CMND">
+                  {currentSeller.cid_number ? (
+                    <span>
+                      <IdcardOutlined style={{ marginRight: 5 }} />
+                      {currentSeller.cid_number}
+                    </span>
+                  ) : (
+                    "—"
+                  )}
+                </Descriptions.Item>
+                {/* --------------------------- */}
+
                 <Descriptions.Item label="Email">
                   {currentSeller.user_email || "—"}
                 </Descriptions.Item>
                 <Descriptions.Item label="SĐT">
                   {currentSeller.phone || "—"}
                 </Descriptions.Item>
-
-                <Descriptions.Item label="Trạng thái">
-                  <Tag color={getStatusColor(currentSeller.status)}>
-                    {getStatusLabel(currentSeller.status)}
-                  </Tag>
-                </Descriptions.Item>
-
-                <Descriptions.Item label="Ngày tạo">
+                <Descriptions.Item label="Ngày đăng ký">
                   {formatDate(currentSeller.created_at)}
                 </Descriptions.Item>
-
+                
                 <Descriptions.Item label="Địa chỉ" span={2}>
                   {currentSeller.address || "—"}
                 </Descriptions.Item>
-
-                <Descriptions.Item label="Hình thức kinh doanh">
-                  {getBusinessTypeLabel(currentSeller.business_type)}
-                </Descriptions.Item>
-
-                <Descriptions.Item label="Mã số thuế">
-                  {currentSeller.tax_code || "—"}
-                </Descriptions.Item>
-
-                <Descriptions.Item label="Mô tả cửa hàng" span={2}>
+                <Descriptions.Item label="Giới thiệu" span={2}>
                   {currentSeller.bio || "—"}
                 </Descriptions.Item>
               </Descriptions>
 
-              {/* HIỂN THỊ CCCD / GIẤY PHÉP KINH DOANH */}
-              <div style={{ marginTop: 30 }}>
-                <Row gutter={16}>
+              {/* 2. Thông tin thanh toán (MỚI) */}
+              <div style={{ marginTop: 24 }}>
+                <Descriptions
+                  title={
+                    <span>
+                      <BankOutlined style={{ marginRight: 8 }} />
+                      Thông tin thanh toán
+                    </span>
+                  }
+                  bordered
+                  column={2}
+                  size="small"
+                  labelStyle={{ width: "160px", fontWeight: "500" }}
+                >
+                  <Descriptions.Item label="Ngân hàng">
+                    {currentSeller.bank_name || "—"}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Số tài khoản">
+                    <span style={{ fontWeight: "bold", color: "#1890ff" }}>
+                      {currentSeller.bank_account_number || "—"}
+                    </span>
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Tên chủ TK">
+                    <span style={{ textTransform: "uppercase" }}>
+                      {currentSeller.bank_account_name || "—"}
+                    </span>
+                  </Descriptions.Item>
+                </Descriptions>
+              </div>
+
+              {/* 3. Hồ sơ đính kèm */}
+              <div style={{ marginTop: 24 }}>
+                <h4 style={{ marginBottom: 16 }}>Hồ sơ chứng từ</h4>
+                <Row gutter={[16, 16]}>
                   {/* Cá nhân: CCCD trước + sau */}
                   {currentSeller.business_type === "personal" && (
                     <>
-                      <Col span={12}>
-                        <p>
-                          <strong>CCCD mặt trước</strong>
-                        </p>
+                      <Col xs={24} md={12}>
+                        <div style={{ marginBottom: 8, fontWeight: 500 }}>
+                          CCCD mặt trước
+                        </div>
                         {currentSeller.cccd_front ? (
                           <img
                             src={currentSeller.cccd_front}
-                            alt="CCCD mặt trước"
+                            alt="CCCD trước"
                             style={imgStyle}
-                            onError={(e) => {
-                              e.target.onerror = null;
-                              e.target.src = "/no-image.jpg";
-                            }}
                           />
                         ) : (
-                          <Empty description="Chưa tải lên CCCD mặt trước" />
+                          <Empty description="Không có ảnh" image={Empty.PRESENTED_IMAGE_SIMPLE} />
                         )}
                       </Col>
 
-                      <Col span={12}>
-                        <p>
-                          <strong>CCCD mặt sau</strong>
-                        </p>
+                      <Col xs={24} md={12}>
+                        <div style={{ marginBottom: 8, fontWeight: 500 }}>
+                          CCCD mặt sau
+                        </div>
                         {currentSeller.cccd_back ? (
                           <img
                             src={currentSeller.cccd_back}
-                            alt="CCCD mặt sau"
+                            alt="CCCD sau"
                             style={imgStyle}
-                            onError={(e) => {
-                              e.target.onerror = null;
-                              e.target.src = "/no-image.jpg";
-                            }}
                           />
                         ) : (
-                          <Empty description="Chưa tải lên CCCD mặt sau" />
+                          <Empty description="Không có ảnh" image={Empty.PRESENTED_IMAGE_SIMPLE} />
                         )}
                       </Col>
                     </>
                   )}
 
-                  {/* Doanh nghiệp / Hộ kinh doanh: Giấy phép kinh doanh */}
+                  {/* Doanh nghiệp: GPKD */}
                   {["business", "household"].includes(
                     currentSeller.business_type
                   ) && (
                     <Col span={24}>
-                      <p>
-                        <strong>Giấy phép kinh doanh</strong>
-                      </p>
+                      <div style={{ marginBottom: 8, fontWeight: 500 }}>
+                        Giấy phép kinh doanh / ĐKKD
+                      </div>
                       {currentSeller.business_license ? (
                         <img
                           src={currentSeller.business_license}
-                          alt="Giấy phép kinh doanh"
+                          alt="GPKD"
                           style={{ ...imgStyle, maxHeight: 500 }}
-                          onError={(e) => {
-                            e.target.onerror = null;
-                            e.target.src = "/no-image.jpg";
-                          }}
                         />
                       ) : (
-                        <Empty description="Chưa tải lên giấy phép kinh doanh" />
+                        <Empty description="Không có giấy phép" />
                       )}
                     </Col>
                   )}
@@ -315,33 +350,27 @@ export default function SellerDetailDrawer({
           </Row>
         </TabPane>
 
-        {/* Các tab khác */}
+        {/* Các tab khác giữ nguyên */}
         <TabPane tab="Sản phẩm" key="2">
           <ProductsTab sellerId={currentSeller.id} />
         </TabPane>
-
         <TabPane tab="Đơn hàng" key="3">
           <OrdersTab sellerId={currentSeller.id} />
         </TabPane>
-
         <TabPane tab="Hiệu suất" key="4">
           <PerformanceStats analytics={analytics} loading={loading} />
         </TabPane>
-
         <TabPane tab="Tài chính" key="5">
           <FinanceStats analytics={analytics} sellerId={currentSeller.id} />
         </TabPane>
-
         <TabPane tab="Đánh giá" key="6">
           <ReviewStats analytics={analytics} />
         </TabPane>
-
         <TabPane tab="Hoạt động" key="7">
           <ActivityTimeline sellerId={currentSeller.id} />
         </TabPane>
       </Tabs>
 
-      {/* Modal từ chối */}
       <SellerRejectionModal
         visible={rejectModalVisible}
         onClose={() => setRejectModalVisible(false)}

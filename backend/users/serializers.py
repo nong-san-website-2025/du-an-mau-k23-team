@@ -60,7 +60,8 @@ class UserSerializer(serializers.ModelSerializer):
     avatar = serializers.ImageField(required=False, allow_null=True)
     can_delete = serializers.SerializerMethodField()
     orders_count = serializers.SerializerMethodField()
-    total_spent = serializers.SerializerMethodField()
+    tier_name = serializers.SerializerMethodField()
+    tier_color = serializers.SerializerMethodField()
 
     class Meta:
         model = CustomUser
@@ -68,7 +69,7 @@ class UserSerializer(serializers.ModelSerializer):
             "id", "username", "default_address",
             "full_name", "points", "role", "role_id", "created_at", "can_delete", "is_active",
             "wallet_balance", "addresses",
-            "email", "phone", "avatar", "orders_count", "total_spent"  # ✅ Bỏ email_masked và phone_masked
+            "email", "phone", "avatar", "orders_count", "total_spent", "tier", "tier_name", "tier_color"
         ]
 
     def get_default_address(self, obj):
@@ -133,14 +134,28 @@ class UserSerializer(serializers.ModelSerializer):
 
     def get_total_spent(self, obj):
         try:
-            from django.db.models import Sum
-            total = obj.orders.filter(status='success').aggregate(
-                total_spent=Sum('total_price')
-            )['total_spent'] or 0
-            return float(total)
+            return float(obj.total_spent or 0)
         except Exception as e:
             print("[DEBUG] get_total_spent error:", e)
             return 0.0
+
+    def get_tier_name(self, obj):
+        try:
+            from .utils import calculate_user_tier
+            _, tier_name, _ = calculate_user_tier(obj.total_spent)
+            return tier_name
+        except Exception as e:
+            print("[DEBUG] get_tier_name error:", e)
+            return "Thành viên"
+
+    def get_tier_color(self, obj):
+        try:
+            from .utils import calculate_user_tier
+            _, _, tier_color = calculate_user_tier(obj.total_spent)
+            return tier_color
+        except Exception as e:
+            print("[DEBUG] get_tier_color error:", e)
+            return "default"
 
     def create(self, validated_data):
         password = validated_data.pop("password", None)

@@ -36,7 +36,7 @@ def create_order_item_for_flash_sale(user, product_id, quantity, order):
     # Tính lại số lượng đã bán TRONG transaction để đảm bảo tính nhất quán
     sold = OrderItem.objects.filter(
         product_id=product_id,
-        order__status__in=['paid', 'shipped', 'delivered', 'success'],
+        order__status__in=['shipping', 'delivered', 'completed'],
         created_at__gte=flash_sale.start_time,
         created_at__lt=flash_sale.end_time
     ).aggregate(total=Sum('quantity'))['total'] or 0

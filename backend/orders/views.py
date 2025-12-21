@@ -13,6 +13,16 @@ import logging
 import json
 import time
 from datetime import datetime, timedelta
+from django.utils import timezone
+
+from django.db.models import Sum, Count, F, Q
+from django.db.models.functions import TruncDate, Coalesce
+from django.db import models
+
+from django.core.cache import cache
+from vnpay_python.vnpay import vnpay
+
+
 
 # Import Models
 from .models import Order, OrderItem, Preorder
@@ -23,7 +33,7 @@ from users.models import PointHistory
 
 # Import Serializers & Services
 from .serializers import OrderSerializer, OrderCreateSerializer, PreOrderSerializer
-from .services import complete_order, OrderProcessingError
+from .services import complete_order, reduce_stock_for_order, OrderProcessingError
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -175,13 +185,33 @@ class OrderViewSet(viewsets.ModelViewSet):
         # Filter status
         status_param = self.request.query_params.get('status')
         if status_param:
-            queryset = queryset.filter(status=status_param)
+            # --- [MỚI] Xử lý lọc đơn Trả hàng/Hoàn tiền cho Buyer ---
+            if status_param == 'return':
+                refund_statuses = [
+                    'REFUND_REQUESTED', 
+                    'SELLER_REJECTED', 
+                    'DISPUTE_TO_ADMIN', 
+                    'REFUND_APPROVED', 
+                    'REFUND_REJECTED'
+                ]
+                # Lọc các đơn có item đang nằm trong danh sách trạng thái trên
+                queryset = queryset.filter(items__status__in=refund_statuses).distinct()
+            else:
+                # Logic cũ cho các status thường (pending, shipping...)
+                queryset = queryset.filter(status=status_param)
+            # ---------------------------------------------------------
 
-        # Auto-approve sau 10 phút (Logic cũ giữ nguyên)
+        # Auto-approve sau 10 phút và trừ tồn kho
         ten_minutes_ago = timezone.now() - timedelta(minutes=10)
         stale_pending = Order.objects.filter(status='pending', created_at__lte=ten_minutes_ago)
         if stale_pending.exists():
-            stale_pending.update(status='shipping')
+            for order in stale_pending:
+                order.status = 'shipping'
+                order.save(update_fields=['status'])
+                try:
+                    reduce_stock_for_order(order)
+                except OrderProcessingError as e:
+                    logger.error(f"Lỗi trừ tồn kho khi auto-approve đơn #{order.id}: {e}")
 
         # Search
         search = self.request.query_params.get('search')
@@ -215,6 +245,57 @@ class OrderViewSet(viewsets.ModelViewSet):
                 .order_by('-quantity_sold')[:10]
         )
         return Response(top_products)
+    
+
+    @action(detail=True, methods=['post'], url_path='create_payment_url')
+    def create_payment_url(self, request, pk=None):
+        """
+        Tạo URL thanh toán VNPAY cho đơn hàng
+        """
+        try:
+            order = self.get_object()
+        except Order.DoesNotExist:
+            return Response({'error': 'Order not found'}, status=404)
+
+        # Kiểm tra nếu đơn đã thanh toán rồi
+        if order.status in ['success', 'shipping', 'delivered']:
+            return Response({'error': 'Đơn hàng đã được thanh toán'}, status=400)
+
+        # Tính toán số tiền (VNPAY yêu cầu số tiền * 100)
+        amount = int(order.total_price * 100)
+        
+        # Cấu hình tham số VNPAY
+        order_type = "billpayment"
+        order_desc = f"Thanh toan don hang {order.id}"
+        bank_code = request.data.get('bank_code', '') # Tùy chọn, nếu user chọn bank trước
+        language = 'vn'
+        ip_addr = get_client_ip(request)
+
+        # Build URL
+        vnp = VNPAY()
+        vnp.requestData['vnp_Version'] = '2.1.0'
+        vnp.requestData['vnp_Command'] = 'pay'
+        vnp.requestData['vnp_TmnCode'] = settings.VNPAY_TMN_CODE
+        vnp.requestData['vnp_Amount'] = amount
+        vnp.requestData['vnp_CurrCode'] = 'VND'
+        vnp.requestData['vnp_TxnRef'] = str(order.id) # Mã đơn hàng của bạn
+        vnp.requestData['vnp_OrderInfo'] = order_desc
+        vnp.requestData['vnp_OrderType'] = order_type
+        vnp.requestData['vnp_Locale'] = language
+        
+        # URL Callback (IPN) - Quan trọng: Phải là Public URL (hoặc dùng ngrok nếu localhost)
+        # Ví dụ: https://api.yourdomain.com/api/orders/payment_ipn/
+        # Ở đây mình không set vnp_IpAddr trong requestData nếu local đôi khi lỗi, tùy config
+        vnp.requestData['vnp_CreateDate'] = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
+        vnp.requestData['vnp_IpAddr'] = ip_addr
+        vnp.requestData['vnp_ReturnUrl'] = settings.VNPAY_RETURN_URL
+
+        if bank_code:
+            vnp.requestData['vnp_BankCode'] = bank_code
+
+        vnpay_payment_url = vnp.get_payment_url(settings.VNPAY_URL, settings.VNPAY_HASH_SECRET)
+
+        return Response({'payment_url': vnpay_payment_url})
 
     @action(detail=False, methods=['get'], url_path='recent')
     def recent_orders(self, request):
@@ -265,7 +346,35 @@ class OrderViewSet(viewsets.ModelViewSet):
         seller_product_ids = Product.objects.filter(seller=seller).values_list('id', flat=True)
         qs = Order.objects.filter(items__product_id__in=seller_product_ids, status='cancelled').distinct()
         return Response(self.get_serializer(qs, many=True).data)
+    
+    @action(detail=False, methods=['get'], url_path='seller/refunds')
+    def seller_refund_orders(self, request):
+        """Lấy danh sách đơn hàng có sản phẩm đang khiếu nại hoặc đã hoàn tiền"""
+        seller = getattr(request.user, 'seller', None)
+        if not seller:
+            return Response({'error': 'Chỉ seller mới có quyền'}, status=403)
 
+        from products.models import Product
+        seller_product_ids = Product.objects.filter(seller=seller).values_list('id', flat=True)
+        
+        # Các trạng thái liên quan đến quy trình trả hàng/hoàn tiền
+        refund_statuses = [
+            'REFUND_REQUESTED', # Khách vừa gửi yêu cầu
+            'SELLER_REJECTED',  # Shop từ chối (đang cãi nhau)
+            'DISPUTE_TO_ADMIN', # Kiện lên sàn
+            'REFUND_APPROVED',  # Đã hoàn tiền xong
+            'REFUND_REJECTED'   # Đã chốt là không hoàn (lưu lịch sử)
+        ]
+        
+        # Lọc các đơn hàng có ít nhất 1 item nằm trong danh sách trạng thái trên
+        # VÀ item đó phải thuộc về seller hiện tại
+        orders = Order.objects.filter(
+            items__product_id__in=seller_product_ids, 
+            items__status__in=refund_statuses
+        ).distinct().order_by('-created_at')
+        
+        return Response(self.get_serializer(orders, many=True).data)
+    
     @action(detail=False, methods=['get'], url_path='seller/complete')
     def seller_completed_orders(self, request):
         """Đơn đã hoàn tất (Completed) và Đã giao (Delivered)"""
@@ -305,6 +414,12 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         order.status = 'shipping'
         order.save(update_fields=['status'])
+        
+        try:
+            reduce_stock_for_order(order)
+        except OrderProcessingError as e:
+            logger.error(f"Lỗi trừ tồn kho khi duyệt đơn: {e}")
+        
         return Response({'message': 'Đã duyệt đơn', 'status': order.status})
 
     @action(detail=True, methods=['post'], url_path='seller/complete')
@@ -956,3 +1071,63 @@ def dashboard_stats(request):
         "topProducts": top_products,
         "recentOrders": recent_orders
     })
+
+
+def get_client_ip(request):
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(',')[0]
+    else:
+        ip = request.META.get('REMOTE_ADDR')
+    return ip
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny]) # Quan trọng: VNPAY không có token login
+def payment_ipn(request):
+    """
+    VNPAY gọi vào đây để báo trạng thái thanh toán (Server-to-Server)
+    """
+    inputData = request.GET
+    if not inputData:
+        return Response({'RspCode': '99', 'Message': 'Invalid Params'})
+
+    vnp = VNPAY()
+    vnp.responseData = inputData.dict()
+
+    order_id = inputData.get('vnp_TxnRef')
+    amount = inputData.get('vnp_Amount')
+    vnp_ResponseCode = inputData.get('vnp_ResponseCode')
+    
+    # Kiểm tra Checksum
+    if vnp.validate_response(settings.VNPAY_HASH_SECRET):
+        try:
+            # Check DB xem đơn hàng có tồn tại không
+            order = Order.objects.get(id=order_id)
+            
+            # Kiểm tra số tiền (Frontend gửi lên có thể sai, phải check lại)
+            if order.total_price * 100 != int(amount):
+                 return Response({'RspCode': '04', 'Message': 'Invalid Amount'})
+            
+            # Kiểm tra xem đơn đã check rồi chưa
+            if order.status == 'completed':
+                return Response({'RspCode': '02', 'Message': 'Order Already Confirmed'})
+            
+            if vnp_ResponseCode == '00':
+                # --- THANH TOÁN THÀNH CÔNG ---
+                order.status = 'shipping'
+                order.payment_status = True # Nếu bạn có trường này
+                order.save()
+                
+                # Logic cộng điểm hoặc thông báo seller ở đây (nếu cần)
+                
+                return Response({'RspCode': '00', 'Message': 'Confirm Success'})
+            else:
+                # Thanh toán lỗi
+                return Response({'RspCode': '00', 'Message': 'Payment Failed'})
+                
+        except Order.DoesNotExist:
+            return Response({'RspCode': '01', 'Message': 'Order Not Found'})
+    else:
+        # Sai checksum (có thể là giả mạo)
+        return Response({'RspCode': '97', 'Message': 'Invalid Checksum'})

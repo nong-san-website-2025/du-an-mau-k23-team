@@ -4,8 +4,6 @@ import { Card, Form, Input, Button, message, Tabs, Upload, Avatar } from "antd";
 import { UploadOutlined, UserOutlined } from "@ant-design/icons";
 import axios from "axios";
 
-const API_BASE_URL = "http://localhost:8000/api/users";
-
 export default function ProfilePage() {
   const [user, setUser] = useState(null);
   const [loadingProfile, setLoadingProfile] = useState(false);
@@ -15,6 +13,9 @@ export default function ProfilePage() {
   const [formProfile] = Form.useForm();
   const [formPassword] = Form.useForm();
 
+  // Lấy API URL từ env
+  const API_URL = process.env.REACT_APP_API_URL;
+  
   const token = localStorage.getItem("token") || "";
 
   // Load user info
@@ -22,7 +23,8 @@ export default function ProfilePage() {
     const fetchUser = async () => {
       setLoadingProfile(true);
       try {
-        const res = await axios.get(`${API_BASE_URL}/me/`, {
+        // SỬ DỤNG ENV Ở ĐÂY: Thêm /users/ vào đường dẫn
+        const res = await axios.get(`${API_URL}/users/me/`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         setUser(res.data);
@@ -35,7 +37,7 @@ export default function ProfilePage() {
       }
     };
     fetchUser();
-  }, [token, formProfile]);
+  }, [token, formProfile, API_URL]);
 
   const handleProfileUpdate = async (values) => {
     try {
@@ -46,7 +48,8 @@ export default function ProfilePage() {
         }
       });
 
-      const response = await axios.put(`${API_BASE_URL}/me/`, formData, {
+      // SỬ DỤNG ENV Ở ĐÂY
+      const response = await axios.put(`${API_URL}/users/me/`, formData, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
           "Content-Type": "multipart/form-data",
@@ -60,6 +63,7 @@ export default function ProfilePage() {
       message.error("Cập nhật thất bại!");
     }
   };
+
   // Change password
   const handleChangePassword = async (values) => {
     if (values.new_password !== values.confirm_password) {
@@ -68,8 +72,9 @@ export default function ProfilePage() {
     }
     setLoadingPassword(true);
     try {
+      // SỬ DỤNG ENV Ở ĐÂY
       await axios.post(
-        `${API_BASE_URL}/change-password/`,
+        `${API_URL}/users/change-password/`,
         {
           old_password: values.old_password,
           new_password: values.new_password,
@@ -94,8 +99,9 @@ export default function ProfilePage() {
     formData.append("avatar", file);
 
     try {
+      // SỬ DỤNG ENV Ở ĐÂY
       const res = await axios.post(
-        `${API_BASE_URL}/user/upload-avatar/`,
+        `${API_URL}/users/user/upload-avatar/`,
         formData,
         {
           headers: {

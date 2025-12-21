@@ -1,227 +1,203 @@
-/* FlashSaleList.css - Phiên bản tương thích với Global CSS của bạn */
-
-.flash-sale-section {
-  /* Override lại style của cha (.home-section > div) để dùng style riêng */
-  background-color: #fff !important; 
-  padding: 20px 24px 30px 24px !important; /* Padding to hơn để thoáng */
-  border-radius: 12px !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important; /* Bóng đổ đẹp hơn */
-  margin: 0 !important; /* Reset margin vì cha đã lo phần margin */
-  position: relative;
-  overflow: visible; /* QUAN TRỌNG: Để mũi tên thò ra ngoài không bị cắt */
+/* Container chính: Màu nền trắng sạch sẽ, shadow nhẹ */
+.flash-sale-container {
+  background: #fff;
+  margin-top: 20px;
+  border-radius: 4px; /* Bo góc ít thôi để trông chuyên nghiệp hơn */
+  box-shadow: 0 1px 1px 0 rgba(0,0,0,.05); /* Shadow tinh tế */
+  overflow: hidden; /* Quan trọng để bo góc header */
 }
 
-/* --- Header Section --- */
-.flash-header {
+/* --- HEADER MỚI --- */
+.flash-sale-header {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
-  border-bottom: 1px solid #f0f0f0;
-  margin-bottom: 20px;
-  padding-bottom: 12px;
-  gap: 16px;
-  flex-wrap: wrap;
+  align-items: center;
+  padding: 15px 20px;
+  border-bottom: 1px solid #f1f1f1;
 }
 
-.header-left {
+.header-brand {
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: 20px;
 }
 
-.title-wrapper {
+.flash-logo {
+  font-size: 20px;
+  font-weight: 800;
+  color: #ff4d4f; /* Màu đỏ chủ đạo */
+  text-transform: uppercase;
+  font-style: italic;
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.flash-icon {
-  font-size: 28px;
-  color: #ff4d4f;
-  animation: flashShake 2s infinite;
+.animate-flicker {
+  animation: flicker 1.5s infinite alternate;
+}
+@keyframes flicker {
+    0% { opacity: 1; transform: scale(1); }
+    100% { opacity: 0.8; transform: scale(1.1); }
 }
 
-@keyframes flashShake {
-  0%, 100% { transform: rotate(0deg); }
-  25% { transform: rotate(-10deg); }
-  75% { transform: rotate(10deg); }
-}
-
-.gradient-text {
-  font-size: 24px;
-  margin: 0;
-  line-height: 1.2;
-  font-weight: 800;
-  text-transform: uppercase;
-  font-style: italic;
-  background: linear-gradient(90deg, #f5222d 0%, #ff7a45 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-/* --- Countdown --- */
-.countdown-wrapper {
+.flash-timer {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
-.ending-text {
+.timer-text {
+  color: #757575;
   font-size: 14px;
-  color: #8c8c8c;
 }
-.timer-box { /* Style cho số */ }
 
-/* --- Button --- */
-.view-all-btn {
-  font-weight: 600;
-  color: #595959;
+/* Link Xem tất cả */
+.view-all-link {
+  color: #ff4d4f;
+  font-weight: 500;
   display: flex;
   align-items: center;
+  gap: 4px;
+  transition: all 0.3s;
 }
-.view-all-btn:hover {
-  color: #ff4d4f !important;
+.view-all-link:hover {
+  opacity: 0.8;
 }
 
-/* --- Carousel --- */
-.carousel-wrapper {
+/* --- CAROUSEL BODY --- */
+.flash-sale-body {
+  padding: 10px 0 20px 0;
   position: relative;
-  /* Bỏ padding ngang ở đây vì đã có padding ở .flash-sale-section */
 }
 
-.slide-item-wrapper {
-  padding: 10px;
+.carousel-item-padding {
+  padding: 0 8px; /* Khoảng cách giữa các thẻ */
 }
 
-/* --- Navigation Arrows --- */
-.nav-arrow {
+/* --- ITEM CARD (Refined) --- */
+.fs-card {
+  display: block;
+  text-decoration: none;
+  background: #fff;
+  transition: transform 0.2s;
+  cursor: pointer;
+}
+
+.fs-card:hover {
+  transform: translateY(-1px);
+}
+
+.fs-img-wrapper {
+  position: relative;
+  width: 100%;
+  padding-top: 100%; /* Aspect Ratio 1:1 */
+  background: #f5f5f5;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.fs-img-wrapper img {
   position: absolute;
-  top: 50%;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  object-fit: cover; /* Hoặc contain tuỳ sản phẩm */
+}
+
+/* Badge giảm giá màu vàng huyền thoại */
+.fs-badge {
+  position: absolute;
+  top: 0; right: 0;
+  background-color: rgba(255, 212, 36, 0.9);
+  width: 36px;
+  height: 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 12px;
+  color: #ee4d2d;
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 90%, 0 100%);
+}
+.fs-badge-percent { line-height: 1; font-size: 13px; }
+.fs-badge-label { font-size: 10px; font-weight: 500; text-transform: uppercase; color: #fff; }
+
+.fs-content {
+  padding: 10px 0;
+  text-align: center; /* Canh giữa nội dung */
+}
+
+.fs-price {
+  color: #ee4d2d;
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  line-height: 1;
+}
+.fs-price .currency { font-size: 12px; margin-top: 2px; text-decoration: underline; }
+
+/* Progress Bar kiểu Shopee */
+.fs-progress-bar {
+  width: 90%;
+  margin: 0 auto;
+  height: 16px;
+  background: #ffbda6; /* Màu nền hồng nhạt */
+  border-radius: 8px;
+  position: relative;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.fs-progress-fill {
+  height: 100%;
+  background: #ee4d2d; /* Màu đỏ cam */
+  /* Gradient lửa */
+  background: linear-gradient(90deg, #ff9c00 0%, #ee4d2d 100%); 
+  position: absolute;
+  top: 0; left: 0;
+  z-index: -1;
+  border-radius: 8px 0 0 8px;
+}
+
+.fs-progress-text {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0; left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  text-shadow: 0 0 2px rgba(0,0,0,0.2);
+}
+
+/* --- NAVIGATION ARROWS (Nằm giữa chiều cao ảnh) --- */
+.custom-arrow {
+  position: absolute;
+  top: 40%; /* Canh chỉnh để nằm giữa ảnh sản phẩm, không phải giữa cả card */
   transform: translateY(-50%);
-  width: 40px;
-  height: 40px;
+  width: 30px; height: 30px;
   background: #fff;
   border-radius: 50%;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-  z-index: 100; /* Z-index cao để nổi lên trên */
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: #8c8c8c;
-  opacity: 0;
-  transition: all 0.3s;
+  z-index: 10;
+  transition: all 0.2s;
+  color: #333;
 }
-
-.flash-sale-section:hover .nav-arrow {
-  opacity: 1;
+.custom-arrow:hover {
+  background: #fff;
+  transform: translateY(-50%) scale(1.1);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
 }
-
-.nav-arrow:hover {
-  background: #ff4d4f;
-  color: #fff;
-}
-
-/* Chỉnh vị trí mũi tên: 
-   Vì container cha có margin, nên ta đẩy mũi tên sát mép hơn */
-.nav-arrow.prev { left: -15px; } 
-.nav-arrow.next { right: -15px; }
-
-/* Responsive */
-@media (max-width: 768px) {
-  .flash-sale-section {
-    padding: 12px !important;
-  }
-  .flash-header {
-    flex-direction: column;
-    align-items: flex-start;
-    display: flex;
-  }
-  .header-left {
-    width: 100%;
-    justify-content: space-between;
-  }
-  .ending-text, .nav-arrow { display: none; }
-}
-
-.flash-empty-wrapper {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  /* Đặt min-height bằng chiều cao trung bình của carousel 
-     để layout không bị "nhảy" (layout shift) khi chuyển trạng thái */
-  min-height: 380px; 
-  text-align: center;
-  width: 100%;
-}
-
-/* Tinh chỉnh ảnh SVG của Antd Empty nếu cần */
-.flash-empty-wrapper .ant-empty-image {
-  margin-bottom: 16px;
-}
-
-.empty-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.empty-title {
-  font-size: 18px;
-  font-weight: 700;
-  color: #434343; /* Màu xám đậm hơn chút cho tiêu đề */
-  margin-bottom: 8px;
-}
-
-.empty-desc {
-  font-size: 14px;
-  color: #8c8c8c;
-  max-width: 400px;
-  line-height: 1.6;
-  margin-bottom: 24px;
-}
-
-/* Style nút CTA (Call To Action) */
-.btn-explore-now {
-  background: linear-gradient(90deg, #ff4d4f 0%, #ff7875 100%);
-  border: none;
-  border-radius: 50px; /* Bo tròn kiểu Pill Shape hiện đại */
-  height: 40px;
-  padding: 0 32px;
-  font-weight: 600;
-  font-size: 14px;
-  color: #fff;
-  box-shadow: 0 4px 15px rgba(255, 77, 79, 0.25); /* Bóng đổ màu đỏ nhạt */
-  transition: all 0.3s cubic-bezier(0.645, 0.045, 0.355, 1);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-
-/* Hover effect cho nút */
-.btn-explore-now:hover, 
-.btn-explore-now:focus {
-  transform: translateY(-2px); /* Nhấc nhẹ nút lên */
-  box-shadow: 0 6px 20px rgba(255, 77, 79, 0.35);
-  background: linear-gradient(90deg, #ff7875 0%, #ff4d4f 100%);
-  color: #fff !important; /* Force chữ trắng */
-}
-
-.btn-explore-now:active {
-  transform: translateY(0);
-  box-shadow: 0 2px 10px rgba(255, 77, 79, 0.25);
-}
-
-/* Responsive cho Empty State */
-@media (max-width: 576px) {
-  .flash-empty-wrapper {
-    min-height: 300px; /* Giảm chiều cao trên mobile */
-    padding: 20px 0;
-  }
-  
-  .empty-desc {
-    max-width: 100%;
-    padding: 0 16px;
-  }
-}
+.custom-arrow.prev { left: -15px; }
+.custom-arrow.next { right: -15px; }

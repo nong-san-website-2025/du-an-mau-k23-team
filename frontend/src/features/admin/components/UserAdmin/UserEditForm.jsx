@@ -4,7 +4,7 @@ import { Form, Input, Select, Button, Card, message } from "antd";
 import axios from "axios";
 import { roleLabel } from "./roleUtils";
 
-const API_BASE_URL = "http://localhost:8000/api";
+const API_BASE_URL = process.env.REACT_APP_API_URL;
 const { Option } = Select;
 
 export default function UserEditForm({ editUser, onCancel, onSave }) {

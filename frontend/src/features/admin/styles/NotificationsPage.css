@@ -1,0 +1,94 @@
+.notifications-page-container {
+  max-width: 900px;
+  margin: 30px auto;
+  padding: 0 20px;
+  min-height: 80vh;
+}
+
+.noti-page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.header-left h1 {
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0;
+  color: #2d3436;
+}
+
+.header-icon {
+  color: #16a34a;
+}
+
+.noti-page-content {
+  background: #fff;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+}
+
+/* Item Style */
+.noti-page-item {
+  display: flex;
+  padding: 20px;
+  border-bottom: 1px solid #f0f2f5;
+  transition: all 0.2s;
+  cursor: pointer;
+  border-radius: 12px;
+  margin-bottom: 8px;
+}
+
+.noti-page-item:hover {
+  background: #f9fafb;
+}
+
+.noti-page-item.unread {
+  background: #f0fdf4; /* Tông xanh nhạt đồng bộ với dropdown */
+}
+
+.noti-page-icon {
+  margin-right: 20px;
+}
+
+.icon-circle {
+  width: 48px;
+  height: 48px;
+  background: #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #e2e8f0;
+  color: #16a34a;
+}
+
+.noti-page-info {
+  flex: 1;
+}
+
+.noti-page-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: #1a202c;
+}
+
+.noti-page-desc {
+  color: #64748b;
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
+.noti-page-time {
+  font-size: 13px;
+  color: #94a3b8;
+}

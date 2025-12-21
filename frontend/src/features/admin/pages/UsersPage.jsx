@@ -1,6 +1,6 @@
 // pages/UsersPage.jsx
 import React, { useEffect, useState, useMemo } from "react";
-import { Button, Input, Space, Select, message } from "antd";
+import { Button, Input, Select, message, Card, Row, Col, Space } from "antd";
 import {
   SearchOutlined,
   FilterOutlined,
@@ -8,7 +8,8 @@ import {
   PlusOutlined,
   LockOutlined,
   CheckCircleOutlined,
-  ShoppingOutlined
+  ShoppingOutlined,
+  ClearOutlined
 } from '@ant-design/icons';
 import axios from "axios";
 import { useTranslation } from "react-i18next";
@@ -17,7 +18,7 @@ import { useTranslation } from "react-i18next";
 import AdminPageLayout from "../components/AdminPageLayout";
 import UserTable from "../components/UserAdmin/UserTable";
 import UserDetailModal from "../components/UserAdmin/components/UserDetail/UserDetailRow";
-import StatsSection from "../components/common/StatsSection"; // Component tái sử dụng mới
+import StatsSection from "../components/common/StatsSection";
 
 // Constants & Styles
 import { STATUS_LABELS, STATUS } from '../../../constants/statusConstants';
@@ -44,11 +45,15 @@ export default function UsersPage() {
 
   const { t } = useTranslation();
 
+  // Lấy API URL từ env
+  const API_URL = process.env.REACT_APP_API_URL;
+
   // --- 2. Data Fetching ---
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const res = await axios.get("http://localhost:8000/api/users/list/", {
+      // SỬ DỤNG ENV Ở ĐÂY
+      const res = await axios.get(`${API_URL}/users/list/`, {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
       setUsers(Array.isArray(res.data) ? res.data : []);
@@ -63,7 +68,8 @@ export default function UsersPage() {
 
   const fetchRoles = async () => {
     try {
-      const res = await axios.get("http://localhost:8000/api/users/roles/list/", {
+      // SỬ DỤNG ENV Ở ĐÂY
+      const res = await axios.get(`${API_URL}/users/roles/list/`, {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
       setRoles(Array.isArray(res.data) ? res.data : []);
@@ -75,6 +81,7 @@ export default function UsersPage() {
   useEffect(() => {
     fetchUsers();
     fetchRoles();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // --- 3. Computed Statistics (Logic tính toán) ---
@@ -165,10 +172,9 @@ export default function UsersPage() {
       </Select>
 
       <Button
-        type="primary"
         icon={<PlusOutlined />}
         onClick={() => setTriggerAddUser(true)}
-        style={{ borderRadius: 6, fontWeight: 500 }}
+        style={{ borderRadius: 6, fontWeight: 500, backgroundColor: "#28a745", color: "#fff" }}
       >
         {t("Thêm người dùng")}
       </Button>

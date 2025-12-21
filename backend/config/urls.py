@@ -58,6 +58,7 @@ urlpatterns = [
 
     path("api/", include("system.urls")),
     path('api/', include('system_settings.urls')),
+    path('api/notifications/', include('notifications.urls')),
 
     
 ]

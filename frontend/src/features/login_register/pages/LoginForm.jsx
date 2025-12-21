@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 // Import Ant Design components
 import { message, notification } from "antd";
+import { API_CONFIG } from "../../../constants/apiConstants";
 import {
   Box,
   Paper,
@@ -89,7 +90,7 @@ export default function LoginForm() {
 
       const hideLoading = message.loading("Đang xác thực với Google...", 0);
 
-      const res = await fetch("http://localhost:8000/api/users/auth/google/", {
+      const res = await fetch(`${API_CONFIG.BASE_URL}/users/auth/google/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token: response.credential }),
@@ -124,7 +125,7 @@ export default function LoginForm() {
     try {
       const hideLoading = message.loading("Đang xác thực với Facebook...", 0);
 
-      const res = await fetch("http://localhost:8000/api/users/auth/facebook/", {
+      const res = await fetch(`${API_CONFIG.BASE_URL}/users/auth/facebook/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ accessToken }),

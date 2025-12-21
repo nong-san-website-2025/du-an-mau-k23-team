@@ -50,7 +50,7 @@ class FlashSaleItemDisplaySerializer(serializers.ModelSerializer):
     def get_remaining_stock(self, obj):
         sold = OrderItem.objects.filter(
             product=obj.product,
-            order__status__in=['paid', 'shipped', 'delivered', 'success'],
+            order__status__in=['shipping', 'delivered', 'completed'],
             created_at__gte=obj.flashsale.start_time,
             created_at__lt=obj.flashsale.end_time
         ).aggregate(total=Sum('quantity'))['total'] or 0
@@ -71,7 +71,7 @@ class FlashSaleProductSerializer(serializers.ModelSerializer):
     def get_remaining_stock(self, obj):
         sold = OrderItem.objects.filter(
             product=obj.product,
-            order__status__in=['paid', 'shipped', 'delivered', 'success'],
+            order__status__in=['shipping', 'delivered', 'completed'],
             created_at__gte=obj.flashsale.start_time,
             created_at__lt=obj.flashsale.end_time
         ).aggregate(total=Sum('quantity'))['total'] or 0
@@ -102,7 +102,7 @@ class FlashSaleProductAdminSerializer(serializers.ModelSerializer):
     def get_remaining_stock(self, obj):
         sold = OrderItem.objects.filter(
             product=obj.product,
-            order__status__in=['paid', 'shipped', 'delivered', 'success'],
+            order__status__in=['shipping', 'delivered', 'completed'],
             created_at__gte=obj.flashsale.start_time,
             created_at__lt=obj.flashsale.end_time
         ).aggregate(total=Sum('quantity'))['total'] or 0

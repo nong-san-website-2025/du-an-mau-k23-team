@@ -41,60 +41,48 @@ const ProductTable = ({
   const columns = [
     // ── 1. SẢN PHẨM (Định danh) ──
     {
-      title: "Sản phẩm",
-      key: "name",
-      width: 280,
-      fixed: isMobile ? undefined : "left",
-      render: (_, record) => {
-        let imageUrl = null;
-        if (Array.isArray(record.images) && record.images.length > 0) {
-          imageUrl = record.images.find((img) => img.is_primary)?.image || record.images[0]?.image;
-        }
-        // Logic từ MinhKhanh: Check trạng thái chờ update
-        const isPendingUpdate = record.status === "pending_update";
+  title: "Sản phẩm",
+  key: "name",
+  width: 280,
+  fixed: isMobile ? undefined : "left",
+  render: (_, record) => {
+    // Logic lấy ảnh
+    let imageUrl = null;
+    if (Array.isArray(record.images) && record.images.length > 0) {
+      imageUrl = record.images.find((img) => img.is_primary)?.image || record.images[0]?.image;
+    }
+    // Xử lý fallback nếu record.images là null
+    if (!imageUrl && record.image) imageUrl = record.image; 
 
-        return (
-          <div className="flex gap-3 items-center">
-            {/* Ảnh Thumbnail */}
-            <div onClick={(e) => e.stopPropagation()} className="shrink-0">
-              {imageUrl ? (
-                <Image
-                  src={imageUrl}
-                  width={52}
-                  height={52}
-                  className="rounded border border-gray-200 object-cover"
-                  fallback="/no-image.png"
-                />
-              ) : (
-                <Avatar shape="square" size={52} icon={<FileImageOutlined />} className="bg-gray-100 text-gray-400 rounded" />
-              )}
-            </div>
+    // Logic pending update
+    const isPendingUpdate = record.status === "pending_update";
 
-            {/* Tên & ID */}
-            <div className="flex flex-col gap-0.5">
-              <Tooltip title={record.name} placement="topLeft" mouseEnterDelay={0.8}>
-                <Text strong className="text-[14px] leading-tight line-clamp-2 text-gray-800 hover:text-green-600 transition-colors">
-                  {record.name}
-                </Text>
-              </Tooltip>
-              
-              <div className="flex items-center gap-2 flex-wrap">
-                <Text type="secondary" className="text-[11px] flex items-center gap-1">
-                  <BarcodeOutlined /> #{record.id}
-                </Text>
-                
-                {/* Logic hiển thị Tag Pending Update (Merge từ MinhKhanh) */}
-                {isPendingUpdate && (
-                  <Tag color="orange" icon={<HistoryOutlined />} className="text-[10px] m-0 border-0 bg-orange-50 text-orange-600 px-1 py-0 leading-tight">
-                    Chờ duyệt cập nhật
-                  </Tag>
-                )}
-              </div>
-            </div>
-          </div>
-        );
-      },
-    },
+    return (
+      <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+        {/* Ảnh */}
+        <div style={{ flexShrink: 0, position: 'relative' }}>
+           <Image
+             src={imageUrl}
+             width={56} height={56}
+             style={{ borderRadius: 6, objectFit: 'cover', border: '1px solid #f0f0f0' }}
+             fallback="/no-image.png"
+             preview={false} // Tắt preview ở table để đỡ rối, bấm vào tên để xem chi tiết
+           />
+           {record.is_hidden && <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><EyeInvisibleOutlined /></div>}
+        </div>
+
+        {/* Thông tin */}
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <Text strong style={{ fontSize: 14, lineHeight: '1.2', marginBottom: 4 }}>{record.name}</Text>
+          <Space size={4}>
+             <Tag style={{ margin: 0, fontSize: 10 }}>#{record.id}</Tag>
+             {isPendingUpdate && <Tag color="orange" style={{ margin: 0, fontSize: 10 }}>Đang chờ duyệt cập nhật</Tag>}
+          </Space>
+        </div>
+      </div>
+    );
+  },
+},
 
     // ── 2. DANH MỤC ──
     {

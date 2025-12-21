@@ -3,19 +3,20 @@ import React, { useState } from "react";
 import { Card, Form, Input, Button, message } from "antd";
 import axios from "axios";
 
-const API_BASE_URL = "http://localhost:8000/api/users";
-
 export default function ChangePasswordPage() {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
 
-  const getToken = () =>
-    localStorage.getItem("token") || localStorage.getItem("token") || "";
+  // Lấy API URL từ env
+  const API_URL = process.env.REACT_APP_API_URL;
+
+  const getToken = () => localStorage.getItem("token") || "";
 
   const handleChangePassword = async (values) => {
     setLoading(true);
     try {
-      await axios.post(`${API_BASE_URL}/user/change-password/`, values, {
+
+      await axios.post(`${API_URL}/users/user/change-password/`, values, {
         headers: { Authorization: `Bearer ${getToken()}` },
       });
       message.success("Đổi mật khẩu thành công!");
@@ -23,7 +24,11 @@ export default function ChangePasswordPage() {
     } catch (err) {
       console.error(err);
       if (err.response?.data) {
-        message.error(`Lỗi: ${JSON.stringify(err.response.data)}`);
+        // Xử lý hiển thị lỗi chi tiết hơn nếu backend trả về object
+        const errorMsg = typeof err.response.data === 'object' 
+          ? Object.values(err.response.data).join(', ') 
+          : JSON.stringify(err.response.data);
+        message.error(`Lỗi: ${errorMsg}`);
       } else {
         message.error("Không thể đổi mật khẩu, xem console để biết chi tiết.");
       }

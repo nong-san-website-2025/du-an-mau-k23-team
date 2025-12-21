@@ -35,6 +35,11 @@ const NewProductsPage = () => {
   const navigate = useNavigate();
   const { addToCart, cartItems, updateQuantity } = useCart();
 
+  // Lấy API URL từ env
+  const API_URL = process.env.REACT_APP_API_URL;
+  // Tạo Base URL (bỏ /api) để dùng cho hình ảnh
+  const BASE_URL = API_URL ? API_URL.replace(/\/api\/?$/, "") : "http://localhost:8000";
+
   useEffect(() => {
     const fetchProducts = async () => {
       try {
@@ -77,8 +82,9 @@ const NewProductsPage = () => {
       id: product.id,
       name: product.name,
       price: product.price,
+      // SỬ DỤNG BASE_URL Ở ĐÂY
       image: product.image?.startsWith("/")
-        ? `http://localhost:8000${product.image}`
+        ? `${BASE_URL}${product.image}`
         : product.image?.startsWith("http")
           ? product.image
           : "",
@@ -151,9 +157,10 @@ const NewProductsPage = () => {
                     isValidImageUrl(product.image) ? (
                       <img
                         alt={product.name}
+                        // SỬ DỤNG BASE_URL Ở ĐÂY
                         src={
                           product.image.startsWith("/")
-                            ? `http://localhost:8000${product.image}`
+                            ? `${BASE_URL}${product.image}`
                             : product.image
                         }
                         style={{ height: 160, objectFit: "cover", width: "100%" }}

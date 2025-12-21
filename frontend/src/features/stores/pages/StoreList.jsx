@@ -5,24 +5,36 @@ import axios from "axios";
 import { Search } from "react-bootstrap-icons";
 import "../styles/StoreList.css";
 
-
 const StoreList = () => {
   const [stores, setStores] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const navigate = useNavigate();
 
+  // Lấy API URL từ env
+  const API_URL = process.env.REACT_APP_API_URL;
+  // Tạo Base URL (bỏ /api) để dùng cho hình ảnh
+  const BASE_URL = API_URL ? API_URL.replace(/\/api\/?$/, "") : "http://localhost:8000";
+
   useEffect(() => {
+    // SỬ DỤNG ENV Ở ĐÂY
     axios
-      .get("http://localhost:8000/api/sellers/")
+      .get(`${API_URL}/sellers/`)
       .then((res) => setStores(res.data))
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, []);
+  }, [API_URL]);
 
   const filteredStores = stores.filter((store) =>
     store.store_name.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // Helper xử lý ảnh
+  const getStoreImage = (imagePath) => {
+    if (!imagePath) return "https://via.placeholder.com/150";
+    if (imagePath.startsWith("http")) return imagePath;
+    return `${BASE_URL}${imagePath}`;
+  };
 
   if (loading) {
     return (
@@ -57,15 +69,20 @@ const StoreList = () => {
               <div className="store-card">
                 <div className="store-card-img">
                   <img
-                    src={store.image || "https://via.placeholder.com/150"}
+                    // SỬ DỤNG HÀM HELPER
+                    src={getStoreImage(store.image)}
                     alt={store.store_name}
+                    onError={(e) => {
+                      e.target.onerror = null; 
+                      e.target.src = "https://via.placeholder.com/150";
+                    }}
                   />
                 </div>
                 <div className="store-card-body">
                   <h5 className="store-card-name">{store.store_name}</h5>
                   <div className="store-card-rating">
-                    {"★".repeat(store.rating || 0)}
-                    {"☆".repeat(5 - (store.rating || 0))}
+                    {"★".repeat(Math.round(store.rating || 0))}
+                    {"☆".repeat(5 - Math.round(store.rating || 0))}
                   </div>
                   <Button
                     variant="light"
@@ -88,7 +105,4 @@ const StoreList = () => {
   );
 };
 
-
 export default StoreList;
-
-

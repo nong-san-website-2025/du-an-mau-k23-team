@@ -26,14 +26,20 @@ SECRET_KEY = os.environ.get(
 
 DEBUG = os.environ.get("DEBUG", "True") == "True"
 
-ALLOWED_HOSTS = [
-    "*", '192.168.2.3', '192.168.68.117'
+ALLOWED_HOSTS = ['*']
+# Lưu ý: Dấu chấm trước ngrok-free.dev là để chấp nhận tất cả tên miền con
+
+# 2. Cấu hình tin cậy (Bắt buộc phải có https://)
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:3000',  # Frontend React (nếu chạy port 3000)
+    'https://concetta-nonprotective-decisively.ngrok-free.dev', # <-- LINK NGROK MỚI CỦA BẠN
 ]
 
 DEBUG = True
 
 # --- Installed apps
 INSTALLED_APPS = [
+    "daphne",
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -68,6 +74,7 @@ INSTALLED_APPS = [
 
     'system_settings',
 
+    'notifications',
     
 ]
 
@@ -125,13 +132,14 @@ TEMPLATES = [
 # --- Channels (auto fallback to InMemory when REDIS_URL not set)
 if os.environ.get("REDIS_URL"):
     CHANNEL_LAYERS = {
-        "default": {
-            "BACKEND": "channels_redis.core.RedisChannelLayer",
-            "CONFIG": {
-                "hosts": [os.environ["REDIS_URL"]],
-            },
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("127.0.0.1", 6379)], # Dùng port 6379 mặc định của Redis
         },
-    }
+    },
+}
+
 else:
     CHANNEL_LAYERS = {
         "default": {
@@ -215,6 +223,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://192.168.1.59:8100",
     "http://192.168.2.3:8100",
     "http://192.168.68.117:8100",
+    "http://192.168.2.3:3000",
 ]
 CORS_ALLOW_METHODS = [
     'DELETE',
@@ -236,18 +245,13 @@ CORS_ALLOW_HEADERS = [
     'x-requested-with',
     'accept',
 ]
-CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:5173",
-    "http://localhost:3000",
-    "http://127.0.0.1:5173",
-    "http://127.0.0.1:3000",
-]
 
 CSRF_TRUSTED_ORIGINS = [
     "http://*.localhost",
     "http://*.127.0.0.1",
     "http://*.192.168.*.*",
     "http://localhost:3000",
+    "http://192.168.2.3:3000",
 
 ]
 
@@ -275,6 +279,17 @@ VNPAY_CONFIG = {
     "HASH_SECRET_KEY": "ZF17PDTYTRE7VE2M3TEZWH1YHDGBSTD8",
     "VNPAY_URL": "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html",
     "RETURN_URL": "http://localhost:3000/vnpay-return",
+}
+
+
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://127.0.0.1:6379/1", # /1 là database số 1 của Redis
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        }
+    }
 }
 
 # settings.py

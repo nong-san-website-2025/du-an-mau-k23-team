@@ -64,7 +64,7 @@ export default function SellerLayout() {
         <Content style={{ margin: "24px 24px 0", overflow: "initial" }}>
           <Outlet />
           <div style={{ textAlign: "center", padding: "24px 0", color: "#9ca3af", fontSize: "13px" }}>
-            GreenFarm Seller ©2025 Created by GreenFarm Dev Team
+            GreenFarm Seller ©2025. Phát triển bởi <span style={{ color: '#52c41a', fontWeight: 'bold' }}>GreenFarm Dev Team</span>.
           </div>
         </Content>
       </Layout>

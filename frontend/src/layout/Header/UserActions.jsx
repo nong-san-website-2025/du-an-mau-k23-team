@@ -4,7 +4,7 @@ import { Heart } from "lucide-react";
 import NotificationDropdown from "../components/NotificationDropdown";
 import CartDropdown from "../components/CartDropdown";
 import UserProfileDropdown from "../components/UserProfileDropdown";
-import "../styles/UserActions.css";
+import "../styles/UserActions.css"; // File CSS mới ở trên
 
 export default function UserActions(props) {
   const {
@@ -24,22 +24,18 @@ export default function UserActions(props) {
   const isUserLoggedIn = !!localStorage.getItem("token");
 
   return (
+    // Thêm class 'header-dark' vào đây nếu header nền tối để icon đổi màu trắng
     <div className="user-actions-container">
-      {/* Wishlist */}
-      <div className="action-item d-none d-sm-inline-block me-2">
-        <Link to="/wishlist" className="action-btn">
-          <Heart size={22} className="icon-default" />
-        </Link>
-      </div>
+      
 
-      {/* Notifications */}
+      {/* 2. Notifications */}
       <NotificationDropdown
         userId={userProfile?.id}
         showDropdown={showNotificationDropdown}
         setShowDropdown={setShowNotificationDropdown}
       />
 
-      {/* Cart */}
+      {/* 3. Cart */}
       <CartDropdown
         cartCount={cartCount}
         cartItems={cartItems}
@@ -47,7 +43,7 @@ export default function UserActions(props) {
         setShowDropdown={setShowCartDropdown}
       />
 
-      {/* User Profile */}
+      {/* 4. User Profile */}
       <UserProfileDropdown
         isUserLoggedIn={isUserLoggedIn}
         userProfile={userProfile}
@@ -55,7 +51,6 @@ export default function UserActions(props) {
         sellerStatus={sellerStatus}
         hoveredDropdown={hoveredDropdown}
         setHoveredDropdown={setHoveredDropdown}
-        
       />
     </div>
   );

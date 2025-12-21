@@ -1,4 +1,5 @@
 // src/features/checkout/pages/CheckoutPage.jsx
+
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "../services/CartContext";
@@ -14,7 +15,8 @@ import {
   Card,
   Avatar,
   Space,
-  Image
+  List,
+  Tag,
 } from "antd";
 import {
   TagOutlined,
@@ -22,7 +24,9 @@ import {
   ShopOutlined,
   PictureOutlined,
   EnvironmentOutlined,
-  ShoppingOutlined
+  ShoppingOutlined,
+  ExclamationCircleFilled,
+  WarningOutlined,
 } from "@ant-design/icons";
 
 // Styles
@@ -48,13 +52,19 @@ const CheckoutPage = () => {
   const navigate = useNavigate();
   const { cartItems } = useCart();
 
-  // Lọc sản phẩm được chọn
+  // Lọc sản phẩm được chọn để thanh toán
   const checkoutItems = cartItems.filter((item) => item.selected);
 
+  // --- LOCAL STATE ---
   const [isAddAddressModalOpen, setIsAddAddressModalOpen] = useState(false);
   const [isSavingAddress, setIsSavingAddress] = useState(false);
   const [sellerInfos, setSellerInfos] = useState({});
 
+  // State cho Modal hết hàng
+  const [isStockModalOpen, setIsStockModalOpen] = useState(false);
+  const [unavailableItems, setUnavailableItems] = useState([]);
+
+  // --- HOOK LOGIC ---
   const {
     shippingFee,
     selectedAddressId,
@@ -81,9 +91,11 @@ const CheckoutPage = () => {
     addAddress,
   } = useCheckoutLogic();
 
+  // Validate điều kiện đặt hàng
   const isAddressValid =
     (selectedAddressId && selectedAddress?.location) ||
     (manualEntry && customerName && customerPhone && addressText);
+
   const isReadyToOrder =
     selectedItems.length > 0 && isAddressValid && shippingFee > 0;
 
@@ -92,8 +104,7 @@ const CheckoutPage = () => {
     const loadSellerInfos = async () => {
       const storeIds = new Set();
       checkoutItems.forEach((item) => {
-        const storeId =
-          item.product_data?.store?.id || item.product?.store?.id;
+        const storeId = item.product_data?.store?.id || item.product?.store?.id;
         if (storeId) storeIds.add(storeId);
       });
 
@@ -129,8 +140,28 @@ const CheckoutPage = () => {
     return acc;
   }, {});
 
-  // 3. LOGIC ADDRESS
-  // 3. LOGIC ADDRESS - ĐÃ SỬA LẠI
+  // 3. XỬ LÝ ĐẶT HÀNG (WRAPPER)
+  const onPlaceOrder = async () => {
+    try {
+      // Gọi handleOrder từ hook logic
+      // Hook đã được sửa để throw error nếu gặp lỗi unavailable_items
+      await handleOrder();
+    } catch (error) {
+      const responseData = error.response?.data;
+
+      // Kiểm tra key 'unavailable_items' trả về từ Backend
+      if (responseData && responseData.unavailable_items) {
+        setUnavailableItems(responseData.unavailable_items);
+        setIsStockModalOpen(true);
+      } else {
+        // Các lỗi khác đã được handleOrder hiển thị notification
+        // hoặc xử lý thêm ở đây nếu cần
+        console.error("Order error:", error);
+      }
+    }
+  };
+
+  // 4. XỬ LÝ THÊM ĐỊA CHỈ MỚI
   const handleAddressAddedSuccess = async (newAddressData) => {
     try {
       setIsSavingAddress(true);
@@ -156,6 +187,8 @@ const CheckoutPage = () => {
     }
   };
 
+  // --- RENDERERS ---
+
   const renderCheckoutAction = () => {
     if (payment === "Ví điện tử") {
       return (
@@ -172,24 +205,19 @@ const CheckoutPage = () => {
         size="large"
         block
         loading={isLoading}
-        onClick={handleOrder}
+        // QUAN TRỌNG: Gọi onPlaceOrder để bắt lỗi try/catch
+        onClick={onPlaceOrder}
         disabled={!isReadyToOrder}
-        style={{
-          height: 48,
-          fontSize: 16,
-          fontWeight: 700,
-          background: "#2e7d32",
-          border: "none",
-          textTransform: "uppercase",
-        }}
         className="btn-checkout"
       >
-        Đặt hàng
+        {payment === "Thanh toán qua VNPAY"
+          ? "Thanh toán & Đặt hàng"
+          : "Đặt hàng"}
       </Button>
+      
     );
   };
 
-  // --- SUB-COMPONENT: RENDER IMAGE WITH FALLBACK ---
   const ProductImage = ({ src, alt }) => {
     if (!src) {
       return (
@@ -241,8 +269,11 @@ const CheckoutPage = () => {
               onAddNew={() => setIsAddAddressModalOpen(true)}
             />
 
-            {/* ✅ KHU VỰC HIỂN THỊ DANH SÁCH SẢN PHẨM (ĐÃ REFACTOR) */}
-            <div className="checkout-product-groups" style={{ marginBottom: 20 }}>
+            {/* DANH SÁCH SẢN PHẨM */}
+            <div
+              className="checkout-product-groups"
+              style={{ marginBottom: 20 }}
+            >
               {Object.entries(groupedItems).map(([storeId, { items }]) => {
                 const sellerInfo = sellerInfos[storeId] || {};
                 const storeName = sellerInfo.store_name || "Cửa hàng";
@@ -252,10 +283,10 @@ const CheckoutPage = () => {
                   <Card
                     key={storeId}
                     className="checkout-card"
-                    bodyStyle={{ padding: "0" }} // Reset padding để custom bên trong
+                    bodyStyle={{ padding: "0" }}
                     style={{ marginBottom: 16, overflow: "hidden" }}
                   >
-                    {/* Header Shop - Thiết kế tách biệt */}
+                    {/* Header Shop */}
                     <div
                       style={{
                         padding: "12px 16px",
@@ -287,7 +318,7 @@ const CheckoutPage = () => {
                       </Space>
                     </div>
 
-                    {/* List Items - Sử dụng Grid System */}
+                    {/* List Items */}
                     <div style={{ padding: "16px" }}>
                       {items.map((item, index) => {
                         const prod = item.product_data || item.product || {};
@@ -300,16 +331,23 @@ const CheckoutPage = () => {
                             <Row
                               gutter={[16, 16]}
                               align="middle"
-                              style={{ flexWrap: "nowrap" }} // Ngăn vỡ layout trên mobile nhỏ
+                              style={{ flexWrap: "nowrap" }}
                             >
-                              {/* Cột 1: Ảnh sản phẩm */}
                               <Col flex="80px">
-                                <ProductImage src={prod.image} alt={prod.name} />
+                                <ProductImage
+                                  src={prod.image}
+                                  alt={prod.name}
+                                />
                               </Col>
-
-                              {/* Cột 2: Thông tin chi tiết */}
                               <Col flex="auto">
-                                <div style={{ display: 'flex', flexDirection: 'column', height: '80px', justifyContent: 'space-between' }}>
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    height: "80px",
+                                    justifyContent: "space-between",
+                                  }}
+                                >
                                   <div>
                                     <Text
                                       ellipsis={{ tooltip: prod.name }}
@@ -323,10 +361,14 @@ const CheckoutPage = () => {
                                     >
                                       {prod.name}
                                     </Text>
-
                                   </div>
-
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                                  <div
+                                    style={{
+                                      display: "flex",
+                                      justifyContent: "space-between",
+                                      alignItems: "flex-end",
+                                    }}
+                                  >
                                     <Text style={{ fontSize: 13 }}>
                                       Đơn giá: {intcomma(price)}₫
                                     </Text>
@@ -334,19 +376,22 @@ const CheckoutPage = () => {
                                   </div>
                                 </div>
                               </Col>
-
-                              {/* Cột 3: Thành tiền (Căn phải) - Ẩn trên mobile quá nhỏ nếu cần */}
                               <Col
                                 flex="100px"
-                                style={{ textAlign: "right", alignSelf: "flex-end", paddingBottom: 4 }}
+                                style={{
+                                  textAlign: "right",
+                                  alignSelf: "flex-end",
+                                  paddingBottom: 4,
+                                }}
                               >
-                                <Text strong style={{ color: "#fa541c", fontSize: 16 }}>
+                                <Text
+                                  strong
+                                  style={{ color: "#fa541c", fontSize: 16 }}
+                                >
                                   {intcomma(subtotal)}₫
                                 </Text>
                               </Col>
                             </Row>
-
-                            {/* Divider giữa các sản phẩm (trừ sản phẩm cuối) */}
                             {index < items.length - 1 && (
                               <Divider style={{ margin: "16px 0" }} dashed />
                             )}
@@ -355,7 +400,7 @@ const CheckoutPage = () => {
                       })}
                     </div>
 
-                    {/* Footer Shop - Nơi đặt shipping method riêng cho shop (Future proof) */}
+                    {/* Footer Shop */}
                     <div
                       style={{
                         padding: "12px 16px",
@@ -392,6 +437,7 @@ const CheckoutPage = () => {
               )}
             </div>
 
+            {/* Voucher & Payment */}
             <div className="checkout-card">
               <div className="card-header">
                 <TagOutlined /> Mã giảm giá
@@ -421,7 +467,9 @@ const CheckoutPage = () => {
               <Title level={4}>Đơn hàng</Title>
 
               <div className="summary-row">
-                <Text type="secondary">Tạm tính ({checkoutItems.length} sp)</Text>
+                <Text type="secondary">
+                  Tạm tính ({checkoutItems.length} sp)
+                </Text>
                 <Text>{intcomma(total)}₫</Text>
               </div>
 
@@ -444,7 +492,7 @@ const CheckoutPage = () => {
                     {intcomma(totalAfterDiscount)}₫
                   </div>
                   <Text type="secondary" style={{ fontSize: 12 }}>
-                    (Đã bao gồm VAT nếu có)
+                    (Đã bao gồm VAT)
                   </Text>
                 </div>
               </div>
@@ -461,7 +509,7 @@ const CheckoutPage = () => {
                       textAlign: "center",
                     }}
                   >
-                    Vui lòng điền đủ thông tin giao hàng
+                    Vui lòng chọn địa chỉ và phương thức thanh toán
                   </Text>
                 )}
               </div>
@@ -483,6 +531,7 @@ const CheckoutPage = () => {
         <div style={{ width: "50%" }}>{renderCheckoutAction()}</div>
       </div>
 
+      {/* === MODAL THÊM ĐỊA CHỈ === */}
       <Modal
         title="Thêm địa chỉ mới"
         open={isAddAddressModalOpen}
@@ -491,8 +540,7 @@ const CheckoutPage = () => {
         width={800}
         destroyOnClose={true}
         maskClosable={!isSavingAddress}
-        bodyStyle={{ maxHeight: "70vh", overflowY: "auto", padding: "20px" }}
-        style={{ top: 50 }}
+        style={{ top: 20 }}
       >
         <AddressAddForm
           onSuccess={handleAddressAddedSuccess}
@@ -503,6 +551,89 @@ const CheckoutPage = () => {
             <Text type="secondary">Đang lưu dữ liệu...</Text>
           </div>
         )}
+      </Modal>
+
+      {/* === MODAL CẢNH BÁO HẾT HÀNG (MỚI) === */}
+      <Modal
+        open={isStockModalOpen}
+        title={
+          <div
+            style={{
+              color: "#ff4d4f",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
+            <ExclamationCircleFilled />
+            <span>Sản phẩm hết hàng hoặc không đủ số lượng</span>
+          </div>
+        }
+        onCancel={() => setIsStockModalOpen(false)}
+        footer={[
+          <Button key="cart" onClick={() => navigate("/cart")}>
+            Về giỏ hàng
+          </Button>,
+          <Button
+            key="ok"
+            type="primary"
+            danger
+            onClick={() => setIsStockModalOpen(false)}
+          >
+            Đã hiểu
+          </Button>,
+        ]}
+        centered
+      >
+        <p style={{ marginBottom: 16 }}>
+          Các sản phẩm sau đây hiện không đủ số lượng để cung cấp. Vui lòng điều
+          chỉnh lại giỏ hàng của bạn.
+        </p>
+        <div
+          style={{
+            maxHeight: "300px",
+            overflowY: "auto",
+            border: "1px solid #f0f0f0",
+            borderRadius: 8,
+          }}
+        >
+          <List
+            itemLayout="horizontal"
+            dataSource={unavailableItems}
+            renderItem={(item) => (
+              <List.Item style={{ padding: "12px" }}>
+                <List.Item.Meta
+                  avatar={
+                    <Avatar
+                      shape="square"
+                      size={64}
+                      src={item.image}
+                      icon={<PictureOutlined />}
+                    />
+                  }
+                  title={
+                    <Text strong style={{ fontSize: 14 }}>
+                      {item.product_name || item.name}
+                    </Text>
+                  }
+                  description={
+                    <Space direction="vertical" size={2}>
+                      <Text type="secondary" style={{ fontSize: 12 }}>
+                        Số lượng yêu cầu: {item.requested_quantity}
+                      </Text>
+                      <Text type="danger" strong style={{ fontSize: 12 }}>
+                        <WarningOutlined />{" "}
+                        {item.available_quantity > 0
+                          ? `Chỉ còn ${item.available_quantity}`
+                          : "Đã hết hàng"}
+                      </Text>
+                    </Space>
+                  }
+                />
+              </List.Item>
+            )}
+          />
+        </div>
       </Modal>
     </div>
   );

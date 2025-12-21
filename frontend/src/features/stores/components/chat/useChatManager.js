@@ -1,27 +1,37 @@
+// useChatManager.js - BẢN FIX IP ĐỘNG
 import { useState, useEffect, useRef, useCallback } from 'react';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
-const WS_BASE_URL = process.env.REACT_APP_WS_URL || 'ws://localhost:8000/ws';
+// 1. SỬA API BASE URL: Tự động lấy IP hiện tại thay vì fix cứng localhost
+const getApiBaseUrl = () => {
+  // Nếu có biến môi trường thì dùng, nếu không thì tự sinh URL theo IP hiện tại
+  if (process.env.REACT_APP_API_URL) return process.env.REACT_APP_API_URL;
+  
+  const protocol = window.location.protocol; // http: hoặc https:
+  const host = window.location.hostname;     // Lấy 192.168.x.x hoặc localhost
+  const port = '8000';                       // Port của Django
+  return `${protocol}//${host}:${port}/api`;
+};
 
-export const useChatManager = (sellerId, token) => {
+const API_BASE_URL = getApiBaseUrl();
+
+export const useChatManager = (sellerId, token, currentUserId) => {
   const [conversationId, setConversationId] = useState(null);
   const [messages, setMessages] = useState([]);
-  const [status, setStatus] = useState('loading'); // loading, ready, error, disconnected
+  const [status, setStatus] = useState('loading');
+  const [isPartnerTyping, setIsPartnerTyping] = useState(false);
   const wsRef = useRef(null);
 
-  // 1. Khởi tạo cuộc trò chuyện và lấy lịch sử tin nhắn
+  // 1. Khởi tạo Conversation
   useEffect(() => {
     let isCancelled = false;
     const initConversation = async () => {
       if (!sellerId || !token) return;
-      setStatus('loading');
       try {
         const convRes = await fetch(`${API_BASE_URL}/chat/conversations/`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify({ seller: Number(sellerId) }),
         });
-        if (!convRes.ok) throw new Error('Failed to create conversation');
         const conv = await convRes.json();
         if (isCancelled) return;
         setConversationId(conv.id);
@@ -34,7 +44,7 @@ export const useChatManager = (sellerId, token) => {
         setMessages(Array.isArray(data) ? data : data?.results || []);
         setStatus('ready');
       } catch (e) {
-        console.error(e);
+        console.error("Lỗi init chat:", e);
         if (!isCancelled) setStatus('error');
       }
     };
@@ -42,75 +52,71 @@ export const useChatManager = (sellerId, token) => {
     return () => { isCancelled = true; };
   }, [sellerId, token]);
 
-  // 2. Thiết lập WebSocket
+  // 2. WebSocket Logic
   useEffect(() => {
     if (!conversationId || !token) return;
 
-    const connect = () => {
-      const url = `${WS_BASE_URL}/chat/conv/${conversationId}/?token=${encodeURIComponent(token)}`;
-      const ws = new WebSocket(url);
-      wsRef.current = ws;
+    // --- SỬA ĐOẠN NÀY: Logic tạo URL WebSocket động ---
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const host = window.location.hostname; // Tự động lấy IP (192.168...)
+    const port = '8000';                   // Port Django
+    
+    // Kết quả sẽ là: ws://192.168.1.5:8000/ws/chat/...
+    const url = `${protocol}//${host}:${port}/ws/chat/conv/${conversationId}/?token=${encodeURIComponent(token)}`;
+    // ----------------------------------------------------
 
-      ws.onopen = () => setStatus('ready');
-      ws.onclose = () => {
-        setStatus('disconnected');
-        setTimeout(() => {
-            // Chỉ kết nối lại nếu component vẫn còn active
-            if (wsRef.current) connect();
-        }, 3000);
-      };
-      ws.onmessage = (event) => {
-        try {
-          const payload = JSON.parse(event.data);
-          if (payload.event === 'message' && payload.data) {
-            setMessages(prev => [...prev, payload.data]);
+    console.log("Connecting WS to:", url); // Log để kiểm tra
+    const ws = new WebSocket(url);
+    wsRef.current = ws;
+
+    ws.onmessage = (event) => {
+      const payload = JSON.parse(event.data);
+      
+      switch (payload.event) {
+        case 'message':
+          setMessages((prev) => {
+            if (prev.some(m => m.id === payload.data.id)) return prev;
+            return [...prev, payload.data];
+          });
+          break;
+        case 'typing':
+          if (Number(payload.sender_id) !== Number(currentUserId)) {
+            setIsPartnerTyping(payload.typing);
           }
-        } catch (e) {
-          console.error('Error parsing message:', e);
-        }
-      };
-      ws.onerror = () => ws.close();
-    };
-
-    connect();
-
-    return () => {
-      if (wsRef.current) {
-        wsRef.current.onclose = null; // Vô hiệu hóa onclose để tránh kết nối lại
-        wsRef.current.close();
-        wsRef.current = null;
+          break;
+        default:
+          break;
       }
     };
-  }, [conversationId, token]);
+
+    ws.onopen = () => setStatus('ready');
+    ws.onclose = () => setStatus('disconnected');
+
+    return () => ws.close();
+  }, [conversationId, token, currentUserId]);
+
+  const sendTypingSignal = useCallback((isTyping) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: 'typing', typing: isTyping }));
+    }
+  }, []);
 
   const sendMessage = useCallback(async (text, file) => {
-    if (!conversationId) throw new Error('No conversation ID');
-
-    const formData = new FormData();
-    formData.append('content', text);
     if (file) {
+      const formData = new FormData();
+      formData.append('content', text);
       formData.append('image', file);
+      // API_BASE_URL đã được sửa ở trên nên đoạn này an toàn
+      await fetch(`${API_BASE_URL}/chat/conversations/${conversationId}/messages/`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+    } else if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: "message", content: text }));
+      sendTypingSignal(false);
     }
+  }, [conversationId, token, sendTypingSignal]);
 
-    const res = await fetch(`${API_BASE_URL}/chat/conversations/${conversationId}/messages/`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
-      body: formData,
-    });
-
-    if (!res.ok) {
-      throw new Error('Failed to send message');
-    }
-
-    const sentMessage = await res.json();
-
-    // Nếu WebSocket không kết nối, tự thêm tin nhắn vào state
-    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
-      setMessages(prev => [...prev, sentMessage]);
-    }
-    // Nếu WS kết nối, nó sẽ tự nhận và cập nhật
-
-  }, [conversationId, token]);
-
-  return { messages, status, sendMessage };
+  return { messages, status, sendMessage, isPartnerTyping, sendTypingSignal };
 };

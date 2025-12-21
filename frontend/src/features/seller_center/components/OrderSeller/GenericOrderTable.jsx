@@ -91,42 +91,66 @@ export default function GenericOrderTable({
     {
       title: "Mã đơn",
       dataIndex: "id",
-      width: 90,
+      width: 80,
       fixed: "left",
       align: "center",
-      sorter: (a, b) => a.id - b.id, // ✅ Thêm sắp xếp theo ID
       render: (id) => <strong style={{ color: "#1890ff" }}>#{id}</strong>,
+    },
+    {
+      title: "Thời gian đặt", // ✅ Cột mới
+      dataIndex: "created_at_formatted", // Backend đã format sẵn "14:30 20/12/2025"
+      width: 140,
+      align: "center",
+      sorter: (a, b) => new Date(a.created_at) - new Date(b.created_at),
+      render: (text) => <span style={{ fontSize: '13px', color: '#555' }}>{text}</span>
     },
     {
       title: "Khách hàng",
       width: 170,
-      // Với cột tên, ta dùng thanh Search tổng ở trên Layout sẽ tiện hơn Filter cột
       render: (_, r) => (
         <div style={{ lineHeight: 1.2 }}>
           <div style={{ fontWeight: 600 }} className="text-truncate" title={r.customer_name}>
             {r.customer_name}
           </div>
-          <small style={{ color: "#888" }}>{r.customer_phone || r.user?.phone}</small>
+          <small style={{ color: "#888" }}>{r.customer_phone}</small>
         </div>
       ),
     },
     {
-      title: "Trạng thái",
+        title: "Thanh toán", // ✅ Cột mới
+        dataIndex: "payment_status",
+        width: 130,
+        align: "center",
+        render: (status) => {
+            // Mapping màu sắc badge (Bạn có thể tách ra component riêng)
+            let color = 'default';
+            let text = 'Chưa TT';
+            if (status === 'paid') { color = 'success'; text = 'Đã TT'; }
+            if (status === 'unpaid') { color = 'warning'; text = 'Chưa TT'; }
+            if (status === 'refunded') { color = 'error'; text = 'Hoàn tiền'; }
+            
+            // Dùng Badge của Antd hoặc Component StatusTag của bạn
+            return <StatusTag status={status} type="payment" />; 
+        }
+    },
+    {
+      title: "Vận đơn", // Đổi tên cột status cũ thành Vận đơn
       dataIndex: "status",
       width: 130,
       align: "center",
-      filters: statusFilters, // ✅ Gắn bộ lọc tự động
-      onFilter: (value, record) => record.status === value, // ✅ Logic lọc
+      filters: statusFilters,
+      onFilter: (value, record) => record.status === value,
       render: (status) => <StatusTag status={status} type="order" />,
     },
     {
       title: "Tổng tiền",
-      dataIndex: "total_price",
+      dataIndex: "total_price", // Đã fix ở serializer để luôn trả về string số
       width: 130,
       align: "right",
-      sorter: (a, b) => Number(a.total_price) - Number(b.total_price), // ✅ Thêm sắp xếp theo tiền
       render: (v) => (
-        <strong style={{ color: "#52c41a" }}>{Number(v).toLocaleString()}đ</strong>
+        <strong style={{ color: "#d4380d" }}>
+            {Number(v).toLocaleString('vi-VN')}đ
+        </strong>
       ),
     },
     ...extraColumns, 

@@ -1,25 +1,24 @@
+# config/asgi.py
 import os
-
-# Ensure settings configured before importing modules that use them
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
-
+import django
 from django.core.asgi import get_asgi_application
-from channels.routing import ProtocolTypeRouter, URLRouter
-from channels.auth import AuthMiddlewareStack
-from chat.auth import JWTAuthMiddlewareStack
 
-# Lấy ứng dụng Django gốc (khởi tạo Django + load apps)
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 django_asgi_app = get_asgi_application()
 
-# Import routing SAU khi Django đã sẵn sàng để tránh AppRegistryNotReady
-from chat import routing as chat_routing
+from channels.routing import ProtocolTypeRouter, URLRouter
+from channels.security.websocket import AllowedHostsOriginValidator
 
-# Ứng dụng ASGI cho cả HTTP và WebSocket
+# --- QUAN TRỌNG: Import cái Middleware bạn vừa viết ---
+# Giả sử bạn lưu file code trên ở chat/middleware.py
+from chat.middleware import JWTAuthMiddlewareStack 
+from chat.routing import websocket_urlpatterns 
+
 application = ProtocolTypeRouter({
     "http": django_asgi_app,
-    "websocket": JWTAuthMiddlewareStack(
-        URLRouter(
-            chat_routing.websocket_urlpatterns
+    "websocket": AllowedHostsOriginValidator(
+        JWTAuthMiddlewareStack(  # <--- Bọc ở đây
+            URLRouter(websocket_urlpatterns)
         )
     ),
 })

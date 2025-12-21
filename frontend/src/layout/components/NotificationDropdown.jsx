@@ -1,116 +1,102 @@
-import React from "react";
-import { Bell } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { Bell, Package, Tag, Info } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-// ❌ ĐÃ XÓA IMPORT HOOK useNotificationLogic
-import "../styles/UserActions.css";
+import { useNotificationLogic } from "../hooks/useNotificationLogic";
 
-const NotificationDropdown = ({
-  userId,
-  showDropdown,
-  setShowDropdown,
-}) => {
+const NotificationDropdown = ({ userId, showDropdown, setShowDropdown }) => {
   const navigate = useNavigate();
 
-  // 🛠️ THAY THẾ HOOK BẰNG DỮ LIỆU TĨNH (MẶC ĐỊNH)
-  // Vì không dùng hook nữa, ta gán cứng các biến này để JSX bên dưới không bị lỗi "undefined"
-  const unreadCount = 0; 
-  const sortedNotifications = []; // Mảng rỗng -> Luôn hiện "Không có thông báo"
+  const timerRef = useRef(null);
   
-  const handleHover = () => {
-    // Không làm gì cả
-  };
+    const handleMouseEnter = () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current); // Xóa bộ đếm hủy
+      }
+      setShowDropdown(true);
+    };
+  
+    const handleMouseLeave = () => {
+      timerRef.current = setTimeout(() => {
+        setShowDropdown(false);
+      }, 200); // 200ms là thời gian vàng, đủ nhanh nhưng không bị giật
+    };
+  
 
-  const handleMarkAllRead = () => {
-    // Khi click vào icon hoặc nút xem tất cả -> Chuyển sang trang thông báo
-    navigate("/notifications");
-    setShowDropdown(false);
-  };
+  const { unreadCount, sortedNotifications, handleMarkAllRead } = useNotificationLogic(userId, navigate);
 
-  // Helper render text (Giữ nguyên logic hiển thị text phòng khi sau này dùng lại)
-  const getNotiContent = (noti) => {
-    const md = noti.metadata || {};
-    const isReply = (noti.type || "").toLowerCase() === "review_reply" || md.reply_text;
-    
-    // Title
-    const title = isReply
-      ? (md.product_name ? "Phản hồi đánh giá" : "Phản hồi")
-      : (noti.title || noti.message);
-
-    // Detail Lines
-    const details = [];
-    if (md.order_code) details.push(`Mã đơn: ${md.order_code}`);
-    if (md.shop_name) details.push(`Cửa hàng: ${md.shop_name}`);
-    if (!isReply && md.order_total) details.push(`Giá: ${Number(md.order_total).toLocaleString()} đ`);
-    
-    if (isReply) {
-        if (md.product_name) details.push(`SP: ${md.product_name}`);
-        if (md.reply_text) details.push(`Trả lời: ${md.reply_text}`);
+  const getIcon = (type) => {
+    switch (type) {
+      case "ORDER": return <Package size={20} />;
+      case "PROMO": return <Tag size={20} />;
+      default: return <Bell size={20} />;
     }
+  };
 
-    return { title, details, isReply };
+  const formatTime = (dateStr) => {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diff = (now - date) / 1000;
+    if (diff < 60) return "Vừa xong";
+    if (diff < 3600) return `${Math.floor(diff / 60)} phút trước`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)} giờ trước`;
+    return date.toLocaleDateString("vi-VN");
   };
 
   return (
     <div
       className="action-item"
-      onMouseEnter={() => {
-        setShowDropdown(true);
-        handleHover();
-      }}
-      onMouseLeave={() => setShowDropdown(false)}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
-      <button
-        className="action-btn"
-        onClick={handleMarkAllRead} // Click vào chuông sẽ chuyển trang
-        aria-label="Thông báo"
-      >
-        <Bell size={22} className="icon-default" />
-        {unreadCount > 0 && (
-          <span className="badge-count badge-red">{unreadCount}</span>
-        )}
+      <button className="action-btn" onClick={() => navigate("/notifications")}>
+        <Bell size={22} strokeWidth={2} />
+        {unreadCount > 0 && <span className="badge-count">{unreadCount}</span>}
       </button>
 
       {showDropdown && (
-        <div className="dropdown-panel noti-panel">
-          <div className="dropdown-header">Thông báo</div>
-          
-          {(!sortedNotifications || sortedNotifications.length === 0) ? (
-            <div className="empty-state">Không có thông báo mới</div>
-          ) : (
-            <>
-              {sortedNotifications.slice(0, 3).map((noti, idx) => {
-                const { title, details } = getNotiContent(noti);
-                return (
-                  <div
-                    key={noti.id || idx}
-                    className={`noti-item ${noti.read ? "read" : "unread"}`}
-                    onClick={() => navigate("/notifications")}
-                  >
-                    {noti.thumbnail && (
-                      <img src={noti.thumbnail} alt="thumb" className="noti-thumb" />
-                    )}
-                    <div className="noti-content">
-                      <div className="noti-title">{title}</div>
-                      <div className="noti-meta">
-                        {details.map((line, i) => (
-                            <div key={i}>{line}</div>
-                        ))}
-                      </div>
-                      {!noti.metadata?.reply_text && noti.detail && (
-                          <div className="noti-meta" style={{marginTop: 4}}>{noti.detail}</div>
-                      )}
-                      <span className="noti-time">
-                        {new Date(noti.time || Date.now()).toLocaleString("vi-VN")}
-                      </span>
-                    </div>
+        <div className="dropdown-panel" style={{ width: 400 }}>
+          <div className="dropdown-header">
+            <span>Thông báo mới nhận</span>
+            <span className="dropdown-link" onClick={handleMarkAllRead}>Đánh dấu đã đọc</span>
+          </div>
+
+          <div className="dropdown-body">
+            {!sortedNotifications?.length ? (
+              <div className="empty-state">
+                <Bell size={48} className="empty-icon" />
+                <span>Bạn không có thông báo nào</span>
+              </div>
+            ) : (
+              sortedNotifications.slice(0, 6).map((noti, idx) => (
+                <div 
+                    key={idx} 
+                    className={`noti-item-row ${!noti.read ? "unread" : ""}`}
+                    onClick={() => { setShowDropdown(false); navigate("/notifications"); }}
+                >
+                  <div className="noti-icon-box">
+                    {noti.thumbnail ? (
+                        <img src={noti.thumbnail} alt="" style={{width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover'}} />
+                    ) : getIcon(noti.type)}
                   </div>
-                );
-              })}
-              <button className="view-all-btn" onClick={handleMarkAllRead}>
-                Xem tất cả thông báo
-              </button>
-            </>
-          )}
+                  <div className="noti-content">
+                    <h4>{noti.title}</h4>
+                    <p>{noti.message}</p>
+                    <div className="noti-time">{formatTime(noti.created_at)}</div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          <div className="dropdown-footer">
+            <button 
+                className="btn-primary-full" 
+                style={{background: '#f1f5f9', color: '#059669'}}
+                onClick={() => navigate("/notifications")}
+            >
+              Xem tất cả
+            </button>
+          </div>
         </div>
       )}
     </div>

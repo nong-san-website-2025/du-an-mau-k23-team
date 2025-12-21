@@ -38,10 +38,10 @@ export default function UserAddModal({ visible, onClose, onUserAdded }) {
         role_id: values.role_id ? Number(values.role_id) : null,
       };
 
-      const API_BASE_URL = "http://localhost:8000/api"; // chỉ /api, không thêm /user-management
+      const API_BASE_URL = process.env.REACT_APP_API_URL;
 
       const res = await axios.post(
-        `${API_BASE_URL}/users/user-management/`,
+        `${API_BASE_URL}/users/management/`,
         {
           username: values.username,
           email: values.email,

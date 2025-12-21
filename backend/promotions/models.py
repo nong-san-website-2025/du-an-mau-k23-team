@@ -172,7 +172,7 @@ class FlashSaleProduct(models.Model):
         from orders.models import OrderItem
         sold = OrderItem.objects.filter(
             product=self.product,
-            order__status__in=['paid', 'shipped', 'delivered', 'success'],
+            order__status__in=['shipping', 'delivered', 'completed'],
             created_at__gte=self.flashsale.start_time,
             created_at__lt=self.flashsale.end_time
         ).aggregate(total=Sum('quantity'))['total'] or 0

@@ -1,0 +1,221 @@
+/* Footer.module.css */
+
+/* Reset và Base styles */
+.footerWrapper {
+    background-color: #052c18; /* Màu đen sang trọng (Dark theme) */
+    color: #bfbfbf; /* Màu chữ xám bạc, dễ đọc hơn trắng tinh */
+    font-size: 14px;
+    margin-top: 60px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 16px;
+}
+
+/* --- TOP SECTION (Newsletter) --- */
+.topSection {
+    padding: 40px 0;
+    /* Gradient xanh nhẹ tạo chiều sâu */
+    background: linear-gradient(to right, #083b22, #052c18); 
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.brandBox {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+}
+
+.logo {
+    width: 64px;
+    height: 64px;
+    object-fit: contain;
+    border-radius: 8px;
+    background: #fff; /* Logo nền trắng cho nổi bật trên nền xanh */
+    padding: 4px;
+}
+
+.brandTitle {
+    color: #fff !important; /* Tiêu đề trắng nổi bật */
+    margin: 0 !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.5px;
+}
+
+.brandDesc {
+    color: #a4c7b0 !important; /* Màu xanh bạc hà nhạt */
+    font-size: 13px;
+    line-height: 1.5;
+    margin-top: 4px;
+    display: block;
+    max-width: 400px;
+}
+
+/* --- MAIN SECTION --- */
+.mainSection {
+    padding: 48px 0;
+}
+
+.colTitle {
+    color: #fff !important;
+    font-size: 16px !important;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 24px !important;
+    position: relative;
+    padding-bottom: 12px;
+}
+
+/* Gạch chân dưới tiêu đề cột */
+.colTitle::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 40px;
+    height: 2px;
+    background-color: #52c41a; /* Màu xanh lá tươi GreenFarm */
+}
+
+/* List Link styles */
+.linkList {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.linkList li {
+    margin-bottom: 12px;
+}
+
+.link {
+    color: #d9e8df !important; /* Màu chữ sáng */
+    transition: all 0.3s ease;
+}
+
+.link:hover {
+    color: #52c41a !important; /* Hover ra màu xanh lá tươi */
+    padding-left: 6px;
+}
+
+/* Contact List */
+.contactList {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.contactList li {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+    align-items: flex-start;
+    color: #d9e8df; /* Đồng bộ màu chữ */
+}
+
+.icon {
+    color: #52c41a; /* Icon màu xanh lá tươi */
+    font-size: 18px;
+    margin-top: 2px;
+}
+
+/* Social Icons */
+.socialGroup {
+    margin-top: 24px;
+}
+.socialLabel {
+    color: #888;
+    margin-right: 12px;
+}
+
+.socialIcon {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.1);
+    color: #fff;
+    font-size: 18px;
+    transition: all 0.3s;
+}
+
+.fb:hover { background: #1877f2; transform: translateY(-3px); }
+.tt:hover { background: #000; border: 1px solid #333; transform: translateY(-3px); }
+
+/* --- MAP & PAYMENT --- */
+.mapWrapper {
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid #333;
+    margin-bottom: 16px;
+    filter: grayscale(20%); /* Làm map hơi tối để hợp dark theme */
+    transition: filter 0.3s;
+}
+
+.mapWrapper:hover {
+    filter: grayscale(0%);
+}
+
+.badge {
+    display: inline-block;
+    padding: 4px 8px;
+    background: #fff;
+    color: #0050b3; /* VNPAY Blue */
+    font-weight: bold;
+    font-size: 11px;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+}
+
+.ghn { color: #d4380d; /* GHN Orange */ }
+.cod { color: #389e0d; /* Green */ }
+
+/* --- BOTTOM BAR --- */
+.bottomBar {
+    background: #022010; /* Màu xanh đen (đậm hơn nền chính 1 chút) */
+    padding: 16px 0;
+    border-top: 1px solid rgba(255,255,255,0.05);
+}   
+
+.copyright {
+    color: #666 !important;
+    font-size: 13px;
+}
+
+.footerLinkSmall {
+    color: #666 !important;
+    font-size: 12px;
+}
+
+.footerLinkSmall:hover {
+    color: #fff !important;
+}
+
+/* --- RESPONSIVE --- */
+@media (max-width: 768px) {
+    .brandBox {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+    
+    .newsletterBox {
+        margin-top: 24px;
+        text-align: center;
+    }
+    
+    .colTitle {
+        margin-top: 24px;
+    }
+
+    .bottomBar .container > div {
+        flex-direction: column;
+        gap: 12px;
+        text-align: center;
+    }
+}

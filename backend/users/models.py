@@ -60,6 +60,25 @@ class CustomUser(AbstractUser):
         help_text="Số dư ví tiền của người dùng"
     )
 
+    TIER_CHOICES = (
+        ('member', 'Thành viên'),
+        ('silver', 'Bạc'),
+        ('gold', 'Vàng'),
+        ('diamond', 'Kim cương'),
+    )
+    tier = models.CharField(
+        max_length=20,
+        choices=TIER_CHOICES,
+        default='member',
+        help_text="Hạng thành viên dựa trên tổng chi tiêu"
+    )
+    total_spent = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        default=0,
+        help_text="Tổng chi tiêu của người dùng"
+    )
+
     def save(self, *args, **kwargs):
         # Nếu superuser thì auto gán role=admin
         if self.is_superuser and (not self.role or self.role.name != "admin"):
@@ -189,6 +208,9 @@ class Notification(models.Model):
         ('wallet', 'Ví tiền'),
         ('voucher', 'Voucher'),
         ('system', 'Hệ thống'),
+        ('order', 'Đơn hàng'),
+        ('chat', 'Tin nhắn'),
+        ('promo', 'Khuyến mãi'),
     )
     
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="notifications")

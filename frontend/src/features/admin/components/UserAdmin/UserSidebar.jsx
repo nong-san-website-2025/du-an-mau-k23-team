@@ -1,4 +1,3 @@
-// components/UserAdmin/UserSidebar.jsx
 import React, { useState } from "react";
 import { Select, Modal, Input } from "antd";
 import { useTranslation } from "react-i18next";
@@ -15,6 +14,9 @@ export default function UserSidebar({
   const [newRoleName, setNewRoleName] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // Lấy API URL từ env
+  const API_URL = process.env.REACT_APP_API_URL;
+
   const handleCreateRole = async () => {
     if (!newRoleName.trim()) {
       Modal.warning({ content: t("user_sidebar.please_enter_role_name") });
@@ -26,7 +28,8 @@ export default function UserSidebar({
       const roleData = { name: newRoleName.trim() };
       const token = localStorage.getItem("token");
 
-      const response = await fetch("http://localhost:8000/api/users/roles/", {
+      // SỬ DỤNG ENV Ở ĐÂY
+      const response = await fetch(`${API_URL}/users/roles/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

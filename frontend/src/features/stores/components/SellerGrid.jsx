@@ -10,6 +10,12 @@ const { Text } = Typography;
 export default function SellerGrid({ sellers = [] }) {
   const navigate = useNavigate();
 
+  // Lấy API URL từ env
+  const API_URL = process.env.REACT_APP_API_URL;
+  // Tạo Base URL (bỏ /api) để dùng cho hình ảnh
+  // Ví dụ: http://localhost:8000/api -> http://localhost:8000
+  const BASE_URL = API_URL ? API_URL.replace(/\/api\/?$/, "") : "http://localhost:8000";
+
   if (!sellers.length) {
     return <Empty description="Không tìm thấy cửa hàng nào phù hợp" />;
   }
@@ -27,7 +33,7 @@ export default function SellerGrid({ sellers = [] }) {
                 src={
                   seller.image.startsWith("http")
                     ? seller.image
-                    : `http://localhost:8000${seller.image}`
+                    : `${BASE_URL}${seller.image}` // SỬ DỤNG BASE_URL
                 }
                 alt={seller.store_name}
                 className="seller-image"

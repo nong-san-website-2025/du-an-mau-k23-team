@@ -1,5 +1,5 @@
 import React from 'react';
-import styles from './ChatBox.module.css';
+import styles from '../../styles/ChatBox.module.css';
 
 const MessageItem = React.memo(({ message, isMine, avatarSrc, name }) => {
   const initial = (name || '?').charAt(0).toUpperCase();

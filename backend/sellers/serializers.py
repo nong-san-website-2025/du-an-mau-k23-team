@@ -46,7 +46,7 @@ class ProductMiniSerializer(serializers.ModelSerializer):
                 return round(percent, 0) # Trả về số tròn (ví dụ: 10, 20)
         return 0
     
-class SellerListSerializer(serializers.ModelSerializer):
+class   SellerListSerializer(serializers.ModelSerializer):
     image = serializers.SerializerMethodField()
     followers_count = serializers.SerializerMethodField()
     total_products = serializers.SerializerMethodField()
@@ -83,7 +83,10 @@ class SellerRegisterSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'user', 'store_name', 'bio', 'address', 'phone', 'image',
             'tax_code', 'business_type', 'cccd_front', 'cccd_back', 'business_license',
-            'district_id', 'ward_code'
+            'district_id', 'ward_code', # 🟢 THÊM CÁC DÒNG NÀY (Kiểm tra lại tên chính xác trong models.py của bạn)
+            'bank_name',            # Tên ngân hàng
+            'bank_account_number',  # Số tài khoản
+            'bank_account_name',      # Tên chủ tài khoản
         ]
 
     def validate(self, attrs):
@@ -154,6 +157,10 @@ class SellerDetailSerializer(serializers.ModelSerializer):
             "total_products",
             "owner_username",
             "user_email",
+
+        'bank_name', 
+            'bank_account_number', 
+            'bank_account_name',
     ]
 
 
@@ -217,7 +224,10 @@ class SellerInfoSerializer(serializers.ModelSerializer):
             'email',
             'full_name', 
             'phone', 
-            'address'
+            'address',
+            # ✅ THÊM 2 DÒNG NÀY:
+            'district_id',
+            'ward_code',
         ]
 
     def get_full_name(self, obj):

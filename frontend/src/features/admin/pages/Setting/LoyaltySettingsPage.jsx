@@ -5,7 +5,7 @@ import { SaveOutlined, ReloadOutlined } from "@ant-design/icons";
 import axios from "axios";
 
 const { Option } = Select;
-const API_BASE_URL = "http://localhost:8000/api";
+const API_BASE_URL = process.env.REACT_APP_API_URL;
 
 export default function LoyaltySettingsPage() {
   const [form] = Form.useForm();

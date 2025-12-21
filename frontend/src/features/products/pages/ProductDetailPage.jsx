@@ -57,7 +57,12 @@ const ProductDetailPage = () => {
   // Description expand state
   const [expandDescription, setExpandDescription] = useState(false);
 
-  // Reset trạng thái đếm view khi ID sản phẩm thay đổi (khi user chuyển từ SP này sang SP khác)
+  // Lấy API URL từ env
+  const API_URL = process.env.REACT_APP_API_URL;
+  // Tạo Base URL (bỏ /api) để dùng cho hình ảnh
+  const BASE_URL = API_URL ? API_URL.replace(/\/api\/?$/, "") : "http://localhost:8000";
+
+  // Reset trạng thái đếm view khi ID sản phẩm thay đổi
   useEffect(() => {
     viewIncremented.current = false;
     document.documentElement.scrollTop = 0;
@@ -85,9 +90,10 @@ const ProductDetailPage = () => {
       if (!product) return;
 
       try {
+        // SỬ DỤNG ENV Ở ĐÂY
         const [catRes, subRes] = await Promise.all([
-          fetch("http://localhost:8000/api/products/categories/"),
-          fetch("http://localhost:8000/api/products/subcategories/"),
+          fetch(`${API_URL}/products/categories/`),
+          fetch(`${API_URL}/products/subcategories/`),
         ]);
 
         const categories = await catRes.json();
@@ -106,7 +112,7 @@ const ProductDetailPage = () => {
     };
 
     loadCategories();
-  }, [product]);
+  }, [product, API_URL]);
 
   useEffect(() => {
     const loadRelated = async () => {
@@ -138,9 +144,10 @@ const ProductDetailPage = () => {
         const item = {
           id: product.id,
           name: product.name,
+          // SỬ DỤNG BASE_URL Ở ĐÂY
           image:
             (product.image && product.image.startsWith("/")
-              ? `http://localhost:8000${product.image}`
+              ? `${BASE_URL}${product.image}`
               : product.image) || "",
           price: Number(product.discounted_price ?? product.price) || 0,
           inStock: product.stock > 0,
@@ -168,7 +175,7 @@ const ProductDetailPage = () => {
     const loadData = async () => {
       try {
         setLoading(true);
-        console.log("👉 Bắt đầu load data"); // Log 1
+        console.log("👉 Bắt đầu load data"); 
         setError(null);
         
         // 1. Gọi API lấy thông tin sản phẩm (GET)
@@ -183,21 +190,19 @@ const ProductDetailPage = () => {
           return;
         }
 
-        console.log("👉 Check Ref:", viewIncremented.current); // Log 3
-
         setProduct(productData);
 
         // 2. Tăng view (POST) - CHỈ GỌI 1 LẦN DUY NHẤT bằng cách check useRef
         if (!viewIncremented.current) {
           try {
-            await fetch(`http://localhost:8000/api/products/${id}/increment-views/`, {
+            // SỬ DỤNG ENV Ở ĐÂY
+            await fetch(`${API_URL}/products/${id}/increment-views/`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
               },
             });
-            console.log("👉 Đang gọi API increment-views..."); // Log 4
-            // Đánh dấu đã tăng view, useRef thay đổi không gây render lại -> fix lỗi loop
+            console.log("👉 Đang gọi API increment-views...");
             viewIncremented.current = true; 
           } catch (viewError) {
             console.warn('Could not increment product views:', viewError);
@@ -221,7 +226,8 @@ const ProductDetailPage = () => {
     };
     
     loadData();
-  }, [id, user]); // ✅ Đã bỏ viewIncremented ra khỏi dependency
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, user]); // ✅ Đã bỏ viewIncremented và API_URL ra khỏi dependency để tránh re-run
 
   const handleAddToCart = async () => {
     if (!product) return;
@@ -304,9 +310,10 @@ const ProductDetailPage = () => {
         id: product.id,
         name: product.name,
         price: Number(product.discounted_price ?? product.price) || 0,
+        // SỬ DỤNG BASE_URL Ở ĐÂY
         image:
           product.image && product.image.startsWith("/")
-            ? `http://localhost:8000${product.image}`
+            ? `${BASE_URL}${product.image}`
             : product.image?.startsWith("http")
               ? product.image
               : "",
@@ -524,7 +531,7 @@ const ProductDetailPage = () => {
                               name: product.name,
                               image:
                                 product.image && product.image.startsWith("/")
-                                  ? `http://localhost:8000${product.image}`
+                                  ? `${BASE_URL}${product.image}`
                                   : product.image,
                               price:
                                 Number(
@@ -622,7 +629,7 @@ const ProductDetailPage = () => {
           </div>
 
           <div>
-            <Text strong>Vị trí:</Text>
+            <Text strong>Xuất xứ:</Text>
             <Text style={{ marginLeft: 8 }}>
               {product.location || <Text type="secondary">Không có</Text>}
             </Text>

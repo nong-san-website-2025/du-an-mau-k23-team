@@ -1,7 +1,9 @@
 // services/pointsService.js
 import axios from "axios";
 
-const API_URL = "http://localhost:8000/api/users"; // Base API URL
+// Lấy API URL từ env và nối thêm endpoint /users
+// Kết quả sẽ là: http://localhost:8000/api/users
+const API_URL = `${process.env.REACT_APP_API_URL}/users`;
 
 // Lấy điểm hiện tại từ API /points/
 export const getUserPoints = async (token) => {

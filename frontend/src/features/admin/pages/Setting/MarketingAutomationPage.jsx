@@ -4,7 +4,7 @@ import { Card, Form, Input, Button, Switch, message, Space } from "antd";
 import { SaveOutlined, ReloadOutlined } from "@ant-design/icons";
 import axios from "axios";
 
-const API_BASE_URL = "http://localhost:8000/api";
+const API_BASE_URL = process.env.REACT_APP_API_URL;
 
 export default function MarketingAutomationPage() {
   const [form] = Form.useForm();

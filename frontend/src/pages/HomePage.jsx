@@ -124,11 +124,11 @@ export default function HomePage() {
           </div>
 
           {/* SECTION 1.5: TRUST BADGE */}
-          <div className="section-white-bg py-3 mb-3">
+          {/* <div className="section-white-bg py-3 mb-3">
             <Row gutter={[16, 16]} justify="space-around">
               <QuickAccessBar/>
             </Row>
-          </div>
+          </div> */}
 
           {/* =========================================================
               SECTION 2: DANH MỤC (CATEGORY)

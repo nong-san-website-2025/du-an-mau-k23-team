@@ -524,19 +524,19 @@ const ProfileInfo = ({
               key: 1,
               tier: "🥈 Bạc",
               orders: 10,
-              spent: "250,000 VND",
+              spent: "2,00,000 VND",
             },
             {
               key: 2,
               tier: "🥇 Vàng",
               orders: 25,
-              spent: "1,250,000 VND",
+              spent: "6,000,000 VND",
             },
             {
               key: 3,
               tier: "💎 Kim cương",
               orders: 50,
-              spent: "100,000,000 VND",
+              spent: "10,000,000 VND",
             },
           ]}
           columns={[

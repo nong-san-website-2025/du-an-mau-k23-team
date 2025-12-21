@@ -2,6 +2,7 @@ from django.db import models
 from django.conf import settings    
 import unicodedata
 from django.utils import timezone
+from decimal import Decimal # Import thêm cái này nếu muốn set default chuẩn
 class Category(models.Model):
     name = models.CharField(max_length=100, db_index=True)
     key = models.CharField(max_length=50, unique=True)
@@ -9,8 +10,7 @@ class Category(models.Model):
     status = models.CharField(max_length=20, default="active")
     image = models.ImageField(upload_to='categories/', blank=True, null=True)
     is_featured = models.BooleanField(default=False)
-    commission_rate = models.FloatField(default=0.05)  # 5% mặc định
-    icon = models.ImageField(upload_to='categories/icons/', null=True, blank=True)
+    commission_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0.05)
     
     def __str__(self):
         return f"{self.name} ({self.subcategories.count()} danh mục con)"
@@ -42,12 +42,19 @@ class Product(models.Model):
 
     UNIT_CHOICES = [
         ("kg", "Kilogram"),
-        ("g", "Gram"),
         ("l", "Lít"),
         ("ml", "Milliliter"),
         ("unit", "Cái / Chiếc"),
     ]
 
+    TAX_RATE_CHOICES = [
+        (0, "0% (Miễn thuế/KCT)"),
+        (5, "5% (Nông sản sơ chế)"),
+        (8, "8% (Ưu đãi)"),
+        (10, "10% (Thông thường)"),
+    ]
+
+    
 
     seller = models.ForeignKey("sellers.Seller", on_delete=models.CASCADE, related_name="products")
     subcategory = models.ForeignKey(Subcategory, on_delete=models.CASCADE, related_name='products', null=True, blank=True)
@@ -79,6 +86,12 @@ class Product(models.Model):
         max_length=20,
         choices=STATUS_CHOICES,
         default="pending",
+    )
+
+    tax_rate = models.IntegerField(
+        choices=TAX_RATE_CHOICES, 
+        default=0, 
+        verbose_name="Thuế suất GTGT (%)"
     )
 
     reject_reason = models.TextField(null=True, blank=True)
@@ -113,14 +126,6 @@ class Product(models.Model):
                 return 0
         return 0
 
-    @property
-    def preordered_quantity(self):
-        """
-        Tính tổng số lượng khách đã đặt trước cho sản phẩm này
-        (áp dụng với trạng thái coming_soon).
-        """
-        return sum(item.quantity for item in self.order_items.all())
-    
 
     @property
     def sold_quantity(self):
@@ -133,6 +138,29 @@ class Product(models.Model):
         """Tổng số lượng đặt trước cho sản phẩm này (chưa bị hủy)"""
         total = self.preorders.filter(status="pending").aggregate(models.Sum("quantity"))["quantity__sum"]
         return total or 0
+    
+    @property
+    def current_price(self):
+        """Lấy giá hiện tại (ưu tiên giá giảm nếu có)"""
+        return self.discounted_price if self.discounted_price > 0 else self.original_price
+
+    @property
+    def tax_amount(self):
+        """Tính tiền thuế nằm trong giá bán hiện tại"""
+        # Công thức: Tiền thuế = Giá bán / (1 + %thuế) * %thuế
+        if self.tax_rate > 0:
+            rate = self.tax_rate / 100
+            price = self.current_price
+            # Tính giá gốc chưa thuế: price / (1 + rate)
+            # Tiền thuế = price - giá_chưa_thuế
+            tax = price - (price / (1 + rate))
+            return round(tax, 0)
+        return 0
+
+    @property
+    def price_before_tax(self):
+        """Giá trị thực của hàng hóa trước khi cộng thuế (Dùng cho báo cáo doanh thu thực)"""
+        return self.current_price - self.tax_amount
 
 
 

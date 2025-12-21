@@ -22,14 +22,25 @@ const ProductImage = ({ product, isFavorite, onToggleFavorite }) => {
   const THUMBNAIL_SIZE = 80; // ✅ Giảm từ 100px xuống 80px
   const MAX_VISIBLE_THUMBNAILS = 4;
 
+  // Lấy API URL từ env
+  const API_URL = process.env.REACT_APP_API_URL;
+  // Tạo Base URL (loại bỏ /api) để dùng cho hình ảnh
+  const BASE_URL = API_URL ? API_URL.replace(/\/api\/?$/, "") : "http://localhost:8000";
+
+  // Hàm helper để xử lý URL ảnh
+  const resolveImageUrl = (url) => {
+    if (!url) return "";
+    if (url.startsWith("/")) return `${BASE_URL}${url}`;
+    return url;
+  };
+
   // Tạo danh sách ảnh từ product.images hoặc fallback về ảnh chính
   const images = [];
   
   // Thêm ảnh chính trước
   if (isValidImageUrl(product.image)) {
-    const mainImageUrl = product.image.startsWith("/")
-      ? `http://localhost:8000${product.image}`
-      : product.image;
+    // SỬ DỤNG HÀM HELPER
+    const mainImageUrl = resolveImageUrl(product.image);
     images.push({ url: mainImageUrl, id: "main" });
   }
 
@@ -37,9 +48,8 @@ const ProductImage = ({ product, isFavorite, onToggleFavorite }) => {
   if (product.images && Array.isArray(product.images)) {
     product.images.forEach((img) => {
       if (isValidImageUrl(img.image)) {
-        const imgUrl = img.image.startsWith("/")
-          ? `http://localhost:8000${img.image}`
-          : img.image;
+        // SỬ DỤNG HÀM HELPER
+        const imgUrl = resolveImageUrl(img.image);
         
         // Không thêm nếu trùng với ảnh chính
         if (imgUrl !== images[0]?.url) {

@@ -10,52 +10,49 @@ function getAuthHeaders() {
 }
 
 export const productApi = {
-  // ==================== 1. TÍNH NĂNG IMPORT EXCEL (MỚI) ====================
-  // Lưu ý: Đường dẫn này phải khớp với file urls.py bên Django
-  // Nếu bạn để view ImportProductExcelView ở app 'products', thì thường url là /products/import-excel/
+  // ==================== 1. TÍNH NĂNG IMPORT EXCEL ====================
   importExcel: (formData) => {
     return api.post("/products/import-excel/", formData, {
       headers: {
         ...getAuthHeaders(),
-        "Content-Type": "multipart/form-data", // Bắt buộc để gửi file
+        // XÓA DÒNG Content-Type TẠI ĐÂY
       },
     });
   },
 
-
-  // ==================== 1.5. LẤY DANH SÁCH SẢN PHẨM CÓ YÊU CẦU NHẬP ====================
+  // ... (các hàm get giữ nguyên) ...
   getImportRequestProducts: () =>
     api.get("/sellers/productseller/with-import-requests/", {
       headers: getAuthHeaders(),
     }),
 
-
-  // ==================== 2. DANH MỤC & HIỂN THỊ ====================
   getCategories: () =>
     api.get("/products/categories/", { headers: getAuthHeaders() }),
 
-  // Endpoint lấy danh sách sản phẩm của Seller
   getSellerProducts: (params) =>
     api.get("/sellers/productseller/", {
       headers: getAuthHeaders(),
       params,
     }),
 
-  // ==================== 3. CRUD SẢN PHẨM (Seller) ====================
+  // ==================== 3. CRUD SẢN PHẨM (SỬA LẠI CHỖ NÀY) ====================
+  
+  // 1. Create Product
   createProduct: (data) =>
     api.post("/sellers/products/", data, {
       headers: {
         ...getAuthHeaders(),
-        "Content-Type": "multipart/form-data",
+        // QUAN TRỌNG: KHÔNG ĐƯỢC SET Content-Type THỦ CÔNG KHI DÙNG FORMDATA
+        // Axios sẽ tự động phát hiện data là FormData và set header kèm boundary chuẩn.
       },
     }),
 
+  // 2. Update Product
   updateProduct: (id, data) => {
-    const isFormData = data instanceof FormData;
     return api.patch(`/sellers/products/${id}/`, data, {
       headers: {
         ...getAuthHeaders(),
-        ...(isFormData && { "Content-Type": "multipart/form-data" }),
+        // Xóa logic check FormData ở đây luôn, để Axios tự lo
       },
     });
   },
@@ -63,14 +60,14 @@ export const productApi = {
   deleteProduct: (id) =>
     api.delete(`/sellers/products/${id}/`, { headers: getAuthHeaders() }),
 
-  // ==================== 4. CÁC ACTIONS KHÁC ====================
+  // ... (các hàm action khác giữ nguyên) ...
   toggleHide: (id) =>
     api.post(`/sellers/products/${id}/toggle-hide/`, {}, { headers: getAuthHeaders() }),
 
   selfReject: (id) =>
     api.post(`/sellers/products/${id}/self-reject/`, {}, { headers: getAuthHeaders() }),
 
-  // ==================== 5. QUẢN LÝ ẢNH ====================
+  // ==================== 5. QUẢN LÝ ẢNH (SỬA LẠI CHỖ NÀY) ====================
   setPrimaryImage: (productId, imageId) => {
     return api.post(
       `/sellers/products/${productId}/set-primary-image/`,
@@ -83,13 +80,12 @@ export const productApi = {
     return api.post(`/sellers/products/${productId}/images/`, formData, {
       headers: {
         ...getAuthHeaders(),
-        "Content-Type": "multipart/form-data",
+        // XÓA DÒNG Content-Type TẠI ĐÂY
       },
     });
   },
 
   deleteProductImage: (imageId) => {
-    // Lưu ý: Kiểm tra lại URL backend xem là /images/ hay /product-images/
     return api.delete(`/images/${imageId}/`, {
       headers: getAuthHeaders(),
     });

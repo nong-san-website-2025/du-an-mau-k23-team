@@ -229,9 +229,7 @@ const CheckoutPage: React.FC = () => {
                       style={{ display: "flex", marginBottom: "16px" }}
                     >
                       <img
-                        src={
-                          product.image || "https://via.placeholder.com/150"
-                        }
+                        src={product.image || "https://via.placeholder.com/150"}
                         alt={product.name}
                         style={{
                           width: "60px",
@@ -349,17 +347,13 @@ const CheckoutPage: React.FC = () => {
                 >
                   <span>Phí vận chuyển:</span>
                   <span>
-                    {shippingStatus === "loading" ? (
-                      "..."
-                    ) : shippingStatus === "success" ? (
-                      shopShippingFee > 0 ? (
-                        formatPrice(shopShippingFee)
-                      ) : (
-                        "0đ"
-                      )
-                    ) : (
-                      "---"
-                    )}
+                    {shippingStatus === "loading"
+                      ? "..."
+                      : shippingStatus === "success"
+                      ? shopShippingFee > 0
+                        ? formatPrice(shopShippingFee)
+                        : "0đ"
+                      : "---"}
                   </span>
                 </div>
 
@@ -542,8 +536,7 @@ const CheckoutPage: React.FC = () => {
                   borderRadius: "8px",
                   padding: "12px",
                   textAlign: "center",
-                  background:
-                    paymentMethod === "banking" ? "#f1f8e9" : "#fff",
+                  background: paymentMethod === "banking" ? "#f1f8e9" : "#fff",
                   position: "relative",
                   overflow: "hidden",
                   transition: "all 0.2s",
@@ -623,9 +616,7 @@ const CheckoutPage: React.FC = () => {
             <span>Giảm giá</span>
             <span>-{formatPrice(discount)}</span>
           </div>
-          <div
-            style={{ borderTop: "1px dashed #ddd", margin: "8px 0" }}
-          ></div>
+          <div style={{ borderTop: "1px dashed #ddd", margin: "8px 0" }}></div>
           <div
             style={{
               display: "flex",

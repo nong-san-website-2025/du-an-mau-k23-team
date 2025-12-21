@@ -15,7 +15,8 @@ import {
   TagOutlined,
   CommentOutlined,
   BankOutlined,
-  AppstoreOutlined
+  AppstoreOutlined,
+  BugOutlined,
 } from "@ant-design/icons";
 
 // Import file CSS styles
@@ -33,7 +34,7 @@ const AdminSidebar = ({ collapsed }) => {
     const fetchPendingSellers = async () => {
       try {
         const token = localStorage.getItem("token");
-        const apiUrl = process.env.REACT_APP_API_URL || "http://localhost:8000"; 
+        const apiUrl = process.env.REACT_APP_API_URL; 
         
         const res = await axios.get(
           `${apiUrl}/sellers/pending-count/`,
@@ -68,11 +69,16 @@ const AdminSidebar = ({ collapsed }) => {
         {
           key: "/admin/sellers/approval",
           label: (
-            <div className="d-flex justify-content-between align-items-center w-100">
+            <div
+              className="menu-badge-item"
+              style={{
+                justifyContent: "space-between",
+                display: "flex",
+                alignItems: "center",
+              }}
+            >
               <span>Duyệt cửa hàng</span>
-              {pendingSellers > 0 && (
-                <Badge count={pendingSellers} size="small" style={{ marginLeft: 8 }} />
-              )}
+              <Badge count={pendingSellers} size="small" overflowCount={99} />
             </div>
           ),
         },
@@ -138,6 +144,19 @@ const AdminSidebar = ({ collapsed }) => {
       icon: <TagOutlined />,
       label: "Khuyến mãi",
       children: [{ key: "/admin/promotions", label: "Quản lý khuyến mãi" }],
+    },
+
+    {
+      key: "test-ui-group", // Key của menu cha
+      icon: <BugOutlined />, // Icon màu đỏ nổi bật
+      label: "Thông báo",
+      children: [
+        {
+          key: "/admin/notifications", // Key này phải khớp chính xác với Route path trong AdminRoutes
+          label: "Quản lý thông báo",
+        },
+        // Bro có thể thêm các công cụ test khác ở đây sau này
+      ],
     },
   ];
 

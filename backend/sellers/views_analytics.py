@@ -103,8 +103,8 @@ def analytics_overview(request):
     current_revenue = current_payments.aggregate(total=Sum("amount"))["total"] or 0
     previous_revenue = previous_payments.aggregate(total=Sum("amount"))["total"] or 0
     
-    current_order_count = current_orders.filter(status__in=["success", "delivered"]).count()
-    previous_order_count = previous_orders.filter(status__in=["success", "delivered"]).count()
+    current_order_count = current_orders.filter(status__in=["completed", "delivered"]).count()
+    previous_order_count = previous_orders.filter(status__in=["completed", "delivered"]).count()
     
     current_visits = ProductView.objects.filter(
         product_id__in=product_ids,
@@ -308,7 +308,7 @@ def analytics_sales(request):
     # Revenue by location (province/city)
     # Extract province from address field
     location_data = orders.filter(
-        status__in=["success", "delivered"]
+        status__in=["completed", "delivered"]
     ).values("address").annotate(
         count=Count("id"),
         revenue=Sum("total_price")
@@ -330,7 +330,7 @@ def analytics_sales(request):
     
     # Operational metrics
     total_orders = orders.count()
-    success_orders = orders.filter(status__in=["success", "delivered"]).count()
+    success_orders = orders.filter(status__in=["completed", "delivered"]).count()
     cancelled_orders = orders.filter(status="cancelled").count()
     returned_orders = orders.filter(status="returned").count()
     

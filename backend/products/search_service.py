@@ -143,7 +143,7 @@ try:
                 'attributesToRetrieve': [
                     'id', 'name', 'slug', 'image', 
                     'price', 'original_price', 'discount_rate',
-                    'store_name', 'rating', 'sold', 'category_name'
+                    'store_name', 'rating', 'sold', 'category_name', 'category_slug' # ✅ THÊM DÒNG NÀY
                 ],
                 # 'attributesToHighlight': ['name'] # Bật nếu muốn highlight chữ
             }

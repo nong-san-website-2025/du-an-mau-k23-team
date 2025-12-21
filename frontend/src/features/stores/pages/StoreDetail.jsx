@@ -5,13 +5,13 @@ import axios from "axios";
 import { message, Pagination } from "antd";
 import { useCart } from "../../cart/services/CartContext";
 
-// Import các component con với đường dẫn ĐÚNG
+// Import các component con
 import StoreHeader from "../components/StoreDetail/StoreHeder";
 import VoucherSection from "../components/StoreDetail/VoucherSection";
 import ProductSearchBar from "../components/StoreDetail/ProductSearchBar";
 import ProductGrid from "../components/StoreDetail/ProductGrid";
 
-// Import các hàm API cần thiết với đường dẫn ĐÚNG
+// Import các hàm API
 import {
   getPublicVouchersForSeller,
   getMyVouchers,
@@ -23,7 +23,7 @@ const StoreDetail = () => {
   const navigate = useNavigate();
   const { addToCart } = useCart();
 
-  // === CÁC STATE CŨ CỦA BẠN (GIỮ NGUYÊN) ===
+  // === STATE ===
   const [store, setStore] = useState(null);
   const [products, setProducts] = useState([]);
   const [vouchers, setVouchers] = useState([]);
@@ -34,13 +34,17 @@ const StoreDetail = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const PRODUCTS_PER_PAGE = 18;
 
-  // === STATE MỚI ĐƯỢC THÊM VÀO ĐỂ XỬ LÝ VOUCHER ===
+  // State xử lý voucher
   const [myVoucherCodes, setMyVoucherCodes] = useState(new Set());
-  const [isClaiming, setIsClaiming] = useState(null); // Dùng để hiển thị loading trên nút "Lưu"
+  const [isClaiming, setIsClaiming] = useState(null);
 
-  // === ADD TO CART FUNCTION ===
+  // Lấy API URL từ biến môi trường
+  const API_URL = process.env.REACT_APP_API_URL;
+  const token = localStorage.getItem("token");
+
+  // === ADD TO CART ===
   const handleAddToCart = async (e, product) => {
-    e?.stopPropagation(); // Prevent card click if event is passed
+    e?.stopPropagation();
     try {
       await addToCart(
         product.id,
@@ -49,7 +53,12 @@ const StoreDetail = () => {
           id: product.id,
           name: product.name,
           price: product.discounted_price ?? product.price,
-          image: product.main_image?.image || product.image || "",
+          // Xử lý ảnh để đảm bảo đường dẫn đúng
+          image: product.image?.startsWith("http")
+            ? product.image
+            : product.image
+            ? `${API_URL.replace("/api", "")}${product.image}`
+            : "",
         },
         () => {},
         () => {}
@@ -59,7 +68,7 @@ const StoreDetail = () => {
     }
   };
 
-  // === LOGIC CŨ CỦA BẠN (GIỮ NGUYÊN) ===
+  // === FILTER & PAGINATION ===
   const { filteredProducts, totalPages, paginatedProducts } = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     const filtered = q
@@ -79,14 +88,12 @@ const StoreDetail = () => {
     };
   }, [products, searchQuery, currentPage]);
 
-  const token = localStorage.getItem("token");
-
   const handleSearchChange = (value) => {
     setSearchQuery(value);
     setCurrentPage(1);
   };
 
-  // === USEEFFECT ĐƯỢC NÂNG CẤP ĐỂ LẤY THÊM VOUCHER CỦA USER ===
+  // === FETCH DATA ===
   useEffect(() => {
     const fetchStoreData = async () => {
       if (!id) return;
@@ -94,38 +101,43 @@ const StoreDetail = () => {
       try {
         const authHeader = token ? { Authorization: `Bearer ${token}` } : {};
 
-        // Tải đồng thời tất cả dữ liệu để tăng tốc độ
+        // Gọi song song các API để tối ưu tốc độ
         const [storeRes, productsRes, publicVouchersRes, myVouchersRes] =
           await Promise.all([
-            axios.get(`http://localhost:8000/api/sellers/${id}/`, {
+            // SỬ DỤNG ENV Ở ĐÂY
+            axios.get(`${API_URL}/sellers/${id}/`, {
               headers: authHeader,
             }),
             axios.get(
-              `http://localhost:8000/api/products/?seller=${id}&ordering=-created_at`
+              `${API_URL}/products/?seller=${id}&ordering=-created_at`
             ),
             getPublicVouchersForSeller(id),
-            token ? getMyVouchers() : Promise.resolve(null), // Chỉ gọi API này khi đã đăng nhập
+            token ? getMyVouchers() : Promise.resolve(null),
           ]);
 
-        // Xử lý dữ liệu store và product (code cũ của bạn)
+        // 1. Dữ liệu cửa hàng
         setStore(storeRes.data);
         setFollowers(storeRes.data.followers_count || 0);
         setIsFollowing(Boolean(storeRes.data.is_following));
+
+        // 2. Dữ liệu sản phẩm
         setProducts(
           Array.isArray(productsRes.data)
             ? productsRes.data
             : productsRes.data?.results || []
         );
 
-        // Xử lý dữ liệu voucher (code cũ của bạn)
+        // 3. Dữ liệu voucher công khai (Lọc những cái còn hạn)
         const publicVouchers = publicVouchersRes || [];
         const now = new Date();
-        const valid = (v) =>
-          (!v.start_at || new Date(v.start_at) <= now) &&
-          (!v.end_at || new Date(v.end_at) >= now);
-        setVouchers(publicVouchers.filter(valid));
+        const validVouchers = publicVouchers.filter((v) => {
+          const startDate = v.start_at ? new Date(v.start_at) : null;
+          const endDate = v.end_at ? new Date(v.end_at) : null;
+          return (!startDate || startDate <= now) && (!endDate || endDate >= now);
+        });
+        setVouchers(validVouchers);
 
-        // PHẦN MỚI: Xử lý voucher đã lưu của user
+        // 4. Dữ liệu voucher cá nhân (để biết user đã lưu mã nào rồi)
         if (myVouchersRes) {
           const claimedCodes = new Set(
             myVouchersRes.map((uv) => uv.voucher.code)
@@ -141,19 +153,24 @@ const StoreDetail = () => {
     };
 
     fetchStoreData();
-  }, [id, token]);
+  }, [id, token, API_URL]);
 
-  // === CÁC HÀM CŨ CỦA BẠN (GIỮ NGUYÊN) ===
+  // === ACTIONS ===
+
   const handleCopyVoucher = (v) => {
-    /* ... giữ nguyên code của bạn ... */
+    navigator.clipboard.writeText(v.code);
+    message.success("Đã sao chép mã: " + v.code);
   };
+
   const handleUseVoucher = (v) => {
+    // Lưu vào localStorage để dùng ở trang Checkout
     localStorage.setItem(
       "selectedVoucher",
       JSON.stringify({ code: v.code, sellerId: id, savedAt: Date.now() })
     );
-    message.success(`Voucher ${v.code} đã được chọn, áp dụng khi thanh toán`);
+    message.success(`Voucher ${v.code} đã được chọn, sẽ áp dụng khi thanh toán`);
   };
+
   const handleFollow = async () => {
     if (!token) {
       message.warning("Vui lòng đăng nhập để theo dõi cửa hàng!");
@@ -162,8 +179,9 @@ const StoreDetail = () => {
     }
 
     try {
+      // SỬ DỤNG ENV Ở ĐÂY
       await axios.post(
-        `http://localhost:8000/api/sellers/${id}/follow/`,
+        `${API_URL}/sellers/${id}/follow/`,
         {},
         {
           headers: {
@@ -172,11 +190,9 @@ const StoreDetail = () => {
         }
       );
 
-      // Toggle trạng thái theo dõi
       const newIsFollowing = !isFollowing;
       setIsFollowing(newIsFollowing);
 
-      // Cập nhật số người theo dõi
       if (newIsFollowing) {
         setFollowers(followers + 1);
         message.success("Đã theo dõi cửa hàng!");
@@ -186,13 +202,12 @@ const StoreDetail = () => {
       }
     } catch (error) {
       console.error("Lỗi khi theo dõi cửa hàng:", error);
-      message.error("Không thể theo dõi cửa hàng. Vui lòng thử lại!");
+      message.error("Không thể thao tác. Vui lòng thử lại!");
     }
   };
+
   const handleOpenChat = () => {
     if (!store?.id) return;
-
-    // Gửi sự kiện để GlobalChat lắng nghe và mở khung chat
     const event = new CustomEvent("chat:open", {
       detail: {
         sellerId: store.id,
@@ -203,30 +218,46 @@ const StoreDetail = () => {
     window.dispatchEvent(event);
   };
 
-  const ratingStats = useMemo(() => {
-    /* ... giữ nguyên code của bạn ... */
-  }, [products]);
-
-  // === HÀM MỚI ĐƯỢC THÊM VÀO ĐỂ XỬ LÝ LƯU VOUCHER ===
   const handleClaimVoucher = async (voucherCode) => {
     if (!token) {
       message.warning("Vui lòng đăng nhập để lưu voucher!");
       navigate("/login", { state: { redirectTo: `/store/${id}` } });
       return;
     }
-    setIsClaiming(voucherCode); // Bắt đầu loading cho nút này
+    setIsClaiming(voucherCode);
     try {
       await claimVoucher(voucherCode);
-      message.success(`Đã lưu voucher ${voucherCode}!`);
-      // Cập nhật state để nút chuyển thành "Đã lưu" ngay
+      message.success(`Đã lưu voucher ${voucherCode} vào ví!`);
+      // Cập nhật UI ngay lập tức
       setMyVoucherCodes((prevCodes) => new Set(prevCodes).add(voucherCode));
     } catch (error) {
       message.error(error.response?.data?.error || "Lưu voucher thất bại!");
     } finally {
-      setIsClaiming(null); // Dừng loading
+      setIsClaiming(null);
     }
   };
 
+  // Tính toán thống kê đánh giá
+  const ratingStats = useMemo(() => {
+    const stats = { average: 0, count: 0 };
+    if (products.length > 0) {
+      let totalRating = 0;
+      let totalCount = 0;
+      products.forEach((p) => {
+        if (p.rating && p.review_count) {
+          totalRating += parseFloat(p.rating) * p.review_count;
+          totalCount += p.review_count;
+        }
+      });
+      if (totalCount > 0) {
+        stats.average = (totalRating / totalCount).toFixed(1);
+        stats.count = totalCount;
+      }
+    }
+    return stats;
+  }, [products]);
+
+  // === RENDER ===
   if (loading) {
     return (
       <div style={{ textAlign: "center", marginTop: 50 }}>
@@ -234,6 +265,7 @@ const StoreDetail = () => {
       </div>
     );
   }
+
   if (!store) {
     return <p className="text-center my-5">❌ Không tìm thấy cửa hàng.</p>;
   }
@@ -242,6 +274,7 @@ const StoreDetail = () => {
 
   return (
     <Container className="my-4">
+      {/* Header cửa hàng */}
       <StoreHeader
         store={store}
         isFollowing={isFollowing}
@@ -249,27 +282,34 @@ const StoreDetail = () => {
         followingCount={followingCount}
         ratingStats={ratingStats}
         onFollow={handleFollow}
-        handleOpenChat={handleOpenChat} // ✅ Đổi đúng tên prop
+        handleOpenChat={handleOpenChat}
       />
 
-      {/* TRUYỀN CÁC PROPS MỚI XUỐNG CHO VOUCHERSECTION */}
+      {/* Danh sách Voucher */}
       <VoucherSection
         vouchers={vouchers}
         onUseVoucher={handleUseVoucher}
-        myVoucherCodes={myVoucherCodes}
-        onClaimVoucher={handleClaimVoucher}
-        isClaiming={isClaiming}
+        onCopyVoucher={handleCopyVoucher} // Truyền hàm copy
+        myVoucherCodes={myVoucherCodes}   // Danh sách mã đã lưu
+        onClaimVoucher={handleClaimVoucher} // Hàm xử lý lưu
+        isClaiming={isClaiming}           // Trạng thái loading
       />
 
+      {/* Thanh tìm kiếm sản phẩm */}
       <ProductSearchBar
         searchQuery={searchQuery}
         onSearchChange={handleSearchChange}
       />
 
+      {/* Lưới sản phẩm */}
       <Row>
-        <ProductGrid products={paginatedProducts} onAddToCart={handleAddToCart} />
+        <ProductGrid
+          products={paginatedProducts}
+          onAddToCart={handleAddToCart}
+        />
       </Row>
 
+      {/* Phân trang */}
       {totalPages > 1 && (
         <div className="d-flex justify-content-center mt-4">
           <Pagination

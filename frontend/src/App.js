@@ -8,6 +8,8 @@ import { sellerRoutes } from "./routes/SellerRoutes.jsx";
 import VerifyEmailPage from "./features/login_register/components/VerifyEmailPage.jsx";
 import VnpayReturn from "./pages/VnpayReturn";
 import ScrollToTop from "./utils/ScrollToTop.js";
+import PaymentWaiting from "./features/cart/pages/PaymentWaiting";
+
 
 
 
@@ -30,6 +32,7 @@ function App() {
                 path="/verify-email/:uid/:token"
                 element={<VerifyEmailPage />}
               />
+              <Route path="/payment/waiting/:orderId" element={<PaymentWaiting />} />
               <Route path="/vnpay-return" element={<VnpayReturn />} />
             </Routes>
           </CartProvider>

@@ -1,7 +1,7 @@
 # orders/urls.py
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import OrderViewSet, PreorderDeleteView, order_notifications_sse
+from .views import OrderViewSet, PreorderDeleteView, order_notifications_sse, payment_ipn
 from . import views
 
 
@@ -18,4 +18,5 @@ urlpatterns = [
     path('admin/notifications/sse/', order_notifications_sse, name='order-notifications-sse'),
     path('dashboard-stats/', views.dashboard_stats, name='dashboard-stats'),
     path("", include(router.urls)),  
+    path('payment_ipn/', payment_ipn, name='payment_ipn'),
 ]

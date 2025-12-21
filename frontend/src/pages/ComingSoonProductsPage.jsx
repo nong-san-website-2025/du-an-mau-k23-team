@@ -24,6 +24,12 @@ const ComingSoonProductsPage = () => {
 
   const navigate = useNavigate();
 
+  // Lấy API URL từ env
+  const API_URL = process.env.REACT_APP_API_URL;
+  // Tạo Base URL (bỏ /api) để dùng cho hình ảnh
+  // Ví dụ: http://localhost:8000/api -> http://localhost:8000
+  const BASE_URL = API_URL ? API_URL.replace(/\/api\/?$/, "") : "http://localhost:8000";
+
   useEffect(() => {
     const fetchProducts = async () => {
       try {
@@ -131,9 +137,10 @@ const ComingSoonProductsPage = () => {
                     isValidImageUrl(product.image) ? (
                       <img
                         alt={product.name}
+                        // SỬ DỤNG BASE_URL Ở ĐÂY
                         src={
                           product.image.startsWith("/")
-                            ? `http://localhost:8000${product.image}`
+                            ? `${BASE_URL}${product.image}`
                             : product.image
                         }
                         style={{ height: 160, objectFit: "cover", width: "100%" }}

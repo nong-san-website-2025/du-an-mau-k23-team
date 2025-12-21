@@ -22,7 +22,7 @@ class OrderPaymentSignalTests(TestCase):
         order = Order.objects.create(
             user=self.user,
             total_price=Decimal("500000"),
-            status="success",
+            status="completed",
         )
 
         payment = Payment.objects.get(order=order)
@@ -39,7 +39,7 @@ class OrderPaymentSignalTests(TestCase):
         self.assertFalse(Payment.objects.filter(order=order).exists())
 
         order.total_price = Decimal("250000")
-        order.status = "success"
+        order.status = "completed"
         order.save()
 
         payment = Payment.objects.get(order=order)
@@ -51,7 +51,7 @@ class OrderPaymentSignalTests(TestCase):
         order = Order.objects.create(
             user=self.user,
             total_price=Decimal("100000"),
-            status="success",
+            status="completed",
         )
         payment = Payment.objects.get(order=order)
         self.assertEqual(payment.amount, Decimal("100000"))

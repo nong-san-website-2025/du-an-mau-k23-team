@@ -39,6 +39,9 @@ export default function UserTable({
   const { t } = useTranslation();
   const { confirm } = Modal;
 
+  // Lấy API URL từ env
+  const API_URL = process.env.REACT_APP_API_URL;
+
   // --- STATE QUẢN LÝ ---
   const [editingUser, setEditingUser] = useState(null); // User đang được chọn để sửa
   const [isFetchingDetail, setIsFetchingDetail] = useState(false); // Loading khi đang lấy chi tiết user
@@ -46,6 +49,7 @@ export default function UserTable({
   const [rolesLoading, setRolesLoading] = useState(false);
 
   // Preload roles so edit can show role select immediately
+  // Note: Kiểm tra file "./api/userApi" để đảm bảo fetchRoles cũng dùng env nhé
   useEffect(() => {
     let mounted = true;
     const load = async () => {
@@ -111,9 +115,9 @@ export default function UserTable({
     setIsFetchingDetail(true);
     try {
       const token = localStorage.getItem("token");
-      // Gọi API lấy dữ liệu đầy đủ của user (đảm bảo Role object chuẩn)
+      // SỬ DỤNG ENV Ở ĐÂY
       const response = await axios.get(
-        `http://localhost:8000/api/users/management/${record.id}/`,
+        `${API_URL}/users/management/${record.id}/`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -141,8 +145,9 @@ export default function UserTable({
   // --- LOGIC 2: KHÓA/MỞ KHÓA TÀI KHOẢN ---
   const handleToggleUser = async (user) => {
     try {
+      // SỬ DỤNG ENV Ở ĐÂY
       const res = await axios.patch(
-        `http://localhost:8000/api/users/toggle-active/${user.id}/`,
+        `${API_URL}/users/toggle-active/${user.id}/`,
         {},
         {
           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
@@ -173,7 +178,8 @@ export default function UserTable({
       cancelText: "Hủy",
       onOk: async () => {
         try {
-          await axios.delete(`http://localhost:8000/api/users/management/${user.id}/`, {
+          // SỬ DỤNG ENV Ở ĐÂY
+          await axios.delete(`${API_URL}/users/management/${user.id}/`, {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("token")}`,
             },

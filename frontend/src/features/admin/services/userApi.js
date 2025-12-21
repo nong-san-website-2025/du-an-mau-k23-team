@@ -1,4 +1,5 @@
 // services/userApi.js
+import { API_CONFIG } from "../../../constants/apiConstants";
 
 // Hàm gọi API chung có xử lý refresh token
 export async function fetchWithAuth(url, options = {}) {
@@ -15,7 +16,7 @@ export async function fetchWithAuth(url, options = {}) {
 
   // Nếu token hết hạn => thử refresh
   if (res.status === 401 && refresh) {
-    const refreshRes = await fetch("http://localhost:8000/api/token/refresh/", {
+    const refreshRes = await fetch(`${API_CONFIG.BASE_URL}/token/refresh/`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ refresh }),
@@ -60,18 +61,18 @@ export const userApi = {
     // params là object { start_date: 'YYYY-MM-DD', end_date: 'YYYY-MM-DD' }
     const queryString = new URLSearchParams(params).toString();
     return await fetchWithAuth(
-      `http://localhost:8000/api/orders/dashboard-stats/?${queryString}`
+      `${API_CONFIG.BASE_URL}/orders/dashboard-stats/?${queryString}`
     );
   },
   // Lấy danh sách user
   getUsers: async () => {
-    return await fetchWithAuth("http://localhost:8000/api/users/");
+    return await fetchWithAuth(`${API_CONFIG.BASE_URL}/users/`);
   },
 
   // Xóa user
   deleteUser: async (id) => {
     return await fetchWithAuth(
-      `http://localhost:8000/api/users/management/${id}/`,
+      `${API_CONFIG.BASE_URL}/users/management/${id}/`,
       {
         method: "DELETE",
       }
@@ -80,7 +81,7 @@ export const userApi = {
 
   // Cập nhật user
   updateUser: async (id, data) => {
-    return await fetchWithAuth(`http://localhost:8000/api/users/${id}/`, {
+    return await fetchWithAuth(`${API_CONFIG.BASE_URL}/users/${id}/`, {
       method: "PATCH", // dùng PATCH thay vì PUT
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
@@ -89,7 +90,7 @@ export const userApi = {
 
   // Thêm user
   addUser: async (data) => {
-    return await fetchWithAuth("http://localhost:8000/api/users/", {
+    return await fetchWithAuth(`${API_CONFIG.BASE_URL}/users/`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
