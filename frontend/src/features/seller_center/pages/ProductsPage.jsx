@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   message, Modal, Upload, Typography, Card,
-  Input, Tabs, Button, Divider
+  Input, Tabs, Button, Divider, Select
 } from "antd";
 import {
   UploadOutlined,
@@ -48,6 +48,7 @@ export default function ProductsPage() {
   // -- Filter & Search --
   const [activeTab, setActiveTab] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategoryId, setSelectedCategoryId] = useState(null);
   const [importRequestProducts, setImportRequestProducts] = useState([]);
 
   // -- Detail & Gallery --
@@ -132,6 +133,13 @@ export default function ProductsPage() {
       );
     }
 
+    // 1.1 Filter by Category (parent category)
+    if (selectedCategoryId) {
+      const cat = categories.find((c) => String(c.id) === String(selectedCategoryId));
+      const subIds = (cat?.subcategories || []).map((s) => s.id);
+      result = result.filter((p) => !subIds.length ? false : subIds.includes(p.subcategory));
+    }
+
     // 2. Filter by Tab
     if (activeTab !== "all") {
       switch (activeTab) {
@@ -162,7 +170,7 @@ export default function ProductsPage() {
       }
     }
     setFilteredProducts(result);
-  }, [rawProducts, searchTerm, activeTab, importRequestProducts]);
+  }, [rawProducts, searchTerm, selectedCategoryId, activeTab, importRequestProducts]);
 
   // ==================== 4. STATS & CONFIG ====================
 
@@ -388,6 +396,17 @@ export default function ProductsPage() {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               allowClear
+            />
+            {/* Category Filter (đặt sau ô tìm kiếm) */}
+            <Select
+              showSearch
+              allowClear
+              placeholder="Lọc theo danh mục"
+              style={{ width: 220 }}
+              value={selectedCategoryId}
+              onChange={(val) => setSelectedCategoryId(val || null)}
+              optionFilterProp="label"
+              options={categories.map((c) => ({ value: c.id, label: c.name }))}
             />
             <Button icon={<ReloadOutlined />} onClick={fetchData}>Làm mới</Button>
             <Button 

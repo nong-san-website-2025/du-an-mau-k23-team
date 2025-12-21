@@ -7,8 +7,27 @@ const NotificationDropdown = ({ userId, showDropdown, setShowDropdown }) => {
   const navigate = useNavigate();
 
   const timerRef = useRef(null);
+  const [isHoverable, setIsHoverable] = useState(false);
+
+  useEffect(() => {
+    const computeHoverable = () => {
+      let hoverable = false;
+      try {
+        hoverable = !!(window.matchMedia && window.matchMedia('(hover: hover)').matches);
+      } catch (_) {
+        hoverable = false;
+      }
+      // Fallback theo kích thước: từ tablet/desktop trở lên dùng hover
+      if (!hoverable && window.innerWidth >= 768) hoverable = true;
+      setIsHoverable(hoverable);
+    };
+    computeHoverable();
+    window.addEventListener('resize', computeHoverable);
+    return () => window.removeEventListener('resize', computeHoverable);
+  }, []);
   
     const handleMouseEnter = () => {
+      if (!isHoverable) return; // Mobile: bỏ hover
       if (timerRef.current) {
         clearTimeout(timerRef.current); // Xóa bộ đếm hủy
       }
@@ -16,6 +35,7 @@ const NotificationDropdown = ({ userId, showDropdown, setShowDropdown }) => {
     };
   
     const handleMouseLeave = () => {
+      if (!isHoverable) return; // Mobile: bỏ hover
       timerRef.current = setTimeout(() => {
         setShowDropdown(false);
       }, 200); // 200ms là thời gian vàng, đủ nhanh nhưng không bị giật
@@ -45,15 +65,15 @@ const NotificationDropdown = ({ userId, showDropdown, setShowDropdown }) => {
   return (
     <div
       className="action-item"
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
+      onMouseEnter={isHoverable ? handleMouseEnter : undefined}
+      onMouseLeave={isHoverable ? handleMouseLeave : undefined}
     >
       <button className="action-btn" onClick={() => navigate("/notifications")}>
         <Bell size={22} strokeWidth={2} />
         {unreadCount > 0 && <span className="badge-count">{unreadCount}</span>}
       </button>
 
-      {showDropdown && (
+      {isHoverable && showDropdown && (
         <div className="dropdown-panel" style={{ width: 400 }}>
           <div className="dropdown-header">
             <span>Thông báo mới nhận</span>

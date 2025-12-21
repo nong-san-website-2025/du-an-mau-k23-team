@@ -6,7 +6,8 @@
   width: 100%;
   max-width: 700px;
   margin: 0 auto;
-  z-index: 3000;
+  /* Tránh che các dropdown khác (User/Cart/Noti) */
+  z-index: auto; /* không tạo stacking context với z-index cao */
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   /* Padding này sẽ chỉ đẩy thanh Input, Dropdown sẽ tự chạy theo Input */
   padding-left: 150px; 
@@ -123,7 +124,8 @@
   
   overflow: hidden;
   animation: slideDown 0.2s ease-out;
-  z-index: 3001;
+  /* Ưu tiên thấp hơn dropdown tài khoản để không bị che ngược */
+  z-index: 900;
   margin-top: 2px; /* Khoảng cách nhỏ (nếu cần tách rời) hoặc để 0 */
 }
 
