@@ -361,6 +361,7 @@ class OrderViewSet(viewsets.ModelViewSet):
     def seller_approve(self, request, pk=None):
         """Seller duyệt đơn (pending -> shipping)"""
         seller = getattr(request.user, 'seller', None)
+        
         if not seller:
             return Response({'error': 'Chỉ seller mới có quyền duyệt'}, status=403)
 
@@ -374,6 +375,17 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         order.status = 'shipping'
         order.save(update_fields=['status'])
+
+        from notifications.models import Notification
+        Notification.objects.create(
+            user=order.user,           # Khách hàng nhận
+            sender=request.user,        # Seller gửi
+            type='order_status_changed',
+            category='order',
+            title="Đơn hàng đang được giao",
+            message=f"Đơn hàng #{order.id} của bạn đã được Shop xác nhận và đang giao.",
+            metadata={"order_id": order.id}
+        )
         return Response({'message': 'Đã duyệt đơn', 'status': order.status})
 
     @action(detail=True, methods=['post'], url_path='seller/complete')
@@ -395,6 +407,17 @@ class OrderViewSet(viewsets.ModelViewSet):
         except Exception as e:
             logger.exception("Lỗi không xác định khi hoàn tất đơn")
             return Response({'error': 'Lỗi không xác định'}, status=500)
+        
+        from notifications.models import Notification
+        Notification.objects.create(
+            user=order.user,
+            sender=request.user,
+            type='order_status_changed',
+            category='order',
+            title="Đơn hàng đã hoàn tất",
+            message=f"Đơn hàng #{order.id} đã giao thành công. Hãy đánh giá sản phẩm nhé!",
+            metadata={"order_id": order.id}
+        )
 
         return Response({'message': 'Hoàn tất đơn hàng', 'status': updated_order.status})
 
@@ -415,11 +438,24 @@ class OrderViewSet(viewsets.ModelViewSet):
         user = request.user
 
         # Buyer: chủ sở hữu đơn được hủy trực tiếp
+        from notifications.models import Notification
+        
+        # Nếu người hủy là Buyer -> Thông báo cho Seller
         if order.user_id == user.id:
             order.status = 'cancelled'
             order.save(update_fields=['status'])
-            return Response({'message': 'Đơn hàng đã được hủy', 'status': order.status})
-
+            
+            # Giả sử sản phẩm đầu tiên của đơn đại diện cho shop nhận thông báo
+            first_item = order.items.first()
+            if first_item:
+                Notification.objects.create(
+                    user=first_item.product.seller.user, # Seller nhận
+                    type='order_status_changed',
+                    title="Khách hàng đã hủy đơn",
+                    message=f"Đơn hàng #{order.id} đã bị khách hàng hủy.",
+                    category='order'
+                )
+            return Response({'message': 'Đơn hàng đã được hủy'})
         # Seller: cần sở hữu ít nhất một sản phẩm trong đơn
         seller = getattr(user, 'seller', None)
         if seller:
@@ -431,8 +467,21 @@ class OrderViewSet(viewsets.ModelViewSet):
             if seller_product_ids.intersection(order_product_ids):
                 order.status = 'cancelled'
                 order.save(update_fields=['status'])
+
+                Notification.objects.create(
+                    user=order.user, # Khách hàng nhận
+                    sender=request.user,
+                    type='order_status_changed',
+                    title="Đơn hàng bị hủy bởi Shop",
+                    message=f"Rất tiếc, đơn hàng #{order.id} đã bị Shop hủy do sự cố kho hàng.",
+                    category='order'
+                )
                 return Response({'message': 'Đơn hàng đã được hủy', 'status': order.status})
             return Response({'error': 'Bạn không có quyền với đơn hàng này'}, status=403)
+        
+        
+        
+        
 
         return Response({'error': 'Bạn không có quyền hủy đơn hàng này'}, status=403)
 
@@ -640,6 +689,27 @@ class OrderViewSet(viewsets.ModelViewSet):
             return Response({'status': order.status})
         except Order.DoesNotExist:
             return Response({'status': 'not_found'}, status=404)
+        
+
+    @action(detail=True, methods=['post'], url_path='seller/send-custom-notify')
+    def seller_send_custom_notify(self, request, pk=None):
+        order = self.get_object()
+        message_text = request.data.get('message')
+        
+        if not message_text:
+            return Response({'error': 'Vui lòng nhập nội dung'}, status=400)
+
+        from notifications.models import Notification
+        Notification.objects.create(
+            user=order.user,
+            sender=request.user,
+            type='chat',
+            category='chat',
+            title=f"Lời nhắn từ Shop cho đơn #{order.id}",
+            message=message_text,
+            metadata={"order_id": order.id}
+        )
+        return Response({'status': 'Đã gửi thông báo tới khách hàng'})
 
 
 @api_view(["GET"])

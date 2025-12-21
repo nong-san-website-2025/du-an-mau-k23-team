@@ -25,12 +25,20 @@ export default function RevenueChart({ data = [] }) {
 
   return (
     <ResponsiveContainer width="100%" height={300}>
-      <LineChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+      <LineChart
+        data={chartData}
+        margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+      >
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis dataKey="month" />
         <YAxis />
         <Tooltip formatter={(value) => `${value.toLocaleString()} ₫`} />
-        <Line type="monotone" dataKey="revenue" stroke="#1890ff" strokeWidth={2} />
+        <Line
+          type="monotone"
+          dataKey="revenue"
+          stroke="#1890ff"
+          strokeWidth={2}
+        />
       </LineChart>
     </ResponsiveContainer>
   );

@@ -218,7 +218,6 @@ const CheckoutPage = () => {
           ? "Thanh toán & Đặt hàng"
           : "Đặt hàng"}
       </Button>
-      
     );
   };
 

@@ -123,39 +123,63 @@ def send_order_status_notification(sender, instance, created, **kwargs):
     }
 
     if created:
-        # New order created
+        # --- 1. THÔNG BÁO CHO KHÁCH HÀNG (Giữ nguyên logic của bạn) ---
         status_text = STATUS_MAP.get(instance.status, instance.status)
-        title = f"🛒 {status_text}"
-        message = f"Đơn hàng #{instance.id} - {status_text}"
-        detail = "Đơn hàng của bạn đã được tạo và đang chờ xác nhận từ người bán"
+        title_cus = f"🛒 {status_text}"
+        message_cus = f"Đơn hàng #{instance.id} - {status_text}"
+        detail_cus = "Đơn hàng của bạn đã được tạo và đang chờ xác nhận từ người bán"
 
-        # Sửa lỗi: Thay /* ... */ bằng các trường cụ thể hoặc để trống
-        notification_data = {
-            "type": "order_created",
-            "title": title,
-            "message": message,
-            "detail": detail,
-            "order_id": instance.id,
-            # Thêm các trường cụ thể nếu cần, ví dụ:
-            # "user_id": user_id,
-            # "timestamp": instance.created_at.isoformat(),
-        }
-        
         try:
-            # Save to database
             Notification.objects.create(
                 user=instance.user,
                 type="order_created",
-                title=title,
-                message=message,
-                detail=detail,
-                metadata={ "order_id": instance.id }, # Sửa lỗi: loại bỏ /* ... */
+                title=title_cus,
+                message=message_cus,
+                detail=detail_cus,
+                metadata={ "order_id": instance.id },
             )
-            # Send via SSE
-            send_notification_to_user(user_id, notification_data)
-            logger.info("Sent order created notification to user %s for order %s", user_id, instance.id)
+            send_notification_to_user(user_id, {
+                "type": "order_created",
+                "title": title_cus,
+                "message": message_cus,
+                "order_id": instance.id,
+            })
         except Exception as e:
-            logger.error("Failed to send order notification: %s", e)
+            logger.error("Lỗi gửi thông báo cho khách: %s", e)
+
+        # --- 2. THÊM MỚI: THÔNG BÁO CHO SELLER ---
+        try:
+            # Lấy danh sách ID của tất cả User là chủ Shop trong đơn hàng này
+            seller_user_ids = OrderItem.objects.filter(order=instance)\
+                .values_list('product__seller__user_id', flat=True)\
+                .distinct()
+
+            for s_user_id in seller_user_ids:
+                if s_user_id:
+                    s_title = "🔔 Đơn hàng mới!"
+                    s_message = f"Bạn có đơn hàng mới #{instance.id}"
+                    s_detail = f"Khách hàng {instance.user.get_full_name() or instance.user.username} vừa đặt hàng."
+                    
+                    # Lưu vào DB cho Seller
+                    Notification.objects.create(
+                        user_id=s_user_id, # Gửi cho User của Seller
+                        type="new_order_seller",
+                        title=s_title,
+                        message=s_message,
+                        detail=s_detail,
+                        metadata={ "order_id": instance.id },
+                    )
+                    
+                    # Bắn SSE cho Seller Center
+                    send_notification_to_user(s_user_id, {
+                        "type": "new_order_seller",
+                        "title": s_title,
+                        "message": s_message,
+                        "order_id": instance.id,
+                    })
+            logger.info("Đã gửi thông báo đơn hàng mới cho các Seller liên quan.")
+        except Exception as e:
+            logger.error("Lỗi gửi thông báo cho Seller: %s", e)
 
     else:
         # Check if status changed
@@ -358,3 +382,51 @@ def update_wallet_on_success(sender, instance: Order, created, **kwargs):
                 del _order_old_status[instance.pk]
             except KeyError:
                 pass # An toàn nếu signal kia đã xóa
+
+
+@receiver(post_save, sender=Order)
+def auto_order_notification(sender, instance, created, **kwargs):
+    """
+    Hàm này sẽ TỰ ĐỘNG CHẠY mỗi khi một Đơn hàng được Lưu (Save)
+    """
+    title = ""
+    # 1. Nếu là đơn hàng mới tạo
+    if created:
+        title = "Đặt hàng thành công"
+        msg = f"Đơn hàng {instance.order_code} đã được hệ thống tiếp nhận."
+    
+    # 2. Nếu là cập nhật trạng thái (không phải tạo mới)
+    elif 'status' in (kwargs.get('update_fields') or []):
+        if instance.status == 'SHIPPING':
+            title = "Đơn hàng đang giao"
+            msg = f"Đơn hàng {instance.order_code} đang trên đường đến bạn."
+        elif instance.status == 'DELIVERED':
+            title = "Giao hàng thành công"
+            msg = f"Đơn hàng {instance.order_code} đã giao đến bạn."
+
+    # Nếu có tiêu đề phù hợp thì mới tạo thông báo
+    if title:
+        # Tự động lưu vào DB
+        noti = Notification.objects.create(
+            user=instance.user,
+            title=title,
+            message=msg,
+            type="ORDER",
+            metadata={"order_id": instance.id} # Metadata này để click là bay tới đơn hàng
+        )
+
+        # Tự động đẩy qua WebSocket để khách thấy "số đỏ" trên chuông ngay lập tức
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f"user_{instance.user.id}",
+            {
+                "type": "send_notification",
+                "event": "new_notification",
+                "data": {
+                    "id": noti.id,
+                    "title": noti.title,
+                    "is_read": False,
+                    "metadata": noti.metadata
+                }
+            }
+        )

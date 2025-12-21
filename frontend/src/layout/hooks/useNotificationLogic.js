@@ -42,6 +42,7 @@ export const useNotificationLogic = (userId, navigate) => {
           }
         );
         const data = await response.json();
+        setUnreadCount(data.unread_count); // Backend trả về ví dụ: { "unread_count": 5 }
         const list = Array.isArray(data) ? data : data.results || [];
 
         // Đồng bộ hóa các field từ Django sang định dạng UI của bạn
@@ -51,6 +52,7 @@ export const useNotificationLogic = (userId, navigate) => {
           time: n.created_at, // Django dùng created_at
         }));
       } catch (e) {
+        console.error("Lỗi lấy số lượng thông báo:", e);
         return [];
       }
     },
@@ -65,15 +67,51 @@ export const useNotificationLogic = (userId, navigate) => {
 
   // --- THAY THẾ SSE BẰNG WEBSOCKET TẠI ĐÂY ---
   useEffect(() => {
+    const handleResetCount = () => {
+      console.log("Đã nhận tín hiệu: Reset số lượng thông báo về 0");
+      setUnreadCount(0);
+      setUnified((prev) =>
+        prev.map((n) => ({ ...n, read: true, is_read: true }))
+      );
+    };
+
+    // Đăng ký lắng nghe sự kiện
+    window.addEventListener("notificationsUpdated", handleResetCount);
+
+    return () => {
+      // Hủy lắng nghe khi component unmount
+      window.removeEventListener("notificationsUpdated", handleResetCount);
+    };
+  }, []);
+  const handleNotificationClick = useCallback(
+    async (noti) => {
+      // 1. Đánh dấu đã đọc cục bộ để UI mượt mà
+      setUnified((prev) =>
+        prev.map((n) =>
+          n.id === noti.id ? { ...n, read: true, is_read: true } : n
+        )
+      );
+
+      // 2. Logic điều hướng dựa trên metadata hoặc type
+      const type = noti.type?.toUpperCase();
+      const orderId = noti.metadata?.order_id || noti.order_id; // hỗ trợ cả 2 cách đặt tên
+
+      if (type === "ORDER" && orderId) {
+        navigate(`/orders/${orderId}`);
+      } else if (type === "WALLET") {
+        navigate("/profile/wallet");
+      } else if (type === "VOUCHER") {
+        navigate("/vouchers");
+      }
+      // Nếu là thông báo chung, có thể không navigate hoặc về trang thông báo
+    },
+    [navigate]
+  );
+
+  // 2. Cập nhật xử lý WebSocket để nhận diện thêm sự kiện từ Server (nếu có)
+  useEffect(() => {
     if (!userId || !token) return;
 
-    // Khởi tạo danh sách ban đầu
-    fetchNotifications(true).then((list) => {
-      setUnified(list);
-      setUnreadCount(list.filter((n) => !n.read).length);
-    });
-
-    // Kết nối WebSocket
     const ws = new WebSocket(
       `ws://localhost:8000/ws/updates/${userId}/?token=${token}`
     );
@@ -81,27 +119,29 @@ export const useNotificationLogic = (userId, navigate) => {
     ws.onmessage = (event) => {
       try {
         const payload = JSON.parse(event.data);
-        console.log("🔔 Đã nhận thông báo mới:", payload);
 
-        // Kiểm tra đúng tên event mà Django gửi qua
         if (payload.event === "new_notification") {
-          // 1. Tăng số lượng chưa đọc trên chuông
+          // 1. Tăng số lượng tin nhắn chưa đọc ở chuông
           setUnreadCount((prev) => prev + 1);
 
-          // 2. Thêm thông báo mới vào đầu danh sách hiển thị
-          // 'payload.data' là object thông báo từ Serializer của Django
-          setUnified((prev) => [payload.data, ...prev]);
+          // 2. Thêm thông báo mới vào đầu danh sách (để hiện ở Dropdown/Page)
+          const newNoti = {
+            ...payload.data,
+            read: false,
+            time: payload.data.created_at,
+          };
+          setUnified((prev) => [newNoti, ...prev]);
 
-          // 3. (Tùy chọn) Có thể phát âm thanh 'ting' ở đây
-          // new Audio('/assets/notification-sound.mp3').play();
+          // 3. (Tùy chọn) Hiển thị thông báo trình duyệt hoặc Toast
+          console.log("Thông báo mới tự động:", newNoti.title);
         }
       } catch (error) {
         console.error("Lỗi xử lý tin nhắn WS:", error);
       }
     };
-    return () => ws.close();
-  }, [userId, token, fetchNotifications, enrichTopNotifications]);
 
+    return () => ws.close();
+  }, [userId, token]);
   // 5. Actions cho UI
   const handleHover = async () => {
     if (!dropdownLoaded) {
@@ -135,5 +175,11 @@ export const useNotificationLogic = (userId, navigate) => {
     );
   }, [unified]);
 
-  return { unreadCount, sortedNotifications, handleHover, handleMarkAllRead };
+  return {
+    unreadCount,
+    sortedNotifications,
+    handleHover,
+    handleMarkAllRead,
+    handleNotificationClick,
+  };
 };

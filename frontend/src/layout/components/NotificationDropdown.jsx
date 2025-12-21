@@ -11,15 +11,19 @@ const NotificationDropdown = ({ userId, showDropdown, setShowDropdown }) => {
 
   const getNotiContent = (noti) => {
     const md = noti.metadata || {};
-    const isReply = (noti.type || "").toLowerCase() === "review_reply" || md.reply_text;
+    const isReply =
+      (noti.type || "").toLowerCase() === "review_reply" || md.reply_text;
     const title = isReply
-      ? md.product_name ? "Phản hồi đánh giá" : "Phản hồi"
+      ? md.product_name
+        ? "Phản hồi đánh giá"
+        : "Phản hồi"
       : noti.title || noti.message;
 
     const details = [];
     if (md.order_code) details.push(`Mã đơn: ${md.order_code}`);
     if (md.shop_name) details.push(`Cửa hàng: ${md.shop_name}`);
-    if (!isReply && md.order_total) details.push(`Giá: ${Number(md.order_total).toLocaleString()} đ`);
+    if (!isReply && md.order_total)
+      details.push(`Giá: ${Number(md.order_total).toLocaleString()} đ`);
     if (isReply) {
       if (md.product_name) details.push(`Sản phẩm: ${md.product_name}`);
       if (md.reply_text) details.push(`Trả lời: ${md.reply_text}`);
@@ -30,7 +34,10 @@ const NotificationDropdown = ({ userId, showDropdown, setShowDropdown }) => {
   return (
     <div
       className="action-item"
-      onMouseEnter={() => { setShowDropdown(true); handleHover(); }}
+      onMouseEnter={() => {
+        setShowDropdown(true);
+        handleHover();
+      }}
       onMouseLeave={() => setShowDropdown(false)}
     >
       <button className="action-btn" aria-label="Thông báo">
@@ -44,7 +51,11 @@ const NotificationDropdown = ({ userId, showDropdown, setShowDropdown }) => {
         <div className="dropdown-panel noti-panel">
           <div className="dropdown-header">
             <span>Thông báo mới nhận</span>
-            <MoreHorizontal size={18} className="text-muted" style={{ cursor: 'pointer' }} />
+            <MoreHorizontal
+              size={18}
+              className="text-muted"
+              style={{ cursor: "pointer" }}
+            />
           </div>
 
           <div className="noti-scroll-area">
@@ -62,7 +73,11 @@ const NotificationDropdown = ({ userId, showDropdown, setShowDropdown }) => {
                     onClick={() => navigate("/notifications")}
                   >
                     {noti.thumbnail ? (
-                      <img src={noti.thumbnail} alt="thumb" className="noti-thumb" />
+                      <img
+                        src={noti.thumbnail}
+                        alt="thumb"
+                        className="noti-thumb"
+                      />
                     ) : (
                       <div className="noti-icon-placeholder">
                         <Bell size={18} color="#94a3b8" />
@@ -70,20 +85,33 @@ const NotificationDropdown = ({ userId, showDropdown, setShowDropdown }) => {
                     )}
 
                     <div className="noti-content">
-                      <div className="noti-title text-truncate" style={{ maxWidth: '260px' }}>
+                      <div
+                        className="noti-title text-truncate"
+                        style={{ maxWidth: "260px" }}
+                      >
                         {title}
                       </div>
                       <div className="noti-meta">
                         {details.map((line, i) => (
-                          <div key={i} className="noti-meta-line text-truncate" style={{ maxWidth: '260px' }}>
+                          <div
+                            key={i}
+                            className="noti-meta-line text-truncate"
+                            style={{ maxWidth: "260px" }}
+                          >
                             {line}
                           </div>
                         ))}
                       </div>
                       <span className="noti-time">
-                        {new Date(noti.created_at || noti.time).toLocaleString("vi-VN", {
-                          hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit'
-                        })}
+                        {new Date(noti.created_at || noti.time).toLocaleString(
+                          "vi-VN",
+                          {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            day: "2-digit",
+                            month: "2-digit",
+                          }
+                        )}
                       </span>
                     </div>
                   </div>
@@ -92,7 +120,10 @@ const NotificationDropdown = ({ userId, showDropdown, setShowDropdown }) => {
             )}
           </div>
 
-          <button className="view-all-btn" onClick={() => navigate("/notifications")}>
+          <button
+            className="view-all-btn"
+            onClick={() => navigate("/notifications")}
+          >
             Xem tất cả thông báo
           </button>
         </div>

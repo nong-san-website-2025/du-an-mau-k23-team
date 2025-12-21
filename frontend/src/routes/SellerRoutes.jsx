@@ -17,9 +17,10 @@ import SellerMessages from "../features/seller_center/pages/SellerMessages";
 
 // CHỈ IMPORT DUY NHẤT COMPONENT NÀY CHO TRANG KHUYẾN MÃI
 import PromotionSeller from "../features/seller_center/pages/PromotionSeller/PromotionPage";
-import OrdersDelivered from './../features/seller_center/pages/OrderSeller/OrdersDelivered';
-import OrdersCancelled from './../features/seller_center/pages/OrderSeller/OrdersCancelled';
+import OrdersDelivered from "./../features/seller_center/pages/OrderSeller/OrdersDelivered";
+import OrdersCancelled from "./../features/seller_center/pages/OrderSeller/OrdersCancelled";
 import SellerWallet from "../features/seller_center/pages/SellerWallet";
+import NotificationsPage from "../features/seller_center/pages/NotificationsPage";
 
 export const sellerRoutes = [
   <Route element={<SellerPrivateRoute />} key="seller-protect">
@@ -43,10 +44,14 @@ export const sellerRoutes = [
       {/* <Route path="/flash-sales" element={<FlashSales />} /> */}
       <Route path="reviews" element={<ProductReviews />} />
       <Route path="complaints" element={<SellerComplaintsPage />} />
-      
+
       {/* === ROUTE DUY NHẤT CHO TOÀN BỘ CHỨC NĂNG KHUYẾN MÃI === */}
       <Route path="promotions" element={<PromotionSeller />} />
 
+      <Route
+        path="/seller-center/notifications"
+        element={<NotificationsPage />}
+      />
     </Route>
-  </Route>
+  </Route>,
 ];

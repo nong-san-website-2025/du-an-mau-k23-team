@@ -16,6 +16,7 @@ export default function SellerLayout() {
   const { token } = theme.useToken();
 
   const isMobile = !screens.md;
+  
 
   const toggleSidebar = () => {
     if (isMobile) {

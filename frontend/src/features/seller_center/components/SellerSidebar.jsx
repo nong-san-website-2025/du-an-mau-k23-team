@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { Menu, Layout, Tooltip } from "antd";
+import { Menu, Layout, Tooltip, Badge } from "antd";
 import {
   DashboardOutlined,
   ShopOutlined,
@@ -11,8 +11,11 @@ import {
   WarningOutlined,
   WechatOutlined,
   WalletOutlined,
+  BellOutlined,
 } from "@ant-design/icons";
 import { useNavigate, useLocation } from "react-router-dom";
+import useUserProfile from "../../users/services/useUserProfile"; // Import để lấy userId
+import { useNotificationLogic } from "../../../layout/hooks/useNotificationLogic"; // Dùng hook chung
 import "../styles/SellerSidebar.css";
 
 const { Sider } = Layout;
@@ -20,22 +23,45 @@ const { Sider } = Layout;
 export default function SellerSidebar({ collapsed, isMobile, onItemClick }) {
   const navigate = useNavigate();
   const location = useLocation();
+  
+  // 1. Lấy thông tin User để truyền vào hook thông báo
+  const userProfile = useUserProfile();
+  
+  // 2. Sử dụng Hook logic đã viết (Hook này đã lo cả Fetch ban đầu + WebSocket)
+  const { unreadCount } = useNotificationLogic(userProfile?.id, navigate);
 
-  const menuItems = [
+  // 3. Định nghĩa Menu Items
+  const menuItems = useMemo(() => [
     {
       key: "/seller-center/dashboard",
       icon: <DashboardOutlined />,
       label: "Tổng quan",
     },
     { type: "divider" },
-    { key: "/seller-center/messages", icon: <WechatOutlined />, label: "Tin nhắn" },
+    {
+      key: "/seller-center/messages",
+      icon: <WechatOutlined />,
+      label: "Tin nhắn",
+    },
+    {
+      key: "/seller-center/notifications",
+      icon: (
+        <Badge
+          count={unreadCount} // Lấy từ Hook
+          overflowCount={99}
+          size="small"
+          offset={[5, 0]}
+        >
+          <BellOutlined />
+        </Badge>
+      ),
+      label: "Thông báo",
+    },
     {
       key: "products",
       icon: <AppstoreOutlined />,
       label: "Sản phẩm",
-      children: [
-        { key: "/seller-center/products", label: "Quản lý sản phẩm" },
-      ],
+      children: [{ key: "/seller-center/products", label: "Quản lý sản phẩm" }],
     },
     {
       key: "orders",
@@ -48,7 +74,11 @@ export default function SellerSidebar({ collapsed, isMobile, onItemClick }) {
         { key: "/seller-center/orders/cancelled", label: "Đơn đã hủy" },
       ],
     },
-    { key: "/seller-center/finance", icon: <DollarOutlined />, label: "Doanh thu" },
+    {
+      key: "/seller-center/finance",
+      icon: <DollarOutlined />,
+      label: "Doanh thu",
+    },
     {
       key: "/seller-center/wallet",
       icon: <WalletOutlined />,
@@ -74,17 +104,18 @@ export default function SellerSidebar({ collapsed, isMobile, onItemClick }) {
       icon: <ShopOutlined />,
       label: "Cửa hàng",
     },
-  ];
+  ], [unreadCount]); // Re-render menu khi số lượng tin nhắn thay đổi
 
   const defaultOpenKeys = useMemo(() => {
     const foundParent = menuItems.find((item) =>
       item.children?.some((child) => child.key === location.pathname)
     );
     return foundParent ? [foundParent.key] : [];
-  }, [location.pathname]);
+  }, [location.pathname, menuItems]);
 
   const handleMenuClick = ({ key }) => {
     navigate(key);
+    // Lưu ý: Việc setUnreadCount(0) nên để trang SellerNotificationPage xử lý khi người dùng vào xem
     if (isMobile && onItemClick) onItemClick();
   };
 
@@ -95,55 +126,39 @@ export default function SellerSidebar({ collapsed, isMobile, onItemClick }) {
       collapsed={collapsed}
       width={250}
       theme="light"
-      className="seller-sidebar h-screen left-0 top-0 bottom-0 z-50"
+      className="seller-sidebar h-screen"
       style={{
         position: isMobile ? "relative" : "fixed",
+        left: 0,
+        top: 0,
+        bottom: 0,
+        zIndex: 50,
         borderRight: "1px solid #e5e7eb",
         boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)",
       }}
     >
-      {/* --- LOGO AREA --- */}
       <div
-        className="flex items-center justify-center cursor-pointer border-b border-gray-200 bg-white px-4 transition-all duration-300"
+        className="flex items-center justify-center cursor-pointer border-b border-gray-200 bg-white px-4"
         style={{ height: 64 }}
       >
-        <Tooltip
-          title={collapsed ? "Seller Center" : ""}
-          placement="right"
-        >
+        <Tooltip title={collapsed ? "Seller Center" : ""} placement="right">
           <img
             src="/assets/logo/defaultLogo.png"
             alt="Seller"
-            className="h-10 w-auto object-contain transition-all duration-300"
+            className="h-10 w-auto object-contain"
           />
         </Tooltip>
-
-        {!collapsed && (
-          <span
-            className="ml-2 font-bold text-gray-800 whitespace-nowrap transition-opacity duration-200 custom-title-logo"
-            style={{ fontSize: "26px", fontWeight: 600, marginTop: 10 }}
-          >
-          </span>
-        )}
       </div>
 
-      {/* --- SCROLLABLE MENU AREA --- */}
-      <div
-        className="seller-sidebar-menu overflow-y-auto"
-        style={{ height: "calc(100vh - 64px)" }}
-      >
+      <div className="overflow-y-auto" style={{ height: "calc(100vh - 64px)" }}>
         <Menu
           mode="inline"
           selectedKeys={[location.pathname]}
           defaultOpenKeys={defaultOpenKeys}
           items={menuItems}
           onClick={handleMenuClick}
-          style={{
-            borderRight: 0,
-            paddingTop: "8px",
-            paddingBottom: "8px",
-          }}
           className="seller-menu"
+          style={{ borderRight: 0, paddingTop: "8px" }}
         />
       </div>
     </Sider>

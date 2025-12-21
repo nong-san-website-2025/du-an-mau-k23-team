@@ -1,7 +1,6 @@
-// src/pages/DashboardPage.jsx
-import React, { useEffect, useState } from "react";
+import React from "react";
 import axios from "axios";
-import { Row, Col, Card, Typography, Badge } from "antd";
+import { Row, Col, Card, Typography, Badge, Spin } from "antd";
 import {
   FireOutlined,
   ShoppingOutlined,
@@ -10,6 +9,7 @@ import {
   UserAddOutlined,
   StopOutlined,
 } from "@ant-design/icons";
+import { useQuery } from "@tanstack/react-query"; 
 import RevenueChart from "../components/Dashboard/RevenueChart";
 import OrderPieChart from "../components/Dashboard/OrderPieChart";
 import TopSellingProducts from "../components/Dashboard/TopSellingProducts";
@@ -20,36 +20,52 @@ import { useTranslation } from "react-i18next";
 const { Title } = Typography;
 
 export default function DashboardPage() {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
   const { t } = useTranslation();
-  const [debugOrders, setDebugOrders] = useState([]);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const token = localStorage.getItem("token");
-        const response = await axios.get(
-          "http://127.0.0.1:8000/api/dashboard/",
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-        setData(response.data);
-      } catch (err) {
-        console.error("❌ Dashboard API error:", err.response || err);
-      } finally {
-        setLoading(false);
-      }
-    };
+  // ✅ 1. Logic Fetch dữ liệu từ API
+  const fetchData = async () => {
+    const token = localStorage.getItem("token");
+    const response = await axios.get("http://127.0.0.1:8000/api/dashboard/", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response.data;
+  };
 
-    fetchData();
-  }, []);
+  // ✅ 2. Cấu hình Real-time với React Query
+  const { data, isLoading, isError, dataUpdatedAt } = useQuery({
+    queryKey: ["dashboardData"],
+    queryFn: fetchData,
+    refetchInterval: 10000, // Tự động làm mới mỗi 10 giây
+    keepPreviousData: true, // Giúp giao diện không bị giật khi đang tải lại
+  });
 
-  if (loading) return <div>Loading...</div>;
-  if (!data) return <div>Error loading data</div>;
+  // ✅ 3. Trạng thái tải dữ liệu lần đầu (Loading)
+  if (isLoading) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          height: "100vh",
+        }}
+      >
+        <Spin size="large" tip="Đang tải dữ liệu realtime..." />
+      </div>
+    );
+  }
 
-  // ✅ KPI cards (dùng fallback nếu backend chưa trả)
+  // ✅ 4. Trạng thái lỗi kết nối
+  if (isError || !data) {
+    return (
+      <div style={{ padding: 40, textAlign: "center" }}>
+        <Title level={4} type="danger">Lỗi kết nối Server!</Title>
+        <p>Vui lòng kiểm tra lại API Backend hoặc Token đăng nhập.</p>
+      </div>
+    );
+  }
+
+  // ✅ 5. Chuẩn hóa dữ liệu cho các thẻ KPI
   const kpis = [
     {
       title: "Tổng doanh thu",
@@ -89,48 +105,43 @@ export default function DashboardPage() {
     },
   ];
 
-  // ✅ Chuẩn hóa dữ liệu PieChart
-  // ✅ Chuẩn hóa dữ liệu PieChart → [{status, count}]
+  // ✅ 6. Chuẩn hóa dữ liệu cho biểu đồ tròn (OrderPieChart)
   let ordersPieData = [];
-
   if (Array.isArray(data.orders_by_status)) {
-    // Backend trả array
-    ordersPieData = Array.isArray(data.orders_by_status)
-      ? data.orders_by_status
-      : [];
-  } else if (
-    typeof data.orders_by_status === "object" &&
-    data.orders_by_status !== null
-  ) {
-    // Backend trả object
-    ordersPieData = Object.entries(data.orders_by_status).map(
-      ([key, value]) => ({
-        status: key,
-        count: value ?? 0,
-      })
-    );
-  } else {
-    // fallback an toàn
-    ordersPieData = [];
+    ordersPieData = data.orders_by_status;
+  } else if (typeof data.orders_by_status === "object" && data.orders_by_status !== null) {
+    ordersPieData = Object.entries(data.orders_by_status).map(([key, value]) => ({
+      status: key,
+      count: value ?? 0,
+    }));
   }
 
-  console.table(ordersPieData); // 🚀 debug xem đầu vào
-
+  // ✅ 7. Layout JSX (Giữ nguyên cấu trúc Row/Col của bạn)
   return (
     <div style={{ padding: 24, background: "#f5f5f5", minHeight: "100vh" }}>
+      
+      {/* Header: Tiêu đề & Trạng thái cập nhật */}
       <Row justify="space-between" align="middle" style={{ marginBottom: 24 }}>
-        <Title level={2}>{t("Tổng quan")}</Title>
+        <Col>
+          <Title level={2} style={{ marginBottom: 0 }}>{t("Tổng quan")}</Title>
+          <small style={{ color: "gray" }}>
+            Cập nhật lần cuối lúc: {new Date(dataUpdatedAt).toLocaleTimeString()}
+          </small>
+        </Col>
+        <Badge status="processing" text="Dữ liệu trực tuyến (10s)" />
       </Row>
 
-      {/* KPI Cards */}
+      {/* KPI Cards Section */}
       <Row gutter={[16, 16]}>
         {kpis.map((kpi, idx) => (
           <Col xs={24} sm={12} md={8} key={idx}>
-            <Card>
+            <Card hoverable>
               <Row align="middle" justify="space-between">
                 <Col>
-                  <Title level={5}>{kpi.title}</Title>
-                  <Badge color={kpi.color} text={kpi.value} />
+                  <Title level={5} style={{ color: "#8c8c8c", fontWeight: 400 }}>
+                    {kpi.title}
+                  </Title>
+                  <Badge color={kpi.color} text={<b style={{ fontSize: 16 }}>{kpi.value}</b>} />
                 </Col>
                 <Col style={{ fontSize: 32 }}>{kpi.icon}</Col>
               </Row>
@@ -139,7 +150,7 @@ export default function DashboardPage() {
         ))}
       </Row>
 
-      {/* Charts */}
+      {/* Charts Section: Doanh thu & Trạng thái đơn hàng */}
       <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
         <Col xs={24} md={14}>
           <Card title={t("Biểu đồ doanh thu theo tháng")}>
@@ -153,14 +164,14 @@ export default function DashboardPage() {
         </Col>
       </Row>
 
-      {/* Top selling products */}
+      {/* Top Selling Products Section */}
       <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
         <Col xs={24}>
           <TopSellingProducts />
         </Col>
       </Row>
 
-      {/* Recent orders */}
+      {/* Recent Orders Section */}
       <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
         <Col xs={24}>
           <Card title="Đơn hàng gần nhất">
@@ -169,7 +180,7 @@ export default function DashboardPage() {
         </Col>
       </Row>
 
-      {/* Recent disputes */}
+      {/* Recent Disputes Section */}
       <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
         <Col xs={24}>
           <Card title="Khiếu nại gần nhất">
