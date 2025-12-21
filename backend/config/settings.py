@@ -224,6 +224,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://192.168.2.3:8100",
     "http://192.168.68.117:8100",
     "http://192.168.2.3:3000",
+    "http://172.16.137.72:3000"
 ]
 CORS_ALLOW_METHODS = [
     'DELETE',

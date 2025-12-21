@@ -1,41 +1,22 @@
 import React, { useState, useEffect } from "react";
 import {
-  Form,
-  Input,
-  Select,
-  Switch,
-  DatePicker,
-  InputNumber,
-  Button,
-  message,
-  Space,
-  Upload,
-  Row,
-  Col,
-  Card,
-  Typography,
-  Tag,
-  Alert,
-  Divider
+  Form, Input, Select, Switch, DatePicker, InputNumber, Button,
+  message, Space, Upload, Row, Col, Card, Typography, Tag, Divider, Alert
 } from "antd";
 import {
-  InboxOutlined,
-  LinkOutlined,
-  SaveOutlined,
-  PictureOutlined,
-  CalendarOutlined,
-  SettingOutlined,
-  RocketOutlined,
-  CheckCircleOutlined,
-  StopOutlined
+  InboxOutlined, SaveOutlined, PictureOutlined, CalendarOutlined, 
+  RocketOutlined, FileImageOutlined, PlusOutlined
 } from "@ant-design/icons";
 import moment from "moment";
 import ImgCrop from "antd-img-crop";
-import API from "../../../login_register/services/api";
+
+// --- SỬA ĐƯỜNG DẪN IMPORT TẠI ĐÂY ---
+// Lùi 2 cấp (../../) để ra thư mục src/features/admin/
+import { getAdSlots } from "../../services/marketingApi";
+import axiosClient from "../../services/axiosClient";
 
 const { Dragger } = Upload;
 const { RangePicker } = DatePicker;
-const { Text, Title } = Typography;
 
 const BannerForm = ({ bannerId, onSuccess, onCancel }) => {
   const [form] = Form.useForm();
@@ -44,33 +25,26 @@ const BannerForm = ({ bannerId, onSuccess, onCancel }) => {
   const [fileList, setFileList] = useState([]);
   const [selectedSlotConfig, setSelectedSlotConfig] = useState(null);
 
-  // --- DATA FETCHING (Giữ nguyên logic cũ) ---
+  // LOGIC: Kiểm tra Slot có phải Carousel không (để bật chế độ 5 ảnh)
+  const isCarouselSlot = selectedSlotConfig?.name?.toLowerCase().includes("carousel");
+  
+  // Bật Batch Upload nếu là Carousel
+  const isBatchUpload = isCarouselSlot;
+
   useEffect(() => {
-    const fetchData = async () => {
+    const initData = async () => {
       try {
-        const slotsRes = await API.get("/marketing/slots/");
-        setSlots(slotsRes.data);
+        const slotsRes = await getAdSlots();
+        const listSlots = slotsRes.data || slotsRes;
+        setSlots(listSlots);
 
         if (bannerId) {
-          const detailRes = await API.get(`/marketing/banners/${bannerId}/`);
-          const data = detailRes.data;
-
-          if (data.image) {
-            setFileList([{
-              uid: '-1',
-              name: 'current-banner',
-              status: 'done',
-              url: data.image,
-            }]);
-          }
-
-          const slotId = typeof data.slot === 'object' ? data.slot.id : data.slot;
-          const foundSlot = slotsRes.data.find(s => s.id === slotId);
-          if (foundSlot) setSelectedSlotConfig(foundSlot);
+          const res = await axiosClient.get(`/marketing/banners/${bannerId}/`);
+          const data = res.data || res;
 
           form.setFieldsValue({
             title: data.title,
-            slot: slotId,
+            slot: typeof data.slot === 'object' ? data.slot.id : data.slot,
             priority: data.priority,
             is_active: data.is_active,
             click_url: data.click_url,
@@ -79,276 +53,223 @@ const BannerForm = ({ bannerId, onSuccess, onCancel }) => {
               data.end_at ? moment(data.end_at) : null
             ],
           });
+
+          if (data.image) {
+            setFileList([{
+              uid: '-1',
+              name: 'anh-hien-tai.png',
+              status: 'done',
+              url: data.image,
+            }]);
+          }
+
+          const currentSlot = listSlots.find(s => s.id === (typeof data.slot === 'object' ? data.slot.id : data.slot));
+          if (currentSlot) setSelectedSlotConfig(currentSlot);
         }
-      } catch (error) {
-        message.error("Không tải được dữ liệu.");
+      } catch (err) {
+        message.error("Lỗi tải dữ liệu");
       }
     };
-    fetchData();
+    initData();
   }, [bannerId, form]);
 
-  // --- HANDLERS ---
-  const handleSlotChange = (value) => {
-    const slot = slots.find((s) => s.id === value);
-    setSelectedSlotConfig(slot || null);
-    // Optional: Reset ảnh khi đổi slot để ép user chọn lại đúng tỉ lệ
-    // setFileList([]); 
-  };
+  const handleSlotChange = (val) => {
+    const s = slots.find(item => item.id === val);
+    setSelectedSlotConfig(s);
 
-  const handleUploadChange = ({ fileList: newFileList }) => {
-    setFileList(newFileList.slice(-1));
+    const isNewSlotCarousel = s?.name?.toLowerCase().includes("carousel");
+    if (!isNewSlotCarousel && fileList.length > 1) {
+        message.warning("Vị trí này chỉ cho phép 1 ảnh. Hệ thống đã giữ lại ảnh đầu tiên.");
+        setFileList([fileList[0]]);
+    }
   };
 
   const onFinish = async (values) => {
-    setLoading(true);
-    const formData = new FormData();
-    // ... (Logic append formData giữ nguyên như code cũ của bạn)
-    formData.append("title", values.title || "");
-    formData.append("slot_id", values.slot);
-    formData.append("priority", values.priority || 0);
-    formData.append("is_active", values.is_active ? "true" : "false");
-    formData.append("click_url", values.click_url || "");
-
-    if (values.date_range?.[0]) formData.append("start_at", values.date_range[0].toISOString());
-    if (values.date_range?.[1]) formData.append("end_at", values.date_range[1].toISOString());
-
-    if (fileList.length > 0 && fileList[0].originFileObj) {
-      formData.append("image", fileList[0].originFileObj);
-    } else if (!bannerId && fileList.length === 0) {
-        message.error("Vui lòng tải lên ảnh banner!");
-        setLoading(false);
-        return;
+    if (fileList.length === 0) {
+      message.error("Vui lòng chọn ít nhất 1 ảnh!");
+      return;
     }
+
+    setLoading(true);
 
     try {
       const config = { headers: { "Content-Type": "multipart/form-data" } };
-      if (bannerId) {
-        await API.put(`/marketing/banners/${bannerId}/`, formData, config);
-        message.success("Cập nhật thành công!");
-      } else {
-        await API.post("/marketing/banners/", formData, config);
-        message.success("Tạo mới thành công!");
-      }
-      onSuccess();
+      
+      const createFormData = (fileOrigin, priorityOffset = 0) => {
+        const formData = new FormData();
+        formData.append("title", values.title);
+        formData.append("slot_id", values.slot);
+        formData.append("priority", (values.priority || 0) + priorityOffset);
+        formData.append("is_active", values.is_active ? "true" : "false");
+        formData.append("click_url", values.click_url || "");
+        
+        if (values.date_range) {
+          if (values.date_range[0]) formData.append("start_at", values.date_range[0].toISOString());
+          if (values.date_range[1]) formData.append("end_at", values.date_range[1].toISOString());
+        }
+
+        if (fileOrigin) {
+          formData.append("image", fileOrigin);
+        }
+        return formData;
+      };
+
+      const requestPromises = [];
+
+      fileList.forEach((file, index) => {
+          const isFirstFile = index === 0;
+          const isNewImage = !!file.originFileObj; 
+
+          if (isFirstFile) {
+              const formData = createFormData(isNewImage ? file.originFileObj : null);
+              if (bannerId) {
+                  requestPromises.push(axiosClient.put(`/marketing/banners/${bannerId}/`, formData, config));
+              } else {
+                  requestPromises.push(axiosClient.post("/marketing/banners/", formData, config));
+              }
+          } 
+          else if (isNewImage) {
+              const formData = createFormData(file.originFileObj, index);
+              requestPromises.push(axiosClient.post("/marketing/banners/", formData, config));
+          }
+      });
+
+      await Promise.all(requestPromises);
+
+      const msg = fileList.length > 1 
+          ? `Thành công! Đã xử lý ${fileList.length} ảnh.` 
+          : "Lưu thành công!";
+      message.success(msg);
+      
+      onSuccess(); 
     } catch (err) {
-      message.error("Có lỗi xảy ra, vui lòng thử lại.");
+      console.error(err);
+      message.error("Lỗi lưu dữ liệu. Vui lòng thử lại.");
     } finally {
       setLoading(false);
     }
   };
 
-  // Tính aspect ratio
-  const aspectWidth = selectedSlotConfig?.width_hint || 16;
-  const aspectHeight = selectedSlotConfig?.height_hint || 9;
-  const aspectRatio = aspectWidth / aspectHeight;
+  const aspect = selectedSlotConfig ? (selectedSlotConfig.width_hint / selectedSlotConfig.height_hint) : 16/9;
+
+  const UploadComponent = (
+    <Dragger
+      fileList={fileList}
+      multiple={isBatchUpload}           
+      maxCount={isBatchUpload ? 5 : 1}
+      beforeUpload={() => false}
+      onChange={({ fileList: newFileList }) => setFileList(newFileList)}
+      listType="picture-card"
+      className="banner-dragger"
+      disabled={!selectedSlotConfig}
+    >
+      {fileList.length < (isBatchUpload ? 5 : 1) && (
+        <div style={{ padding: '20px 0' }}>
+          <PlusOutlined style={{ fontSize: 30, color: selectedSlotConfig ? '#1890ff' : '#d9d9d9' }} />
+          <div style={{ marginTop: 8, color: '#666' }}>
+             {isBatchUpload ? "Thêm ảnh" : "Chọn ảnh"}
+          </div>
+        </div>
+      )}
+    </Dragger>
+  );
 
   return (
-    <Form
-      form={form}
-      layout="vertical"
-      onFinish={onFinish}
-      initialValues={{ priority: 0, is_active: true }}
-      className="banner-form-container"
-    >
-      <Row gutter={[24, 24]}>
-        
-        {/* === CỘT CHÍNH (MAIN CONTENT) === */}
-        <Col xs={24} lg={16}>
-          {/* Card 1: Thông tin cơ bản */}
-          <Card 
-            title={<Space><PictureOutlined /><span>Nội dung Banner</span></Space>} 
-            bordered={false} 
-            className="shadow-sm mb-4"
-          >
-             <Form.Item
-              label="Tiêu đề Banner"
-              name="title"
-              rules={[{ required: true, message: "Vui lòng nhập tiêu đề banner" }]}
-            >
-              <Input placeholder="Ví dụ: Siêu Sale 11.11 - Giảm giá 50%" size="large" />
+    <Form form={form} layout="vertical" onFinish={onFinish} initialValues={{ is_active: true, priority: 0 }}>
+      <Row gutter={24}>
+        <Col span={15}>
+          <Card title={<Space><PictureOutlined /> Thông tin chính</Space>} size="small">
+            <Form.Item name="title" label="Tiêu đề Banner" rules={[{ required: true, message: "Nhập tiêu đề" }]}>
+              <Input placeholder="Ví dụ: Khuyến mãi..." />
             </Form.Item>
-
-            <Form.Item
-              label="Liên kết đích (URL)"
-              name="click_url"
-              tooltip="Người dùng sẽ được chuyển hướng đến đây khi click vào ảnh."
-            >
-              <Input prefix={<LinkOutlined className="text-muted" />} placeholder="https://greenfarm.com/san-pham/..." size="large" />
+            <Form.Item name="click_url" label="Link khi click vào">
+              <Input placeholder="https://..." />
             </Form.Item>
-          </Card>
+            
+            <Form.Item label="Hình ảnh Banner" required>
+               <div style={{ marginBottom: 10 }}>
+                 {!selectedSlotConfig ? (
+                    <Alert message="Vui lòng chọn Vị trí hiển thị bên phải trước!" type="warning" showIcon />
+                 ) : (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Tag color="blue" style={{ fontSize: 14, padding: '5px 10px' }}>
+                            <FileImageOutlined /> Size gợi ý: <b>{selectedSlotConfig.width_hint} x {selectedSlotConfig.height_hint} px</b>
+                        </Tag>
+                        {isBatchUpload && <Tag color="green">Cho phép 5 ảnh (Slide)</Tag>}
+                    </div>
+                 )}
+               </div>
 
-          {/* Card 2: Hình ảnh (Quan trọng nhất) */}
-          <Card 
-            title={<Space><InboxOutlined /><span>Hình ảnh hiển thị</span></Space>} 
-            bordered={false} 
-            className="shadow-sm"
-          >
-             {/* Thông báo hướng dẫn thông minh */}
-             {!selectedSlotConfig ? (
-                <Alert 
-                    message="Vui lòng chọn 'Vị trí hiển thị' ở cột bên phải trước khi tải ảnh." 
-                    type="warning" 
-                    showIcon 
-                    style={{ marginBottom: 16 }}
-                />
-             ) : (
-                <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <Tag color="blue" style={{ fontSize: 14, padding: '4px 10px' }}>
-                        Tỉ lệ chuẩn: {selectedSlotConfig.width_hint} x {selectedSlotConfig.height_hint} px
-                    </Tag>
-                    <Text type="secondary" style={{ fontSize: 13 }}>Hệ thống sẽ hỗ trợ cắt ảnh theo tỉ lệ này.</Text>
-                </div>
-             )}
-
-            <Form.Item name="image" noStyle>
-                <ImgCrop 
-                    rotationSlider 
-                    aspect={aspectRatio} 
-                    showGrid 
-                    showReset
-                    quality={1}
-                    modalTitle="Cắt ảnh banner"
-                    modalWidth={800} // Modal to hơn để dễ cắt
-                >
-                  <Dragger
-                    fileList={fileList}
-                    onChange={handleUploadChange}
-                    beforeUpload={() => false}
-                    listType="picture-card" // Đổi kiểu hiển thị sang card cho đẹp
-                    maxCount={1}
-                    showUploadList={{ showPreviewIcon: false }} // Ẩn icon preview mặc định xấu xí
-                    style={{ width: '100%' }}
-                    disabled={!selectedSlotConfig} // Disable nếu chưa chọn slot
-                    className="banner-dragger"
-                  >
-                    {fileList.length < 1 && (
-                        <div style={{ padding: '40px 0' }}>
-                            <p className="ant-upload-drag-icon">
-                                <InboxOutlined style={{ color: selectedSlotConfig ? '#1890ff' : '#d9d9d9' }} />
-                            </p>
-                            <p className="ant-upload-text" style={{ fontSize: 16 }}>
-                                Nhấn hoặc kéo thả ảnh vào đây
-                            </p>
-                            <p className="ant-upload-hint">Hỗ trợ JPG, PNG, WEBP (Max 5MB)</p>
-                        </div>
-                    )}
-                  </Dragger>
-                </ImgCrop>
+               <Form.Item name="image" noStyle>
+                 {isBatchUpload ? (
+                   UploadComponent
+                 ) : (
+                   <ImgCrop rotationSlider aspect={aspect} showGrid modalTitle="Cắt ảnh" quality={1}>
+                     {UploadComponent}
+                   </ImgCrop>
+                 )}
+               </Form.Item>
+               
+               {isBatchUpload && (
+                   <div style={{ fontSize: 12, color: '#999', marginTop: 5 }}>
+                       * Slide hỗ trợ nhiều ảnh. Ảnh sẽ được tự động tạo thành các banner riêng biệt.
+                   </div>
+               )}
             </Form.Item>
           </Card>
         </Col>
 
-        {/* === CỘT PHỤ (SIDEBAR SETTINGS) === */}
-        <Col xs={24} lg={8}>
-            {/* Card 3: Xuất bản & Trạng thái */}
-            <Card 
-                title={<Space><RocketOutlined /><span>Thiết lập hiển thị</span></Space>} 
-                bordered={false} 
-                className="shadow-sm mb-4"
-                bodyStyle={{ padding: 20 }}
-            >
-                <Form.Item
-                    label="Vị trí hiển thị (Slot)"
-                    name="slot"
-                    rules={[{ required: true, message: "Bắt buộc chọn" }]}
-                >
-                    <Select 
-                        placeholder="-- Chọn vị trí --" 
-                        size="large"
-                        onChange={handleSlotChange}
-                        optionLabelProp="label"
-                        listHeight={400}
-                    >
-                        {slots.map((s) => (
-                            <Select.Option key={s.id} value={s.id} label={s.name}>
-                                <div className="py-1">
-                                    <div style={{ fontWeight: 500 }}>{s.name}</div>
-                                    <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>
-                                        Size: {s.width_hint || 'Auto'} x {s.height_hint || 'Auto'}
-                                    </div>
-                                </div>
-                            </Select.Option>
-                        ))}
-                    </Select>
-                </Form.Item>
+        <Col span={9}>
+          <Card title={<Space><RocketOutlined /> Thiết lập</Space>} size="small">
+            <Form.Item name="slot" label="Vị trí hiển thị" rules={[{ required: true }]}>
+              <Select placeholder="Chọn vị trí" onChange={handleSlotChange}>
+                {slots.map(s => (
+                  <Select.Option key={s.id} value={s.id}>
+                    {s.name} 
+                    <span style={{ fontSize: 11, color: '#999', marginLeft: 5 }}>
+                       ({s.width_hint}x{s.height_hint})
+                    </span>
+                  </Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
 
-                <Form.Item label="Trạng thái" name="is_active" valuePropName="checked">
-                    <div style={{ background: '#f5f5f5', padding: '10px 15px', borderRadius: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        {form.getFieldValue('is_active') ? 
-                            <Text type="success" strong><CheckCircleOutlined /> Đang hiển thị</Text> : 
-                            <Text type="secondary"><StopOutlined /> Đang ẩn</Text>
-                        }
-                        <Switch />
-                    </div>
-                </Form.Item>
+            <Form.Item name="priority" label="Độ ưu tiên">
+              <InputNumber style={{ width: '100%' }} min={0} />
+            </Form.Item>
 
-                 <Form.Item label="Độ ưu tiên" name="priority" tooltip="Số càng lớn càng hiển thị trước">
-                    <InputNumber min={0} max={999} style={{ width: "100%" }} size="large" />
-                </Form.Item>
-            </Card>
+            <Form.Item name="is_active" label="Trạng thái" valuePropName="checked">
+              <Switch checkedChildren="Hiện" unCheckedChildren="Ẩn" />
+            </Form.Item>
+          </Card>
 
-             {/* Card 4: Lịch trình */}
-             <Card 
-                title={<Space><CalendarOutlined /><span>Lịch chạy Banner</span></Space>} 
-                bordered={false} 
-                className="shadow-sm"
-            >
-                 <Form.Item name="date_range" help="Để trống nếu muốn chạy vĩnh viễn">
-                    <RangePicker 
-                        showTime={{ format: 'HH:mm' }} 
-                        format="DD/MM/YYYY HH:mm" 
-                        style={{ width: '100%' }} 
-                        size="large"
-                        placeholder={['Bắt đầu', 'Kết thúc']}
-                    />
-                </Form.Item>
-            </Card>
+          <Card title={<Space><CalendarOutlined /> Thời gian chạy</Space>} size="small" style={{ marginTop: 16 }}>
+            <Form.Item name="date_range" help="Để trống nếu muốn chạy vĩnh viễn">
+              <RangePicker showTime format="DD/MM/YYYY HH:mm" style={{ width: '100%' }} />
+            </Form.Item>
+          </Card>
         </Col>
       </Row>
-
-      <div className="form-footer-action">
-          <Divider/>
-          <div style={{ textAlign: "right", paddingBottom: 20 }}>
-            <Space size="middle">
-                <Button onClick={onCancel} size="large" style={{ minWidth: 100 }}>Hủy bỏ</Button>
-                <Button 
-                    type="primary" 
-                    htmlType="submit" 
-                    icon={<SaveOutlined />} 
-                    loading={loading} 
-                    size="large"
-                    style={{ minWidth: 140, height: 45, fontSize: 16 }}
-                >
-                    {bannerId ? "Cập nhật" : "Đăng Banner"}
-                </Button>
-            </Space>
-          </div>
+      
+      <Divider />
+      <div style={{ textAlign: 'right' }}>
+        <Space>
+          <Button onClick={onCancel}>Hủy</Button>
+          <Button type="primary" htmlType="submit" icon={<SaveOutlined />} loading={loading}>
+            {bannerId ? "Lưu thay đổi" : "Tạo mới"}
+          </Button>
+        </Space>
       </div>
-
-        {/* Style CSS-in-JS nhanh cho component này */}
-        <style jsx="true">{`
-            .shadow-sm { box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-            .text-muted { color: #bfbfbf; }
-            .banner-dragger .ant-upload.ant-upload-select-picture-card {
-                width: 100% !important;
-                height: auto !important;
-                min-height: 200px;
-                background: #fafafa;
-                border: 2px dashed #d9d9d9;
-            }
-            .banner-dragger .ant-upload-list-picture-card-container {
-                width: 100% !important;
-                height: auto !important;
-            }
-            .banner-dragger .ant-upload-list-item {
-                height: 300px; /* Chiều cao preview ảnh */
-                object-fit: contain;
-                padding: 8px;
-            }
-            .banner-dragger .ant-upload-list-item-thumbnail img {
-                object-fit: contain !important;
-            }
-        `}</style>
+      
+      <style jsx="true">{`
+        .banner-dragger .ant-upload.ant-upload-select-picture-card {
+            width: 100% !important;
+            height: auto !important;
+        }
+        .banner-dragger .ant-upload-list-item-thumbnail img {
+            object-fit: contain !important;
+        }
+      `}</style>
     </Form>
   );
 };

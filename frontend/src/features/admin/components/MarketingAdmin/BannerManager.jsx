@@ -1,32 +1,17 @@
 import React, { useEffect, useState } from "react";
 import {
-  Button,
-  Table,
-  Modal,
-  Tag,
-  Space,
-  Image,
-  Select,
-  message,
-  Input,
-  Row,
-  Col,
+  Button, Table, Modal, Tag, Space, Image, Select, message, Input, Row, Col, Popconfirm
 } from "antd";
 import {
-  PlusOutlined,
-  EditOutlined,
-  DeleteOutlined,
-  SearchOutlined,
-  ReloadOutlined,
-  EyeOutlined,
-  StopOutlined,
+  PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, ReloadOutlined, 
+  EyeOutlined, StopOutlined, WarningOutlined, ClockCircleOutlined, ClearOutlined
 } from "@ant-design/icons";
 import moment from "moment";
 
-// IMPORT COMPONENTS
+// Import Component Form
 import BannerForm from "./BannerForm";
-import API from "../../../login_register/services/api";
-import ButtonAction from "../../../../components/ButtonAction"; // Đảm bảo đường dẫn import đúng
+import ButtonAction from "../../../../components/ButtonAction"; 
+import { getAdminBanners, getAdSlots, deleteBanner } from "../../services/marketingApi";
 
 const BannerManager = () => {
   const [banners, setBanners] = useState([]);
@@ -34,9 +19,13 @@ const BannerManager = () => {
   const [loading, setLoading] = useState(false);
 
   // Filter states
-  const [slotFilter, setSlotFilter] = useState(null);
+  const [slotFilter, setSlotFilter] = useState(null); // Lưu ID của slot
   const [searchText, setSearchText] = useState("");
 
+  // Selection states (Chọn nhiều)
+  const [selectedRowKeys, setSelectedRowKeys] = useState([]);
+
+  // Modal states
   const [showForm, setShowForm] = useState(false);
   const [editingBanner, setEditingBanner] = useState(null);
 
@@ -44,12 +33,15 @@ const BannerManager = () => {
     setLoading(true);
     try {
       const [resBanners, resSlots] = await Promise.all([
-        API.get("/marketing/banners/"),
-        API.get("/marketing/slots/"),
+        getAdminBanners(), 
+        getAdSlots(),      
       ]);
-      setBanners(resBanners.data);
-      setSlots(resSlots.data);
-    } catch {
+      // Reset selection khi reload data
+      setSelectedRowKeys([]);
+      setBanners(resBanners.data || resBanners);
+      setSlots(resSlots.data || resSlots);
+    } catch (error) {
+      console.error(error);
       message.error("Không thể tải dữ liệu marketing.");
     } finally {
       setLoading(false);
@@ -60,9 +52,10 @@ const BannerManager = () => {
     fetchData();
   }, []);
 
+  // Xóa 1 cái
   const handleDelete = async (id) => {
     try {
-      await API.delete(`/marketing/banners/${id}/`);
+      await deleteBanner(id);
       message.success("Đã xóa banner.");
       fetchData();
     } catch {
@@ -70,111 +63,132 @@ const BannerManager = () => {
     }
   };
 
-  // Logic lọc dữ liệu kết hợp
+  // Xóa nhiều cái (Bulk Delete)
+  const handleBulkDelete = async () => {
+    if (selectedRowKeys.length === 0) return;
+    
+    setLoading(true);
+    try {
+      // Vì API deleteBanner chỉ xóa 1 cái, ta dùng Promise.all để xóa danh sách
+      // Nếu Backend bạn có API xóa nhiều (VD: delete list IDs) thì dùng API đó sẽ tốt hơn
+      await Promise.all(selectedRowKeys.map(id => deleteBanner(id)));
+      
+      message.success(`Đã xóa ${selectedRowKeys.length} banner thành công!`);
+      fetchData();
+    } catch (error) {
+      console.error(error);
+      message.error("Có lỗi xảy ra khi xóa danh sách.");
+      setLoading(false);
+    }
+  };
+
+  // --- LOGIC LỌC ĐÃ ĐƯỢC SỬA (FIXED) ---
   const filteredBanners = banners.filter((b) => {
-    const matchSlot = slotFilter ? b.slot.code === slotFilter : true;
-    const matchSearch = searchText
-      ? b.title.toLowerCase().includes(searchText.toLowerCase())
-      : true;
-    return matchSlot && matchSearch;
+    // 1. Lọc theo Tiêu đề (Search Text)
+    const normalizedSearch = searchText.toLowerCase().trim();
+    const titleMatch = b.title 
+      ? b.title.toLowerCase().includes(normalizedSearch) 
+      : false;
+    
+    if (searchText && !titleMatch) return false;
+
+    // 2. Lọc theo Vị trí (Slot Filter)
+    if (slotFilter) {
+      // Backend có thể trả về slot dạng Object (có .id) hoặc dạng ID (số/chuỗi)
+      const bannerSlotId = (typeof b.slot === 'object' && b.slot !== null) 
+          ? b.slot.id 
+          : b.slot;
+      
+      // So sánh ID (ép về string để an toàn)
+      if (String(bannerSlotId) !== String(slotFilter)) {
+        return false;
+      }
+    }
+
+    return true;
   });
 
+  // Cấu hình cột bảng
   const columns = [
     {
       title: "Hình ảnh",
       dataIndex: "image",
       key: "image",
-      width: 150,
+      width: 120,
       render: (src) => (
-        <div style={{ borderRadius: 6, overflow: "hidden", border: "1px solid #f0f0f0" }}>
-          <Image
-            src={src}
-            alt="banner"
-            width={140}
-            height={70}
-            style={{ objectFit: "cover" }}
-            fallback="/placeholder-banner.png"
-            preview={{ mask: <EyeOutlined /> }}
-          />
-        </div>
+        <Image
+          src={src}
+          width={100}
+          height={50}
+          style={{ objectFit: "cover", borderRadius: 4, border: '1px solid #ddd' }}
+          fallback="https://via.placeholder.com/100x50"
+        />
       ),
     },
     {
       title: "Thông tin Banner",
       key: "info",
       render: (_, record) => (
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          <span style={{ fontWeight: 600, fontSize: 15 }}>{record.title}</span>
-          <Space size={4}>
-            <Tag color="geekblue">{record.slot?.name}</Tag>
-            {record.priority > 0 && <Tag color="gold">Ưu tiên: {record.priority}</Tag>}
-          </Space>
+        <div>
+          <div style={{ fontWeight: 600, fontSize: 15 }}>{record.title || "Chưa đặt tên"}</div>
+          <div style={{ marginTop: 4 }}>
+             {/* Hiển thị tên Slot nếu có, hoặc hiển thị ID */}
+             <Tag color="blue">{record.slot?.name || `Slot ID: ${record.slot}`}</Tag>
+             {record.priority > 0 && <Tag color="gold">Ưu tiên: {record.priority}</Tag>}
+          </div>
         </div>
       ),
     },
     {
-      title: "Thời gian hiển thị",
+      title: "Thời gian",
       key: "time",
       width: 200,
       render: (_, b) => (
         <div style={{ fontSize: 13, color: "#666" }}>
-          <div>
-            Bắt đầu: <span style={{ color: "#333" }}>{moment(b.start_at).format("DD/MM/YYYY HH:mm")}</span>
-          </div>
-          <div>
-            Kết thúc:{" "}
-            <span style={{ color: b.end_at ? "#333" : "green" }}>
-              {b.end_at ? moment(b.end_at).format("DD/MM/YYYY HH:mm") : "Vô thời hạn"}
-            </span>
-          </div>
+          <div>BĐ: {moment(b.start_at).format("DD/MM/YYYY HH:mm")}</div>
+          <div>KT: {b.end_at ? moment(b.end_at).format("DD/MM/YYYY HH:mm") : <span style={{color: 'green'}}>Vô hạn</span>}</div>
         </div>
       ),
     },
     {
       title: "Trạng thái",
-      dataIndex: "is_active",
-      key: "is_active",
-      width: 120,
+      key: "status",
+      width: 130,
       align: "center",
-      render: (active) =>
-        active ? (
-          <Tag icon={<EyeOutlined />} color="success">
-            Hiển thị
-          </Tag>
-        ) : (
-          <Tag icon={<StopOutlined />} color="default">
-            Đã ẩn
-          </Tag>
-        ),
+      render: (_, record) => {
+        const now = moment();
+        const start = moment(record.start_at);
+        const end = record.end_at ? moment(record.end_at) : null;
+
+        if (!record.is_active) return <Tag icon={<StopOutlined />} color="default">Đã ẩn</Tag>;
+        if (end && end.isBefore(now)) return <Tag icon={<WarningOutlined />} color="error">Hết hạn</Tag>;
+        if (start.isAfter(now)) return <Tag icon={<ClockCircleOutlined />} color="warning">Sắp chạy</Tag>;
+        return <Tag icon={<EyeOutlined />} color="success">Hiển thị</Tag>;
+      },
     },
     {
       title: "Thao tác",
       key: "actions",
-      width: 120,
+      width: 100,
       align: "center",
       render: (_, record) => (
         <ButtonAction
           record={record}
           actions={[
             {
-              actionType: "edit", // Sẽ tự động lấy màu Cyan từ ButtonAction
+              actionType: "edit",
               icon: <EditOutlined />,
-              tooltip: "Chỉnh sửa",
+              tooltip: "Sửa",
               onClick: (r) => {
                 setEditingBanner(r);
                 setShowForm(true);
               },
             },
             {
-              actionType: "delete", // Sẽ tự động lấy màu Đỏ từ ButtonAction
+              actionType: "delete",
               icon: <DeleteOutlined />,
               tooltip: "Xóa",
-              confirm: {
-                title: "Bạn chắc chắn muốn xóa banner này?",
-                description: "Hành động này không thể hoàn tác.",
-                okText: "Xóa",
-                cancelText: "Hủy",
-              },
+              confirm: { title: "Xóa banner này?", okText: "Xóa" },
               onClick: (r) => handleDelete(r.id),
             },
           ]}
@@ -183,42 +197,71 @@ const BannerManager = () => {
     },
   ];
 
+  // Cấu hình chọn dòng
+  const rowSelection = {
+    selectedRowKeys,
+    onChange: (newSelectedRowKeys) => {
+      setSelectedRowKeys(newSelectedRowKeys);
+    },
+  };
+
   return (
     <>
       <div style={{ marginBottom: 20 }}>
         <Row justify="space-between" align="middle" gutter={[16, 16]}>
-          <Col xs={24} md={16}>
+          <Col>
             <Space wrap>
+              {/* Input Tìm kiếm */}
               <Input
-                placeholder="Tìm kiếm theo tiêu đề..."
+                placeholder="Tìm tiêu đề..."
                 prefix={<SearchOutlined />}
-                style={{ width: 250 }}
+                style={{ width: 220 }}
+                value={searchText}
                 allowClear
                 onChange={(e) => setSearchText(e.target.value)}
               />
+              
+              {/* Select Lọc Slot (Đã sửa logic: Dùng ID làm value) */}
               <Select
                 placeholder="Lọc theo vị trí"
                 allowClear
                 style={{ width: 200 }}
                 value={slotFilter}
-                onChange={(v) => setSlotFilter(v)}
-                options={slots.map((s) => ({ label: s.name, value: s.code }))}
+                onChange={setSlotFilter}
+                options={slots.map((s) => ({ label: s.name, value: s.id }))} // Value là ID
               />
-              <Button icon={<ReloadOutlined />} onClick={fetchData} title="Làm mới dữ liệu" />
+              
+              <Button icon={<ReloadOutlined />} onClick={fetchData} title="Tải lại" />
             </Space>
           </Col>
-          <Col xs={24} md={8} style={{ textAlign: "right" }}>
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              size="large"
-              onClick={() => {
-                setEditingBanner(null);
-                setShowForm(true);
-              }}
-            >
-              Thêm Banner Mới
-            </Button>
+
+          <Col>
+            <Space>
+              {/* Nút Xóa Nhiều (Chỉ hiện khi có chọn) */}
+              {selectedRowKeys.length > 0 && (
+                <Popconfirm
+                  title={`Bạn có chắc muốn xóa ${selectedRowKeys.length} banner đã chọn?`}
+                  onConfirm={handleBulkDelete}
+                  okText="Xóa ngay"
+                  okButtonProps={{ danger: true }}
+                >
+                  <Button type="primary" danger icon={<DeleteOutlined />}>
+                    Xóa ({selectedRowKeys.length}) mục
+                  </Button>
+                </Popconfirm>
+              )}
+
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={() => {
+                  setEditingBanner(null);
+                  setShowForm(true);
+                }}
+              >
+                Thêm Banner Mới
+              </Button>
+            </Space>
           </Col>
         </Row>
       </div>
@@ -228,32 +271,40 @@ const BannerManager = () => {
         dataSource={filteredBanners}
         rowKey="id"
         loading={loading}
-        pagination={{ pageSize: 6, showTotal: (total) => `Tổng ${total} banners` }}
-        bordered
+        pagination={{ pageSize: 6, showTotal: (total) => `Tổng ${total} banner` }}
+        
+        // Kích hoạt tính năng chọn nhiều
+        rowSelection={rowSelection} 
+        
+        // Làm mờ hàng hết hạn
+        rowClassName={(record) => {
+            const now = moment();
+            const end = record.end_at ? moment(record.end_at) : null;
+            return (end && end.isBefore(now)) ? 'expired-row' : '';
+        }}
       />
 
-      <Modal
-        title={
-          <div style={{ fontSize: 18, fontWeight: 600 }}>
-            {editingBanner ? (
-              <>
-                <EditOutlined /> Chỉnh sửa Banner
-              </>
-            ) : (
-              <>
-                <PlusOutlined /> Tạo Banner Mới
-              </>
-            )}
-          </div>
+      <style jsx="true">{`
+        .expired-row {
+            opacity: 0.6;
+            background-color: #fafafa;
+            filter: grayscale(1);
         }
+        .expired-row:hover {
+            opacity: 1;
+            filter: grayscale(0);
+        }
+      `}</style>
+
+      <Modal
+        title={editingBanner ? "Chỉnh sửa Banner" : "Thêm Banner Mới"}
         open={showForm}
         onCancel={() => setShowForm(false)}
         footer={null}
-        width={1200}
+        width={900}
         destroyOnClose
-        maskClosable={false}
-        bodyStyle={{ maxHeight: "80vh", overflowY: "auto", overflowX: "hidden" }}
         centered
+        maskClosable={false}
       >
         <BannerForm
           bannerId={editingBanner?.id}
