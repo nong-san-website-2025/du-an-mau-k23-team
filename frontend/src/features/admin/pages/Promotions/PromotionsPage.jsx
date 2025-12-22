@@ -20,6 +20,7 @@ import {
 import { getCategories } from "../../services/products";
 
 export default function PromotionsPage() {
+  const isMobile = typeof window !== "undefined" && window.matchMedia("(max-width: 480px)").matches;
   const [loading, setLoading] = useState(false);
   const [modalLoading, setModalLoading] = useState(false);
   
@@ -194,35 +195,37 @@ export default function PromotionsPage() {
       title="QUẢN LÝ KHUYẾN MÃI"
       breadcrumb={['Trang chủ', 'Marketing', 'Khuyến mãi']}
     >
-        <Card bordered={false} className="shadow-sm">
-            <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
-                 <div style={{ flex: 1, marginRight: 16 }}>
-                    <PromotionFilter
-                        onFilterChange={setFilters}
-                        onClear={() => setFilters({})}
-                    />
-                 </div>
-                 
-                 <Space>
-                    <Button 
-                        icon={<CloudUploadOutlined />} 
-                        onClick={() => setImportModalOpen(true)}
-                        size="large"
-                        style={{ borderColor: '#217346', color: '#217346' }}
-                    >
-                        Import Excel
-                    </Button>
+      <Card bordered={false} className="shadow-sm">
+        <div style={{ marginBottom: 16 }}>
+           <div style={{ marginBottom: 12 }}>
+            <PromotionFilter
+              onFilterChange={setFilters}
+              onClear={() => setFilters({})}
+            />
+           </div>
+           <div style={{ display: 'flex', justifyContent: isMobile ? 'flex-start' : 'flex-end' }}>
+             <Space wrap style={{ rowGap: 8 }}>
+              <Button 
+                icon={<CloudUploadOutlined />} 
+                onClick={() => setImportModalOpen(true)}
+                size={isMobile ? "small" : "middle"}
+                style={{ borderColor: '#217346', color: '#217346', whiteSpace: 'nowrap' }}
+              >
+                Import Excel
+              </Button>
 
-                    <Button 
-                        type="primary" 
-                        icon={<PlusOutlined />} 
-                        onClick={handleCreate}
-                        size="large"
-                    >
-                        Tạo Voucher
-                    </Button>
-                 </Space>
-            </div>
+              <Button 
+                type="primary" 
+                icon={<PlusOutlined />} 
+                onClick={handleCreate}
+                size={isMobile ? "small" : "middle"}
+                style={{ whiteSpace: 'nowrap' }}
+              >
+                {isMobile ? 'Tạo Voucher' : 'Tạo Voucher'}
+              </Button>
+             </Space>
+           </div>
+        </div>
 
             <PromotionTable
                 data={data}

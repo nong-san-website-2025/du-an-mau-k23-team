@@ -9,6 +9,7 @@ const { Text } = Typography;
 
 export default function BlogTable({ blogs, loading, pagination, onChange, fetchBlogs, setEditing, setDrawerVisible, selectedRows, onSelectionChange }) {
   const [selectAll, setSelectAll] = useState(false);
+  const isMobile = typeof window !== "undefined" && window.matchMedia("(max-width: 480px)").matches;
 
   const handleDelete = async (slug) => {
     try {
@@ -64,7 +65,7 @@ export default function BlogTable({ blogs, loading, pagination, onChange, fetchB
         />
       ),
       dataIndex: "select",
-      width: 50,
+      width: isMobile ? 40 : 50,
       align: "center",
       render: (_, record) => (
         <Checkbox
@@ -76,15 +77,15 @@ export default function BlogTable({ blogs, loading, pagination, onChange, fetchB
     {
       title: "Ảnh",
       dataIndex: "image",
-      width: 80,
+      width: isMobile ? 70 : 80,
       align: "center",
       render: (src) => {
         if (src) {
           return (
             <Image
               src={src}
-              width={50}
-              height={50}
+              width={isMobile ? 44 : 50}
+              height={isMobile ? 44 : 50}
               style={{ objectFit: 'cover', borderRadius: 4 }}
               fallback="https://gw.alipayobjects.com/zos/antfincdn/aPkFc8Sj7n/method-draw-image.svg"
             />
@@ -93,7 +94,7 @@ export default function BlogTable({ blogs, loading, pagination, onChange, fetchB
         return (
           <Skeleton.Image
             active={false}
-            style={{ width: 50, height: 50, borderRadius: 4, minWidth: 50 }}
+            style={{ width: isMobile ? 44 : 50, height: isMobile ? 44 : 50, borderRadius: 4, minWidth: isMobile ? 44 : 50 }}
           />
         );
       }
@@ -101,12 +102,13 @@ export default function BlogTable({ blogs, loading, pagination, onChange, fetchB
     {
       title: "Thông tin bài viết",
       dataIndex: "title",
+      width: isMobile ? 240 : undefined,
       render: (text, record) => (
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <Text strong style={{ fontSize: 15 }} ellipsis={{ tooltip: text }}>
+          <Text strong style={{ fontSize: 15, whiteSpace: 'nowrap' }} ellipsis={{ tooltip: text }}>
             {text}
           </Text>
-          <Text type="secondary" style={{ fontSize: 12 }}>
+          <Text type="secondary" style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
             Slug: {record.slug}
           </Text>
         </div>
@@ -115,16 +117,20 @@ export default function BlogTable({ blogs, loading, pagination, onChange, fetchB
     {
       title: "Danh mục",
       dataIndex: "category_name",
-      width: 150,
-      render: (name) => <Tag color="cyan">{name}</Tag>
+      width: isMobile ? 120 : 150,
+      render: (name) => (
+        <Tag color="cyan">
+          <span style={{ display: 'inline-block', maxWidth: isMobile ? 110 : 140, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</span>
+        </Tag>
+      )
     },
     {
       title: "Lượt xem",
       dataIndex: "views", 
-      width: 100,
+      width: isMobile ? 100 : 100,
       align: "center",
       render: (count) => (
-        <Space>
+        <Space style={{ whiteSpace: 'nowrap' }}>
           <EyeOutlined style={{ color: "#1890ff" }} />
           <Text strong>{count ? count.toLocaleString() : 0}</Text>
         </Space>
@@ -134,8 +140,12 @@ export default function BlogTable({ blogs, loading, pagination, onChange, fetchB
       title: "Tác giả",
       dataIndex: "author_name",
       align: "center",
-      width: 150,
-      render: (name) => <Tag icon={<UserOutlined />} color="default">{name}</Tag> 
+      width: isMobile ? 140 : 150,
+      render: (name) => (
+        <Tag icon={<UserOutlined />} color="default">
+          <span style={{ display: 'inline-block', maxWidth: isMobile ? 120 : 140, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</span>
+        </Tag>
+      ) 
     },
     {
       title: "Trạng thái",
@@ -156,15 +166,15 @@ export default function BlogTable({ blogs, loading, pagination, onChange, fetchB
     {
       title: "Ngày tạo",
       dataIndex: "created_at",
-      width: 140,
+      width: isMobile ? 120 : 140,
       align: "right",
-      render: (d) => <Text type="secondary" style={{ fontSize: 13 }}>{new Date(d).toLocaleDateString("vi-VN")}</Text>,
+      render: (d) => <Text type="secondary" style={{ fontSize: 13, whiteSpace: 'nowrap' }}>{new Date(d).toLocaleDateString("vi-VN")}</Text>,
     },
     {
       title: "Thao tác",
       key: "action",
-      width: 100,
-      fixed: "right",
+      width: isMobile ? 100 : 100,
+      fixed: isMobile ? undefined : "right",
       render: (_, record) => (
         <ButtonAction
           record={record}
@@ -209,8 +219,9 @@ export default function BlogTable({ blogs, loading, pagination, onChange, fetchB
         onChange(p);
       }}
       bordered
-      size="middle"
-      scroll={{ x: 1000 }}
+      size={isMobile ? "small" : "middle"}
+      tableLayout="fixed"
+      scroll={{ x: isMobile ? 900 : 1000 }}
     />
   );
 }

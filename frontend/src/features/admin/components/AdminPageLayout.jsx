@@ -1,5 +1,6 @@
 import React from "react";
 import { Card, Breadcrumb, Typography, Space } from "antd";
+import "../styles/AdminPageLayout.css";
 import { HomeOutlined } from "@ant-design/icons";
 
 const { Title } = Typography;
@@ -22,14 +23,14 @@ export default function AdminPageLayout({ title, breadcrumbs, children, extra, t
       </div>
 
       {/* 2. Page Header Area - Hiển thị Icon + Title đẹp */}
-      <div className="d-flex justify-content-between align-items-center mb-4">
+        <div className="admin-page-header d-flex justify-content-between align-items-center mb-4">
         <div className="d-flex align-items-center gap-3">
             {/* Hiển thị Icon nếu có */}
             {icon && <div style={{ fontSize: '24px', color: '#2563eb' }}>{icon}</div>}
             
             {/* Nếu title là string thì bọc trong Title, nếu là Node thì render trực tiếp */}
             {typeof title === 'string' ? (
-                <Title level={3} style={{ margin: 0, fontWeight: 700, color: '#1f2937' }}>{title}</Title>
+            <Title level={3} className="admin-page-title" style={{ margin: 0, fontWeight: 700, color: '#1f2937' }}>{title}</Title>
             ) : (
                 title
             )}

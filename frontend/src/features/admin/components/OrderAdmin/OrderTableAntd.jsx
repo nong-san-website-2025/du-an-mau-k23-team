@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Table } from "antd";
 import dayjs from "dayjs";
 import { Eye, XCircle, Printer } from "lucide-react"; // Dùng Lucide icons cho đẹp và đồng bộ
@@ -16,13 +16,24 @@ export default function OrderTableAntd({
   onCancel,
   onRow,
 }) {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const mql = window.matchMedia("(max-width: 480px)");
+    const handleChange = (e) => setIsMobile(e.matches);
+    handleChange(mql);
+    mql.addEventListener ? mql.addEventListener("change", handleChange) : mql.addListener(handleChange);
+    return () => {
+      mql.removeEventListener ? mql.removeEventListener("change", handleChange) : mql.removeListener(handleChange);
+    };
+  }, []);
 
   const columns = [
     {
       title: "Mã đơn",
       dataIndex: "id",
       key: "id",
-      width: 70,
+      width: isMobile ? 70 : 70,
       align: "center",
       sorter: (a, b) => a.id - b.id,
       render: (id) => (
@@ -33,7 +44,7 @@ export default function OrderTableAntd({
       title: "Khách hàng",
       dataIndex: "customer_name",
       key: "customer_name",
-      width: 160,
+      width: isMobile ? 160 : 160,
       render: (name, record) => (
         <div>
           <div style={{ fontWeight: 500, color: '#111827' }}>
@@ -50,7 +61,7 @@ export default function OrderTableAntd({
     {
       title: "Sản phẩm",
       key: "items_count",
-      width: 100,
+      width: isMobile ? 100 : 100,
       align: "center",
       render: (_, record) => (
         <span style={{ color: '#6b7280', fontSize: '13px' }}>
@@ -62,7 +73,7 @@ export default function OrderTableAntd({
       title: "Tổng tiền",
       dataIndex: "total_price",
       key: "total_price",
-      width: 100,
+      width: isMobile ? 110 : 100,
       align: "right",
       sorter: (a, b) => (a.total_price || 0) - (b.total_price || 0),
       render: (value) => (
@@ -74,7 +85,7 @@ export default function OrderTableAntd({
     {
       title: "Lợi nhuận sàn", // Đổi tên cột Phí sàn cho chuyên nghiệp hơn
       key: "platform_commission",
-      width: 100,
+      width: isMobile ? 110 : 100,
       align: "right",
       render: (_, record) => {
         const total = (record.items || []).reduce((sum, item) => {
@@ -93,7 +104,7 @@ export default function OrderTableAntd({
       title: "Trạng thái",
       dataIndex: "status",
       key: "status",
-      width: 140,
+      width: isMobile ? 130 : 140,
       align: "center",
       filters: [
         { text: 'Chờ xử lý', value: 'pending' },
@@ -114,7 +125,7 @@ export default function OrderTableAntd({
       title: "Ngày tạo",
       dataIndex: "created_at",
       key: "created_at",
-      width: 140,
+      width: isMobile ? 130 : 140,
       align: "center",
       sorter: (a, b) => new Date(a.created_at) - new Date(b.created_at),
       render: (date) => (
@@ -129,8 +140,9 @@ export default function OrderTableAntd({
     {
       title: "Thao tác", // Cột mới sử dụng ButtonAction
       key: "action",
-      width: 100,
-      fixed: "right",
+      width: isMobile ? 120 : 100,
+      // Disable fixed on mobile so it doesn't cover other columns
+      fixed: isMobile ? undefined : "right",
       align: "center",
       render: (_, record) => {
         // Định nghĩa các hành động cho từng dòng
@@ -161,17 +173,14 @@ export default function OrderTableAntd({
         showTotal: (total) => `Tổng ${total} đơn hàng`,
         pageSizeOptions: ['10', '20', '50']
       }}
-      size="small"
+      size={isMobile ? "small" : "small"}
       onRow={onRow}
-      scroll={{ x: 1300 }}
+      tableLayout="fixed"
+      scroll={isMobile ? { x: 1000 } : { x: 1300 }}
+      style={isMobile ? { background: '#fff', whiteSpace: 'nowrap', borderRadius: '8px', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)' } : { background: '#fff', borderRadius: '8px', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)' }}
       rowClassName={(record) => {
         // Highlight nhẹ các đơn hàng mới
         return record.status === 'pending' ? 'bg-orange-50' : '';
-      }}
-      style={{
-        background: '#fff',
-        borderRadius: '8px',
-        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)' // Thêm bóng nhẹ cho bảng
       }}
     />
   );

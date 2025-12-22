@@ -71,10 +71,22 @@ export default function ReportCustomersPage() {
   const [topCustomers, setTopCustomers] = useState([]);
   const [segmentationData, setSegmentationData] = useState([]);
   const [geoData, setGeoData] = useState([]);
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
     fetchCustomerStatistics();
   }, [filter]); // Reload khi filter thay đổi
+
+  useEffect(() => {
+    // Detect mobile viewport (iPhone 14 Pro Max ~430px width)
+    const mql = window.matchMedia("(max-width: 480px)");
+    const handleChange = (e) => setIsMobile(e.matches);
+    handleChange(mql);
+    mql.addEventListener ? mql.addEventListener("change", handleChange) : mql.addListener(handleChange);
+    return () => {
+      mql.removeEventListener ? mql.removeEventListener("change", handleChange) : mql.removeListener(handleChange);
+    };
+  }, []);
 
   const fetchCustomerStatistics = async () => {
     try {
@@ -166,12 +178,13 @@ export default function ReportCustomersPage() {
       title: "Khách hàng",
       dataIndex: "name",
       key: "name",
+      width: isMobile ? 220 : 260,
       render: (text, record) => (
         <Space>
           <Avatar style={{ backgroundColor: '#f56a00' }}>{text ? text.charAt(0).toUpperCase() : "U"}</Avatar>
           <div>
-            <div style={{ fontWeight: 500 }}>{text || "Unknown User"}</div>
-            <div style={{ fontSize: "12px", color: "#888" }}>{record.email}</div>
+            <div style={{ fontWeight: 500, maxWidth: isMobile ? 150 : 200, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{text || "Unknown User"}</div>
+            <div style={{ fontSize: "12px", color: "#888", maxWidth: isMobile ? 160 : 220, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{record.email}</div>
           </div>
         </Space>
       ),
@@ -179,6 +192,7 @@ export default function ReportCustomersPage() {
     {
       title: "Hạng thành viên",
       key: "tier",
+      width: isMobile ? 140 : 160,
       render: (_, record) => {
         const tier = record.tier || "Thành viên";
         const tierColor = record.tierColor || "default";
@@ -190,6 +204,7 @@ export default function ReportCustomersPage() {
       title: "Số đơn hàng",
       dataIndex: "orders",
       key: "orders",
+      width: isMobile ? 120 : 140,
       sorter: (a, b) => a.orders - b.orders,
       align: "center",
     },
@@ -197,6 +212,7 @@ export default function ReportCustomersPage() {
       title: "Tổng chi tiêu",
       dataIndex: "spent",
       key: "spent",
+      width: isMobile ? 140 : 160,
       sorter: (a, b) => a.spent - b.spent,
       render: (val) => (
         <Text strong style={{ color: "#1890ff" }}>
@@ -352,10 +368,14 @@ export default function ReportCustomersPage() {
                     extra={<Button type="link">Xem tất cả</Button>}
                 >
                     <Table
-                        columns={columns}
-                        dataSource={topCustomers}
-                        rowKey="email"
-                        pagination={{ pageSize: 5 }}
+                      columns={columns}
+                      dataSource={topCustomers}
+                      rowKey="email"
+                      pagination={{ pageSize: 5 }}
+                      size={isMobile ? 'small' : 'middle'}
+                      tableLayout="fixed"
+                      scroll={isMobile ? { x: 700 } : undefined}
+                      style={isMobile ? { whiteSpace: 'nowrap' } : undefined}
                     />
                 </Card>
             </Col>

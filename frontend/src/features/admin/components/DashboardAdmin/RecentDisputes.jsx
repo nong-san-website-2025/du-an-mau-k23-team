@@ -8,6 +8,7 @@ export default function RecentDisputes() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [selectedDispute, setSelectedDispute] = useState(null);
+  const [isMobile, setIsMobile] = useState(false);
 
   const navigate = useNavigate();
 
@@ -33,6 +34,15 @@ export default function RecentDisputes() {
       }
     };
     fetchDisputes();
+
+    // Detect mobile viewport (iPhone 14 Pro Max ~430px width)
+    const mql = window.matchMedia("(max-width: 480px)");
+    const handleChange = (e) => setIsMobile(e.matches);
+    handleChange(mql);
+    mql.addEventListener ? mql.addEventListener("change", handleChange) : mql.addListener(handleChange);
+    return () => {
+      mql.removeEventListener ? mql.removeEventListener("change", handleChange) : mql.removeListener(handleChange);
+    };
   }, []);
 
   const formatOrderId = (id) => {
@@ -57,12 +67,15 @@ export default function RecentDisputes() {
       dataIndex: "id",
       key: "id",
       render: (id) => <span>#{id}</span>,
+      responsive: ["xs", "sm", "md", "lg"],
     },
     {
       title: "Sản phẩm", // <-- thêm cột sản phẩm
       dataIndex: "product_name",
       key: "product_name",
       render: (val) => val || <i>Không rõ</i>,
+      ellipsis: true,
+      responsive: ["xs", "sm", "md", "lg"],
     },
 
     {
@@ -76,18 +89,23 @@ export default function RecentDisputes() {
           <span>{formatOrderId(orderId)}</span>
         )
       ),
+      // Hide on extra small screens to reduce cramped layout
+      responsive: ["sm", "md", "lg"],
     },
 
     {
       title: "Người khiếu nại",
       dataIndex: "complainant_name", // 👈 đổi lại cho đúng với JSON
       key: "complainant_name",
+      ellipsis: true,
+      responsive: ["sm", "md", "lg"],
     },
     {
       title: "Lý do",
       dataIndex: "reason",
       key: "reason",
       ellipsis: true,
+      responsive: ["md", "lg"],
     },
     {
       title: "Trạng thái",
@@ -98,6 +116,7 @@ export default function RecentDisputes() {
           {statusLabels[status] || status}
         </Tag>
       ),
+      responsive: ["xs", "sm", "md", "lg"],
     },
     {
       title: "Ngày tạo",
@@ -105,6 +124,8 @@ export default function RecentDisputes() {
       key: "created_at",
       render: (val) =>
         val ? new Date(val).toLocaleString("vi-VN") : <i>Không rõ</i>,
+      ellipsis: true,
+      responsive: ["xs", "sm", "md", "lg"],
     },
   ];
 
@@ -133,6 +154,10 @@ export default function RecentDisputes() {
             style: { cursor: "pointer" },
           })}
           locale={{ emptyText: "Không có khiếu nại mới" }}
+          size={isMobile ? "small" : "middle"}
+          // Enable horizontal scroll on small screens to avoid vertical letter stacking
+          scroll={isMobile ? { x: 800 } : undefined}
+          style={isMobile ? { whiteSpace: "nowrap" } : undefined}
         />
       )}
 

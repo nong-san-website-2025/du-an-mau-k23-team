@@ -27,6 +27,7 @@ const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
 
 const FlashSalePage = () => {
+  const isMobile = typeof window !== "undefined" && window.matchMedia("(max-width: 480px)").matches;
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
@@ -102,24 +103,32 @@ const FlashSalePage = () => {
     <AdminPageLayout title="QUẢN LÝ FLASH SALE">
       <Card bordered={false} className="c-shadow">
         {/* Thanh công cụ */}
-        <Row gutter={16} style={{ marginBottom: 20 }}>
-          <Col span={6}>
-            <Input prefix={<SearchOutlined />} placeholder="Tìm kiếm theo mã..." />
+        <Row gutter={[12, 12]} style={{ marginBottom: 16 }} align="middle">
+          <Col xs={24} sm={12} md={6}>
+            <Input 
+              prefix={<SearchOutlined />} 
+              placeholder="Tìm kiếm theo mã..." 
+              allowClear
+              size={isMobile ? "small" : "middle"}
+            />
           </Col>
-          <Col span={6}>
+          <Col xs={24} sm={12} md={6}>
             <RangePicker
               style={{ width: "100%" }}
               placeholder={["Từ ngày", "Đến ngày"]}
+              size={isMobile ? "small" : "middle"}
             />
           </Col>
-          <Col span={12} style={{ textAlign: "right" }}>
-            <Space>
+          <Col xs={24} md={12} style={{ textAlign: isMobile ? "left" : "right" }}>
+            <Space wrap style={{ rowGap: 8 }}>
               <Button
                 type="primary"
                 icon={<FileExcelOutlined />}
                 onClick={() => setImportModalVisible(true)}
+                size={isMobile ? "small" : "middle"}
+                style={{ whiteSpace: 'nowrap' }}
               >
-                Import từ Excel
+                {isMobile ? "Import Excel" : "Import từ Excel"}
               </Button>
               <Button
                 type="primary"
@@ -128,16 +137,20 @@ const FlashSalePage = () => {
                   setEditingRecord(null);
                   setModalVisible(true);
                 }}
+                size={isMobile ? "small" : "middle"}
+                style={{ whiteSpace: 'nowrap' }}
               >
-                Tạo chương trình mới
+                {isMobile ? "Tạo mới" : "Tạo chương trình mới"}
               </Button>
               <Button
                 danger
                 icon={<DeleteOutlined />}
                 onClick={handleBulkDelete}
                 disabled={selectedRows.length === 0}
+                size={isMobile ? "small" : "middle"}
+                style={{ whiteSpace: 'nowrap' }}
               >
-                Xóa ({selectedRows.length})
+                {`Xóa (${selectedRows.length})`}
               </Button>
             </Space>
           </Col>

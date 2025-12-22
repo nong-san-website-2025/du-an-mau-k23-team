@@ -32,6 +32,7 @@ const BannerManager = () => {
   const [banners, setBanners] = useState([]);
   const [slots, setSlots] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   // Filter states
   const [slotFilter, setSlotFilter] = useState(null);
@@ -60,6 +61,17 @@ const BannerManager = () => {
     fetchData();
   }, []);
 
+  // Detect mobile viewport (iPhone 14 Pro Max ~430px width)
+  useEffect(() => {
+    const mql = window.matchMedia("(max-width: 480px)");
+    const handleChange = (e) => setIsMobile(e.matches);
+    handleChange(mql);
+    mql.addEventListener ? mql.addEventListener("change", handleChange) : mql.addListener(handleChange);
+    return () => {
+      mql.removeEventListener ? mql.removeEventListener("change", handleChange) : mql.removeListener(handleChange);
+    };
+  }, []);
+
   const handleDelete = async (id) => {
     try {
       await API.delete(`/marketing/banners/${id}/`);
@@ -84,13 +96,13 @@ const BannerManager = () => {
       title: "Hình ảnh",
       dataIndex: "image",
       key: "image",
-      width: 150,
+      width: isMobile ? 130 : 150,
       render: (src) => (
         <div style={{ borderRadius: 6, overflow: "hidden", border: "1px solid #f0f0f0" }}>
           <Image
             src={src}
             alt="banner"
-            width={140}
+            width={isMobile ? 120 : 140}
             height={70}
             style={{ objectFit: "cover" }}
             fallback="/placeholder-banner.png"
@@ -102,10 +114,11 @@ const BannerManager = () => {
     {
       title: "Thông tin Banner",
       key: "info",
+      width: isMobile ? 220 : undefined,
       render: (_, record) => (
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          <span style={{ fontWeight: 600, fontSize: 15 }}>{record.title}</span>
-          <Space size={4}>
+          <span style={{ fontWeight: 600, fontSize: 15, display: 'inline-block', maxWidth: isMobile ? 180 : 260, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{record.title}</span>
+          <Space size={4} wrap>
             <Tag color="geekblue">{record.slot?.name}</Tag>
             {record.priority > 0 && <Tag color="gold">Ưu tiên: {record.priority}</Tag>}
           </Space>
@@ -115,7 +128,7 @@ const BannerManager = () => {
     {
       title: "Thời gian hiển thị",
       key: "time",
-      width: 200,
+      width: isMobile ? 200 : 220,
       render: (_, b) => (
         <div style={{ fontSize: 13, color: "#666" }}>
           <div>
@@ -134,7 +147,7 @@ const BannerManager = () => {
       title: "Trạng thái",
       dataIndex: "is_active",
       key: "is_active",
-      width: 120,
+      width: isMobile ? 120 : 120,
       align: "center",
       render: (active) =>
         active ? (
@@ -150,7 +163,7 @@ const BannerManager = () => {
     {
       title: "Thao tác",
       key: "actions",
-      width: 120,
+      width: isMobile ? 140 : 120,
       align: "center",
       render: (_, record) => (
         <ButtonAction
@@ -230,6 +243,10 @@ const BannerManager = () => {
         loading={loading}
         pagination={{ pageSize: 6, showTotal: (total) => `Tổng ${total} banners` }}
         bordered
+        size={isMobile ? 'small' : 'middle'}
+        tableLayout="fixed"
+        scroll={isMobile ? { x: 900 } : undefined}
+        style={isMobile ? { whiteSpace: 'nowrap' } : undefined}
       />
 
       <Modal

@@ -18,6 +18,7 @@ import StatusTag from "../../../../components/StatusTag";
 import ButtonAction from "../../../../components/ButtonAction"; 
 
 const UserReports = () => {
+    const isMobile = typeof window !== "undefined" && window.matchMedia("(max-width: 480px)").matches;
     // --- KHAI BÁO STATE (Biến) ---
     const [reports, setReports] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -225,65 +226,78 @@ const UserReports = () => {
     // --- Cấu hình Cột Bảng ---
     const columns = [
         { 
-            title: "STT", 
+            title: (<span style={{ whiteSpace: 'nowrap' }}>STT</span>), 
             key: "index", 
-            width: 60,
+            width: isMobile ? 50 : 60,
             align: 'center',
             render: (_, __, index) => index + 1 
         },
         { 
-            title: "Người dùng", 
+            title: (<span style={{ whiteSpace: 'nowrap' }}>Người dùng</span>), 
             dataIndex: "complainant_name", 
-            render: (text) => <b>{text || "Không xác định"}</b>
+            width: isMobile ? 160 : undefined,
+            ellipsis: true,
+            render: (text) => (
+                <b style={{ whiteSpace: 'nowrap' }}>{text || "Không xác định"}</b>
+            )
         },
         { 
-            title: "Sản phẩm", 
+            title: (<span style={{ whiteSpace: 'nowrap' }}>Sản phẩm</span>), 
             dataIndex: "product_name",
             ellipsis: { showTitle: false },
+            width: isMobile ? 200 : undefined,
             render: (name) => (
-                <Tooltip placement="topLeft" title={name}>{name}</Tooltip>
+                <Tooltip placement="topLeft" title={name}>
+                    <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'inline-block', maxWidth: isMobile ? 190 : '100%' }}>{name}</span>
+                </Tooltip>
             )
         },
         {
-            title: "Giá trị",
+            title: (<span style={{ whiteSpace: 'nowrap' }}>Giá trị</span>),
             key: "value",
-            width: 150,
+            width: isMobile ? 120 : 150,
             render: (_, record) => {
                 const unit = Number(record.unit_price ?? record.product_price ?? 0);
                 const qty = record.quantity ?? 1;
                 return (
-                    <span>
-                        {unit.toLocaleString("vi-VN")} đ <br/> 
+                    <span style={{ whiteSpace: 'nowrap' }}>
+                        {unit.toLocaleString("vi-VN")} đ <br/>
                         <small style={{color: '#888'}}>x{qty}</small>
                     </span>
                 );
             },
         },
         { 
-            title: "Người bán", 
+            title: (<span style={{ whiteSpace: 'nowrap' }}>Người bán</span>), 
             dataIndex: "seller_name", 
-            width: 250,
+            width: isMobile ? 180 : 250,
             ellipsis: true,
-            render: (seller_name) => <Tooltip title={seller_name}>{seller_name || "Không xác định"}</Tooltip>
+            render: (seller_name) => (
+                <Tooltip title={seller_name}>
+                    <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'inline-block', maxWidth: isMobile ? 170 : 240 }}>
+                        {seller_name || "Không xác định"}
+                    </span>
+                </Tooltip>
+            )
         },
         {
-            title: "Ngày tạo",
+            title: (<span style={{ whiteSpace: 'nowrap' }}>Ngày tạo</span>),
             dataIndex: "created_at",
-            width: 160,
+            width: isMobile ? 130 : 160,
             render: (date) => (date ? new Date(date).toLocaleString("vi-VN") : ""),
         },
         {
-            title: "Trạng thái",
+            title: (<span style={{ whiteSpace: 'nowrap' }}>Trạng thái</span>),
             dataIndex: "status",
-            width: 140,
+            width: isMobile ? 120 : 140,
             align: 'center',
             render: (status) => <StatusTag status={status} />,
         },
         {
-            title: "Hành động",
+            title: (<span style={{ whiteSpace: 'nowrap' }}>Hành động</span>),
             key: "action",
-            width: 140,
-            align: 'right',
+            width: isMobile ? 100 : 140,
+            align: isMobile ? 'center' : 'right',
             render: (_, record) => {
                 const actions = [
                     {
@@ -341,7 +355,7 @@ const UserReports = () => {
         <AdminPageLayout 
             title="QUẢN LÝ KHIẾU NẠI NGƯỜI DÙNG" 
             extra={
-                <Space>
+                <Space wrap style={{ rowGap: 8 }}>
                     {/* Nút Duyệt Nhanh */}
                     {selectedResolveKeys.length > 0 && (
                         <Popconfirm
@@ -356,9 +370,10 @@ const UserReports = () => {
                                 type="primary" 
                                 icon={<SendOutlined />} 
                                 loading={loading}
-                                style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }} 
+                                size={isMobile ? 'small' : 'middle'}
+                                style={{ backgroundColor: '#52c41a', borderColor: '#52c41a', whiteSpace: 'nowrap' }} 
                             >
-                                Duyệt Nhanh ({selectedResolveKeys.length})
+                                {isMobile ? `Duyệt (${selectedResolveKeys.length})` : `Duyệt Nhanh (${selectedResolveKeys.length})`}
                             </Button>
                         </Popconfirm>
                     )}
@@ -378,8 +393,10 @@ const UserReports = () => {
                                 danger
                                 icon={<DeleteOutlined />} 
                                 loading={loading}
+                                size={isMobile ? 'small' : 'middle'}
+                                style={{ whiteSpace: 'nowrap' }}
                             >
-                                Xóa Hàng Loạt ({selectedDeleteKeys.length})
+                                {`Xóa (${selectedDeleteKeys.length})`}
                             </Button>
                         </Popconfirm>
                     )}
@@ -389,8 +406,10 @@ const UserReports = () => {
                         icon={<ReloadOutlined />} 
                         onClick={refreshReports} 
                         loading={loading}
+                        size={isMobile ? 'small' : 'middle'}
+                        style={{ whiteSpace: 'nowrap' }}
                     >
-                        Làm mới
+                        {isMobile ? 'Làm mới' : 'Làm mới'}
                     </Button>
                 </Space>
             }
@@ -403,7 +422,9 @@ const UserReports = () => {
                     loading={loading}
                     rowSelection={rowSelection} 
                     pagination={{ pageSize: 10, showSizeChanger: true }}
-                    scroll={{ x: 1000 }} 
+                    size={isMobile ? 'small' : 'middle'}
+                    tableLayout="fixed"
+                    scroll={{ x: isMobile ? 900 : 1000 }} 
                 />
             </Card>
 
