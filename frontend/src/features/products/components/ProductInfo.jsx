@@ -14,7 +14,6 @@ import {
   MinusOutlined,
   PlusOutlined,
   ClockCircleOutlined,
-  CarOutlined,
   SafetyCertificateOutlined,
   GiftOutlined,
   InfoCircleOutlined
@@ -24,7 +23,7 @@ import axios from "axios";
 
 // Import CSS tùy chỉnh ở trên
 import "../styles/ProductDetail.css"; 
-// Hàm format tiền (giữ nguyên của bạn)
+// Hàm format tiền
 import { formatVND } from "../../stores/components/StoreDetail/utils/utils";
 
 const { Title, Text } = Typography;
@@ -68,7 +67,7 @@ const ProductInfo = ({
   useEffect(() => {
     if (token && product?.id) fetchBackendPreorderQty();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [product.id, token]); // Thêm API_URL vào deps nếu cần, nhưng thường env không đổi runtime
+  }, [product.id, token]); 
 
   // --- Logic Trạng thái ---
   const rawStatus = (product.availability_status || "").toLowerCase().trim();
@@ -77,9 +76,33 @@ const ProductInfo = ({
   const isOutOfStock = !isComingSoon && stock <= 0;
 
   const availableFrom = product.season_start || product.available_from;
-  // const availableTo = product.season_end || product.available_to; // Biến này chưa dùng
   const estimatedQuantity = product.estimated_quantity || 0;
   const totalPreordered = backendPreorderQty;
+
+  // --- [LOGIC GIÁ BÁN CHUẨN] ---
+  const rawDiscount = parseFloat(product.discounted_price);
+  const rawOriginal = parseFloat(product.original_price);
+  const rawPrice = parseFloat(product.price);
+
+  // Quyết định giá bán cuối cùng (finalPrice)
+  let finalPrice = 0;
+  let originalPriceDisplay = 0;
+  let hasDiscount = false;
+
+  if (!isNaN(rawDiscount) && rawDiscount > 0) {
+      // Có giá giảm -> Giá bán là giá giảm
+      finalPrice = rawDiscount;
+      hasDiscount = true;
+      // Giá gốc để gạch ngang (ưu tiên original_price, nếu k có thì lấy price)
+      originalPriceDisplay = !isNaN(rawOriginal) && rawOriginal > 0 ? rawOriginal : rawPrice;
+  } else {
+      // Không có giá giảm -> Giá bán là giá gốc hoặc giá thường
+      if (!isNaN(rawOriginal) && rawOriginal > 0) {
+          finalPrice = rawOriginal;
+      } else {
+          finalPrice = rawPrice;
+      }
+  }
 
   // --- Hàm xử lý Đặt trước ---
   const handlePreorder = async () => {
@@ -127,25 +150,28 @@ const ProductInfo = ({
         <Text type="secondary">{product.sold || 0} Đã bán</Text>
       </div>
 
-      {/* 2. Khu vực Giá (Thiết kế kiểu Shopee) */}
+      {/* 2. Khu vực Giá (Đã sửa logic hiển thị) */}
       <div className="price-section">
         <Space align="baseline" size={12}>
-          {product.original_price > (product.discounted_price ?? product.price) && (
+          {/* Chỉ hiển thị giá gạch ngang nếu ĐANG CÓ GIẢM GIÁ và giá gốc lớn hơn giá bán */}
+          {hasDiscount && originalPriceDisplay > finalPrice && (
             <Text delete type="secondary" style={{ fontSize: 16 }}>
-              {formatVND(product.original_price)}
+              {formatVND(originalPriceDisplay)}
             </Text>
           )}
+          
           <Text style={{ fontSize: 32, fontWeight: 600, color: "#cf1322" }}>
-            {formatVND(product.discounted_price ?? product.price)}
+            {finalPrice > 0 ? formatVND(finalPrice) : "Liên hệ"}
           </Text>
-          {product.discount > 0 && (
+
+          {hasDiscount && product.discount_percent > 0 && (
             <Tag color="red" style={{ fontWeight: 600 }}>
               GIẢM {product.discount_percent}%
             </Tag>
           )}
         </Space>
         
-        {/* Cam kết giá tốt (Optional) */}
+        {/* Cam kết giá tốt */}
         <div style={{ marginTop: 8 }}>
             <Tag color="geekblue" icon={<SafetyCertificateOutlined />}>Cam kết chính hãng</Tag>
             <Tag color="green" icon={<GiftOutlined />}>Tích điểm GreenPoint</Tag>
@@ -154,17 +180,6 @@ const ProductInfo = ({
 
       {/* 3. Các thông tin chi tiết */}
       <div style={{ marginBottom: 24 }}>
-        {/* Vận chuyển */}
-        <div className="meta-row">
-          <span className="meta-label">Vận chuyển</span>
-          <div>
-            <Space>
-              <CarOutlined style={{ color: "#52c41a" }} />
-              <Text>Miễn phí vận chuyển cho đơn từ 300k</Text>
-            </Space>
-          </div>
-        </div>
-
         {/* Đơn vị tính */}
         <div className="meta-row">
             <span className="meta-label">Đơn vị bán</span>
@@ -218,7 +233,7 @@ const ProductInfo = ({
         </div>
       </div>
 
-      {/* 4. Nút hành động (To & Đẹp) */}
+      {/* 4. Nút hành động */}
       <div style={{ display: 'flex', gap: 16, marginTop: 32 }}>
         {isComingSoon ? (
             <Button
@@ -261,7 +276,7 @@ const ProductInfo = ({
         )}
       </div>
 
-      {/* 5. Footer chính sách (Trust) */}
+      {/* 5. Footer chính sách */}
       <Divider style={{ margin: "24px 0" }} />
       <div style={{ display: 'flex', gap: 24, color: '#595959', fontSize: 13 }}>
           <Space><SafetyCertificateOutlined style={{ color: '#52c41a' }} /> 100% Nguồn gốc rõ ràng</Space>

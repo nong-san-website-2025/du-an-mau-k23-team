@@ -285,15 +285,6 @@ const StoreDetail = () => {
         handleOpenChat={handleOpenChat}
       />
 
-      {/* Danh sách Voucher */}
-      <VoucherSection
-        vouchers={vouchers}
-        onUseVoucher={handleUseVoucher}
-        onCopyVoucher={handleCopyVoucher} // Truyền hàm copy
-        myVoucherCodes={myVoucherCodes}   // Danh sách mã đã lưu
-        onClaimVoucher={handleClaimVoucher} // Hàm xử lý lưu
-        isClaiming={isClaiming}           // Trạng thái loading
-      />
 
       {/* Thanh tìm kiếm sản phẩm */}
       <ProductSearchBar

@@ -172,23 +172,33 @@ class OrderViewSet(viewsets.ModelViewSet):
         elif user.is_authenticated:
             queryset = queryset.filter(user=user)
 
-        status_param = self.request.query_params.get('status')
-        if status_param:
-            # --- [MỚI] Xử lý lọc đơn Trả hàng/Hoàn tiền cho Buyer ---
-            if status_param == 'return':
-                refund_statuses = [
-                    'REFUND_REQUESTED', 
-                    'SELLER_REJECTED', 
-                    'DISPUTE_TO_ADMIN', 
-                    'REFUND_APPROVED', 
-                    'REFUND_REJECTED'
-                ]
-                # Lọc các đơn có item đang nằm trong danh sách trạng thái trên
-                queryset = queryset.filter(items__status__in=refund_statuses).distinct()
-            else:
-                # Logic cũ cho các status thường (pending, shipping...)
-                queryset = queryset.filter(status=status_param)
-            # ---------------------------------------------------------
+            status_param = self.request.query_params.get('status')
+            if status_param:
+                # === LOGIC DỒN ĐƠN VÀO TAB "TRẢ HÀNG/HOÀN TIỀN" ===
+                if status_param == 'return':
+                    # Danh sách các trạng thái của ITEM (Sản phẩm) được coi là đang trả/khiếu nại
+                    # Bạn phải liệt kê ĐỦ các trạng thái này thì đơn mới hiện lên
+                    refund_statuses = [
+                        'REFUND_REQUESTED', # Khách vừa gửi yêu cầu
+                        'WAITING_RETURN',   # Shop đồng ý, chờ khách gửi (QUAN TRỌNG)
+                        'RETURNING',        # Khách đã gửi, đang đi đường
+                        'SELLER_REJECTED',  # Shop từ chối (đang cãi nhau)
+                        'DISPUTE_TO_ADMIN', # Kiện lên sàn
+                        'REFUND_APPROVED',  # Đã hoàn tiền xong
+                        'REFUND_REJECTED'   # Kết thúc (Từ chối hoàn)
+                    ]
+                    
+                    # Logic: "Lấy những đơn hàng mả TRONG ĐÓ có ít nhất 1 sản phẩm nằm trong danh sách lỗi trên"
+                    # Dùng __in để lọc mảng, dùng distinct() để tránh trùng lặp đơn
+                    queryset = queryset.filter(items__status__in=refund_statuses).distinct()
+                
+                # === CÁC TAB KHÁC (Pending, Shipping, Completed...) ===
+                else:
+                    # Logic cũ: Lọc theo trạng thái đơn hàng
+                    queryset = queryset.filter(status=status_param)
+            
+            # Sắp xếp đơn mới nhất lên đầu
+            return queryset.order_by('-created_at')
 
         # Auto-approve sau 10 phút và trừ tồn kho
         ten_minutes_ago = timezone.now() - timedelta(minutes=10)
@@ -533,18 +543,10 @@ class OrderViewSet(viewsets.ModelViewSet):
     # Create Order (Voucher + Points)
     # ========================
     def perform_create(self, serializer):
-        # Bọc toàn bộ quá trình trong transaction để đảm bảo tính toàn vẹn dữ liệu
         with transaction.atomic():
-            # 1. Lưu đơn hàng (Serializer của bạn có thể đã xử lý voucher trong hàm create)
-            # Nếu Serializer ĐÃ xử lý, thì order này đã được trừ tiền và voucher đã được trừ lượt.
+
             order = serializer.save(user=self.request.user)
-            
-            # --- LOGIC DỰ PHÒNG (FALLBACK) ---
-            # Nếu Serializer KHÔNG xử lý voucher (ví dụ bạn dùng serializer cũ),
-            # thì đoạn code dưới đây sẽ chạy để đảm bảo voucher vẫn được xử lý.
-            # Lưu ý: Nếu Serializer đã xử lý, bạn nên xóa hoặc comment đoạn này để tránh trừ 2 lần
-            # Tuy nhiên, hàm mark_used_once() có check số lượng, nên nếu trừ rồi thì nó sẽ chặn lại, khá an toàn.
-            
+           
             code = self.request.data.get("voucher_code")
             # Chỉ xử lý nếu có code và đơn hàng chưa được gắn voucher (tức là serializer chưa làm gì)
             has_voucher_field = hasattr(order, 'voucher')
@@ -578,9 +580,11 @@ class OrderViewSet(viewsets.ModelViewSet):
                         discount = float(voucher.freeship_amount)
 
                     discount = min(discount, float(order.total_price))
-                    order.total_price -= discount
+                    order.discount_amount = discount  # <--- QUAN TRỌNG: Lưu số tiền giảm
+                    order.total_price = float(order.total_price) - discount
                     order.voucher = voucher
-                    order.save(update_fields=["total_price", "voucher"])
+
+                    order.save(update_fields=["total_price", "voucher", "discount_amount"])
 
                     uv.mark_used_once()
                     if hasattr(voucher, 'used_quantity'):

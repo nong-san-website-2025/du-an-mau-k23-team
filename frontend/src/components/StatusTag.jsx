@@ -86,7 +86,7 @@ const StatusTag = ({ status, type = "status", label }) => {
         fontWeight: 500,
         display: "inline-flex",
         alignItems: "center",
-        gap: 4,
+        gap: 0,
       }}
     >
       {label || current.text}

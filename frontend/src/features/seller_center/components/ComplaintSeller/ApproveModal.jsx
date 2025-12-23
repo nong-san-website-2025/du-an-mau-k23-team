@@ -1,5 +1,6 @@
+// components/ComplaintSeller/ApproveModal.jsx
 import React from "react";
-import { Modal, Input, Typography, Descriptions } from "antd";
+import { Modal, Input, Typography, Descriptions, Checkbox } from "antd"; // Import Checkbox
 import { formatVND } from "../../../../utils/complaintHelpers";
 
 const { Text } = Typography;
@@ -8,59 +9,63 @@ const ApproveModal = ({
   open, 
   onCancel, 
   onOk, 
-  record, // Nhận trực tiếp record
-  note,   // Nhận trực tiếp note
-  setNote // Hàm set note
+  record, 
+  note, 
+  setNote,
+  // [MỚI] Nhận thêm props
+  isReturnRequired, 
+  setIsReturnRequired 
 }) => {
   
-  // Tính toán số tiền sẽ hoàn (Dựa trên Serializer mới: purchase_price * purchase_quantity)
   const refundAmount = record 
     ? (record.purchase_price || 0) * (record.purchase_quantity || 1) 
     : 0;
 
   return (
     <Modal
-      title="Xác nhận Hoàn tiền"
+      title="Xác nhận xử lý khiếu nại"
       open={open}
       onCancel={onCancel}
       onOk={onOk}
-      okText="Đồng ý hoàn tiền"
-      okButtonProps={{ type: "primary" }} // Màu xanh mặc định thay vì danger
+      okText="Xác nhận"
+      okButtonProps={{ type: "primary" }}
       cancelText="Hủy bỏ"
     >
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-        <div style={{ background: "#f6ffed", border: "1px solid #b7eb8f", padding: 12, borderRadius: 6 }}>
-            <Text type="success">
-                Hành động này sẽ chấp nhận khiếu nại và hoàn tiền về Ví cho khách hàng.
-            </Text>
+        
+        {/* [MỚI] Checkbox lựa chọn quan trọng */}
+        <div style={{ background: "#e6f7ff", border: "1px solid #91d5ff", padding: 12, borderRadius: 6 }}>
+            <Checkbox 
+                checked={isReturnRequired} 
+                onChange={(e) => setIsReturnRequired(e.target.checked)}
+            >
+                <Text strong>Yêu cầu khách gửi trả hàng về kho?</Text>
+            </Checkbox>
+            <div style={{ marginTop: 8, fontSize: 13, color: '#595959', paddingLeft: 24 }}>
+                {isReturnRequired ? (
+                    <span>👉 Khách phải nhập mã vận đơn gửi hàng về. Sau khi Shop nhận được hàng, tiền mới được hoàn.</span>
+                ) : (
+                    <span style={{color: '#faad14'}}>👉 Tiền sẽ được hoàn vào Ví khách hàng <b>NGAY LẬP TỨC</b>. Shop không thu hồi sản phẩm.</span>
+                )}
+            </div>
         </div>
 
         {record && (
             <Descriptions column={1} size="small" bordered>
-                <Descriptions.Item label="Sản phẩm">
-                    {record.product_name}
-                </Descriptions.Item>
-                <Descriptions.Item label="Số lượng">
-                    {record.purchase_quantity}
-                </Descriptions.Item>
-                <Descriptions.Item label="Đơn giá mua">
-                    {formatVND(record.purchase_price)}
-                </Descriptions.Item>
+                <Descriptions.Item label="Sản phẩm">{record.product_name}</Descriptions.Item>
                 <Descriptions.Item label="Tổng tiền hoàn">
-                    <Text strong type="danger" style={{ fontSize: 16 }}>
-                        {formatVND(refundAmount)}
-                    </Text>
+                    <Text strong type="danger">{formatVND(refundAmount)}</Text>
                 </Descriptions.Item>
             </Descriptions>
         )}
 
         <div>
-            <div style={{ marginBottom: 8, fontWeight: 500 }}>Lời nhắn cho khách hàng (Tùy chọn):</div>
+            <div style={{ marginBottom: 8, fontWeight: 500 }}>Lời nhắn cho khách hàng:</div>
             <Input.TextArea
-            rows={3}
-            placeholder="Ví dụ: Shop đã kiểm tra và đồng ý hoàn tiền cho bạn..."
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
+                rows={2}
+                placeholder="Ví dụ: Shop đồng ý..."
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
             />
         </div>
       </div>

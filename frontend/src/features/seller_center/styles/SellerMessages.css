@@ -1,4 +1,5 @@
 /* SellerMessages.css */
+
 :root {
   --primary-color: #00b96b; /* Màu xanh GreenFarm */
   --primary-light: #e6f7ff;
@@ -11,34 +12,52 @@
   --bubble-other: #ffffff;
 }
 
-/* Layout Chính */
+/* --- 1. LAYOUT CHÍNH --- */
 .chat-layout {
-  height: calc(100vh - 64px);
+  height: 80  vh;          /* Chiếm 75% chiều cao màn hình */
+  min-height: 500px;     /* Không quá bé */
+  max-height: 800px;     /* Không quá to */
   background: var(--white);
-  overflow: hidden;
+  overflow: hidden;      /* Ẩn thanh cuộn thừa của layout */
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  margin: 10px auto;
+  display: flex;         /* Đảm bảo layout là flex container */
 }
 
+/* --- 2. SIDEBAR (CỘT TRÁI) --- */
 .chat-sider {
   background: var(--white);
   border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
+  height: 100%;
+}
+
+/* [QUAN TRỌNG] Class này bọc toàn bộ nội dung trong Sidebar */
+.chat-sider-inner {
+  display: flex;        /* Kích hoạt Flexbox */
+  flex-direction: column; /* Xếp dọc (Header trên, List dưới) */
+  height: 100%;         /* Chiếm trọn chiều cao cột Sider */
+  overflow: hidden;     /* Tránh vỡ khung */
 }
 
 .sider-header {
   padding: 20px 16px 10px;
   border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;       /* Không bị co lại khi danh sách dài */
 }
 
 .sider-search {
   margin-top: 10px;
 }
 
-/* Danh sách hội thoại */
+/* [QUAN TRỌNG] Danh sách hội thoại */
 .conv-list {
-  flex: 1;
-  overflow-y: auto;
+  flex: 1;              /* Tự động chiếm hết khoảng trống còn lại */
+  overflow-y: auto;     /* Cho phép cuộn dọc */
   padding: 10px;
+  min-height: 0;        /* Fix lỗi Flexbox trên Firefox/Chrome khiến list biến mất */
 }
 
 .conv-item {
@@ -70,18 +89,19 @@
   font-size: 13px;
 }
 
-/* Khu vực Chat Chính */
+/* --- 3. KHU VỰC CHAT CHÍNH (CỘT PHẢI) --- */
 .chat-main {
   display: flex;
   flex-direction: column;
   height: 100%;
   background: var(--chat-bg);
   position: relative;
+  flex: 1; /* Chiếm phần còn lại của màn hình */
 }
 
 /* Header Chat */
 .chat-header {
-  height: 64px;
+  height: 60px;
   padding: 0 24px;
   background: var(--white);
   border-bottom: 1px solid var(--border-color);
@@ -90,6 +110,7 @@
   justify-content: space-between;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
   z-index: 10;
+  flex-shrink: 0; /* Header cố định, không co */
 }
 
 .user-status {
@@ -113,19 +134,20 @@
   margin-right: 5px;
 }
 
-/* Khu vực tin nhắn */
+/* Khu vực hiển thị tin nhắn */
 .messages-area {
-  flex: 1;
+  flex: 1;             /* Tự chiếm khoảng trống giữa Header và Input */
   padding: 20px 24px;
-  overflow-y: auto;
+  overflow-y: auto;    /* Cuộn dọc */
   display: flex;
   flex-direction: column;
   gap: 16px;
   background-image: radial-gradient(#d9d9d9 1px, transparent 1px);
   background-size: 20px 20px;
+  min-height: 0;       /* Fix lỗi scrollbar */
 }
 
-/* Message Bubbles */
+/* Bong bóng tin nhắn */
 .msg-row {
   display: flex;
   align-items: flex-end;
@@ -145,7 +167,7 @@
   font-size: 14px;
   line-height: 1.5;
   box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-  word-wrap: break-word;
+  word-wrap: break-word; /* Tự xuống dòng nếu tin dài */
 }
 
 .msg-row.other .msg-bubble {
@@ -163,10 +185,11 @@
 .msg-image {
   border-radius: 12px;
   max-width: 100%;
-  max-height: 300px;
+  max-height: 250px;
   object-fit: cover;
   margin-top: 5px;
   border: 1px solid rgba(0,0,0,0.05);
+  display: block;
 }
 
 .msg-time {
@@ -176,11 +199,12 @@
   opacity: 0.8;
 }
 
-/* Input Area */
+/* --- 4. KHU VỰC NHẬP LIỆU (INPUT) --- */
 .input-area {
   background: var(--white);
   padding: 16px 24px;
   border-top: 1px solid var(--border-color);
+  flex-shrink: 0; /* Input luôn hiển thị, không bị co */
 }
 
 .input-container {
@@ -205,14 +229,15 @@
   border: none;
   background: transparent;
   resize: none;
-  max-height: 100px;
+  max-height: 80px;
   padding: 8px 0;
+  outline: none;
 }
 .chat-input:focus {
   box-shadow: none;
 }
 
-/* Utilities */
+/* --- 5. UTILITIES --- */
 .custom-scroll::-webkit-scrollbar {
   width: 6px;
 }

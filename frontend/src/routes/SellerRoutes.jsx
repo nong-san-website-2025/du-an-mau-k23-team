@@ -20,6 +20,7 @@ import PromotionSeller from "../features/seller_center/pages/PromotionSeller/Pro
 import OrdersDelivered from './../features/seller_center/pages/OrderSeller/OrdersDelivered';
 import OrdersCancelled from './../features/seller_center/pages/OrderSeller/OrdersCancelled';
 import SellerWallet from "../features/seller_center/pages/SellerWallet";
+import SellerOrderPage from "../features/seller_center/pages/SellerOrderPage";
 
 export const sellerRoutes = [
   <Route element={<SellerPrivateRoute />} key="seller-protect">
@@ -36,6 +37,7 @@ export const sellerRoutes = [
 
       <Route path="finance" element={<Finance />} />
       <Route path="analytics" element={<Analytics />} />
+      <Route path="orders" element={<SellerOrderPage />} />
       <Route path="orders/new" element={<OrdersNew />} />
       <Route path="orders/processing" element={<OrdersProcessing />} />
       <Route path="orders/delivered" element={<OrdersDelivered />} />

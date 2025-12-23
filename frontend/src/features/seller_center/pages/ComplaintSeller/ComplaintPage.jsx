@@ -22,6 +22,7 @@ export default function ComplaintPage() {
     open: false,
     record: null,
     note: "", // Lời nhắn cho khách (tùy chọn)
+    isReturnRequired: true, // [MỚI] Mặc định là CẦN trả hàng
   });
 
   const [detailModalVisible, setDetailModalVisible] = useState(false);
@@ -71,9 +72,8 @@ export default function ComplaintPage() {
   /* ===== ACTIONS (QUAN TRỌNG: GỌI ĐÚNG API BACKEND MỚI) ===== */
 
   // 1. Shop Đồng ý hoàn tiền
-  const handleSellerAccept = async (record, note) => {
+  const handleSellerAccept = async (record, note, isReturnRequired) => {
     try {
-      // SỬ DỤNG ENV Ở ĐÂY
       const res = await fetch(`${API_URL}/complaints/${record.id}/seller-respond/`, {
         method: "POST",
         headers: {
@@ -82,7 +82,8 @@ export default function ComplaintPage() {
         },
         body: JSON.stringify({
           action: 'accept',
-          reason: note // Backend dùng field 'reason' để lưu phản hồi
+          reason: note,
+          return_required: isReturnRequired // [QUAN TRỌNG] Gửi tham số này lên
         }),
       });
 
@@ -91,9 +92,12 @@ export default function ComplaintPage() {
         throw new Error(err.error || "Lỗi xử lý");
       }
 
-      message.success(`Đã chấp nhận hoàn tiền cho khiếu nại #${record.id}`);
-      setApproveModal({ open: false, record: null, note: "" });
-      fetchComplaints(); // Reload lại data
+      message.success(isReturnRequired
+        ? "Đã duyệt. Chờ khách gửi hàng về."
+        : "Đã hoàn tiền thành công cho khách!");
+
+      setApproveModal({ open: false, record: null, note: "", isReturnRequired: true });
+      fetchComplaints();
     } catch (e) {
       message.error(e.message);
     }
@@ -254,11 +258,17 @@ export default function ComplaintPage() {
         // Truyền note và hàm setNote
         note={approveModal.note}
         setNote={(val) => setApproveModal({ ...approveModal, note: val })}
+        isReturnRequired={approveModal.isReturnRequired}
+        setIsReturnRequired={(val) => setApproveModal({ ...approveModal, isReturnRequired: val })}
 
         onCancel={() => setApproveModal({ ...approveModal, open: false })}
 
         // Khi bấm OK -> Gọi API handleSellerAccept
-        onOk={() => handleSellerAccept(approveModal.record, approveModal.note)}
+        onOk={() => handleSellerAccept(
+          approveModal.record,
+          approveModal.note,
+          approveModal.isReturnRequired
+        )}
       />
 
       <DetailModal

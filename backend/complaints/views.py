@@ -86,6 +86,35 @@ class ComplaintViewSet(viewsets.ModelViewSet):
             return Response({'error': 'Không tìm thấy sản phẩm'}, status=404)
         except Exception as e:
             return Response({'error': str(e)}, status=400)
+        
+
+    @action(detail=True, methods=['post'], url_path='buyer-ship')
+    def buyer_ship_goods(self, request, pk=None):
+        """Khách nhập mã vận đơn để xác nhận đã gửi hàng"""
+        complaint = self.get_object()
+        
+        if complaint.user != request.user:
+            return Response({'error': 'Không có quyền'}, status=403)
+            
+        if complaint.status != 'waiting_return':
+            return Response({'error': 'Chưa đến bước gửi hàng'}, status=400)
+
+        carrier = request.data.get('carrier', 'Tự túc')
+        code = request.data.get('tracking_code')
+        proof_image = request.FILES.get('proof_image') # Ảnh chụp phiếu gửi
+
+        if not code:
+            return Response({'error': 'Cần nhập mã vận đơn'}, status=400)
+
+        complaint.return_shipping_carrier = carrier
+        complaint.return_tracking_code = code
+        if proof_image:
+            complaint.return_proof_image = proof_image
+            
+        complaint.status = 'returning' # Chuyển sang đang vận chuyển
+        complaint.save()
+
+        return Response({'message': 'Đã cập nhật thông tin gửi hàng', 'status': complaint.status})
 
     # ==========================================
     # 2. SELLER: PHẢN HỒI (CHẤP NHẬN / TỪ CHỐI)
@@ -95,6 +124,7 @@ class ComplaintViewSet(viewsets.ModelViewSet):
         complaint = self.get_object()
         action_type = request.data.get('action') # 'accept' hoặc 'reject'
         reason = request.data.get('reason', '') # Lý do nếu từ chối
+        return_required = request.data.get('return_required', True)
         
         # Check quyền chủ shop
         try:
@@ -113,10 +143,18 @@ class ComplaintViewSet(viewsets.ModelViewSet):
             complaint.seller_response = reason
             
             if action_type == 'accept':
-                # Seller đồng ý -> Hoàn tiền
-                complaint.status = 'resolved_refund'
-                complaint.order_item.status = 'REFUND_APPROVED'
-                self._process_refund_wallet(complaint)
+                if return_required:
+                    # Case 1: Đồng ý nhưng bắt trả hàng -> Chưa hoàn tiền vội
+                    complaint.status = 'waiting_return'
+                    complaint.is_return_required = True
+                    complaint.seller_response = "Đồng ý trả hàng. Vui lòng gửi hàng về địa chỉ shop."
+                else:
+                    # Case 2: Đồng ý và cho luôn hàng (Hàng giá trị thấp/hư hỏng) -> Hoàn tiền luôn
+                    complaint.status = 'resolved_refund'
+                    complaint.is_return_required = False
+                    complaint.order_item.status = 'REFUND_APPROVED'
+                    self._process_refund_wallet(complaint) # Tiền về ví khách ngay
+                    self._check_and_unlock_order(complaint.order_item.order)
                 
             elif action_type == 'reject':
                 # Seller từ chối -> Chuyển sang trạng thái thương lượng
@@ -131,6 +169,36 @@ class ComplaintViewSet(viewsets.ModelViewSet):
             self._check_and_unlock_order(complaint.order_item.order)
 
         return Response({'message': 'Đã phản hồi', 'status': complaint.status})
+    
+    @action(detail=True, methods=['post'], url_path='seller-received')
+    def seller_confirm_received(self, request, pk=None):
+        """Shop nhận được hàng hoàn -> Bấm xác nhận -> Tiền về ví khách"""
+        complaint = self.get_object()
+        
+        # ... (Check quyền seller) ...
+
+        if complaint.status != 'returning':
+             return Response({'error': 'Đơn chưa được gửi hoặc đã xử lý xong'}, status=400)
+
+        with transaction.atomic():
+            # 1. Update trạng thái Complaint
+            complaint.status = 'resolved_refund'
+            complaint.save()
+            
+            # 2. Update trạng thái Item
+            complaint.order_item.status = 'REFUND_APPROVED'
+            complaint.order_item.save()
+
+            # 3. Hoàn tiền + Mở khóa đơn + (Optional) Cộng lại tồn kho
+            self._process_refund_wallet(complaint)
+            self._check_and_unlock_order(complaint.order_item.order)
+            
+            # TODO: Nếu cần cộng lại tồn kho thì làm ở đây
+            # product = complaint.order_item.product
+            # product.stock += complaint.order_item.quantity
+            # product.save()
+
+        return Response({'message': 'Đã nhận hàng và hoàn tiền cho khách'})
 
     # ==========================================
     # 3. BUYER: KHIẾU NẠI LÊN SÀN (ESCALATE)
@@ -186,7 +254,7 @@ class ComplaintViewSet(viewsets.ModelViewSet):
         return Response({'message': 'Admin đã xử lý', 'result': decision})
 
     # --- HELPERS ---
-    def _process_refund_wallet(self, complaint):
+    def     _process_refund_wallet(self, complaint):
         # Tính tiền dựa trên giá lúc mua * số lượng
         amount = complaint.order_item.price * complaint.order_item.quantity
         amount = amount.quantize(Decimal('1'))

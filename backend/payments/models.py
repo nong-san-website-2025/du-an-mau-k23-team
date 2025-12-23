@@ -25,13 +25,25 @@ class SellerWallet(models.Model):
     updated_at = models.DateTimeField(auto_now=True, null=True)  
 
 class WalletTransaction(models.Model):
-    wallet = models.ForeignKey(SellerWallet, on_delete=models.CASCADE)
+    wallet = models.ForeignKey(SellerWallet, on_delete=models.CASCADE, related_name='transactions') # Thêm related_name để query ngược cho dễ
+    
+    # Liên kết với Order để biết tiền này từ đơn nào (QUAN TRỌNG)
+    order = models.ForeignKey('orders.Order', on_delete=models.SET_NULL, null=True, blank=True)
+    
     amount = models.DecimalField(max_digits=12, decimal_places=2)
-    type = models.CharField(max_length=20, choices=[
-        ('pending_add', 'Pending Add'),
-        ('add', 'Add Balance'),
-        ('deduct', 'Deduct Balance'),
-        ('withdraw', 'Withdraw'),
-    ])
+    
+    # Loại giao dịch chi tiết
+    TYPE_CHOICES = [
+        ('deposit', 'Nạp tiền'),
+        ('withdraw', 'Rút tiền'),
+        ('sale_income', 'Doanh thu bán hàng'), # Cộng tiền
+        ('refund_deduct', 'Trừ tiền hoàn hàng'), # Trừ tiền
+        ('platform_fee', 'Phí sàn'), # Trừ tiền
+    ]
+    type = models.CharField(max_length=20, choices=TYPE_CHOICES)
+    
     note = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.wallet.seller} - {self.get_type_display()} - {self.amount}"

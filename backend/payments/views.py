@@ -77,7 +77,7 @@ def withdraw_request(request):
     # Kiểm tra số dư
     product_ids = Product.objects.filter(seller=seller).values_list("id", flat=True)
     order_ids = OrderItem.objects.filter(product_id__in=product_ids).values_list("order_id", flat=True).distinct()
-    payments = Payment.objects.filter(order_id__in=order_ids, status="success")
+    payments = Payment.objects.filter(order_id__in=order_ids, status="completed")
     total_revenue = payments.aggregate(total=Sum("amount"))['total'] or 0
     total_withdrawn = WithdrawRequest.objects.filter(seller=seller, status__in=["paid", "approved"]).aggregate(total=Sum("amount"))['total'] or 0
     balance = float(total_revenue) - float(total_withdrawn)

@@ -1,382 +1,56 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React from "react";
 import {
-  message, Modal, Upload, Typography, Card,
-  Input, Tabs, Button, Divider
+  Modal, Upload, Typography, Card, Input, Tabs, Button, Divider,
+  message
 } from "antd";
 import {
-  UploadOutlined,
-  PlusOutlined,
-  ReloadOutlined,
-  SearchOutlined,
-  DropboxOutlined,
-  CheckCircleOutlined,
-  ClockCircleOutlined,
-  StopOutlined,
-  StarOutlined,
-  DeleteOutlined,
-  StarFilled,
-  ImportOutlined,
-  FileExcelOutlined
+  UploadOutlined, PlusOutlined, ReloadOutlined, SearchOutlined,
+  DeleteOutlined, StarFilled, StarOutlined, ImportOutlined
+  , EyeOutlined
 } from "@ant-design/icons";
 
-import { productApi } from "../services/api/productApi";
-
-// Import Components
+// Components & Hook
 import ProductTable from "../components/ProductSeller/ProductTable";
 import ProductForm from "../components/ProductSeller/ProductForm";
 import ProductDetailModal from "../components/ProductSeller/ProductDetailModal";
 import ImportProductModal from "../components/ProductSeller/ImportProductModal";
-// import StatsSection from "../../admin/components/common/StatsSection"; // (Tạm comment nếu chưa dùng)
+import { useProductPage } from "../hooks/useProductPage"; // Import Hook vừa tạo
 
-import "../styles/OrderPage.css";
-
+import "../styles/ProductPage.css";
+import { EyeClosed } from "lucide-react";
 const { Title, Text } = Typography;
 
 export default function ProductsPage() {
-  // ==================== 1. STATE MANAGEMENT ====================
-
-  const [rawProducts, setRawProducts] = useState([]);
-  const [filteredProducts, setFilteredProducts] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(false);
-
-  // -- Modal Visibilities --
-  const [modalVisible, setModalVisible] = useState(false);
-  const [importModalVisible, setImportModalVisible] = useState(false);
-  const [editingProduct, setEditingProduct] = useState(null);
-
-  // -- Filter & Search --
-  const [activeTab, setActiveTab] = useState("all");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [importRequestProducts, setImportRequestProducts] = useState([]);
-
-  // -- Detail & Gallery --
-  const [selectedProduct, setSelectedProduct] = useState(null);
-  const [isDetailModalVisible, setIsDetailModalVisible] = useState(false);
-
-  const [galleryVisible, setGalleryVisible] = useState(false);
-  const [galleryProduct, setGalleryProduct] = useState(null);
-  const [galleryFileList, setGalleryFileList] = useState([]);
-  const [galleryLoading, setGalleryLoading] = useState(false);
-
-  // ==================== 2. API FETCHING ====================
-
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const [catRes, prodRes, importRes] = await Promise.all([
-        productApi.getCategories(),
-        productApi.getSellerProducts(),
-        productApi.getImportRequestProducts().catch(() => ({ data: [] })),
-      ]);
-
-      const categoriesData = catRes.data.results || catRes.data || [];
-      const productsData = prodRes.data.results || prodRes.data || [];
-      const importData = importRes.data || [];
-
-      // Map Category Name vào Product (Tối ưu logic tìm kiếm)
-      const mapped = productsData.map((p) => {
-        let catName = "Khác";
-        let subName = "Khác";
-
-        // Tìm category cha chứa subcategory id của sản phẩm
-        if (p.subcategory) {
-          const cat = categoriesData.find((c) =>
-            c.subcategories?.some((s) => s.id === p.subcategory)
-          );
-          if (cat) {
-            catName = cat.name;
-            const sub = cat.subcategories.find((s) => s.id === p.subcategory);
-            if (sub) subName = sub.name;
-          }
-        }
-        
-        return {
-          ...p,
-          category_name: catName,
-          subcategory_name: subName,
-        };
-      });
-
-      // Sort: Mới nhất lên đầu
-      const sorted = mapped.sort((a, b) => b.id - a.id);
-
-      setCategories(categoriesData);
-      setRawProducts(sorted);
-      setImportRequestProducts(importData);
-    } catch (err) {
-      message.error("Không thể tải dữ liệu sản phẩm");
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  // ==================== 3. FILTER ENGINE ====================
-
-  useEffect(() => {
-    let result = [...rawProducts];
-
-    // 1. Filter by Search
-    if (searchTerm) {
-      const lowerKey = searchTerm.toLowerCase();
-      result = result.filter(
-        (p) =>
-          p.name.toLowerCase().includes(lowerKey) ||
-          String(p.id).includes(lowerKey) ||
-          (p.category_name && p.category_name.toLowerCase().includes(lowerKey))
-      );
-    }
-
-    // 2. Filter by Tab
-    if (activeTab !== "all") {
-      switch (activeTab) {
-        case "pending":
-          result = result.filter((p) => p.status === "pending" || p.status === "pending_update");
-          break;
-        case "approved":
-          result = result.filter((p) => p.status === "approved");
-          break;
-        case "rejected":
-          result = result.filter((p) => ["rejected", "self_rejected", "banned"].includes(p.status));
-          break;
-        case "out_of_stock":
-          result = result.filter((p) => p.stock <= 0);
-          break;
-        case "import_request":
-          result = importRequestProducts; // Lấy từ nguồn riêng
-          // Apply search lại cho tab này vì nguồn dữ liệu khác
-          if (searchTerm) {
-            const lowerKey = searchTerm.toLowerCase();
-            result = result.filter(
-               (p) => p.name.toLowerCase().includes(lowerKey) || String(p.id).includes(lowerKey)
-            );
-          }
-          break;
-        default:
-          break;
-      }
-    }
-    setFilteredProducts(result);
-  }, [rawProducts, searchTerm, activeTab, importRequestProducts]);
-
-  // ==================== 4. STATS & CONFIG ====================
-
-  const statsItems = useMemo(() => {
-    const total = rawProducts.length;
-    const approved = rawProducts.filter((p) => p.status === "approved").length;
-    const pending = rawProducts.filter((p) => ["pending", "pending_update"].includes(p.status)).length;
-    const outOfStock = rawProducts.filter((p) => p.stock <= 0).length;
-    const importRequest = importRequestProducts.length;
-
-    return [
-        { value: total },      // 0: All
-        { value: approved },   // 1: Selling
-        { value: pending },    // 2: Pending
-        { value: outOfStock }, // 3: Out of stock
-        { value: importRequest } // 4: Request
-    ];
-  }, [rawProducts, importRequestProducts]);
-
-  const tabItems = [
-    { key: "all", label: `Tất cả (${statsItems[0].value})` },
-    { key: "approved", label: `Đang bán (${statsItems[1].value})`, icon: <CheckCircleOutlined /> },
-    { key: "pending", label: `Chờ duyệt (${statsItems[2].value})`, icon: <ClockCircleOutlined /> },
-    { key: "out_of_stock", label: `Hết hàng (${statsItems[3].value})`, icon: <StopOutlined /> },
-    { key: "import_request", label: `Yêu cầu nhập (${statsItems[4].value})`, icon: <ImportOutlined /> },
-    { key: "rejected", label: "Đã huỷ / Từ chối" },
-  ];
-
-  const getStatusConfig = (status) =>
-    ({
-      pending: { text: "Chờ duyệt", color: "gold" },
-      approved: { text: "Đã duyệt", color: "green" },
-      rejected: { text: "Bị từ chối", color: "red" },
-      self_rejected: { text: "Đã hủy", color: "default" },
-      banned: { text: "Đã khóa", color: "volcano" },
-      pending_update: { text: "Chờ duyệt cập nhật", color: "orange" },
-    })[status] || { text: status, color: "default" };
-
-  const getAvailabilityConfig = (availability) =>
-    ({
-      available: { text: "Có sẵn", color: "blue" },
-      coming_soon: { text: "Sắp có", color: "purple" },
-      out_of_stock: { text: "Hết hàng", color: "red" },
-    })[availability] || { text: availability, color: "default" };
-
-  // ==================== 5. HANDLERS ====================
-
-  const handleAddNew = () => { setEditingProduct(null); setModalVisible(true); };
-  const handleEdit = (product) => { setEditingProduct(product); setModalVisible(true); };
-  
-  const handleImportSuccess = () => {
-    fetchData(); // Refresh data sau khi import excel xong
-  };
-
-  const handleDelete = async (id) => {
-    try {
-      await productApi.deleteProduct(id);
-      message.success("Đã xóa sản phẩm");
-      setRawProducts(prev => prev.filter(i => i.id !== id));
-    } catch {
-      message.error("Lỗi khi xóa sản phẩm");
-    }
-  };
-
-  const handleSelfReject = async (p) => {
-    try {
-      await productApi.selfReject(p.id);
-      message.success("Đã hủy đăng bán");
-      setRawProducts(prev => prev.map(i => i.id === p.id ? { ...i, status: 'self_rejected' } : i));
-    } catch {
-      message.error("Lỗi khi hủy đăng bán");
-    }
-  };
-
-  const handleToggleHide = async (record) => {
-    try {
-      await productApi.toggleHide(record.id);
-      const actionText = record.is_hidden ? "Đã hiển thị lại" : "Đã ẩn";
-      message.success(`${actionText} sản phẩm: ${record.name}`);
-      setRawProducts(prev => prev.map(p => p.id === record.id ? { ...p, is_hidden: !p.is_hidden } : p));
-    } catch (error) {
-      console.error(error);
-      message.error("Lỗi khi thay đổi trạng thái");
-    }
-  };
-
-  // --- GALLERY LOGIC (QUAN TRỌNG) ---
-  const openGallery = (p) => {
-    setGalleryProduct(p);
+  // Lấy toàn bộ logic từ Custom Hook
+  const {
+    filteredProducts, categories, loading,
+    selectedRowKeys, setSelectedRowKeys, setSelectedRows, rowSelection,
+    activeTab, setActiveTab, searchTerm, setSearchTerm, tabItems,
     
-    // 1. Lấy ảnh từ mảng images (Gallery)
-    let existing = p.images?.map(i => ({
-      uid: String(i.id),
-      url: i.image,
-      status: 'done',
-      name: `Image-${i.id}`,
-      is_primary: i.is_primary
-    })) || [];
+    modalVisible, setModalVisible,
+    importModalVisible, setImportModalVisible,
+    editingProduct, 
+    
+    selectedProduct, setSelectedProduct,
+    isDetailModalVisible, setIsDetailModalVisible,
+    
+    galleryVisible, setGalleryVisible,
+    galleryFileList, setGalleryFileList,
+    galleryLoading,
 
-    // 2. [FIX QUAN TRỌNG] Nếu Gallery rỗng nhưng có ảnh đại diện ở root (p.image)
-    // Hiển thị nó ra để user biết là có ảnh.
-    // Đặt UID đặc biệt để biết đây là ảnh từ root (không xóa được qua API deleteProductImage)
-    if (existing.length === 0 && p.image) {
-        existing.push({
-            uid: 'root-image-placeholder',
-            url: p.image,
-            status: 'done',
-            name: 'Ảnh đại diện chính',
-            is_primary: true
-        });
-    }
-
-    setGalleryFileList(existing);
-    setGalleryVisible(true);
-  };
-
-  const handleSetPrimaryImage = async (imgId) => {
-    if (!galleryProduct) return;
-    if (imgId === 'root-image-placeholder') return; // Không cần set lại nếu nó đã là chính
-
-    try {
-      await productApi.setPrimaryImage(galleryProduct.id, imgId);
-      message.success("Đã thay đổi ảnh đại diện");
-      fetchData();
-      setGalleryVisible(false); // Đóng modal để refresh data cho chuẩn
-    } catch (err) {
-      console.error(err);
-      message.error("Lỗi khi đặt ảnh đại diện");
-    }
-  };
-
-  const handleRemoveImage = async (file) => {
-    // Case 1: Ảnh mới upload (chưa lưu server) -> Xóa khỏi state
-    if (file.originFileObj) {
-      setGalleryFileList(prev => prev.filter(item => item.uid !== file.uid));
-      return;
-    }
-
-    // Case 2: Ảnh placeholder từ root (FIX)
-    if (file.uid === 'root-image-placeholder') {
-        message.warning("Đây là ảnh đại diện chính. Hãy thêm ảnh khác và đặt làm đại diện trước khi xóa ảnh này.");
-        return;
-    }
-
-    // Case 3: Ảnh cũ trên server -> Gọi API xóa
-    try {
-      await productApi.deleteProductImage(file.uid);
-      message.success("Đã xóa ảnh");
-      setGalleryFileList(prev => prev.filter(item => item.uid !== file.uid));
-      fetchData();
-    } catch (err) {
-      message.error("Không thể xóa ảnh này");
-    }
-  };
-
-  const handleGalleryUpload = async () => {
-    const newFiles = galleryFileList.filter((f) => f.originFileObj);
-    if (newFiles.length === 0) return message.warning("Chưa có ảnh mới");
-
-    const formData = new FormData();
-    newFiles.forEach((file) => formData.append("images", file.originFileObj));
-
-    setGalleryLoading(true);
-    try {
-      await productApi.uploadProductImages(galleryProduct.id, formData);
-      message.success("Tải ảnh thành công");
-      setGalleryVisible(false);
-      fetchData();
-      if (selectedProduct && selectedProduct.id === galleryProduct.id) {
-        setIsDetailModalVisible(false); 
-      }
-    } catch (err) {
-      message.error("Tải ảnh thất bại");
-    } finally {
-      setGalleryLoading(false);
-    }
-  };
-
-  // --- SUBMIT FORM ---
-  const handleSubmitForm = async (formData) => {
-    try {
-      if (!editingProduct) {
-        formData.append("status", "pending");
-        await productApi.createProduct(formData);
-        message.success("Thêm mới thành công, chờ duyệt");
-      } else {
-        // Kiểm tra xem có update ảnh không để chọn Content-Type
-        const hasImages = Array.from(formData.entries()).some(([k]) => k === "images" || k === "image");
-        if (!hasImages) {
-          // Nếu chỉ update text -> gửi JSON
-          const plain = {};
-          for (let [k, v] of formData.entries()) {
-             if (k !== 'images' && k !== 'primary_image_index') plain[k] = v;
-          }
-          await productApi.updateProduct(editingProduct.id, plain, { headers: { "Content-Type": "application/json" } });
-        } else {
-          // Nếu có ảnh -> gửi FormData
-          await productApi.updateProduct(editingProduct.id, formData);
-        }
-        message.success("Cập nhật thành công");
-      }
-      setModalVisible(false);
-      fetchData();
-    } catch {
-      message.error("Lỗi khi lưu dữ liệu");
-    }
-  };
-
-  // ==================== 6. RENDER ====================
+    fetchData,
+    handleBulkDelete, handleBulkToggleHide,
+    handleAddNew, handleEdit, handleImportSuccess, handleDelete,
+    handleSelfReject, handleToggleHide, handleSubmitForm,
+    openGallery, handleSetPrimaryImage, handleRemoveImage, handleGalleryUpload,
+    
+    getStatusConfig, getAvailabilityConfig
+  } = useProductPage();
 
   return (
     <div style={{ minHeight: "100vh", backgroundColor: "#f0f2f5", padding: "0px" }}>
       <Card bordered={false} style={{ borderRadius: 8, boxShadow: "0 1px 2px rgba(0,0,0,0.03)" }}>
-        
+
         {/* Toolbar */}
         <div className="page-toolbar" style={{ position: 'sticky', top: 0, zIndex: 10, background: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12, paddingBottom: 12 }}>
           <Title level={4} style={{ margin: 0 }}>DANH SÁCH SẢN PHẨM</Title>
@@ -390,20 +64,20 @@ export default function ProductsPage() {
               allowClear
             />
             <Button icon={<ReloadOutlined />} onClick={fetchData}>Làm mới</Button>
-            <Button 
-                icon={<ImportOutlined />} 
-                onClick={() => setImportModalVisible(true)}
-                style={{ borderColor: '#52c41a', color: '#52c41a' }}
+            <Button
+              icon={<ImportOutlined />}
+              onClick={() => setImportModalVisible(true)}
+              className="btn-import"
             >
-                Nhập Excel
+              Nhập Excel
             </Button>
-            <Button type="primary" icon={<PlusOutlined />} onClick={handleAddNew}>Thêm sản phẩm</Button>
+            <Button className="btn-add" icon={<PlusOutlined />} onClick={handleAddNew}>Thêm sản phẩm</Button>
           </div>
         </div>
 
         {/* Filters */}
         <Tabs activeKey={activeTab} onChange={setActiveTab} items={tabItems} type="card" style={{ marginBottom: 16 }} />
-
+        
         {/* Table */}
         <div style={{ overflowX: 'auto' }}>
           <ProductTable
@@ -414,11 +88,65 @@ export default function ProductsPage() {
             onDelete={handleDelete}
             onSelfReject={handleSelfReject}
             onToggleHide={handleToggleHide}
+            rowSelection={rowSelection}
             onRow={(record) => ({
               onClick: () => { setSelectedProduct(record); setIsDetailModalVisible(true); },
             })}
           />
         </div>
+
+        {/* --- FLOAT BULK ACTIONS --- */}
+        {selectedRowKeys.length > 0 && (() => {
+          const approvedProducts = filteredProducts.filter(p => selectedRowKeys.includes(p.id) && p.status === 'approved');
+          const hiddenCount = approvedProducts.filter(p => p.is_hidden).length;
+          const visibleCount = approvedProducts.length - hiddenCount;
+          
+          const canToggleHide = approvedProducts.length > 0 && (
+            (hiddenCount > 0 && visibleCount === 0) || 
+            (visibleCount > 0 && hiddenCount === 0)
+          );
+          
+          const isAllHidden = approvedProducts.length > 0 && hiddenCount === approvedProducts.length;
+          
+          return (
+            <div className="bulk-action-bar">
+              <div className="bulk-info">
+                Đã chọn <span style={{ color: '#fff', fontWeight: 600 }}>{selectedRowKeys.length}</span>
+              </div>
+              <div className="bulk-divider" />
+              <Button 
+                type="text" size="middle"
+                onClick={() => { setSelectedRowKeys([]); setSelectedRows([]); }}
+                style={{ color: '#a6a6a6' }}
+              >
+                Hủy
+              </Button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {canToggleHide && (
+                  <Button
+                    size="middle" shape="round"
+                    onClick={() => handleBulkToggleHide()}
+                    style={{ 
+                      backgroundColor: isAllHidden ? '#52c41a' : '#434343', 
+                      color: '#fff', 
+                      border: 'none' 
+                    }}
+                    icon={isAllHidden ? <EyeOutlined /> : <EyeClosed   />}
+                  >
+                    {isAllHidden ? 'Hiển thị' : 'Ẩn'}
+                  </Button>
+                )}
+                 <Button 
+                  type="primary" danger size="middle" shape="round"
+                  icon={<DeleteOutlined />} 
+                  onClick={handleBulkDelete}
+                >
+                  Xóa
+                </Button>
+              </div>
+            </div>
+          );
+        })()}
       </Card>
 
       {/* --- MODALS --- */}

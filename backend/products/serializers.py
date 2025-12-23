@@ -36,7 +36,7 @@ class PendingProductUpdateSerializer(serializers.ModelSerializer):
         fields = [
             'name', 'description', 'original_price', 'discounted_price', 'unit',
             'stock', 'location', 'brand', 'availability_status', 'season_start', 'season_end',
-            'created_at', 'updated_at', 'weight_g', # 👈 THÊM VÀO ĐÂY
+            'created_at', 'updated_at', 'weight_g',
         ]
 
 
@@ -137,7 +137,7 @@ class ProductSerializer(serializers.ModelSerializer):
             "estimated_quantity", "preordered_quantity", 'ordered_quantity',
             "is_coming_soon", "is_out_of_stock", "available_quantity",
             "total_preordered", "user_preordered", "features", "main_image",
-            "commission_rate", "pending_update", "comparison_data", 'weight_g', 'reject_reason','image',
+            "commission_rate", "pending_update", "comparison_data", 'weight_g', 'reject_reason','image', 'tax_rate'
         ]
         read_only_fields = ["status", "seller"]
 
@@ -415,7 +415,7 @@ class ProductListSerializer(serializers.ModelSerializer):
             "is_coming_soon", "is_out_of_stock", "available_quantity",
             "total_preordered", "user_preordered", "features", "store", "main_image",
             "commission_rate", "pending_update", "comparison_data", 'is_reup', 'weight_g',
-            'reject_reason',
+            'reject_reason', 'tax_rate', 'is_hidden'
         ]
         read_only_fields = ["id", "created_at", "updated_at", "seller"]
 

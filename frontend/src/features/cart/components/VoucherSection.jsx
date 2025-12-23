@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Button, Typography, Modal, Radio, Tabs, Tag, Badge, Empty, Space } from "antd";
-import { FireOutlined, CarOutlined, GiftOutlined, CheckCircleFilled, RightOutlined } from "@ant-design/icons";
+import { Button, Typography, Modal, Radio, Tabs, Tag, Badge, Empty } from "antd";
+import { FireOutlined, CarOutlined, GiftOutlined, CheckCircleFilled, RightOutlined, LoginOutlined } from "@ant-design/icons";
 import { getMyVouchers } from "../../admin/services/promotionServices";
+import { useNavigate } from "react-router-dom"; // [THÊM] Import hook điều hướng
 
 const { Text } = Typography;
 
@@ -11,13 +12,11 @@ const calculateDiscountValue = (voucher, orderTotal, shippingFee) => {
   const total = Number(orderTotal) || 0;
   const shipFee = Number(shippingFee) || 0;
 
-  // 1. Voucher Freeship
   if (voucher.discount_type === 'freeship' || (voucher.freeship_amount && voucher.freeship_amount > 0)) {
       const maxFree = Number(voucher.freeship_amount);
       return Math.min(maxFree, shipFee); 
   }
 
-  // 2. Voucher Phần trăm
   if (voucher.discount_type === 'percent') {
       let val = (total * Number(voucher.discount_percent)) / 100;
       if (voucher.max_discount_amount) {
@@ -26,7 +25,6 @@ const calculateDiscountValue = (voucher, orderTotal, shippingFee) => {
       return val;
   }
 
-  // 3. Voucher Số tiền
   if (voucher.discount_type === 'amount') {
       return Number(voucher.discount_amount);
   }
@@ -46,6 +44,7 @@ const isVoucherApplicable = (v, total) => {
 };
 
 const VoucherSection = ({ total, shippingFee = 0, onApply }) => {
+  const navigate = useNavigate(); // [THÊM]
   const [allVouchers, setAllVouchers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -53,25 +52,34 @@ const VoucherSection = ({ total, shippingFee = 0, onApply }) => {
   const [selectedShopVoucher, setSelectedShopVoucher] = useState(null);
   const [selectedShipVoucher, setSelectedShipVoucher] = useState(null);
 
+  // Lấy token để kiểm tra trạng thái đăng nhập
+  const token = localStorage.getItem("token");
+
   // --- 1. FETCH DATA ---
-  // Gọi mỗi khi Component mount để lấy danh sách mới nhất
   useEffect(() => {
     const loadVouchers = async () => {
+      // Nếu chưa đăng nhập thì không gọi API
+      if (!token) {
+        setAllVouchers([]);
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
       try {
         const res = await getMyVouchers();
-        // Đảm bảo dữ liệu luôn là mảng
         setAllVouchers(Array.isArray(res) ? res : []);
       } catch (err) {
         console.error("Failed to load vouchers", err);
+        setAllVouchers([]);
       } finally {
         setLoading(false);
       }
     };
     loadVouchers();
-  }, [total]); // Thêm total vào dependency để reload khi đơn hàng thay đổi (tùy chọn)
+  }, [total, token]); // Thêm token vào dependency
 
-  // --- 2. GỘP VOUCHER & PHÂN LOẠI (LOGIC QUAN TRỌNG) ---
+  // --- 2. GỘP VOUCHER & PHÂN LOẠI ---
   const { shopVouchers, shipVouchers } = useMemo(() => {
       const shopMap = {};
       const shipMap = {};
@@ -79,32 +87,21 @@ const VoucherSection = ({ total, shippingFee = 0, onApply }) => {
       if (!allVouchers || !allVouchers.length) return { shopVouchers: [], shipVouchers: [] };
 
       allVouchers.forEach(uv => {
-          // Lọc bỏ voucher đã dùng (theo cờ is_used từ backend)
           if (uv.is_used) return;
-
           const v = uv.voucher;
           if (!v) return;
 
-          // Tính số lượng còn lại của dòng này
           const qty = (uv.quantity || 1); 
           const used = (uv.used_count || 0);
           const remaining = qty - used;
-
-          // [FIX] Nếu hết lượt dùng thì bỏ qua luôn (ẩn khỏi danh sách)
           if (remaining <= 0) return;
 
           const isShip = v.discount_type === 'freeship' || (v.freeship_amount && v.freeship_amount > 0);
           const targetMap = isShip ? shipMap : shopMap;
 
-          // Gộp theo Mã Voucher
           if (!targetMap[v.code]) {
-              // Tạo bản ghi đại diện cho nhóm
-              targetMap[v.code] = { 
-                  ...uv, 
-                  total_available: 0 // Biến đếm tổng số lượng
-              };
+              targetMap[v.code] = { ...uv, total_available: 0 };
           }
-          // Cộng dồn số lượng
           targetMap[v.code].total_available += remaining;
       });
 
@@ -116,8 +113,9 @@ const VoucherSection = ({ total, shippingFee = 0, onApply }) => {
 
   // --- 3. SMART AUTO-SELECT ---
   useEffect(() => {
-    // Logic: Chọn voucher giảm nhiều nhất trong số các voucher hợp lệ
-    
+    // Chỉ auto-select khi đã đăng nhập
+    if (!token) return;
+
     const validShop = shopVouchers
         .filter(uv => isVoucherApplicable(uv.voucher, total))
         .sort((a, b) => calculateDiscountValue(b.voucher, total, shippingFee) - calculateDiscountValue(a.voucher, total, shippingFee));
@@ -132,13 +130,10 @@ const VoucherSection = ({ total, shippingFee = 0, onApply }) => {
     setSelectedShopVoucher(bestShop);
     setSelectedShipVoucher(bestShip);
     
-    // Gửi ra ngoài ngay lập tức
-    if (bestShop || bestShip) {
-        pushDataToParent(bestShop, bestShip);
-    }
+    pushDataToParent(bestShop, bestShip);
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shopVouchers, shipVouchers, total, shippingFee]); 
+  }, [shopVouchers, shipVouchers, total, shippingFee, token]); 
 
   // --- 4. GỬI DỮ LIỆU ---
   const pushDataToParent = (shopV, shipV) => {
@@ -154,13 +149,29 @@ const VoucherSection = ({ total, shippingFee = 0, onApply }) => {
       });
   };
 
-  // --- 5. RENDER ITEM ---
+  // --- 5. XỬ LÝ CLICK MỞ MODAL ---
+  const handleOpenModal = () => {
+    // [THÊM] Nếu chưa login -> Hiện modal bắt đăng nhập
+    if (!token) {
+        Modal.confirm({
+            title: "Yêu cầu đăng nhập",
+            content: "Bạn cần đăng nhập để xem và áp dụng mã giảm giá.",
+            okText: "Đăng nhập ngay",
+            cancelText: "Hủy",
+            onOk: () => navigate("/login?redirect=/checkout"),
+            centered: true,
+        });
+        return;
+    }
+    setIsModalOpen(true);
+  };
+
+  // --- 6. RENDER ITEM ---
   const renderVoucherItem = (uv, type) => {
       const v = uv.voucher;
       const applicable = isVoucherApplicable(v, total);
       const discountVal = calculateDiscountValue(v, total, shippingFee);
       
-      // So sánh theo ID (của đại diện nhóm) hoặc Code
       const isSelected = type === 'shop' 
           ? selectedShopVoucher?.id === uv.id 
           : selectedShipVoucher?.id === uv.id;
@@ -168,7 +179,6 @@ const VoucherSection = ({ total, shippingFee = 0, onApply }) => {
       const handleSelect = () => {
           if (!applicable) return;
           if (type === 'shop') {
-              // Toggle: Nếu đang chọn thì bỏ chọn
               const newShop = isSelected ? null : uv;
               setSelectedShopVoucher(newShop);
               pushDataToParent(newShop, selectedShipVoucher);
@@ -198,7 +208,6 @@ const VoucherSection = ({ total, shippingFee = 0, onApply }) => {
                 boxShadow: isSelected ? '0 2px 8px rgba(22, 119, 255, 0.15)' : 'none'
             }}
           >
-              {/* Badge Số lượng (Nằm góc phải trên) */}
               {uv.total_available > 1 && (
                   <div style={{
                       position: 'absolute', top: 0, right: 0, 
@@ -213,7 +222,6 @@ const VoucherSection = ({ total, shippingFee = 0, onApply }) => {
                   </div>
               )}
 
-              {/* Icon */}
               <div style={{ marginRight: 16 }}>
                   <div style={{ 
                       width: 48, height: 48, 
@@ -227,7 +235,6 @@ const VoucherSection = ({ total, shippingFee = 0, onApply }) => {
                   </div>
               </div>
 
-              {/* Info */}
               <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                       <Text strong style={{ fontSize: 15 }}>{v.code}</Text>
@@ -249,7 +256,6 @@ const VoucherSection = ({ total, shippingFee = 0, onApply }) => {
                   )}
               </div>
 
-              {/* Radio */}
               <div style={{ paddingLeft: 12 }}>
                   <Radio checked={isSelected} disabled={!applicable} />
               </div>
@@ -275,19 +281,27 @@ const VoucherSection = ({ total, shippingFee = 0, onApply }) => {
                 cursor: 'pointer',
                 boxShadow: '0 2px 6px rgba(0,0,0,0.02)'
             }}
-            onClick={() => setIsModalOpen(true)}
+            onClick={handleOpenModal} // Sử dụng hàm handle mới
         >
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <GiftOutlined style={{ fontSize: 18, color: '#ff4d4f' }} />
                 <div>
                     <Text strong style={{ display: 'block', lineHeight: 1.2 }}>GreenFarm Voucher</Text>
-                    <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>
-                        {selectedShopVoucher || selectedShipVoucher ? (
-                            <span style={{ color: '#237804' }}>
-                                Đã chọn {selectedShopVoucher ? 1 : 0} voucher shop, {selectedShipVoucher ? 1 : 0} freeship
-                            </span>
+                    <div style={{ fontSize: 12, marginTop: 4 }}>
+                        {/* [SỬA] Logic hiển thị text */}
+                        {!token ? (
+                             <span style={{ color: '#1677ff', fontWeight: 500 }}>
+                                <LoginOutlined style={{ marginRight: 4 }} /> 
+                                Đăng nhập để chọn mã giảm giá
+                             </span>
                         ) : (
-                            "Chọn hoặc nhập mã"
+                            selectedShopVoucher || selectedShipVoucher ? (
+                                <span style={{ color: '#237804' }}>
+                                    Đã chọn {selectedShopVoucher ? 1 : 0} voucher shop, {selectedShipVoucher ? 1 : 0} freeship
+                                </span>
+                            ) : (
+                                <span style={{ color: '#888' }}>Chọn hoặc nhập mã</span>
+                            )
                         )}
                     </div>
                 </div>
@@ -339,7 +353,7 @@ const VoucherSection = ({ total, shippingFee = 0, onApply }) => {
                                 {shopVouchers.length > 0 ? (
                                     shopVouchers.map(uv => renderVoucherItem(uv, 'shop'))
                                 ) : (
-                                    <Empty description="Không có mã giảm giá nào" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+                                    <Empty description={loading ? "Đang tải..." : "Không có mã giảm giá nào"} image={Empty.PRESENTED_IMAGE_SIMPLE} />
                                 )}
                             </div>
                         ),
@@ -356,7 +370,7 @@ const VoucherSection = ({ total, shippingFee = 0, onApply }) => {
                                 {shipVouchers.length > 0 ? (
                                     shipVouchers.map(uv => renderVoucherItem(uv, 'ship'))
                                 ) : (
-                                    <Empty description="Không có mã freeship nào" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+                                    <Empty description={loading ? "Đang tải..." : "Không có mã freeship nào"} image={Empty.PRESENTED_IMAGE_SIMPLE} />
                                 )}
                             </div>
                         ),

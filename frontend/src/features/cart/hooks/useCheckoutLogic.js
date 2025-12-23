@@ -7,9 +7,12 @@ import { useNavigate } from "react-router-dom";
 
 const useCheckoutLogic = () => {
   const navigate = useNavigate();
-  // [MERGE] Lấy clearSelectedItems từ TruongAn1 để chỉ xóa các món đã mua
+  // [MERGE] Lấy clearSelectedItems từ CartContext
   const { cartItems, clearCart, clearSelectedItems } = useCart();
   const token = localStorage.getItem("token");
+  
+  // 1. Xác định khách vãng lai (Guest)
+  const isGuest = !token;
 
   // --- STATE QUẢN LÝ ---
   const [shippingFee, setShippingFee] = useState(0);
@@ -37,6 +40,13 @@ const useCheckoutLogic = () => {
   const [payment, setPayment] = useState("Thanh toán khi nhận hàng");
   const [isLoading, setIsLoading] = useState(false);
 
+  // --- 2. LOGIC TỰ ĐỘNG BẬT NHẬP TAY NẾU LÀ GUEST ---
+  useEffect(() => {
+    if (isGuest) {
+      setManualEntry(true);
+    }
+  }, [isGuest]);
+
   // --- MEMOIZED VALUES ---
   const selectedAddress = useMemo(() => {
     return addresses.find((a) => a.id === selectedAddressId) || null;
@@ -56,9 +66,14 @@ const useCheckoutLogic = () => {
 
   const totalAfterDiscount = Math.max(total + shippingFee - discount, 0);
 
-  // --- ADDRESS LOGIC (FETCH & CRUD - Từ HEAD) ---
+  // --- ADDRESS LOGIC (FETCH & CRUD) ---
+  
+  // 3. CHẶN GỌI API NẾU KHÔNG CÓ TOKEN
   const fetchAddresses = useCallback(async () => {
-    if (!token) return;
+    if (!token) {
+      setAddresses([]);
+      return; // Dừng ngay lập tức, không gọi API để tránh lỗi 401 Unauthorized
+    }
     try {
       const res = await API.get("users/addresses/");
       const list = res.data || [];
@@ -74,6 +89,7 @@ const useCheckoutLogic = () => {
       }
     } catch (err) {
       console.error("Fetch address error", err);
+      setAddresses([]);
     }
   }, [token, selectedAddressId]);
 
@@ -153,8 +169,16 @@ const useCheckoutLogic = () => {
     }
   };
 
-  // --- SHIPPING LOGIC (Giữ logic HEAD vì hỗ trợ nhiều seller) ---
+  // --- SHIPPING LOGIC ---
   useEffect(() => {
+    // Guest vẫn có thể tính phí ship nếu nhập địa chỉ tay
+    // Nhưng nếu không nhập gì thì thôi
+    if (isGuest && !manualEntry) {
+      setShippingFee(0);
+      setShippingFeePerSeller({});
+      return;
+    }
+    
     if (!manualEntry && !selectedAddress) return;
 
     const to_district_id = manualEntry
@@ -208,6 +232,8 @@ const useCheckoutLogic = () => {
       }
 
       try {
+        // Lưu ý: Backend cần cho phép Guest gọi API này, nếu không sẽ bị 401
+        // Nếu Backend chặn, bạn cần bọc try/catch mà không redirect
         const res = await API.post("delivery/fee-per-seller/", {
           sellers: sellersPayload,
           to_district_id: parseInt(to_district_id),
@@ -239,21 +265,16 @@ const useCheckoutLogic = () => {
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [manualEntry, geoManual, selectedAddress, selectedItems]);
+  }, [manualEntry, geoManual, selectedAddress, selectedItems, isGuest]);
 
-  // --- VOUCHER LOGIC (Logic TruongAn1 - Hỗ trợ object data) ---
+  // --- VOUCHER LOGIC ---
   const handleApplyVoucher = useCallback((data) => {
     if (!data) {
         setDiscount(0);
         setVoucherCode("");
         return;
     }
-    // Set tổng tiền giảm (Shop + Ship)
     setDiscount(data.totalDiscount || 0);
-
-    // Lấy code để gửi backend (ưu tiên shop voucher hoặc ship voucher)
-    // Lưu ý: Backend cần hỗ trợ nhận cả 2 code nếu muốn lưu lịch sử dùng cả 2
-    // Ở đây ta tạm lấy 1 code đại diện hoặc logic tùy backend của bạn
     let code = "";
     if (data.shopVoucher) code = data.shopVoucher.voucher.code;
     else if (data.shipVoucher) code = data.shipVoucher.voucher.code;
@@ -261,11 +282,16 @@ const useCheckoutLogic = () => {
     setVoucherCode(code);
   }, []);
 
-  // --- HANDLE ORDER (MERGED) ---
+  // --- 4. HANDLE ORDER (CHECK LOGIN TẠI ĐÂY) ---
   const handleOrder = async (extraPayload = {}) => {
+    // Check Login
     if (!token) {
-      notification.warning({ message: "Vui lòng đăng nhập để đặt hàng!" });
-      navigate("/login?redirect=/checkout");
+      notification.warning({ 
+        message: "Yêu cầu đăng nhập",
+        description: "Vui lòng đăng nhập để hoàn tất đơn hàng." 
+      });
+      // Redirect và lưu lại url hiện tại để quay lại
+      navigate("/login?redirect=/checkout", { replace: false });
       return null;
     }
 
@@ -287,7 +313,6 @@ const useCheckoutLogic = () => {
       return null;
     }
 
-    // Mapping items chuẩn (Logic HEAD)
     const cleanItems = selectedItems.map((item) => {
       let productId = item.product;
       if (typeof item.product === "object" && item.product !== null) {
@@ -311,29 +336,25 @@ const useCheckoutLogic = () => {
       customer_phone: finalPhone,
       address: finalLocation,
       note: note || "",
-      payment_method: payment === "Ví điện tử" ? "banking" : "cod", // Logic HEAD map đúng với VNPAY
+      payment_method: payment === "Ví điện tử" ? "banking" : "cod",
       items: cleanItems,
       voucher_code: voucherCode || "",
-      ...extraPayload // Cho phép ghi đè từ UI (ví dụ shop_voucher_code, ship_voucher_code)
+      ...extraPayload 
     };
 
     try {
       setIsLoading(true);
       const res = await API.post("orders/", orderData);
-
-      // Thành công
       const newOrderId = res.data.id;
       
-      // [QUAN TRỌNG] Chỉ xóa các món đã chọn (Logic TruongAn1)
       if (clearSelectedItems) {
         await clearSelectedItems();
       } else {
-        await clearCart(); // Fallback
+        await clearCart(); 
       }
       
       notification.success({ message: "Đặt hàng thành công!" });
 
-      // Điều hướng
       if (payment === "Ví điện tử" || payment === "Thanh toán qua VNPAY") {
         navigate(`/payment/waiting/${newOrderId}`);
       } else {
@@ -345,15 +366,13 @@ const useCheckoutLogic = () => {
       console.error("❌ LỖI API:", error);
       const backendData = error.response?.data;
 
-      // [QUAN TRỌNG] Bắt lỗi hết hàng (Logic HEAD)
       if (backendData && backendData.unavailable_items) {
         throw { response: { data: backendData } };
       }
 
-      // Các lỗi khác
       let errorMsg = "Có lỗi xảy ra khi đặt hàng.";
       if (backendData) {
-        if (backendData.voucher_code) errorMsg = backendData.voucher_code[0]; // Lỗi voucher
+        if (backendData.voucher_code) errorMsg = backendData.voucher_code[0];
         else if (typeof backendData.detail === "string") errorMsg = backendData.detail;
         else if (typeof backendData === "string") errorMsg = backendData;
       }
@@ -363,7 +382,6 @@ const useCheckoutLogic = () => {
         description: errorMsg,
       });
 
-      // Reset voucher nếu lỗi (Logic TruongAn1)
       if (errorMsg.toLowerCase().includes("voucher")) {
           setVoucherCode("");
           setDiscount(0);
@@ -376,7 +394,7 @@ const useCheckoutLogic = () => {
   };
 
   return {
-    // State
+    isGuest, // EXPORT BIẾN NÀY
     addresses,
     selectedAddress,
     selectedAddressId,
@@ -396,8 +414,6 @@ const useCheckoutLogic = () => {
     total,
     totalAfterDiscount,
     selectedItems,
-
-    // Actions
     addAddress,
     deleteAddress,
     editAddress,
@@ -414,7 +430,7 @@ const useCheckoutLogic = () => {
     handleApplyVoucher,
     handleSaveManualAddress,
     handleOrder,
-    addAddress, // Đảm bảo export hàm này cho UI dùng
+    addAddress,
   };
 };
 

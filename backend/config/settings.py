@@ -130,8 +130,8 @@ TEMPLATES = [
 ]
 
 # --- Channels (auto fallback to InMemory when REDIS_URL not set)
-if os.environ.get("REDIS_URL"):
-    CHANNEL_LAYERS = {
+# if os.environ.get("REDIS_URL"):
+CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
@@ -140,12 +140,12 @@ if os.environ.get("REDIS_URL"):
     },
 }
 
-else:
-    CHANNEL_LAYERS = {
-        "default": {
-            "BACKEND": "channels.layers.InMemoryChannelLayer",
-        }
-    }
+# else:
+#     CHANNEL_LAYERS = {
+#         "default": {
+#             "BACKEND": "channels.layers.InMemoryChannelLayer",
+#         }
+#     }
 
 # --- Database: local PostgreSQL hoặc Render
 if os.environ.get("DATABASE_URL"):

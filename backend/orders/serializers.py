@@ -1,9 +1,12 @@
 from rest_framework import serializers
 from .models import Order, OrderItem
 from complaints.models import Complaint
+from complaints.serializers import ComplaintSerializer
 from .models import Preorder
 from products.models import Product
+from promotions.models import UserVoucher, Voucher  # <--- THÊM DÒNG NÀY
 from decimal import Decimal
+from django.db.models import F
 
 from django.db import transaction
 
@@ -67,9 +70,33 @@ class OrderItemSerializer(serializers.ModelSerializer):
     platform_commission = serializers.SerializerMethodField()
     seller_amount = serializers.SerializerMethodField()
 
+    complaint = serializers.SerializerMethodField()
+
     class Meta:
         model = OrderItem
         exclude = ["order"]
+
+    def get_complaint(self, obj):
+        """
+        Lấy thông tin khiếu nại.
+        """
+        # [FIX] Bỏ try/except hoặc in lỗi ra để debug
+        try:
+            # 1. Import bên trong hàm để tránh lỗi Circular Import
+            from complaints.serializers import ComplaintSerializer 
+            
+            # 2. Query tìm complaint
+            # Lưu ý: 'complaints' là related_name trong model Complaint
+            active_complaint = obj.complaints.exclude(status='cancelled').order_by('-created_at').first()
+            
+            if active_complaint:
+                return ComplaintSerializer(active_complaint).data
+        except Exception as e:
+            # [DEBUG] In lỗi ra terminal server để bạn thấy
+            print(f"Error getting complaint for item {obj.id}: {str(e)}")
+            return None
+        
+        return None
 
     def get_product_image(self, obj):
         request = self.context.get('request')
@@ -120,8 +147,7 @@ class OrderItemSerializer(serializers.ModelSerializer):
 class OrderCreateSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, required=False, write_only=True)
     # [NEW] Thêm field voucher_code
-    voucher_code = serializers.CharField(write_only=True, required=False, allow_blank=True, allow_null=True,)
-
+    shop_voucher_code = serializers.CharField(write_only=True, required=False, allow_blank=True, allow_null=True)
     class Meta:
         model = Order
         fields = "__all__"
@@ -196,8 +222,8 @@ class OrderCreateSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         items_data = validated_data.pop('items', [])
         # [NEW] Lấy voucher code từ data gửi lên
-        voucher_code = validated_data.pop('voucher_code', None)
-        
+        voucher_code = validated_data.pop('shop_voucher_code', None) 
+        print(f"\n >>> DEBUG: Mã voucher nhận được là: '{voucher_code}'")       
         request = self.context.get('request')
         user = getattr(request, 'user', None)
         if user is None or user.is_anonymous:
@@ -210,7 +236,8 @@ class OrderCreateSerializer(serializers.ModelSerializer):
             # Nhóm items theo seller
             from products.models import Product
             from collections import defaultdict
-
+            from promotions.models import UserVoucher
+            
             seller_items = defaultdict(list)
             request_items = self.initial_data.get('items', [])
 
@@ -330,17 +357,24 @@ class OrderCreateSerializer(serializers.ModelSerializer):
                                 discount = min(float(voucher.freeship_amount or 0), float(order.shipping_fee or 0))
 
                             # 4. Áp dụng
+                            # ... (các dòng tính toán if v_type == ... ở trên giữ nguyên)
+
                             if discount > 0:
-                                discount = min(discount, current_total) # Không giảm quá tổng tiền
-                                order.total_price = current_total - discount
-                                order.voucher = voucher # Lưu vết
-                                order.save(update_fields=['total_price', 'voucher'])
-                                print(f">>> Voucher áp dụng thành công cho đơn {order.id}. Giảm {discount}")
-                                voucher_applied = True
+                                discount = min(discount, current_total)
                                 
-                                # Thông thường 1 voucher chỉ áp dụng cho 1 đơn trong giỏ
-                                # (Hoặc tùy logic của bạn, ở đây tôi để break để chỉ dùng cho 1 đơn hợp lệ đầu tiên)
-                                break 
+                                # === [BẠN ĐANG THIẾU DÒNG NÀY] ===
+                                order.discount_amount = discount  # <--- THÊM DÒNG NÀY NGAY
+                                # =================================
+                                
+                                order.total_price = current_total - discount
+                                order.voucher = voucher # Đã lưu được cái này rồi
+                                
+                                # Lệnh save này hoạt động, nhưng vì thiếu dòng trên nên discount_amount vẫn là 0
+                                order.save(update_fields=['total_price', 'voucher', 'discount_amount']) 
+                                
+                                print(f">>> Voucher OK! Giảm: {discount}. Tổng mới: {order.total_price}")
+                                voucher_applied = True
+                                break
                         
                         # Nếu voucher đã được áp dụng ít nhất 1 lần -> Trừ lượt dùng
                         if voucher_applied:
@@ -414,14 +448,24 @@ class OrderSerializer(serializers.ModelSerializer):
         representation = super().to_representation(instance)
         # Fallback hiển thị total_price nếu DB chưa update
         if not representation.get('total_price') or representation['total_price'] == '0.00':
-            total = sum(float(item.price) * int(item.quantity) for item in instance.items.all())
+            total_items = sum(float(item.price) * int(item.quantity) for item in instance.items.all())
             shipping = float(instance.shipping_fee or 0)
-            representation['total_price'] = str(total + shipping)
+            
+            # --- [SỬA LẠI ĐOẠN NÀY] ---
+            # Lấy discount từ model (nếu chưa có thì là 0)
+            discount = float(instance.discount_amount or 0) 
+            
+            # Công thức chuẩn: Hàng + Ship - Voucher
+            final_total = total_items + shipping - discount
+            representation['total_price'] = str(max(final_total, 0))
+            # --------------------------
+            
         return representation
 
 class OrderItemCreateSerializer(serializers.ModelSerializer):
     product_id = serializers.IntegerField(write_only=True)
     class Meta:
         model = OrderItem
-        fields = ['product_id', 'quantity', 'price']
+        fields = "__all__"
+        read_only_fields = ["user", "created_at", "discount_amount"] # discount_amount là readonly vì backend tự tính
 

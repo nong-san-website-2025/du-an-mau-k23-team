@@ -1,91 +1,130 @@
-/* ===== Custom Tabs ===== */
-.custom-tabs .ant-tabs-nav {
-  /* viền ngoài */
-  padding: 4px 8px;
-  background: #f9fff9;
-}
-
-/* ===== Từng tab ===== */
-.custom-tabs .ant-tabs-tab {
-  padding: 8px 16px;
-  transition: all 0.3s ease;
-  font-weight: 600;
-  color: #374151;
-}
-
-/* Hover tab */
-.custom-tabs .ant-tabs-tab:hover {
-  border-color: #a7f3d0;
-  color: #059669;
-}
-
-/* Active tab */
-.custom-tabs .ant-tabs-tab-active .ant-tabs-tab-btn {
-  color: #059669 !important;
-  font-weight: 500;
-}
-
-.custom-tabs .ant-tabs-tab-active {
-  border-color: #16a34a !important;
-}
-
-/* Thanh gạch dưới (ink bar) */
-.custom-tabs .ant-tabs-ink-bar {
-  height: 3px;
-  background: #16a34a;
-  border-radius: 4px;
-}
-
-/* Responsive styles */
-@media (max-width: 575px) {
-  .custom-tabs .ant-tabs-tab {
-    padding: 6px 12px;
-    font-size: 14px;
-  }
-
-  .custom-tabs .ant-tabs-nav {
-    padding: 4px 4px;
-  }
-}
-
-@media (min-width: 576px) and (max-width: 991px) {
-  .custom-tabs .ant-tabs-tab {
-    padding: 8px 14px;
-    font-size: 15px;
-  }
-
-  .custom-tabs .ant-tabs-nav {
-    padding: 4px 6px;
-  }
-}
-
-/* Responsive container styles */
+/* ===== 1. Responsive Container (Khung nền xám) ===== */
 .responsive-orders-container {
+  width: 100%;
+  min-height: 100vh;
+  background-color: #f3f4f6;
+  padding-top: 24px;
+  padding-bottom: 40px;
   transition: padding 0.3s ease;
 }
 
+@media (max-width: 575px) {
+  .responsive-orders-container { padding: 12px 8px; }
+}
+@media (min-width: 576px) {
+  .responsive-orders-container { padding: 24px 16px; }
+}
+
+/* ===== 2. Card Wrapper (Khung trắng) ===== */
 .responsive-orders-card {
+  background: #ffffff;
   transition: all 0.3s ease;
   margin: 0 auto;
+  min-height: 600px;
+  max-width: 1200px;
+  /* [QUAN TRỌNG] Bỏ padding ở đây để Tabs tràn ra sát mép */
+  padding: 0 !important; 
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  overflow: hidden; /* Bo tròn góc cho cả header bên trong */
 }
 
-@media (max-width: 479px) {
-  .responsive-orders-card {
-    border-radius: 8px !important;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+/* ===== 3. Custom Tabs (Theme Xanh lá - Tràn viền) ===== */
+.custom-tabs .ant-tabs-nav {
+  margin-bottom: 0 !important; /* Xóa khoảng cách mặc định */
+  background-color: #f9fafb; /* Màu nền nhẹ cho thanh Tab tách biệt nội dung */
+  border-bottom: 1px solid #e5e7eb; /* Đường kẻ ngăn cách */
+}
+
+/* Chỉnh khoảng cách cho thanh Tab (Thay cho padding của Card) */
+.custom-tabs .ant-tabs-nav-wrap {
+  padding: 0 16px; /* Padding ngang cho thanh tab */
+}
+
+@media (min-width: 768px) {
+  .custom-tabs .ant-tabs-nav-wrap {
+    padding: 0 24px;
   }
 }
 
-@media (min-width: 480px) and (max-width: 575px) {
-  .responsive-orders-card {
-    border-radius: 10px !important;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12) !important;
+/* Style từng Tab */
+.custom-tabs .ant-tabs-tab {
+  padding: 16px 20px; /* Tăng chiều cao click cho sướng tay */
+  margin: 0 !important;
+  transition: all 0.3s ease;
+  font-weight: 500;
+  color: #6b7280;
+  font-size: 15px;
+}
+
+.custom-tabs .ant-tabs-tab:hover {
+  color: #16a34a;
+}
+
+.custom-tabs .ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: #15803d !important;
+  font-weight: 700;
+}
+
+/* Thanh gạch dưới */
+.custom-tabs .ant-tabs-ink-bar {
+  height: 3px;
+  background: #16a34a !important;
+  border-radius: 3px 3px 0 0;
+  bottom: 0; /* Dính sát đáy border */
+}
+
+/* ===== 4. Nội dung Tab (Phần chứa OrderTab) ===== */
+/* Bây giờ mới thêm padding cho nội dung bên trong */
+.custom-tabs .ant-tabs-content-holder {
+  padding: 16px;
+  background: #fff;
+}
+
+@media (min-width: 576px) {
+  .custom-tabs .ant-tabs-content-holder {
+    padding: 24px;
   }
 }
 
-@media (min-width: 576px) and (max-width: 991px) {
-  .responsive-orders-card {
-    border-radius: 12px !important;
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15) !important;
+/* ===== 5. Responsive Logic cho Tabs ===== */
+/* Desktop: Chia đều 100% chiều rộng */
+@media (min-width: 992px) {
+  .custom-tabs .ant-tabs-nav-list {
+    width: 100%;
   }
+  .custom-tabs .ant-tabs-tab {
+    flex: 1;
+    justify-content: center;
+  }
+}
+
+/* Mobile & Tablet: Scroll ngang (Native) */
+@media (max-width: 991px) {
+  .custom-tabs .ant-tabs-nav-list {
+    width: auto;
+  }
+  /* Ẩn thanh scrollbar xấu xí nhưng vẫn scroll được */
+  .custom-tabs .ant-tabs-nav-wrap::-webkit-scrollbar {
+    display: none;
+  }
+  .custom-tabs .ant-tabs-nav-wrap {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+/* ===== 6. Card Order (Giữ nguyên của bạn nhưng tinh chỉnh nhẹ) ===== */
+.card-order {
+  background: #fff;
+  border-radius: 8px !important; 
+  border: 1px solid #e5e7eb;
+  transition: all 0.2s ease-in-out !important;
+  margin-bottom: 20px;
+}
+
+.card-order:hover {
+  border-color: #16a34a !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
 }

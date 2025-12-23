@@ -46,7 +46,7 @@ export const productApi = {
         // Axios sẽ tự động phát hiện data là FormData và set header kèm boundary chuẩn.
       },
     }),
-
+  
   // 2. Update Product
   updateProduct: (id, data) => {
     return api.patch(`/sellers/products/${id}/`, data, {

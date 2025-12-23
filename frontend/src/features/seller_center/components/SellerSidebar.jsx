@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo } from "react";
 import { Menu, Layout, Badge } from "antd";
 import {
   DashboardOutlined,
@@ -13,8 +13,7 @@ import {
   WalletOutlined,
 } from "@ant-design/icons";
 import { useNavigate, useLocation } from "react-router-dom";
-// Chúng ta sẽ dùng chung file CSS của Admin để đồng bộ, 
-// hoặc tạo file mới copy nội dung từ AdminSidebar.css sang SellerSidebar.css
+// Dùng chung CSS của Admin hoặc file riêng tùy bạn
 import "../../admin/styles/AdminSidebar.css"; 
 
 const { Sider } = Layout;
@@ -36,30 +35,23 @@ export default function SellerSidebar({ collapsed, isMobile, onItemClick }) {
         label: (
             <div className="d-flex justify-content-between align-items-center w-100">
               <span>Tin nhắn</span>
-              {/* Ví dụ Badge tin nhắn chưa đọc */}
               <Badge count={0} size="small" offset={[5, 0]} />
             </div>
         )
     },
     {
-      key: "products",
+      key: "/seller-center/products",
       icon: <AppstoreOutlined />,
-      label: "Sản phẩm",
-      children: [
-        { key: "/seller-center/products", label: "Quản lý sản phẩm" },
-      ],
+      label: "Quản lý sản phẩm",
     },
+    // --- SỬA ĐỔI Ở ĐÂY: Gộp thành 1 mục duy nhất ---
     {
-      key: "orders",
+      key: "/seller-center/orders", // Link dẫn thẳng tới trang chứa Tabs
       icon: <ShoppingCartOutlined />,
-      label: "Đơn hàng",
-      children: [
-        { key: "/seller-center/orders/new", label: "Đơn mới" },
-        { key: "/seller-center/orders/processing", label: "Đang xử lý" },
-        { key: "/seller-center/orders/delivered", label: "Đơn hoàn tất" },
-        { key: "/seller-center/orders/cancelled", label: "Đơn đã hủy" },
-      ],
+      label: "Quản lý đơn hàng",
+      // Đã bỏ children (sub-menu)
     },
+    // ----------------------------------------------
     { key: "/seller-center/finance", icon: <DollarOutlined />, label: "Doanh thu" },
     {
       key: "/seller-center/wallet",
@@ -89,12 +81,11 @@ export default function SellerSidebar({ collapsed, isMobile, onItemClick }) {
   ];
 
   const defaultOpenKeys = useMemo(() => {
-    // Logic mở menu cha khi đang ở menu con
     const foundParent = menuItems.find((item) =>
       item.children?.some((child) => child.key === location.pathname)
     );
-    // Mặc định mở luôn các mục quan trọng
-    return foundParent ? [foundParent.key] : ['products', 'orders'];
+    // Mặc định mở menu Sản phẩm nếu đang ở trong đó
+    return foundParent ? [foundParent.key] : ['products'];
   }, [location.pathname]);
 
   const handleMenuClick = ({ key }) => {
@@ -107,9 +98,9 @@ export default function SellerSidebar({ collapsed, isMobile, onItemClick }) {
       trigger={null}
       collapsible
       collapsed={collapsed}
-      width={260} // Đồng bộ độ rộng với Admin (260px)
+      width={260}
       theme="light"
-      className="custom-sidebar" // Dùng class chung để ăn CSS màu xanh
+      className="custom-sidebar"
       style={{
         overflow: 'auto',
         height: '100vh',
@@ -137,7 +128,7 @@ export default function SellerSidebar({ collapsed, isMobile, onItemClick }) {
         onClick={() => navigate('/seller-center/dashboard')}
       >
         <img
-          src="/assets/logo/defaultLogo.png" // Dùng chung logo với Admin cho đồng bộ
+          src="/assets/logo/defaultLogo.png" 
           alt="Seller"
           style={{ height: 36 }}
         />

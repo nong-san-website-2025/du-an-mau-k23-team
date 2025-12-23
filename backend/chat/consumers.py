@@ -83,8 +83,8 @@ class ConversationConsumer(AsyncJsonWebsocketConsumer):
     async def connect(self):
         self.user = self.scope.get("user")
         self.conversation_id = self.scope['url_route']['kwargs']['conversation_id']
-        self.room_group_name = f'chat_{self.conversation_id}'
-
+        self.room_group_name = f'chat_conv_{self.conversation_id}'
+        
         if self.user is None or self.user.is_anonymous:
             # Nếu khách không gửi được, hãy xem terminal có hiện dòng này không
             print(f"WS Reject: User Anonymous. Conv ID: {self.conversation_id}")

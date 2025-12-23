@@ -51,29 +51,44 @@ class MessageListCreateView(generics.ListCreateAPIView):
         conversation_id = self.kwargs["conversation_id"]
         conv = get_object_or_404(Conversation, id=conversation_id)
         user = self.request.user
+        
+        # Kiểm tra quyền
         if not (conv.user_id == user.id or getattr(user, "seller", None) == conv.seller):
             raise PermissionDenied("Bạn không có quyền gửi tin nhắn ở cuộc hội thoại này")
+        
+        # Lưu tin nhắn vào DB
         msg = serializer.save(conversation=conv, sender=user)
+        
+        # Cập nhật thời gian nhắn tin cuối cùng
         conv.last_message_at = msg.created_at
         conv.save(update_fields=["last_message_at"]) 
 
-        # Broadcast to WS group so both buyer and seller receive it realtime
-        try:
-            channel_layer = get_channel_layer()
-            group = f"chat_conv_{conv.id}"
-            payload = {
-                "type": "chat.message",
-                "message": {
-                    "id": msg.id,
-                    "conversation": conv.id,
-                    "sender": user.id,
-                    "content": msg.content,
-                    "image": getattr(msg.image, 'url', None),
-                    "is_read": msg.is_read,
-                    "created_at": msg.created_at.isoformat(),
-                },
-            }
-            async_to_sync(channel_layer.group_send)(group, payload)
-        except Exception:
-            # Avoid breaking REST flow if WS not available
-            pass
+        # --- BẮT ĐẦU GỬI REALTIME ---
+        # Bỏ try/except để nếu có lỗi thì hiện ra terminal (dễ sửa) thay vì im lặng
+        print(f"DEBUG: Đang gửi tin nhắn {msg.id} đến Group chat_conv_{conv.id}")
+
+        channel_layer = get_channel_layer()
+        group = f"chat_conv_{conv.id}"
+        
+        # [QUAN TRỌNG] Fix lỗi xử lý ảnh:
+        # Kiểm tra nếu msg.image tồn tại thì mới lấy .url, ngược lại là None
+        image_url = msg.image.url if msg.image else None
+
+        payload = {
+            "type": "chat.message",
+            "message": {
+                "id": msg.id,
+                "conversation": conv.id,
+                "sender": user.id,
+                "content": msg.content,
+                "image": image_url,  # <--- Dùng biến đã xử lý an toàn ở trên
+                "is_read": msg.is_read,
+                "created_at": msg.created_at.isoformat(),
+                # Thêm avatar người gửi để frontend hiển thị ngay lập tức (nếu cần)
+                "sender_avatar": user.avatar.url if user.avatar else None
+            },
+        }
+        
+        # Gửi tín hiệu
+        async_to_sync(channel_layer.group_send)(group, payload)
+        print("DEBUG: Gửi Realtime thành công!")

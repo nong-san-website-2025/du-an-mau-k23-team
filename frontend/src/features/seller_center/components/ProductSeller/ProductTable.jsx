@@ -1,17 +1,13 @@
 import React from "react";
-import { Table, Typography, Image, Avatar, Tag, Tooltip, Grid, Space } from "antd";
+import { Table, Typography, Image, Tag, Tooltip, Grid, Space, message } from "antd";
 import {
   EditOutlined,
   DeleteOutlined,
-  FileImageOutlined,
   EyeOutlined,
   EyeInvisibleOutlined,
-  CalendarOutlined,
   InfoCircleOutlined,
-  BarcodeOutlined,
-  HistoryOutlined // Icon thêm cho trạng thái pending update
+  CopyOutlined, // Icon để copy mã SKU
 } from "@ant-design/icons";
-import dayjs from "dayjs";
 import { intcomma } from "../../../../utils/format";
 import ButtonAction from "../../../../components/ButtonAction";
 import StatusTag from "../../../../components/StatusTag";
@@ -29,11 +25,17 @@ const ProductTable = ({
   onRow,
   rowSelection,
 }) => {
-  // Ưu tiên dùng Hook của Antd: Chuẩn hơn và reactive tốt hơn matchMedia thủ công
   const screens = useBreakpoint();
   const isMobile = !screens.md;
 
-  // --- Helper lấy lý do từ chối (Giữ từ HEAD) ---
+  // --- Helper: Copy mã SKU ---
+  const handleCopyId = (e, id) => {
+    e.stopPropagation(); // Chặn click vào row
+    navigator.clipboard.writeText(id.toString());
+    message.success(`Đã copy mã: #${id}`);
+  };
+
+  // --- Helper: Lấy lý do từ chối ---
   const getRejectReason = (record) => {
     return record.reject_reason || record.admin_note || record.reason || record.message;
   };
@@ -41,123 +43,190 @@ const ProductTable = ({
   const columns = [
     // ── 1. SẢN PHẨM (Định danh) ──
     {
-  title: "Sản phẩm",
-  key: "name",
-  width: 280,
-  fixed: isMobile ? undefined : "left",
-  render: (_, record) => {
-    // Logic lấy ảnh
-    let imageUrl = null;
-    if (Array.isArray(record.images) && record.images.length > 0) {
-      imageUrl = record.images.find((img) => img.is_primary)?.image || record.images[0]?.image;
-    }
-    // Xử lý fallback nếu record.images là null
-    if (!imageUrl && record.image) imageUrl = record.image; 
+      title: "Sản phẩm",
+      key: "name",
+      width: 300,
+      fixed: isMobile ? undefined : "left",
+      render: (_, record) => {
+        // Logic lấy ảnh: Ưu tiên ảnh chính -> ảnh đầu tiên -> ảnh fallback
+        let imageUrl = null;
+        if (Array.isArray(record.images) && record.images.length > 0) {
+          imageUrl = record.images.find((img) => img.is_primary)?.image || record.images[0]?.image;
+        }
+        if (!imageUrl && record.image) imageUrl = record.image;
 
-    // Logic pending update
-    const isPendingUpdate = record.status === "pending_update";
+        const isPendingUpdate = record.status === "pending_update";
 
-    return (
-      <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-        {/* Ảnh */}
-        <div style={{ flexShrink: 0, position: 'relative' }}>
-           <Image
-             src={imageUrl}
-             width={56} height={56}
-             style={{ borderRadius: 6, objectFit: 'cover', border: '1px solid #f0f0f0' }}
-             fallback="/no-image.png"
-             preview={false} // Tắt preview ở table để đỡ rối, bấm vào tên để xem chi tiết
-           />
-           {record.is_hidden && <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><EyeInvisibleOutlined /></div>}
-        </div>
+        return (
+          <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+            {/* Ảnh: Cho phép Click để xem preview */}
+            <div style={{ flexShrink: 0, position: "relative" }}>
+              <Image
+                src={imageUrl}
+                width={56}
+                height={56}
+                style={{ borderRadius: 6, objectFit: "cover", border: "1px solid #f0f0f0" }}
+                fallback="/no-image.png"
+                // preview={{ mask: <EyeOutlined /> }} // Bật tính năng xem ảnh lớn
+                onClick={(e) => e.stopPropagation()} // Chặn click row khi bấm vào ảnh
+              />
+              {record.is_hidden && (
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    background: "rgba(255,255,255,0.7)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    borderRadius: 6,
+                  }}
+                >
+                  <EyeInvisibleOutlined style={{ color: "#888" }} />
+                </div>
+              )}
+            </div>
 
-        {/* Thông tin */}
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <Text strong style={{ fontSize: 14, lineHeight: '1.2', marginBottom: 4 }}>{record.name}</Text>
-          <Space size={4}>
-             <Tag style={{ margin: 0, fontSize: 10 }}>#{record.id}</Tag>
-             {isPendingUpdate && <Tag color="orange" style={{ margin: 0, fontSize: 10 }}>Đang chờ duyệt cập nhật</Tag>}
-          </Space>
-        </div>
-      </div>
-    );
-  },
-},
+            {/* Thông tin Text */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <Text
+                strong
+                style={{
+                  fontSize: 14,
+                  lineHeight: "1.3",
+                  display: "-webkit-box",
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: "vertical",
+                  overflow: "hidden",
+                }}
+                title={record.name} // Tooltip native khi hover
+              >
+                {record.name}
+              </Text>
 
-    // ── 2. DANH MỤC ──
+              <Space size={6} align="center">
+                {/* Mã SKU có nút copy */}
+                <Tag
+                  style={{
+                    margin: 0,
+                    fontSize: 11,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 4,
+                    border: "none",
+                    background: "#f5f5f5"
+                  }}
+                  onClick={(e) => handleCopyId(e, record.id)}
+                  title="Nhấn để copy mã"
+                >
+                  #{record.id} <CopyOutlined style={{ fontSize: 10, color: "#999" }} />
+                </Tag>
+
+                {isPendingUpdate && (
+                  <Tag color="orange" style={{ margin: 0, fontSize: 10, border: "none" }}>
+                    Chờ cập nhật
+                  </Tag>
+                )}
+              </Space>
+            </div>
+          </div>
+        );
+      },
+    },
+
+    // ── 2. DANH MỤC (Cải thiện hiển thị phân cấp) ──
     {
       title: "Danh mục",
       key: "category",
-      width: 150,
+      width: 180,
       render: (_, record) => (
-        <div className="flex flex-col justify-center">
-          <span className="text-[13px] font-medium text-gray-700">{record.category_name || "---"}</span>
-          {record.subcategory_name && (
-            <span className="text-[11px] text-gray-400">{record.subcategory_name}</span>
+        <div className="flex flex-col">
+          {/* Breadcrumb danh mục cha - Nhạt màu */}
+          {record.subcategory_name && record.category_name && (
+            <span className="text-[11px] text-gray-400 mt-0.5">
+              {record.category_name} &rsaquo; {record.subcategory_name}
+            </span>
           )}
         </div>
       ),
     },
 
-    // ── 3. GIÁ BÁN (Tách riêng theo UI HEAD cho thoáng) ──
+    // ── 3. GIÁ BÁN (Căn phải chuẩn tiền tệ) ──
     {
       title: "Giá bán",
       key: "price",
-      width: 140,
-      align: "right",
+      width: 130,
+      align: "right", // Quan trọng cho cột số tiền
       render: (_, record) => {
         const isDiscounted = record.discounted_price && record.discounted_price < record.original_price;
         return (
-          <div className="flex flex-col items-end">
-            <Text className={`text-[14px] font-semibold ${isDiscounted ? "text-rose-600" : "text-gray-800"}`}>
-              {intcomma(record.discounted_price || record.original_price)} đ
-            </Text>
+          <div className="d-flex flex-column align-items-end justify-content-center h-100">
+            {/* Giá hiện tại */}
+            <span
+              className={`fw-semibold ${isDiscounted ? "text-danger" : "text-dark"}`}
+              style={{ fontSize: "14px" }}
+            >
+              {intcomma(record.discounted_price || record.original_price)} ₫
+            </span>
+
+            {/* Giá gốc (gạch ngang) */}
             {isDiscounted && (
-              <Text delete className="text-[11px] text-gray-400">
-                {intcomma(record.original_price)} đ
-              </Text>
+              <span
+                className="text-muted text-decoration-line-through"
+                style={{ fontSize: "11px" }}
+              >
+                {intcomma(record.original_price)} ₫
+              </span>
             )}
           </div>
         );
       },
     },
 
-    // ── 4. KHO & ĐÃ BÁN (Tách riêng - Có cảnh báo màu sắc từ HEAD) ──
+    // ── 4. KHO & ĐÃ BÁN (Bỏ border, dùng màu cảnh báo) ──
     {
       title: "Kho & Đã bán",
       key: "stock",
-      width: 140,
-      align: "center",
+      width: 130,
       render: (_, record) => {
-        // Logic màu sắc: Hết hàng (Đỏ), Sắp hết < 10 (Cam), Còn nhiều (Xanh)
-        let colorClass = "text-green-600 bg-green-50 border-green-200";
-        if (record.stock === 0) colorClass = "text-red-600 bg-red-50 border-red-200";
-        else if (record.stock <= 10) colorClass = "text-orange-600 bg-orange-50 border-orange-200";
+        // Logic cảnh báo tồn kho
+        const isOutOfStock = record.stock === 0;
+        const isLowStock = record.stock > 0 && record.stock <= 10;
+
+        // Màu sắc số lượng kho
+        let stockColor = "text-gray-700"; // Bình thường
+        if (isOutOfStock) stockColor = "text-red-600 font-bold"; // Hết hàng
+        if (isLowStock) stockColor = "text-orange-600 font-bold"; // Sắp hết
 
         return (
-          <div className="flex flex-col items-center gap-1">
-            {/* Badge Tồn kho */}
-            <div className={`px-2 py-0.5 rounded text-[12px] font-bold border ${colorClass}`}>
-              Kho: {intcomma(record.stock)}
+          <div className="text-[13px]">
+            {/* Dòng Kho */}
+            <div className="mb-1 flex items-center justify-between gap-2">
+              <span className="text-gray-500 text-[12px]">Kho:</span>
+              <span className={stockColor}>
+                {intcomma(record.stock)}
+              </span>
             </div>
 
-            {/* Text Đã bán */}
-            {record.sold > 0 ? (
-              <span className="text-[11px] text-gray-500">Đã bán: {intcomma(record.sold)}</span>
-            ) : (
-              <span className="text-[11px] text-gray-300 italic">Chưa bán</span>
-            )}
+            {/* Dòng Đã bán */}
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-gray-500 text-[12px]">Đã bán:</span>
+              <span className="text-gray-700 font-medium">
+                {intcomma(record.sold || 0)}
+              </span>
+            </div>
           </div>
         );
       },
     },
 
-    // ── 5. TRẠNG THÁI ──
+    // ── 5. TRẠNG THÁI (Dùng StatusTag mới) ──
     {
       title: "Trạng thái",
       key: "status",
-      width: 140,
-      align: "center",
+      width: 150,
+      align: "left", // Căn trái cho status nhìn thẳng hàng hơn
       render: (_, record) => {
         let showStatus = record.status;
         if (record.status === "approved" && record.is_hidden) showStatus = "hidden";
@@ -166,19 +235,20 @@ const ProductTable = ({
         const rejectReason = getRejectReason(record);
 
         return (
-          <div className="flex flex-col items-center gap-1.5">
+          <div className="flex flex-col items-start gap-2">
+            {/* Tag trạng thái chính */}
             <StatusTag status={showStatus} type="status" />
 
-            {/* Chỉ hiện tag phụ nếu khác 'in_stock' để đỡ rối */}
+            {/* Tag trạng thái hàng hóa (chỉ hiện nếu đặc biệt) */}
             {record.availability_status !== 'in_stock' && record.availability_status !== 'coming_soon' && (
-              <div className="scale-90"><StatusTag status={record.availability_status} type="availability" /></div>
+              <StatusTag status={record.availability_status} type="availability" />
             )}
 
-            {/* Nút xem lý do từ chối (UX quan trọng) */}
+            {/* Link xem lý do từ chối */}
             {isRejected && rejectReason && (
               <Tooltip title={rejectReason} color="#f5222d" overlayStyle={{ maxWidth: 300 }}>
-                <div className="flex items-center gap-1 text-red-500 text-[11px] cursor-pointer hover:underline">
-                  <InfoCircleOutlined /> Chi tiết
+                <div className="flex items-center gap-1 text-red-500 text-[11px] cursor-pointer hover:underline pl-1">
+                  <InfoCircleOutlined /> Xem lỗi
                 </div>
               </Tooltip>
             )}
@@ -187,49 +257,19 @@ const ProductTable = ({
       },
     },
 
-    // ── 6. THỜI GIAN MÙA VỤ ──
+    // ── 6. THAO TÁC ──
     {
-      title: "Thời gian mùa vụ",
-      key: "season",
-      width: 190,
-      render: (_, record) => {
-        if (record.availability_status !== "coming_soon") return <span className="text-gray-300 text-xs">—</span>;
-
-        const start = record.season_start ? dayjs(record.season_start).format("DD/MM") : "?";
-        const end = record.season_end ? dayjs(record.season_end).format("DD/MM") : "?";
-
-        return (
-          <div className="text-xs">
-            <div className="flex items-center gap-1.5 text-gray-700 mb-1">
-              <CalendarOutlined className="text-purple-500" />
-              <span className="font-medium">{start} - {end}</span>
-            </div>
-            <div className="flex gap-2 text-gray-500 text-[10px]">
-              <span title="Dự kiến thu hoạch">DK: <b>{intcomma(record.estimated_quantity)}</b></span>
-              {record.ordered_quantity > 0 && (
-                <span title="Đã được đặt trước" className="text-blue-600">
-                  Đặt: <b>{intcomma(record.ordered_quantity)}</b>
-                </span>
-              )}
-            </div>
-          </div>
-        );
-      },
-    },
-
-    // ── 7. THAO TÁC (Merge Logic kiểm tra quyền xóa từ cả 2) ──
-    {
-      title: "Xử lý",
+      title: "Thao tác",
       key: "action",
-      width: 80,
+      width: 90,
       fixed: isMobile ? undefined : "right",
       align: "center",
       render: (_, record) => {
         const isBanned = record.status === "banned";
         const isRejected = record.status === "rejected";
         const isApproved = record.status === "approved";
-        
-        // Logic xóa an toàn: Kết hợp điều kiện chặt chẽ
+
+        // Logic xóa an toàn
         const canDelete =
           (record.sold === 0 || !record.sold) &&
           (record.ordered_quantity === 0 || !record.ordered_quantity) &&
@@ -240,31 +280,30 @@ const ProductTable = ({
             actionType: "view",
             show: true,
             icon: <EyeOutlined />,
-            tooltip: "Chi tiết",
+            tooltip: "Xem chi tiết",
             onClick: onView,
           },
           {
             actionType: "toggle_hide",
-            show: isApproved, // Chỉ hiện khi đã duyệt
+            show: isApproved,
             icon: record.is_hidden ? <EyeOutlined /> : <EyeInvisibleOutlined />,
-            tooltip: record.is_hidden ? "Hiển thị lại" : "Tạm ẩn", // Text tooltip rõ nghĩa từ MinhKhanh
+            tooltip: record.is_hidden ? "Hiển thị lại sản phẩm" : "Tạm ẩn sản phẩm",
             onClick: () => onToggleHide(record),
           },
           {
             actionType: "edit",
             show: true,
             icon: <EditOutlined />,
-            // Tooltip chi tiết theo ngữ cảnh từ MinhKhanh
             tooltip: isBanned
               ? "Sản phẩm bị khóa"
               : isRejected
                 ? "Sửa lỗi & Gửi duyệt lại"
-                : "Chỉnh sửa",
+                : "Chỉnh sửa thông tin",
             onClick: onEdit,
             buttonProps: {
               disabled: isBanned,
               style: isRejected
-                ? { color: "#fa8c16", borderColor: "#fa8c16" } // Highlight màu cam nếu cần sửa lỗi
+                ? { color: "#fa8c16", background: "#fff7e6" } // Highlight nút sửa nếu bị từ chối
                 : undefined,
             },
           },
@@ -275,15 +314,16 @@ const ProductTable = ({
             tooltip: "Xóa vĩnh viễn",
             onClick: () => onDelete(record.id),
             confirm: {
-              title: "Xóa vĩnh viễn?",
-              okText: "Xóa",
-              okButtonProps: { danger: true }
+              title: "Xóa sản phẩm này?",
+              description: "Hành động này không thể hoàn tác.",
+              okText: "Xóa ngay",
+              okButtonProps: { danger: true },
+              isDanger: true,
             },
-            buttonProps: { danger: true },
           },
         ];
 
-        return <ButtonAction actions={actions} record={record} maxCount={2} />;
+        return <ButtonAction actions={actions} record={record} />;
       },
     },
   ];
@@ -295,31 +335,36 @@ const ProductTable = ({
       loading={loading}
       rowKey="id"
 
-      // Pagination chuẩn UI Dashboard
+
+      // Pagination chuẩn Dashboard
       pagination={{
+        current: data?.current_page, // Nếu data từ API có pagination
         pageSize: 10,
         showSizeChanger: true,
-        pageSizeOptions: ['10', '20', '50'],
+        pageSizeOptions: ["10", "20", "50", "100"],
         showTotal: (total, range) => (
           <span className="text-gray-500 text-xs">
-            {range[0]}-{range[1]} / {total}
+            Hiển thị {range[0]}-{range[1]} trên tổng {total}
           </span>
         ),
       }}
 
-      // Scroll responsive tốt (Lấy từ HEAD)
-      scroll={{ x: 1300, y: 'calc(100vh - 260px)' }}
-      sticky
-      onRow={onRow}
-      rowSelection={rowSelection}
+      // Scroll & Sticky
+      scroll={{ x: 1200 }} // Tinh chỉnh chiều cao cho vừa màn hình laptop
+      sticky={{ offsetHeader: 0 }}
 
-      // Row Styling: Merge logic highlight màu đỏ khi rejected
+      onRow={onRow}
+      rowSelection={{
+        type: 'checkbox', // Kiểu chọn (checkbox hoặc radio)
+        ...rowSelection,  // Kế thừa các config từ cha (selectedRowKeys, onChange...)
+      }}
+
+      // Row styling: Highlight nhẹ các dòng đặc biệt
       rowClassName={(record) => {
-        let classes = "align-middle text-[13px] transition-colors ";
-        if (record.is_hidden) classes += "opacity-60 bg-gray-50 ";
-        else if (record.status === "rejected") classes += "bg-red-50 hover:bg-red-100 "; // Highlight rejected
-        else classes += "bg-white hover:bg-slate-50 ";
-        
+        let classes = "cursor-pointer transition-colors ";
+        if (record.is_hidden) classes += "bg-gray-50 opacity-70 "; // Ẩn thì làm mờ
+        else if (record.status === "rejected") classes += "bg-red-50 hover:bg-red-100 "; // Lỗi thì nền đỏ nhạt
+        else classes += "bg-white hover:bg-blue-50 "; // Hover bình thường màu xanh nhạt
         return classes;
       }}
       size="middle"

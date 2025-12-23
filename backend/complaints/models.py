@@ -5,12 +5,18 @@ from orders.models import OrderItem # Import từ app orders
 class Complaint(models.Model):
     # Các trạng thái theo quy trình tranh chấp chuẩn
     STATUS_CHOICES = [
-        ("pending", "Chờ người bán phản hồi"),    
-        ("negotiating", "Đang thương lượng"),     
-        ("admin_review", "Sàn đang xem xét"),     
-        ("resolved_refund", "Đã hoàn tiền"),      
-        ("resolved_reject", "Từ chối hoàn tiền"), 
-        ("cancelled", "Đã hủy khiếu nại"),        
+        ("pending", "Chờ người bán phản hồi"),
+        ("negotiating", "Đang thương lượng"),
+        
+        # --- BỔ SUNG CÁC TRẠNG THÁI NÀY ---
+        ("waiting_return", "Shop đồng ý - Chờ gửi hàng"), # Shop OK, khách chưa gửi
+        ("returning", "Đang trả hàng về"),               # Khách đã gửi, đang đi đường
+        # ----------------------------------
+        
+        ("admin_review", "Sàn đang xem xét"),
+        ("resolved_refund", "Đã hoàn tiền"),      # Kết thúc: Tiền về khách
+        ("resolved_reject", "Từ chối hoàn tiền"), # Kết thúc: Tiền về shop
+        ("cancelled", "Đã hủy khiếu nại"),
     ]
 
     # QUAN TRỌNG: Liên kết với OrderItem thay vì Product
@@ -26,6 +32,10 @@ class Complaint(models.Model):
     
     # Lý do khiếu nại
     reason = models.TextField()
+
+    return_shipping_carrier = models.CharField(max_length=50, blank=True, null=True) # GHN, GHTK, Tự túc...
+    return_tracking_code = models.CharField(max_length=50, blank=True, null=True)    # Mã vận đơn
+    return_proof_image = models.ImageField(upload_to="returns/proofs/", blank=True, null=True) # Ảnh phiếu gửi
     
     # Phản hồi của Seller
     seller_response = models.TextField(blank=True, null=True)

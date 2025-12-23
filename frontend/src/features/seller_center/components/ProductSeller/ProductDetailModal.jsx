@@ -1,293 +1,314 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
-  Modal,
-  Image,
-  Typography,
-  Descriptions,
-  Divider,
-  Row,
-  Col,
-  Button,
-  Skeleton,
-  Tag,
-  Space,
-  Alert,
-  Avatar,
-  Tooltip,
+  Modal, Image, Typography, Row, Col, Button,
+  Tag, Space, Alert, Tabs, Statistic, Divider, Card,
+  Badge, Rate
 } from "antd";
 import {
-  CheckCircleFilled,
-  ClockCircleFilled,
-  CloseCircleFilled,
-  ShopOutlined,
-  CalendarOutlined,
-  InfoCircleOutlined,
-  FileImageOutlined,
-  RightOutlined,
-  LeftOutlined,
+  CheckCircleFilled, ClockCircleFilled, CloseCircleFilled,
+  ShopOutlined, CalendarOutlined, FileImageOutlined,
+  DollarOutlined, ExperimentOutlined,
+  InboxOutlined, RiseOutlined, StopOutlined,
+  RightOutlined, StarFilled, EnvironmentOutlined, InfoCircleOutlined
 } from "@ant-design/icons";
 import dayjs from "dayjs";
-import { intcomma } from "../../../../utils/format"; // Giữ nguyên util của bạn
 
 const { Title, Text, Paragraph } = Typography;
 
-// --- Config (Giữ nguyên logic mapping của bạn nhưng làm icon gọn hơn) ---
+// --- UTILS FORMAT TIỀN TỆ ---
+const formatCurrency = (value) =>
+  new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value);
+
+// --- CONFIG STATUS ---
 const statusConfig = {
   approved: { label: "Đang bán", color: "success", icon: <CheckCircleFilled /> },
   pending: { label: "Chờ duyệt", color: "gold", icon: <ClockCircleFilled /> },
   pending_update: { label: "Chờ duyệt cập nhật", color: "orange", icon: <ClockCircleFilled /> },
   rejected: { label: "Từ chối", color: "error", icon: <CloseCircleFilled /> },
-  banned: { label: "Bị khóa", color: "default", icon: <CloseCircleFilled /> },
-  self_rejected: { label: "Đã hủy", color: "default", icon: <CloseCircleFilled /> },
+  banned: { label: "Bị khóa", color: "default", icon: <StopOutlined /> },
+  self_rejected: { label: "Đã ẩn/Hủy", color: "default", icon: <StopOutlined /> },
 };
 
-export default function ProductDetailModal({
-  visible,
-  onClose,
-  product,
-  onManageImages,
-}) {
+export default function ProductDetailModal({ visible, onClose, product, onManageImages }) {
   const [activeImage, setActiveImage] = useState(null);
-  const [isDescExpanded, setIsDescExpanded] = useState(false);
 
   useEffect(() => {
     if (product) {
-      const defaultImg =
-        product.image ||
-        product.main_image?.image ||
-        (product.images?.length > 0 ? product.images[0].image : null);
+      const defaultImg = product.main_image?.image || (product.images?.length > 0 ? product.images[0].image : null) || product.image;
       setActiveImage(defaultImg);
     }
   }, [product, visible]);
 
-  if (!product && visible) return <Modal open={visible} footer={null} centered width={860}><Skeleton active /></Modal>;
+  // --- TÍNH TOÁN TÀI CHÍNH ---
+  const financialData = useMemo(() => {
+    if (!product) return null;
+    
+    const sellingPrice = Number(product.discounted_price || product.original_price || 0);
+    const taxRate = product.tax_rate || 0;
+    const commissionRate = product.commission_rate || 0;
+
+    // 1. Tách thuế: Giá bán = Giá chưa thuế * (1 + tax%)
+    const priceExcludingTax = sellingPrice / (1 + taxRate / 100);
+    const taxAmount = Math.round(sellingPrice - priceExcludingTax);
+
+    // 2. Phí sàn: Tính trên giá bán (bao gồm thuế)
+    const feeAmount = Math.round(sellingPrice * commissionRate);
+
+    // 3. Thực nhận
+    const netIncome = sellingPrice - taxAmount - feeAmount;
+
+    return { sellingPrice, taxRate, taxAmount, commissionRate, feeAmount, netIncome };
+  }, [product]);
+
   if (!product) return null;
 
-  // --- Logic xử lý dữ liệu ---
   const status = statusConfig[product.status] || { label: product.status, color: "default" };
-  const isSeason = product.availability_status === "coming_soon";
-  const isRejected = ["rejected", "banned"].includes(product.status);
+  const hasPendingUpdate = product.pending_update || (product.comparison_data && product.comparison_data.has_changes);
 
-  const getRejectReason = (p) => {
-    if (p.reject_reason?.trim()) return p.reject_reason;
-    if (p.admin_note?.trim()) return p.admin_note;
-    if (p.status === "rejected" && (!p.images || p.images.length === 0)) return "Thiếu hình ảnh sản phẩm.";
-    return "Vi phạm chính sách sàn.";
+  // --- RENDER SECTIONS ---
+
+  // 1. Cột Trái: Ảnh
+  const renderImageGallery = () => (
+    <div style={{ position: "sticky", top: 20 }}>
+      <div style={{
+        width: "100%", aspectRatio: "1/1", background: "#f5f5f5",
+        borderRadius: 8, border: "1px solid #f0f0f0",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        marginBottom: 12, overflow: "hidden"
+      }}>
+        <Image
+          src={activeImage}
+          width="100%" height="100%"
+          style={{ objectFit: "contain", padding: 8 }}
+          fallback="/no-image.png"
+        />
+      </div>
+      {product.images?.length > 0 && (
+        <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4, marginBottom: 12 }}>
+          {product.images.map((img, idx) => (
+            <div
+              key={idx}
+              onClick={() => setActiveImage(img.image)}
+              style={{
+                width: 60, height: 60, flexShrink: 0, cursor: "pointer",
+                borderRadius: 6,
+                border: activeImage === img.image ? "2px solid #1890ff" : "1px solid #eee",
+                padding: 2, opacity: activeImage === img.image ? 1 : 0.6
+              }}
+            >
+              <img src={img.image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 4 }} />
+            </div>
+          ))}
+        </div>
+      )}
+      <Button icon={<FileImageOutlined />} block onClick={() => onManageImages(product)}>
+        Quản lý thư viện ảnh ({product.images?.length || 0})
+      </Button>
+    </div>
+  );
+
+  // 2. Tab Thông tin chính
+  const renderMainInfo = () => (
+    <>
+      <div style={{ marginBottom: 16 }}>
+        <Text type="secondary">{product.category_name} &gt; {product.subcategory_name}</Text>
+        <Title level={3} style={{ margin: "4px 0 8px" }}>{product.name}</Title>
+        
+        {/* [MỚI] Bổ sung Rating và Location */}
+        <Space split={<Divider type="vertical" />} wrap>
+            <Tag color="blue">{product.brand || "No Brand"}</Tag>
+            
+            <Space size={4}>
+                <StarFilled style={{ color: "#fadb14" }} />
+                <Text strong>{product.rating || "0.0"}</Text>
+                <Text type="secondary">({product.review_count || 0} đánh giá)</Text>
+            </Space>
+
+            <Space size={4}>
+                <EnvironmentOutlined />
+                <Text>{product.location || "Chưa cập nhật"}</Text>
+            </Space>
+        </Space>
+        
+        <div style={{ marginTop: 8 }}>
+            <Space>
+                <ShopOutlined /> 
+                <Text strong>{product.seller_name || "Cửa hàng của bạn"}</Text>
+                <Text type="secondary" style={{ fontSize: 12 }}>(ID SP: #{product.id})</Text>
+            </Space>
+        </div>
+      </div>
+
+      {/* CARD TÀI CHÍNH */}
+      <Card 
+        size="small" 
+        style={{ background: '#f6ffed', borderColor: '#b7eb8f', marginBottom: 20 }}
+        title={<span style={{ color: '#389e0d' }}><DollarOutlined /> Dòng tiền dự kiến</span>}
+      >
+        <Row gutter={16} align="middle">
+          <Col span={8}>
+            <Statistic 
+              title="Giá khách trả" 
+              value={financialData.sellingPrice} 
+              formatter={(v) => formatCurrency(v)}
+              valueStyle={{ fontSize: 16, fontWeight: 600 }}
+            />
+          </Col>
+          <Col span={16}>
+             <Space direction="vertical" size={0} style={{ width: '100%', fontSize: 13 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                   <Text type="secondary">Thuế GTGT ({financialData.taxRate}%):</Text>
+                   <Text type="danger">- {formatCurrency(financialData.taxAmount)}</Text>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                   <Text type="secondary">Phí sàn ({(financialData.commissionRate * 100).toFixed(1)}%):</Text>
+                   <Text type="danger">- {formatCurrency(financialData.feeAmount)}</Text>
+                </div>
+                <Divider style={{ margin: '6px 0' }} />
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                   <Text strong type="success">THỰC NHẬN:</Text>
+                   <Text strong type="success" style={{ fontSize: 16 }}>{formatCurrency(financialData.netIncome)}</Text>
+                </div>
+             </Space>
+          </Col>
+        </Row>
+      </Card>
+
+      {/* THÔNG SỐ LOGISTICS & KHO (Đã bỏ Trọng lượng) */}
+      <Row gutter={[16, 16]} style={{ marginBottom: 20 }}>
+         <Col span={12}>
+            <Statistic 
+               title="Tồn kho sẵn sàng" 
+               value={product.stock} 
+               prefix={<InboxOutlined />} 
+               valueStyle={{ fontSize: 18 }} 
+            />
+         </Col>
+         <Col span={12}>
+            <Statistic 
+               title="Đã bán" 
+               value={product.sold || 0} 
+               prefix={<RiseOutlined />} 
+               valueStyle={{ fontSize: 18 }} 
+            />
+         </Col>
+      </Row>
+
+      {/* MÙA VỤ */}
+      {product.availability_status === 'coming_soon' && (
+        <Alert
+          message="Kế hoạch bán trước (Coming Soon)"
+          description={
+            <Space direction="vertical" size={0}>
+               <Text>Thời gian: {dayjs(product.season_start).format("DD/MM")} - {dayjs(product.season_end).format("DD/MM/YYYY")}</Text>
+               <Text>Tiến độ đặt: {product.ordered_quantity} / {product.estimated_quantity} suất</Text>
+            </Space>
+          }
+          type="info"
+          showIcon
+          icon={<CalendarOutlined />}
+          style={{ marginBottom: 20 }}
+        />
+      )}
+
+      <Divider orientation="left" plain style={{ margin: '10px 0' }}>Mô tả chi tiết</Divider>
+      <div style={{ background: '#fafafa', padding: 12, borderRadius: 6, maxHeight: 200, overflowY: 'auto' }}>
+         <Paragraph style={{ whiteSpace: 'pre-line', margin: 0 }}>
+            {product.description}
+         </Paragraph>
+      </div>
+    </>
+  );
+
+  // 3. Tab So sánh (Khi có Pending Update)
+  const renderComparison = () => {
+     if (!product.comparison_data || !product.comparison_data.has_changes) {
+       return <Alert type="warning" message="Không có dữ liệu so sánh chi tiết." />;
+     }
+     const { current, pending, changes } = product.comparison_data;
+
+     const renderDiffRow = (label, key, formatter = (v) => v) => {
+        const isChanged = changes[key];
+        return (
+           <div style={{ padding: '8px 0', borderBottom: '1px solid #f0f0f0' }}>
+              <Text type="secondary" style={{ fontSize: 12 }}>{label}</Text>
+              <Row gutter={16} align="middle" style={{ marginTop: 4 }}>
+                 <Col span={11}>
+                    <Text type="secondary" delete={!!isChanged}>{formatter(current[key]) || '(Trống)'}</Text>
+                 </Col>
+                 <Col span={2} style={{ textAlign: 'center' }}>
+                    {isChanged && <RightOutlined style={{ color: '#1890ff', fontSize: 10 }} />}
+                 </Col>
+                 <Col span={11}>
+                    <Text strong={!!isChanged} style={{ color: isChanged ? '#1890ff' : 'inherit' }}>
+                       {formatter(pending[key]) || '(Trống)'}
+                    </Text>
+                 </Col>
+              </Row>
+           </div>
+        );
+     };
+
+     return (
+        <div style={{ padding: '0 8px' }}>
+           <Alert message="Dưới đây là các thay đổi bạn đã yêu cầu và đang chờ Admin duyệt." type="info" showIcon style={{ marginBottom: 16 }} />
+           {renderDiffRow("Tên sản phẩm", "name")}
+           {renderDiffRow("Giá gốc", "original_price", formatCurrency)}
+           {renderDiffRow("Giá khuyến mãi", "discounted_price", formatCurrency)}
+           {renderDiffRow("Thuế GTGT", "tax_rate", (v) => `${v}%`)}
+           {renderDiffRow("Tồn kho", "stock")}
+           {renderDiffRow("Mô tả", "description", (v) => v ? `${v.substring(0, 50)}...` : '')}
+        </div>
+     );
   };
 
+  // --- MAIN RENDER ---
   return (
     <Modal
       open={visible}
       onCancel={onClose}
       footer={null}
-      width={860} // Chuẩn đẹp cho desktop & laptop
+      width={900}
       centered
       title={
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingRight: 24 }}>
-          <Space>
-            <Text type="secondary">ID: #{product.id}</Text>
-            <Divider type="vertical" />
-            <Tag color={status.color} icon={status.icon} style={{ border: "none" }}>
-              {status.label.toUpperCase()}
-            </Tag>
-          </Space>
-          <Text type="secondary" style={{ fontSize: 12 }}>
-            Cập nhật: {dayjs(product.updated_at).format("DD/MM/YYYY HH:mm")}
-          </Text>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingRight: 24 }}>
+           <Text strong style={{ fontSize: 16 }}>CHI TIẾT SẢN PHẨM</Text>
+           <Tag color={status.color} icon={status.icon}>{status.label.toUpperCase()}</Tag>
         </div>
       }
-      styles={{
-        body: { padding: "20px 24px 32px" }, // Padding chuẩn Material Design
-        header: { padding: "16px 24px", borderBottom: "1px solid #f0f0f0" }
-      }}
+      styles={{ body: { padding: '24px' } }}
     >
-      {/* Alert Lý do từ chối (Chỉ hiện khi cần thiết) */}
-      {isRejected && (
+      {["rejected", "banned"].includes(product.status) && (
         <Alert
-          message="Yêu cầu cần chỉnh sửa"
-          description={getRejectReason(product)}
+          message="Sản phẩm bị từ chối/khóa"
+          description={<>Lý do: <Text type="danger" strong>{product.reject_reason || "Vi phạm quy định"}</Text></>}
           type="error"
           showIcon
-          style={{ marginBottom: 20 }}
-          action={
-            (!product.images?.length && product.status === "rejected") && (
-              <Button size="small" type="primary" danger onClick={() => onManageImages(product)}>
-                Thêm ảnh
-              </Button>
-            )
-          }
+          style={{ marginBottom: 24 }}
         />
       )}
 
-      <Row gutter={[32, 24]}>
-        {/* --- LEFT COLUMN: IMAGES (Chiếm 10/24) --- */}
-        <Col xs={24} md={10}>
-          <div style={{ position: "sticky", top: 20 }}>
-            {/* Ảnh chính - Tỉ lệ 1:1 hoặc 4:3 đẹp hơn */}
-            <div style={{
-              width: "100%",
-              aspectRatio: "1/1",
-              background: "#fafafa",
-              borderRadius: 8,
-              border: "1px solid #f0f0f0",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              marginBottom: 12,
-              overflow: "hidden"
-            }}>
-              <Image
-                src={activeImage}
-                width="100%"
-                height="100%"
-                style={{ objectFit: "contain", padding: 8 }}
-                fallback="/no-image.png"
-              />
-            </div>
-
-            {/* Thumbnails - Scroll ngang mượt mà */}
-            {product.images?.length > 0 && (
-              <div style={{
-                display: "flex",
-                gap: 8,
-                overflowX: "auto",
-                paddingBottom: 4,
-                marginBottom: 16,
-                scrollbarWidth: "none" // Ẩn scrollbar cho đẹp
-              }}>
-                {product.images.map((img, idx) => (
-                  <div
-                    key={idx}
-                    onClick={() => setActiveImage(img.image)}
-                    style={{
-                      width: 64,
-                      height: 64,
-                      flexShrink: 0,
-                      cursor: "pointer",
-                      borderRadius: 6,
-                      border: activeImage === img.image ? "2px solid #1890ff" : "1px solid #eee",
-                      padding: 2,
-                      opacity: activeImage === img.image ? 1 : 0.7,
-                      transition: "all 0.2s"
-                    }}
-                  >
-                    <img src={img.image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 4 }} />
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <Button icon={<FileImageOutlined />} block onClick={() => onManageImages(product)}>
-              Quản lý thư viện ảnh ({product.images?.length || 0})
-            </Button>
-          </div>
+      <Row gutter={32}>
+        <Col xs={24} md={9}>
+          {renderImageGallery()}
         </Col>
 
-        {/* --- RIGHT COLUMN: INFO (Chiếm 14/24) --- */}
-        <Col xs={24} md={14}>
-          {/* Tên sản phẩm & Shop */}
-          <Title level={3} style={{ marginBottom: 8, marginTop: 0, lineHeight: 1.3 }}>
-            {product.name}
-          </Title>
-
-          <Space style={{ marginBottom: 16 }}>
-            <Avatar size="small" icon={<ShopOutlined />} style={{ backgroundColor: '#87d068' }} />
-            <Text strong>{product.seller_name || "Cửa hàng"}</Text>
-            <Divider type="vertical" />
-            <Text type="secondary">{product.category_name} &gt; {product.subcategory_name}</Text>
-          </Space>
-
-          {/* Pricing Section - Clean Design */}
-          <div style={{ marginBottom: 24 }}>
-            <Space align="baseline">
-              <Text style={{ fontSize: 32, fontWeight: 700, color: "#ff4d4f" }}>
-                {intcomma(product.discounted_price)}₫
-              </Text>
-              {product.original_price > product.discounted_price && (
-                <Text delete type="secondary" style={{ fontSize: 16 }}>
-                  {intcomma(product.original_price)}₫
-                </Text>
-              )}
-              <Tag color={product.availability_status === 'out_of_stock' ? 'red' : 'blue'}>
-                {product.availability_status === 'out_of_stock' ? 'Hết hàng' : 'Có sẵn'}
-              </Tag>
-            </Space>
-            <div style={{ fontSize: 13, color: "#8c8c8c", marginTop: 4 }}>
-              Đơn vị tính: {product.unit || "kg"}
-            </div>
-          </div>
-
-          {/* Thông số quan trọng (Grid nhỏ) */}
-          <div style={{ background: "#f9f9f9", padding: 16, borderRadius: 8, marginBottom: 24 }}>
-            <Row gutter={[16, 16]}>
-              <Col span={8}>
-                <Text type="secondary" style={{ fontSize: 12 }}>Tồn kho</Text>
-                <div style={{ fontSize: 16, fontWeight: 600 }}>{intcomma(product.stock)}</div>
-              </Col>
-              <Col span={8} style={{ borderLeft: "1px solid #e8e8e8", paddingLeft: 16 }}>
-                <Text type="secondary" style={{ fontSize: 12 }}>Đã bán</Text>
-                <div style={{ fontSize: 16, fontWeight: 600 }}>{intcomma(product.sold || 0)}</div>
-              </Col>
-              <Col span={8} style={{ borderLeft: "1px solid #e8e8e8", paddingLeft: 16 }}>
-                <Text type="secondary" style={{ fontSize: 12 }}>Phí hoa hồng sàn</Text>
-                <div style={{ fontSize: 16, fontWeight: 600, color: "#13c2c2" }}>
-                  {/* Giả sử backend trả về commission_rate dạng 0.05 hoặc 0.08 */}
-                  {product.commission_rate ? `${(product.commission_rate * 100).toFixed(1)}%` : "0%"}
-                </div>
-              </Col>
-            </Row>
-          </div>
-
-          {/* Mùa vụ (Nếu có) - Dùng style nhẹ nhàng hơn */}
-          {isSeason && (
-            <div style={{ border: "1px dashed #722ed1", background: "#f9f0ff", padding: 12, borderRadius: 8, marginBottom: 24 }}>
-              <Space style={{ color: "#722ed1", fontWeight: 600 }}>
-                <CalendarOutlined /> Kế hoạch mùa vụ
-              </Space>
-              <Row style={{ marginTop: 8 }} align="middle">
-                <Col span={10}>
-                  <Text style={{ fontSize: 13 }}>
-                    {dayjs(product.season_start).format("DD/MM")} - {dayjs(product.season_end).format("DD/MM/YYYY")}
-                  </Text>
-                </Col>
-                <Col span={14}>
-                  <Tooltip title={`Đã đặt: ${intcomma(product.ordered_quantity)} / ${intcomma(product.estimated_quantity)}`}>
-                    <div style={{ height: 6, background: "#e0d4f5", borderRadius: 3, overflow: "hidden" }}>
-                      <div style={{ width: `${Math.min((product.ordered_quantity / (product.estimated_quantity || 1)) * 100, 100)}%`, height: "100%", background: "#722ed1" }} />
-                    </div>
-                  </Tooltip>
-                </Col>
-              </Row>
-            </div>
+        <Col xs={24} md={15}>
+          {hasPendingUpdate ? (
+             <Tabs
+                defaultActiveKey="current"
+                items={[
+                   { key: 'current', label: 'Thông tin hiện tại', children: renderMainInfo() },
+                   { 
+                      key: 'pending', 
+                      label: <Badge dot><span>Yêu cầu thay đổi</span></Badge>, 
+                      children: renderComparison() 
+                   }
+                ]}
+             />
+          ) : (
+             renderMainInfo()
           )}
-
-          {/* Chi tiết / Mô tả */}
-          <Divider orientation="left" style={{ margin: "12px 0" }}>
-            <InfoCircleOutlined /> Chi tiết
-          </Divider>
-
-          <Descriptions column={1} size="small" labelStyle={{ width: 100, color: "#8c8c8c" }}>
-            <Descriptions.Item label="Xuất xứ">{product.location || "Việt Nam"}</Descriptions.Item>
-            <Descriptions.Item label="Mô tả">
-              <Paragraph
-                ellipsis={!isDescExpanded ? { rows: 3, expandable: false } : false}
-                style={{ marginBottom: 0, whiteSpace: 'pre-line', color: "#595959" }}
-              >
-                {product.description || "Chưa có mô tả chi tiết."}
-              </Paragraph>
-              {product.description && product.description.length > 150 && (
-                <Button
-                  type="link"
-                  size="small"
-                  onClick={() => setIsDescExpanded(!isDescExpanded)}
-                  style={{ padding: 0 }}
-                >
-                  {isDescExpanded ? "Thu gọn" : "Xem thêm"}
-                </Button>
-              )}
-            </Descriptions.Item>
-          </Descriptions>
-
         </Col>
       </Row>
     </Modal>

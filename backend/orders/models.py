@@ -3,6 +3,7 @@ from django.utils import timezone
 from products.models import Product
 from users.models import CustomUser
 from django.conf import settings
+from promotions.models import Voucher # <--- [QUAN TRỌNG 1]: Nhớ Import dòng này
 # Nếu bạn dùng PostgreSQL thì dùng JSONField để lưu danh sách ảnh bằng chứng, 
 # nếu không thì dùng TextField rồi split chuỗi.
 # from django.contrib.postgres.fields import ArrayField 
@@ -74,6 +75,10 @@ class Order(models.Model):
     
     stock_deducted = models.BooleanField(default=False)
     sold_counted = models.BooleanField(default=False)
+
+    voucher = models.ForeignKey(Voucher, on_delete=models.SET_NULL, null=True, blank=True, related_name='orders')
+    
+    discount_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     
     # Soft Delete & Timestamp
     is_deleted = models.BooleanField(default=False)
@@ -111,6 +116,12 @@ class OrderItem(models.Model):
     ITEM_STATUS_CHOICES = [
         ('NORMAL', 'Bình thường'),
         ('REFUND_REQUESTED', 'Yêu cầu hoàn tiền'),
+        
+        # --- [THÊM 2 DÒNG NÀY] ---
+        ('WAITING_RETURN', 'Chờ trả hàng'),   # Shop đồng ý, đợi khách gửi
+        ('RETURNING', 'Đang trả hàng về'),    # Khách đã gửi, đang vận chuyển
+        # -------------------------
+        
         ('SELLER_REJECTED', 'Người bán từ chối'), 
         ('DISPUTE_TO_ADMIN', 'Khiếu nại lên Sàn'), 
         ('REFUND_APPROVED', 'Đồng ý hoàn tiền'), 

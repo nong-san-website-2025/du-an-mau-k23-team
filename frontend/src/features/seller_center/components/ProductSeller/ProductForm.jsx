@@ -13,7 +13,6 @@ import {
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 
-
 const { Option } = Select;
 const { TextArea } = Input;
 const { Text } = Typography;
@@ -57,9 +56,9 @@ const ProductForm = ({
   const [fileList, setFileList] = useState([]);
   const [primaryImage, setPrimaryImage] = useState(null);
   const [currentTaxRate, setCurrentTaxRate] = useState(0);
-  const [commissionRate, setCommissionRate] = useState(0); // Mặc định 0
+  const [commissionRate, setCommissionRate] = useState(0); 
 
-  // ✅ FIX: Thêm state để force re-render khi giá thay đổi
+  // State lưu trữ giá để tính toán real-time
   const [priceData, setPriceData] = useState({
     original_price: 0,
     discounted_price: 0
@@ -68,36 +67,21 @@ const ProductForm = ({
   const isRejected = initialValues?.status === "rejected";
   const getRejectReason = () => initialValues?.reject_reason || initialValues?.admin_note || "Sản phẩm chưa đạt yêu cầu.";
 
-
-
   const handleCategoryChange = (categoryId) => {
     setSelectedCategory(categoryId);
-
-    // Tìm danh mục được chọn từ list categories truyền vào
     const selected = categories.find((cat) => cat.id === categoryId);
-
-    // Cập nhật subcategories
     setSubcategories(selected?.subcategories || []);
     form.setFieldsValue({ subcategory: undefined });
 
-    // ✅ TỰ ĐỘNG CẬP NHẬT PHÍ SÀN THEO DANH MỤC
     if (selected && selected.commission_rate !== undefined) {
       setCommissionRate(selected.commission_rate);  
     } else {
-      setCommissionRate(0.05); // Mức mặc định nếu danh mục đó ko có data phí
+      setCommissionRate(0.05); 
     }
   };
 
   const handleAvailabilityChange = (value) => {
     setAvailability(value);
-  };
-
-  // ✅ FIX: Handler để cập nhật giá real-time
-  const handlePriceChange = () => {
-    setPriceData({
-      original_price: form.getFieldValue('original_price') || 0,
-      discounted_price: form.getFieldValue('discounted_price') || 0
-    });
   };
 
   useEffect(() => {
@@ -110,15 +94,13 @@ const ProductForm = ({
           availability_status: initialValues.availability_status || "available",
           unit: initialValues.unit || "kg",
           tax_rate: initialValues.tax_rate || 0,
-
         };
 
         form.setFieldsValue(formattedValues);
         setAvailability(formattedValues.availability_status);
         setCurrentTaxRate(formattedValues.tax_rate);
-        setCommissionRate(initialValues.commission_rate || 0.05); // Mặc định 5% nếu không có data
+        setCommissionRate(initialValues.commission_rate || 0.05);
 
-        // ✅ FIX: Cập nhật priceData khi load dữ liệu cũ
         setPriceData({
           original_price: formattedValues.original_price || 0,
           discounted_price: formattedValues.discounted_price || 0
@@ -138,7 +120,7 @@ const ProductForm = ({
         } else {
           setFileList([]);
           setPrimaryImage(null);
-          setCommissionRate(0.05); // Mặc định 5% cho sản phẩm mới (hoặc lấy từ Config hệ thống)
+          setCommissionRate(0.05);
         }
 
         if (categories.length > 0 && initialValues.subcategory) {
@@ -171,24 +153,16 @@ const ProductForm = ({
     }
   }, [visible, initialValues, categories, form]);
 
-  // ✅ CÁCH TÍNH CHUẨN: Giá niêm yết ĐÃ bao gồm thuế
-  // Ví dụ: Bán 100k → Thuế 9,091đ → Thực nhận 90,909đ
   const renderNetIncome = () => {
     const price = priceData.original_price || 0;
     const discount = priceData.discounted_price || 0;
 
-    // Ưu tiên giá khuyến mãi nếu có
-    const sellingPrice = discount > 0 ? discount : price;
+    // Logic hiển thị: Nếu discount > 0 thì dùng discount, ngược lại dùng giá gốc
+    const sellingPrice = (discount > 0 && discount < price) ? discount : price;
 
-    // A. Tính Thuế (Giả sử Giá bán đã bao gồm thuế)
-    // Giá chưa thuế = Giá bán / (1 + %thuế)
     const priceExcludingTax = sellingPrice / (1 + currentTaxRate / 100);
     const taxAmount = Math.round(sellingPrice - priceExcludingTax);
-
-    // B. Tính Phí sàn (Tính trên tổng giá bán cho khách)
     const platformFeeAmount = Math.round(sellingPrice * commissionRate);
-
-    // C. Thực nhận = Giá bán - Thuế (nộp nhà nước) - Phí sàn (trả sàn)
     const netIncome = sellingPrice - taxAmount - platformFeeAmount;
 
     const isZero = sellingPrice === 0;
@@ -198,25 +172,17 @@ const ProductForm = ({
 
     return (
       <div style={{
-        marginTop: 12,
-        padding: '12px',
-        background: boxColor,
-        border: `1px solid ${borderColor}`,
-        borderRadius: 8,
-        transition: 'all 0.3s'
+        marginTop: 12, padding: '12px', background: boxColor,
+        border: `1px solid ${borderColor}`, borderRadius: 8, transition: 'all 0.3s'
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
           <Text type="secondary">Doanh thu (Khách trả):</Text>
           <Text strong>{sellingPrice.toLocaleString()} đ</Text>
         </div>
-
-        {/* Hiển thị Thuế */}
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 12 }}>
           <Text type="secondary">Thuế GTGT ({currentTaxRate}%):</Text>
           <Text type="danger">- {taxAmount.toLocaleString()} đ</Text>
         </div>
-
-        {/* Hiển thị Phí sàn - Đã thêm Tooltip xịn */}
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 12 }}>
           <Text type="secondary">
             Phí sàn ({(commissionRate * 100).toFixed(1)}%):
@@ -227,20 +193,12 @@ const ProductForm = ({
           <Text type="danger">- {platformFeeAmount.toLocaleString()} đ</Text>
         </div>
         <Divider style={{ margin: '8px 0' }} />
-
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Text strong style={{ color: textColor }}>THỰC NHẬN VỀ VÍ:</Text>
           <Text strong style={{ fontSize: 18, color: textColor }}>
             {netIncome > 0 ? netIncome.toLocaleString() : 0} đ
           </Text>
         </div>
-
-        {/* Lời khuyên định giá */}
-        {!isZero && (
-          <div style={{ fontSize: 11, color: '#8c8c8c', marginTop: 4, fontStyle: 'italic', textAlign: 'right' }}>
-            (Đã trừ hết các chi phí ước tính)
-          </div>
-        )}
       </div>
     );
   };
@@ -250,7 +208,8 @@ const ProductForm = ({
       if (!values.original_price || values.original_price <= 0) {
         return message.error("Giá gốc phải lớn hơn 0!");
       }
-      if (values.discounted_price && values.discounted_price >= values.original_price) {
+      // Check logic: Nếu CÓ nhập giá KM thì phải nhỏ hơn giá gốc
+      if (values.discounted_price && values.discounted_price > 0 && values.discounted_price >= values.original_price) {
         return message.error("Giá khuyến mãi phải nhỏ hơn giá gốc!");
       }
 
@@ -258,6 +217,21 @@ const ProductForm = ({
 
       Object.entries(values).forEach(([key, value]) => {
         if (value === undefined || value === null) return;
+
+        // --- SỬA LỖI TẠI ĐÂY ---
+        // Nếu trường là 'discounted_price':
+        // - Nếu để trống hoặc = 0 -> Gán bằng 'original_price' (Để Backend hiểu là không giảm giá)
+        // - Nếu có giá trị -> Gửi bình thường
+        if (key === 'discounted_price') {
+            if (!value || value <= 0) {
+                formData.append(key, values.original_price); 
+            } else {
+                formData.append(key, value);
+            }
+            return; // Đã xử lý xong key này, return để không chạy xuống dưới
+        }
+        // -----------------------
+
         if (key === 'season_start' || key === 'season_end') {
           formData.append(key, dayjs(value).format('YYYY-MM-DD'));
         } else {
@@ -380,10 +354,7 @@ const ProductForm = ({
               >
                 <Radio.Group
                   style={{ width: '100%' }}
-                  onChange={(e) => {
-                    setCurrentTaxRate(e.target.value);
-                    handlePriceChange(); // ✅ FIX: Trigger re-calculate khi đổi thuế
-                  }}
+                  onChange={(e) => setCurrentTaxRate(e.target.value)}
                 >
                   <Space direction="vertical" style={{ width: '100%' }}>
                     {PRODUCT_TAX_TYPES.map((type) => (
@@ -460,7 +431,9 @@ const ProductForm = ({
                       parser={v => v.replace(/\$\s?|(,*)/g, '')}
                       min={1000}
                       placeholder="VD: 50,000"
-                      onChange={handlePriceChange} // ✅ FIX: Trigger khi nhập giá
+                      onChange={(val) => {
+                        setPriceData(prev => ({ ...prev, original_price: val }));
+                      }}
                     />
                   </Form.Item>
 
@@ -476,7 +449,9 @@ const ProductForm = ({
                       formatter={v => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
                       parser={v => v.replace(/\$\s?|(,*)/g, '')}
                       placeholder="Để trống nếu không giảm"
-                      onChange={handlePriceChange} // ✅ FIX: Trigger khi nhập giá KM
+                      onChange={(val) => {
+                        setPriceData(prev => ({ ...prev, discounted_price: val }));
+                      }}
                     />
                   </Form.Item>
                 </Col>

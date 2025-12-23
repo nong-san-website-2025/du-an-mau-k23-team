@@ -38,6 +38,7 @@ import Frequentlyaskedquestions from "../pages/CustomerService/FAQ";
 import BlogListPage from "../features/blog/pages/BlogListPage";
 import BlogDetailPage from "../features/blog/pages/BlogDetailPage";
 import LegalPage from "../pages/LegalPage";
+import BestSellersPage from "../pages/BestSellersPage";
 
 export const userRoutes = [
   <Route path="/" element={<Layout />} key="layout">
@@ -62,6 +63,9 @@ export const userRoutes = [
     <Route path="store" element={<StoreList />} />
     <Route path="store/:id" element={<StoreDetail />} />
     <Route path="search/" element={<SearchResultsPage />} />
+    <Route path="new-products" element={<NewProductsPage />} />
+    <Route path="best-sellers" element={<BestSellersPage />} />
+
     <Route
       path="/reset-password/:uidb64/:token/"
       element={<ResetPasswordPage />}
