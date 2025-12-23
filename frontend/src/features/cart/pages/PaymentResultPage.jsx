@@ -1,74 +1,45 @@
-// import { useEffect, useState } from "react";
-// import { useSearchParams, useNavigate } from "react-router-dom";
-// import axios from "axios";
+import { useEffect, useState } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
 
-// export default function PaymentResultPage() {
-//   const [searchParams] = useSearchParams();
-//   const [status, setStatus] = useState("processing");
-//   const navigate = useNavigate();
+export default function PaymentResultPage() {
+	const [searchParams] = useSearchParams();
+	const [status, setStatus] = useState("processing");
+	const navigate = useNavigate();
 
-//   useEffect(() => {
-//     const resultCode = searchParams.get("resultCode");
-//     const orderId = searchParams.get("orderId");
-//     const message = searchParams.get("message");
+	useEffect(() => {
+		// Generic handler for different gateways
+		const success =
+			searchParams.get("resultCode") === "0" ||
+			searchParams.get("vnp_ResponseCode") === "00" ||
+			searchParams.get("success") === "1";
 
-//     if (resultCode === "0") {
-//       // Thanh toán thành công
-//       setStatus("success");
+		setStatus(success ? "success" : "failed");
+	}, [searchParams]);
 
-//       // Gọi backend confirm thanh toán
-//       axios.post("http://localhost:8000/api/payment/momo/confirm/", {
-//         orderId,
-//       }).catch(err => {
-//         console.error("Confirm failed:", err);
-//       });
-//     } else {
-//       setStatus("failed");
-//       console.error("MoMo Payment Failed:", message);
-//     }
-//   }, [searchParams]);
+	const goOrders = () => navigate("/orders?tab=completed");
+	const goHome = () => navigate("/");
 
-//   const handleGoOrders = () => {
-//     navigate("/orders?tab=completed");
-//   };
+	return (
+		<div style={{ minHeight: "70vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+			<div style={{ background: "#fff", borderRadius: 12, padding: 24, boxShadow: "0 8px 24px rgba(0,0,0,0.08)", maxWidth: 420, width: "100%", textAlign: "center" }}>
+				{status === "processing" && <h3>Đang xử lý...</h3>}
 
-//   const handleGoHome = () => {
-//     navigate("/");
-//   };
+				{status === "success" && (
+					<>
+						<h2 style={{ color: "#389E0D", marginBottom: 8 }}>Thanh toán thành công!</h2>
+						<p>Đơn hàng của bạn đã được ghi nhận.</p>
+						<button onClick={goOrders} style={{ marginTop: 12, background: "#389E0D", color: "#fff", border: 0, padding: "8px 14px", borderRadius: 6 }}>Xem đơn hàng</button>
+					</>
+				)}
 
-//   return (
-//     <div className="flex items-center justify-center h-screen bg-gray-100">
-//       <div className="bg-white shadow-lg rounded-2xl p-8 max-w-md w-full text-center">
-//         {status === "processing" && (
-//           <h2 className="text-xl font-semibold">Đang xử lý...</h2>
-//         )}
-
-//         {status === "success" && (
-//           <>
-//             <h2 className="text-2xl font-bold text-green-600">Thanh toán thành công!</h2>
-//             <p className="mt-2">Cảm ơn bạn đã mua hàng qua MoMo.</p>
-//             <button
-//               onClick={handleGoOrders}
-//               className="mt-4 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
-//             >
-//               Xem đơn hàng
-//             </button>
-//           </>
-//         )}
-
-//         {status === "failed" && (
-//           <>
-//             <h2 className="text-2xl font-bold text-red-600">Thanh toán thất bại!</h2>
-//             <p className="mt-2">Đã có lỗi xảy ra khi thanh toán bằng MoMo.</p>
-//             <button
-//               onClick={handleGoHome}
-//               className="mt-4 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
-//             >
-//               Về trang chủ
-//             </button>
-//           </>
-//         )}
-//       </div>
-//     </div>
-//   );
-// }
+				{status === "failed" && (
+					<>
+						<h2 style={{ color: "#dc2626", marginBottom: 8 }}>Thanh toán thất bại</h2>
+						<p>Vui lòng thử lại hoặc đổi phương thức thanh toán.</p>
+						<button onClick={goHome} style={{ marginTop: 12, background: "#334155", color: "#fff", border: 0, padding: "8px 14px", borderRadius: 6 }}>Về trang chủ</button>
+					</>
+				)}
+			</div>
+		</div>
+	);
+}

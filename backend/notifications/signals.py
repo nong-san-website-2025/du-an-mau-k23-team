@@ -1,4 +1,5 @@
 import logging
+from django.db import transaction
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.apps import apps
@@ -78,13 +79,18 @@ def notify_order_status_change(sender, instance, created, **kwargs):
             message = f"Đơn hàng {order_ref} đã bị hủy."
 
     if title and instance.user:
-        try:
-            Notification.objects.create(
-                user=instance.user,
-                title=title,
-                message=message,
-                type="ORDER",
-                metadata={"order_id": instance.id, "type": "ORDER_DETAIL"}
-            )
-        except Exception as e:
-            logger.error(f"Lỗi tạo Notification cho Order: {e}")
+        # Tránh phá vỡ transaction hiện tại: tạo Notification sau khi commit
+        def _create_notification():
+            try:
+                Notification.objects.create(
+                    user=instance.user,
+                    title=title,
+                    message=message,
+                    # Khớp với TYPE_CHOICES để tránh lỗi validate
+                    type=("order_created" if created else "order_status_changed"),
+                    metadata={"order_id": instance.id, "type": "ORDER_DETAIL"}
+                )
+            except Exception as e:
+                logger.error(f"Lỗi tạo Notification cho Order: {e}")
+
+        transaction.on_commit(_create_notification)

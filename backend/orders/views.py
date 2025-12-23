@@ -162,6 +162,25 @@ class OrderViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
+
+        # --- Auto-complete: delivered -> completed after 3 days (no disputes) ---
+        try:
+            cutoff = timezone.now() - timedelta(days=3)
+            refund_statuses = [
+                'REFUND_REQUESTED', 'WAITING_RETURN', 'RETURNING',
+                'SELLER_REJECTED', 'DISPUTE_TO_ADMIN', 'REFUND_APPROVED', 'REFUND_REJECTED'
+            ]
+            candidates = (
+                Order.objects
+                .filter(status='delivered', created_at__lte=cutoff)
+                .exclude(items__status__in=refund_statuses)
+                .distinct()
+            )
+            for o in candidates:
+                o.status = 'completed'
+                o.save(update_fields=['status'])
+        except Exception as e:
+            logger.warning(f"Auto-complete sweep failed: {e}")
         # Mặc định lấy các đơn chưa bị xóa mềm
         queryset = Order.objects.all()
 
@@ -442,6 +461,39 @@ class OrderViewSet(viewsets.ModelViewSet):
             logger.exception("Lỗi không xác định khi hoàn tất đơn")
             return Response({'error': 'Lỗi không xác định'}, status=500)
         return Response({'message': 'Hoàn tất đơn hàng', 'status': updated_order.status})
+
+    # ========================
+    # Buyer confirms received (Delivered -> Completed)
+    # ========================
+    @action(detail=True, methods=['post'], url_path='confirm-received')
+    def confirm_received(self, request, pk=None):
+        try:
+            order = self.get_object()
+        except Order.DoesNotExist:
+            return Response({'error': 'Không tìm thấy đơn hàng'}, status=404)
+
+        # Chỉ chủ đơn mới xác nhận
+        if order.user_id != request.user.id:
+            return Response({'error': 'Bạn không có quyền với đơn hàng này'}, status=403)
+
+        if order.status != 'delivered':
+            return Response({'error': 'Chỉ xác nhận đơn ở trạng thái Đã giao'}, status=400)
+
+        # Không cho xác nhận nếu đang có khiếu nại hoạt động
+        active_item_statuses = [
+            'REFUND_REQUESTED', 'WAITING_RETURN', 'RETURNING',
+            'SELLER_REJECTED', 'DISPUTE_TO_ADMIN'
+        ]
+        if order.items.filter(status__in=active_item_statuses).exists():
+            return Response({'error': 'Đơn hàng đang có khiếu nại, không thể xác nhận'}, status=400)
+
+        try:
+            order.status = 'completed'
+            order.save(update_fields=['status'])
+            return Response({'message': 'Đã xác nhận đã nhận hàng', 'status': order.status})
+        except Exception:
+            logger.exception('Lỗi xác nhận đã nhận hàng')
+            return Response({'error': 'Lỗi không xác định'}, status=500)
 
     # ========================
     # [FIX] HỦY ĐƠN VÀ HOÀN VOUCHER

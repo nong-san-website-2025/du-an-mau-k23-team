@@ -61,6 +61,12 @@ export default function OrdersNew() {
       dataIndex: "created_at",
       width: 120,
       align: "center",
+      sorter: (a, b) => {
+        const aDiff = Date.now() - new Date(a.created_at).getTime();
+        const bDiff = Date.now() - new Date(b.created_at).getTime();
+        return aDiff - bDiff;
+      },
+      sortDirections: ["ascend", "descend"],
       render: (t) => {
         const { text, color } = getTimeInfo(t);
         return <Tag color="default" style={{ color: color, borderColor: color, fontWeight: 600 }}>{text}</Tag>;

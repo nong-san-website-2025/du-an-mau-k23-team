@@ -202,6 +202,29 @@ const OrderTab = ({ status }) => {
     return null;
   };
 
+  const hasActiveDispute = (order) => {
+    if (!order.items) return false;
+    const activeDisputeStatuses = [
+      'REFUND_REQUESTED', 'WAITING_RETURN', 'RETURNING',
+      'SELLER_REJECTED', 'DISPUTE_TO_ADMIN', 'negotiating', 'pending'
+    ];
+    return order.items.some(item => {
+      const cStatus = item.complaint?.status;
+      if (cStatus) return activeDisputeStatuses.includes(cStatus);
+      return activeDisputeStatuses.includes(item.status);
+    });
+  };
+
+  const confirmReceived = async (orderId) => {
+    try {
+      await API.post(`orders/${orderId}/confirm-received/`);
+      message.success('Đã xác nhận đã nhận hàng');
+      fetchOrders();
+    } catch (error) {
+      message.error(error?.response?.data?.error || 'Không thể xác nhận');
+    }
+  };
+
   // Helper mở modal chi tiết
   const openDetailModal = (order) => {
     setSelectedOrder(order);
@@ -361,6 +384,14 @@ const OrderTab = ({ status }) => {
                 )}
                 {status === "completed" && (
                    <Button icon={<ReloadOutlined />} onClick={() => handleReorder(order)}>Mua lại</Button>
+                )}
+                {status === "delivered" && !hasActiveDispute(order) && (
+                   <Button 
+                     style={{ background: '#389E0D', borderColor: '#389E0D', color: '#fff' }}
+                     onClick={() => confirmReceived(order.id)}
+                   >
+                     Đã nhận
+                   </Button>
                 )}
                 <Button onClick={() => openDetailModal(order)}>Xem chi tiết</Button>
               </Space>

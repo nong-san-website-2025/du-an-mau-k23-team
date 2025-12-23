@@ -1,8 +1,34 @@
 // src/login_register/services/api.js
 import axios from "axios";
 
-// const API_URL = "http://192.168.68.117:8000/api"; // Hoặc process.env.REACT_APP_API_URL
-const API_URL = process.env.REACT_APP_API_URL; // Hoặc process.env.REACT_APP_API_URL
+// Xác định API base URL một cách linh hoạt để tránh dính IP cũ khi dev
+const deriveApiBaseUrl = () => {
+  const envUrl = process.env.REACT_APP_API_URL;
+  try {
+    const isLocalHost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
+    if (envUrl) {
+      const u = new URL(envUrl);
+      const envHost = u.hostname;
+      const isPrivateLan =
+        envHost.startsWith("192.168.") ||
+        envHost.startsWith("10.") ||
+        /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(envHost);
+
+      // Nếu đang chạy trên localhost nhưng env trỏ tới LAN IP/host khác, ưu tiên localhost
+      if (isLocalHost && (isPrivateLan || envHost !== window.location.hostname)) {
+        return `${window.location.protocol}//${window.location.hostname}:8000/api`;
+      }
+      return envUrl;
+    }
+    // Không có env thì fallback theo host hiện tại
+    return `${window.location.protocol}//${window.location.hostname}:8000/api`;
+  } catch (e) {
+    // URL không hợp lệ => fallback
+    return `${window.location.protocol}//${window.location.hostname}:8000/api`;
+  }
+};
+
+const API_URL = deriveApiBaseUrl();
 
 const api = axios.create({
   baseURL: API_URL,

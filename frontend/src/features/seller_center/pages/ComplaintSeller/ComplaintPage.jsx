@@ -4,6 +4,7 @@ import ComplaintTable from "../../components/ComplaintSeller/ComplaintTable";
 import ApproveModal from "../../components/ComplaintSeller/ApproveModal";
 import DetailModal from "../../components/ComplaintSeller/DetailModal";
 import moment from "moment";
+import dayjs from "dayjs";
 
 export default function ComplaintPage() {
   const [complaints, setComplaints] = useState([]);
@@ -11,6 +12,7 @@ export default function ComplaintPage() {
   const [filtered, setFiltered] = useState([]);
   const [searchKeyword, setSearchKeyword] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [dateRange, setDateRange] = useState(null); // [dayjs, dayjs]
 
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
@@ -63,10 +65,19 @@ export default function ComplaintPage() {
 
       const matchStatus = statusFilter === 'all' || c.status === statusFilter;
 
-      return matchText && matchStatus;
+      // Date range filter (inclusive)
+      let matchDate = true;
+      if (dateRange && dateRange[0] && dateRange[1]) {
+        const start = dateRange[0].startOf('day').toDate();
+        const end = dateRange[1].endOf('day').toDate();
+        const created = new Date(c.created_at);
+        matchDate = created >= start && created <= end;
+      }
+
+      return matchText && matchStatus && matchDate;
     });
     setFiltered(result);
-  }, [searchKeyword, statusFilter, complaints]);
+  }, [searchKeyword, statusFilter, dateRange, complaints]);
 
 
   /* ===== ACTIONS (QUAN TRỌNG: GỌI ĐÚNG API BACKEND MỚI) ===== */
@@ -155,12 +166,16 @@ export default function ComplaintPage() {
       dataIndex: "created_by_name", // Khớp serializer
       key: "created_by_name",
       width: 160,
+      sorter: (a, b) => (a.created_by_name || "").localeCompare(b.created_by_name || "", "vi", { sensitivity: "base" }),
+      sortDirections: ["ascend", "descend"],
     },
     {
       title: "Sản phẩm",
       dataIndex: "product_name",
       key: "product_name",
       width: 220,
+      sorter: (a, b) => (a.product_name || "").localeCompare(b.product_name || "", "vi", { sensitivity: "base" }),
+      sortDirections: ["ascend", "descend"],
       render: (text, record) => (
         <Space>
           <img src={record.product_image} alt="" style={{ width: 30, height: 30, objectFit: 'cover', borderRadius: 4 }} />
@@ -173,6 +188,8 @@ export default function ComplaintPage() {
       dataIndex: "reason",
       key: "reason",
       ellipsis: true,
+      sorter: (a, b) => (a.reason || "").localeCompare(b.reason || "", "vi", { sensitivity: "base" }),
+      sortDirections: ["ascend", "descend"],
     },
     {
       title: "Trạng thái",
@@ -180,6 +197,18 @@ export default function ComplaintPage() {
       key: "status",
       width: 150,
       align: "center",
+      sorter: (a, b) => {
+        const w = {
+          pending: 3,
+          negotiating: 2,
+          admin_review: 1,
+          resolved_refund: 4,
+          resolved_reject: 0,
+          cancelled: -1,
+        };
+        return (w[a.status] ?? 0) - (w[b.status] ?? 0);
+      },
+      sortDirections: ["ascend", "descend"],
       render: (s) => {
         const map = {
           pending: { text: "Chờ xử lý", color: "orange" },
@@ -198,6 +227,8 @@ export default function ComplaintPage() {
       dataIndex: "created_at",
       key: "created_at",
       width: 150,
+      sorter: (a, b) => new Date(a.created_at) - new Date(b.created_at),
+      sortDirections: ["ascend", "descend"],
       render: (t) => moment(t).format("DD/MM/YYYY"),
     },
     {
@@ -242,6 +273,8 @@ export default function ComplaintPage() {
         onStatusFilterChange={setStatusFilter}
         statusFilter={statusFilter}
         onRefresh={fetchComplaints}
+        dateRange={dateRange}
+        onDateRangeChange={setDateRange}
         onRowClick={(record) => {
           setDetailComplaint(record);
           setDetailModalVisible(true);

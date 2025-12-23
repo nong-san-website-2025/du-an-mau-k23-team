@@ -254,8 +254,10 @@ class OrderCreateSerializer(serializers.ModelSerializer):
                     item_data_copy['product_image'] = first_image.image.name if first_image else ""
                     item_data_copy['unit'] = product.unit
                     
+                    # [FIX] Sử dụng giá hợp lệ từ Product (không có field "price")
+                    # Ưu tiên giá giảm, nếu không có thì dùng giá gốc
                     if 'price' not in item_data_copy or not item_data_copy['price']:
-                        item_data_copy['price'] = product.price
+                        item_data_copy['price'] = product.discounted_price or product.original_price
                     
                     item_data_copy['_product'] = product
                 except Product.DoesNotExist:

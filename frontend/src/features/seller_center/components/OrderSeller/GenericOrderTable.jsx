@@ -24,6 +24,24 @@ const STATUS_LABEL_MAP = {
   shipped: "Đã gửi hàng",
 };
 
+// Weight maps for meaningful sorting
+const PAYMENT_SORT_WEIGHT = {
+  paid: 3,
+  unpaid: 2,
+  refunded: 1,
+};
+
+const ORDER_SORT_WEIGHT = {
+  pending: 1,
+  approved: 2,
+  processing: 3,
+  shipped: 4,
+  shipping: 5,
+  delivered: 6,
+  cancelled: 0,
+  rejected: -1,
+};
+
 export default function GenericOrderTable({
   title,
   isLoading,
@@ -97,6 +115,8 @@ export default function GenericOrderTable({
       width: 80,
       fixed: isMobile ? undefined : "left",
       align: "center",
+      sorter: (a, b) => Number(a.id) - Number(b.id),
+      sortDirections: ["ascend", "descend"],
       render: (id) => <strong style={{ color: "#1890ff" }}>#{id}</strong>,
     },
     {
@@ -105,11 +125,14 @@ export default function GenericOrderTable({
       width: isMobile ? 120 : 140,
       align: "center",
       sorter: (a, b) => new Date(a.created_at) - new Date(b.created_at),
+      sortDirections: ["ascend", "descend"],
       render: (text) => <span style={{ fontSize: '13px', color: '#555' }}>{text}</span>
     },
     {
       title: "Khách hàng",
       width: isMobile ? 150 : 170,
+      sorter: (a, b) => (a.customer_name || "").localeCompare(b.customer_name || "", "vi", { sensitivity: "base" }),
+      sortDirections: ["ascend", "descend"],
       render: (_, r) => (
         <div style={{ lineHeight: 1.2 }}>
           <div style={{ fontWeight: 600 }} className="text-truncate" title={r.customer_name}>
@@ -124,6 +147,9 @@ export default function GenericOrderTable({
         dataIndex: "payment_status",
         width: isMobile ? 120 : 130,
         align: "center",
+        sorter: (a, b) =>
+          (PAYMENT_SORT_WEIGHT[a.payment_status] || 0) - (PAYMENT_SORT_WEIGHT[b.payment_status] || 0),
+        sortDirections: ["ascend", "descend"],
         render: (status) => {
             // Mapping màu sắc badge (Bạn có thể tách ra component riêng)
             let color = 'default';
@@ -143,6 +169,8 @@ export default function GenericOrderTable({
       align: "center",
       filters: statusFilters,
       onFilter: (value, record) => record.status === value,
+      sorter: (a, b) => (ORDER_SORT_WEIGHT[a.status] ?? 0) - (ORDER_SORT_WEIGHT[b.status] ?? 0),
+      sortDirections: ["ascend", "descend"],
       render: (status) => <StatusTag status={status} type="order" />,
     },
     {
@@ -150,6 +178,8 @@ export default function GenericOrderTable({
       dataIndex: "total_price", // Đã fix ở serializer để luôn trả về string số
       width: isMobile ? 120 : 130,
       align: "right",
+      sorter: (a, b) => Number(a.total_price) - Number(b.total_price),
+      sortDirections: ["ascend", "descend"],
       render: (v) => (
         <strong style={{ color: "#d4380d" }}>
             {Number(v).toLocaleString('vi-VN')}đ
