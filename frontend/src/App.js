@@ -10,34 +10,43 @@ import VnpayReturn from "./pages/VnpayReturn";
 import ScrollToTop from "./utils/ScrollToTop.js";
 import PaymentWaiting from "./features/cart/pages/PaymentWaiting";
 
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1, // Thử lại 1 lần nếu lỗi
+      refetchOnWindowFocus: true, // Tự động refetch khi người dùng quay lại tab
+    },
+  },
+});
 
 function App() {
   return (
     <div className="main-container">
-      <BrowserRouter>
-        <AuthProvider>
-
-
-          <CartProvider>
-            <ScrollToTop />
-            <Routes>
-              <Route path="/login" element={<LoginForm />} />
-              {userRoutes}
-              {adminRoutes}
-              {sellerRoutes}
-              <Route path="/verify-email" element={<VerifyEmailPage />} />
-              <Route
-                path="/verify-email/:uid/:token"
-                element={<VerifyEmailPage />}
-              />
-              <Route path="/payment/waiting/:orderId" element={<PaymentWaiting />} />
-              <Route path="/vnpay-return" element={<VnpayReturn />} />
-            </Routes>
-          </CartProvider>
-        </AuthProvider>
-      </BrowserRouter>
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <AuthProvider>
+            <CartProvider>
+              <ScrollToTop />
+              <Routes>
+                <Route path="/login" element={<LoginForm />} />
+                {userRoutes}
+                {adminRoutes}
+                {sellerRoutes}
+                <Route path="/verify-email" element={<VerifyEmailPage />} />
+                <Route
+                  path="/verify-email/:uid/:token"
+                  element={<VerifyEmailPage />}
+                />
+                <Route path="/payment/waiting/:orderId" element={<PaymentWaiting />} />
+                <Route path="/vnpay-return" element={<VnpayReturn />} />
+              </Routes>
+            </CartProvider>
+          </AuthProvider>
+        </BrowserRouter>
+      </QueryClientProvider>
     </div>
   );
 }

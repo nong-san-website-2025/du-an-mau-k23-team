@@ -473,8 +473,21 @@ class OrderViewSet(viewsets.ModelViewSet):
             if seller_product_ids.intersection(order_product_ids):
                 order.status = 'cancelled'
                 order.save(update_fields=['status'])
+
+                Notification.objects.create(
+                    user=order.user, # Khách hàng nhận
+                    sender=request.user,
+                    type='order_status_changed',
+                    title="Đơn hàng bị hủy bởi Shop",
+                    message=f"Rất tiếc, đơn hàng #{order.id} đã bị Shop hủy do sự cố kho hàng.",
+                    category='order'
+                )
                 return Response({'message': 'Đơn hàng đã được hủy', 'status': order.status})
             return Response({'error': 'Bạn không có quyền với đơn hàng này'}, status=403)
+        
+        
+        
+        
 
         # --- LOGIC HOÀN VOUCHER ---
         # Kiểm tra xem đơn hàng có dùng voucher không (nếu Order model có field voucher)

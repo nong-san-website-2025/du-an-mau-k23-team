@@ -16,10 +16,10 @@ const safeToDateString = (v) => {
 export async function fetchUnifiedNotifications(userId) {
   try {
     // Gọi đến endpoint lấy thông báo của người dùng
-    const res = await axiosInstance.get("/notifications/"); 
-    
+    const res = await axiosInstance.get("/notifications/");
+
     // Django trả về mảng hoặc object có .results (nếu có phân trang)
-    const rawData = Array.isArray(res.data) ? res.data : (res.data.results || []);
+    const rawData = Array.isArray(res.data) ? res.data : res.data.results || [];
 
     // Map lại dữ liệu để UI dễ đọc
     return rawData.map((n) => ({
@@ -57,7 +57,7 @@ export function annotateRead(list, userId) {
   return list.map((n) => ({
     ...n,
     // Ưu tiên is_read từ backend, nếu không có thì mặc định false
-    read: n.is_read !== undefined ? n.is_read : (n.read || false),
+    read: n.is_read !== undefined ? n.is_read : n.read || false,
   }));
 }
 

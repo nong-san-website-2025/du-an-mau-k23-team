@@ -5,6 +5,7 @@ import useUserProfile from "../features/users/services/useUserProfile";
 import { useCart } from "../features/cart/services/CartContext";
 import useSellerStatus from "../services/hooks/useSellerStatus"; // Giữ lại Hook này
 import useSearch from "../services/hooks/useSearch";
+import { useNotificationLogic } from "./hooks/useNotificationLogic";
 
 // Styles
 import styles from "../styles/Header.module.css";
@@ -16,18 +17,23 @@ import UserActions from "./Header/UserActions";
 import TopBar from "./Header/TopBar";
 
 export default function Header({ shouldFetchProfile = true }) {
-  // 1. Logic extracted to custom hooks (Giữ kiến trúc của HEAD)
-  const { 
-    popularItems, 
-    handleLogout, 
-    handlePopularItemClick, 
-    navigate, 
-    contextHolder 
-  } = useHeaderLogic();
 
   const userProfile = useUserProfile();
   const { cartItems } = useCart();
+
+  // 1. Logic extracted to custom hooks (Giữ kiến trúc của HEAD)
+  const {
+    popularItems,
+    handleLogout,
+    handlePopularItemClick,
+    navigate,
+    contextHolder,
+  } = useHeaderLogic();
+  const { unreadCount, sortedNotifications, handleHover, handleMarkAllRead, handleNotificationClick } =
+    useNotificationLogic(userProfile?.id, navigate);
+
   
+
   // MERGE DECISION: Sử dụng useSellerStatus thay vì gọi API trực tiếp tại đây.
   // Nếu code của MinhKhanh fix lỗi API, hãy mang logic fetch đó vào trong file useSellerStatus.js
   const { storeName, sellerStatus } = useSellerStatus(shouldFetchProfile);
@@ -44,7 +50,8 @@ export default function Header({ shouldFetchProfile = true }) {
 
   // 2. Local UI State
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
-  const [showNotificationDropdown, setShowNotificationDropdown] = useState(false);
+  const [showNotificationDropdown, setShowNotificationDropdown] =
+    useState(false);
   const [showCartDropdown, setShowCartDropdown] = useState(false);
   const [hoveredDropdown, setHoveredDropdown] = useState(null);
 
@@ -71,12 +78,11 @@ export default function Header({ shouldFetchProfile = true }) {
 
       <header className={styles.headerWrapper}>
         <TopBar />
-        
+
         {/* MERGE DECISION: Giữ lại Layout Grid của HEAD vì responsive tốt hơn Inline Styles của MinhKhanh */}
         <div className={styles.mainBar}>
           <div className={`container-fluid ${styles.containerCustom}`}>
             <div className="row w-100 align-items-center m-0">
-              
               {/* LOGO: Col-6 (Mobile) / Col-md-2 (Desktop) */}
               <div className="col-6 col-md-3 col-lg-2 p-0">
                 <Logo greenText={greenText} />
@@ -84,23 +90,28 @@ export default function Header({ shouldFetchProfile = true }) {
 
               {/* USER ACTIONS (Mobile Only - Đảo vị trí lên trên cho dễ bấm) */}
               <div className="col-6 d-md-none p-0 d-flex justify-content-end">
-                 <UserActions
-                    greenText={greenText}
-                    cartCount={cartCount}
-                    cartItems={cartItems}
-                    showCartDropdown={showCartDropdown}
-                    setShowCartDropdown={setShowCartDropdown}
-                    userProfile={userProfile}
-                    showProfileDropdown={showProfileDropdown}
-                    setShowProfileDropdown={setShowProfileDropdown}
-                    handleLogout={onLogoutClick}
-                    showNotificationDropdown={showNotificationDropdown}
-                    setShowNotificationDropdown={setShowNotificationDropdown}
-                    hoveredDropdown={hoveredDropdown}
-                    setHoveredDropdown={setHoveredDropdown}
-                    storeName={storeName}
-                    sellerStatus={sellerStatus}
-                  />
+                <UserActions
+                  greenText={greenText}
+                  cartCount={cartCount}
+                  cartItems={cartItems}
+                  showCartDropdown={showCartDropdown}
+                  setShowCartDropdown={setShowCartDropdown}
+                  userProfile={userProfile}
+                  showProfileDropdown={showProfileDropdown}
+                  setShowProfileDropdown={setShowProfileDropdown}
+                  handleLogout={onLogoutClick}
+                  showNotificationDropdown={showNotificationDropdown}
+                  setShowNotificationDropdown={setShowNotificationDropdown}
+                  hoveredDropdown={hoveredDropdown}
+                  setHoveredDropdown={setHoveredDropdown}
+                  storeName={storeName}
+                  sellerStatus={sellerStatus}
+                  unreadCount={unreadCount}
+                  notifications={sortedNotifications}
+                  onNotificationHover={handleHover}
+                  onMarkAllRead={handleMarkAllRead}
+                  onNotificationClick={handleNotificationClick}
+                />
               </div>
 
               {/* SEARCH BOX: Col-12 (Mobile - xuống dòng) / Col-md-6 (Desktop - ở giữa) */}
@@ -114,12 +125,14 @@ export default function Header({ shouldFetchProfile = true }) {
                   handleSearchChange={handleSearchChange}
                   handleSearchSubmit={onSearchSubmit}
                   greenText={greenText}
-                  containerRef={searchRef}
+                  containerRef={searchRef}  
                 />
 
                 {/* Popular Tags */}
                 {popularItems.length > 0 && (
-                  <div className={`${styles.popularTagsContainer} d-none d-md-flex`}>
+                  <div
+                    className={`${styles.popularTagsContainer} d-none d-md-flex`}
+                  >
                     {popularItems.slice(0, 7).map((item) => (
                       <span
                         key={`${item.type}-${item.id}`}
@@ -152,9 +165,13 @@ export default function Header({ shouldFetchProfile = true }) {
                   setHoveredDropdown={setHoveredDropdown}
                   storeName={storeName}
                   sellerStatus={sellerStatus}
+                  unreadCount={unreadCount}
+                  notifications={sortedNotifications}
+                  onNotificationHover={handleHover}
+                  onMarkAllRead={handleMarkAllRead}
+                  handleNotificationClick={handleNotificationClick}
                 />
               </div>
-
             </div>
           </div>
         </div>

@@ -27,6 +27,12 @@ const { Option } = Select;
 
 const NotificationsPage = () => {
   const [loading, setLoading] = useState(false);
+  const [formValues, setFormValues] = useState({
+    title: "",
+    user: "",
+    type: "ORDER",
+    content: "",
+  });
 
   // Dữ liệu mẫu (Data Source)
   const data = [
@@ -106,12 +112,35 @@ const NotificationsPage = () => {
     },
   ];
 
-  const handleTestTrigger = () => {
-    message
-      .loading("Đang gửi lệnh test...", 0.5)
-      .then(() =>
-        message.success("Đã bắn thông báo test! Check phía Client nhé.")
-      );
+  const handleTestTrigger = async () => {
+    if (!formValues.user || !formValues.title) {
+      return message.warning("Vui lòng nhập ID người nhận và tiêu đề!");
+    }
+
+    setLoading(true);
+    try {
+      const response = await fetch("http://localhost:8000/api/notifications/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`, // Token của Admin
+        },
+        body: JSON.stringify({
+          user: formValues.user, // ID khách hàng nhận tin
+          title: formValues.title,
+          message: formValues.content,
+          type: formValues.type,
+        }),
+      });
+
+      if (response.ok) {
+        message.success("Đã bắn thông báo thành công đến khách hàng!");
+      }
+    } catch (error) {
+      message.error("Lỗi kết nối server!");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

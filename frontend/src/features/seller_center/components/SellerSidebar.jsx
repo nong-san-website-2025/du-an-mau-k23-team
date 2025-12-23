@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { Menu, Layout, Badge } from "antd";
+import { Menu, Layout, Tooltip, Badge } from "antd";
 import {
   DashboardOutlined,
   ShopOutlined,
@@ -11,18 +11,29 @@ import {
   WarningOutlined,
   WechatOutlined,
   WalletOutlined,
+  BellOutlined,
 } from "@ant-design/icons";
 import { useNavigate, useLocation } from "react-router-dom";
 // Dùng chung CSS của Admin hoặc file riêng tùy bạn
 import "../../admin/styles/AdminSidebar.css"; 
+import useUserProfile from "../../users/services/useUserProfile"; // Import để lấy userId
+import { useNotificationLogic } from "../../../layout/hooks/useNotificationLogic"; // Dùng hook chung
+import "../styles/SellerSidebar.css";
 
 const { Sider } = Layout;
 
 export default function SellerSidebar({ collapsed, isMobile, onItemClick }) {
   const navigate = useNavigate();
   const location = useLocation();
+  
+  // 1. Lấy thông tin User để truyền vào hook thông báo
+  const userProfile = useUserProfile();
+  
+  // 2. Sử dụng Hook logic đã viết (Hook này đã lo cả Fetch ban đầu + WebSocket)
+  const { unreadCount } = useNotificationLogic(userProfile?.id, navigate);
 
-  const menuItems = [
+  // 3. Định nghĩa Menu Items
+  const menuItems = useMemo(() => [
     {
       key: "/seller-center/dashboard",
       icon: <DashboardOutlined />,
@@ -78,7 +89,7 @@ export default function SellerSidebar({ collapsed, isMobile, onItemClick }) {
       icon: <ShopOutlined />,
       label: "Hồ sơ Cửa hàng",
     },
-  ];
+  ], [unreadCount]); // Re-render menu khi số lượng tin nhắn thay đổi
 
   const defaultOpenKeys = useMemo(() => {
     const foundParent = menuItems.find((item) =>
@@ -90,6 +101,7 @@ export default function SellerSidebar({ collapsed, isMobile, onItemClick }) {
 
   const handleMenuClick = ({ key }) => {
     navigate(key);
+    // Lưu ý: Việc setUnreadCount(0) nên để trang SellerNotificationPage xử lý khi người dùng vào xem
     if (isMobile && onItemClick) onItemClick();
   };
 

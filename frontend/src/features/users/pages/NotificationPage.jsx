@@ -71,7 +71,7 @@ export default function NotificationPage() {
     try {
       const list = await fetchUnifiedNotifications(userId);
       setItems(list);
-      await markAllAsRead(userId);
+      // await markAllAsRead(userId);
     } catch (e) {
       console.error(e);
     }
@@ -81,12 +81,56 @@ export default function NotificationPage() {
     loadData();
   }, [loadData]);
 
-  const handleOpenDetail = (noti) => {
-    setSelectedNoti(noti);
-    setIsModalOpen(true);
+  const handleOpenDetail = async (noti) => {
+    // 1. Cập nhật UI ngay lập tức cho mượt
     setItems((prev) =>
-      prev.map((item) => (item.id === noti.id ? { ...item, read: true } : item))
+      prev.map((item) =>
+        item.id === noti.id ? { ...item, read: true, is_read: true } : item
+      )
     );
+
+    // 2. GỌI API ĐỂ CẬP NHẬT DATABASE (Quan trọng nhất)
+    try {
+      const token = localStorage.getItem("token");
+      await fetch(
+        `http://localhost:8000/api/notifications/${noti.id}/mark_as_read/`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      // 3. Báo cho cái Chuông ở Header biết để giảm số lượng
+      window.dispatchEvent(new Event("notificationsUpdated"));
+    } catch (error) {
+      console.error("Không thể cập nhật trạng thái đã đọc:", error);
+    }
+
+    // 4. ĐIỀU HƯỚNG (Không hiện Modal theo yêu cầu của bạn)
+    if (noti.type?.toLowerCase() === "order" && noti.metadata?.order_id) {
+      navigate(`/orders/${noti.metadata.order_id}`);
+    } else {
+      // Nếu không phải đơn hàng thì mới hiện Modal
+      setSelectedNoti(noti);
+      setIsModalOpen(true);
+    }
+  };
+
+  const handleMarkAllRead = async () => {
+    try {
+      await markAllAsRead();
+      setItems((prev) => prev.map((item) => ({ ...item, read: true })));
+
+      // PHÁT SỰ KIỆN: Báo cho Sidebar/Header biết là đã đọc hết rồi
+      window.dispatchEvent(new Event("notificationsUpdated"));
+
+      message.success("Đã đánh dấu tất cả thông báo là đã đọc");
+    } catch (e) {
+      message.error("Thao tác thất bại");
+    }
   };
 
   return (

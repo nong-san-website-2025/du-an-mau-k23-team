@@ -38,7 +38,9 @@ class NotificationConsumer(AsyncJsonWebsocketConsumer):
     async def send_notification(self, event):
     # ĐOẠN NÀY LÀ QUAN TRỌNG NHẤT
     # Nó nhận tin từ Signal (type: send_notification) và bắn xuống Browser
-        await self.send(text_data=json.dumps({
-            "event": event["event"],
-            "data": event["data"]
-        }))
+        async def send_notification(self, event):
+        # Sử dụng send_json để đồng bộ với class AsyncJsonWebsocketConsumer
+            await self.send_json({
+                "event": event.get("event", "new_notification"),
+                "data": event.get("data")
+            })
