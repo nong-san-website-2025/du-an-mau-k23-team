@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
-import { Table, Tag, Space, Button, message, Select } from "antd";
+import { Table, Tag, Space, Button, message, Select, DatePicker } from "antd";
+import viVN from "antd/es/date-picker/locale/vi_VN";
 import { ReloadOutlined } from "@ant-design/icons";
 import ComplaintBaseLayout from "../../components/ComplaintSeller/ComplaintBaseLayout";
 
@@ -12,6 +13,8 @@ const ComplaintTable = ({
   onStatusFilterChange,
   statusFilter,
   onRefresh,
+  dateRange,
+  onDateRangeChange,
 }) => {
   // Local status filter for complaints
   const [status, setStatus] = useState("all");
@@ -37,6 +40,17 @@ const ComplaintTable = ({
             flexWrap: 'wrap',
           }}
         >
+          <DatePicker.RangePicker
+            value={dateRange}
+            onChange={onDateRangeChange}
+            format="DD/MM/YYYY"
+            allowClear
+            size={isTiny ? 'small' : 'middle'}
+            style={{ width: isTiny ? 180 : 260 }}
+            placeholder={["Ngày bắt đầu", "Ngày kết thúc"]}
+            locale={viVN}
+            inputReadOnly
+          />
           <Select
             size="middle"
             value={status}

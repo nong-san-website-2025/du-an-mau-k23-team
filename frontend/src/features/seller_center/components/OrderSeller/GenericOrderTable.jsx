@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Table, message } from "antd";
+import { Table, message, Grid } from "antd";
 import API from "../../../login_register/services/api";
 import OrdersBaseLayout from "../../components/OrderSeller/OrdersBaseLayout";
 import StatusTag from "../../../../components/StatusTag"; 
@@ -24,6 +24,24 @@ const STATUS_LABEL_MAP = {
   shipped: "Đã gửi hàng",
 };
 
+// Weight maps for meaningful sorting
+const PAYMENT_SORT_WEIGHT = {
+  paid: 3,
+  unpaid: 2,
+  refunded: 1,
+};
+
+const ORDER_SORT_WEIGHT = {
+  pending: 1,
+  approved: 2,
+  processing: 3,
+  shipped: 4,
+  shipping: 5,
+  delivered: 6,
+  cancelled: 0,
+  rejected: -1,
+};
+
 export default function GenericOrderTable({
   title,
   isLoading,
@@ -35,6 +53,9 @@ export default function GenericOrderTable({
   const [filtered, setFiltered] = useState([]);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const { useBreakpoint } = Grid;
+  const screens = useBreakpoint();
+  const isMobile = !screens.md;
 
   // Inject CSS
   useEffect(() => {
@@ -92,21 +113,26 @@ export default function GenericOrderTable({
       title: "Mã đơn",
       dataIndex: "id",
       width: 80,
-      fixed: "left",
+      fixed: isMobile ? undefined : "left",
       align: "center",
+      sorter: (a, b) => Number(a.id) - Number(b.id),
+      sortDirections: ["ascend", "descend"],
       render: (id) => <strong style={{ color: "#1890ff" }}>#{id}</strong>,
     },
     {
       title: "Thời gian đặt", // ✅ Cột mới
       dataIndex: "created_at_formatted", // Backend đã format sẵn "14:30 20/12/2025"
-      width: 140,
+      width: isMobile ? 120 : 140,
       align: "center",
       sorter: (a, b) => new Date(a.created_at) - new Date(b.created_at),
+      sortDirections: ["ascend", "descend"],
       render: (text) => <span style={{ fontSize: '13px', color: '#555' }}>{text}</span>
     },
     {
       title: "Khách hàng",
-      width: 170,
+      width: isMobile ? 150 : 170,
+      sorter: (a, b) => (a.customer_name || "").localeCompare(b.customer_name || "", "vi", { sensitivity: "base" }),
+      sortDirections: ["ascend", "descend"],
       render: (_, r) => (
         <div style={{ lineHeight: 1.2 }}>
           <div style={{ fontWeight: 600 }} className="text-truncate" title={r.customer_name}>
@@ -119,8 +145,11 @@ export default function GenericOrderTable({
     {
         title: "Thanh toán", // ✅ Cột mới
         dataIndex: "payment_status",
-        width: 130,
+        width: isMobile ? 120 : 130,
         align: "center",
+        sorter: (a, b) =>
+          (PAYMENT_SORT_WEIGHT[a.payment_status] || 0) - (PAYMENT_SORT_WEIGHT[b.payment_status] || 0),
+        sortDirections: ["ascend", "descend"],
         render: (status) => {
             // Mapping màu sắc badge (Bạn có thể tách ra component riêng)
             let color = 'default';
@@ -136,17 +165,21 @@ export default function GenericOrderTable({
     {
       title: "Vận đơn", // Đổi tên cột status cũ thành Vận đơn
       dataIndex: "status",
-      width: 130,
+      width: isMobile ? 120 : 130,
       align: "center",
       filters: statusFilters,
       onFilter: (value, record) => record.status === value,
+      sorter: (a, b) => (ORDER_SORT_WEIGHT[a.status] ?? 0) - (ORDER_SORT_WEIGHT[b.status] ?? 0),
+      sortDirections: ["ascend", "descend"],
       render: (status) => <StatusTag status={status} type="order" />,
     },
     {
       title: "Tổng tiền",
       dataIndex: "total_price", // Đã fix ở serializer để luôn trả về string số
-      width: 130,
+      width: isMobile ? 120 : 130,
       align: "right",
+      sorter: (a, b) => Number(a.total_price) - Number(b.total_price),
+      sortDirections: ["ascend", "descend"],
       render: (v) => (
         <strong style={{ color: "#d4380d" }}>
             {Number(v).toLocaleString('vi-VN')}đ
@@ -157,8 +190,8 @@ export default function GenericOrderTable({
     {
       title: "Hành động",
       key: "actions",
-      width: 180,
-      fixed: "right",
+      width: isMobile ? 150 : 180,
+      fixed: isMobile ? undefined : "right",
       align: "center",
       render: (_, record) => actionsRenderer ? actionsRenderer(record) : null,
     },
@@ -172,8 +205,9 @@ export default function GenericOrderTable({
         data={filtered}
         columns={baseColumns}
         onSearch={handleSearch}
+        onRefresh={refetch}
         searchPlaceholder="Tìm tên, SĐT, mã đơn..."
-        scroll={{ x: 900 }} // Tăng nhẹ scroll x để bảng thoáng hơn
+        scroll={{ x: isMobile ? 850 : 900 }} // Tăng nhẹ scroll x để bảng thoáng hơn
         onRow={(record) => ({
           className: "order-item-row-hover",
           onClick: () => fetchOrderDetail(record.id),

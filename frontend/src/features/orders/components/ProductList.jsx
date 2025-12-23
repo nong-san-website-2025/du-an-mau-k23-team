@@ -116,9 +116,12 @@ const ProductList = ({
           const imageSrc = resolveProductImage(item.product_image || "");
           
           const complaintData = getComplaint(item);
-          
-          const canComplaint = (status === "completed" || status === "delivered") 
-                               && item.status === "NORMAL" 
+
+          // Hiển thị nút ở "Đã giao" và "Hoàn thành" nhưng khóa khi đã hoàn thành
+          const showComplaintButton = (status === "delivered" || status === "completed")
+                                      && item.status === "NORMAL";
+          const canComplaint = (status === "delivered")
+                               && item.status === "NORMAL"
                                && !complaintData;
 
           return (
@@ -160,15 +163,18 @@ const ProductList = ({
                 </div>
 
                 <div style={{ marginTop: 16, display: "flex", justifyContent: "flex-end", gap: 12, flexWrap: "wrap" }}>
-                  {canComplaint && (
-                    <Button
-                      size={isMobile ? "small" : "middle"}
-                      danger
-                      onClick={() => toggleComplaint(item.id)} 
-                      style={{ borderRadius: 4 }}
-                    >
-                      Yêu cầu hoàn tiền
-                    </Button>
+                  {showComplaintButton && (
+                    <Tooltip title={status === "completed" ? "Đơn đã hoàn thành – không thể yêu cầu hoàn tiền" : undefined}>
+                      <Button
+                        size={isMobile ? "small" : "middle"}
+                        danger
+                        disabled={!canComplaint}
+                        onClick={() => canComplaint && toggleComplaint(item.id)} 
+                        style={{ borderRadius: 4 }}
+                      >
+                        Yêu cầu hoàn tiền
+                      </Button>
+                    </Tooltip>
                   )}
                   
                   {(status === "completed") && !ratedProducts.has(item.product) && !complaintData && (

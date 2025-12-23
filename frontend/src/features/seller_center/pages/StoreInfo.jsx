@@ -28,6 +28,7 @@ import {
   MailOutlined,
 } from "@ant-design/icons";
 import sellerService from "../services/api/sellerService";
+import "../styles/StoreInfo.css";
 
 const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
@@ -257,6 +258,7 @@ export default function StoreManagement() {
                   icon={<SaveOutlined />} 
                   loading={submitting}
                   size="large"
+                  className="store-save-btn"
                 >
                   Lưu thay đổi
                 </Button>

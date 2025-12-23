@@ -44,9 +44,16 @@ const ProductTable = ({
     // ── 1. SẢN PHẨM (Định danh) ──
     {
       title: "Sản phẩm",
+      dataIndex: "name",
       key: "name",
       width: 300,
       fixed: isMobile ? undefined : "left",
+      sorter: (a, b) => {
+        const av = (a.name || "").toString().toLowerCase();
+        const bv = (b.name || "").toString().toLowerCase();
+        return av.localeCompare(bv);
+      },
+      sortDirections: ["ascend", "descend"],
       render: (_, record) => {
         // Logic lấy ảnh: Ưu tiên ảnh chính -> ảnh đầu tiên -> ảnh fallback
         let imageUrl = null;
@@ -138,8 +145,20 @@ const ProductTable = ({
     // ── 2. DANH MỤC (Cải thiện hiển thị phân cấp) ──
     {
       title: "Danh mục",
+      dataIndex: "category_name",
       key: "category",
       width: 180,
+      sorter: (a, b) => {
+        const ac = (a.category_name || "").toString().toLowerCase();
+        const bc = (b.category_name || "").toString().toLowerCase();
+        if (ac === bc) {
+          const as = (a.subcategory_name || "").toString().toLowerCase();
+          const bs = (b.subcategory_name || "").toString().toLowerCase();
+          return as.localeCompare(bs);
+        }
+        return ac.localeCompare(bc);
+      },
+      sortDirections: ["ascend", "descend"],
       render: (_, record) => (
         <div className="flex flex-col">
           {/* Breadcrumb danh mục cha - Nhạt màu */}
@@ -155,9 +174,16 @@ const ProductTable = ({
     // ── 3. GIÁ BÁN (Căn phải chuẩn tiền tệ) ──
     {
       title: "Giá bán",
+      dataIndex: "discounted_price",
       key: "price",
       width: 130,
       align: "right", // Quan trọng cho cột số tiền
+      sorter: (a, b) => {
+        const ap = a.discounted_price ?? a.original_price ?? 0;
+        const bp = b.discounted_price ?? b.original_price ?? 0;
+        return ap - bp;
+      },
+      sortDirections: ["ascend", "descend"],
       render: (_, record) => {
         const isDiscounted = record.discounted_price && record.discounted_price < record.original_price;
         return (
@@ -187,8 +213,14 @@ const ProductTable = ({
     // ── 4. KHO & ĐÃ BÁN (Bỏ border, dùng màu cảnh báo) ──
     {
       title: "Kho & Đã bán",
+      dataIndex: "stock",
       key: "stock",
       width: 130,
+      sorter: (a, b) => {
+        const s = (a.stock ?? 0) - (b.stock ?? 0);
+        return s !== 0 ? s : (a.sold ?? 0) - (b.sold ?? 0);
+      },
+      sortDirections: ["ascend", "descend"],
       render: (_, record) => {
         // Logic cảnh báo tồn kho
         const isOutOfStock = record.stock === 0;
@@ -224,9 +256,16 @@ const ProductTable = ({
     // ── 5. TRẠNG THÁI (Dùng StatusTag mới) ──
     {
       title: "Trạng thái",
+      dataIndex: "status",
       key: "status",
       width: 150,
       align: "left", // Căn trái cho status nhìn thẳng hàng hơn
+      sorter: (a, b) => {
+        const av = (a.status || "").toString().toLowerCase();
+        const bv = (b.status || "").toString().toLowerCase();
+        return av.localeCompare(bv);
+      },
+      sortDirections: ["ascend", "descend"],
       render: (_, record) => {
         let showStatus = record.status;
         if (record.status === "approved" && record.is_hidden) showStatus = "hidden";
