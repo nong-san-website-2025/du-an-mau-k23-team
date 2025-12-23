@@ -221,9 +221,8 @@ class OrderCreateSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         items_data = validated_data.pop('items', [])
-        # [NEW] Lấy voucher code từ data gửi lên
         voucher_code = validated_data.pop('shop_voucher_code', None) 
-        print(f"\n >>> DEBUG: Mã voucher nhận được là: '{voucher_code}'")       
+        
         request = self.context.get('request')
         user = getattr(request, 'user', None)
         if user is None or user.is_anonymous:
@@ -233,7 +232,7 @@ class OrderCreateSerializer(serializers.ModelSerializer):
             validated_data['status'] = 'pending'
 
         try:
-            # Nhóm items theo seller
+            # Import models cần thiết
             from products.models import Product
             from collections import defaultdict
             from promotions.models import UserVoucher
@@ -241,10 +240,10 @@ class OrderCreateSerializer(serializers.ModelSerializer):
             seller_items = defaultdict(list)
             request_items = self.initial_data.get('items', [])
 
+            # --- Giai đoạn 1: Chuẩn bị dữ liệu items ---
             for i, item_data in enumerate(request_items):
                 item_data_copy = item_data.copy()
                 item_data_copy.pop('order', None)
-
                 product_id = item_data_copy.get('product')
                 if not product_id: continue
 
@@ -267,29 +266,31 @@ class OrderCreateSerializer(serializers.ModelSerializer):
                 seller_id = product.seller.id
                 seller_items[seller_id].append(item_data_copy)
 
-            # Tạo orders cho từng seller
             created_orders = []
             
-            # Dùng atomic transaction để đảm bảo tạo đơn + trừ voucher an toàn
+            # --- Giai đoạn 2: Transaction Atomic (Tạo đơn & Tính tiền) ---
             with transaction.atomic():
                 for seller_id, items in seller_items.items():
-                    # Tính tổng giá trị cho order này
+                    # [SỬA LẠI] Tính tổng tiền dùng Decimal tuyệt đối
+                    # Lưu ý: price lấy từ item_data có thể là float/str, cần ép về Decimal
                     total_price = sum(
-                        float(item.get('price', 0)) * int(item.get('quantity', 0))
+                        Decimal(str(item.get('price', 0))) * int(item.get('quantity', 0))
                         for item in items
                     )
 
                     order_data = validated_data.copy()
                     order_data.pop('user', None)
                     
-                    if 'shipping_fee' not in order_data or order_data['shipping_fee'] is None:
-                        shipping_fee = self.initial_data.get('shipping_fee', 0)
-                        order_data['shipping_fee'] = shipping_fee
-                    else:
-                        shipping_fee = order_data['shipping_fee']
+                    # Xử lý shipping fee (Chuyển sang Decimal)
+                    raw_shipping = self.initial_data.get('shipping_fee', 0)
+                    if 'shipping_fee' in order_data and order_data['shipping_fee'] is not None:
+                         raw_shipping = order_data['shipping_fee']
                     
-                    # Set total_price (chưa trừ voucher)
-                    order_data['total_price'] = total_price + float(shipping_fee or 0)
+                    shipping_fee = Decimal(str(raw_shipping))
+                    order_data['shipping_fee'] = shipping_fee
+                    
+                    # Tổng tiền = Tiền hàng + Ship
+                    order_data['total_price'] = total_price + shipping_fee
 
                     # Tạo đơn hàng
                     order = Order.objects.create(user=user, **order_data)
@@ -297,99 +298,98 @@ class OrderCreateSerializer(serializers.ModelSerializer):
                     # Tạo order items
                     for item_data_copy in items:
                         product = item_data_copy['_product']
+                        # Ép kiểu giá về Decimal trước khi lưu
+                        price_decimal = Decimal(str(item_data_copy.get('price', 0)))
+                        
                         OrderItem.objects.create(
                             order=order,
                             product=product,
                             quantity=item_data_copy.get('quantity', 1),
-                            price=item_data_copy.get('price', 0),
+                            price=price_decimal,
                             product_image=item_data_copy.get('product_image', ''),
                             unit=item_data_copy.get('unit', '')
                         )
 
                     created_orders.append(order)
 
-                # ==========================================================
-                # [LOGIC VOUCHER HARDCORE] Xử lý ngay trong Transaction
-                # ==========================================================
-                if voucher_code and created_orders:
-                    print(f">>> XỬ LÝ VOUCHER CODE: {voucher_code}")
-                    # Tìm và khóa dòng UserVoucher (is_used=False)
-                    uv = UserVoucher.objects.select_for_update().filter(
-                        user=user, 
-                        voucher__code=voucher_code,
-                        is_used=False 
-                    ).select_related('voucher').first()
+            # ==========================================================
+            # [SỬA LẠI] LOGIC VOUCHER (Move ra ngoài atomic block để tránh broken transaction)
+            # ==========================================================
+            if voucher_code and created_orders:
+                print(f">>> XỬ LÝ VOUCHER CODE: {voucher_code}")
+                uv = UserVoucher.objects.select_for_update().filter(
+                    user=user, 
+                    voucher__code=voucher_code,
+                    is_used=False 
+                ).select_related('voucher').first()
 
-                    if uv and uv.remaining_for_user() > 0:
-                        voucher = uv.voucher
-                        voucher_applied = False # Cờ đánh dấu đã áp dụng thành công
+                if uv and uv.remaining_for_user() > 0:
+                    voucher = uv.voucher
+                    voucher_applied = False
 
-                        # Duyệt qua các đơn vừa tạo để tìm đơn phù hợp
-                        for order in created_orders:
-                            # 1. Check Shop Scope (Nếu voucher của Shop, chỉ áp dụng cho đơn của Shop đó)
-                            # Logic: Lấy seller của đơn hàng thông qua item đầu tiên
-                            first_item = order.items.first()
-                            if not first_item: continue
-                            
-                            order_seller_id = first_item.product.seller.id
-                            
-                            # Nếu voucher là của Seller, nhưng ID không khớp -> Bỏ qua
-                            if voucher.scope == 'seller' and voucher.seller:
-                                if voucher.seller.id != order_seller_id:
-                                    continue
-                            
-                            # 2. Check giá trị tối thiểu
-                            current_total = float(order.total_price)
-                            if voucher.min_order_value and current_total < float(voucher.min_order_value):
-                                continue # Chưa đủ tiền
-
-                            # 3. Tính giảm giá
-                            discount = 0.0
-                            v_type = voucher.discount_type() if hasattr(voucher, 'discount_type') else 'unknown'
-
-                            if v_type == 'amount':
-                                discount = float(voucher.discount_amount or 0)
-                            elif v_type == 'percent':
-                                discount = (current_total * float(voucher.discount_percent or 0)) / 100
-                                if voucher.max_discount_amount:
-                                    discount = min(discount, float(voucher.max_discount_amount))
-                            elif v_type == 'freeship':
-                                discount = min(float(voucher.freeship_amount or 0), float(order.shipping_fee or 0))
-
-                            # 4. Áp dụng
-                            # ... (các dòng tính toán if v_type == ... ở trên giữ nguyên)
-
-                            if discount > 0:
-                                discount = min(discount, current_total)
-                                
-                                # === [BẠN ĐANG THIẾU DÒNG NÀY] ===
-                                order.discount_amount = discount  # <--- THÊM DÒNG NÀY NGAY
-                                # =================================
-                                
-                                order.total_price = current_total - discount
-                                order.voucher = voucher # Đã lưu được cái này rồi
-                                
-                                # Lệnh save này hoạt động, nhưng vì thiếu dòng trên nên discount_amount vẫn là 0
-                                order.save(update_fields=['total_price', 'voucher', 'discount_amount']) 
-                                
-                                print(f">>> Voucher OK! Giảm: {discount}. Tổng mới: {order.total_price}")
-                                voucher_applied = True
-                                break
+                    for order in created_orders:
+                        # 1. Check Shop Scope
+                        first_item = order.items.first()
+                        if not first_item: continue
+                        order_seller_id = first_item.product.seller.id
                         
-                        # Nếu voucher đã được áp dụng ít nhất 1 lần -> Trừ lượt dùng
-                        if voucher_applied:
-                            uv.mark_used_once()
-                            if hasattr(voucher, 'used_quantity'):
-                                voucher.used_quantity = F('used_quantity') + 1
-                                voucher.save(update_fields=['used_quantity'])
-                            print(">>> Đã trừ lượt dùng Voucher")
-                    else:
-                        print(">>> Voucher không hợp lệ hoặc đã hết lượt")
+                        if voucher.scope == 'seller' and voucher.seller:
+                            if voucher.seller.id != order_seller_id:
+                                continue
+                        
+                        # 2. Check giá trị tối thiểu
+                        current_total = order.total_price # Đã là Decimal
+                        min_val = Decimal(str(voucher.min_order_value or 0))
+                        
+                        if voucher.min_order_value and current_total < min_val:
+                            continue 
+
+                        # 3. Tính giảm giá (Dùng Decimal)
+                        discount = Decimal('0.0')
+                        v_type = voucher.discount_type() if hasattr(voucher, 'discount_type') else 'unknown'
+
+                        if v_type == 'amount':
+                            discount = Decimal(str(voucher.discount_amount or 0))
+                        elif v_type == 'percent':
+                            percent = Decimal(str(voucher.discount_percent or 0))
+                            discount = (current_total * percent) / Decimal('100')
+                            if voucher.max_discount_amount:
+                                max_disc = Decimal(str(voucher.max_discount_amount))
+                                discount = min(discount, max_disc)
+                        elif v_type == 'freeship':
+                            ship_fee = order.shipping_fee 
+                            free_amt = Decimal(str(voucher.freeship_amount or 0))
+                            discount = min(free_amt, ship_fee)
+
+                        # 4. Áp dụng
+                        if discount > 0:
+                            # Đảm bảo không âm
+                            if discount > current_total:
+                                discount = current_total
+                            
+                            order.discount_amount = discount
+                            order.total_price = current_total - discount
+                            order.voucher = voucher
+                            
+                            order.save(update_fields=['total_price', 'voucher', 'discount_amount'])
+                            
+                            print(f">>> Voucher OK! Giảm: {discount}. Tổng mới: {order.total_price}")
+                            voucher_applied = True
+                            break # Mỗi mã chỉ áp dụng 1 đơn trong chùm đơn (tùy logic)
+                    
+                    if voucher_applied:
+                        uv.mark_used_once()
+                        if hasattr(voucher, 'used_quantity'):
+                            voucher.used_quantity = F('used_quantity') + 1
+                            voucher.save(update_fields=['used_quantity'])
+                else:
+                    print(">>> Voucher không hợp lệ hoặc đã hết lượt")
 
             self._created_orders = created_orders
             return created_orders[0] if created_orders else None
 
         except Exception as e:
+            # In lỗi chi tiết ra console server để debug
             print(f"Error creating order: {e}")
             import traceback
             traceback.print_exc()
@@ -446,19 +446,20 @@ class OrderSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
-        # Fallback hiển thị total_price nếu DB chưa update
-        if not representation.get('total_price') or representation['total_price'] == '0.00':
-            total_items = sum(float(item.price) * int(item.quantity) for item in instance.items.all())
-            shipping = float(instance.shipping_fee or 0)
+        
+        # Nếu DB chưa update total_price, ta tính lại bằng Decimal
+        if not representation.get('total_price') or float(representation['total_price']) == 0:
+            total_items = sum(
+                item.price * item.quantity for item in instance.items.all()
+            )
+            shipping = instance.shipping_fee or Decimal('0')
+            discount = instance.discount_amount or Decimal('0')
             
-            # --- [SỬA LẠI ĐOẠN NÀY] ---
-            # Lấy discount từ model (nếu chưa có thì là 0)
-            discount = float(instance.discount_amount or 0) 
-            
-            # Công thức chuẩn: Hàng + Ship - Voucher
             final_total = total_items + shipping - discount
-            representation['total_price'] = str(max(final_total, 0))
-            # --------------------------
+            # Đảm bảo không âm
+            if final_total < 0: final_total = Decimal('0')
+            
+            representation['total_price'] = str(final_total)
             
         return representation
 

@@ -46,37 +46,38 @@ def send_notification_websocket(sender, instance, created, **kwargs):
 # -------------------------------------------------------------------------
 
 # -------------------------------------------------------------------------
-@receiver(post_save, sender='orders.Order')
+@receiver(post_save, sender='orders.Order', dispatch_uid="order_status_notification")
 def notify_order_status_change(sender, instance, created, **kwargs):
-    """
-    Khi đơn hàng thay đổi, chỉ cần tạo bản ghi Notification.
-    Signal 1 ở trên sẽ tự động lo việc gửi Real-time.
-    """
-    # Lấy model Notification động để an toàn tuyệt đối
     Notification = apps.get_model('notifications', 'Notification')
-
     title = ""
     message = ""
-
-    # Lấy mã đơn hàng (fallback về ID nếu không có order_code)
     order_ref = getattr(instance, 'order_code', f"#{instance.id}")
 
+    # 1. Xử lý khi TẠO MỚI (created=True)
     if created:
         title = "🛒 Đặt hàng thành công"
         message = f"Đơn hàng {order_ref} của bạn đã được hệ thống ghi nhận."
-    elif 'status' in (kwargs.get('update_fields') or []):
-        # Logic cho các trạng thái cập nhật
-        status = str(instance.status).upper()
-        if status == 'SHIPPING':
-            title = "🚚 Đơn hàng đang giao"
-            message = f"Đơn hàng {order_ref} đang trên đường đến bạn."
-        elif status == 'SUCCESS':
-            title = "✅ Giao hàng thành công"
-            message = f"Đơn hàng {order_ref} đã được giao thành công."
-        elif status == 'CANCELLED':
-            title = "❌ Đơn hàng đã hủy"
-            message = f"Đơn hàng {order_ref} đã bị hủy."
+    
+    # 2. Xử lý khi CẬP NHẬT (created=False)
+    else:
+        # Kiểm tra xem status có nằm trong các trường vừa được update không
+        # update_fields là danh sách các cột được save, ví dụ: order.save(update_fields=['status'])
+        update_fields = kwargs.get('update_fields')
+        
+        # Chỉ xử lý nếu có update status cụ thể
+        if update_fields and 'status' in update_fields:
+            status = str(instance.status).upper()
+            if status == 'SHIPPING':
+                title = "🚚 Đơn hàng đang giao"
+                message = f"Đơn hàng {order_ref} đang trên đường đến bạn."
+            elif status == 'SUCCESS' or status == 'COMPLETED': # Check cả 2 trường hợp
+                title = "✅ Giao hàng thành công"
+                message = f"Đơn hàng {order_ref} đã hoàn tất."
+            elif status == 'CANCELLED':
+                title = "❌ Đơn hàng đã hủy"
+                message = f"Đơn hàng {order_ref} đã bị hủy."
 
+    # Chỉ tạo notification nếu có title
     if title and instance.user:
         try:
             Notification.objects.create(
@@ -87,4 +88,4 @@ def notify_order_status_change(sender, instance, created, **kwargs):
                 metadata={"order_id": instance.id, "type": "ORDER_DETAIL"}
             )
         except Exception as e:
-            logger.error(f"Lỗi tạo Notification cho Order: {e}")
+            logger.error(f"Lỗi tạo Notification: {e}")

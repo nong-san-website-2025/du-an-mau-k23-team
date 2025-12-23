@@ -82,7 +82,7 @@ export default function SellerSidebar({ collapsed, isMobile, onItemClick }) {
     {
       key: "/seller-center/complaints",
       icon: <WarningOutlined />,
-      label: "Khiếu nại",
+      label: "Quản lý trả hàng/ hoàn tiền",
     },
     {
       key: "/seller-center/store/info",

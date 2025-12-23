@@ -10,7 +10,7 @@ const useCheckoutLogic = () => {
   // [MERGE] Lấy clearSelectedItems từ CartContext
   const { cartItems, clearCart, clearSelectedItems } = useCart();
   const token = localStorage.getItem("token");
-  
+
   // 1. Xác định khách vãng lai (Guest)
   const isGuest = !token;
 
@@ -33,7 +33,7 @@ const useCheckoutLogic = () => {
   });
 
   const [note, setNote] = useState("");
-  
+
   // State Voucher & Payment
   const [voucherCode, setVoucherCode] = useState("");
   const [discount, setDiscount] = useState(0);
@@ -67,7 +67,7 @@ const useCheckoutLogic = () => {
   const totalAfterDiscount = Math.max(total + shippingFee - discount, 0);
 
   // --- ADDRESS LOGIC (FETCH & CRUD) ---
-  
+
   // 3. CHẶN GỌI API NẾU KHÔNG CÓ TOKEN
   const fetchAddresses = useCallback(async () => {
     if (!token) {
@@ -178,7 +178,7 @@ const useCheckoutLogic = () => {
       setShippingFeePerSeller({});
       return;
     }
-    
+
     if (!manualEntry && !selectedAddress) return;
 
     const to_district_id = manualEntry
@@ -270,27 +270,28 @@ const useCheckoutLogic = () => {
   // --- VOUCHER LOGIC ---
   const handleApplyVoucher = useCallback((data) => {
     if (!data) {
-        setDiscount(0);
-        setVoucherCode("");
-        return;
+      setDiscount(0);
+      setVoucherCode("");
+      return;
     }
     setDiscount(data.totalDiscount || 0);
     let code = "";
     if (data.shopVoucher) code = data.shopVoucher.voucher.code;
     else if (data.shipVoucher) code = data.shipVoucher.voucher.code;
-    
+
     setVoucherCode(code);
   }, []);
 
   // --- 4. HANDLE ORDER (CHECK LOGIN TẠI ĐÂY) ---
+  // --- 4. HANDLE ORDER (CHECK LOGIN TẠI ĐÂY) ---
+  // --- 4. HANDLE ORDER (CHECK LOGIN TẠI ĐÂY) ---
   const handleOrder = async (extraPayload = {}) => {
-    // Check Login
+    // 1. Check Login
     if (!token) {
-      notification.warning({ 
+      notification.warning({
         message: "Yêu cầu đăng nhập",
-        description: "Vui lòng đăng nhập để hoàn tất đơn hàng." 
+        description: "Vui lòng đăng nhập để hoàn tất đơn hàng.",
       });
-      // Redirect và lưu lại url hiện tại để quay lại
       navigate("/login?redirect=/checkout", { replace: false });
       return null;
     }
@@ -300,6 +301,7 @@ const useCheckoutLogic = () => {
       return null;
     }
 
+    // 2. Validate thông tin
     const finalName = manualEntry
       ? customerName
       : selectedAddress?.recipient_name;
@@ -307,86 +309,92 @@ const useCheckoutLogic = () => {
     const finalLocation = manualEntry ? addressText : selectedAddress?.location;
 
     if (!finalName || !finalPhone || !finalLocation) {
+      notification.error({ message: "Vui lòng điền đủ tên, sđt và địa chỉ!" });
+      return null;
+    }
+
+    // 3. Làm sạch danh sách sản phẩm (Cực quan trọng)
+    const cleanItems = selectedItems
+      .map((item) => {
+        // Lấy ID an toàn
+        const pid = item.product?.id || item.product_data?.id || item.product;
+        const prc = item.product?.price || item.product_data?.price || 0;
+
+        return {
+          product: parseInt(pid),
+          quantity: parseInt(item.quantity) || 1,
+          price: parseFloat(prc),
+        };
+      })
+      .filter((i) => !isNaN(i.product) && i.product > 0); // Lọc bỏ ID lỗi (NaN)
+
+    if (cleanItems.length === 0) {
       notification.error({
-        message: "Vui lòng điền đủ tên, số điện thoại và địa chỉ!",
+        message: "Dữ liệu sản phẩm bị lỗi (ID không hợp lệ).",
       });
       return null;
     }
 
-    const cleanItems = selectedItems.map((item) => {
-      let productId = item.product;
-      if (typeof item.product === "object" && item.product !== null) {
-        productId = item.product.id;
-      }
-      if (!productId && item.product_data) {
-        productId = item.product_data.id;
-      }
-
-      return {
-        product: parseInt(productId),
-        quantity: parseInt(item.quantity) || 1,
-        price: parseFloat(item.product?.price || item.product_data?.price || 0),
-      };
-    });
-
+    // 4. Chuẩn bị Payload (Loại bỏ hoàn toàn undefined)
     const orderData = {
-      total_price: totalAfterDiscount,
-      shipping_fee: shippingFee,
+      total_price: parseFloat(totalAfterDiscount).toFixed(2),
+      shipping_fee: parseFloat(shippingFee).toFixed(2),
       customer_name: finalName,
       customer_phone: finalPhone,
       address: finalLocation,
       note: note || "",
-      payment_method: payment === "Ví điện tử" ? "banking" : "cod",
+      payment_method:
+        payment.includes("VNPAY") || payment.includes("Ví") ? "banking" : "cod",
       items: cleanItems,
-      voucher_code: voucherCode || "",
-      ...extraPayload 
+
+      // --- [FIX] CHỈ THÊM NẾU CÓ GIÁ TRỊ (TRÁNH UNDEFINED) ---
+      ...(voucherCode ? { shop_voucher_code: voucherCode } : {}),
+      // Loại bỏ ship_voucher_code nếu backend không hỗ trợ, hoặc chỉ gửi nếu có
+      // ...(shipVoucherCode ? { ship_voucher_code: shipVoucherCode } : {}),
+
+      ...extraPayload,
     };
 
     try {
       setIsLoading(true);
+      console.log("🚀 PAYLOAD SẠCH SẼ:", orderData);
+
       const res = await API.post("orders/", orderData);
+
       const newOrderId = res.data.id;
-      
-      if (clearSelectedItems) {
-        await clearSelectedItems();
-      } else {
-        await clearCart(); 
-      }
-      
+      if (clearSelectedItems) await clearSelectedItems();
+      else await clearCart();
+
       notification.success({ message: "Đặt hàng thành công!" });
 
-      if (payment === "Ví điện tử" || payment === "Thanh toán qua VNPAY") {
+      if (orderData.payment_method === "banking") {
         navigate(`/payment/waiting/${newOrderId}`);
       } else {
         navigate(`/orders?tab=active`);
       }
-
       return newOrderId;
     } catch (error) {
       console.error("❌ LỖI API:", error);
-      const backendData = error.response?.data;
 
-      if (backendData && backendData.unavailable_items) {
-        throw { response: { data: backendData } };
+      // --- XEM LỖI CHI TIẾT ---
+      if (error.response?.data) {
+        console.log("🔥 CHI TIẾT LỖI TỪ SERVER:", error.response.data);
+
+        // Hiển thị lỗi cụ thể lên màn hình để dễ sửa
+        const data = error.response.data;
+        let msg = "Lỗi đặt hàng.";
+
+        if (data.items) msg = "Lỗi sản phẩm: " + JSON.stringify(data.items);
+        else if (data.unavailable_items) msg = "Sản phẩm hết hàng!";
+        else if (data.shop_voucher_code)
+          msg = "Voucher: " + data.shop_voucher_code;
+        else if (data.detail) msg = data.detail;
+        else msg = JSON.stringify(data); // In hết ra nếu không biết lỗi gì
+
+        notification.error({ message: "Thất bại", description: msg });
+      } else {
+        notification.error({ message: "Lỗi kết nối server (500)" });
       }
-
-      let errorMsg = "Có lỗi xảy ra khi đặt hàng.";
-      if (backendData) {
-        if (backendData.voucher_code) errorMsg = backendData.voucher_code[0];
-        else if (typeof backendData.detail === "string") errorMsg = backendData.detail;
-        else if (typeof backendData === "string") errorMsg = backendData;
-      }
-
-      notification.error({
-        message: "Đặt hàng thất bại",
-        description: errorMsg,
-      });
-
-      if (errorMsg.toLowerCase().includes("voucher")) {
-          setVoucherCode("");
-          setDiscount(0);
-      }
-
       return null;
     } finally {
       setIsLoading(false);

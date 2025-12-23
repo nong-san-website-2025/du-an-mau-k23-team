@@ -25,7 +25,7 @@ const ComplaintTable = ({
 
   return (
     <ComplaintBaseLayout
-      title="QUẢN LÝ KHIẾU NẠI"
+      title="QUẢN LÝ TRẢ HÀNG/ HOÀN TIỀN"
       extra={
         <div
           style={{
