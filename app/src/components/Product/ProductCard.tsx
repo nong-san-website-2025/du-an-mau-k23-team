@@ -9,10 +9,10 @@ import {
 import { cartOutline, star } from "ionicons/icons";
 import { Product } from "../../types/models";
 import ProductImageComp from "./ProductImage";
+import { intcomma } from "../../utils/formatPrice";
 
-// --- CẤU HÌNH MÀU SẮC CHỦ ĐẠO ---
-const PRIMARY_COLOR = "#2E7D32"; // Xanh lá đậm
-const TEXT_COLOR = "#333333";
+// --- CẤU HÌNH MÀU SẮC (Dùng cho các phần tử nhỏ bên trong) ---
+const PRIMARY_COLOR = "#2E7D32"; // Xanh GreenFarm
 const SUB_TEXT_COLOR = "#888888";
 
 interface ProductCardProps {
@@ -26,11 +26,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
   onClick,
   onAddToCart,
 }) => {
-  const formatPrice = (price: number) =>
-    new Intl.NumberFormat("vi-VN", {
-      style: "currency",
-      currency: "VND",
-    }).format(price);
+  // --- 1. FORMAT TIỀN TỆ & CON SỐ ---
 
   const formatSold = (num?: number) => {
     if (!num) return "0";
@@ -38,55 +34,47 @@ const ProductCard: React.FC<ProductCardProps> = ({
     return num.toString();
   };
 
-  // --- 🔥 LOGIC LẤY ẢNH MỚI (FIX LỖI KHÔNG HIỆN ẢNH) ---
+  // --- 2. LOGIC LẤY ẢNH AN TOÀN ---
   const getProductImage = (p: Product) => {
-    // 1. Ưu tiên lấy từ main_image
-    // Vì đã khai báo trong model, TS tự hiểu p.main_image có thuộc tính image
-    if (p.main_image?.image) {
-      return p.main_image.image;
-    }
-
-    // 2. Nếu không, lấy ảnh đầu tiên trong mảng images
+    if (p.main_image?.image) return p.main_image.image;
     if (p.images && Array.isArray(p.images) && p.images.length > 0) {
       return p.images[0].image;
     }
-
-    // 3. Cuối cùng mới check trường 'image' string
-    if (typeof p.image === "string" && p.image) {
-      return p.image;
-    }
-
+    if (typeof p.image === "string" && p.image) return p.image;
     return undefined;
   };
 
   const safeImageSrc = getProductImage(product);
-  // --------------------------------------------------------
 
+  // --- 3. RENDER GIAO DIỆN ---
   return (
     <IonCard
       button={true}
       onClick={onClick}
-      className="product-card"
+      // 👇 Class này quyết định giao diện đẹp (không còn border cứng)
+      className="product-card-modern"
       style={{
-        margin: "5px",
+        margin: 0,
+        width: "100%",
         height: "100%",
         display: "flex",
         flexDirection: "column",
-        borderRadius: "8px",
-        boxShadow: "0 1px 3px rgba(0,0,0,0.12)", // Shadow nhẹ hơn để card trông phẳng và hiện đại
-        background: "#fff",
         position: "relative",
-        overflow: "hidden",
-        border: "1px solid #e0e0e0",
+        overflow: "visible", // Để shadow không bị cắt
+        contain: "none",
+        border: 8,
       }}
     >
-      {/* --- PHẦN 1: HÌNH ẢNH (1:1) --- */}
+      {/* === PHẦN ẢNH (Tỷ lệ 1:1) === */}
       <div
         style={{
           position: "relative",
           width: "100%",
-          paddingTop: "100%",
+          paddingTop: "100%", // Tạo khung vuông
           background: "#f5f5f5",
+          borderTopLeftRadius: "12px",
+          borderTopRightRadius: "12px",
+          overflow: "hidden",
         }}
       >
         <div
@@ -105,7 +93,34 @@ const ProductCard: React.FC<ProductCardProps> = ({
           />
         </div>
 
-        {/* Badge: Đặt trước */}
+        {/* Badge Giảm Giá */}
+        {product.original_price && product.original_price > product.price && (
+          <div
+            style={{
+              position: "absolute",
+              top: 0,
+              right: 0,
+              background: "rgba(255, 212, 0, 0.95)", // Vàng tươi
+              color: "#d32f2f", // Đỏ đậm
+              fontSize: "11px",
+              fontWeight: "800",
+              padding: "3px 8px",
+              borderBottomLeftRadius: "0px",
+              zIndex: 10,
+              boxShadow: "0 2px 4px rgba(0,0,0,0.15)",
+            }}
+          >
+            -
+            {Math.round(
+              ((product.original_price - product.price) /
+                product.original_price) *
+                100
+            )}
+            %
+          </div>
+        )}
+
+        {/* Badge Đặt Trước */}
         {product.preorder && (
           <div
             style={{
@@ -113,11 +128,11 @@ const ProductCard: React.FC<ProductCardProps> = ({
               top: 0,
               left: 0,
               background: "#FFA000",
-              color: "#fff", // Màu cam đậm hơn chút cho dễ đọc
-              fontSize: "9px",
+              color: "#fff",
+              fontSize: "10px",
               fontWeight: "bold",
-              padding: "2px 6px",
-              borderBottomRightRadius: "6px",
+              padding: "4px 8px",
+              borderBottomRightRadius: "8px",
               zIndex: 10,
             }}
           >
@@ -126,133 +141,69 @@ const ProductCard: React.FC<ProductCardProps> = ({
         )}
       </div>
 
-      {/* --- PHẦN 2: NỘI DUNG (Compact Layout) --- */}
-      <IonCardContent
-        style={{
-          padding: "8px", // Giảm padding để tiết kiệm diện tích
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          textAlign: "left",
-          // Quan trọng: Sử dụng gap thay vì space-between để các phần tử gần nhau hơn
-          gap: "4px",
-        }}
-      >
-        {/* 2.1 Tên sản phẩm */}
-        <h3
-          style={{
-            margin: 0,
-            fontSize: "13px",
-            fontWeight: "500",
-            color: TEXT_COLOR,
-            lineHeight: "1.3",
-            display: "-webkit-box",
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: "vertical",
-            overflow: "hidden",
-            minHeight: "34px", // Giữ chiều cao cố định cho 2 dòng để card đều nhau
-          }}
-        >
-          {product.name}
-        </h3>
+      {/* === PHẦN NỘI DUNG === */}
+      <IonCardContent className="product-card-content">
+        {/* Tên sản phẩm */}
+        <h3 className="product-title">{product.name}</h3>
 
-        {/* 2.2 Metadata: Rating + Đã bán (Gộp dòng để tiết kiệm chỗ) */}
+        {/* Rating & Đã bán */}
         <div
           style={{
             display: "flex",
             alignItems: "center",
-            fontSize: "10px",
+            fontSize: "11px",
             color: SUB_TEXT_COLOR,
+            marginBottom: "8px",
           }}
         >
-          {/* Rating */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              marginRight: "8px",
-            }}
-          >
-            <IonIcon
-              icon={star}
-              style={{ color: "#FBC02D", fontSize: "10px", marginRight: "2px" }}
-            />
-            <span>
-              {product.rating_average
-                ? product.rating_average.toFixed(1)
-                : "5.0"}
-            </span>
-          </div>
-
-          {/* Divider */}
-          <span style={{ margin: "0 4px", color: "#ddd" }}>|</span>
-
-          {/* Sold */}
+          <IonIcon
+            icon={star}
+            style={{ color: "#FBC02D", fontSize: "12px", marginRight: "3px" }}
+          />
+          <span>
+            {product.rating_average ? product.rating_average.toFixed(1) : "5.0"}
+          </span>
+          <span style={{ margin: "0 6px", opacity: 0.4 }}>|</span>
           <span>Đã bán {formatSold(product.ordered_quantity)}</span>
         </div>
 
-        {/* Khoảng trống co giãn (nếu cần đẩy giá xuống đáy card) */}
+        {/* Spacer để đẩy giá xuống đáy */}
         <div style={{ flexGrow: 1 }}></div>
 
-        {/* 2.3 Giá & Nút Mua (Footer của card) */}
+        {/* Footer: Giá & Nút Mua */}
         <div
           style={{
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            marginTop: "4px", // Margin nhỏ để tách biệt một chút
+            marginTop: "4px",
           }}
         >
-          {/* Giá tiền: Màu chủ đạo #2E7D32 */}
+          {/* Giá tiền */}
           <div style={{ display: "flex", flexDirection: "column" }}>
             <span
               style={{
                 color: PRIMARY_COLOR,
                 fontWeight: "700",
-                fontSize: "15px",
+                fontSize: "16px",
                 lineHeight: "1",
               }}
             >
-              {formatPrice(product.price)}
+              {intcomma(product.price)}
             </span>
-            {/* Đơn vị tính (nhỏ phía dưới giá) */}
-            {product.unit && (
-              <span
-                style={{
-                  fontSize: "9px",
-                  color: SUB_TEXT_COLOR,
-                  marginTop: "2px",
-                }}
-              >
-                /{product.unit}
-              </span>
-            )}
           </div>
 
-          {/* Nút thêm giỏ hàng: Màu chủ đạo */}
+          {/* Nút thêm vào giỏ */}
           <IonButton
-            fill="solid"
-            size="small"
+            fill="clear"
+            className="btn-add-cart"
             onClick={(e) => {
               e.stopPropagation();
               e.preventDefault();
               if (onAddToCart) onAddToCart(e);
             }}
-            style={{
-              width: "28px", // Nút gọn hơn chút
-              height: "28px",
-              margin: 0,
-              "--background": PRIMARY_COLOR, // Set màu nền nút
-              "--border-radius": "50%", // Tròn hẳn
-              "--padding-start": "0",
-              "--padding-end": "0",
-              "--box-shadow": "none", // Bỏ shadow nút cho phẳng
-            }}
           >
-            <IonIcon
-              icon={cartOutline}
-              style={{ fontSize: "16px", color: "#fff" }}
-            />
+            <IonIcon icon={cartOutline} />
           </IonButton>
         </div>
       </IonCardContent>
@@ -262,10 +213,12 @@ const ProductCard: React.FC<ProductCardProps> = ({
   );
 };
 
+// Tối ưu render bằng React.memo
 export default React.memo(ProductCard, (prev, next) => {
   return (
     prev.product.id === next.product.id &&
     prev.product.price === next.product.price &&
-    prev.product.ordered_quantity === next.product.ordered_quantity
+    prev.product.ordered_quantity === next.product.ordered_quantity &&
+    prev.product.rating_average === next.product.rating_average
   );
 });

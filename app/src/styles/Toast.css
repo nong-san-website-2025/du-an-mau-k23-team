@@ -1,0 +1,51 @@
+/* --- CUSTOM TOAST MODERN --- */
+
+/* Style chung cho khung Toast */
+ion-toast.custom-toast-modern {
+  --background: #ffffff; /* Nền trắng sạch sẽ */
+  --color: #1f1f1f; /* Chữ màu đen xám dễ đọc */
+  --border-radius: 12px; /* Bo góc mềm mại */
+  --box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15); /* Đổ bóng tạo độ nổi (3D) */
+  --button-color: #8c8c8c; /* Màu nút close nhạt */
+  
+  /* Căn chỉnh vị trí để nó "trôi" (float) chứ ko dính sát lề */
+  --start: 16px;
+  --end: 16px; 
+  /* Nếu để position bottom thì dùng biến này để đẩy lên 1 chút */
+  /* --margin-bottom: 20px; */ 
+  margin-top: 10px; /* Nếu để position top */
+  
+  font-weight: 500;
+}
+
+/* Tùy chỉnh Icon và Text bên trong (Shadow DOM) */
+ion-toast.custom-toast-modern::part(message) {
+  font-size: 14px;
+  line-height: 1.4;
+  padding-top: 2px; /* Căn chỉnh nhẹ với icon */
+}
+
+ion-toast.custom-toast-modern::part(icon) {
+  font-size: 20px;
+  margin-right: 12px; /* Khoảng cách giữa icon và text */
+}
+
+/* --- MÀU SẮC THEO TRẠNG THÁI --- */
+
+/* 1. Thành công: Icon và Border màu Xanh lá (giống màu App của bạn) */
+ion-toast.custom-toast-modern.toast-success {
+  --start-icon-color: #2dd36f; /* Màu icon Ionic success chuẩn */
+  border-left: 4px solid #2dd36f; /* Một vạch màu bên trái tạo điểm nhấn */
+}
+
+/* 2. Lỗi: Icon và Border màu Đỏ */
+ion-toast.custom-toast-modern.toast-error {
+  --start-icon-color: #eb445a;
+  border-left: 4px solid #eb445a;
+}
+
+/* 3. Cảnh báo: Icon và Border màu Vàng */
+ion-toast.custom-toast-modern.toast-warning {
+  --start-icon-color: #ffc409;
+  border-left: 4px solid #ffc409;
+}

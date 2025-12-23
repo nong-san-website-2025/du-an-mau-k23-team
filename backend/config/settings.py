@@ -29,14 +29,15 @@ DEBUG = os.environ.get("DEBUG", "True") == "True"
 ALLOWED_HOSTS = ['*']
 # Lưu ý: Dấu chấm trước ngrok-free.dev là để chấp nhận tất cả tên miền con
 
-# 2. Cấu hình tin cậy (Bắt buộc phải có https://)
 CSRF_TRUSTED_ORIGINS = [
-    'http://localhost:3000',  # Frontend React (nếu chạy port 3000)
-    'https://concetta-nonprotective-decisively.ngrok-free.dev', # <-- LINK NGROK MỚI CỦA BẠN
-    "http://172.16.144.95:3000",  # Thêm dòng này
-    "http://172.16.144.95:8000",
+    "http://localhost:3000",
+    "http://localhost:8100",
+    "http://127.0.0.1:3000",
+    "https://concetta-nonprotective-decisively.ngrok-free.dev",
+    "http://192.168.89.159:8000",
+    "http://192.168.89.159:8100",
+    "http://192.168.167.74:8100",
 ]
-
 DEBUG = True
 
 # --- Installed apps
@@ -227,8 +228,11 @@ CORS_ALLOWED_ORIGINS = [
     "http://192.168.68.117:8100",
     "http://192.168.2.3:3000",
     "http://172.16.144.95:3000",
-    "http://192.168.1.130:3000"
+    "http://192.168.1.130:3000",
     "http://192.168.90.56:3000",
+    "http://192.168.89.159:8100",
+    "http://192.168.167.74:8100",
+    "http://localhost:8100",
 ]
 CORS_ALLOW_METHODS = [
     'DELETE',
@@ -251,16 +255,7 @@ CORS_ALLOW_HEADERS = [
     'accept',
 ]
 
-CSRF_TRUSTED_ORIGINS = [
-    "http://*.localhost",
-    "http://*.127.0.0.1",
-    "http://*.192.168.*.*",
-    "http://localhost:3000",
-    "http://192.168.2.3:3000",
 
-]
-
-# --- Others
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
 USE_I18N = True
@@ -297,9 +292,6 @@ CACHES = {
     }
 }
 
-# settings.py
-
-# ... code cũ ...
 
 # Cấu hình Meilisearch Cloud
 MEILI_HOST = 'https://ms-5a732ed64ac6-36761.sgp.meilisearch.io'  # <-- Dán URL của bạn vào đây

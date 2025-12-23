@@ -19,7 +19,7 @@ const TabNavigation: React.FC = () => {
   const currentPath = location.pathname;
 
   return (
-    <IonTabBar slot="bottom">
+    <IonTabBar slot="bottom" >
       <IonTabButton tab="tab1" href="/home">
         <IonIcon icon={currentPath === "/home" ? home : homeOutline} />
         <IonLabel>Trang chủ</IonLabel>

@@ -279,7 +279,6 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
           quantity,
           preorder: !!targetProduct.preorder,
         });
-        showToast("Đã thêm vào giỏ hàng");
       } else {
         const items = getGuestCart();
         const existing = items.find(
@@ -298,7 +297,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
           });
         }
         saveGuestCart(items);
-        showToast("Đã thêm vào giỏ hàng");
+        // showToast("Đã thêm vào giỏ hàng");
       }
       await fetchCart();
     } catch (err) {

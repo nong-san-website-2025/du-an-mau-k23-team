@@ -1,96 +1,226 @@
-/* For information on how to create your own theme, please see:
-http://ionicframework.com/docs/theming/ */
+/* ====================================================== */
+/* 1. BIẾN MÀU SẮC CHỦ ĐẠO (GLOBAL VARIABLES)             */
+/* ====================================================== */
+:root {
+  /* Màu xanh chủ đạo - GreenFarm */
+  --gf-primary: #2E7D32; 
+  --gf-primary-rgb: 46, 125, 50;
+  
+  /* Màu nền xám xanh rất nhạt - Giúp mắt dễ chịu hơn màu trắng tinh */
+  --gf-bg: #f4f6f8; 
+  
+  /* Màu text */
+  --gf-text-main: #2d3748;
+  --gf-text-sub: #718096;
+  
+  /* Hiệu ứng bóng đổ (Shadow) */
+  --gf-shadow-sm: 0 2px 4px rgba(0,0,0,0.02);
+  --gf-shadow-md: 0 4px 12px rgba(0,0,0,0.06);
+  --gf-radius: 16px;
+}
+
+/* Áp dụng font và nền chung cho App */
+ion-content {
+  --background: var(--gf-bg) !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* ====================================================== */
+/* 2. TAB BAR (THANH DƯỚI CÙNG)                           */
+/* ====================================================== */
 ion-tab-bar {
-  --color: #9e9e9e; /* màu icon/chữ mặc định (chưa chọn) */
-  --color-selected: #4caf50; /* màu khi tab được chọn */
-  --background: #ffffff; /* màu nền tab bar */
+  --background: #ffffff;
+  --border: 0; /* Bỏ viền trên cho mượt */
+  box-shadow: 0 -2px 10px rgba(0,0,0,0.03); /* Đổ bóng nhẹ hắt lên */
+  height: 60px; /* Tăng chiều cao chút cho thoáng */
 }
 
-/* Ví dụ: trong App.css hoặc global.css */
+ion-tab-button {
+  --color: #a0aec0; /* Màu xám nhạt khi chưa chọn */
+  --color-selected: var(--gf-primary); /* 👇 Dùng màu xanh chuẩn GreenFarm */
+}
+
+/* Icon khi chọn sẽ nảy lên nhẹ */
+ion-tab-button[aria-selected="true"] ion-icon {
+  transform: translateY(-2px);
+  transition: transform 0.2s ease;
+}
+
+/* ====================================================== */
+/* 3. CUSTOM TOAST (THÔNG BÁO)                            */
+/* ====================================================== */
 .custom-toast {
+  /* Style visual (Màu sắc) */
+  --background: rgba(46, 125, 50, 0.95); /* Nền xanh GreenFarm */
+  --color: #fff;
+  --border-radius: 12px;
+  --box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+  
+  /* Style layout (Kích thước - Giữ logic của bạn nhưng tối ưu hơn) */
   font-size: 14px !important;
-  padding: 8px 12px !important;
-  min-height: auto !important;
-  height: auto !important;
-  line-height: 1.3 !important;
-  width: 200px !important;
+  font-weight: 500;
+  --padding-start: 16px;
+  --padding-end: 16px;
+  
+  /* Lưu ý: width 200px cố định trên mobile có thể hơi nhỏ/lệch, 
+     mình đổi thành max-width để an toàn hơn */
+  width: auto !important;
+  max-width: 90% !important; 
+  margin: 0 auto !important; /* Căn giữa */
 }
 
+/* ====================================================== */
+/* 4. MODAL & ALERT (HỘP THOẠI)                           */
+/* ====================================================== */
 .confirm-delete-modal {
-  --width: 300px;
+  --width: 320px; /* Tăng nhẹ lên 320 cho chuẩn mobile */
   --height: auto;
-  --border-radius: 16px;
-  --box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  --border-radius: var(--gf-radius);
+  --box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
 }
 
-/* Đảm bảo nội dung modal căn giữa theo chiều dọc */
 .confirm-delete-modal ion-content {
+  --background: #fff; /* Đảm bảo nền trắng */
   display: flex;
   align-items: center;
   justify-content: center;
-  --padding-top: 20px;
-  --padding-bottom: 20px;
+  --padding-top: 24px;
+  --padding-bottom: 24px;
 }
 
-/* App.css hoặc global.css */
-
-/* 👇 Custom toàn bộ alert */
+/* --- ALERT (Thông báo xác nhận) --- */
 .custom-alert {
   --background: #ffffff;
-  --border-radius: 16px;
-  --box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-  --width: 300px;
+  --border-radius: var(--gf-radius);
+  --box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
   --max-width: 90%;
+  
+  /* Căn chỉnh lại padding cho thoáng */
   --padding-start: 24px;
   --padding-end: 24px;
-  --padding-top: 20px;
-  --padding-bottom: 20px;
+  --padding-top: 24px;
+  --padding-bottom: 24px;
 }
 
-/* 👇 Tiêu đề */
+/* Tiêu đề */
 .custom-alert .alert-title {
   font-size: 18px;
-  font-weight: 600;
-  color: #333;
-  text-align: left;
+  font-weight: 700;
+  color: var(--gf-text-main);
+  margin-bottom: 8px;
 }
 
-/* 👇 Nội dung */
+/* Nội dung */
 .custom-alert .alert-message {
-  font-size: 13px;
-  color: #666;
-  text-align: center;
+  font-size: 14px;
+  color: var(--gf-text-sub);
   line-height: 1.5;
 }
 
-/* 👇 Nút HỦY */
-.alert-button-cancel {
-  color: #666 !important;
-  font-weight: 500 !important;
-}
-
-/* 👇 Nút XÓA */
-.alert-button-confirm {
-  color: #e53935 !important; /* đỏ nhẹ, chuyên nghiệp */
-  font-weight: 600 !important;
-  border: none !important;
-}
-
-/* 👇 Khoảng cách giữa 2 nút */
+/* Nút bấm */
 .custom-alert .alert-button-group {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  padding-top: 6px;
+  padding-top: 16px;
+  gap: 16px; /* Khoảng cách giữa 2 nút */
 }
 
-/* 👇 Đảm bảo nút full width trên mobile nhỏ */
+/* Nút HỦY */
+.alert-button-cancel {
+  color: var(--gf-text-sub) !important;
+  font-weight: 600 !important;
+  background: #f7fafc !important; /* Nền xám nhẹ cho nút hủy */
+  border-radius: 8px !important;
+  height: 40px !important;
+}
+
+/* Nút XÓA (Hoặc nút Hành động chính) */
+.alert-button-confirm {
+  color: #e53935 !important; /* Giữ màu đỏ cho hành động nguy hiểm */
+  font-weight: 700 !important;
+  background: rgba(229, 57, 53, 0.1) !important; /* Nền đỏ nhạt rất đẹp */
+  border-radius: 8px !important;
+  height: 40px !important;
+}
+
+/* Responsive cho màn hình nhỏ */
 @media (max-width: 380px) {
   .custom-alert .alert-button-group {
-    flex-direction: column;
-    gap: 8px;
+    flex-direction: column-reverse; /* Đảo ngược để nút Hủy xuống dưới cho an toàn */
+    gap: 10px;
   }
   .custom-alert .alert-button {
     width: 100% !important;
   }
+}
+
+/* ====================================================== */
+/* PRODUCT CARD STYLES (CLEAN ORGANIC THEME)              */
+/* ====================================================== */
+
+/* 1. Khung thẻ sản phẩm (Bỏ viền, thêm bóng đổ 3D) */
+.product-card-modern {
+  margin: 6px !important; /* Khoảng cách giữa các thẻ */
+  background: #ffffff !important;
+  border-radius: 12px !important;
+  
+  /* Quan trọng: Thay thế border cứng bằng shadow mềm */
+  border: none !important; 
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06) !important;
+  
+  transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.2s;
+}
+
+/* Hiệu ứng ấn xuống khi click */
+.product-card-modern:active {
+  transform: scale(0.97);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04) !important;
+}
+
+/* 2. Phần nội dung chữ bên dưới */
+.product-card-content {
+  padding: 10px 12px !important; /* Căn chỉnh lại lề trong cho thoáng */
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* 3. Tên sản phẩm */
+.product-title {
+  margin: 0 0 6px 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: #333;
+  line-height: 1.4;
+  
+  /* Cắt dòng: Chỉ hiện tối đa 2 dòng */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  height: 38px; /* Chiều cao cố định để các card bằng nhau */
+}
+
+/* 4. Nút thêm giỏ hàng (Hình tròn) */
+.btn-add-cart {
+  width: 32px;
+  height: 32px;
+  margin: 0 !important;
+  --padding-start: 0;
+  --padding-end: 0;
+  
+  /* Tạo hình tròn màu xanh nhạt */
+  background: #e8f5e9; 
+  border-radius: 50%;
+  color: #2E7D32; /* Icon màu xanh đậm */
+  overflow: hidden;
+}
+
+/* Hiệu ứng khi nhấn vào nút giỏ hàng */
+.btn-add-cart:active {
+  background: #2E7D32;
+  color: #ffffff;
+}
+
+.btn-add-cart ion-icon {
+  font-size: 18px; /* Kích thước icon bên trong */
 }

@@ -118,7 +118,7 @@ def revenue_report(request):
     success_orders = orders.filter(status='completed')
     total_revenue = success_orders.aggregate(total=Sum('total_price'))['total'] or 0
 
-    platform_revenue = 0.0
+    platform_revenue = Decimal('0')
     success_order_items = OrderItem.objects.filter(
         order__in=success_orders
     ).select_related('product', 'product__category')

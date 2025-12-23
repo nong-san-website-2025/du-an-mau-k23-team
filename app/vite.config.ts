@@ -13,11 +13,18 @@ export default defineConfig({
     }),
   ],
   server: {
+    // 1. Cho phép server lắng nghe mọi IP (để Emulator kết nối được)
+    host: '0.0.0.0',
+    port: 8100, // Ionic mặc định dùng 8100, nên đổi từ 5173 về 8100 cho chuẩn
     middlewareMode: false,
+    
+    // 2. Cấu hình WebSocket để Live Reload hoạt động
     hmr: {
       protocol: 'ws',
-      host: 'localhost',
-      port: 5173,
+      // QUAN TRỌNG: Thay dòng này bằng IP Wifi hiện tại của bạn
+      // (Lấy từ log bạn gửi lúc nãy: 192.168.89.159)
+      host: '192.168.89.159', 
+      port: 8100,
     },
   },
   build: {

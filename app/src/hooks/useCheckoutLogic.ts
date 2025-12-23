@@ -3,7 +3,14 @@ import { useIonRouter } from "@ionic/react";
 import { useCart, CartItem } from "../context/CartContext";
 import { Address } from "../types/Address";
 import { API } from "../api/api";
-import { Product } from "../types/models";
+import { Product } from "../types/models"; // Đã xóa Store để fix lỗi unused
+
+// --- CÁC INTERFACE PHỤ TRỢ ---
+
+// Interface wrapper để xử lý trường hợp API trả về { data: ... } hoặc trả thẳng data
+interface ApiResponse<T> {
+  data: T;
+}
 
 interface ExtendedProduct extends Product {
   seller?: number;
@@ -28,6 +35,8 @@ export interface StoreGroup {
   subtotal: number;
 }
 
+// --- HOOK LOGIC ---
+
 const useCheckoutLogic = () => {
   const router = useIonRouter();
   const { cartItems, clearCart } = useCart();
@@ -36,13 +45,16 @@ const useCheckoutLogic = () => {
   const [selectedAddressId, setSelectedAddressId] = useState<number | null>(
     null
   );
+
   const [shippingFee, setShippingFee] = useState<number>(0);
   const [shippingStatus, setShippingStatus] = useState<
     "idle" | "loading" | "success" | "error"
   >("idle");
+
   const [shippingFeePerSeller, setShippingFeePerSeller] = useState<
     Record<string, number>
   >({});
+
   const [paymentMethod, setPaymentMethod] = useState<string>("cod");
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [discount, setDiscount] = useState<number>(0);
@@ -61,12 +73,23 @@ const useCheckoutLogic = () => {
     return checkoutItems.reduce<Record<string, StoreGroup>>((acc, item) => {
       const product = item.product_data;
       if (!product) return acc;
-      const storeId = product.store?.id ? String(product.store.id) : "other";
-      const storeName = product.store?.store_name || "Cửa hàng";
+
+      let storeId = "other";
+      let storeName = "Cửa hàng";
+
+      // Kiểm tra object vs number an toàn
+      if (product.store && typeof product.store === "object") {
+        storeId = String(product.store.id);
+        storeName =
+          product.store.store_name || product.store.name || "Cửa hàng";
+      } else if (typeof product.store === "number") {
+        storeId = String(product.store);
+      }
 
       if (!acc[storeId]) {
         acc[storeId] = { storeName, storeId, items: [], subtotal: 0 };
       }
+
       acc[storeId].items.push(item);
       acc[storeId].subtotal += (product.price || 0) * item.quantity;
       return acc;
@@ -86,11 +109,27 @@ const useCheckoutLogic = () => {
 
   const fetchAddresses = useCallback(async () => {
     try {
-      const res: any = await API.get("/users/addresses/");
-      const list = Array.isArray(res) ? res : res.data || [];
+      // Ép kiểu 'unknown' sang Union Type mong đợi để tránh lỗi TS và no-explicit-any
+      const rawRes = (await API.get("/users/addresses/")) as
+        | Address[]
+        | ApiResponse<Address[]>;
+
+      let list: Address[] = [];
+
+      if (Array.isArray(rawRes)) {
+        list = rawRes;
+      } else if (
+        rawRes &&
+        typeof rawRes === "object" &&
+        "data" in rawRes &&
+        Array.isArray(rawRes.data)
+      ) {
+        list = rawRes.data;
+      }
+
       setAddresses(list);
       if (list.length > 0 && !selectedAddressId) {
-        const defaultAddr = list.find((a: any) => a.is_default) || list[0];
+        const defaultAddr = list.find((a) => a.is_default) || list[0];
         setSelectedAddressId(defaultAddr.id);
       }
     } catch (err) {
@@ -102,7 +141,7 @@ const useCheckoutLogic = () => {
     fetchAddresses();
   }, [fetchAddresses]);
 
-  // TÍNH PHÍ SHIP
+  // --- TÍNH PHÍ SHIP ---
   useEffect(() => {
     if (!selectedAddress?.district_id || !selectedAddress?.ward_code) {
       setShippingStatus("idle");
@@ -113,25 +152,50 @@ const useCheckoutLogic = () => {
       setShippingStatus("loading");
       try {
         const sellerGroups: Record<string, number> = {};
+
         checkoutItems.forEach((item) => {
           const p = item.product_data as unknown as ExtendedProduct;
-          const sId = p.store?.id || p.seller || "other";
-          sellerGroups[String(sId)] =
-            (sellerGroups[String(sId)] || 0) +
-            item.quantity * (p.weight_g || 200);
+          let sId: string | number = "other";
+          if (p.store && typeof p.store === "object") {
+            sId = p.store.id;
+          } else if (typeof p.store === "number") {
+            sId = p.store;
+          } else if (p.seller) {
+            sId = p.seller;
+          }
+
+          const key = String(sId);
+          sellerGroups[key] =
+            (sellerGroups[key] || 0) + item.quantity * (p.weight_g || 200);
         });
 
-        const res: any = await API.post("/delivery/fee-per-seller/", {
+        // Ép kiểu 'unknown' sang Union Type mong đợi
+        const rawRes = (await API.post("/delivery/fee-per-seller/", {
           sellers: Object.keys(sellerGroups).map((id) => ({
             seller_id: id === "other" ? null : parseInt(id),
             weight: sellerGroups[id],
           })),
           to_district_id: Number(selectedAddress.district_id),
           to_ward_code: String(selectedAddress.ward_code),
-        });
+        })) as ShippingFeeResponse | ApiResponse<ShippingFeeResponse>;
 
-        const data = res.data || res;
+        // Logic lấy data an toàn mà không dùng 'any'
+        let data: ShippingFeeResponse;
+
+        if (
+          rawRes &&
+          typeof rawRes === "object" &&
+          "data" in rawRes &&
+          // Kiểm tra xem property 'data' có phải là object chứa 'total_shipping_fee' không để chắc chắn
+          typeof (rawRes as ApiResponse<ShippingFeeResponse>).data === "object"
+        ) {
+          data = (rawRes as ApiResponse<ShippingFeeResponse>).data;
+        } else {
+          data = rawRes as ShippingFeeResponse;
+        }
+
         setShippingFee(data.total_shipping_fee || 0);
+
         const details: Record<string, number> = {};
         if (data.sellers) {
           Object.keys(data.sellers).forEach(
@@ -141,10 +205,12 @@ const useCheckoutLogic = () => {
         setShippingFeePerSeller(details);
         setShippingStatus("success");
       } catch (error) {
+        console.error("Lỗi tính phí ship:", error);
         setShippingStatus("error");
         setShippingFee(0);
       }
     };
+
     calculateShipping();
   }, [selectedAddress, checkoutItems]);
 
@@ -162,7 +228,10 @@ const useCheckoutLogic = () => {
         address: selectedAddress.location,
         payment_method: paymentMethod,
         items: checkoutItems.map((item) => ({
-          product: item.product_data?.id,
+          product:
+            typeof item.product_data?.id === "number"
+              ? item.product_data.id
+              : Number(item.product_data?.id),
           quantity: item.quantity,
           price: item.product_data?.price,
         })),
@@ -173,6 +242,7 @@ const useCheckoutLogic = () => {
       alert("Đặt hàng thành công!");
       router.push("/home", "root", "replace");
     } catch (error) {
+      console.error("Lỗi đặt hàng:", error);
       alert("Đặt hàng thất bại, vui lòng thử lại.");
     } finally {
       setIsProcessing(false);
@@ -188,12 +258,13 @@ const useCheckoutLogic = () => {
     shippingStatus,
     shippingFeePerSeller,
     discount,
+    setDiscount,
     finalTotal,
     paymentMethod,
     setPaymentMethod,
     isProcessing,
     handlePlaceOrder,
-    saveAddress: fetchAddresses, // Giả định đơn giản hóa
+    saveAddress: fetchAddresses,
     formatPrice: (p: number) => p.toLocaleString("vi-VN") + "đ",
   };
 };
