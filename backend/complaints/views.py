@@ -273,3 +273,12 @@ class ComplaintViewSet(viewsets.ModelViewSet):
         if not active:
             order.is_disputed = False
             order.save(update_fields=['is_disputed'])
+
+
+    @action(detail=False, methods=['get'])
+    def recent(self, request):
+        # Lấy danh sách dựa trên get_queryset đã định nghĩa (đã có phân quyền)
+        # Lấy 10 khiếu nại mới nhất
+        queryset = self.get_queryset()[:10] 
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)

@@ -6,4 +6,5 @@ router.register(r'', ComplaintViewSet, basename='complaint')
 
 urlpatterns = [
     path('', include(router.urls)),
+    
 ]

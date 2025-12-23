@@ -33,6 +33,8 @@ ALLOWED_HOSTS = ['*']
 CSRF_TRUSTED_ORIGINS = [
     'http://localhost:3000',  # Frontend React (nếu chạy port 3000)
     'https://concetta-nonprotective-decisively.ngrok-free.dev', # <-- LINK NGROK MỚI CỦA BẠN
+    "http://172.16.144.95:3000",  # Thêm dòng này
+    "http://172.16.144.95:8000",
 ]
 
 DEBUG = True
@@ -208,7 +210,7 @@ CLOUDINARY_STORAGE = {
 # --- CORS & CSRF
 CORS_ALLOW_CREDENTIALS = True
 
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_ALL_ORIGINS = False
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",  # Vite dev server
@@ -224,6 +226,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://192.168.2.3:8100",
     "http://192.168.68.117:8100",
     "http://192.168.2.3:3000",
+    "http://172.16.144.95:3000",
 ]
 CORS_ALLOW_METHODS = [
     'DELETE',

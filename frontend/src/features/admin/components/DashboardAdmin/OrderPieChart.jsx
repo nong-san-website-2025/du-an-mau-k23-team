@@ -15,10 +15,9 @@ const STATUS_COLORS = {
   shipping: "#0088FE",
   ready_to_pick: "#AA46BE",
   picking: "#FF8042",
-  success: "#4CAF50",
+  completed: "#4CAF50",
   delivered: "#1E90FF",
   cancelled: "#FF4D4F",
-  refunded: "#8B4513",
   returned: "#708090", // Màu xám xanh cho hàng trả về
 };
 
@@ -29,10 +28,9 @@ const STATUS_LABELS = {
   shipping: "Đang giao hàng",
   ready_to_pick: "Chờ lấy hàng",
   picking: "Đang lấy hàng",
-  success: "Thành công",
+  completed: "Thành công",
   delivered: "Đã giao hàng",
   cancelled: "Đã hủy",
-  refunded: "Đã hoàn tiền",
   returned: "Đã trả hàng", // ✅ Đã thêm tiếng Việt
 };
 
