@@ -11,12 +11,23 @@ import {
   Space,
   Image,
   Skeleton,
-  Tooltip, // <--- 1. Thêm import Tooltip
+  Tooltip,
   Typography,
   InputNumber,
-  Popover, // <--- Thêm cái này
+  Popover,
 } from "antd";
-import { SearchOutlined, EyeOutlined, EditOutlined, DeleteOutlined, PlusOutlined, LockOutlined, UnlockOutlined, CheckOutlined, CloseOutlined } from "@ant-design/icons";
+import {
+  SearchOutlined,
+  EyeOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  PlusOutlined,
+  LockOutlined,
+  UnlockOutlined,
+  CheckOutlined,
+  CloseOutlined,
+  ReloadOutlined,
+} from "@ant-design/icons";
 import axios from "axios";
 
 // --- Imports Components ---
@@ -25,7 +36,7 @@ import CategoryWithSubModal from "../../components/ProductAdmin/Category/AddCate
 import ButtonAction from "../../../../components/ButtonAction";
 import StatusTag from "../../../../components/StatusTag";
 
-const { Text, Link } = Typography;
+const { Text } = Typography;
 const { Option } = Select;
 
 const CategoryManagementPage = () => {
@@ -54,9 +65,12 @@ const CategoryManagementPage = () => {
   const fetchCategories = async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`${process.env.REACT_APP_API_URL}/products/categories/`, {
-        headers: getAuthHeaders(),
-      });
+      const res = await axios.get(
+        `${process.env.REACT_APP_API_URL}/products/categories/`,
+        {
+          headers: getAuthHeaders(),
+        }
+      );
 
       const raw = Array.isArray(res.data) ? res.data : res.data.results || [];
 
@@ -80,9 +94,9 @@ const CategoryManagementPage = () => {
           status: sub.status,
           product_count: sub.product_count || 0,
           parentId: cat.id,
-          commission_rate: sub.commission_rate || 0, // Nếu sub cũng có
+          commission_rate: sub.commission_rate || 0,
         })),
-        subcategories: cat.subcategories || []
+        subcategories: cat.subcategories || [],
       }));
 
       setData(mapped);
@@ -101,7 +115,9 @@ const CategoryManagementPage = () => {
   // --- Handlers ---
 
   const filteredData = data.filter((item) => {
-    const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = item.name
+      .toLowerCase()
+      .includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter ? item.status === statusFilter : true;
     return matchesSearch && matchesStatus;
   });
@@ -117,8 +133,10 @@ const CategoryManagementPage = () => {
   };
 
   const handleEdit = (record) => {
-    if (record.type === 'Subcategory') {
-      message.info("Vui lòng chỉnh sửa từ danh mục cha để thay đổi danh mục con.");
+    if (record.type === "Subcategory") {
+      message.info(
+        "Vui lòng chỉnh sửa từ danh mục cha để thay đổi danh mục con."
+      );
       return;
     }
     setSelectedCategory(record);
@@ -127,12 +145,17 @@ const CategoryManagementPage = () => {
 
   const handleDelete = async (record) => {
     try {
-      const endpoint = record.type === 'Subcategory'
-        ? `${process.env.REACT_APP_API_URL}/products/subcategories/${record.id}/`
-        : `${process.env.REACT_APP_API_URL}/products/categories/${record.id}/`;
+      const endpoint =
+        record.type === "Subcategory"
+          ? `${process.env.REACT_APP_API_URL}/products/subcategories/${record.id}/`
+          : `${process.env.REACT_APP_API_URL}/products/categories/${record.id}/`;
 
       await axios.delete(endpoint, { headers: getAuthHeaders() });
-      message.success(`Đã xóa ${record.type === 'Category' ? 'danh mục' : 'danh mục con'} thành công`);
+      message.success(
+        `Đã xóa ${
+          record.type === "Category" ? "danh mục" : "danh mục con"
+        } thành công`
+      );
       fetchCategories();
     } catch (err) {
       console.error(err);
@@ -160,21 +183,35 @@ const CategoryManagementPage = () => {
               fallback="https://via.placeholder.com/40?text=Error"
             />
           ) : (
-            <div style={{ width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '4px', overflow: 'hidden' }}>
+            <div
+              style={{
+                width: 40,
+                height: 40,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                borderRadius: "4px",
+                overflow: "hidden",
+              }}
+            >
               <Skeleton.Image active={false} style={{ width: 40, height: 40 }} />
             </div>
           )}
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <span style={{ fontWeight: record.type === 'Category' ? 600 : 400 }}>
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            <span
+              style={{ fontWeight: record.type === "Category" ? 600 : 400 }}
+            >
               {text}
-              {record.type === 'Category' && (
-                <span style={{ color: '#1890ff', fontSize: '11px', marginLeft: 8 }}>
+              {record.type === "Category" && (
+                <span
+                  style={{ color: "#1890ff", fontSize: "11px", marginLeft: 8 }}
+                >
                   ({record.subcategories.length} danh mục con)
                 </span>
               )}
             </span>
-            {record.type === 'Subcategory' && (
-              <span style={{ color: '#8c8c8c', fontSize: '11px' }}>
+            {record.type === "Subcategory" && (
+              <span style={{ color: "#8c8c8c", fontSize: "11px" }}>
                 {record.product_count} sản phẩm
               </span>
             )}
@@ -187,15 +224,17 @@ const CategoryManagementPage = () => {
       dataIndex: "type",
       key: "type",
       width: 150,
-      align: 'center',
+      align: "center",
       render: (type) => (
-        <span style={{
-          fontSize: '12px',
-          padding: '4px 8px',
-          background: type === 'Category' ? '#e6f7ff' : '#f9f0ff',
-          color: type === 'Category' ? '#1890ff' : '#722ed1',
-          borderRadius: '4px'
-        }}>
+        <span
+          style={{
+            fontSize: "12px",
+            padding: "4px 8px",
+            background: type === "Category" ? "#e6f7ff" : "#f9f0ff",
+            color: type === "Category" ? "#1890ff" : "#722ed1",
+            borderRadius: "4px",
+          }}
+        >
           {type === "Category" ? "Danh mục cha" : "Danh mục con"}
         </span>
       ),
@@ -205,13 +244,14 @@ const CategoryManagementPage = () => {
       dataIndex: "commission_rate",
       key: "commission_rate",
       width: 120,
-      align: 'center',
+      align: "center",
       render: (_, record) => {
-        // Chỉ cho phép sửa phí sàn ở Category cha (hoặc tùy logic của bạn)
-        if (record.type === 'Category') {
-          return <CommissionEditor record={record} onUpdate={fetchCategories} />;
+        if (record.type === "Category") {
+          return (
+            <CommissionEditor record={record} onUpdate={fetchCategories} />
+          );
         }
-        return <span style={{ color: '#d9d9d9' }}>---</span>;
+        return <span style={{ color: "#d9d9d9" }}>---</span>;
       },
     },
     {
@@ -219,24 +259,23 @@ const CategoryManagementPage = () => {
       dataIndex: "status",
       key: "status",
       width: 150,
-      align: 'center',
+      align: "center",
       render: (status) => <StatusTag status={status} />,
     },
-    // --- PHẦN QUAN TRỌNG: CỘT HÀNH ĐỘNG ĐÃ CÓ TOOLTIP CONFIG ---
     {
       title: "Thao tác",
       key: "actions",
       width: 100,
-      align: 'center',
+      align: "center",
       render: (_, record) => {
-        // 1. Logic kiểm tra điều kiện Disable
-        const isParentWithChildren = record.type === 'Category' && record.subcategories?.length > 0;
-        const isChildWithProducts = record.type === 'Subcategory' && record.product_count > 0;
+        const isParentWithChildren =
+          record.type === "Category" && record.subcategories?.length > 0;
+        const isChildWithProducts =
+          record.type === "Subcategory" && record.product_count > 0;
 
-        // Biến xác định có disable hay không
-        const shouldDisableDelete = isParentWithChildren || isChildWithProducts;
+        const shouldDisableDelete =
+          isParentWithChildren || isChildWithProducts;
 
-        // 2. Xác định lý do disable (để hiển thị tooltip)
         let reason = "";
         if (isParentWithChildren) {
           reason = "Không thể xóa: Đang chứa danh mục con";
@@ -248,56 +287,67 @@ const CategoryManagementPage = () => {
           {
             actionType: "view",
             icon: <EyeOutlined />,
-            tooltip: "Xem chi tiết", // Đã có
+            tooltip: "Xem chi tiết",
             onClick: (r) => handleView(r),
           },
           {
             actionType: "edit",
             icon: <EditOutlined />,
-            tooltip: "Chỉnh sửa", // Đã có
-            show: record.type === 'Category',
+            tooltip: "Chỉnh sửa",
+            show: record.type === "Category",
             onClick: (r) => handleEdit(r),
           },
           {
-            actionType: record.status === 'active' ? "lock" : "unlock", // <--- SỬA DÒNG NÀY
-            icon: record.status === 'active' ? <LockOutlined /> : <UnlockOutlined />,
-            tooltip: record.status === 'active' ? 'Ngưng hoạt động' : 'Kích hoạt lại', // Đã có (rút gọn text cho đẹp)
+            actionType: record.status === "active" ? "lock" : "unlock",
+            icon:
+              record.status === "active" ? <LockOutlined /> : <UnlockOutlined />,
+            tooltip:
+              record.status === "active"
+                ? "Ngưng hoạt động"
+                : "Kích hoạt lại",
             show: true,
             buttonProps: {
-              type: 'text',
-              style: { color: record.status === 'active' ? '#faad14' : '#52c41a' }
+              type: "text",
+              style: {
+                color: record.status === "active" ? "#faad14" : "#52c41a",
+              },
             },
             confirm: {
-              title: 'Xác nhận chuyển trạng thái?',
-              description: `Bạn có chắc chắn muốn chuyển trạng thái của "${record.name}" sang ${record.status === 'active' ? 'ngưng hoạt động' : 'hoạt động'}?`,
-              okText: 'Chuyển',
-              cancelText: 'Hủy',
+              title: "Xác nhận chuyển trạng thái?",
+              description: `Bạn có chắc chắn muốn chuyển trạng thái của "${
+                record.name
+              }" sang ${
+                record.status === "active" ? "ngưng hoạt động" : "hoạt động"
+              }?`,
+              okText: "Chuyển",
+              cancelText: "Hủy",
             },
             onClick: async (r) => {
               try {
-                const endpoint = r.type === 'Subcategory'
-                  ? `${process.env.REACT_APP_API_URL}/products/subcategories/${r.id}/`
-                  : `${process.env.REACT_APP_API_URL}/products/categories/${r.id}/`;
-                await axios.patch(endpoint, { status: r.status === 'active' ? 'inactive' : 'active' }, { headers: getAuthHeaders() });
-                message.success('Đã chuyển trạng thái thành công');
+                const endpoint =
+                  r.type === "Subcategory"
+                    ? `${process.env.REACT_APP_API_URL}/products/subcategories/${r.id}/`
+                    : `${process.env.REACT_APP_API_URL}/products/categories/${r.id}/`;
+                await axios.patch(
+                  endpoint,
+                  { status: r.status === "active" ? "inactive" : "active" },
+                  { headers: getAuthHeaders() }
+                );
+                message.success("Đã chuyển trạng thái thành công");
                 fetchCategories();
               } catch (err) {
-                message.error('Chuyển trạng thái thất bại');
+                message.error("Chuyển trạng thái thất bại");
               }
             },
           },
           {
             actionType: "delete",
             icon: <DeleteOutlined />,
-            tooltip: "Xóa danh mục", // Đã có
-
-            // CẤU HÌNH CHO BUTTON ACTION:
-            disabledReason: reason, // Tooltip khi nút bị disable
-
+            tooltip: "Xóa danh mục",
+            disabledReason: reason,
             buttonProps: {
-              disabled: shouldDisableDelete
+              disabled: shouldDisableDelete,
             },
-
             confirm: {
               title: "Xác nhận xóa?",
               description: `Bạn có chắc chắn muốn xóa "${record.name}"?`,
@@ -305,7 +355,7 @@ const CategoryManagementPage = () => {
               cancelText: "Hủy",
             },
             onClick: (r) => handleDelete(r),
-          }
+          },
         ];
 
         return <ButtonAction actions={actions} record={record} />;
@@ -334,12 +384,35 @@ const CategoryManagementPage = () => {
         <Option value="inactive">Ngưng hoạt động</Option>
       </Select>
 
-      {/* 2. Thêm Tooltip cho nút Thêm Danh Mục */}
+      {/* Nút Làm mới - Style Outline BLUE (giống ảnh) */}
+      <Tooltip title="Tải lại dữ liệu">
+        <Button
+          icon={<ReloadOutlined spin={loading} />}
+          onClick={fetchCategories}
+          style={{
+            color: "#010101ff",        // Màu chữ xanh dương
+            borderColor: "#d9d9d9",  // Viền xanh dương
+            backgroundColor: "#fff", // Nền trắng
+            display: "flex",
+            alignItems: "center",
+          }}
+        >
+          Làm mới
+        </Button>
+      </Tooltip>
+
+      {/* Nút Thêm Danh Mục - Style Solid GREEN (#28a645) */}
       <Tooltip title="Tạo mới một danh mục cha">
         <Button
           type="primary"
           icon={<PlusOutlined />}
           onClick={handleCreate}
+          style={{
+            backgroundColor: "#28a645",
+            borderColor: "#28a645",
+            display: "flex",
+            alignItems: "center",
+          }}
         >
           Thêm danh mục
         </Button>
@@ -349,25 +422,21 @@ const CategoryManagementPage = () => {
 
   const CommissionEditor = ({ record, onUpdate }) => {
     const [visible, setVisible] = useState(false);
-    const [value, setValue] = useState(record.commission_rate * 100); // Chuyển 0.1 -> 10
+    const [value, setValue] = useState(record.commission_rate * 100);
     const [loading, setLoading] = useState(false);
 
-    // Reset giá trị khi đóng/mở lại
     useEffect(() => {
       if (visible) {
         setValue(record.commission_rate ? record.commission_rate * 100 : 0);
       }
     }, [visible, record.commission_rate]);
 
-    // Trong component CommissionEditor
-
     const handleSave = async () => {
       try {
         setLoading(true);
         const token = localStorage.getItem("token");
-        const payload = { commission_rate: value / 100 }; // Chia 100 để về dạng thập phân
+        const payload = { commission_rate: value / 100 };
 
-        // 1. Gọi API
         await axios.patch(
           `${process.env.REACT_APP_API_URL}/products/categories/${record.id}/`,
           payload,
@@ -376,16 +445,10 @@ const CategoryManagementPage = () => {
 
         message.success("Cập nhật thành công!");
         setVisible(false);
-
-        // 2. QUAN TRỌNG: Cập nhật nóng vào record hiện tại để UI đổi ngay
-        // (Giúp UI đổi số liền mà không cần chờ fetchCategories chạy xong)
         record.commission_rate = payload.commission_rate;
-
-        // 3. Gọi hàm refresh từ cha để đồng bộ dữ liệu chuẩn
         if (onUpdate) {
           onUpdate();
         }
-
       } catch (error) {
         console.error(error);
         message.error("Lỗi khi cập nhật");
@@ -395,14 +458,14 @@ const CategoryManagementPage = () => {
     };
 
     const content = (
-      <div style={{ display: 'flex', gap: '8px' }}>
+      <div style={{ display: "flex", gap: "8px" }}>
         <InputNumber
           min={0}
           max={100}
           value={value}
           onChange={setValue}
           formatter={(value) => `${value}%`}
-          parser={(value) => value.replace('%', '')}
+          parser={(value) => value.replace("%", "")}
           autoFocus
         />
         <Button
@@ -431,24 +494,29 @@ const CategoryManagementPage = () => {
       >
         <div
           style={{
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
             gap: 5,
-            padding: '4px 8px',
-            border: '1px dashed #d9d9d9',
-            borderRadius: '4px',
-            background: '#fafafa',
-            width: 'fit-content',
-            margin: '0 auto'
+            padding: "4px 8px",
+            border: "1px dashed #d9d9d9",
+            borderRadius: "4px",
+            background: "#fafafa",
+            width: "fit-content",
+            margin: "0 auto",
           }}
-          className="hover-edit-cell" // Bạn có thể thêm css hover đổi màu viền nếu muốn
+          className="hover-edit-cell"
         >
-          <Text strong style={{ color: record.commission_rate > 0 ? '#faad14' : '#8c8c8c' }}>
-            {record.commission_rate ? `${(record.commission_rate * 100).toFixed(1)}%` : '0%'}
+          <Text
+            strong
+            style={{ color: record.commission_rate > 0 ? "#faad14" : "#8c8c8c" }}
+          >
+            {record.commission_rate
+              ? `${(record.commission_rate * 100).toFixed(1)}%`
+              : "0%"}
           </Text>
-          <EditOutlined style={{ fontSize: '10px', color: '#bfbfbf' }} />
+          <EditOutlined style={{ fontSize: "10px", color: "#bfbfbf" }} />
         </div>
       </Popover>
     );
@@ -457,7 +525,9 @@ const CategoryManagementPage = () => {
   return (
     <AdminPageLayout title="QUẢN LÝ DANH MỤC" extra={Toolbar}>
       {loading && data.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "50px" }}><Spin size="large" /></div>
+        <div style={{ textAlign: "center", padding: "50px" }}>
+          <Spin size="large" />
+        </div>
       ) : (
         <Table
           columns={columns}
@@ -470,7 +540,6 @@ const CategoryManagementPage = () => {
         />
       )}
 
-      {/* Modal Thêm/Sửa */}
       <CategoryWithSubModal
         visible={modalVisible}
         onClose={() => setModalVisible(false)}
@@ -478,22 +547,24 @@ const CategoryManagementPage = () => {
         category={selectedCategory}
       />
 
-      {/* Modal Xem chi tiết */}
       <Modal
         open={viewModalVisible}
         title={`Chi tiết: ${viewRecord?.name}`}
         onCancel={() => setViewModalVisible(false)}
         footer={[
-          // 3. Thêm Tooltip cho nút Đóng
           <Tooltip title="Đóng cửa sổ này" key="close-tooltip">
-            <Button key="close" onClick={() => setViewModalVisible(false)}>Đóng</Button>
-          </Tooltip>
+            <Button key="close" onClick={() => setViewModalVisible(false)}>
+              Đóng
+            </Button>
+          </Tooltip>,
         ]}
       >
         {viewRecord && (
           <Descriptions column={1} bordered size="small">
             <Descriptions.Item label="ID">{viewRecord.id}</Descriptions.Item>
-            <Descriptions.Item label="Tên danh mục">{viewRecord.name}</Descriptions.Item>
+            <Descriptions.Item label="Tên danh mục">
+              {viewRecord.name}
+            </Descriptions.Item>
             <Descriptions.Item label="Loại">
               {viewRecord.type === "Category" ? "Danh mục cha" : "Danh mục con"}
             </Descriptions.Item>
@@ -503,7 +574,7 @@ const CategoryManagementPage = () => {
             <Descriptions.Item label="Trạng thái">
               <StatusTag status={viewRecord.status} />
             </Descriptions.Item>
-            {viewRecord.type === 'Category' && (
+            {viewRecord.type === "Category" && (
               <Descriptions.Item label="Số danh mục con">
                 {viewRecord.subcategories?.length || 0}
               </Descriptions.Item>
@@ -511,7 +582,6 @@ const CategoryManagementPage = () => {
           </Descriptions>
         )}
       </Modal>
-
     </AdminPageLayout>
   );
 };

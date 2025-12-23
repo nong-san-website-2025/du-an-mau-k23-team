@@ -10,9 +10,8 @@ import {
   FrownOutlined,
   ReloadOutlined,
   EditOutlined,
-  ShoppingCartOutlined,
   DollarOutlined,
-  WarningOutlined // Import thêm icon Warning nếu chưa có, hoặc dùng AlertOutlined
+  ShoppingCartOutlined
 } from "@ant-design/icons";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Cell, Tooltip as RechartsTooltip } from "recharts";
 
@@ -203,9 +202,22 @@ export default function ReportProductsPage() {
 
   return (
     <AdminPageLayout
-      title="THỐNG KÊ SẢN PHẨM" extra={
+      title="THỐNG KÊ SẢN PHẨM"
+      // --- CHỈNH SỬA NÚT LÀM MỚI Ở ĐÂY ---
+      extra={
         <Tooltip title="Làm mới dữ liệu">
-          <Button icon={<ReloadOutlined />} onClick={loadData} loading={loading} type="primary" shape="round">
+          <Button
+            icon={<ReloadOutlined spin={loading} />} // Icon xoay khi đang load
+            onClick={loadData}
+            // Style để giống ảnh: Nền trắng, viền xanh, chữ xanh
+            style={{
+              backgroundColor: '#fff',
+              borderColor: '#d9d9d9',
+              color: '#000000ff',
+              display: 'flex',
+              alignItems: 'center'
+            }}
+          >
             Làm mới
           </Button>
         </Tooltip>
@@ -222,7 +234,6 @@ export default function ReportProductsPage() {
         <Col xs={24} lg={16}>
           <Card
             title={
-              // THAY ĐỔI: Sử dụng Space và TrophyOutlined thay cho emoji 🏆
               <Space align="center">
                 <TrophyOutlined style={{ color: "#faad14", fontSize: "20px" }} />
                 <Title level={4} style={{ margin: 0 }}>Top Sản Phẩm Bán Chạy</Title>
@@ -266,7 +277,6 @@ export default function ReportProductsPage() {
         <Col xs={24} lg={8}>
           <Card
             title={
-              // THAY ĐỔI: Sử dụng Space và AlertOutlined thay cho emoji ⚠️
               <Space align="center">
                 <AlertOutlined style={{ color: "#fa8c16", fontSize: "20px" }} />
                 <Title level={4} style={{ margin: 0 }}>Cảnh Báo Tồn Kho</Title>
