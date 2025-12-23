@@ -12,21 +12,29 @@ export default function RecentDisputes() {
 
   const navigate = useNavigate();
 
+  // ✅ 1. Đồng bộ biến môi trường giống TopSellingProducts
+  const API_URL =
+    process.env.REACT_APP_API_URL || "http://172.16.144.88:8000/api";
+  const BASE_DOMAIN = new URL(API_URL).origin;
+
   useEffect(() => {
     const fetchDisputes = async () => {
       setLoading(true);
       setError(null);
       try {
         const token = localStorage.getItem("token");
-        const res = await axios.get(
-          "http://127.0.0.1:8000/api/complaints/recent/",
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
+        // Gọi API sử dụng biến môi trường (Lưu ý: Kiểm tra endpoint /complaints/recent/ có đúng không)
+        const res = await axios.get(`${API_URL}/complaints/recent/`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         setDisputes(res.data);
       } catch (err) {
         console.error("Fetch disputes error:", err.response || err);
+        // Thông báo lỗi cụ thể nếu gặp 404 (Not Found)
         setError(
-          err.response?.data?.detail || err.message || "Lỗi khi tải dữ liệu"
+          err.response?.status === 404
+            ? "Lỗi 404: Không tìm thấy đường dẫn API khiếu nại. Vui lòng kiểm tra lại Backend."
+            : err.response?.data?.detail || "Lỗi khi tải dữ liệu khiếu nại"
         );
         setDisputes([]);
       } finally {
@@ -35,26 +43,18 @@ export default function RecentDisputes() {
     };
     fetchDisputes();
 
-    // Detect mobile viewport (iPhone 14 Pro Max ~430px width)
     const mql = window.matchMedia("(max-width: 480px)");
     const handleChange = (e) => setIsMobile(e.matches);
-    handleChange(mql);
-    mql.addEventListener ? mql.addEventListener("change", handleChange) : mql.addListener(handleChange);
-    return () => {
-      mql.removeEventListener ? mql.removeEventListener("change", handleChange) : mql.removeListener(handleChange);
-    };
-  }, []);
+    mql.addEventListener("change", handleChange);
+    setIsMobile(mql.matches);
+    return () => mql.removeEventListener("change", handleChange);
+  }, [API_URL]);
 
-  const formatOrderId = (id) => {
-    if (!id) return "N/A";
-    return `DH${id.toString().padStart(3, "0")}`;
-  };
   const statusColors = {
     pending: "red",
     in_progress: "gold",
     resolved: "green",
   };
-
   const statusLabels = {
     pending: "Chờ xử lý",
     in_progress: "Đang giải quyết",
@@ -63,71 +63,53 @@ export default function RecentDisputes() {
 
   const columns = [
     {
-      title: "Mã khiếu nại",
+      title: "Mã",
       dataIndex: "id",
       key: "id",
-      render: (id) => <span>#{id}</span>,
-      responsive: ["xs", "sm", "md", "lg"],
+      sorter: (a, b) => a.id - b.id, // ✅ Thêm Sort
+      render: (id) => <b>#{id}</b>,
     },
     {
-      title: "Sản phẩm", // <-- thêm cột sản phẩm
+      title: "Sản phẩm",
       dataIndex: "product_name",
       key: "product_name",
-      render: (val) => val || <i>Không rõ</i>,
       ellipsis: true,
-      responsive: ["xs", "sm", "md", "lg"],
+      sorter: (a, b) =>
+        (a.product_name || "").localeCompare(b.product_name || ""), // ✅ Thêm Sort
+      render: (val) => val || <i>Không rõ</i>,
     },
-
-    {
-      title: "Đơn hàng",
-      dataIndex: "order_id",
-      key: "order_id",
-      render: (orderId) => (
-        orderId ? (
-          <a href={`/orders/${orderId}`}>{formatOrderId(orderId)}</a>
-        ) : (
-          <span>{formatOrderId(orderId)}</span>
-        )
-      ),
-      // Hide on extra small screens to reduce cramped layout
-      responsive: ["sm", "md", "lg"],
-    },
-
     {
       title: "Người khiếu nại",
-      dataIndex: "complainant_name", // 👈 đổi lại cho đúng với JSON
+      dataIndex: "complainant_name",
       key: "complainant_name",
-      ellipsis: true,
-      responsive: ["sm", "md", "lg"],
-    },
-    {
-      title: "Lý do",
-      dataIndex: "reason",
-      key: "reason",
-      ellipsis: true,
       responsive: ["md", "lg"],
     },
     {
       title: "Trạng thái",
       dataIndex: "status",
       key: "status",
+      sorter: (a, b) => a.status.localeCompare(b.status), // ✅ Thêm Sort
       render: (status) => (
         <Tag color={statusColors[status] || "default"}>
           {statusLabels[status] || status}
         </Tag>
       ),
-      responsive: ["xs", "sm", "md", "lg"],
     },
     {
       title: "Ngày tạo",
       dataIndex: "created_at",
       key: "created_at",
-      render: (val) =>
-        val ? new Date(val).toLocaleString("vi-VN") : <i>Không rõ</i>,
-      ellipsis: true,
-      responsive: ["xs", "sm", "md", "lg"],
+      sorter: (a, b) => new Date(a.created_at) - new Date(b.created_at), // ✅ Thêm Sort
+      render: (val) => (val ? new Date(val).toLocaleString("vi-VN") : "N/A"),
     },
   ];
+
+  // Hàm xử lý URL ảnh chuẩn
+  const getFullImageUrl = (path) => {
+    if (!path) return "";
+    if (path.startsWith("http")) return path;
+    return `${BASE_DOMAIN}${path.startsWith("/") ? "" : "/"}${path.startsWith("media") ? "" : "media/"}${path}`;
+  };
 
   return (
     <Card title="">
@@ -139,6 +121,7 @@ export default function RecentDisputes() {
           showIcon
         />
       )}
+
       {loading ? (
         <div style={{ textAlign: "center", padding: 30 }}>
           <Spin size="large" />
@@ -153,34 +136,25 @@ export default function RecentDisputes() {
             onClick: () => setSelectedDispute(record),
             style: { cursor: "pointer" },
           })}
-          locale={{ emptyText: "Không có khiếu nại mới" }}
           size={isMobile ? "small" : "middle"}
-          // Enable horizontal scroll on small screens to avoid vertical letter stacking
-          scroll={isMobile ? { x: 800 } : undefined}
-          style={isMobile ? { whiteSpace: "nowrap" } : undefined}
+          scroll={isMobile ? { x: 600 } : undefined}
         />
       )}
 
       <Modal
         open={!!selectedDispute}
-        title={`Chi tiết khiếu nại`}
+        title="Chi tiết khiếu nại"
         onCancel={() => setSelectedDispute(null)}
         footer={[
-          <Button key="close" onClick={() => setSelectedDispute(null)}>
+          <Button key="ok" onClick={() => setSelectedDispute(null)}>
             Đóng
           </Button>,
         ]}
       >
         {selectedDispute && (
-          <div>
+          <div style={{ lineHeight: "2.5" }}>
             <p>
-              <b>Mã khiếu nại:</b> #{selectedDispute.id}
-            </p>
-            <p>
-              <b>Đơn hàng:</b> {selectedDispute.order_id ? `#${selectedDispute.order_id}` : "N/A"}
-            </p>
-            <p>
-              <b>Người khiếu nại:</b> {selectedDispute.complainant_name}
+              <b>Mã đơn hàng:</b> {selectedDispute.order_id || "N/A"}
             </p>
             <p>
               <b>Sản phẩm:</b> {selectedDispute.product_name}
@@ -195,27 +169,22 @@ export default function RecentDisputes() {
               </Tag>
             </p>
             <p>
-              <b>Ngày tạo:</b>{" "}
-              {new Date(selectedDispute.created_at).toLocaleString("vi-VN")}
+              <b>Hình ảnh minh chứng:</b>
             </p>
-
-            {/* Thêm hình ảnh khách hàng gửi */}
-            <p>
-              <b>Hình ảnh:</b>
-            </p>
-            {selectedDispute.media_urls &&
-            selectedDispute.media_urls.length > 0 ? (
-              selectedDispute.media_urls.map((url, idx) => (
-                <Image
-                  key={idx}
-                  src={url}
-                  width={120}
-                  style={{ marginRight: 10, marginBottom: 10, borderRadius: 6 }}
-                />
-              ))
-            ) : (
-              <i>Không có hình ảnh</i>
-            )}
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              {selectedDispute.media_urls?.length > 0 ? (
+                selectedDispute.media_urls.map((url, idx) => (
+                  <Image
+                    key={idx}
+                    src={getFullImageUrl(url)}
+                    width={100}
+                    style={{ borderRadius: 8, objectFit: "cover" }}
+                  />
+                ))
+              ) : (
+                <i>Không có hình ảnh đính kèm</i>
+              )}
+            </div>
           </div>
         )}
       </Modal>

@@ -25,12 +25,12 @@ const WalletPage = () => {
   // --- States ---
   const [data, setData] = useState([]); // Dữ liệu ví sellers
   const [withdrawRequests, setWithdrawRequests] = useState([]); // Dữ liệu yêu cầu rút tiền
-  
+
   const [loading, setLoading] = useState(false); // Loading cho ví
   const [withdrawLoading, setWithdrawLoading] = useState(false); // Loading cho rút tiền
-  
+
   const [searchTerm, setSearchTerm] = useState("");
-  
+
   // State quản lý Modal chi tiết
   const [detailVisible, setDetailVisible] = useState(false);
   const [selectedWallet, setSelectedWallet] = useState(null);
@@ -41,7 +41,9 @@ const WalletPage = () => {
   const fetchWallets = async () => {
     try {
       setLoading(true);
-      const res = await api.get("payments/wallets/", { headers: getAuthHeaders() });
+      const res = await api.get("payments/wallets/", {
+        headers: getAuthHeaders(),
+      });
       setData(res.data || []);
     } catch (err) {
       console.error(err);
@@ -54,8 +56,8 @@ const WalletPage = () => {
   // 2. Lấy danh sách yêu cầu rút tiền
   const fetchWithdrawRequests = async () => {
     try {
-      const res = await api.get("payments/withdraw/requests/?status=pending", { 
-        headers: getAuthHeaders() 
+      const res = await api.get("payments/withdraw/requests/?status=pending", {
+        headers: getAuthHeaders(),
       });
       setWithdrawRequests(res.data.results || []);
     } catch (err) {
@@ -71,11 +73,11 @@ const WalletPage = () => {
       const wallets = data;
       // Gọi API recalculate cho từng ví (hoặc viết 1 API bulk backend nếu có)
       for (const wallet of wallets) {
-          await api.post(
-            `payments/wallets/${wallet.seller_id}/recalculate/`,
-            {},
-            { headers: getAuthHeaders() }
-          );
+        await api.post(
+          `payments/wallets/${wallet.seller_id}/recalculate/`,
+          {},
+          { headers: getAuthHeaders() }
+        );
       }
       message.success("Đã đồng bộ lại dữ liệu tất cả ví");
       fetchWallets(); // Load lại bảng sau khi tính xong
@@ -99,7 +101,7 @@ const WalletPage = () => {
       );
       message.success(`Đã duyệt rút tiền cho ${record.store_name}`);
       fetchWithdrawRequests(); // Reload bảng rút tiền
-      fetchWallets();          // Reload bảng ví (vì số dư bị trừ)
+      fetchWallets(); // Reload bảng ví (vì số dư bị trừ)
     } catch (err) {
       console.error(err);
       message.error(err.response?.data?.error || "Duyệt thất bại");
@@ -163,14 +165,14 @@ const WalletPage = () => {
         placeholder="Tìm tên shop hoặc email..."
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
-        style={{ width: 300, maxWidth: '100%' }}
+        style={{ width: 300, maxWidth: "100%" }}
         allowClear
       />
       <Button
         icon={<ReloadOutlined />}
         onClick={() => {
-            fetchWallets();
-            fetchWithdrawRequests();
+          fetchWallets();
+          fetchWithdrawRequests();
         }}
       >
         Làm mới
@@ -190,12 +192,14 @@ const WalletPage = () => {
       key: "wallets",
       label: "Ví của Seller",
       children: loading ? (
-        <div style={{ textAlign: "center", padding: "50px" }}><Spin size="large" /></div>
+        <div style={{ textAlign: "center", padding: "50px" }}>
+          <Spin size="large" />
+        </div>
       ) : (
         <WalletTable
           data={filteredData}
           onView={handleView}
-          // Lưu ý: Không truyền onApprovePending nữa 
+          // Lưu ý: Không truyền onApprovePending nữa
           // vì giờ chúng ta duyệt chi tiết trong Modal
         />
       ),

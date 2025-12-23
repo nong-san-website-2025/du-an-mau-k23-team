@@ -115,6 +115,7 @@ const BannerManager = () => {
       title: "Thông tin Banner",
       key: "info",
       width: isMobile ? 220 : undefined,
+      sorter: (a, b) => a.title.localeCompare(b.title),
       render: (_, record) => (
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           <span style={{ fontWeight: 600, fontSize: 15, display: 'inline-block', maxWidth: isMobile ? 180 : 260, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{record.title}</span>
@@ -129,6 +130,7 @@ const BannerManager = () => {
       title: "Thời gian hiển thị",
       key: "time",
       width: isMobile ? 200 : 220,
+      sorter: (a, b) => new Date(a.start_at) - new Date(b.start_at),
       render: (_, b) => (
         <div style={{ fontSize: 13, color: "#666" }}>
           <div>
@@ -149,6 +151,7 @@ const BannerManager = () => {
       key: "is_active",
       width: isMobile ? 120 : 120,
       align: "center",
+      sorter: (a, b) => Number(a.is_active) - Number(b.is_active),
       render: (active) =>
         active ? (
           <Tag icon={<EyeOutlined />} color="success">

@@ -142,15 +142,15 @@ export default function ReportProductsPage() {
       align: "center",
       render: (value) => <Tag color={value <= 10 ? "warning" : "success"}>{value}</Tag>,
     },
-    {
-      title: "Thao tác",
-      align: "center",
-      render: (_, record) => (
-        <Tooltip title="Chỉnh sửa">
-          <Button type="text" icon={<EditOutlined />} size="small" onClick={() => message.info(`Sửa: ${record.name}`)} />
-        </Tooltip>
-      )
-    }
+    // {
+    //   title: "Thao tác",
+    //   align: "center",
+    //   render: (_, record) => (
+    //     <Tooltip title="Chỉnh sửa">
+    //       <Button type="text" icon={<EditOutlined />} size="small" onClick={() => message.info(`Sửa: ${record.name}`)} />
+    //     </Tooltip>
+    //   )
+    // }
   ];
 
   const lowStockColumns = [

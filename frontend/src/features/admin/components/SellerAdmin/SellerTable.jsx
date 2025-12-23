@@ -20,7 +20,7 @@ const SellerTable = ({
   onView,
   onLock,
   onRow,
-  // Các props cho thao tác hàng loạt (Optional)
+  // Các props cho thao tác hàng loạt
   onBulkApprove,
   onBulkReject,
   onBulkLock,
@@ -61,29 +61,50 @@ const SellerTable = ({
     }
   };
 
-  // --- COLUMNS (Giữ nguyên logic cũ của bạn) ---
+  // --- COLUMNS (Đã thêm thuộc tính sorter) ---
   const columns = [
-    { title: "ID", dataIndex: "id", key: "id", width: 60, align: "center" },
+    {
+      title: "ID",
+      dataIndex: "id",
+      key: "id",
+      width: 60,
+      align: "center",
+      // Sắp xếp theo số ID
+      sorter: (a, b) => a.id - b.id,
+    },
     {
       title: "Tên cửa hàng",
       dataIndex: "store_name",
       key: "store_name",
       width: 250,
+      // Sắp xếp theo tên (Tiếng Việt)
+      sorter: (a, b) => (a.store_name || "").localeCompare(b.store_name || ""),
     },
-
     {
       title: "Người đăng ký",
       dataIndex: "owner_username",
       key: "owner_username",
       width: 150,
+      // Sắp xếp theo username
+      sorter: (a, b) =>
+        (a.owner_username || "").localeCompare(b.owner_username || ""),
     },
-    { title: "Email", dataIndex: "user_email", key: "user_email", width: 220 },
+    {
+      title: "Email",
+      dataIndex: "user_email",
+      key: "user_email",
+      width: 220,
+      // Sắp xếp theo email
+      sorter: (a, b) => (a.user_email || "").localeCompare(b.user_email || ""),
+    },
     {
       title: "Trạng thái",
       dataIndex: "status",
       key: "status",
       width: 120,
       align: "center",
+      // Sắp xếp theo trạng thái
+      sorter: (a, b) => (a.status || "").localeCompare(b.status || ""),
       render: (status) => <SellerStatusTag status={status} />,
     },
     {
@@ -92,6 +113,8 @@ const SellerTable = ({
       key: "created_at",
       width: 160,
       align: "center",
+      // Sắp xếp theo thời gian
+      sorter: (a, b) => dayjs(a.created_at).unix() - dayjs(b.created_at).unix(),
       render: (date) => (date ? dayjs(date).format("DD/MM/YYYY HH:mm") : "—"),
     },
     {
@@ -101,7 +124,6 @@ const SellerTable = ({
       align: "center",
       fixed: "right",
       render: (_, record) => {
-        // Logic nút đơn lẻ (giữ nguyên)
         const actions = [
           {
             icon: <EyeOutlined />,
@@ -165,7 +187,6 @@ const SellerTable = ({
               Đã chọn <b>{selectedRowKeys.length}</b> cửa hàng
             </span>
 
-            {/* Chỉ hiện nút DUYỆT nếu component cha truyền hàm onBulkApprove */}
             {onBulkApprove && (
               <Popconfirm
                 title="Duyệt các mục đã chọn?"
@@ -181,7 +202,6 @@ const SellerTable = ({
               </Popconfirm>
             )}
 
-            {/* Chỉ hiện nút TỪ CHỐI nếu component cha truyền hàm onBulkReject */}
             {onBulkReject && (
               <Popconfirm
                 title="Từ chối các mục đã chọn?"
@@ -193,7 +213,6 @@ const SellerTable = ({
               </Popconfirm>
             )}
 
-            {/* Chỉ hiện nút KHÓA/MỞ KHÓA nếu component cha truyền hàm onBulkLock */}
             {onBulkLock && (
               <Popconfirm
                 title="Thực hiện Khóa / Mở khóa các mục đã chọn?"
@@ -214,7 +233,7 @@ const SellerTable = ({
           </Space>
         ) : (
           <span style={{ color: "#999", fontStyle: "italic" }}>
-            {/* Tích chọn vào ô bên trái để thao tác nhiều dòng */}
+            
           </span>
         )}
       </div>

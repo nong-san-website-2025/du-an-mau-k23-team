@@ -147,6 +147,7 @@ const CategoryManagementPage = () => {
       dataIndex: "name",
       key: "name",
       width: 350,
+      sorter: (a, b) => a.name.localeCompare(b.name),
       render: (text, record) => (
         <Space>
           {record.image ? (
@@ -188,6 +189,7 @@ const CategoryManagementPage = () => {
       key: "type",
       width: 150,
       align: 'center',
+      sorter: (a, b) => a.type.localeCompare(b.type),
       render: (type) => (
         <span style={{
           fontSize: '12px',
@@ -206,6 +208,7 @@ const CategoryManagementPage = () => {
       key: "commission_rate",
       width: 120,
       align: 'center',
+      sorter: (a, b) => a.commission_rate - b.commission_rate,
       render: (_, record) => {
         // Chỉ cho phép sửa phí sàn ở Category cha (hoặc tùy logic của bạn)
         if (record.type === 'Category') {
@@ -220,6 +223,7 @@ const CategoryManagementPage = () => {
       key: "status",
       width: 150,
       align: 'center',
+      sorter: (a, b) => a.status.localeCompare(b.status),
       render: (status) => <StatusTag status={status} />,
     },
     // --- PHẦN QUAN TRỌNG: CỘT HÀNH ĐỘNG ĐÃ CÓ TOOLTIP CONFIG ---

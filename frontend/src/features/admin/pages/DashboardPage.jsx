@@ -35,8 +35,8 @@ export default function DashboardPage() {
   const { data, isLoading, isError, dataUpdatedAt } = useQuery({
     queryKey: ["dashboardData"],
     queryFn: fetchData,
-    refetchInterval: 10000, // Tự động làm mới mỗi 10 giây
-    keepPreviousData: true, // Giúp giao diện không bị giật khi đang tải lại
+    // refetchInterval: 10000, // Tự động làm mới mỗi 10 giây
+    // keepPreviousData: true, // Giúp giao diện không bị giật khi đang tải lại
   });
 
   // ✅ 3. Trạng thái tải dữ liệu lần đầu (Loading)
@@ -128,7 +128,7 @@ export default function DashboardPage() {
             Cập nhật lần cuối lúc: {new Date(dataUpdatedAt).toLocaleTimeString()}
           </small>
         </Col>
-        <Badge status="processing" text="Dữ liệu trực tuyến (10s)" />
+        
       </Row>
 
       {/* KPI Cards Section */}

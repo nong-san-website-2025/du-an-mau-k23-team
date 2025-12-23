@@ -1,15 +1,43 @@
 import React, { useState } from "react";
-import { Table, Switch, Tag, Space, message, Typography, Image, Tooltip, Skeleton, Checkbox } from "antd";
-import { EditOutlined, DeleteOutlined, EyeOutlined, UserOutlined } from "@ant-design/icons";
+import {
+  Table,
+  Switch,
+  Tag,
+  Space,
+  message,
+  Typography,
+  Image,
+  Tooltip,
+  Skeleton,
+  Checkbox,
+} from "antd";
+import {
+  EditOutlined,
+  DeleteOutlined,
+  EyeOutlined,
+  UserOutlined,
+} from "@ant-design/icons";
 import { adminDeleteBlog, adminTogglePublish } from "../../../blog/api/blogApi";
 
-import ButtonAction from "../../../../components/ButtonAction"; 
+import ButtonAction from "../../../../components/ButtonAction";
 
 const { Text } = Typography;
 
-export default function BlogTable({ blogs, loading, pagination, onChange, fetchBlogs, setEditing, setDrawerVisible, selectedRows, onSelectionChange }) {
+export default function BlogTable({
+  blogs,
+  loading,
+  pagination,
+  onChange,
+  fetchBlogs,
+  setEditing,
+  setDrawerVisible,
+  selectedRows,
+  onSelectionChange,
+}) {
   const [selectAll, setSelectAll] = useState(false);
-  const isMobile = typeof window !== "undefined" && window.matchMedia("(max-width: 480px)").matches;
+  const isMobile =
+    typeof window !== "undefined" &&
+    window.matchMedia("(max-width: 480px)").matches;
 
   const handleDelete = async (slug) => {
     try {
@@ -35,7 +63,7 @@ export default function BlogTable({ blogs, loading, pagination, onChange, fetchB
     const checked = e.target.checked;
     setSelectAll(checked);
     if (checked) {
-      const allIds = blogs.map(blog => blog.id);
+      const allIds = blogs.map((blog) => blog.id);
       onSelectionChange(allIds);
     } else {
       onSelectionChange([]);
@@ -49,7 +77,7 @@ export default function BlogTable({ blogs, loading, pagination, onChange, fetchB
         newSelection.push(id);
       }
     } else {
-      newSelection = newSelection.filter(item => item !== id);
+      newSelection = newSelection.filter((item) => item !== id);
       setSelectAll(false);
     }
     onSelectionChange(newSelection);
@@ -60,7 +88,9 @@ export default function BlogTable({ blogs, loading, pagination, onChange, fetchB
       title: (
         <Checkbox
           checked={selectAll && blogs.length > 0}
-          indeterminate={selectedRows.length > 0 && selectedRows.length < blogs.length}
+          indeterminate={
+            selectedRows.length > 0 && selectedRows.length < blogs.length
+          }
           onChange={handleSelectAll}
         />
       ),
@@ -86,7 +116,7 @@ export default function BlogTable({ blogs, loading, pagination, onChange, fetchB
               src={src}
               width={isMobile ? 44 : 50}
               height={isMobile ? 44 : 50}
-              style={{ objectFit: 'cover', borderRadius: 4 }}
+              style={{ objectFit: "cover", borderRadius: 4 }}
               fallback="https://gw.alipayobjects.com/zos/antfincdn/aPkFc8Sj7n/method-draw-image.svg"
             />
           );
@@ -94,43 +124,66 @@ export default function BlogTable({ blogs, loading, pagination, onChange, fetchB
         return (
           <Skeleton.Image
             active={false}
-            style={{ width: isMobile ? 44 : 50, height: isMobile ? 44 : 50, borderRadius: 4, minWidth: isMobile ? 44 : 50 }}
+            style={{
+              width: isMobile ? 44 : 50,
+              height: isMobile ? 44 : 50,
+              borderRadius: 4,
+              minWidth: isMobile ? 44 : 50,
+            }}
           />
         );
-      }
+      },
     },
     {
       title: "Thông tin bài viết",
       dataIndex: "title",
       width: isMobile ? 240 : undefined,
+      sorter: (a, b) => a.title.localeCompare(b.title),
       render: (text, record) => (
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <Text strong style={{ fontSize: 15, whiteSpace: 'nowrap' }} ellipsis={{ tooltip: text }}>
+        <div style={{ display: "flex", flexDirection: "column" }}>
+          <Text
+            strong
+            style={{ fontSize: 15, whiteSpace: "nowrap" }}
+            ellipsis={{ tooltip: text }}
+          >
             {text}
           </Text>
-          <Text type="secondary" style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
+          <Text type="secondary" style={{ fontSize: 12, whiteSpace: "nowrap" }}>
             Slug: {record.slug}
           </Text>
         </div>
-      )
+      ),
     },
     {
       title: "Danh mục",
       dataIndex: "category_name",
       width: isMobile ? 120 : 150,
+      sorter: (a, b) => a.category_name.localeCompare(b.category_name),
       render: (name) => (
         <Tag color="cyan">
-          <span style={{ display: 'inline-block', maxWidth: isMobile ? 110 : 140, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</span>
+          <span
+            style={{
+              display: "inline-block",
+              maxWidth: isMobile ? 110 : 140,
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
+            {name}
+          </span>
         </Tag>
-      )
+      ),
     },
     {
       title: "Lượt xem",
-      dataIndex: "views", 
+      dataIndex: "views",
       width: isMobile ? 100 : 100,
       align: "center",
+
+      sorter: (a, b) => (a.views || 0) - (b.views || 0),
       render: (count) => (
-        <Space style={{ whiteSpace: 'nowrap' }}>
+        <Space style={{ whiteSpace: "nowrap" }}>
           <EyeOutlined style={{ color: "#1890ff" }} />
           <Text strong>{count ? count.toLocaleString() : 0}</Text>
         </Space>
@@ -143,9 +196,19 @@ export default function BlogTable({ blogs, loading, pagination, onChange, fetchB
       width: isMobile ? 140 : 150,
       render: (name) => (
         <Tag icon={<UserOutlined />} color="default">
-          <span style={{ display: 'inline-block', maxWidth: isMobile ? 120 : 140, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</span>
+          <span
+            style={{
+              display: "inline-block",
+              maxWidth: isMobile ? 120 : 140,
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
+            {name}
+          </span>
         </Tag>
-      ) 
+      ),
     },
     {
       title: "Trạng thái",
@@ -168,7 +231,13 @@ export default function BlogTable({ blogs, loading, pagination, onChange, fetchB
       dataIndex: "created_at",
       width: isMobile ? 120 : 140,
       align: "right",
-      render: (d) => <Text type="secondary" style={{ fontSize: 13, whiteSpace: 'nowrap' }}>{new Date(d).toLocaleDateString("vi-VN")}</Text>,
+
+      sorter: (a, b) => new Date(a.created_at) - new Date(b.created_at),
+      render: (d) => (
+        <Text type="secondary" style={{ fontSize: 13, whiteSpace: "nowrap" }}>
+          {new Date(d).toLocaleDateString("vi-VN")}
+        </Text>
+      ),
     },
     {
       title: "Thao tác",
@@ -212,7 +281,11 @@ export default function BlogTable({ blogs, loading, pagination, onChange, fetchB
       loading={loading}
       columns={columns}
       dataSource={blogs}
-      pagination={{ ...pagination, showSizeChanger: true, showTotal: (total) => `Tổng ${total} bài` }}
+      pagination={{
+        ...pagination,
+        showSizeChanger: true,
+        showTotal: (total) => `Tổng ${total} bài`,
+      }}
       onChange={(p) => {
         setSelectAll(false);
         onSelectionChange([]);

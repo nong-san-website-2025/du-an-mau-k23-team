@@ -13,7 +13,7 @@ import {
   message,
   Table,
   Tag,
-  Avatar
+  Avatar,
 } from "antd";
 import {
   ShoppingCartOutlined,
@@ -24,13 +24,21 @@ import {
   RiseOutlined,
   DollarOutlined,
   UserOutlined,
-  RightOutlined
+  RightOutlined,
 } from "@ant-design/icons";
 
 import {
-  PieChart, Pie, Cell, Tooltip as RechartsTooltip,
-  XAxis, YAxis, ResponsiveContainer, CartesianGrid, Legend,
-  AreaChart, Area
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip as RechartsTooltip,
+  XAxis,
+  YAxis,
+  ResponsiveContainer,
+  CartesianGrid,
+  Legend,
+  AreaChart,
+  Area,
 } from "recharts";
 
 import AdminPageLayout from "../../components/AdminPageLayout";
@@ -48,8 +56,11 @@ const PIE_COLORS = ["#36A2EB", "#FFCE56", "#4CAF50", "#FF6384", "#9966FF"];
 
 export default function ReportOrdersPage() {
   const [loading, setLoading] = useState(false);
-  const [dateRange, setDateRange] = useState([dayjs().subtract(7, 'd'), dayjs()]);
-  const [timeFilter, setTimeFilter] = useState('week');
+  const [dateRange, setDateRange] = useState([
+    dayjs().subtract(7, "d"),
+    dayjs(),
+  ]);
+  const [timeFilter, setTimeFilter] = useState("week");
   const [isMobile, setIsMobile] = useState(false);
 
   // State tổng hợp
@@ -59,7 +70,7 @@ export default function ReportOrdersPage() {
     pendingOrders: 0,
     cancelRate: 0,
     totalRevenue: 0,
-    avgOrderValue: 0
+    avgOrderValue: 0,
   });
 
   const [chartData, setChartData] = useState({
@@ -77,8 +88,8 @@ export default function ReportOrdersPage() {
     setLoading(true);
     try {
       const params = {
-        start_date: dateRange[0].format('YYYY-MM-DD'),
-        end_date: dateRange[1].format('YYYY-MM-DD')
+        start_date: dateRange[0].format("YYYY-MM-DD"),
+        end_date: dateRange[1].format("YYYY-MM-DD"),
       };
 
       const data = await userApi.getDashboardStats(params);
@@ -89,10 +100,13 @@ export default function ReportOrdersPage() {
         const revenue = data.stats.revenue || 0;
 
         const statusMap = {};
-        data.chartData.status.forEach(item => statusMap[item.name] = item.value);
+        data.chartData.status.forEach(
+          (item) => (statusMap[item.name] = item.value)
+        );
 
-        const pendingCount = (statusMap['Chờ xác nhận'] || 0) + (statusMap['Đang giao'] || 0);
-        const successCount = (statusMap['Hoàn thành'] || 0);
+        const pendingCount =
+          (statusMap["Chờ xác nhận"] || 0) + (statusMap["Đang giao"] || 0);
+        const successCount = statusMap["Hoàn thành"] || 0;
 
         setStats({
           totalOrders: total,
@@ -100,14 +114,14 @@ export default function ReportOrdersPage() {
           pendingOrders: pendingCount,
           cancelRate: data.stats.cancelRate || 0,
           totalRevenue: revenue,
-          avgOrderValue: data.stats.avgOrderValue || 0
+          avgOrderValue: data.stats.avgOrderValue || 0,
         });
 
         // --- 2. Chart Data ---
         setChartData({
           trend: data.chartData.trend || [],
           status: data.chartData.status || [],
-          paymentMethods: data.chartData.paymentMethods || []
+          paymentMethods: data.chartData.paymentMethods || [],
         });
 
         // --- 4. Recent Orders ---
@@ -130,38 +144,89 @@ export default function ReportOrdersPage() {
     const mql = window.matchMedia("(max-width: 480px)");
     const handleChange = (e) => setIsMobile(e.matches);
     handleChange(mql);
-    mql.addEventListener ? mql.addEventListener("change", handleChange) : mql.addListener(handleChange);
+    mql.addEventListener
+      ? mql.addEventListener("change", handleChange)
+      : mql.addListener(handleChange);
     return () => {
-      mql.removeEventListener ? mql.removeEventListener("change", handleChange) : mql.removeListener(handleChange);
+      mql.removeEventListener
+        ? mql.removeEventListener("change", handleChange)
+        : mql.removeListener(handleChange);
     };
   }, []);
 
   // --- HELPER RENDER ---
   const renderStatusTag = (status) => {
-    let color = 'default';
-    let label = 'Không rõ';
+    let color = "default";
+    let label = "Không rõ";
     switch (status) {
-      case 'completed': color = 'success'; label = 'Hoàn thành'; break;
-      case 'shipping': color = 'processing'; label = 'Đang giao'; break;
-      case 'pending': color = 'warning'; label = 'Chờ xử lý'; break;
-      case 'cancelled': color = 'error'; label = 'Đã hủy'; break;
-      default: break;
+      case "completed":
+        color = "success";
+        label = "Hoàn thành";
+        break;
+      case "shipping":
+        color = "processing";
+        label = "Đang giao";
+        break;
+      case "pending":
+        color = "warning";
+        label = "Chờ xử lý";
+        break;
+      case "cancelled":
+        color = "error";
+        label = "Đã hủy";
+        break;
+      default:
+        break;
     }
     return <Tag color={color}>{label}</Tag>;
   };
 
   const columnsRecentOrders = [
-    { title: 'Mã đơn', dataIndex: 'id', width: isMobile ? 80 : 100, render: (text) => <span style={{ cursor: 'pointer', color: '#1890ff' }}>{text}</span> },
-    { title: 'Khách hàng', dataIndex: 'customer', width: isMobile ? 160 : 220, render: (text) => <Space><Avatar size="small" icon={<UserOutlined />} /> <span style={{ display: 'inline-block', maxWidth: isMobile ? 120 : 180, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{text}</span></Space> },
-    { title: 'Ngày đặt', dataIndex: 'date', width: isMobile ? 120 : 140 },
     {
-      title: 'Tổng tiền',
-      dataIndex: 'total',
-      width: isMobile ? 120 : 140,
-      align: 'right',
-      render: (val) => <Text strong>{intcomma(val)} đ</Text>
+      title: "Mã đơn",
+      dataIndex: "id",
+      width: isMobile ? 80 : 100,
+      render: (text) => (
+        <span style={{ cursor: "pointer", color: "#1890ff" }}>{text}</span>
+      ),
     },
-    { title: 'Trạng thái', dataIndex: 'status', width: isMobile ? 130 : 160, render: (status) => renderStatusTag(status) },
+    {
+      title: "Khách hàng",
+      dataIndex: "customer",
+      width: isMobile ? 160 : 220,
+      render: (text) => (
+        <Space>
+          <Avatar size="small" icon={<UserOutlined />} />{" "}
+          <span
+            style={{
+              display: "inline-block",
+              maxWidth: isMobile ? 120 : 180,
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
+            {text}
+          </span>
+        </Space>
+      ),
+    },
+    { title: "Ngày đặt", dataIndex: "date", width: isMobile ? 120 : 140, sorter: (a, b) => new Date(a.date) - new Date(b.date), },
+    
+    {
+      title: "Tổng tiền",
+      dataIndex: "total",
+      width: isMobile ? 120 : 140,
+      align: "right",
+      sorter: (a, b) => a.total - b.total,
+      render: (val) => <Text strong>{intcomma(val)} đ</Text>,
+    },
+    {
+      title: "Trạng thái",
+      dataIndex: "status",
+      width: isMobile ? 130 : 160,
+      render: (status) => renderStatusTag(status),
+    },
   ];
 
   // --- HANDLERS ---
@@ -169,10 +234,17 @@ export default function ReportOrdersPage() {
     setTimeFilter(val);
     const today = dayjs();
     switch (val) {
-      case 'today': setDateRange([today, today]); break;
-      case 'week': setDateRange([today.subtract(7, 'd'), today]); break;
-      case 'month': setDateRange([today.startOf('month'), today]); break;
-      default: break;
+      case "today":
+        setDateRange([today, today]);
+        break;
+      case "week":
+        setDateRange([today.subtract(7, "d"), today]);
+        break;
+      case "month":
+        setDateRange([today.startOf("month"), today]);
+        break;
+      default:
+        break;
     }
   };
 
@@ -203,7 +275,7 @@ export default function ReportOrdersPage() {
       icon: <CloseCircleOutlined />,
       color: "#ff4d4f",
       trend: -2,
-    }
+    },
   ];
 
   return (
@@ -211,7 +283,11 @@ export default function ReportOrdersPage() {
       title="THỐNG KÊ ĐƠN HÀNG"
       extra={
         <Space wrap>
-          <Select value={timeFilter} onChange={handleTimeChange} style={{ width: 120 }}>
+          <Select
+            value={timeFilter}
+            onChange={handleTimeChange}
+            style={{ width: 120 }}
+          >
             <Option value="today">Hôm nay</Option>
             <Option value="week">7 ngày qua</Option>
             <Option value="month">Tháng này</Option>
@@ -219,17 +295,29 @@ export default function ReportOrdersPage() {
           </Select>
           <RangePicker
             value={dateRange}
-            onChange={(dates) => { setDateRange(dates); setTimeFilter('custom'); }}
+            onChange={(dates) => {
+              setDateRange(dates);
+              setTimeFilter("custom");
+            }}
             format="DD/MM/YYYY"
             allowClear={false}
           />
-          <Button icon={<ReloadOutlined />} onClick={fetchData} loading={loading} />
-          <Button icon={<DownloadOutlined />} type="primary">Xuất Báo Cáo</Button>
+          <Button
+            icon={<ReloadOutlined />}
+            onClick={fetchData}
+            loading={loading}
+          />
+          <Button icon={<DownloadOutlined />} type="primary">
+            Xuất Báo Cáo
+          </Button>
         </Space>
       }
     >
-      <Space direction="vertical" size={24} style={{ width: "100%", paddingBottom: 24 }}>
-
+      <Space
+        direction="vertical"
+        size={24}
+        style={{ width: "100%", paddingBottom: 24 }}
+      >
         {/* --- SECTION 1: KEY METRICS (REPLACED WITH STATS SECTION) --- */}
         <StatsSection items={statsItems} loading={loading} />
 
@@ -238,23 +326,55 @@ export default function ReportOrdersPage() {
           {/* Chart 1: Xu hướng đơn hàng & Doanh thu */}
           <Col xs={24} lg={16}>
             <Card
-              title={<Space><RiseOutlined /><span>Phân tích xu hướng</span></Space>}
-              bordered={false} className="shadow-sm" loading={loading}
+              title={
+                <Space>
+                  <RiseOutlined />
+                  <span>Phân tích xu hướng</span>
+                </Space>
+              }
+              bordered={false}
+              className="shadow-sm"
+              loading={loading}
             >
               <div style={{ height: 350 }}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartData.trend} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                  <AreaChart
+                    data={chartData.trend}
+                    margin={{ top: 10, right: 0, left: -20, bottom: 0 }}
+                  >
                     <defs>
-                      <linearGradient id="colorOrders" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#1890ff" stopOpacity={0.8} />
-                        <stop offset="95%" stopColor="#1890ff" stopOpacity={0} />
+                      <linearGradient
+                        id="colorOrders"
+                        x1="0"
+                        y1="0"
+                        x2="0"
+                        y2="1"
+                      >
+                        <stop
+                          offset="5%"
+                          stopColor="#1890ff"
+                          stopOpacity={0.8}
+                        />
+                        <stop
+                          offset="95%"
+                          stopColor="#1890ff"
+                          stopOpacity={0}
+                        />
                       </linearGradient>
                     </defs>
                     <XAxis dataKey="date" tick={{ fontSize: 12 }} />
                     <YAxis tick={{ fontSize: 12 }} />
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.2} />
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      vertical={false}
+                      opacity={0.2}
+                    />
                     <RechartsTooltip
-                      contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}
+                      contentStyle={{
+                        borderRadius: 8,
+                        border: "none",
+                        boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+                      }}
                     />
                     <Legend verticalAlign="top" height={36} />
                     <Area
@@ -276,8 +396,10 @@ export default function ReportOrdersPage() {
           <Col xs={24} lg={8}>
             <Card
               title="Trạng thái đơn hàng"
-              bordered={false} className="shadow-sm" loading={loading}
-              style={{ height: '100%' }}
+              bordered={false}
+              className="shadow-sm"
+              loading={loading}
+              style={{ height: "100%" }}
             >
               <div style={{ height: 350 }}>
                 <ResponsiveContainer>
@@ -290,11 +412,18 @@ export default function ReportOrdersPage() {
                       dataKey="value"
                     >
                       {chartData.status.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={PIE_COLORS[index % PIE_COLORS.length]}
+                        />
                       ))}
                     </Pie>
                     <RechartsTooltip />
-                    <Legend layout="vertical" verticalAlign="middle" align="right" />
+                    <Legend
+                      layout="vertical"
+                      verticalAlign="middle"
+                      align="right"
+                    />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
@@ -307,23 +436,28 @@ export default function ReportOrdersPage() {
           <Col span={24}>
             <Card
               title="Đơn hàng gần đây"
-              bordered={false} className="shadow-sm" loading={loading}
-              extra={<Button type="link">Đến quản lý đơn hàng <RightOutlined /></Button>}
+              bordered={false}
+              className="shadow-sm"
+              loading={loading}
+              extra={
+                <Button type="link">
+                  Đến quản lý đơn hàng <RightOutlined />
+                </Button>
+              }
             >
               <Table
                 dataSource={recentOrders}
                 columns={columnsRecentOrders}
                 pagination={false}
                 rowKey="id"
-                size={isMobile ? 'small' : 'middle'}
+                size={isMobile ? "small" : "middle"}
                 tableLayout="fixed"
                 scroll={isMobile ? { x: 700 } : undefined}
-                style={isMobile ? { whiteSpace: 'nowrap' } : undefined}
+                style={isMobile ? { whiteSpace: "nowrap" } : undefined}
               />
             </Card>
           </Col>
         </Row>
-
       </Space>
     </AdminPageLayout>
   );

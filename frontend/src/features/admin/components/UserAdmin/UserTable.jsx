@@ -50,7 +50,6 @@ export default function UserTable({
   const [rolesLoading, setRolesLoading] = useState(false);
 
   // Preload roles so edit can show role select immediately
-  // Note: Kiểm tra file "./api/userApi" để đảm bảo fetchRoles cũng dùng env nhé
   useEffect(() => {
     let mounted = true;
     const load = async () => {
@@ -70,9 +69,13 @@ export default function UserTable({
     const mql = window.matchMedia("(max-width: 480px)");
     const handleChange = (e) => setIsMobile(e.matches);
     handleChange(mql);
-    mql.addEventListener ? mql.addEventListener("change", handleChange) : mql.addListener(handleChange);
+    mql.addEventListener
+      ? mql.addEventListener("change", handleChange)
+      : mql.addListener(handleChange);
     return () => {
-      mql.removeEventListener ? mql.removeEventListener("change", handleChange) : mql.removeListener(handleChange);
+      mql.removeEventListener
+        ? mql.removeEventListener("change", handleChange)
+        : mql.removeListener(handleChange);
       mounted = false;
     };
   }, []);
@@ -119,25 +122,20 @@ export default function UserTable({
     }),
   };
 
-  // --- LOGIC 1: LẤY CHI TIẾT USER ĐỂ SỬA (FIX LỖI HIỂN THỊ ID) ---
+  // --- LOGIC 1: LẤY CHI TIẾT USER ĐỂ SỬA ---
   const handleEditClick = async (record) => {
-    // Bật trạng thái loading
     setIsFetchingDetail(true);
     try {
       const token = localStorage.getItem("token");
-      // SỬ DỤNG ENV Ở ĐÂY
       const response = await axios.get(
         `${API_URL}/users/management/${record.id}/`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
-      // Mở Drawer với dữ liệu đầy đủ vừa tải về
       setEditingUser(response.data);
     } catch (error) {
       console.error("Lỗi lấy chi tiết user:", error);
-
-      // Fallback: Nếu lỗi mạng, dùng tạm dữ liệu từ bảng (dù có thể hiển thị chưa đẹp)
       setEditingUser(record);
     } finally {
       setIsFetchingDetail(false);
@@ -145,7 +143,6 @@ export default function UserTable({
   };
 
   const handleEditSave = (updatedUser) => {
-    // Cập nhật lại danh sách sau khi lưu thành công
     setUsers((prev) =>
       prev.map((u) => (u.id === updatedUser.id ? updatedUser : u))
     );
@@ -155,7 +152,6 @@ export default function UserTable({
   // --- LOGIC 2: KHÓA/MỞ KHÓA TÀI KHOẢN ---
   const handleToggleUser = async (user) => {
     try {
-      // SỬ DỤNG ENV Ở ĐÂY
       const res = await axios.patch(
         `${API_URL}/users/toggle-active/${user.id}/`,
         {},
@@ -188,7 +184,6 @@ export default function UserTable({
       cancelText: "Hủy",
       onOk: async () => {
         try {
-          // SỬ DỤNG ENV Ở ĐÂY
           await axios.delete(`${API_URL}/users/management/${user.id}/`, {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -224,10 +219,8 @@ export default function UserTable({
     {
       show: true,
       actionType: "edit",
-      // Nếu đang loading đúng dòng này thì hiển thị icon loading
       icon: isFetchingDetail ? <LoadingOutlined /> : <EditOutlined />,
       tooltip: "Chỉnh sửa",
-      // SỬ DỤNG HÀM FETCH CHI TIẾT
       onClick: () => handleEditClick(record),
     },
     {
@@ -246,9 +239,11 @@ export default function UserTable({
       },
     },
     (() => {
-      // Determine why delete should be disabled, prefer explicit server-side `can_delete`
       const cannotDeleteReason = (() => {
-        if (record?.role?.name && String(record.role.name).toLowerCase() === "admin")
+        if (
+          record?.role?.name &&
+          String(record.role.name).toLowerCase() === "admin"
+        )
           return "Không thể xóa: tài khoản quản trị";
         if (record?.can_delete === false)
           return "Không thể xóa: người dùng đã có hoạt động trong hệ thống";
@@ -267,9 +262,10 @@ export default function UserTable({
         show: true,
         actionType: "delete",
         icon: <DeleteOutlined />,
-        tooltip: disabled ? (cannotDeleteReason || "Không thể xóa") : "Xóa tài khoản",
+        tooltip: disabled
+          ? cannotDeleteReason || "Không thể xóa"
+          : "Xóa tài khoản",
         onClick: () => handleDeleteUser(record),
-        // Provide disabled flag and reason for ButtonAction to render nicer UI
         buttonProps: {
           danger: true,
           disabled,
@@ -280,14 +276,15 @@ export default function UserTable({
     })(),
   ];
 
-  // --- CẤU HÌNH CỘT ---
+  // --- CẤU HÌNH CỘT (ĐÃ THÊM SORTER) ---
   const columns = [
     {
       title: "Người dùng",
       key: "user",
       width: 240,
-      // Disable fixed column on mobile to avoid overlay
       fixed: isMobile ? undefined : "left",
+      // Sắp xếp theo Full Name
+      sorter: (a, b) => (a.full_name || "").localeCompare(b.full_name || ""),
       render: (_, record) => (
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <Avatar src={record.avatar} size={40}>
@@ -295,27 +292,50 @@ export default function UserTable({
           </Avatar>
           <div>
             <div style={{ fontWeight: 600 }}>{record.full_name}</div>
-            <div style={{ fontSize: 12, color: "#888" }}>@{record.username}</div>
+            <div style={{ fontSize: 12, color: "#888" }}>
+              @{record.username}
+            </div>
           </div>
         </div>
       ),
     },
-    // Cột 2: Liên hệ (Contact) - Tách riêng ra
     {
       title: "Liên hệ",
       key: "contact",
       width: 220,
+      // Sắp xếp theo Email
+      sorter: (a, b) => (a.email || "").localeCompare(b.email || ""),
       render: (_, record) => (
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          {/* Email */}
-          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              fontSize: 13,
+            }}
+          >
             <MailOutlined style={{ color: "#1890ff" }} />
-            <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 200 }} title={record.email}>
+            <span
+              style={{
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                maxWidth: 200,
+              }}
+              title={record.email}
+            >
               {record.email || "—"}
             </span>
           </div>
-          {/* Phone */}
-          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              fontSize: 13,
+            }}
+          >
             <PhoneOutlined style={{ color: "#52c41a" }} />
             <span>{record.phone || "—"}</span>
           </div>
@@ -327,10 +347,11 @@ export default function UserTable({
       key: "role",
       width: 120,
       align: "center",
+      // Sắp xếp theo tên vai trò
+      sorter: (a, b) => (a.role?.name || "").localeCompare(b.role?.name || ""),
       render: (_, record) => {
         const rawRole = record.role?.name ?? "";
         const roleKey = rawRole.toString().toLowerCase();
-
         let displayRole = rawRole || "—";
         let color = "default";
 
@@ -346,37 +367,52 @@ export default function UserTable({
         }
 
         return (
-          <Tag color={color} style={{ borderRadius: 4, minWidth: 80, textAlign: 'center' }}>
+          <Tag
+            color={color}
+            style={{ borderRadius: 4, minWidth: 80, textAlign: "center" }}
+          >
             {displayRole}
           </Tag>
         );
       },
     },
     {
-      title: "Ngày tham gia", // Cột mới thay thế cho Activity
+      title: "Ngày tham gia",
       key: "created_at",
       width: 150,
       align: "center",
+      // Sắp xếp theo thời gian
+      sorter: (a, b) => {
+        const dateA = new Date(a.date_joined || a.created_at || 0);
+        const dateB = new Date(b.date_joined || b.created_at || 0);
+        return dateA - dateB;
+      },
       render: (_, record) => {
-        // Lưu ý: Kiểm tra lại tên trường ngày tháng từ API của bạn (date_joined hoặc created_at)
         const dateVal = record.date_joined || record.created_at;
         return (
           <div style={{ color: "#595959" }}>
             {dateVal ? (
               <>
-                <CalendarOutlined style={{ marginRight: 6, color: "#8c8c8c" }} />
+                <CalendarOutlined
+                  style={{ marginRight: 6, color: "#8c8c8c" }}
+                />
                 {new Date(dateVal).toLocaleDateString("vi-VN")}
               </>
-            ) : "—"}
+            ) : (
+              "—"
+            )}
           </div>
         );
-      }
+      },
     },
     {
       title: "Trạng thái",
       key: "status",
       width: 120,
       align: "center",
+      // Sắp xếp theo trạng thái (true/false)
+      sorter: (a, b) =>
+        a.is_active === b.is_active ? 0 : a.is_active ? -1 : 1,
       render: (_, record) => (
         <div style={{ display: "flex", justifyContent: "center" }}>
           <StatusTag status={record.is_active ? "active" : "locked"} />
@@ -387,7 +423,6 @@ export default function UserTable({
       title: "Thao tác",
       key: "actions",
       width: 110,
-      // Disable fixed column on mobile to avoid overlay
       fixed: isMobile ? undefined : "right",
       align: "center",
       render: (_, record) => (
@@ -414,9 +449,12 @@ export default function UserTable({
         bordered
         size={isMobile ? "small" : "middle"}
         tableLayout="fixed"
-        // Ensure horizontal scroll on mobile without overlapping fixed columns
         scroll={isMobile ? { x: 1000 } : { x: 1200 }}
-        style={isMobile ? { background: "#fff", whiteSpace: "nowrap" } : { background: "#fff" }}
+        style={
+          isMobile
+            ? { background: "#fff", whiteSpace: "nowrap" }
+            : { background: "#fff" }
+        }
         onRow={onRow}
       />
 
@@ -431,15 +469,13 @@ export default function UserTable({
 
       {/* Drawer Edit User */}
       <Drawer
-        title={`Sửa thông tin: ${editingUser?.full_name || editingUser?.username || "..."
-          }`}
+        title={`Sửa thông tin: ${editingUser?.full_name || editingUser?.username || "..."}`}
         placement="right"
         width={Math.min(800, window.innerWidth)}
         onClose={() => setEditingUser(null)}
         open={!!editingUser}
-        destroyOnClose={true} // Reset form khi đóng
+        destroyOnClose={true}
         bodyStyle={{ padding: 0 }}
-        // Hiển thị thêm loading overlay nếu đang fetch (phòng hờ)
         extra={isFetchingDetail && <Spin size="small" />}
       >
         {editingUser && (

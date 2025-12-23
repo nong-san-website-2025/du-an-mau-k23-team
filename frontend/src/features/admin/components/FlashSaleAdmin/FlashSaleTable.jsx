@@ -1,13 +1,5 @@
 import React, { useState } from "react";
-import {
-  Table,
-  Checkbox,
-  Tag,
-  Badge,
-  Typography,
-  Space,
-  Button,
-} from "antd";
+import { Table, Checkbox, Tag, Badge, Typography, Space } from "antd";
 import { EditOutlined, DeleteOutlined } from "@ant-design/icons";
 import moment from "moment";
 import { intcomma } from "../../../../utils/format";
@@ -23,9 +15,12 @@ export default function FlashSaleTable({
   selectedRows,
   onSelectionChange,
 }) {
-  const isMobile = typeof window !== "undefined" && window.matchMedia("(max-width: 480px)").matches;
+  const isMobile =
+    typeof window !== "undefined" &&
+    window.matchMedia("(max-width: 480px)").matches;
   const [selectAll, setSelectAll] = useState(false);
 
+  // --- Handle Selection ---
   const handleSelectAll = (e) => {
     const checked = e.target.checked;
     setSelectAll(checked);
@@ -50,6 +45,7 @@ export default function FlashSaleTable({
     onSelectionChange(newSelection);
   };
 
+  // --- Action Config ---
   const getActions = (record) => [
     {
       actionType: "edit",
@@ -71,12 +67,15 @@ export default function FlashSaleTable({
     },
   ];
 
+  // --- Table Columns ---
   const columns = [
     {
       title: (
         <Checkbox
           checked={selectAll && data.length > 0}
-          indeterminate={selectedRows.length > 0 && selectedRows.length < data.length}
+          indeterminate={
+            selectedRows.length > 0 && selectedRows.length < data.length
+          }
           onChange={handleSelectAll}
         />
       ),
@@ -94,15 +93,21 @@ export default function FlashSaleTable({
       title: "Khung giờ",
       key: "time",
       width: isMobile ? 220 : 250,
+      // Sắp xếp theo thời gian bắt đầu
+      sorter: (a, b) =>
+        moment(a.start_time).unix() - moment(b.start_time).unix(),
       render: (_, record) => {
         const start = moment(record.start_time);
         const end = moment(record.end_time);
         return (
           <div style={{ display: "flex", flexDirection: "column" }}>
-            <Text strong style={{ whiteSpace: 'nowrap' }}>
+            <Text strong style={{ whiteSpace: "nowrap" }}>
               {start.format("HH:mm DD/MM")} - {end.format("HH:mm DD/MM")}
             </Text>
-            <Text type="secondary" style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
+            <Text
+              type="secondary"
+              style={{ fontSize: 12, whiteSpace: "nowrap" }}
+            >
               {end.diff(start, "hours")} giờ diễn ra
             </Text>
           </div>
@@ -114,11 +119,15 @@ export default function FlashSaleTable({
       key: "product_count",
       align: "center",
       width: isMobile ? 140 : undefined,
+      // Sắp xếp theo tổng số lượng sản phẩm trong mảng
+      sorter: (a, b) =>
+        (a.flashsale_products?.length || 0) -
+        (b.flashsale_products?.length || 0),
       render: (_, record) => {
         const count = record.flashsale_products?.length || 0;
         return (
           <Tag color="geekblue" style={{ fontSize: 13, padding: "4px 10px" }}>
-            <span style={{ whiteSpace: 'nowrap' }}>{count} sản phẩm</span>
+            <span style={{ whiteSpace: "nowrap" }}>{count} sản phẩm</span>
           </Tag>
         );
       },
@@ -128,28 +137,49 @@ export default function FlashSaleTable({
       dataIndex: "is_active",
       key: "status",
       width: isMobile ? 140 : 180,
+      // Sắp xếp theo trạng thái kích hoạt (true/false)
+      sorter: (a, b) => Number(a.is_active) - Number(b.is_active),
       render: (isActive, record) => {
         const now = moment();
         const start = moment(record.start_time);
         const end = moment(record.end_time);
 
-        let statusConfig = { color: "default", text: "Đã kết thúc", status: "default" };
+        let statusConfig = {
+          color: "default",
+          text: "Đã kết thúc",
+          status: "default",
+        };
 
         if (!isActive) {
           statusConfig = { color: "error", text: "Đang ẩn", status: "error" };
         } else if (now.isBetween(start, end)) {
-          statusConfig = { color: "processing", text: "Đang diễn ra", status: "processing" };
+          statusConfig = {
+            color: "processing",
+            text: "Đang diễn ra",
+            status: "processing",
+          };
         } else if (now.isBefore(start)) {
-          statusConfig = { color: "warning", text: "Sắp diễn ra", status: "warning" };
+          statusConfig = {
+            color: "warning",
+            text: "Sắp diễn ra",
+            status: "warning",
+          };
         }
 
-        return <Badge status={statusConfig.status} text={<span style={{ whiteSpace: 'nowrap' }}>{statusConfig.text}</span>} />;
+        return (
+          <Badge
+            status={statusConfig.status}
+            text={
+              <span style={{ whiteSpace: "nowrap" }}>{statusConfig.text}</span>
+            }
+          />
+        );
       },
     },
     {
       title: "Thao tác",
       key: "action",
-      width: isMobile ? 100 : 100,
+      width: 100,
       fixed: isMobile ? undefined : "right",
       render: (_, record) => (
         <ButtonAction actions={getActions(record)} record={record} />
@@ -157,6 +187,7 @@ export default function FlashSaleTable({
     },
   ];
 
+  // --- Nested Product Table ---
   const expandedRowRender = (record) => {
     const productColumns = [
       {
@@ -169,7 +200,11 @@ export default function FlashSaleTable({
         title: "Giá gốc",
         dataIndex: "original_price",
         key: "original",
-        render: (val) => <Text delete type="secondary">{intcomma(val)}đ</Text>,
+        render: (val) => (
+          <Text delete type="secondary">
+            {intcomma(val)}đ
+          </Text>
+        ),
       },
       {
         title: "Giá Flash",
@@ -181,7 +216,8 @@ export default function FlashSaleTable({
               {intcomma(val)}đ
             </Text>
             <Tag color="red">
-              -{Math.round(((r.original_price - val) / r.original_price) * 100)}%
+              -{Math.round(((r.original_price - val) / r.original_price) * 100)}
+              %
             </Tag>
           </Space>
         ),
@@ -191,10 +227,16 @@ export default function FlashSaleTable({
         key: "stock",
         render: (_, r) => {
           const sold = r.stock - r.remaining_stock;
-          const percent = Math.round((sold / r.stock) * 100);
+          const percent = r.stock > 0 ? Math.round((sold / r.stock) * 100) : 0;
           return (
             <div style={{ width: 150 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  fontSize: 12,
+                }}
+              >
                 <span>Đã bán: {sold}</span>
                 <span>Tổng: {r.stock}</span>
               </div>
@@ -213,13 +255,14 @@ export default function FlashSaleTable({
                     background: "#faad14",
                     height: "100%",
                   }}
-                ></div>
+                />
               </div>
             </div>
           );
         },
       },
     ];
+
     return (
       <Table
         columns={productColumns}
@@ -246,12 +289,13 @@ export default function FlashSaleTable({
         pageSize: 10,
         showSizeChanger: true,
       }}
-      onChange={(p) => {
+      // Reset selection khi chuyển trang hoặc lọc/sort
+      onChange={() => {
         setSelectAll(false);
         onSelectionChange([]);
       }}
       bordered
-      size={isMobile ? "small" : "small"}
+      size="small"
       tableLayout="fixed"
       scroll={{ x: isMobile ? 700 : undefined }}
     />
