@@ -256,7 +256,7 @@ export default function ReportCustomersPage() {
         {/* --- Charts Row --- */}
         <Row gutter={[24, 24]}>
           {/* Cột trái: Biểu đồ xu hướng (Chiếm 2/3) */}
-          <Col xs={24} lg={16}>
+          <Col xs={24} lg={24}> {/* Adjusted to occupy full width */}
             <Card 
               loading={loading} 
               title="📈 Xu hướng phát triển khách hàng" 
@@ -268,7 +268,7 @@ export default function ReportCustomersPage() {
                   </Space>
               }
             >
-              <div style={{ width: "100%", height: 350 }}>
+              <div style={{ width: "100%", height: 500 }}> {/* Increased height for better visualization */}
                 <ResponsiveContainer>
                   <LineChart data={trendData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
@@ -287,68 +287,7 @@ export default function ReportCustomersPage() {
 
           {/* Cột phải: Phân nhóm/Demographics (Chiếm 1/3) */}
           <Col xs={24} lg={8}>
-            <Card loading={loading} title="🎯 Phân nhóm khách hàng" bordered={false} style={{ height: '100%' }}>
-                <Tabs defaultActiveKey="1" items={[
-                    {
-                        key: '1',
-                        label: 'Theo phân khúc',
-                        children: (
-                            <div style={{ height: 300, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
-                                {/* Nếu có data thật thì render PieChart, ở đây dùng mock */}
-                                <ResponsiveContainer width="100%" height={200}>
-                                    <PieChart>
-                                        <Pie
-                                            data={segmentationData.length > 0 ? segmentationData : [{name: 'Mới', value: 40}, {name: 'Thân thiết', value: 30}, {name: 'Vãng lai', value: 30}]}
-                                            cx="50%"
-                                            cy="50%"
-                                            innerRadius={60}
-                                            outerRadius={80}
-                                            paddingAngle={5}
-                                            dataKey="value"
-                                        >
-                                            {segmentationData.map((entry, index) => (
-                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                            ))}
-                                        </Pie>
-                                        <Tooltip />
-                                    </PieChart>
-                                </ResponsiveContainer>
-                                <div style={{textAlign: 'center', marginTop: 10}}>
-                                    <Space size="large">
-                                        {segmentationData.slice(0, 3).map((item, index) => (
-                                            <div key={index} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                                                <div style={{ width: 8, height: 8, borderRadius: '50%', background: COLORS[index % COLORS.length] }}></div>
-                                                <Text type="secondary" style={{fontSize: 12}}>{item.segment || item.name}</Text>
-                                            </div>
-                                        ))}
-                                    </Space>
-                                </div>
-                            </div>
-                        )
-                    },
-                    {
-                        key: '2',
-                        label: 'Giới tính (Demo)',
-                        children: (
-                            <div style={{ height: 300, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                                <Row gutter={16} style={{width: '100%', marginBottom: 20}}>
-                                    <Col span={12} style={{textAlign: 'center'}}>
-                                        <ManOutlined style={{ fontSize: 40, color: '#1890ff' }} />
-                                        <div><Text strong>45%</Text></div>
-                                        <Text type="secondary">Nam</Text>
-                                    </Col>
-                                    <Col span={12} style={{textAlign: 'center'}}>
-                                        <WomanOutlined style={{ fontSize: 40, color: '#eb2f96' }} />
-                                        <div><Text strong>55%</Text></div>
-                                        <Text type="secondary">Nữ</Text>
-                                    </Col>
-                                </Row>
-                                <Progress percent={55} strokeColor="#eb2f96" trailColor="#1890ff" showInfo={false} />
-                            </div>
-                        )
-                    }
-                ]} />
-            </Card>
+          
           </Col>
         </Row>
 
