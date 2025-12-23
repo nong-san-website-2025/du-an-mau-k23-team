@@ -219,10 +219,9 @@ export default function ReportProductsPage() {
       {/* --- PHẦN 2: BIỂU ĐỒ VÀ BẢNG CHI TIẾT --- */}
       <Row gutter={[24, 24]}>
         {/* Cột trái: Biểu đồ Top Sản Phẩm */}
-        <Col xs={24} lg={16}>
+        <Col xs={24} lg={12}> {/* Adjusted to half width */}
           <Card
             title={
-              // THAY ĐỔI: Sử dụng Space và TrophyOutlined thay cho emoji 🏆
               <Space align="center">
                 <TrophyOutlined style={{ color: "#faad14", fontSize: "20px" }} />
                 <Title level={4} style={{ margin: 0 }}>Top Sản Phẩm Bán Chạy</Title>
@@ -249,35 +248,23 @@ export default function ReportProductsPage() {
                 ) : <Empty description="Chưa có dữ liệu bán hàng" image={Empty.PRESENTED_IMAGE_SIMPLE} style={{ marginTop: 80 }} />}
               </ResponsiveContainer>
             </div>
-
-            <div style={{ marginTop: 24 }}>
-              <Table
-                columns={topColumns}
-                dataSource={topProducts}
-                rowKey="id"
-                pagination={false}
-                size="small"
-              />
-            </div>
           </Card>
         </Col>
 
-        {/* Cột phải: Quản lý tồn kho */}
-        <Col xs={24} lg={8}>
+        {/* Cột phải: Cảnh báo tồn kho */}
+        <Col xs={24} lg={12}> {/* Adjusted to half width */}
           <Card
             title={
-              // THAY ĐỔI: Sử dụng Space và AlertOutlined thay cho emoji ⚠️
               <Space align="center">
-                <AlertOutlined style={{ color: "#fa8c16", fontSize: "20px" }} />
+                <WarningOutlined style={{ color: "#fa8c16", fontSize: "20px" }} />
                 <Title level={4} style={{ margin: 0 }}>Cảnh Báo Tồn Kho</Title>
               </Space>
             }
             bordered={false}
             className="shadow-sm"
             style={{ height: '100%' }}
-            extra={<ShoppingCartOutlined style={{ fontSize: 20, color: '#fa8c16' }} />}
           >
-            <Tabs defaultActiveKey="low" items={lowStockTabs} size="middle" />
+            <Tabs defaultActiveKey="low" items={lowStockTabs} />
           </Card>
         </Col>
       </Row>
