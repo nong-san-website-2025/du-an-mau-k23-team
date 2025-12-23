@@ -384,11 +384,17 @@ const UserReports = () => {
                         </Popconfirm>
                     )}
                     
+                    {/* [UPDATE] Nút "Làm mới" (Refresh) đã được chỉnh style */}
                     <Button 
-                        type="primary" 
+                        // Đã xóa type="primary" để nhận style custom
                         icon={<ReloadOutlined />} 
                         onClick={refreshReports} 
                         loading={loading}
+                        style={{ 
+                            backgroundColor: '#ffffff', // Nền trắng
+                            color: '#000000',           // Chữ đen
+                            borderColor: '#f0f0f0'      // Viền xám nhạt
+                        }}
                     >
                         Làm mới
                     </Button>

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Button, message, Card, Space } from "antd";
-import { PlusOutlined, CloudUploadOutlined } from "@ant-design/icons";
+import { PlusOutlined, CloudUploadOutlined, ReloadOutlined } from "@ant-design/icons";
 
 import AdminPageLayout from "../../components/AdminPageLayout";
 import PromotionFilter from "../../components/PromotionAdmin/PromotionFilter";
@@ -101,12 +101,11 @@ export default function PromotionsPage() {
     }
   };
 
-  // --- [FIX QUAN TRỌNG] LOGIC CHUẨN HÓA DỮ LIỆU ---
+  // --- LOGIC CHUẨN HÓA DỮ LIỆU ---
   const processPayload = (values) => {
     const payload = { ...values };
     
     // 1. Map số lượng từ Form sang DB
-    // Form dùng limit_usage, DB dùng total_quantity
     if (values.limit_usage !== undefined) {
         payload.total_quantity = values.limit_usage;
     }
@@ -116,13 +115,11 @@ export default function PromotionsPage() {
 
     // 2. Logic Phân loại Voucher (Freeship vs Normal)
     if (payload.voucherType === "freeship") {
-      // Freeship: Gán giá trị vào freeship_amount, reset các trường discount về null
       payload.freeship_amount = payload.discountValue;
       payload.discount_amount = null; 
       payload.discount_percent = null;
-      payload.max_discount_amount = null; // Freeship ko cần trần giảm giá
+      payload.max_discount_amount = null;
     } else {
-      // Normal: Reset freeship về null
       payload.freeship_amount = null; 
       
       if (payload.discountType === "percent") {
@@ -140,7 +137,7 @@ export default function PromotionsPage() {
       payload.end_at = payload.dateRange[1].toISOString();
     }
     
-    // 4. Set mặc định Distribution Type = CLAIM (Để user nhận được)
+    // 4. Set mặc định Distribution Type
     payload.distribution_type = 'claim'; 
 
     // 5. Cleanup trường thừa
@@ -173,7 +170,6 @@ export default function PromotionsPage() {
       const errorData = err.response?.data;
       let msg = "Có lỗi xảy ra";
       
-      // Xử lý thông báo lỗi chi tiết từ DRF
       if (typeof errorData === 'object' && errorData !== null) {
           if (errorData.non_field_errors) {
               msg = errorData.non_field_errors[0]; 
@@ -189,13 +185,24 @@ export default function PromotionsPage() {
     }
   };
 
+  // Style chung cho nút
+  const commonButtonStyle = {
+    height: '32px', // Chuẩn height của input Antd
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 0,
+    paddingBottom: 0
+  };
+
   return (
     <AdminPageLayout
       title="QUẢN LÝ KHUYẾN MÃI"
       breadcrumb={['Trang chủ', 'Marketing', 'Khuyến mãi']}
     >
         <Card bordered={false} className="shadow-sm">
-            <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
+            {/* [FIX] alignItems: 'end' -> Căn đáy để các nút thẳng hàng với ô Input (bỏ qua chiều cao của Label phía trên) */}
+            <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'end' }}>
                  <div style={{ flex: 1, marginRight: 16 }}>
                     <PromotionFilter
                         onFilterChange={setFilters}
@@ -207,17 +214,32 @@ export default function PromotionsPage() {
                     <Button 
                         icon={<CloudUploadOutlined />} 
                         onClick={() => setImportModalOpen(true)}
-                        size="large"
-                        style={{ borderColor: '#217346', color: '#217346' }}
+                        style={{ 
+                            ...commonButtonStyle,
+                            borderColor: '#28a645', 
+                            color: '#28a645' 
+                        }}
                     >
                         Import Excel
+                    </Button>
+
+                    <Button
+                        icon={<ReloadOutlined />}
+                        onClick={() => fetchData(filters)}
+                        style={commonButtonStyle}
+                    >
+                        Làm mới
                     </Button>
 
                     <Button 
                         type="primary" 
                         icon={<PlusOutlined />} 
                         onClick={handleCreate}
-                        size="large"
+                        style={{ 
+                            ...commonButtonStyle,
+                            backgroundColor: '#28a645', 
+                            borderColor: '#28a645' 
+                        }}
                     >
                         Tạo Voucher
                     </Button>
