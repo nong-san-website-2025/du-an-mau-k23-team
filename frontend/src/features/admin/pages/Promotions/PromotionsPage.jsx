@@ -26,6 +26,7 @@ import {
 import { getCategories } from "../../services/products";
 
 export default function PromotionsPage() {
+  const isMobile = typeof window !== "undefined" && window.matchMedia("(max-width: 480px)").matches;
   const [loading, setLoading] = useState(false);
   const [modalLoading, setModalLoading] = useState(false);
   

@@ -35,6 +35,7 @@ export default function LoginForm() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [lockedMsg, setLockedMsg] = useState("");
 
   // State quản lý modal
   const [showForgot, setShowForgot] = useState(false);
@@ -178,6 +179,13 @@ export default function LoginForm() {
         // 1. AuthContext đã hiện thông báo lỗi.
         // 2. Trang KHÔNG reload nhờ e.preventDefault()
         // 3. Form vẫn giữ nguyên dữ liệu để người dùng nhập lại.
+        if (result.code === "account_locked" || result.code === "seller_locked") {
+          setLockedMsg("Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.");
+        } else if (typeof result.error === "string" && /khóa|locked|inactive/i.test(result.error)) {
+          setLockedMsg("Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.");
+        } else {
+          setLockedMsg("");
+        }
       }
     } catch (err) {
       // Lỗi sập mạng hoặc crash code
@@ -281,6 +289,15 @@ export default function LoginForm() {
               <Typography variant="body1" align="center" color="text.secondary" mb={3}>
                 {isRegisterMode ? "Tạo tài khoản GreenFarm" : "Chào mừng bạn trở lại với GreenFarm"}
               </Typography>
+
+              {/* Inline alert khi tài khoản bị khóa */}
+              {!isRegisterMode && lockedMsg && (
+                <Box mb={2}>
+                  <Paper elevation={0} sx={{ p: 1.5, border: "1px solid #ffcdd2", background: "#ffebee" }}>
+                    <Typography variant="body2" sx={{ color: "#d32f2f" }}>{lockedMsg}</Typography>
+                  </Paper>
+                </Box>
+              )}
 
               {/* LOGIN FORM */}
               {!isRegisterMode ? (

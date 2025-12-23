@@ -6,31 +6,33 @@ import dayjs from "dayjs";
 const { Text } = Typography;
 
 export default function PromotionTable({ 
-    data, 
-    loading, 
-    onView, 
-    onEdit, 
-    onDelete, 
-    rowSelection 
+  data, 
+  loading, 
+  onView, 
+  onEdit, 
+  onDelete, 
+  rowSelection 
 }) {
+  // Logic responsive từ nhánh ChiTham1
+  const isMobile = typeof window !== "undefined" && window.matchMedia("(max-width: 480px)").matches;
   
   const columns = [
     {
-      title: "Thông tin Voucher",
+      title: (<span style={{ whiteSpace: 'nowrap' }}>Thông tin Voucher</span>),
       dataIndex: "code",
       key: "info",
-      width: 250,
+      width: isMobile ? 240 : 250,
       render: (_, record) => (
         <Space direction="vertical" size={0}>
-          <Text strong copyable style={{ color: '#1677ff' }}>{record.code}</Text>
-          <Text type="secondary" style={{ fontSize: 13 }}>{record.name || record.title}</Text>
+          <Text strong copyable style={{ color: '#1677ff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{record.code}</Text>
+          <Text type="secondary" style={{ fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{record.name || record.title}</Text>
         </Space>
       ),
     },
     {
-      title: "Loại",
+      title: (<span style={{ whiteSpace: 'nowrap' }}>Loại</span>),
       key: "voucher_type",
-      width: 150,
+      width: isMobile ? 140 : 180,
       align: "center",
       render: (_, record) => {
         const isFreeship = 
@@ -39,71 +41,71 @@ export default function PromotionTable({
             record.discount_type === 'freeship';
         
         if (isFreeship) {
-            return <Tag color="purple">Freeship</Tag>;
+            return <Tag color="purple"><span style={{ whiteSpace: 'nowrap' }}>Miễn phí vận chuyển</span></Tag>;
         }
-        return <Tag color="blue">Giảm giá</Tag>;
+        return <Tag color="blue"><span style={{ whiteSpace: 'nowrap' }}>Voucher thường</span></Tag>;
       },
     },
     {
-      title: "Thời gian áp dụng",
+      title: (<span style={{ whiteSpace: 'nowrap' }}>Thời gian áp dụng</span>),
       key: "time",
-      width: 220,
+      width: isMobile ? 200 : 220,
       render: (_, record) => {
-        // [FIX] Kiểm tra kỹ tên trường thời gian từ API trả về
+        // [MERGE] Kết hợp logic lấy dữ liệu của HEAD và giao diện của ChiTham1
         const start = record.start_at || record.start;
         const end = record.end_at || record.end;
 
         return (
-            <div style={{ fontSize: 12 }}>
-              <div style={{ marginBottom: 4 }}>
-                 <span style={{ color: '#888', marginRight: 4 }}>BĐ:</span> 
-                 {start ? dayjs(start).format("DD/MM/YYYY HH:mm") : <span style={{color:'#ccc'}}>--</span>}
-              </div>
-              <div>
-                 <span style={{ color: '#888', marginRight: 4 }}>KT:</span> 
-                 {end ? dayjs(end).format("DD/MM/YYYY HH:mm") : <span style={{color:'#ccc'}}>--</span>}
-              </div>
+          <div style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
+            <div style={{ marginBottom: 4 }}>
+               <span style={{ color: '#888', marginRight: 4 }}>BĐ:</span> 
+               {start ? dayjs(start).format("DD/MM/YYYY HH:mm") : <span style={{color:'#ccc'}}>--</span>}
             </div>
+            <div>
+               <span style={{ color: '#888', marginRight: 4 }}>KT:</span> 
+               {end ? dayjs(end).format("DD/MM/YYYY HH:mm") : <span style={{color:'#ccc'}}>--</span>}
+            </div>
+          </div>
         );
       },
     },
     {
-      title: "Trạng thái",
+      title: (<span style={{ whiteSpace: 'nowrap' }}>Trạng thái</span>),
       dataIndex: "active",
       key: "active",
-      width: 100,
+      width: isMobile ? 100 : 100,
       align: "center",
       render: (active) => (
         active 
-        ? <Tag color="success">Đang chạy</Tag> 
-        : <Tag color="default">Tạm dừng</Tag>
+        ? <Tag color="success"><span style={{ whiteSpace: 'nowrap' }}>Đang chạy</span></Tag> 
+        : <Tag color="default"><span style={{ whiteSpace: 'nowrap' }}>Tạm dừng</span></Tag>
       ),
     },
     {
-      title: "Sử dụng",
+      title: (<span style={{ whiteSpace: 'nowrap' }}>Sử dụng</span>),
       key: "usage",
       align: "center",
-      width: 120,
+      width: isMobile ? 110 : 120,
       render: (_, record) => {
           const used = record.used_quantity || record.issued_count || 0;
           const total = record.total_quantity;
           
           if (total === null || total === undefined) {
               return (
-                  <div style={{ textAlign: 'center' }}>
+                  <div style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
                       <div style={{ fontWeight: 'bold' }}>{used}</div>
                       <div style={{ borderTop: '1px solid #eee', fontSize: 11, color: '#888', marginTop: 2 }}>KGH</div>
                   </div>
               );
           }
-          return <span>{used} / {total}</span>;
+          return <span style={{ whiteSpace: 'nowrap' }}>{used} / {total}</span>;
       }
     },
     {
-      title: "Hành động",
+      title: (<span style={{ whiteSpace: 'nowrap' }}>Hành động</span>),
       key: "actions",
       align: "right",
-      width: 130,
+      width: isMobile ? 100 : 130,
       render: (_, record) => (
         <Space>
           <Tooltip title="Xem chi tiết">
@@ -132,12 +134,15 @@ export default function PromotionTable({
       columns={columns}
       dataSource={data}
       loading={loading}
+      // [MERGE] Giữ lại tính năng chọn dòng từ HEAD
       rowSelection={rowSelection ? {
           type: 'checkbox',
           ...rowSelection,
       } : undefined}
       pagination={{ pageSize: 10, showSizeChanger: true }}
-      scroll={{ x: 1000 }}
+      size={isMobile ? 'small' : 'middle'}
+      tableLayout="fixed"
+      scroll={{ x: isMobile ? 900 : 1000 }}
     />
   );
 }

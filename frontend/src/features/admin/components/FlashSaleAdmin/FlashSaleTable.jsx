@@ -23,6 +23,7 @@ export default function FlashSaleTable({
   selectedRows,
   onSelectionChange,
 }) {
+  const isMobile = typeof window !== "undefined" && window.matchMedia("(max-width: 480px)").matches;
   const [selectAll, setSelectAll] = useState(false);
 
   const handleSelectAll = (e) => {
@@ -80,7 +81,7 @@ export default function FlashSaleTable({
         />
       ),
       dataIndex: "select",
-      width: 50,
+      width: isMobile ? 40 : 50,
       align: "center",
       render: (_, record) => (
         <Checkbox
@@ -92,16 +93,16 @@ export default function FlashSaleTable({
     {
       title: "Khung giờ",
       key: "time",
-      width: 250,
+      width: isMobile ? 220 : 250,
       render: (_, record) => {
         const start = moment(record.start_time);
         const end = moment(record.end_time);
         return (
           <div style={{ display: "flex", flexDirection: "column" }}>
-            <Text strong>
+            <Text strong style={{ whiteSpace: 'nowrap' }}>
               {start.format("HH:mm DD/MM")} - {end.format("HH:mm DD/MM")}
             </Text>
-            <Text type="secondary" style={{ fontSize: 12 }}>
+            <Text type="secondary" style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
               {end.diff(start, "hours")} giờ diễn ra
             </Text>
           </div>
@@ -112,17 +113,21 @@ export default function FlashSaleTable({
       title: "Số lượng sản phẩm",
       key: "product_count",
       align: "center",
-      render: (_, record) => (
-        <Tag color="geekblue" style={{ fontSize: 13, padding: "4px 10px" }}>
-          {record.flashsale_products?.length || 0} sản phẩm
-        </Tag>
-      ),
+      width: isMobile ? 140 : undefined,
+      render: (_, record) => {
+        const count = record.flashsale_products?.length || 0;
+        return (
+          <Tag color="geekblue" style={{ fontSize: 13, padding: "4px 10px" }}>
+            <span style={{ whiteSpace: 'nowrap' }}>{count} sản phẩm</span>
+          </Tag>
+        );
+      },
     },
     {
       title: "Trạng thái",
       dataIndex: "is_active",
       key: "status",
-      width: 180,
+      width: isMobile ? 140 : 180,
       render: (isActive, record) => {
         const now = moment();
         const start = moment(record.start_time);
@@ -138,14 +143,14 @@ export default function FlashSaleTable({
           statusConfig = { color: "warning", text: "Sắp diễn ra", status: "warning" };
         }
 
-        return <Badge status={statusConfig.status} text={statusConfig.text} />;
+        return <Badge status={statusConfig.status} text={<span style={{ whiteSpace: 'nowrap' }}>{statusConfig.text}</span>} />;
       },
     },
     {
       title: "Thao tác",
       key: "action",
-      width: 100,
-      fixed: "right",
+      width: isMobile ? 100 : 100,
+      fixed: isMobile ? undefined : "right",
       render: (_, record) => (
         <ButtonAction actions={getActions(record)} record={record} />
       ),
@@ -246,7 +251,9 @@ export default function FlashSaleTable({
         onSelectionChange([]);
       }}
       bordered
-      size="small"
+      size={isMobile ? "small" : "small"}
+      tableLayout="fixed"
+      scroll={{ x: isMobile ? 700 : undefined }}
     />
   );
 }

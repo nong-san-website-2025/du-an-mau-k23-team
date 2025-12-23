@@ -15,8 +15,6 @@ import {
   Tooltip,
   Alert,
   Statistic,
-  Modal,
-  Table,
 } from "antd";
 import {
   UserOutlined,
@@ -29,10 +27,9 @@ import {
   ClockCircleOutlined,
   MailOutlined,
   PhoneOutlined,
-  CrownOutlined,
-  StarOutlined,
 } from "@ant-design/icons";
-import { Badge, Tag, Space, Divider, Descriptions, Empty } from "antd";
+import { Badge, Tag, Space, Divider, Descriptions, Empty, InputNumber } from "antd";
+import { initializeRecaptcha, sendPhoneOTP, verifyPhoneOTP, resetRecaptcha } from "../../../services/firebasePhoneAuth";
 
 const { Title, Text } = Typography;
 
@@ -40,29 +37,33 @@ const ProfileInfo = ({
   form,
   handleChange,
   handleSave,
-  saving,
-  error,
-  success,
+  saving = false,
+  error = null,
+  success = null,
   user,
   setForm,
   addresses = [],
-  onOpenFollowingModal,
-  onOpenFollowersModal,
-  deleteAddress,
-  memberTier,
-  memberTierColor,
-  totalOrders,
-  totalSpent,
+  onOpenFollowingModal = () => {},
+  onOpenFollowersModal = () => {},
 }) => {
   const objectUrlRef = useRef(null);
   const [editingFields, setEditingFields] = useState({});
   const [tempForm, setTempForm] = useState(form);
   const [resendingEmail, setResendingEmail] = useState(false);
-  const [tierModalVisible, setTierModalVisible] = useState(false);
+  const [verifyingPhone, setVerifyingPhone] = useState(false);
+  const [phoneOtp, setPhoneOtp] = useState("");
+  const [otpCountdown, setOtpCountdown] = useState(0);
+  const [verifyingPhoneOtp, setVerifyingPhoneOtp] = useState(false);
 
   useEffect(() => {
     setTempForm(form);
   }, [form]);
+
+  useEffect(() => {
+    return () => {
+      resetRecaptcha();
+    };
+  }, []);
 
   const handleResendEmailVerification = async () => {
     if (!form?.pending_email) return;
@@ -71,7 +72,10 @@ const ProfileInfo = ({
       const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
       const token = localStorage.getItem("token");
       
-      await fetch(`${API_BASE_URL}/api/users/me/`, {
+      // Ensure we don't double-append /api if API_BASE_URL already has it
+      const baseUrl = API_BASE_URL.endsWith('/api') ? API_BASE_URL : `${API_BASE_URL}/api`;
+      
+      await fetch(`${baseUrl}/users/me/`, {
         method: "PATCH",
         headers: {
           "Authorization": `Bearer ${token}`,
@@ -85,6 +89,90 @@ const ProfileInfo = ({
       message.error("Không thể gửi lại email. Vui lòng thử lại!");
     } finally {
       setResendingEmail(false);
+    }
+  };
+
+  const handleRequestPhoneOtp = async () => {
+    if (!form?.pending_phone) return;
+    setVerifyingPhone(true);
+    try {
+      initializeRecaptcha();
+      const result = await sendPhoneOTP(form.pending_phone);
+      window.confirmationResult = result;
+      
+      message.success("Mã OTP đã được gửi qua SMS");
+      setOtpCountdown(60);
+      
+      const timer = setInterval(() => {
+        setOtpCountdown((prev) => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } catch (err) {
+      console.error("Error sending OTP:", err);
+      let errorMessage = "Lỗi khi gửi OTP. Vui lòng thử lại!";
+      if (err.message === "reCAPTCHA chưa được khởi tạo") {
+        errorMessage = "Lỗi khởi tạo reCAPTCHA. Vui lòng tải lại trang.";
+      } else if (err.code === "auth/invalid-phone-number") {
+        errorMessage = "Số điện thoại không hợp lệ";
+      } else if (err.code === "auth/too-many-requests") {
+        errorMessage = "Quá nhiều yêu cầu, vui lòng thử lại sau";
+      }
+      message.error(errorMessage);
+      setVerifyingPhone(false);
+    }
+  };
+
+  const handleVerifyPhoneOtp = async () => {
+    if (!phoneOtp) {
+      message.error("Vui lòng nhập mã OTP");
+      return;
+    }
+    setVerifyingPhoneOtp(true);
+    try {
+      const verifyResult = await verifyPhoneOTP(phoneOtp);
+      
+      if (verifyResult.success) {
+        const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
+        const token = localStorage.getItem("token");
+        
+        // Ensure we don't double-append /api if API_BASE_URL already has it
+        const baseUrl = API_BASE_URL.endsWith('/api') ? API_BASE_URL : `${API_BASE_URL}/api`;
+        
+        const res = await fetch(`${baseUrl}/users/me/`, {
+          method: "PATCH",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ 
+            phone: form.pending_phone,
+            pending_phone: null,
+            firebase_id_token: verifyResult.idToken
+          }),
+        });
+
+        if (res.ok) {
+          message.success("Xác thực số điện thoại thành công!");
+          setVerifyingPhone(false);
+          setPhoneOtp("");
+          setOtpCountdown(0);
+          setForm(prev => ({ ...prev, phone: form.pending_phone, pending_phone: null }));
+          resetRecaptcha();
+        } else {
+          message.error("Không thể cập nhật số điện thoại");
+        }
+      } else {
+        message.error(verifyResult.error);
+      }
+    } catch (err) {
+      message.error("Xác thực thất bại. Vui lòng thử lại!");
+    } finally {
+      setVerifyingPhoneOtp(false);
     }
   };
 
@@ -121,7 +209,7 @@ const ProfileInfo = ({
       objectUrlRef.current = url;
       return url;
     }
-    return tempForm?.avatar || "/default-avatar.png";
+    return tempForm?.avatar || null;
   }, [tempForm?.avatar]);
 
   useEffect(() => {
@@ -182,7 +270,7 @@ const ProfileInfo = ({
   return (
     <Card
       style={{ border: "none" }}
-      bodyStyle={{ padding: 24 }}
+      styles={{ body: { padding: 24 } }}
       title={
         <Title level={4} style={{ marginBottom: 8 }}>
           Thông tin cá nhân
@@ -206,6 +294,8 @@ const ProfileInfo = ({
           showIcon
         />
       )}
+
+      <div id="recaptcha-container"></div>
 
       {form?.pending_email && (
         <Alert
@@ -316,42 +406,10 @@ const ProfileInfo = ({
 
             <Divider />
 
-            <div style={{ textAlign: "center", marginBottom: 24 }}>
-              <div style={{ marginBottom: 8 }}>
-                {memberTierColor === 'gold' && (
-                  <CrownOutlined style={{ fontSize: 32, color: '#faad14' }} />
-                )}
-                {memberTierColor === 'silver' && (
-                  <StarOutlined style={{ fontSize: 32, color: '#c0c0c0' }} />
-                )}
-                {memberTierColor === 'default' && (
-                  <UserOutlined style={{ fontSize: 32, color: '#8c8c8c' }} />
-                )}
-              </div>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-                <div style={{
-                  fontSize: 18,
-                  fontWeight: 600,
-                  color: memberTierColor === 'gold' ? '#faad14' : memberTierColor === 'silver' ? '#c0c0c0' : '#8c8c8c',
-                }}>
-                  {memberTier || "Thành viên"}
-                </div>
-                <Tooltip title="Xem điều kiện xếp hạng">
-                  <Button
-                    type="text"
-                    size="small"
-                    icon={<InfoCircleOutlined />}
-                    onClick={() => setTierModalVisible(true)}
-                    style={{ fontSize: 14, color: '#1890ff' }}
-                  />
-                </Tooltip>
-              </div>
-            </div>
-
-            <Row gutter={16}>
-              <Col xs={12} sm={12}>
+            <Row gutter={16} style={{ marginTop: 16 }}>
+              <Col span={12}>
                 <Card
-                  bordered={false}
+                  variant="borderless"
                   style={{
                     textAlign: "center",
                     cursor: "pointer",
@@ -367,9 +425,9 @@ const ProfileInfo = ({
                   />
                 </Card>
               </Col>
-              <Col xs={12} sm={12}>
+              <Col span={12}>
                 <Card
-                  bordered={false}
+                  variant="borderless"
                   style={{
                     textAlign: "center",
                     cursor: "pointer",
@@ -411,11 +469,15 @@ const ProfileInfo = ({
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <MailOutlined />
                   <span>Email</span>
-                  {form?.pending_email && (
+                  {form?.pending_email ? (
                     <Tag color="warning" icon={<ClockCircleOutlined />}>
                       Chờ xác thực
                     </Tag>
-                  )}
+                  ) : form?.email ? (
+                    <Tag color="success" icon={<CheckCircleOutlined />}>
+                      Đã xác thực
+                    </Tag>
+                  ) : null}
                 </div>
               }
             >
@@ -424,7 +486,7 @@ const ProfileInfo = ({
               ) : (
                 <div style={{ display: "flex", gap: 8, alignItems: "center", width: "100%" }}>
                   <Input
-                    value={form?.email_masked || "---"}
+                    value={form?.email || "---"}
                     disabled
                     size="large"
                     style={{ flex: 1, borderRadius: 6 }}
@@ -445,24 +507,88 @@ const ProfileInfo = ({
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <PhoneOutlined />
                   <span>Số điện thoại</span>
-                  {form?.pending_phone && (
+                  {form?.pending_phone ? (
                     <Tag color="warning" icon={<ClockCircleOutlined />}>
                       Chờ xác thực
                     </Tag>
-                  )}
+                  ) : form?.phone ? (
+                    <Tag color="success" icon={<CheckCircleOutlined />}>
+                      Đã xác thực
+                    </Tag>
+                  ) : null}
                 </div>
               }
             >
-              {isFieldEditing("phone") ? (
+              {verifyingPhone && form?.pending_phone ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  <Alert
+                    message={`Mã OTP đã được gửi tới ${form.pending_phone}`}
+                    type="info"
+                    showIcon
+                  />
+                  <Input
+                    placeholder="Nhập mã OTP"
+                    value={phoneOtp}
+                    onChange={(e) => setPhoneOtp(e.target.value)}
+                    size="large"
+                    maxLength={6}
+                    style={{ borderRadius: 6 }}
+                  />
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <Button
+                      type="default"
+                      disabled={otpCountdown > 0}
+                      onClick={handleRequestPhoneOtp}
+                      loading={otpCountdown > 0}
+                      style={{ flex: 1 }}
+                    >
+                      {otpCountdown > 0 ? `Lấy lại OTP (${otpCountdown}s)` : "Lấy lại OTP"}
+                    </Button>
+                  </div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <Button
+                      type="default"
+                      onClick={() => {
+                        setVerifyingPhone(false);
+                        setPhoneOtp("");
+                        setOtpCountdown(0);
+                      }}
+                      style={{ flex: 1 }}
+                    >
+                      Hủy
+                    </Button>
+                    <Button
+                      type="primary"
+                      onClick={handleVerifyPhoneOtp}
+                      loading={verifyingPhoneOtp}
+                      style={{ flex: 1 }}
+                    >
+                      Xác nhận
+                    </Button>
+                  </div>
+                </div>
+              ) : isFieldEditing("phone") ? (
                 renderEditableField("phone", "Số điện thoại", tempForm?.phone, "Nhập số điện thoại mới")
               ) : (
                 <div style={{ display: "flex", gap: 8, alignItems: "center", width: "100%" }}>
                   <Input
-                    value={form?.phone_masked || "---"}
+                    value={form?.pending_phone || form?.phone || "---"}
                     disabled
                     size="large"
                     style={{ flex: 1, borderRadius: 6 }}
                   />
+                  {form?.pending_phone && (
+                    <Button
+                      type="primary"
+                      size="large"
+                      onClick={() => {
+                        setVerifyingPhone(true);
+                        handleRequestPhoneOtp();
+                      }}
+                    >
+                      Xác thực
+                    </Button>
+                  )}
                   <Button
                     type="primary"
                     size="large"
@@ -506,65 +632,7 @@ const ProfileInfo = ({
         </Col>
       </Row>
 
-      {/* Modal hiển thị điều kiện xếp hạng */}
-      <Modal
-        title="Điều kiện xếp hạng thành viên"
-        open={tierModalVisible}
-        onCancel={() => setTierModalVisible(false)}
-        footer={[
-          <Button key="close" type="primary" onClick={() => setTierModalVisible(false)}>
-            Đóng
-          </Button>,
-        ]}
-        width={600}
-      >
-        <Table
-          dataSource={[
-            {
-              key: 1,
-              tier: "🥈 Bạc",
-              orders: 10,
-              spent: "2,00,000 VND",
-            },
-            {
-              key: 2,
-              tier: "🥇 Vàng",
-              orders: 25,
-              spent: "6,000,000 VND",
-            },
-            {
-              key: 3,
-              tier: "💎 Kim cương",
-              orders: 50,
-              spent: "10,000,000 VND",
-            },
-          ]}
-          columns={[
-            {
-              title: "Hạng",
-              dataIndex: "tier",
-              key: "tier",
-            },
-            {
-              title: "Số đơn hàng",
-              dataIndex: "orders",
-              key: "orders",
-            },
-            {
-              title: "Tổng chi tiêu",
-              dataIndex: "spent",
-              key: "spent",
-            },
-          ]}
-          pagination={false}
-          bordered
-        />
-        <div style={{ marginTop: 16, padding: "12px", background: "#f5f5f5", borderRadius: 4 }}>
-          <Text type="secondary" style={{ fontSize: 12 }}>
-            💡 <strong>Lưu ý:</strong> Bạn cần đáp ứng <strong>cả hai</strong> điều kiện (số đơn hàng <strong>VÀ</strong> tổng chi tiêu) để nâng cao hạng thành viên.
-          </Text>
-        </div>
-      </Modal>
+
     </Card>
   );
 };
@@ -581,23 +649,6 @@ ProfileInfo.propTypes = {
   addresses: PropTypes.array,
   onOpenFollowingModal: PropTypes.func,
   onOpenFollowersModal: PropTypes.func,
-  memberTier: PropTypes.string,
-  memberTierColor: PropTypes.string,
-  totalOrders: PropTypes.number,
-  totalSpent: PropTypes.number,
-};
-
-ProfileInfo.defaultProps = {
-  saving: false,
-  error: null,
-  success: null,
-  addresses: [],
-  onOpenFollowingModal: () => {},
-  onOpenFollowersModal: () => {},
-  memberTier: "Thành viên",
-  memberTierColor: "default",
-  totalOrders: 0,
-  totalSpent: 0,
 };
 
 export default ProfileInfo;

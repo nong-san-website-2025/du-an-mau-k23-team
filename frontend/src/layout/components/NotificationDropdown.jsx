@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { Bell, Package, Tag, Info } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useNotificationLogic } from "../hooks/useNotificationLogic";
@@ -7,8 +7,30 @@ const NotificationDropdown = ({ userId, showDropdown, setShowDropdown }) => {
   const navigate = useNavigate();
   const timerRef = useRef(null);
 
-  // --- 1. LOGIC HOVER (Giữ UX mượt mà từ HEAD) ---
+  // [MERGE] Logic Responsive Hover từ ChiTham1 (Fix lỗi UX trên Mobile)
+  const [isHoverable, setIsHoverable] = useState(false);
+
+  useEffect(() => {
+    const computeHoverable = () => {
+      let hoverable = false;
+      try {
+        // Kiểm tra xem thiết bị có hỗ trợ hover (chuột) không
+        hoverable = !!(window.matchMedia && window.matchMedia('(hover: hover)').matches);
+      } catch (_) {
+        hoverable = false;
+      }
+      // Fallback: Nếu màn hình lớn (Tablet/Desktop) thì mặc định bật hover
+      if (!hoverable && window.innerWidth >= 768) hoverable = true;
+      setIsHoverable(hoverable);
+    };
+
+    computeHoverable();
+    window.addEventListener('resize', computeHoverable);
+    return () => window.removeEventListener('resize', computeHoverable);
+  }, []);
+  
   const handleMouseEnter = () => {
+    if (!isHoverable) return; // Mobile: bỏ qua hover để tránh conflict click
     if (timerRef.current) {
       clearTimeout(timerRef.current);
     }
@@ -16,9 +38,10 @@ const NotificationDropdown = ({ userId, showDropdown, setShowDropdown }) => {
   };
 
   const handleMouseLeave = () => {
+    if (!isHoverable) return;
     timerRef.current = setTimeout(() => {
       setShowDropdown(false);
-    }, 200);
+    }, 200); // Giữ delay 200ms để UX mượt hơn
   };
 
   const { unreadCount, sortedNotifications, handleMarkAllRead } = useNotificationLogic(userId, navigate);
@@ -52,7 +75,7 @@ const NotificationDropdown = ({ userId, showDropdown, setShowDropdown }) => {
     });
   };
 
-  // --- 3. XỬ LÝ METADATA (Tích hợp từ MinhKhanh để hiện chi tiết đơn) ---
+  // --- 3. XỬ LÝ METADATA (Hiển thị chi tiết đơn hàng) ---
   const getMetadataDetails = (noti) => {
     const md = noti.metadata || {};
     const details = [];
@@ -72,15 +95,17 @@ const NotificationDropdown = ({ userId, showDropdown, setShowDropdown }) => {
   return (
     <div
       className="action-item"
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
+      // Chỉ kích hoạt event hover nếu là thiết bị hỗ trợ chuột
+      onMouseEnter={isHoverable ? handleMouseEnter : undefined}
+      onMouseLeave={isHoverable ? handleMouseLeave : undefined}
     >
       <button className="action-btn" onClick={() => navigate("/notifications")}>
         <Bell size={22} strokeWidth={2} />
         {unreadCount > 0 && <span className="badge-count">{unreadCount}</span>}
       </button>
 
-      {showDropdown && (
+      {/* Hiển thị Dropdown nếu (có hover VÀ state show=true) HOẶC xử lý click riêng cho mobile sau này */}
+      {isHoverable && showDropdown && (
         <div className="dropdown-panel" style={{ width: 400 }}>
           {/* Header */}
           <div className="dropdown-header">
@@ -126,8 +151,7 @@ const NotificationDropdown = ({ userId, showDropdown, setShowDropdown }) => {
                             style={{width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover'}} 
                         />
                       ) : (
-                         // Fallback icon đẹp hơn placeholder xám
-                         getIcon(noti.type)
+                          getIcon(noti.type)
                       )}
                     </div>
 
@@ -136,7 +160,7 @@ const NotificationDropdown = ({ userId, showDropdown, setShowDropdown }) => {
                       <h4 className="text-truncate" style={{ marginBottom: '2px' }}>{noti.title}</h4>
                       <p style={{ margin: 0, lineHeight: '1.4' }}>{noti.message}</p>
                       
-                      {/* Render Metadata Details (từ MinhKhanh) */}
+                      {/* Render Metadata Details */}
                       {details.length > 0 && (
                           <div className="noti-meta" style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '4px' }}>
                             {details.map((line, i) => (

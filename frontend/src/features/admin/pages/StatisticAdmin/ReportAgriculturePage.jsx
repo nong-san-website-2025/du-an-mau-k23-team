@@ -61,10 +61,22 @@ export default function ReportAgriculturePage() {
   const [suppliersData, setSuppliersData] = useState([]);
   const [statsData, setStatsData] = useState([]);
   const [categoryData, setCategoryData] = useState([]);
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
     fetchAgricultureReport();
   }, [filter]);
+
+  useEffect(() => {
+    // Detect mobile viewport (iPhone 14 Pro Max ~430px width)
+    const mql = window.matchMedia("(max-width: 480px)");
+    const handleChange = (e) => setIsMobile(e.matches);
+    handleChange(mql);
+    mql.addEventListener ? mql.addEventListener("change", handleChange) : mql.addListener(handleChange);
+    return () => {
+      mql.removeEventListener ? mql.removeEventListener("change", handleChange) : mql.removeListener(handleChange);
+    };
+  }, []);
 
 
   const calculateServiceQuality = (supplier) => {
@@ -153,8 +165,8 @@ export default function ReportAgriculturePage() {
       title: "Cửa hàng",
       dataIndex: "name",
       key: "name",
-      fixed: 'left',
-      width: 250,
+      fixed: isMobile ? undefined : 'left',
+      width: isMobile ? 220 : 250,
       render: (text, record) => (
         <Space>
           {loading ? (
@@ -174,7 +186,7 @@ export default function ReportAgriculturePage() {
           )}
 
           <div>
-            <Text strong>{text}</Text>
+            <Text strong style={{ display: 'inline-block', maxWidth: isMobile ? 150 : 200, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{text}</Text>
           </div>
         </Space>
       )
@@ -183,6 +195,7 @@ export default function ReportAgriculturePage() {
       title: "Doanh thu",
       dataIndex: "revenue",
       key: "revenue",
+      width: isMobile ? 140 : undefined,
       sorter: (a, b) => a.revenue - b.revenue,
       render: (value) => (
         // SỬ DỤNG intcomma
@@ -194,7 +207,7 @@ export default function ReportAgriculturePage() {
     {
       title: "Vận hành",
       key: "operation",
-      width: 200,
+      width: isMobile ? 180 : 200,
       render: (_, record) => {
         const score = Math.max(0, 100 - (record.cancelRate * 5) - (record.delayRate * 5));
         let status = "active";
@@ -215,6 +228,7 @@ export default function ReportAgriculturePage() {
       title: "Đánh giá",
       dataIndex: "rating",
       key: "rating",
+      width: isMobile ? 120 : undefined,
       align: 'center',
       render: (value) => <Tag color="gold" icon={<StarOutlined />}>{value}</Tag>
     },
@@ -222,6 +236,7 @@ export default function ReportAgriculturePage() {
       title: "Sản phẩm",
       dataIndex: "products",
       key: "products",
+      width: isMobile ? 120 : undefined,
       align: 'center',
       render: (val) => <Tag>{val} loại</Tag>
     }
@@ -340,7 +355,10 @@ export default function ReportAgriculturePage() {
             dataSource={suppliersData}
             rowKey="id"
             pagination={{ pageSize: 5, showTotal: (total) => `Tổng ${total} NCC` }}
-            scroll={{ x: 1000 }}
+            size={isMobile ? 'small' : 'middle'}
+            tableLayout="fixed"
+            scroll={isMobile ? { x: 900 } : { x: 1000 }}
+            style={isMobile ? { whiteSpace: 'nowrap' } : undefined}
           />
         </Card>
 

@@ -1,7 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { FireFilled } from "@ant-design/icons";
-import { intcomma } from './../../utils/format';
+import { intcomma } from '../../utils/format';
 
 export default function FlashSaleItem({ flash }) {
   if (!flash) return null;

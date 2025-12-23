@@ -38,6 +38,7 @@ export default function UserTable({
 }) {
   const { t } = useTranslation();
   const { confirm } = Modal;
+  const [isMobile, setIsMobile] = useState(false);
 
   // Lấy API URL từ env
   const API_URL = process.env.REACT_APP_API_URL;
@@ -64,7 +65,16 @@ export default function UserTable({
       }
     };
     load();
-    return () => (mounted = false);
+
+    // Detect mobile viewport (iPhone 14 Pro Max ~430px width)
+    const mql = window.matchMedia("(max-width: 480px)");
+    const handleChange = (e) => setIsMobile(e.matches);
+    handleChange(mql);
+    mql.addEventListener ? mql.addEventListener("change", handleChange) : mql.addListener(handleChange);
+    return () => {
+      mql.removeEventListener ? mql.removeEventListener("change", handleChange) : mql.removeListener(handleChange);
+      mounted = false;
+    };
   }, []);
 
   // --- LOGIC SEARCH & FILTER ---
@@ -275,8 +285,9 @@ export default function UserTable({
     {
       title: "Người dùng",
       key: "user",
-      width: 250,
-      fixed: "left",
+      width: 240,
+      // Disable fixed column on mobile to avoid overlay
+      fixed: isMobile ? undefined : "left",
       render: (_, record) => (
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <Avatar src={record.avatar} size={40}>
@@ -375,8 +386,9 @@ export default function UserTable({
     {
       title: "Thao tác",
       key: "actions",
-      width: 100,
-      fixed: "right",
+      width: 110,
+      // Disable fixed column on mobile to avoid overlay
+      fixed: isMobile ? undefined : "right",
       align: "center",
       render: (_, record) => (
         <ButtonAction actions={getActions(record)} record={record} />
@@ -400,10 +412,12 @@ export default function UserTable({
             `${range[0]}-${range[1]} của ${total} người dùng`,
         }}
         bordered
-        size="middle"
-        scroll={{ x: 1200 }}
+        size={isMobile ? "small" : "middle"}
+        tableLayout="fixed"
+        // Ensure horizontal scroll on mobile without overlapping fixed columns
+        scroll={isMobile ? { x: 1000 } : { x: 1200 }}
+        style={isMobile ? { background: "#fff", whiteSpace: "nowrap" } : { background: "#fff" }}
         onRow={onRow}
-        style={{ background: "#fff" }}
       />
 
       {/* Modal Thêm User */}

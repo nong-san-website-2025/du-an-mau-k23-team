@@ -8,6 +8,7 @@ import CategoryModal from "../../components/BlogAdmin/CategoryModal";
 import { adminFetchBlogs, fetchCategories, adminDeleteBlog } from "../../../blog/api/blogApi";
 
 const AdminBlogs = () => {
+  const isMobile = typeof window !== "undefined" && window.matchMedia("(max-width: 480px)").matches;
   const [blogs, setBlogs] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -103,22 +104,39 @@ const AdminBlogs = () => {
     <AdminPageLayout
       title="QUẢN LÝ BÀI VIẾT"
       extra={
-        <Space>
-          <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
-            Viết bài mới
+        <Space wrap style={{ rowGap: 8 }}>
+          <Button 
+            type="primary" 
+            icon={<PlusOutlined />} 
+            onClick={openCreate}
+            size={isMobile ? "small" : "middle"}
+            style={{ whiteSpace: 'nowrap' }}
+          >
+            {isMobile ? "Viết mới" : "Viết bài mới"}
           </Button>
-          <Button onClick={() => setCategoryModalVisible(true)}>
-            Quản lý Danh mục
+          <Button 
+            onClick={() => setCategoryModalVisible(true)}
+            size={isMobile ? "small" : "middle"}
+            style={{ whiteSpace: 'nowrap' }}
+          >
+            {isMobile ? "Danh mục" : "Quản lý Danh mục"}
           </Button>
           <Button 
             danger 
             icon={<DeleteOutlined />} 
             onClick={handleBulkDelete}
             disabled={selectedRows.length === 0}
+            size={isMobile ? "small" : "middle"}
+            style={{ whiteSpace: 'nowrap' }}
           >
-            Xóa ({selectedRows.length})
+            {`Xóa (${selectedRows.length})`}
           </Button>
-          <Button icon={<ReloadOutlined />} onClick={() => loadBlogs(pagination.current)}>
+          <Button 
+            icon={<ReloadOutlined />} 
+            onClick={() => loadBlogs(pagination.current)}
+            size={isMobile ? "small" : "middle"}
+            style={{ whiteSpace: 'nowrap' }}
+          >
             Làm mới
           </Button>
         </Space>
@@ -126,7 +144,7 @@ const AdminBlogs = () => {
     >
       {/* Thanh công cụ tìm kiếm */}
       <Row style={{ marginBottom: 16 }}>
-        <Col span={8}>
+        <Col xs={24} sm={16} md={8}>
           <Input 
             placeholder="Tìm kiếm bài viết..." 
             prefix={<SearchOutlined />} 

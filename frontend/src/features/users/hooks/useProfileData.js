@@ -23,12 +23,6 @@ const useProfileData = () => {
   const [showFollowingModal, setShowFollowingModal] = useState(false);
   const [showFollowersModal, setShowFollowersModal] = useState(false);
 
-  // Member tier stats
-  const [memberTier, setMemberTier] = useState(null);
-  const [memberTierColor, setMemberTierColor] = useState("default");
-  const [totalOrders, setTotalOrders] = useState(0);
-  const [totalSpent, setTotalSpent] = useState(0);
-
   // --- API Calls ---
 
   const fetchProfile = async () => {
@@ -45,8 +39,6 @@ const useProfileData = () => {
       setForm(res.data);
       // Load follow stats and lists
       await fetchFollowStats();
-      // Load member tier stats
-      await fetchMemberTierStats();
     } catch {
       setUser(null);
     } finally {
@@ -76,46 +68,6 @@ const useProfileData = () => {
     } catch {
       setFollowersCount(0);
       setFollowersList([]);
-    }
-  };
-
-  const calculateMemberTier = (orderCount, spent) => {
-    const spentAmount = parseFloat(spent || 0);
-    
-    if (orderCount >= 50 && spentAmount >= 10000000) {
-      return { tier: "Kim cương", color: "gold" };
-    } else if (orderCount >= 25 && spentAmount >= 10000000) {
-      return { tier: "Vàng", color: "gold" };
-    } else if (orderCount >= 10 && spentAmount >= 250000) {
-      return { tier: "Bạc", color: "silver" };
-    } else {
-      return { tier: "Thành viên", color: "default" };
-    }
-  };
-
-  const fetchMemberTierStats = async () => {
-    try {
-      const ordersRes = await API.get("orders/");
-      const allOrders = Array.isArray(ordersRes.data)
-        ? ordersRes.data
-        : ordersRes.data?.results || [];
-      
-      const successStatuses = ['success', 'delivered', 'shipping', 'out_for_delivery', 'ready_to_pick', 'picking'];
-      const successOrders = allOrders.filter(order => successStatuses.includes(order.status));
-      
-      const orderCount = successOrders.length;
-      const spent = successOrders.reduce((sum, order) => sum + (parseFloat(order.total_price) || 0), 0);
-      
-      setTotalOrders(orderCount);
-      setTotalSpent(spent);
-      
-      const tierInfo = calculateMemberTier(orderCount, spent);
-      setMemberTier(tierInfo.tier);
-      setMemberTierColor(tierInfo.color);
-    } catch (err) {
-      console.error("Error fetching member tier stats:", err);
-      setMemberTier("Thành viên");
-      setMemberTierColor("default");
     }
   };
 
@@ -220,11 +172,6 @@ const useProfileData = () => {
     setShowFollowersModal,
     handleUnfollow,
     fetchProfile, // Export to allow refresh if needed
-    // Member tier
-    memberTier,
-    memberTierColor,
-    totalOrders,
-    totalSpent,
   };
 };
 

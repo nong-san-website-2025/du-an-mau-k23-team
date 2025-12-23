@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   User, ShoppingBag, Clock, LogOut, Store,
@@ -7,9 +7,29 @@ import {
 
 const UserProfileDropdown = ({ isUserLoggedIn, userProfile, handleLogout, sellerStatus }) => {
   const [showDropdown, setShowDropdown] = useState(false);
+  const [isHoverable, setIsHoverable] = useState(false); // Thiết bị có hover (desktop)
   const navigate = useNavigate();
 
   const timerRef = useRef(null);
+
+  useEffect(() => {
+    const computeHoverable = () => {
+      let hoverable = false;
+      try {
+        // Thiết bị hỗ trợ hover (desktop, laptop)
+        hoverable = !!(window.matchMedia && window.matchMedia('(hover: hover)').matches);
+      } catch (_) {
+        hoverable = false;
+      }
+      // Fallback: nếu màn hình ≥ 768px, coi như desktop -> dùng hover
+      if (!hoverable && window.innerWidth >= 768) hoverable = true;
+      setIsHoverable(hoverable);
+    };
+
+    computeHoverable();
+    window.addEventListener('resize', computeHoverable);
+    return () => window.removeEventListener('resize', computeHoverable);
+  }, []);
 
   const handleMouseEnter = () => {
     if (timerRef.current) {
@@ -19,9 +39,17 @@ const UserProfileDropdown = ({ isUserLoggedIn, userProfile, handleLogout, seller
   };
 
   const handleMouseLeave = () => {
+    // Trên thiết bị không có hover (mobile), bỏ qua việc auto-hide theo hover
+    if (!isHoverable) return;
     timerRef.current = setTimeout(() => {
       setShowDropdown(false);
     }, 200); // 200ms là thời gian vàng, đủ nhanh nhưng không bị giật
+  };
+
+  // Toggle bằng click để phù hợp trên mobile (tap lần 1 mở, lần 2 đóng)
+  const handleButtonClick = () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    setShowDropdown(prev => !prev);
   };
 
 
@@ -41,10 +69,10 @@ const UserProfileDropdown = ({ isUserLoggedIn, userProfile, handleLogout, seller
   return (
     <div
       className="action-item"
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
+      onMouseEnter={isHoverable ? handleMouseEnter : undefined}
+      onMouseLeave={isHoverable ? handleMouseLeave : undefined}
     >
-      <button className="action-btn" style={{ padding: 2 }}>
+      <button className="action-btn" style={{ padding: 2 }} onClick={handleButtonClick} aria-expanded={showDropdown} aria-haspopup="menu">
         {userProfile?.avatar ? (
           <img
             src={userProfile.avatar}

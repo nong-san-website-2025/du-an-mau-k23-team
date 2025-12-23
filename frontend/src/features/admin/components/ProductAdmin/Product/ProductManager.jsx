@@ -172,12 +172,24 @@ const ProductManager = ({
   viewModeProp = "table"
 }) => {
   const [viewMode, setViewMode] = useState(viewModeProp);
+  const [isMobile, setIsMobile] = useState(false);
   
   // Modal states
   const [rejectModal, setRejectModal] = useState({ open: false, ids: [], reason: "", quickReason: "" });
   const [lockModal, setLockModal] = useState({ open: false, ids: [], reason: "" });
 
   React.useEffect(() => { setViewMode(viewModeProp) }, [viewModeProp]);
+
+  // Detect mobile viewport (iPhone 14 Pro Max ~430px width)
+  React.useEffect(() => {
+    const mql = window.matchMedia("(max-width: 480px)");
+    const handleChange = (e) => setIsMobile(e.matches);
+    handleChange(mql);
+    mql.addEventListener ? mql.addEventListener("change", handleChange) : mql.addListener(handleChange);
+    return () => {
+      mql.removeEventListener ? mql.removeEventListener("change", handleChange) : mql.removeListener(handleChange);
+    };
+  }, []);
 
   // Handle Select
   const handleGridSelect = (id) => {
@@ -233,7 +245,7 @@ const ProductManager = ({
     {
       title: "Sản phẩm",
       key: "name",
-      width: 350,
+      width: isMobile ? 300 : 350,
       render: (_, r) => {
         const imageUrl = r.main_image?.image || r.images?.[0]?.image;
         return (
@@ -276,7 +288,7 @@ const ProductManager = ({
     {
       title: "Người bán",
       key: "seller",
-      width: 200,
+      width: isMobile ? 180 : 200,
       render: (_, r) => (
         <Space>
           <Avatar size="small" icon={<ShopOutlined />} src={r.seller?.avatar} />
@@ -295,14 +307,15 @@ const ProductManager = ({
     {
       title: "Trạng thái",
       dataIndex: "status",
-      width: 150,
+      width: isMobile ? 130 : 150,
       render: (st) => <ProductStatusTag status={st} />
     },
     {
       title: "Thao tác",
       key: "action",
-      width: 140,
-      fixed: 'right',
+      width: isMobile ? 150 : 140,
+      // Disable fixed column on mobile to avoid being covered
+      fixed: isMobile ? undefined : 'right',
       render: (_, r) => {
           const isPending = checkIsPending(r.status);
           const isApproved = checkIsApproved(r.status);
@@ -392,8 +405,10 @@ const ProductManager = ({
           columns={columns}
           rowSelection={{ selectedRowKeys, onChange: setSelectedRowKeys }}
           pagination={{ pageSize: 10, showSizeChanger: true }}
-          scroll={{ x: 900 }}
-          size="middle"
+          scroll={isMobile ? { x: 900 } : { x: 900 }}
+          size={isMobile ? "small" : "middle"}
+          tableLayout="fixed"
+          style={isMobile ? { whiteSpace: 'nowrap' } : undefined}
         />
       ) : (
         <List

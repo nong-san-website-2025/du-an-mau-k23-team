@@ -158,12 +158,12 @@ const WalletPage = () => {
   // --- UI Components ---
 
   const toolbar = (
-    <Space>
+    <Space wrap>
       <Search
         placeholder="Tìm tên shop hoặc email..."
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
-        style={{ width: 300 }}
+        style={{ width: 300, maxWidth: '100%' }}
         allowClear
       />
       <Button

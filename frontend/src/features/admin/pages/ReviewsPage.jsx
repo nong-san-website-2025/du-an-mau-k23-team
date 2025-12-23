@@ -15,6 +15,7 @@ const { Title, Text } = Typography;
 const API_URL = process.env.REACT_APP_API_URL;
 
 const ReviewsPage = () => {
+  const isMobile = typeof window !== "undefined" && window.matchMedia("(max-width: 480px)").matches;
   // --- State ---
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -109,36 +110,36 @@ const ReviewsPage = () => {
   // --- Table Configuration ---
   const columns = [
     {
-      title: "Khách hàng",
+      title: (<span style={{ whiteSpace: 'nowrap' }}>Khách hàng</span>),
       dataIndex: "user_name",
       key: "user_name",
-      width: 200,
+      width: isMobile ? 160 : 200,
       render: (name, record) => (
-        <Space>
+        <Space style={{ whiteSpace: 'nowrap' }}>
           <Avatar src={record.user_avatar} style={{ backgroundColor: '#1890ff' }}>
             {name?.charAt(0)?.toUpperCase()}
           </Avatar>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <Text strong>{name}</Text>
-            <Text type="secondary" style={{ fontSize: 12 }}>{new Date(record.created_at).toLocaleDateString('vi-VN')}</Text>
+            <Text strong style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: isMobile ? 120 : 160 }}>{name}</Text>
+            <Text type="secondary" style={{ fontSize: 12, whiteSpace: 'nowrap' }}>{new Date(record.created_at).toLocaleDateString('vi-VN')}</Text>
           </div>
         </Space>
       ),
     },
     {
-      title: "Sản phẩm & Đánh giá",
+      title: (<span style={{ whiteSpace: 'nowrap' }}>Sản phẩm & Đánh giá</span>),
       key: "product_rating",
-      width: 300,
+      width: isMobile ? 260 : 300,
       render: (_, record) => (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <Text strong style={{ fontSize: 13 }}>{record.product_name}</Text>
-          <Space size={4}>
+          <Text strong style={{ fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: isMobile ? 240 : 280 }}>{record.product_name}</Text>
+          <Space size={4} style={{ whiteSpace: 'nowrap' }}>
              <span style={{ color: '#faad14' }}>★</span> 
              <Text strong>{record.rating}/5</Text>
-             <Text type="secondary" style={{fontSize: 12}}>| {record.seller_store_name}</Text>
+             <Text type="secondary" style={{fontSize: 12, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: isMobile ? 140 : 160}}>| {record.seller_store_name}</Text>
           </Space>
           <Tooltip title={record.comment}>
-            <Text ellipsis style={{ width: 280, color: '#595959' }}>
+            <Text ellipsis style={{ width: isMobile ? 240 : 280, color: '#595959', whiteSpace: 'nowrap' }}>
                <MessageOutlined style={{ marginRight: 5 }} /> 
                {record.comment || "Không có lời bình"}
             </Text>
@@ -147,9 +148,9 @@ const ReviewsPage = () => {
       ),
     },
     {
-      title: "Trạng thái",
+      title: (<span style={{ whiteSpace: 'nowrap' }}>Trạng thái</span>),
       key: "status",
-      width: 150,
+      width: isMobile ? 120 : 150,
       align: "center",
       render: (_, record) => {
         const { status, label } = getStatusForTag(record);
@@ -157,10 +158,10 @@ const ReviewsPage = () => {
       },
     },
     {
-      title: "Hành động",
+      title: (<span style={{ whiteSpace: 'nowrap' }}>Hành động</span>),
       key: "action",
-      width: 150,
-      align: "right",
+      width: isMobile ? 100 : 150,
+      align: isMobile ? "center" : "right",
       render: (_, record) => {
         // Cấu hình Action Button bằng ButtonAction component
         const actions = [
@@ -207,31 +208,34 @@ const ReviewsPage = () => {
   return (
     <AdminPageLayout title="QUẢN LÝ ĐÁNH GIÁ">
       <Card bordered={false} className="mb-4" style={{ borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
-        <Row gutter={[16, 16]} align="middle" justify="space-between">
+        <Row gutter={[12, 12]} align="middle" justify="space-between">
           <Col xs={24} md={16}>
-             <Space wrap>
+             <Space wrap style={{ rowGap: 8 }}>
                 <Input 
                   placeholder="Tìm tên khách, sản phẩm..." 
                   prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />} 
-                  style={{ width: 250 }}
+                  style={{ width: isMobile ? 220 : 250 }}
                   allowClear
+                  size={isMobile ? 'small' : 'middle'}
                   onChange={(e) => setFilters(prev => ({...prev, search: e.target.value}))}
                 />
                 <Select 
                   defaultValue="all" 
-                  style={{ width: 140 }} 
+                  style={{ width: isMobile ? 130 : 140 }} 
+                  size={isMobile ? 'small' : 'middle'}
                   onChange={(val) => setFilters(prev => ({...prev, rating: val}))}
                 >
                   <Option value="all">⭐ Tất cả sao</Option>
                   <Option value="5">5 sao</Option>
                   <Option value="4">4 sao</Option>
-                  <Option value="3">3 sao (TB)</Option>
-                  <Option value="2">2 sao (Tệ)</Option>
-                  <Option value="1">1 sao (Rất tệ)</Option>
+                  <Option value="3">3 sao</Option>
+                  <Option value="2">2 sao</Option>
+                  <Option value="1">1 sao</Option>
                 </Select>
                 <Select 
                   defaultValue="all" 
-                  style={{ width: 160 }}
+                  style={{ width: isMobile ? 150 : 160 }}
+                  size={isMobile ? 'small' : 'middle'}
                   onChange={(val) => setFilters(prev => ({...prev, status: val}))}
                 >
                   <Option value="all">Tất cả trạng thái</Option>
@@ -241,12 +245,12 @@ const ReviewsPage = () => {
                 </Select>
              </Space>
           </Col>
-          <Col xs={24} md={8} style={{ textAlign: 'right' }}>
-             <Space>
+          <Col xs={24} md={8} style={{ textAlign: isMobile ? 'left' : 'right' }}>
+             <Space wrap style={{ rowGap: 8 }}>
                 {selectedRowKeys.length > 0 && (
-                   <Button danger icon={<DeleteOutlined />}>Xóa ({selectedRowKeys.length})</Button>
+                   <Button danger icon={<DeleteOutlined />} size={isMobile ? 'small' : 'middle'} style={{ whiteSpace: 'nowrap' }}>{`Xóa (${selectedRowKeys.length})`}</Button>
                 )}
-                <Button icon={<ReloadOutlined />} onClick={fetchReviews} loading={loading}>Làm mới</Button>
+                <Button icon={<ReloadOutlined />} onClick={fetchReviews} loading={loading} size={isMobile ? 'small' : 'middle'} style={{ whiteSpace: 'nowrap' }}>Làm mới</Button>
              </Space>
           </Col>
         </Row>
@@ -267,6 +271,9 @@ const ReviewsPage = () => {
             showSizeChanger: true,
             showTotal: (total) => `Tổng ${total} đánh giá`,
           }}
+          size={isMobile ? 'small' : 'middle'}
+          tableLayout="fixed"
+          scroll={{ x: isMobile ? 900 : undefined }}
         />
       </Card>
 

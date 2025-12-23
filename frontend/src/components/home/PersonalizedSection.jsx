@@ -6,7 +6,7 @@ import { Skeleton, Empty, Button, Row, Col, Typography } from "antd";
 import { ArrowRightOutlined, BulbFilled } from "@ant-design/icons";
 import { productApi } from "../../features/products/services/productApi.js";
 import ProductCard from "../../features/products/components/ProductCard.jsx";
-import { useCart } from "../../features/cart/services/CartContext";
+import { useCart } from "../../features/cart/services/CartContext.js";
 
 // Import CSS Module mới (Thay thế file css cũ)
 import styles from "./PersonalizedSection.module.css"; 

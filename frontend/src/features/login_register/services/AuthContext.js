@@ -84,22 +84,35 @@ export const AuthProvider = ({ children }) => {
       return { success: true, role: meRes.data.role, token: data.access };
     } catch (err) {
       // ✅ XỬ LÝ LỖI
-      const errorDetail = err.response?.data?.detail;
+      const statusCode = err.response?.status;
+      const errorDetail = err.response?.data?.detail || "";
       let errorMsg = "Đăng nhập thất bại. Vui lòng thử lại!";
 
-      // Kiểm tra mã lỗi hoặc nội dung text trả về để báo cụ thể
-      if (err.response?.status === 401) {
+      // Trường hợp sai thông tin đăng nhập
+      if (statusCode === 401) {
         errorMsg = "Sai tên tài khoản hoặc mật khẩu!";
-      } else if (errorDetail) {
-        errorMsg = errorDetail; // Lỗi cụ thể từ backend nếu có
+        message.error(errorMsg);
+        return { success: false, error: errorMsg };
       }
 
-      message.error(errorMsg); // Hiển thị lỗi màu đỏ
+      // Trường hợp tài khoản bị khóa (inactive/seller_locked) từ backend trả về 403
+      if (statusCode === 403 && (/khóa|locked|inactive/i.test(String(errorDetail)) || err.response?.data?.code === 'account_locked' || err.response?.data?.code === 'seller_locked')) {
+        const lockMsg = "Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.";
+        // Dùng notification để nổi bật, thống nhất với các thông báo đã dùng
+        notification.warning({
+          message: "Tài khoản bị khóa",
+          description: lockMsg,
+          placement: "topRight",
+        });
+        return { success: false, error: lockMsg, code: err.response?.data?.code || "account_locked" };
+      }
 
-      return {
-        success: false,
-        error: errorMsg,
-      };
+      // Các lỗi khác: hiển thị chi tiết nếu có
+      if (errorDetail) {
+        errorMsg = errorDetail;
+      }
+      message.error(errorMsg);
+      return { success: false, error: errorMsg };
     }
   };
 

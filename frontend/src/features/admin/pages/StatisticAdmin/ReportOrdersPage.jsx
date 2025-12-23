@@ -50,6 +50,7 @@ export default function ReportOrdersPage() {
   const [loading, setLoading] = useState(false);
   const [dateRange, setDateRange] = useState([dayjs().subtract(7, 'd'), dayjs()]);
   const [timeFilter, setTimeFilter] = useState('week');
+  const [isMobile, setIsMobile] = useState(false);
 
   // State tổng hợp
   const [stats, setStats] = useState({
@@ -124,6 +125,17 @@ export default function ReportOrdersPage() {
     fetchData();
   }, [fetchData]);
 
+  // Detect mobile viewport (iPhone 14 Pro Max ~430px width)
+  useEffect(() => {
+    const mql = window.matchMedia("(max-width: 480px)");
+    const handleChange = (e) => setIsMobile(e.matches);
+    handleChange(mql);
+    mql.addEventListener ? mql.addEventListener("change", handleChange) : mql.addListener(handleChange);
+    return () => {
+      mql.removeEventListener ? mql.removeEventListener("change", handleChange) : mql.removeListener(handleChange);
+    };
+  }, []);
+
   // --- HELPER RENDER ---
   const renderStatusTag = (status) => {
     let color = 'default';
@@ -139,15 +151,17 @@ export default function ReportOrdersPage() {
   };
 
   const columnsRecentOrders = [
-    { title: 'Mã đơn', dataIndex: 'id', render: (text) => <span style={{ cursor: 'pointer', color: '#1890ff' }}>{text}</span> },
-    { title: 'Khách hàng', dataIndex: 'customer', render: (text) => <Space><Avatar size="small" icon={<UserOutlined />} /> {text}</Space> },
-    { title: 'Ngày đặt', dataIndex: 'date' },
+    { title: 'Mã đơn', dataIndex: 'id', width: isMobile ? 80 : 100, render: (text) => <span style={{ cursor: 'pointer', color: '#1890ff' }}>{text}</span> },
+    { title: 'Khách hàng', dataIndex: 'customer', width: isMobile ? 160 : 220, render: (text) => <Space><Avatar size="small" icon={<UserOutlined />} /> <span style={{ display: 'inline-block', maxWidth: isMobile ? 120 : 180, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{text}</span></Space> },
+    { title: 'Ngày đặt', dataIndex: 'date', width: isMobile ? 120 : 140 },
     {
       title: 'Tổng tiền',
       dataIndex: 'total',
+      width: isMobile ? 120 : 140,
+      align: 'right',
       render: (val) => <Text strong>{intcomma(val)} đ</Text>
     },
-    { title: 'Trạng thái', dataIndex: 'status', render: (status) => renderStatusTag(status) },
+    { title: 'Trạng thái', dataIndex: 'status', width: isMobile ? 130 : 160, render: (status) => renderStatusTag(status) },
   ];
 
   // --- HANDLERS ---
@@ -301,6 +315,10 @@ export default function ReportOrdersPage() {
                 columns={columnsRecentOrders}
                 pagination={false}
                 rowKey="id"
+                size={isMobile ? 'small' : 'middle'}
+                tableLayout="fixed"
+                scroll={isMobile ? { x: 700 } : undefined}
+                style={isMobile ? { whiteSpace: 'nowrap' } : undefined}
               />
             </Card>
           </Col>

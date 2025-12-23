@@ -6,6 +6,7 @@ const { Option } = Select;
 
 export default function PromotionFilter({ onFilterChange, onClear }) {
   const [form] = Form.useForm();
+  const isMobile = typeof window !== "undefined" && window.matchMedia("(max-width: 480px)").matches;
 
   // Hàm kích hoạt bộ lọc
   const triggerFilter = () => {
@@ -48,7 +49,7 @@ export default function PromotionFilter({ onFilterChange, onClear }) {
       layout="vertical" 
       className="promotion-filter-form"
     >
-      <Row gutter={[16, 16]} align="bottom">
+      <Row gutter={[12, 12]} align="bottom">
         {/* Cột 1: Tìm kiếm */}
         <Col xs={24} sm={12} md={8} lg={6}>
           <Form.Item name="search" label="Từ khóa" style={{ marginBottom: 0 }}>
@@ -56,6 +57,7 @@ export default function PromotionFilter({ onFilterChange, onClear }) {
               placeholder="Mã hoặc tên voucher..." 
               prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
               allowClear
+              size={isMobile ? 'small' : 'middle'}
               onPressEnter={triggerFilter} 
             />
           </Form.Item>
@@ -67,6 +69,7 @@ export default function PromotionFilter({ onFilterChange, onClear }) {
             <Select 
               placeholder="Tất cả" 
               allowClear 
+              size={isMobile ? 'small' : 'middle'}
               onChange={handleSelectChange}
             >
               <Option value="normal">Voucher thường</Option>
@@ -81,6 +84,7 @@ export default function PromotionFilter({ onFilterChange, onClear }) {
             <Select 
               placeholder="Tất cả" 
               allowClear 
+              size={isMobile ? 'small' : 'middle'}
               onChange={handleSelectChange}
             >
               <Option value="active">Đang chạy</Option>
@@ -90,12 +94,12 @@ export default function PromotionFilter({ onFilterChange, onClear }) {
         </Col>
 
         {/* Cột 4: Nút bấm */}
-        <Col xs={24} sm={24} md={6} lg={6} style={{ display: 'flex', gap: '8px' }}>
-          <Button type="primary" icon={<SearchOutlined />} onClick={triggerFilter}>
+        <Col xs={24} sm={24} md={6} lg={6} style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <Button type="primary" icon={<SearchOutlined />} onClick={triggerFilter} size={isMobile ? 'small' : 'middle'} style={{ whiteSpace: 'nowrap' }}>
             Tìm
           </Button>
           <Tooltip title="Xóa bộ lọc">
-            <Button icon={<ReloadOutlined />} onClick={handleReset}>
+            <Button icon={<ReloadOutlined />} onClick={handleReset} size={isMobile ? 'small' : 'middle'} style={{ whiteSpace: 'nowrap' }}>
               Xóa lọc
             </Button>
           </Tooltip>
