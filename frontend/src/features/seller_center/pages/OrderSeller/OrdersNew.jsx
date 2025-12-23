@@ -16,7 +16,7 @@ export default function OrdersNew() {
     return () => clearInterval(interval);
   }, []);
 
-  const { data: orders = [], isLoading } = useQuery({
+  const { data: orders = [], isLoading, refetch } = useQuery({
     queryKey: ["sellerOrders", "pending"],
     queryFn: async () => (await API.get("orders/seller/pending/")).data.sort((a, b) => b.id - a.id),
     refetchInterval: 15000,
@@ -59,7 +59,7 @@ export default function OrdersNew() {
     {
       title: "Thời gian chờ",
       dataIndex: "created_at",
-      width: 140,
+      width: 120,
       align: "center",
       render: (t) => {
         const { text, color } = getTimeInfo(t);
@@ -74,6 +74,7 @@ export default function OrdersNew() {
       isLoading={isLoading}
       data={orders}
       extraColumns={extraColumns}
+      refetch={refetch}
       actionsRenderer={(record) => (
         <ButtonAction
           record={record}

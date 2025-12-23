@@ -158,6 +158,7 @@ export default function OrdersCancelled() {
         data={filtered}
         columns={columns}
         onSearch={handleSearch}
+        onRefresh={fetchOrders}
         searchPlaceholder="Tìm kiếm..."
         // --- 3. QUAN TRỌNG: scroll x=900 kích hoạt trượt ngang ---
         scroll={{ x: 900 }} 

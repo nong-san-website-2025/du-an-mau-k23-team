@@ -19,6 +19,9 @@ import { useNavigate } from "react-router-dom"; // Import hook điều hướng
 import dayjs from "dayjs";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
 import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
+// Extend Day.js with comparison plugins for date range checks
+dayjs.extend(isSameOrAfter);
+dayjs.extend(isSameOrBefore);
 
 // --- IMPORTS UTILS & COMPONENTS ---
 import {
@@ -153,8 +156,8 @@ const FinancePage = () => {
       // Date Filter
       const date = transaction.createdAt ? dayjs(transaction.createdAt) : null;
       const matchesDate = date
-        ? (!startDate || isSameOrAfter(date, startDate, "day")) &&
-          (!endDate || isSameOrBefore(date, endDate, "day"))
+        ? (!startDate || dayjs(date).isSameOrAfter(startDate, "day")) &&
+          (!endDate || dayjs(date).isSameOrBefore(endDate, "day"))
         : true;
 
       return matchesType && matchesSearch && matchesDate;
