@@ -37,7 +37,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             'list', 'retrieve', 'create', 
             'seller_pending', 'seller_processing', 
             'seller_completed_orders', 'seller_approve', 'seller_complete',
-            'seller_cancelled', 'cancel'
+            'seller_cancelled', 'cancel', 'confirm_received'  # <--- PHẢI THÊM ACTION NÀY VÀO ĐÂY
         ]:
             return [IsAuthenticated()]
         elif self.action in ['admin_list', 'admin_detail', 'admin_soft_delete', 'admin_restore']:
@@ -127,6 +127,30 @@ class OrderViewSet(viewsets.ModelViewSet):
         order = self.get_object()
         serializer = OrderSerializer(order, context={"request": request})
         return Response(serializer.data)
+    
+    @action(detail=True, methods=['post'], url_path='confirm-received')
+    def confirm_received(self, request, pk=None):
+        try:
+            # Lấy đơn hàng theo ID (pk)
+            order = self.get_object()
+        except Order.DoesNotExist:
+            return Response({'error': 'Không tìm thấy đơn hàng'}, status=404)
+
+        # Kiểm tra điều kiện: chỉ cho phép xác nhận khi đơn hàng ở trạng thái 'delivered'
+        if order.status != 'delivered':
+            return Response({'error': 'Chỉ có thể xác nhận khi đơn hàng đã giao thành công'}, status=400)
+
+        # Cập nhật trạng thái thành 'completed'
+        order.status = 'completed'
+        order.save(update_fields=['status'])
+
+        # Gửi thông báo cho Seller (nếu cần)
+        # Notification.objects.create(...) 
+
+        return Response({
+            'message': 'Xác nhận đã nhận hàng thành công',
+            'status': order.status
+        })
 
     @action(detail=True, methods=['post'], url_path='create_payment_url')
     def create_payment_url(self, request, pk=None):
@@ -374,3 +398,4 @@ def user_orders(request, user_id):
     orders = Order.objects.filter(user=user).order_by('-created_at')
     serializer = OrderSerializer(orders, many=True, context={'request': request})
     return Response(serializer.data)
+

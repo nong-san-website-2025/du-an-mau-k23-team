@@ -1,11 +1,11 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { 
-  Tag, Skeleton, Empty, Button, Popconfirm, message, Divider, 
-  Image, Modal, Space, Typography 
+import {
+  Tag, Skeleton, Empty, Button, Popconfirm, message, Divider,
+  Image, Modal, Space, Typography
 } from "antd";
-import { 
-  ShopOutlined, MessageOutlined, ReloadOutlined, 
-  CloseCircleOutlined, EyeOutlined 
+import {
+  ShopOutlined, MessageOutlined, ReloadOutlined,
+  CloseCircleOutlined, EyeOutlined
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 
@@ -26,7 +26,7 @@ const OrderTab = ({ status }) => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [cancelingOrderIds, setCancelingOrderIds] = useState(new Set());
-  
+
   // State quản lý Modal chi tiết (New UX)
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
@@ -75,6 +75,33 @@ const OrderTab = ({ status }) => {
     }
   };
 
+  const handleEscalate = async (complaintId) => {
+    if (!complaintId) return message.error("Không tìm thấy mã khiếu nại");
+
+    Modal.confirm({
+      title: "Gửi khiếu nại lên Sàn?",
+      content: "Sàn thương mại điện tử sẽ tham gia phán quyết. Bạn có chắc chắn muốn gửi yêu cầu?",
+      okText: "Gửi ngay",
+      cancelText: "Đóng",
+      onOk: async () => {
+        try {
+          // Gọi API escalate đã có sẵn ở backend
+          await API.post(`complaints/${complaintId}/escalate/`);
+          message.success("Đã gửi yêu cầu lên Sàn thành công!");
+
+          // Cập nhật lại giao diện
+          fetchOrders();
+          if (selectedOrder) {
+            // Nếu đang mở modal thì đóng hoặc reload modal (ở đây mình chọn đóng để user thấy status mới bên ngoài)
+            setDetailModalVisible(false);
+          }
+        } catch (error) {
+          message.error(error.response?.data?.error || "Gửi yêu cầu thất bại");
+        }
+      }
+    });
+  };
+
   const handleSendComplaint = async (orderItemId) => {
     if (!complaintText.trim()) return message.warning("Vui lòng nhập lý do");
     setIsSendingComplaint(true);
@@ -105,7 +132,7 @@ const OrderTab = ({ status }) => {
       await API.post(`orders/${orderId}/cancel/`);
       message.success(`Đơn #${orderId} đã được huỷ`);
       setOrders((prev) => prev.filter((order) => order.id !== orderId));
-      if(selectedOrder?.id === orderId) setDetailModalVisible(false);
+      if (selectedOrder?.id === orderId) setDetailModalVisible(false);
     } catch (error) {
       message.error(error?.response?.data?.error || "Hủy đơn thất bại");
     } finally {
@@ -246,17 +273,17 @@ const OrderTab = ({ status }) => {
         return (
           // Container Card (Dùng class card-order + style inline bổ trợ)
           <div key={order.id} className="card-order" style={{ padding: '20px', background: '#fff', borderRadius: 8, marginBottom: 20, border: '1px solid #e5e7eb' }}>
-            
+
             {/* 1. Header: Shop Info & Status */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, borderBottom: '1px solid #f0f0f0', paddingBottom: 12, marginBottom: 12, flexWrap: 'wrap' }}>
-              <div 
-                style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: 12, 
-                  cursor: 'pointer', 
-                  flex: 1, 
-                  minWidth: 0, 
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  cursor: 'pointer',
+                  flex: 1,
+                  minWidth: 0,
                   transition: 'all 0.2s ease',
                   padding: '8px 12px',
                   borderRadius: '6px',
@@ -272,10 +299,10 @@ const OrderTab = ({ status }) => {
                   console.log("First item - All keys:", Object.keys(firstItem || {}));
                   console.log("First item - Full data:", firstItem);
                   console.log("Items[0]:", order.items?.[0]);
-                  
+
                   const storeId = firstItem?.seller_id || firstItem?.store_id || firstItem?.product_seller_id || order.items?.[0]?.seller_id || order.items?.[0]?.store_id;
                   console.log("Store ID found:", storeId);
-                  
+
                   if (storeId) {
                     setDetailModalVisible(false);
                     setTimeout(() => {
@@ -288,9 +315,9 @@ const OrderTab = ({ status }) => {
               >
                 <div style={{ flexShrink: 0 }}>
                   {firstItem?.store?.image ? (
-                    <img 
-                      src={firstItem.store.image} 
-                      alt={order.shop_name} 
+                    <img
+                      src={firstItem.store.image}
+                      alt={order.shop_name}
                       style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover', border: '2px solid #52c41a' }}
                     />
                   ) : (
@@ -310,8 +337,8 @@ const OrderTab = ({ status }) => {
                 </div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                <Button 
-                  size="small" type="primary" ghost icon={<MessageOutlined />} 
+                <Button
+                  size="small" type="primary" ghost icon={<MessageOutlined />}
                   onClick={(e) => { e.stopPropagation(); handleChatWithShop(order); }}
                 >
                   Chat
@@ -324,47 +351,47 @@ const OrderTab = ({ status }) => {
             </div>
 
             {/* 2. Body: Preview Sản Phẩm (FIX LỖI ẢNH TO) */}
-            <div 
-                style={{ cursor: 'pointer', display: 'flex', gap: 16, alignItems: 'flex-start' }} 
-                onClick={() => openDetailModal(order)}
+            <div
+              style={{ cursor: 'pointer', display: 'flex', gap: 16, alignItems: 'flex-start' }}
+              onClick={() => openDetailModal(order)}
             >
-                {/* Wrapper cố định kích thước ảnh 80x80px */}
-                <div style={{ 
-                    width: 80, height: 80, 
-                    border: '1px solid #e5e7eb', borderRadius: 6, 
-                    overflow: 'hidden', flexShrink: 0 
-                }}>
-                  <Image 
-                    src={firstItem?.product_image} 
-                    preview={false} 
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    fallback="https://via.placeholder.com/80"
-                  />
+              {/* Wrapper cố định kích thước ảnh 80x80px */}
+              <div style={{
+                width: 80, height: 80,
+                border: '1px solid #e5e7eb', borderRadius: 6,
+                overflow: 'hidden', flexShrink: 0
+              }}>
+                <Image
+                  src={firstItem?.product_image}
+                  preview={false}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  fallback="https://via.placeholder.com/80"
+                />
+              </div>
+
+              {/* Thông tin sản phẩm */}
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 500, color: '#1f2937', marginBottom: 4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                  {firstItem?.product_name}
                 </div>
-                
-                {/* Thông tin sản phẩm */}
-                <div style={{ flex: 1 }}>
-                   <div style={{ fontWeight: 500, color: '#1f2937', marginBottom: 4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                     {firstItem?.product_name}
-                   </div>
-                   <div style={{ fontSize: 12, color: '#6b7280' }}>
-                     Phân loại: {firstItem?.variant_name || "Tiêu chuẩn"}
-                   </div>
-                   <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8 }}>
-                      <span style={{ fontSize: 12, color: '#6b7280' }}>x{firstItem?.quantity}</span>
-                      <span style={{ fontWeight: 600, color: '#374151' }}>{intcomma(firstItem?.price)}đ</span>
-                   </div>
+                <div style={{ fontSize: 12, color: '#6b7280' }}>
+                  Phân loại: {firstItem?.variant_name || "Tiêu chuẩn"}
                 </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8 }}>
+                  <span style={{ fontSize: 12, color: '#6b7280' }}>x{firstItem?.quantity}</span>
+                  <span style={{ fontWeight: 600, color: '#374151' }}>{intcomma(firstItem?.price)}đ</span>
+                </div>
+              </div>
             </div>
 
             {/* Xem thêm sản phẩm nếu có */}
             {otherItemsCount > 0 && (
-                <div style={{ 
-                    marginTop: 12, textAlign: 'center', fontSize: 12, color: '#6b7280', 
-                    background: '#f9fafb', padding: '6px', borderRadius: 4, border: '1px dashed #e5e7eb' 
-                }}>
-                  Xem thêm {otherItemsCount} sản phẩm khác
-                </div>
+              <div style={{
+                marginTop: 12, textAlign: 'center', fontSize: 12, color: '#6b7280',
+                background: '#f9fafb', padding: '6px', borderRadius: 4, border: '1px dashed #e5e7eb'
+              }}>
+                Xem thêm {otherItemsCount} sản phẩm khác
+              </div>
             )}
 
             <Divider style={{ margin: "16px 0" }} />
@@ -372,26 +399,26 @@ const OrderTab = ({ status }) => {
             {/* 3. Footer: Tổng tiền & Nút bấm */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                 <span style={{ color: '#6b7280', fontSize: 14 }}>Thành tiền:</span>
-                 <span style={{ fontSize: 18, fontWeight: 700, color: '#dc2626' }}>{intcomma(order.total_amount || order.total_price)}đ</span>
+                <span style={{ color: '#6b7280', fontSize: 14 }}>Thành tiền:</span>
+                <span style={{ fontSize: 18, fontWeight: 700, color: '#dc2626' }}>{intcomma(order.total_amount || order.total_price)}đ</span>
               </div>
 
               <Space wrap>
                 {canCancel && (
-                   <Popconfirm title="Hủy đơn hàng?" okText="Đồng ý" cancelText="Đóng" okButtonProps={{ danger: true }} onConfirm={() => handleCancelOrder(order.id)}>
-                      <Button danger icon={<CloseCircleOutlined />} loading={cancelingOrderIds.has(order.id)}>Hủy đơn</Button>
-                   </Popconfirm>
+                  <Popconfirm title="Hủy đơn hàng?" okText="Đồng ý" cancelText="Đóng" okButtonProps={{ danger: true }} onConfirm={() => handleCancelOrder(order.id)}>
+                    <Button danger icon={<CloseCircleOutlined />} loading={cancelingOrderIds.has(order.id)}>Hủy đơn</Button>
+                  </Popconfirm>
                 )}
                 {status === "completed" && (
-                   <Button icon={<ReloadOutlined />} onClick={() => handleReorder(order)}>Mua lại</Button>
+                  <Button icon={<ReloadOutlined />} onClick={() => handleReorder(order)}>Mua lại</Button>
                 )}
                 {status === "delivered" && !hasActiveDispute(order) && (
-                   <Button 
-                     style={{ background: '#389E0D', borderColor: '#389E0D', color: '#fff' }}
-                     onClick={() => confirmReceived(order.id)}
-                   >
-                     Đã nhận
-                   </Button>
+                  <Button
+                    style={{ background: '#389E0D', borderColor: '#389E0D', color: '#fff' }}
+                    onClick={() => confirmReceived(order.id)}
+                  >
+                    Đã nhận
+                  </Button>
                 )}
                 <Button onClick={() => openDetailModal(order)}>Xem chi tiết</Button>
               </Space>
@@ -413,47 +440,50 @@ const OrderTab = ({ status }) => {
       >
         {selectedOrder && (
           <div>
-             <div style={{ marginBottom: 24 }}>
-               <OrderTimeline status={selectedOrder.status} orderId={selectedOrder.id} />
-             </div>
-             
-             {/* Layout Responsive cho Modal */}
-             <div style={{ display: 'flex', gap: 24, flexDirection: window.innerWidth < 768 ? 'column' : 'row' }}>
-                {/* Cột Trái - Shop & Customer Info */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                    <OrderInfo 
-                        order={selectedOrder} 
-                        cardStyle={{ background: "#fff", border: "1px solid #f0f0f0", borderRadius: 8, padding: 0 }} 
-                        isMobile={false} 
-                    />
-                </div>
-                {/* Cột Phải - Products List */}
-                <div style={{ flex: 1.5, minWidth: 0 }}>
-                    <ProductList 
-                        order={selectedOrder} 
-                        isMobile={false} status={status}
-                        cardStyle={{ border: '1px solid #f0f0f0', borderRadius: 8, padding: 0, overflow: 'hidden' }}
-                        
-                        ratedProducts={ratedProducts} onRate={handleRating}
-                        
-                        activeComplaintItem={activeComplaintItem} toggleComplaint={toggleComplaint}
-                        complaintText={complaintText} onChangeText={setComplaintText}
-                        complaintFiles={complaintFiles} onChangeFiles={setComplaintFiles}
-                        isSendingComplaint={isSendingComplaint} sendComplaint={handleSendComplaint}
-                        
-                        onProductClick={(productId) => navigate(`/products/${productId}`)}
-                    />
-                </div>
-             </div>
+            <div style={{ marginBottom: 24 }}>
+              <OrderTimeline status={selectedOrder.status} orderId={selectedOrder.id} />
+            </div>
+
+            {/* Layout Responsive cho Modal */}
+            <div style={{ display: 'flex', gap: 24, flexDirection: window.innerWidth < 768 ? 'column' : 'row' }}>
+              {/* Cột Trái - Shop & Customer Info */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <OrderInfo
+                  order={selectedOrder}
+                  cardStyle={{ background: "#fff", border: "1px solid #f0f0f0", borderRadius: 8, padding: 0 }}
+                  isMobile={false}
+                />
+              </div>
+              {/* Cột Phải - Products List */}
+              <div style={{ flex: 1.5, minWidth: 0 }}>
+                <ProductList
+                  order={selectedOrder}
+                  isMobile={false} status={status}
+                  cardStyle={{ border: '1px solid #f0f0f0', borderRadius: 8, padding: 0, overflow: 'hidden' }}
+
+                  ratedProducts={ratedProducts} onRate={handleRating}
+
+                  activeComplaintItem={activeComplaintItem} toggleComplaint={toggleComplaint}
+                  complaintText={complaintText} onChangeText={setComplaintText}
+                  complaintFiles={complaintFiles} onChangeFiles={setComplaintFiles}
+                  isSendingComplaint={isSendingComplaint} sendComplaint={handleSendComplaint}
+
+                  // --- 2. TRUYỀN HÀM MỚI VÀO PRODUCT LIST ---
+                  onEscalate={handleEscalate}
+
+                  onProductClick={(productId) => navigate(`/products/${productId}`)}
+                />
+              </div>
+            </div>
           </div>
         )}
       </Modal>
 
       {/* --- MODAL ĐÁNH GIÁ --- */}
-      <RatingModal 
-        open={ratingModalVisible} 
-        onCancel={() => setRatingModalVisible(false)} 
-        product={ratingProduct} 
+      <RatingModal
+        open={ratingModalVisible}
+        onCancel={() => setRatingModalVisible(false)}
+        product={ratingProduct}
         ratingValue={ratingValue}
         setRatingValue={setRatingValue}
         comment={ratingComment}

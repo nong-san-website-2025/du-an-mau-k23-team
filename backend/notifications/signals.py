@@ -47,46 +47,46 @@ def send_notification_websocket(sender, instance, created, **kwargs):
 # -------------------------------------------------------------------------
 
 # -------------------------------------------------------------------------
-@receiver(post_save, sender='orders.Order', dispatch_uid="order_status_notification")
-def notify_order_status_change(sender, instance, created, **kwargs):
-    Notification = apps.get_model('notifications', 'Notification')
-    title = ""
-    message = ""
-    order_ref = getattr(instance, 'order_code', f"#{instance.id}")
+# @receiver(post_save, sender='orders.Order', dispatch_uid="order_status_notification")
+# def notify_order_status_change(sender, instance, created, **kwargs):
+#     Notification = apps.get_model('notifications', 'Notification')
+#     title = ""
+#     message = ""
+#     order_ref = getattr(instance, 'order_code', f"#{instance.id}")
 
-    # 1. Xử lý khi TẠO MỚI (created=True)
-    if created:
-        title = "🛒 Đặt hàng thành công"
-        message = f"Đơn hàng {order_ref} của bạn đã được hệ thống ghi nhận."
+#     # 1. Xử lý khi TẠO MỚI (created=True)
+#     if created:
+#         title = "🛒 Đặt hàng thành công"
+#         message = f"Đơn hàng {order_ref} của bạn đã được hệ thống ghi nhận."
     
-    # 2. Xử lý khi CẬP NHẬT (created=False)
-    else:
-        # Kiểm tra xem status có nằm trong các trường vừa được update không
-        # update_fields là danh sách các cột được save, ví dụ: order.save(update_fields=['status'])
-        update_fields = kwargs.get('update_fields')
+#     # 2. Xử lý khi CẬP NHẬT (created=False)
+#     else:
+#         # Kiểm tra xem status có nằm trong các trường vừa được update không
+#         # update_fields là danh sách các cột được save, ví dụ: order.save(update_fields=['status'])
+#         update_fields = kwargs.get('update_fields')
         
-        # Chỉ xử lý nếu có update status cụ thể
-        if update_fields and 'status' in update_fields:
-            status = str(instance.status).upper()
-            if status == 'SHIPPING':
-                title = "🚚 Đơn hàng đang giao"
-                message = f"Đơn hàng {order_ref} đang trên đường đến bạn."
-            elif status == 'SUCCESS' or status == 'COMPLETED': # Check cả 2 trường hợp
-                title = "✅ Giao hàng thành công"
-                message = f"Đơn hàng {order_ref} đã hoàn tất."
-            elif status == 'CANCELLED':
-                title = "❌ Đơn hàng đã hủy"
-                message = f"Đơn hàng {order_ref} đã bị hủy."
+#         # Chỉ xử lý nếu có update status cụ thể
+#         if update_fields and 'status' in update_fields:
+#             status = str(instance.status).upper()
+#             if status == 'SHIPPING':
+#                 title = "🚚 Đơn hàng đang giao"
+#                 message = f"Đơn hàng {order_ref} đang trên đường đến bạn."
+#             elif status == 'SUCCESS' or status == 'COMPLETED': # Check cả 2 trường hợp
+#                 title = "✅ Giao hàng thành công"
+#                 message = f"Đơn hàng {order_ref} đã hoàn tất."
+#             elif status == 'CANCELLED':
+#                 title = "❌ Đơn hàng đã hủy"
+#                 message = f"Đơn hàng {order_ref} đã bị hủy."
 
-    # Chỉ tạo notification nếu có title
-    if title and instance.user:
-        try:
-            Notification.objects.create(
-                user=instance.user,
-                title=title,
-                message=message,
-                type="ORDER",
-                metadata={"order_id": instance.id, "type": "ORDER_DETAIL"}
-            )
-        except Exception as e:
-            logger.error(f"Lỗi tạo Notification: {e}")
+#     # Chỉ tạo notification nếu có title
+#     if title and instance.user:
+#         try:
+#             Notification.objects.create(
+#                 user=instance.user,
+#                 title=title,
+#                 message=message,
+#                 type="ORDER",
+#                 metadata={"order_id": instance.id, "type": "ORDER_DETAIL"}
+#             )
+#         except Exception as e:
+#             logger.error(f"Lỗi tạo Notification: {e}")

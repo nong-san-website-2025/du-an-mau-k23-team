@@ -130,8 +130,8 @@ const AdminSidebar = ({ collapsed }) => {
     {
       key: "complaints",
       icon: <WarningOutlined />,
-      label: "Khiếu nại",
-      children: [{ key: "/admin/complaints/user-reports", label: "Người dùng báo cáo" }],
+      label: "Quản lý trả hàng",
+      children: [{ key: "/admin/complaints/user-reports", label: "Trả hàng/ hoàn tiền" }],
     },
     {
       key: "reviews",

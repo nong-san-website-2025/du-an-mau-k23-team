@@ -16,25 +16,29 @@ class ComplaintSerializer(serializers.ModelSerializer):
 
     # --- PHẦN NGƯỜI BÁN (SELLER) ---
     seller_name = serializers.CharField(source='order_item.product.seller.store_name', read_only=True)
-    
-    # SỬA Ở ĐÂY: Đổi từ CharField sang SerializerMethodField để tránh lỗi khi không có ảnh
     seller_avatar = serializers.SerializerMethodField()
 
-    # --- THÔNG TIN ĐƠN HÀNG & SẢN PHẨM ---
+    # --- THÔNG TIN ĐƠN HÀNG (QUAN TRỌNG: Cần thêm payment_method và ngày đặt) ---
     order_id = serializers.IntegerField(source='order_item.order.id', read_only=True)
-    order_code = serializers.CharField(source='order_item.order.ghn_order_code', read_only=True)
     
+    # Mã đơn hàng: Bạn đang lấy mã GHN, nếu null thì nên fallback về ID
+    order_code = serializers.SerializerMethodField() 
+
+    # [MỚI] Phương thức thanh toán (COD / VNPay / Wallet...)
+    payment_method = serializers.CharField(source='order_item.order.payment_method', read_only=True)
+
+    # [MỚI] Ngày đặt hàng gốc
+    order_created_at = serializers.DateTimeField(source='order_item.order.created_at', read_only=True)
+    
+    # --- THÔNG TIN SẢN PHẨM ---
     product_id = serializers.IntegerField(source='order_item.product.id', read_only=True)
     product_name = serializers.CharField(source='order_item.product.name', read_only=True)
-    # Tương tự, nếu product_image có thể null, bạn cũng nên dùng MethodField, 
-    # nhưng thường ảnh sản phẩm là bắt buộc nên có thể giữ nguyên nếu chắc chắn có ảnh.
     product_image = serializers.CharField(source='order_item.product_image', read_only=True) 
     
     purchase_price = serializers.DecimalField(source='order_item.price', max_digits=12, decimal_places=2, read_only=True)
     purchase_quantity = serializers.IntegerField(source='order_item.quantity', read_only=True)
 
     media = ComplaintMediaSerializer(many=True, read_only=True)
-    
     status_display = serializers.CharField(source='get_status_display', read_only=True)
 
     class Meta:
@@ -44,6 +48,8 @@ class ComplaintSerializer(serializers.ModelSerializer):
             'order_item', 
             'order_id',
             'order_code',
+            'payment_method',    # <--- Nhớ thêm vào fields
+            'order_created_at',  # <--- Nhớ thêm vào fields
             
             'user',             
             'created_by_name',   
@@ -71,7 +77,6 @@ class ComplaintSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['status', 'user', 'seller_response', 'admin_notes']
 
-    # Hàm lấy avatar người mua (Bạn đã làm đúng)
     def get_created_by_avatar(self, obj):
         try:
             if obj.user and obj.user.avatar:
@@ -80,14 +85,21 @@ class ComplaintSerializer(serializers.ModelSerializer):
             pass
         return None
 
-    # Hàm lấy avatar người bán (Mới thêm vào để sửa lỗi)
     def get_seller_avatar(self, obj):
         try:
-            # Truy cập ngược từ Complaint -> OrderItem -> Product -> Seller -> User
             seller_user = obj.order_item.product.seller.user
             if seller_user.avatar:
                 return seller_user.avatar.url
         except AttributeError:
-            # Phòng trường hợp sản phẩm hoặc seller bị xóa
             return None
         return None
+
+    # Logic lấy mã đơn hàng an toàn: Nếu không có mã GHN thì lấy ID đơn
+    def get_order_code(self, obj):
+        try:
+            code = obj.order_item.order.ghn_order_code
+            if code: 
+                return code
+            return str(obj.order_item.order.id) # Fallback về ID
+        except AttributeError:
+            return "N/A"

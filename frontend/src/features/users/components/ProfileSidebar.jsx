@@ -26,7 +26,6 @@ const navItems = [
   { key: "password", label: "Đổi Mật Khẩu", icon: <FaLock /> },
   { key: "voucher", label: "Kho mã giảm giá", icon: <FaGift /> },
   { key: "myvoucher", label: "Mã giảm giá của tôi", icon: <FaGift /> },
-  { key: "point", label: "Điểm Thưởng", icon: <FaStar /> },
 ];
 
 const ProfileSidebar = ({ activeTab, setActiveTab }) => {

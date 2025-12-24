@@ -176,7 +176,9 @@ const ProductCard: React.FC<ProductCardProps> = ({
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            marginTop: "4px",
+            marginTop: "8px", // Tăng khoảng cách một chút cho thoáng
+            paddingTop: "4px",
+            borderTop: "1px solid #f0f0f0", // Thêm đường kẻ mờ ngăn cách cho đẹp
           }}
         >
           {/* Giá tiền */}
@@ -186,25 +188,51 @@ const ProductCard: React.FC<ProductCardProps> = ({
                 color: PRIMARY_COLOR,
                 fontWeight: "700",
                 fontSize: "16px",
-                lineHeight: "1",
+                lineHeight: "1.2",
               }}
             >
               {intcomma(product.price)}
+              <span
+                style={{
+                  fontSize: "0.7em",
+                  verticalAlign: "top",
+                  marginLeft: "1px",
+                }}
+              >
+                ₫
+              </span>
             </span>
           </div>
 
-          {/* Nút thêm vào giỏ */}
+          {/* 👇 NÚT THÊM VÀO GIỎ (ĐÃ SỬA) */}
           <IonButton
             fill="clear"
-            className="btn-add-cart"
+            // Bỏ class btn-add-cart tạm thời nếu class đó đang gây lỗi display:none
+            // className="btn-add-cart"
+
+            // Style trực tiếp để đảm bảo hiển thị
+            style={{
+              margin: 0,
+              height: "32px",
+              width: "32px",
+              "--padding-start": "0",
+              "--padding-end": "0",
+              color: PRIMARY_COLOR, // Ép màu xanh chủ đạo
+              border: `1px solid ${PRIMARY_COLOR}`, // Thêm viền mỏng để nổi bật
+              borderRadius: "50%", // Bo tròn nút
+            }}
             onClick={(e) => {
               e.stopPropagation();
               e.preventDefault();
               if (onAddToCart) onAddToCart(e);
             }}
           >
-            <IonIcon icon={cartOutline} />
+            <IonIcon
+              icon={cartOutline}
+              style={{ fontSize: "18px" }} // Kích thước icon chuẩn
+            />
           </IonButton>
+          {/* 👆 KẾT THÚC SỬA */}
         </div>
       </IonCardContent>
 

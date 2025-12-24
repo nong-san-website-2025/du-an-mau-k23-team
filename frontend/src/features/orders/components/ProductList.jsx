@@ -4,7 +4,7 @@ import { List, Space, Image, Typography, Button, Tooltip, Divider, Card } from "
 import { 
   WarningOutlined, StarOutlined, SyncOutlined, 
   CheckCircleOutlined, CloseCircleOutlined, CarOutlined, 
-  TagOutlined
+  TagOutlined, ExclamationCircleOutlined 
 } from "@ant-design/icons";
 import { FaStore } from "react-icons/fa";
 
@@ -39,6 +39,9 @@ const ProductList = ({
   
   // Props for navigation
   onProductClick,
+
+  // --- [MỚI] Props xử lý gửi lên sàn ---
+  onEscalate 
 }) => {
 
   const getComplaint = (item) => item.complaint || item.return_request || null;
@@ -47,7 +50,7 @@ const ProductList = ({
     ? order.items.find(item => item.id === activeComplaintItem) 
     : null;
 
-  // [SỬA ĐOẠN NÀY] Hàm render status thông minh hơn
+  // Hàm render status thông minh hơn
   // Ưu tiên check trạng thái trong 'complaint' trước, nếu không có mới check 'item.status'
   const renderItemStatus = (item, complaintData) => {
     let config = null;
@@ -58,7 +61,7 @@ const ProductList = ({
             'pending': { icon: <SyncOutlined spin />, text: "Đang chờ duyệt", color: "#faad14", bg: "#fffbe6" },
             'waiting_return': { icon: <SyncOutlined />, text: "Chờ gửi hàng", color: "#1890ff", bg: "#e6f7ff" },
             'returning': { icon: <CarOutlined />, text: "Đang trả hàng", color: "#722ed1", bg: "#f9f0ff" },
-            'negotiating': { icon: <WarningOutlined />, text: "Đang thương lượng", color: "#faad14", bg: "#fffbe6" },
+            'negotiating': { icon: <WarningOutlined />, text: "Shop từ chối - Đang thương lượng", color: "#ff4d4f", bg: "#fff1f0" },
             'admin_review': { icon: <WarningOutlined />, text: "Sàn đang xử lý", color: "#f5222d", bg: "#fff1f0" },
             'resolved_refund': { icon: <CheckCircleOutlined />, text: "Đã hoàn tiền", color: "#52c41a", bg: "#f6ffed" },
             'resolved_reject': { icon: <CloseCircleOutlined />, text: "Từ chối hoàn tiền", color: "#8c8c8c", bg: "#f5f5f5" },
@@ -124,11 +127,14 @@ const ProductList = ({
                                && item.status === "NORMAL"
                                && !complaintData;
 
+          // [MỚI] Kiểm tra nếu Shop đã từ chối (Trạng thái đang thương lượng)
+          const isSellerRejected = complaintData?.status === 'negotiating';
+
           return (
             <div key={item.id} style={{ borderBottom: index < order.items.length - 1 ? "1px solid #f0f0f0" : "none" }}>
               <div style={{ padding: isMobile ? "16px" : "20px 24px" }}>
                 
-                {/* [SỬA] Truyền thêm complaintData vào hàm renderItemStatus */}
+                {/* Truyền thêm complaintData vào hàm renderItemStatus */}
                 <div style={{ marginBottom: 8 }}>
                   {renderItemStatus(item, complaintData)}
                 </div>
@@ -162,7 +168,27 @@ const ProductList = ({
                   </div>
                 </div>
 
-                <div style={{ marginTop: 16, display: "flex", justifyContent: "flex-end", gap: 12, flexWrap: "wrap" }}>
+                {/* --- KHU VỰC NÚT BẤM HÀNH ĐỘNG --- */}
+                <div style={{ marginTop: 16, display: "flex", justifyContent: "flex-end", gap: 12, flexWrap: "wrap", alignItems: 'center' }}>
+                  
+                  {/* [MỚI] Nút Gửi lên Sàn (Chỉ hiện khi Shop đã từ chối) */}
+                  {isSellerRejected && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 12, color: '#ff4d4f', display: isMobile ? 'none' : 'block' }}>
+                            <ExclamationCircleOutlined /> Bạn không đồng ý với Shop?
+                        </span>
+                        <Button 
+                            type="primary" 
+                            danger 
+                            icon={<WarningOutlined />}
+                            onClick={() => onEscalate && onEscalate(complaintData.id)}
+                            style={{ borderRadius: 4, background: '#ff4d4f', borderColor: '#ff4d4f' }}
+                        >
+                            Gửi khiếu nại lên Sàn
+                        </Button>
+                    </div>
+                  )}
+
                   {showComplaintButton && (
                     <Tooltip title={status === "completed" ? "Đơn đã hoàn thành – không thể yêu cầu hoàn tiền" : undefined}>
                       <Button
@@ -179,8 +205,8 @@ const ProductList = ({
                   
                   {(status === "completed") && !ratedProducts.has(item.product) && !complaintData && (
                     <Tooltip title="Đánh giá để nhận xu">
-                       <Button type="primary" ghost size={isMobile ? "small" : "middle"} icon={<StarOutlined />} onClick={() => onRate(item)} style={{ borderRadius: 4 }}>
-                        Đánh giá
+                        <Button type="primary" ghost size={isMobile ? "small" : "middle"} icon={<StarOutlined />} onClick={() => onRate(item)} style={{ borderRadius: 4 }}>
+                         Đánh giá
                       </Button>
                     </Tooltip>
                   )}
@@ -200,9 +226,7 @@ const ProductList = ({
       <div style={{ background: "#fafafa", padding: "16px 24px", borderTop: "1px solid #f0f0f0" }}>
         <Space direction="vertical" style={{ width: "100%" }} size={8}>
           
-          {/* 1. Tổng tiền hàng (Giá gốc sản phẩm) */}
-          {/* Logic cũ sai: order.total_price - order.shipping_fee (sai vì total_price đã bị trừ voucher) */}
-          {/* Logic mới: Total + Discount - Ship = Tiền hàng thuần */}
+          {/* 1. Tổng tiền hàng */}
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}>
             <Text type="secondary">Tổng tiền hàng</Text>
             <Text>
@@ -220,7 +244,7 @@ const ProductList = ({
             </div>
           )}
 
-          {/* 3. Voucher giảm giá (THÊM MỚI) */}
+          {/* 3. Voucher giảm giá */}
           {Number(order.discount_amount) > 0 && (
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}>
               <Text type="secondary"><TagOutlined /> Voucher giảm giá</Text>
@@ -230,7 +254,7 @@ const ProductList = ({
 
           <Divider style={{ margin: "8px 0" }} />
           
-          {/* 4. Thành tiền (Khách phải trả) */}
+          {/* 4. Thành tiền */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <Text style={{ fontSize: 16, fontWeight: 500 }}>Thành tiền</Text>
             <Text style={{ fontSize: 20, fontWeight: 700, color: "#52c41a" }}>
