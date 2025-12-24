@@ -21,8 +21,9 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer, TokenRefreshSerializer
 from rest_framework_simplejwt.exceptions import TokenError, AuthenticationFailed
+from rest_framework_simplejwt.views import TokenRefreshView as SimpleJWTTokenRefreshView
 
 from ..serializers import RegisterSerializer
 from ..utils import token_generator, generate_reset_link
@@ -364,3 +365,31 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             pass
 
         return data
+
+
+class CustomTokenRefreshView(SimpleJWTTokenRefreshView):
+    """
+    Custom TokenRefreshView to handle cases where user has been deleted
+    but token is still valid (in the database).
+    """
+    def post(self, request, *args, **kwargs):
+        try:
+            return super().post(request, *args, **kwargs)
+        except CustomUser.DoesNotExist:
+            return Response(
+                {"detail": "Tài khoản không tồn tại. Vui lòng đăng nhập lại.", "code": "user_not_found"},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        except TokenError as e:
+            return Response(
+                {"detail": "Token không hợp lệ hoặc đã hết hạn. Vui lòng đăng nhập lại.", "code": "token_invalid"},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Token refresh error: {str(e)}")
+            return Response(
+                {"detail": "Lỗi xác thực. Vui lòng đăng nhập lại.", "code": "auth_error"},
+                status=status.HTTP_401_UNAUTHORIZED
+            )

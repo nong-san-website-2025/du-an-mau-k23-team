@@ -8,10 +8,7 @@ from dashboard.views import dashboard_data
 
 from promotions.urls import router as promotions_router
 # ✅ import views của SimpleJWT
-from rest_framework_simplejwt.views import (
-    TokenObtainPairView,
-    TokenRefreshView,
-)
+from rest_framework_simplejwt.views import TokenObtainPairView
 # Import SSE view
 from users.views.notifications import notification_sse_view
 
@@ -44,10 +41,9 @@ urlpatterns = [
     path("api/dashboard/", dashboard_data, name="dashboard-data"),
     path("api/dashboard/", include("dashboard.urls")),
 
-    # ✅ thêm endpoint login bằng JWT
+    # ✅ thêm endpoint login bằng JWT (deprecated - use /api/users/token/refresh/ instead)
     path("api/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
-    path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
-    # path("api/dashboard/", include("dashboard.urls")),
+    # path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),  # Moved to users/urls.py
 
     path("api/marketing/", include("marketing.urls")),
     path("api/chat/", include("chat.urls")),

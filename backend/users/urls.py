@@ -5,7 +5,7 @@ Routes organized by functionality
 
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from rest_framework_simplejwt.views import TokenRefreshView
+from .views.auth import CustomTokenRefreshView
 
 from .views import (
     # Auth
@@ -43,7 +43,7 @@ urlpatterns = [
     path('register/', auth.RegisterView.as_view(), name='register'),
     path('login/', auth.LoginView.as_view(), name='login'),
     path('logout/', auth.logout_view, name='logout'),
-    path('token/refresh/', TokenRefreshView.as_view(), name='token-refresh'),
+    path('token/refresh/', CustomTokenRefreshView.as_view(), name='token-refresh'),
     
     # Password Reset
     path('password-reset/', auth.PasswordResetRequestView.as_view(), name='password-reset'),
