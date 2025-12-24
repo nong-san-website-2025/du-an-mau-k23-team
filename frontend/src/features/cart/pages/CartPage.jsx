@@ -39,6 +39,13 @@ function CartPage() {
 
   const { isAuthenticated } = useAuth();
 
+  // Set page title
+  useEffect(() => {
+    const prev = document.title;
+    document.title = "GreenFarm - Giỏ Hàng";
+    return () => { document.title = prev; };
+  }, []);
+
   // State từ TruongAn1
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [userVouchers, setUserVouchers] = useState([]);

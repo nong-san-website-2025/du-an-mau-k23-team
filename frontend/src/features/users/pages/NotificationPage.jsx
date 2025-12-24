@@ -42,6 +42,13 @@ export default function NotificationPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const userId = profile?.id;
 
+  // Set page title
+  useEffect(() => {
+    const prev = document.title;
+    document.title = "GreenFarm - Thông Báo";
+    return () => { document.title = prev; };
+  }, []);
+
   // --- Hàm định dạng tiền tệ ---
   const formatVND = (n) =>
     Number.isFinite(Number(n))

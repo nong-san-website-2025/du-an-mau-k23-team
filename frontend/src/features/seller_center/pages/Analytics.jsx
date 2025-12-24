@@ -5,14 +5,12 @@ import {
   ArrowDownOutlined,
   DollarOutlined,
   ContainerOutlined,
-  EyeOutlined,
   PercentageOutlined,
   GiftOutlined,
   BulbOutlined,
   DashboardOutlined,
   RiseOutlined,
   AppstoreOutlined,
-  TeamOutlined,
 } from "@ant-design/icons";
 import {
   AreaChart,
@@ -56,7 +54,7 @@ export default function Analytics() {
   const [overviewData, setOverviewData] = useState(null);
   const [salesData, setSalesData] = useState(null);
   const [productsData, setProductsData] = useState(null);
-  const [trafficData, setTrafficData] = useState(null);
+  // Đã bỏ tab "Lưu lượng & Khách hàng" theo yêu cầu
   const [lastUpdated, setLastUpdated] = useState(null);
   const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(false);
 
@@ -121,10 +119,7 @@ export default function Analytics() {
           const productsRes = await axios.get(`${API_BASE}/analytics/products/`, config);
           setProductsData(productsRes.data);
           break;
-        case "traffic":
-          const trafficRes = await axios.get(`${API_BASE}/analytics/traffic/`, config);
-          setTrafficData(trafficRes.data);
-          break;
+        // Tab "traffic" đã được loại bỏ
         default:
           break;
       }
@@ -159,20 +154,20 @@ export default function Analytics() {
           <div style={{
             backgroundColor: `${color}20`,
             color: color,
-            width: 50,
-            height: 50,
+            width: 60,
+            height: 60,
             borderRadius: '8px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontSize: '24px',
+            fontSize: '28px',
             flexShrink: 0
           }}>
             {icon}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <Text type="secondary" style={{ whiteSpace: 'nowrap' }}>{title}</Text>
-            <Title level={4} style={{ margin: 0, color: THEME_COLORS.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            <Title level={3} style={{ margin: 0, color: THEME_COLORS.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {value}
             </Title>
             <Text style={{ fontSize: 14, color: isPositive ? "#52c41a" : "#ff4d4f", whiteSpace: 'nowrap' }}>
@@ -197,8 +192,8 @@ export default function Analytics() {
     );
 
     const { kpis, trend_chart, top_products, funnel } = overviewData;
+    // Bỏ "Lượt truy cập" khỏi KPI và phễu
     const funnelData = [
-      { stage: "Lượt truy cập", value: funnel?.visits || 0 },
       { stage: "Lượt xem SP", value: funnel?.product_views || 0 },
       { stage: "Đơn hàng", value: funnel?.orders || 0 }
     ];
@@ -207,19 +202,16 @@ export default function Analytics() {
       <div>
         {/* KPI Cards */}
         <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-          <Col xs={24} sm={12} md={8} lg={6} xl={4}>
+          <Col xs={24} sm={12} md={12} lg={6} xl={6}>
             {renderThemedKPICard("Doanh thu", formatCurrency(kpis.revenue.value), kpis.revenue.growth, <DollarOutlined />, THEME_COLORS.primary)}
           </Col>
-          <Col xs={24} sm={12} md={8} lg={6} xl={4}>
+          <Col xs={24} sm={12} md={12} lg={6} xl={6}>
             {renderThemedKPICard("Đơn hàng", kpis.orders.value, kpis.orders.growth, <ContainerOutlined />, THEME_COLORS.accent)}
           </Col>
-          <Col xs={24} sm={12} md={8} lg={6} xl={4}>
-            {renderThemedKPICard("Lượt truy cập", kpis.visits.value, kpis.visits.growth, <EyeOutlined />, THEME_COLORS.secondary)}
-          </Col>
-          <Col xs={24} sm={12} md={8} lg={6} xl={4}>
+          <Col xs={24} sm={12} md={12} lg={6} xl={6}>
             {renderThemedKPICard("Tỷ lệ chuyển đổi", `${kpis.conversion_rate.value}%`, kpis.conversion_rate.growth, <PercentageOutlined />, THEME_COLORS.danger)}
           </Col>
-          <Col xs={24} sm={12} md={8} lg={6} xl={4}>
+          <Col xs={24} sm={12} md={12} lg={6} xl={6}>
             {renderThemedKPICard("Giá trị đơn TB", formatCurrency(kpis.aov.value), kpis.aov.growth, <GiftOutlined />, THEME_COLORS.primary)}
           </Col>
         </Row>
@@ -401,131 +393,6 @@ export default function Analytics() {
     );
   };
 
-  const renderTraffic = () => {
-    if (loading) {
-      return (
-        <Card>
-          <div style={{ textAlign: "center", padding: 50 }}>⏳ Đang tải dữ liệu...</div>
-        </Card>
-      );
-    }
-
-    if (!trafficData) {
-      return (
-        <Card>
-          <div style={{ textAlign: "center", padding: 50 }}>
-            ❌ Không có dữ liệu
-            <div style={{ marginTop: 16 }}>
-              <Space direction="vertical">
-                <Button type="primary" onClick={() => fetchData()}>
-                  Thử tải lại
-                </Button>
-                <Button onClick={() => setAutoRefreshEnabled(!autoRefreshEnabled)}>
-                  {autoRefreshEnabled ? "Tắt tự động làm mới" : "Bật tự động làm mới"}
-                </Button>
-              </Space>
-            </div>
-          </div>
-        </Card>
-      );
-    }
-
-    const { traffic_sources, top_keywords, customer_analysis } = trafficData;
-    const trafficPieData = (traffic_sources || []).map(item => ({ name: item.source, value: item.visits }));
-    const customerPieData = [
-      { name: "Khách mới", value: customer_analysis?.new_customers || 0 },
-      { name: "Khách quay lại", value: customer_analysis?.returning_customers || 0 }
-    ];
-
-    return (
-      <div>
-        <Row gutter={[24, 24]} style={{ marginBottom: 24 }}>
-          {/* Biểu đồ nguồn truy cập */}
-          <Col xs={24} md={12}>
-            <Card title={<Title level={5}>Nguồn truy cập</Title>} style={{ borderRadius: '12px', height: '100%' }}>
-              <div style={{ height: 300 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={trafficPieData}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {trafficPieData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(value) => new Intl.NumberFormat('vi-VN').format(value) + " lượt"} />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
-          </Col>
-
-          {/* Biểu đồ phân tích khách hàng */}
-          <Col xs={24} md={12}>
-            <Card title={<Title level={5}>Phân loại khách hàng</Title>} style={{ borderRadius: '12px', height: '100%' }}>
-              <div style={{ height: 300 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={customerPieData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60} // Biểu đồ dạng Donut
-                      outerRadius={80}
-                      fill="#8884d8"
-                      paddingAngle={5}
-                      dataKey="value"
-                    >
-                      <Cell key="new" fill={THEME_COLORS.secondary} />
-                      <Cell key="returning" fill={THEME_COLORS.primary} />
-                    </Pie>
-                    <Tooltip formatter={(value) => new Intl.NumberFormat('vi-VN').format(value) + " khách"} />
-                    <Legend verticalAlign="bottom" height={36} />
-                    <text x="50%" y="50%" textAnchor="middle" dominantBaseline="middle" style={{ fontSize: '16px', fontWeight: 'bold', fill: THEME_COLORS.text }}>
-                      {/* Tránh lỗi chia cho 0 nếu không có khách hàng */}
-                      {customer_analysis?.total_customers > 0 
-                        ? ((customer_analysis.returning_customers / customer_analysis.total_customers) * 100).toFixed(1) 
-                        : 0}% Quay lại
-                    </text>
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
-          </Col>
-        </Row>
-
-        {/* Bảng từ khóa tìm kiếm */}
-        <Card title={<Title level={5}>Từ khóa tìm kiếm hàng đầu</Title>} style={{ borderRadius: '12px' }}>
-          <Table
-            dataSource={top_keywords}
-            rowKey="keyword"
-            pagination={false}
-            columns={[
-              { title: "Từ khóa", dataIndex: "keyword", key: "keyword", render: (text) => <Tag color="blue">{text}</Tag> },
-              { title: "Lượt tìm kiếm", dataIndex: "visits", key: "visits", sorter: (a, b) => a.visits - b.visits },
-              { title: "Đơn hàng tạo ra", dataIndex: "orders", key: "orders", sorter: (a, b) => a.orders - b.orders },
-              {
-                title: "Tỷ lệ chuyển đổi",
-                key: "conversion",
-                render: (_, record) => {
-                  const rate = record.visits > 0 ? (record.orders / record.visits) * 100 : 0;
-                  return `${rate.toFixed(1)}%`;
-                }
-              }
-            ]}
-          />
-        </Card>
-      </div>
-    );
-  };
 
   return (
     <AnalyticsBaseLayout
@@ -581,16 +448,7 @@ export default function Analytics() {
           {renderProducts()}
         </Tabs.TabPane>
 
-        <Tabs.TabPane
-          tab={
-            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <TeamOutlined /> Lưu lượng & Khách hàng
-            </span>
-          }
-          key="traffic"
-        >
-          {renderTraffic()}
-        </Tabs.TabPane>
+        {/* Đã xóa tab "Lưu lượng & Khách hàng" theo yêu cầu */}
       </Tabs>
     </AnalyticsBaseLayout>
   );

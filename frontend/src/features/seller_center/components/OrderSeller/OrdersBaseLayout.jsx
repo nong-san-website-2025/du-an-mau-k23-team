@@ -36,7 +36,7 @@ export default function OrdersBaseLayout({
       {/* Tiêu đề */}
       <Row justify="space-between" align="middle" style={{ marginBottom: 12 }}>
         <Col>
-          <Title level={2} style={{ paddingLeft: 24, marginBottom: 0 }}>
+          <Title level={4} style={{ paddingLeft: 24, marginBottom: 0, fontSize: 18, fontWeight: 600 }}>
             {title}
           </Title>
         </Col>

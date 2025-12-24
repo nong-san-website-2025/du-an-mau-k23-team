@@ -29,6 +29,12 @@ const API_URL = process.env.REACT_APP_API_URL;
 
 const Wishlist = () => {
   // --- 1. STATE & LOGIC GIỮ NGUYÊN ---
+  // Set page title
+  useEffect(() => {
+    const prev = document.title;
+    document.title = "GreenFarm - Yêu Thích";
+    return () => { document.title = prev; };
+  }, []);
   const [wishlist, setWishlist] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem("wishlist")) || [];
