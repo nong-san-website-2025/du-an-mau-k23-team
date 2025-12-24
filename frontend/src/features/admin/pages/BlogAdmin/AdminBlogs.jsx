@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { Button, Input, Space, message, Row, Col, Modal } from "antd";
+import { Button, Input, Space, message, Row, Col, Modal, Tooltip } from "antd"; // <--- Thêm Tooltip
 import { PlusOutlined, SearchOutlined, ReloadOutlined, DeleteOutlined } from "@ant-design/icons";
 import AdminPageLayout from "../../components/AdminPageLayout";
 import BlogTable from "../../components/BlogAdmin/BlogTable";
@@ -22,7 +22,6 @@ const AdminBlogs = () => {
   const loadBlogs = useCallback(async (page = 1, pageSize = 10, search = "") => {
     setLoading(true);
     try {
-      // Giả sử API hỗ trợ tham số search, nếu không bạn có thể lọc client-side
       const { data } = await adminFetchBlogs(page, pageSize, search);
       
       let list = [];
@@ -57,9 +56,8 @@ const AdminBlogs = () => {
   useEffect(() => {
     loadBlogs(1, 10, searchText);
     loadCategories();
-  }, [loadBlogs, loadCategories]); // Bỏ searchText ra khỏi dep array để tránh call api liên tục khi gõ
+  }, [loadBlogs, loadCategories]);
 
-  // Xử lý tìm kiếm khi nhấn Enter hoặc bấm nút tìm
   const handleSearch = () => {
     loadBlogs(1, pagination.pageSize, searchText);
   };
@@ -104,23 +102,13 @@ const AdminBlogs = () => {
     <AdminPageLayout
       title="QUẢN LÝ BÀI VIẾT"
       extra={
-        <Space wrap style={{ rowGap: 8 }}>
-          <Button 
-            type="primary" 
-            icon={<PlusOutlined />} 
-            onClick={openCreate}
-            size={isMobile ? "small" : "middle"}
-            style={{ whiteSpace: 'nowrap' }}
-          >
-            {isMobile ? "Viết mới" : "Viết bài mới"}
+        <Space>
+          {/* 1. Nút Quản lý danh mục */}
+          <Button onClick={() => setCategoryModalVisible(true)}>
+            Quản lý Danh mục
           </Button>
-          <Button 
-            onClick={() => setCategoryModalVisible(true)}
-            size={isMobile ? "small" : "middle"}
-            style={{ whiteSpace: 'nowrap' }}
-          >
-            {isMobile ? "Danh mục" : "Quản lý Danh mục"}
-          </Button>
+
+          {/* 2. Nút Xóa (Bulk Delete) */}
           <Button 
             danger 
             icon={<DeleteOutlined />} 
@@ -131,13 +119,37 @@ const AdminBlogs = () => {
           >
             {`Xóa (${selectedRows.length})`}
           </Button>
+
+          {/* 3. Nút Làm mới (Style: Outline Blue) */}
+          <Tooltip title="Tải lại dữ liệu">
+            <Button 
+              icon={<ReloadOutlined spin={loading} />} 
+              onClick={() => loadBlogs(pagination.current)}
+              style={{
+                backgroundColor: '#fff',
+                borderColor: '#d9d9d9',
+                color: '#000000ff',
+                display: 'flex',
+                alignItems: 'center'
+              }}
+            >
+              Làm mới
+            </Button>
+          </Tooltip>
+
+          {/* 4. Nút Viết bài mới (Style: Solid Green #28a645 - Đã chuyển xuống cuối) */}
           <Button 
-            icon={<ReloadOutlined />} 
-            onClick={() => loadBlogs(pagination.current)}
-            size={isMobile ? "small" : "middle"}
-            style={{ whiteSpace: 'nowrap' }}
+            type="primary" 
+            icon={<PlusOutlined />} 
+            onClick={openCreate}
+            style={{
+              backgroundColor: '#28a645', // Màu xanh lá
+              borderColor: '#28a645',
+              display: 'flex',
+              alignItems: 'center'
+            }}
           >
-            Làm mới
+            Viết bài mới
           </Button>
         </Space>
       }

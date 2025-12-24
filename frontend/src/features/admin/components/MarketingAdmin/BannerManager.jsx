@@ -1,17 +1,40 @@
 import React, { useEffect, useState } from "react";
 import {
-  Button, Table, Modal, Tag, Space, Image, Select, message, Input, Row, Col, Popconfirm
+  Button,
+  Table,
+  Modal,
+  Tag,
+  Space,
+  Image,
+  Select,
+  message,
+  Input,
+  Row,
+  Col,
+  Popconfirm,
+  Tooltip, // <--- Đã thêm Tooltip
 } from "antd";
 import {
-  PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, ReloadOutlined, 
-  EyeOutlined, StopOutlined, WarningOutlined, ClockCircleOutlined, ClearOutlined
+  PlusOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  SearchOutlined,
+  ReloadOutlined,
+  EyeOutlined,
+  StopOutlined,
+  WarningOutlined,
+  ClockCircleOutlined,
 } from "@ant-design/icons";
 import moment from "moment";
 
 // Import Component Form
 import BannerForm from "./BannerForm";
-import ButtonAction from "../../../../components/ButtonAction"; 
-import { getAdminBanners, getAdSlots, deleteBanner } from "../../services/marketingApi";
+import ButtonAction from "../../../../components/ButtonAction";
+import {
+  getAdminBanners,
+  getAdSlots,
+  deleteBanner,
+} from "../../services/marketingApi";
 
 const BannerManager = () => {
   const [banners, setBanners] = useState([]);
@@ -34,8 +57,8 @@ const BannerManager = () => {
     setLoading(true);
     try {
       const [resBanners, resSlots] = await Promise.all([
-        getAdminBanners(), 
-        getAdSlots(),      
+        getAdminBanners(),
+        getAdSlots(),
       ]);
       // Reset selection khi reload data
       setSelectedRowKeys([]);
@@ -67,13 +90,11 @@ const BannerManager = () => {
   // Xóa nhiều cái (Bulk Delete)
   const handleBulkDelete = async () => {
     if (selectedRowKeys.length === 0) return;
-    
+
     setLoading(true);
     try {
-      // Vì API deleteBanner chỉ xóa 1 cái, ta dùng Promise.all để xóa danh sách
-      // Nếu Backend bạn có API xóa nhiều (VD: delete list IDs) thì dùng API đó sẽ tốt hơn
-      await Promise.all(selectedRowKeys.map(id => deleteBanner(id)));
-      
+      await Promise.all(selectedRowKeys.map((id) => deleteBanner(id)));
+
       message.success(`Đã xóa ${selectedRowKeys.length} banner thành công!`);
       fetchData();
     } catch (error) {
@@ -83,24 +104,21 @@ const BannerManager = () => {
     }
   };
 
-  // --- LOGIC LỌC ĐÃ ĐƯỢC SỬA (FIXED) ---
+  // --- LOGIC LỌC ---
   const filteredBanners = banners.filter((b) => {
-    // 1. Lọc theo Tiêu đề (Search Text)
+    // 1. Lọc theo Tiêu đề
     const normalizedSearch = searchText.toLowerCase().trim();
-    const titleMatch = b.title 
-      ? b.title.toLowerCase().includes(normalizedSearch) 
+    const titleMatch = b.title
+      ? b.title.toLowerCase().includes(normalizedSearch)
       : false;
-    
+
     if (searchText && !titleMatch) return false;
 
-    // 2. Lọc theo Vị trí (Slot Filter)
+    // 2. Lọc theo Vị trí
     if (slotFilter) {
-      // Backend có thể trả về slot dạng Object (có .id) hoặc dạng ID (số/chuỗi)
-      const bannerSlotId = (typeof b.slot === 'object' && b.slot !== null) 
-          ? b.slot.id 
-          : b.slot;
-      
-      // So sánh ID (ép về string để an toàn)
+      const bannerSlotId =
+        typeof b.slot === "object" && b.slot !== null ? b.slot.id : b.slot;
+
       if (String(bannerSlotId) !== String(slotFilter)) {
         return false;
       }
@@ -121,7 +139,11 @@ const BannerManager = () => {
           src={src}
           width={100}
           height={50}
-          style={{ objectFit: "cover", borderRadius: 4, border: '1px solid #ddd' }}
+          style={{
+            objectFit: "cover",
+            borderRadius: 4,
+            border: "1px solid #ddd",
+          }}
           fallback="https://via.placeholder.com/100x50"
         />
       ),
@@ -133,11 +155,14 @@ const BannerManager = () => {
       sorter: (a, b) => a.title.localeCompare(b.title),
       render: (_, record) => (
         <div>
-          <div style={{ fontWeight: 600, fontSize: 15 }}>{record.title || "Chưa đặt tên"}</div>
+          <div style={{ fontWeight: 600, fontSize: 15 }}>
+            {record.title || "Chưa đặt tên"}
+          </div>
           <div style={{ marginTop: 4 }}>
-             {/* Hiển thị tên Slot nếu có, hoặc hiển thị ID */}
-             <Tag color="blue">{record.slot?.name || `Slot ID: ${record.slot}`}</Tag>
-             {record.priority > 0 && <Tag color="gold">Ưu tiên: {record.priority}</Tag>}
+            <Tag color="blue">{record.slot?.name || `Slot ID: ${record.slot}`}</Tag>
+            {record.priority > 0 && (
+              <Tag color="gold">Ưu tiên: {record.priority}</Tag>
+            )}
           </div>
         </div>
       ),
@@ -150,7 +175,14 @@ const BannerManager = () => {
       render: (_, b) => (
         <div style={{ fontSize: 13, color: "#666" }}>
           <div>BĐ: {moment(b.start_at).format("DD/MM/YYYY HH:mm")}</div>
-          <div>KT: {b.end_at ? moment(b.end_at).format("DD/MM/YYYY HH:mm") : <span style={{color: 'green'}}>Vô hạn</span>}</div>
+          <div>
+            KT:{" "}
+            {b.end_at ? (
+              moment(b.end_at).format("DD/MM/YYYY HH:mm")
+            ) : (
+              <span style={{ color: "green" }}>Vô hạn</span>
+            )}
+          </div>
         </div>
       ),
     },
@@ -164,10 +196,29 @@ const BannerManager = () => {
         const start = moment(record.start_at);
         const end = record.end_at ? moment(record.end_at) : null;
 
-        if (!record.is_active) return <Tag icon={<StopOutlined />} color="default">Đã ẩn</Tag>;
-        if (end && end.isBefore(now)) return <Tag icon={<WarningOutlined />} color="error">Hết hạn</Tag>;
-        if (start.isAfter(now)) return <Tag icon={<ClockCircleOutlined />} color="warning">Sắp chạy</Tag>;
-        return <Tag icon={<EyeOutlined />} color="success">Hiển thị</Tag>;
+        if (!record.is_active)
+          return (
+            <Tag icon={<StopOutlined />} color="default">
+              Đã ẩn
+            </Tag>
+          );
+        if (end && end.isBefore(now))
+          return (
+            <Tag icon={<WarningOutlined />} color="error">
+              Hết hạn
+            </Tag>
+          );
+        if (start.isAfter(now))
+          return (
+            <Tag icon={<ClockCircleOutlined />} color="warning">
+              Sắp chạy
+            </Tag>
+          );
+        return (
+          <Tag icon={<EyeOutlined />} color="success">
+            Hiển thị
+          </Tag>
+        );
       },
     },
     {
@@ -201,7 +252,6 @@ const BannerManager = () => {
     },
   ];
 
-  // Cấu hình chọn dòng
   const rowSelection = {
     selectedRowKeys,
     onChange: (newSelectedRowKeys) => {
@@ -224,24 +274,22 @@ const BannerManager = () => {
                 allowClear
                 onChange={(e) => setSearchText(e.target.value)}
               />
-              
-              {/* Select Lọc Slot (Đã sửa logic: Dùng ID làm value) */}
+
+              {/* Select Lọc Slot */}
               <Select
                 placeholder="Lọc theo vị trí"
                 allowClear
                 style={{ width: 200 }}
                 value={slotFilter}
                 onChange={setSlotFilter}
-                options={slots.map((s) => ({ label: s.name, value: s.id }))} // Value là ID
+                options={slots.map((s) => ({ label: s.name, value: s.id }))}
               />
-              
-              <Button icon={<ReloadOutlined />} onClick={fetchData} title="Tải lại" />
             </Space>
           </Col>
 
           <Col>
             <Space>
-              {/* Nút Xóa Nhiều (Chỉ hiện khi có chọn) */}
+              {/* Nút Xóa Nhiều */}
               {selectedRowKeys.length > 0 && (
                 <Popconfirm
                   title={`Bạn có chắc muốn xóa ${selectedRowKeys.length} banner đã chọn?`}
@@ -255,12 +303,36 @@ const BannerManager = () => {
                 </Popconfirm>
               )}
 
+              {/* --- NÚT LÀM MỚI (MỚI THÊM) --- */}
+              <Tooltip title="Tải lại dữ liệu">
+                <Button
+                  icon={<ReloadOutlined spin={loading} />}
+                  onClick={fetchData}
+                  style={{
+                    backgroundColor: "#fff",
+                    borderColor: "#d9d9d9", // Viền xanh dương chuẩn Antd
+                    color: "#000000ff",       // Chữ xanh dương
+                    display: "flex",
+                    alignItems: "center",
+                  }}
+                >
+                  Làm mới
+                </Button>
+              </Tooltip>
+
+              {/* --- NÚT THÊM BANNER (ĐÃ SỬA MÀU #28a645) --- */}
               <Button
                 type="primary"
                 icon={<PlusOutlined />}
                 onClick={() => {
                   setEditingBanner(null);
                   setShowForm(true);
+                }}
+                style={{
+                  backgroundColor: "#28a645", // Màu xanh lá
+                  borderColor: "#28a645",
+                  display: "flex",
+                  alignItems: "center",
                 }}
               >
                 Thêm Banner Mới
@@ -275,28 +347,27 @@ const BannerManager = () => {
         dataSource={filteredBanners}
         rowKey="id"
         loading={loading}
-        pagination={{ pageSize: 6, showTotal: (total) => `Tổng ${total} banner` }}
-        
-        // Kích hoạt tính năng chọn nhiều
-        rowSelection={rowSelection} 
-        
-        // Làm mờ hàng hết hạn
+        pagination={{
+          pageSize: 6,
+          showTotal: (total) => `Tổng ${total} banner`,
+        }}
+        rowSelection={rowSelection}
         rowClassName={(record) => {
-            const now = moment();
-            const end = record.end_at ? moment(record.end_at) : null;
-            return (end && end.isBefore(now)) ? 'expired-row' : '';
+          const now = moment();
+          const end = record.end_at ? moment(record.end_at) : null;
+          return end && end.isBefore(now) ? "expired-row" : "";
         }}
       />
 
       <style jsx="true">{`
         .expired-row {
-            opacity: 0.6;
-            background-color: #fafafa;
-            filter: grayscale(1);
+          opacity: 0.6;
+          background-color: #fafafa;
+          filter: grayscale(1);
         }
         .expired-row:hover {
-            opacity: 1;
-            filter: grayscale(0);
+          opacity: 1;
+          filter: grayscale(0);
         }
       `}</style>
 

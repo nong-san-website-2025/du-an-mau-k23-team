@@ -10,12 +10,14 @@ import {
   Col,
   Space,
   Modal,
+  Tooltip, // <--- Thêm Tooltip
 } from "antd";
 import {
   PlusOutlined,
   SearchOutlined,
   DeleteOutlined,
   FileExcelOutlined,
+  ReloadOutlined, // <--- Thêm icon Reload
 } from "@ant-design/icons";
 import FlashSaleModal from "../../components/FlashSaleAdmin/FlashSaleModal";
 import FlashSaleTable from "../../components/FlashSaleAdmin/FlashSaleTable";
@@ -136,24 +138,18 @@ const FlashSalePage = () => {
               <Button
                 type="primary"
                 icon={<FileExcelOutlined />}
+                  style={{
+                    backgroundColor: "#fff",
+                    borderColor: "#28a645",
+                    color: "#28a645",
+                    whiteSpace: "nowrap"
+                  }}
                 onClick={() => setImportModalVisible(true)}
                 size={isMobile ? "small" : "middle"}
-                style={{ whiteSpace: "nowrap" }}
               >
                 {isMobile ? "Import Excel" : "Import từ Excel"}
               </Button>
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={() => {
-                  setEditingRecord(null);
-                  setModalVisible(true);
-                }}
-                size={isMobile ? "small" : "middle"}
-                style={{ whiteSpace: "nowrap" }}
-              >
-                {isMobile ? "Tạo mới" : "Tạo chương trình mới"}
-              </Button>
+
               <Button
                 danger
                 icon={<DeleteOutlined />}
@@ -163,6 +159,41 @@ const FlashSalePage = () => {
                 style={{ whiteSpace: "nowrap" }}
               >
                 {`Xóa (${selectedRows.length})`}
+              </Button>
+
+              {/* 3. Nút Làm mới (Mới thêm - Kế bên trái nút Tạo mới) */}
+              <Tooltip title="Tải lại dữ liệu">
+                <Button
+                  icon={<ReloadOutlined spin={loading} />}
+                  onClick={loadData}
+                  style={{
+                    backgroundColor: "#fff",
+                    borderColor: "#d9d9d9",
+                    color: "#1677ff",
+                    display: "flex",
+                    alignItems: "center",
+                  }}
+                >
+                  Làm mới
+                </Button>
+              </Tooltip>
+
+              {/* 4. Nút Tạo chương trình mới (Đã chuyển xuống cuối và đổi màu) */}
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={() => {
+                  setEditingRecord(null);
+                  setModalVisible(true);
+                }}
+                style={{
+                  backgroundColor: "#28a645", // Màu xanh lá #28a645
+                  borderColor: "#28a645",
+                  display: "flex",
+                  alignItems: "center",
+                }}
+              >
+                Tạo chương trình mới
               </Button>
             </Space>
           </Col>

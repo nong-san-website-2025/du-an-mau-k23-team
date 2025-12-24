@@ -5,14 +5,15 @@ import {
     CloudUploadOutlined, 
     DeleteOutlined, 
     CheckSquareOutlined, 
-    CloseSquareOutlined 
+    CloseSquareOutlined,
+    ReloadOutlined 
 } from "@ant-design/icons";
 
 import AdminPageLayout from "../../components/AdminPageLayout";
 import PromotionFilter from "../../components/PromotionAdmin/PromotionFilter";
 import PromotionTable from "../../components/PromotionAdmin/PromotionTable";
 import PromotionModal from "../../components/PromotionAdmin/PromotionModal";
-import PromotionDetailModal from "../../components/PromotionAdmin/PromotionDetailModal"; // Sẽ được design lại bên dưới
+import PromotionDetailModal from "../../components/PromotionAdmin/PromotionDetailModal"; 
 import ImportVoucherModal from "../../components/PromotionAdmin/ImportVoucherModal";
 
 import {
@@ -181,13 +182,24 @@ export default function PromotionsPage() {
     }
   };
 
+  // --- LOGIC CHUẨN HÓA DỮ LIỆU ---
   const processPayload = (values) => {
     const payload = { ...values };
-    if (values.limit_usage !== undefined) payload.total_quantity = values.limit_usage;
-    if (values.limit_per_user !== undefined) payload.per_user_quantity = values.limit_per_user;
+    
+    // 1. Map số lượng từ Form sang DB
+    if (values.limit_usage !== undefined) {
+        payload.total_quantity = values.limit_usage;
+    }
+    if (values.limit_per_user !== undefined) {
+        payload.per_user_quantity = values.limit_per_user;
+    }
+
+    // 2. Logic Phân loại Voucher (Freeship vs Normal)
     if (payload.voucherType === "freeship") {
       payload.freeship_amount = payload.discountValue;
-      payload.discount_amount = null; payload.discount_percent = null; payload.max_discount_amount = null;
+      payload.discount_amount = null; 
+      payload.discount_percent = null;
+      payload.max_discount_amount = null;
     } else {
       payload.freeship_amount = null; 
       if (payload.discountType === "percent") {
@@ -196,10 +208,13 @@ export default function PromotionsPage() {
         payload.discount_amount = payload.discountValue; payload.discount_percent = null;
       }
     }
+    
     if (payload.dateRange && payload.dateRange.length === 2) {
       payload.start_at = payload.dateRange[0].toISOString();
       payload.end_at = payload.dateRange[1].toISOString();
     }
+    
+    // 4. Set mặc định Distribution Type
     payload.distribution_type = 'claim'; 
     delete payload.dateRange; delete payload.discountType; delete payload.discountValue;
     delete payload.voucherType; delete payload.limit_usage; delete payload.limit_per_user;
@@ -220,12 +235,25 @@ export default function PromotionsPage() {
       setModalOpen(false);
       fetchData(filters);
     } catch (err) {
-      message.error("Lỗi lưu dữ liệu.");
+      const errorData = err.response?.data;
+      let msg = "Có lỗi xảy ra";
+      
+      if (typeof errorData === 'object' && errorData !== null) {
+          if (errorData.non_field_errors) {
+              msg = errorData.non_field_errors[0]; 
+          } else {
+              const firstKey = Object.keys(errorData)[0];
+              const firstError = Array.isArray(errorData[firstKey]) ? errorData[firstKey][0] : errorData[firstKey];
+              msg = `${firstKey}: ${firstError}`;
+          }
+      }
+      message.error(msg);
     } finally {
       setModalLoading(false);
     }
   };
 
+  // Cấu hình selection cho Table
   const rowSelection = {
     selectedRowKeys,
     onChange: (keys, rows) => {
@@ -234,35 +262,74 @@ export default function PromotionsPage() {
     },
   };
 
+  // Style chung cho nút
+  const commonButtonStyle = {
+    height: '32px', // Chuẩn height của input Antd
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 0,
+    paddingBottom: 0
+  };
+
   return (
     <AdminPageLayout title="QUẢN LÝ KHUYẾN MÃI" breadcrumb={['Trang chủ', 'Marketing', 'Khuyến mãi']}>
         <Card bordered={false} className="shadow-sm">
-            <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
-                 <div style={{ flex: 1, minWidth: 200 }}>
-                    <PromotionFilter onFilterChange={setFilters} onClear={() => setFilters({})} />
+            {/* [FIX] alignItems: 'end' -> Căn đáy để các nút thẳng hàng với ô Input (bỏ qua chiều cao của Label phía trên) */}
+            <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'end', flexWrap: 'wrap', gap: 10 }}>
+                 <div style={{ flex: 1, marginRight: 16, minWidth: 200 }}>
+                    <PromotionFilter
+                        onFilterChange={setFilters}
+                        onClear={() => setFilters({})}
+                    />
                  </div>
                  
                  <Space wrap>
-                    <Button onClick={selectUnusedVouchers} icon={<CheckSquareOutlined />}>
+                    <Button onClick={selectUnusedVouchers} icon={<CheckSquareOutlined />} style={commonButtonStyle}>
                         Chọn chưa dùng
                     </Button>
 
                     {selectedRowKeys.length > 0 && (
                         <>
-                            <Button onClick={handleDeselectAll} icon={<CloseSquareOutlined />}>
+                            <Button onClick={handleDeselectAll} icon={<CloseSquareOutlined />} style={commonButtonStyle}>
                                 Hủy chọn
                             </Button>
-                            <Button type="primary" danger icon={<DeleteOutlined />} onClick={handleBulkDelete}>
+                            <Button type="primary" danger icon={<DeleteOutlined />} onClick={handleBulkDelete} style={commonButtonStyle}>
                                 Xóa ({selectedRowKeys.length})
                             </Button>
                         </>
                     )}
 
-                    <Button icon={<CloudUploadOutlined />} onClick={() => setImportModalOpen(true)} style={{ borderColor: '#217346', color: '#217346' }}>
+                    <Button 
+                        icon={<CloudUploadOutlined />} 
+                        onClick={() => setImportModalOpen(true)}
+                        style={{ 
+                            ...commonButtonStyle,
+                            borderColor: '#28a645', 
+                            color: '#28a645' 
+                        }}
+                    >
                         Import Excel
                     </Button>
 
-                    <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
+                    <Button
+                        icon={<ReloadOutlined />}
+                        onClick={() => fetchData(filters)}
+                        style={commonButtonStyle}
+                    >
+                        Làm mới
+                    </Button>
+
+                    <Button 
+                        type="primary" 
+                        icon={<PlusOutlined />} 
+                        onClick={handleCreate}
+                        style={{ 
+                            ...commonButtonStyle,
+                            backgroundColor: '#28a645', 
+                            borderColor: '#28a645' 
+                        }}
+                    >
                         Tạo Voucher
                     </Button>
                  </Space>

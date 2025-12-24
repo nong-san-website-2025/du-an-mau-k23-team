@@ -404,9 +404,6 @@ const CheckoutPage = () => {
                         />
                         <Text strong style={{ fontSize: 15 }}>{storeName}</Text>
                         <Divider type="vertical" />
-                        <Button type="link" size="small" icon={<ShopOutlined />} style={{ padding: 0 }}>
-                          Xem Shop
-                        </Button>
                       </Space>
                     </div>
 
