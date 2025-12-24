@@ -6,7 +6,16 @@ import {
   TrophyOutlined, AlertOutlined, ExclamationCircleOutlined, FrownOutlined, ReloadOutlined,
   DollarOutlined, WarningOutlined, DownloadOutlined
 } from "@ant-design/icons";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Cell, Tooltip as RechartsTooltip } from "recharts";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  ResponsiveContainer,
+  Cell,
+  Tooltip as RechartsTooltip,
+} from "recharts";
 
 import api from "../../../login_register/services/api";
 import { productApi } from "../../services/productApi";
@@ -19,7 +28,12 @@ export default function ReportProductsPage() {
   const [topProducts, setTopProducts] = useState([]);
   const [lowStock, setLowStock] = useState([]);
   const [outOfStock, setOutOfStock] = useState([]);
-  const [stats, setStats] = useState({ topCount: 0, lowStockCount: 0, outOfStockCount: 0, complaintRate: 0 });
+  const [stats, setStats] = useState({
+    topCount: 0,
+    lowStockCount: 0,
+    outOfStockCount: 0,
+    complaintRate: 0,
+  });
   const [loading, setLoading] = useState(false);
   const [requestingProductId, setRequestingProductId] = useState(null);
 
@@ -35,12 +49,18 @@ export default function ReportProductsPage() {
 
       const sold = data.reduce((sum, p) => sum + (p.sold || 0), 0);
       const complaints = data.reduce((sum, p) => sum + (p.complaints || 0), 0);
-      const complaintRate = sold > 0 ? ((complaints / sold) * 100).toFixed(2) : 0;
+      const complaintRate =
+        sold > 0 ? ((complaints / sold) * 100).toFixed(2) : 0;
 
       setTopProducts(top5);
       setLowStock(low);
       setOutOfStock(out);
-      setStats({ topCount: top5.length, lowStockCount: low.length, outOfStockCount: out.length, complaintRate });
+      setStats({
+        topCount: top5.length,
+        lowStockCount: low.length,
+        outOfStockCount: out.length,
+        complaintRate,
+      });
     } catch (err) {
       console.error(err);
       message.error("Không thể tải dữ liệu sản phẩm.");
@@ -83,10 +103,33 @@ export default function ReportProductsPage() {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (
-        <div style={{ backgroundColor: '#fff', padding: '12px', border: '1px solid #f0f0f0', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
-          <p style={{ margin: '0 0 4px 0', fontWeight: 'bold', color: '#1677ff' }}>{label}</p>
-          <p style={{ margin: 0 }}>Đã bán: <strong>{data.sold}</strong></p>
-          <p style={{ margin: 0 }}>Tồn kho: <strong style={{ color: data.stock <= 10 ? '#faad14' : '#52c41a' }}>{data.stock}</strong></p>
+        <div
+          style={{
+            backgroundColor: "#fff",
+            padding: "12px",
+            border: "1px solid #f0f0f0",
+            borderRadius: "8px",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+          }}
+        >
+          <p
+            style={{
+              margin: "0 0 4px 0",
+              fontWeight: "bold",
+              color: "#1677ff",
+            }}
+          >
+            {label}
+          </p>
+          <p style={{ margin: 0 }}>
+            Đã bán: <strong>{data.sold}</strong>
+          </p>
+          <p style={{ margin: 0 }}>
+            Tồn kho:{" "}
+            <strong style={{ color: data.stock <= 10 ? "#faad14" : "#52c41a" }}>
+              {data.stock}
+            </strong>
+          </p>
         </div>
       );
     }

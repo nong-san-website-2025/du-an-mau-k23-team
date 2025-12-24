@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useMemo } from "react";
-import { Input, message, Spin } from "antd";
+import React, { useEffect, useState, useMemo,  useRef, useCallback } from "react";
+import { Input, message } from "antd";
 import {
   CheckCircleOutlined,
   LockOutlined,
@@ -32,18 +32,91 @@ const ActiveLockedSellersPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedSeller, setSelectedSeller] = useState(null);
+  const [filterType, setFilterType] = useState("all");
 
-  // --- 1. STATE MỚI: Dùng để lưu loại lọc hiện tại ---
-  // Mặc định là 'all' (Hiển thị tất cả)
-  const [filterType, setFilterType] = useState("all"); 
+  // --- 1. LOGIC REAL-TIME (WEBSOCKET) ---
+  const socketRef = useRef(null);
 
-  // --- Logic tính toán Stats ---
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    const wsHost = process.env.REACT_APP_WS_URL || "localhost:8000";
+    const wsUrl = `ws://${wsHost}/ws/sellers/business/?token=${token}`;
+
+    // Chỉ khởi tạo nếu socket chưa tồn tại hoặc đã đóng hoàn toàn
+    if (
+      !socketRef.current ||
+      socketRef.current.readyState === WebSocket.CLOSED
+    ) {
+      console.log("🚀 Khởi tạo kết nối Business WS...");
+      const socket = new WebSocket(wsUrl);
+
+      socket.onopen = () => {
+        console.log("✅ Business WebSocket Connected");
+      };
+
+      socket.onmessage = (event) => {
+        const msg = JSON.parse(event.data);
+        const { action, data: sellerData } = msg;
+
+        setData((prevData) => {
+          // Logic xử lý cập nhật (giữ nguyên logic của bạn nhưng bọc trong functional update)
+          switch (action) {
+            case "CREATED":
+              if (["active", "locked"].includes(sellerData.status)) {
+                return [{ ...sellerData, isNew: true }, ...prevData];
+              }
+              return prevData;
+            case "UPDATED":
+              if (!["active", "locked"].includes(sellerData.status)) {
+                return prevData.filter((s) => s.id !== sellerData.id);
+              }
+              return prevData.map((s) =>
+                s.id === sellerData.id ? { ...s, ...sellerData } : s
+              );
+            case "DELETED":
+              return prevData.filter((s) => s.id !== sellerData.id);
+            default:
+              return prevData;
+          }
+        });
+      };
+
+      socket.onerror = (err) => {
+        console.error("❌ Business WebSocket Error:", err);
+      };
+
+      socket.onclose = (e) => {
+        console.log("ℹ️ Business WebSocket disconnected. Code:", e.code);
+      };
+
+      socketRef.current = socket;
+    }
+
+    // 2. Cẩn thận với hàm cleanup
+    return () => {
+      // Chỉ đóng socket khi component thực sự bị hủy bỏ (Unmount)
+      // Nếu bạn thấy vẫn bị đóng/mở liên tục do StrictMode, có thể tạm comment dòng dưới
+      if (
+        socketRef.current &&
+        socketRef.current.readyState === WebSocket.OPEN
+      ) {
+        socketRef.current.close();
+      }
+    };
+  }, []);
+
+  // --- 2. LOGIC TÍNH TOÁN STATS (Tự động cập nhật khi data thay đổi) ---
   const statsItems = useMemo(() => {
     const totalSellers = data.length;
-    const activeSellers = data.filter((item) => item.status === "active").length;
-    const lockedSellers = data.filter((item) => item.status === "locked").length;
+    const activeSellers = data.filter(
+      (item) => item.status === "active"
+    ).length;
+    const lockedSellers = data.filter(
+      (item) => item.status === "locked"
+    ).length;
 
-    // Tính số cửa hàng mới trong tháng này
     const newSellersThisMonth = data.filter((item) => {
       if (!item.created_at) return false;
       const createdDate = new Date(item.created_at);
@@ -54,67 +127,81 @@ const ActiveLockedSellersPage = () => {
       );
     }).length;
 
-    // --- 2. Thêm onClick và cursor vào từng item ---
     return [
       {
         title: t("Tổng cửa hàng"),
         value: totalSellers,
         icon: <ShopOutlined />,
         color: "#1890ff",
-        // Khi click vào thì set về 'all'
         onClick: () => setFilterType("all"),
-        style: { cursor: "pointer", border: filterType === 'all' ? "2px solid #1890ff" : "" } // (Tuỳ chọn) Viền để biết đang chọn
+        style: {
+          cursor: "pointer",
+          border:
+            filterType === "all"
+              ? "2px solid #1890ff"
+              : "2px solid transparent",
+        },
       },
       {
         title: t("Đang hoạt động"),
         value: activeSellers,
         icon: <CheckCircleOutlined />,
         color: "#52c41a",
-        // Khi click vào thì set về 'active'
         onClick: () => setFilterType("active"),
-        style: { cursor: "pointer", border: filterType === 'active' ? "2px solid #52c41a" : "" }
+        style: {
+          cursor: "pointer",
+          border:
+            filterType === "active"
+              ? "2px solid #52c41a"
+              : "2px solid transparent",
+        },
       },
       {
-        title: t("Tạm ngưng hoạt động"),
+        title: t("Tạm ngưng"),
         value: lockedSellers,
         icon: <LockOutlined />,
         color: "#faad14",
-        // Khi click vào thì set về 'locked'
         onClick: () => setFilterType("locked"),
-        style: { cursor: "pointer", border: filterType === 'locked' ? "2px solid #faad14" : "" }
+        style: {
+          cursor: "pointer",
+          border:
+            filterType === "locked"
+              ? "2px solid #faad14"
+              : "2px solid transparent",
+        },
       },
       {
         title: t("Mới tháng này"),
         value: newSellersThisMonth,
         icon: <RiseOutlined />,
         color: "#722ed1",
-        // Khi click vào thì set về 'new_month'
         onClick: () => setFilterType("new_month"),
-        style: { cursor: "pointer", border: filterType === 'new_month' ? "2px solid #722ed1" : "" }
+        style: {
+          cursor: "pointer",
+          border:
+            filterType === "new_month"
+              ? "2px solid #722ed1"
+              : "2px solid transparent",
+        },
       },
     ];
-  }, [data, t, filterType]); // Nhớ thêm filterType vào dependency
+  }, [data, t, filterType]);
 
-  // --- Logic Fetch API ---
+  // --- 3. FETCH DATA BAN ĐẦU ---
   const fetchSellers = async () => {
     try {
       setLoading(true);
       const res = await api.get("/sellers/group/business", {
         headers: getAuthHeaders(),
       });
-
       const filtered = res.data.filter((item) =>
         ["active", "locked"].includes(item.status)
       );
-
-      const sorted = filtered.sort(
-        (a, b) => new Date(b.created_at) - new Date(a.created_at)
+      setData(
+        filtered.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
       );
-
-      setData(sorted);
     } catch (err) {
-      console.error(err);
-      message.error(t("sellers_active_locked.load_failed"));
+      message.error(t("Không thể tải danh sách cửa hàng"));
     } finally {
       setLoading(false);
     }
@@ -124,73 +211,65 @@ const ActiveLockedSellersPage = () => {
     fetchSellers();
   }, []);
 
-  // --- 3. Handlers & Filter Logic Cập Nhật ---
-  const filteredData = data.filter((item) => {
-    // A. Lọc theo từ khóa tìm kiếm
-    const matchesSearch = 
-      item.store_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.user_email?.toLowerCase().includes(searchTerm.toLowerCase());
+  // --- 4. FILTER DATA (Search + Stats Click) ---
+  const filteredData = useMemo(() => {
+    return data.filter((item) => {
+      const matchesSearch =
+        item.store_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.user_email?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    // B. Lọc theo Click vào Stats (filterType)
-    let matchesType = true;
-    if (filterType === "active") {
-      matchesType = item.status === "active";
-    } else if (filterType === "locked") {
-      matchesType = item.status === "locked";
-    } else if (filterType === "new_month") {
-      if (!item.created_at) matchesType = false;
-      else {
+      let matchesType = true;
+      if (filterType === "active") matchesType = item.status === "active";
+      else if (filterType === "locked") matchesType = item.status === "locked";
+      else if (filterType === "new_month") {
         const createdDate = new Date(item.created_at);
         const now = new Date();
-        matchesType = 
+        matchesType =
           createdDate.getMonth() === now.getMonth() &&
           createdDate.getFullYear() === now.getFullYear();
       }
-    } 
-    // Nếu filterType === 'all' thì matchesType luôn là true (mặc định)
 
-    return matchesSearch && matchesType;
-  });
+      return matchesSearch && matchesType;
+    });
+  }, [data, searchTerm, filterType]);
 
+  // --- 5. HANDLERS (Manual actions) ---
   const handleLock = async (record) => {
     try {
-      await api.post(
-        `/sellers/${record.id}/lock/`,
+      const res = await api.post(
+        `/sellers/${record.id}/toggle-lock/`,
         {},
         { headers: getAuthHeaders() }
       );
-      fetchSellers();
-      message.success(t("Thao tác thành công"));
+      // Cập nhật State cục bộ ngay lập tức (Real-time sẽ update lại nếu cần)
+      setData((prev) =>
+        prev.map((s) =>
+          s.id === record.id ? { ...s, status: res.data.status } : s
+        )
+      );
+      message.success(t("Cập nhật trạng thái thành công"));
     } catch (err) {
-      console.error(err);
-      message.error(t("sellers_active_locked.action_failed"));
+      message.error(t("Thao tác thất bại"));
     }
   };
 
-  const handleView = (record) => {
-    setSelectedSeller(record);
-    setModalVisible(true);
-  };
-
-  // Xử lý Khóa/Mở khóa nhiều
   const handleBulkLock = async (ids) => {
     try {
       setLoading(true);
-      const promises = ids.map((id) =>
-        api.post(`/sellers/${id}/lock/`, {}, { headers: getAuthHeaders() })
+      await api.post(
+        `/sellers/bulk-lock/`,
+        { ids },
+        { headers: getAuthHeaders() }
       );
-      await Promise.all(promises);
-      message.success(t(`Thao tác thành công cho ${ids.length} cửa hàng`));
-      fetchSellers();
+      fetchSellers(); // Load lại để đồng bộ chính xác nhất
+      message.success(t("Đã cập nhật hàng loạt"));
     } catch (error) {
-      console.error(error);
-      message.error(t("Có lỗi xảy ra khi khóa hàng loạt"));
+      message.error(t("Lỗi khóa hàng loạt"));
     } finally {
       setLoading(false);
     }
   };
 
-  // --- Toolbar UI ---
   const toolbar = (
     <Input
       placeholder={t("Tìm kiếm tên cửa hàng, email...")}
@@ -204,32 +283,27 @@ const ActiveLockedSellersPage = () => {
 
   return (
     <AdminPageLayout title={t("QUẢN LÝ CỬA HÀNG")} extra={toolbar}>
-      {/* 1. Phần StatsSection */}
       <StatsSection items={statsItems} loading={loading} />
 
-      {/* Hiển thị tiêu đề nhỏ để biết đang lọc theo cái gì (Optional) */}
-      <div style={{ marginTop: 16, marginBottom: 8, fontStyle: 'italic', color: '#666' }}>
-        {filterType === 'all'}
-        {filterType === 'active'}
-        {filterType === 'locked'}
-        {filterType === 'new_month'}
-      </div>
-
-      {/* 2. Phần Bảng dữ liệu */}
-      <div style={{ marginTop: 8 }}>
+      <div style={{ marginTop: 16 }}>
         <SellerTable
           data={filteredData}
           loading={loading}
-          onView={handleView}
+          onView={(record) => {
+            setSelectedSeller(record);
+            setModalVisible(true);
+          }}
           onLock={handleLock}
           onBulkLock={handleBulkLock}
           onRow={(record) => ({
-            onClick: () => handleView(record),
+            onClick: () => {
+              setSelectedSeller(record);
+              setModalVisible(true);
+            },
           })}
         />
       </div>
 
-      {/* 3. Modal chi tiết */}
       {selectedSeller && (
         <SellerDetailModal
           visible={modalVisible}

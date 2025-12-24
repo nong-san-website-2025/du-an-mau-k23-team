@@ -44,25 +44,21 @@ const ProductDetailPage = () => {
   const [isFavorite, setIsFavorite] = useState(false);
   const [relatedProducts, setRelatedProducts] = useState([]);
 
-  // SỬA LỖI TĂNG VIEW: Dùng useRef thay vì useState để không gây re-render
   const viewIncremented = useRef(false);
 
-  // Reviews state
   const [reviews, setReviews] = useState([]);
   const [newComment, setNewComment] = useState("");
   const [newRating, setNewRating] = useState(5);
   const [hasReviewed, setHasReviewed] = useState(false);
   const [myReview, setMyReview] = useState(null);
 
-  // Description expand state
   const [expandDescription, setExpandDescription] = useState(false);
 
-  // Lấy API URL từ env
   const API_URL = process.env.REACT_APP_API_URL;
-  // Tạo Base URL (bỏ /api) để dùng cho hình ảnh
-  const BASE_URL = API_URL ? API_URL.replace(/\/api\/?$/, "") : "http://localhost:8000";
+  const BASE_URL = API_URL
+    ? API_URL.replace(/\/api\/?$/, "")
+    : "http://localhost:8000";
 
-  // Reset trạng thái đếm view khi ID sản phẩm thay đổi
   useEffect(() => {
     viewIncremented.current = false;
     document.documentElement.scrollTop = 0;
@@ -90,7 +86,6 @@ const ProductDetailPage = () => {
       if (!product) return;
 
       try {
-        // SỬ DỤNG ENV Ở ĐÂY
         const [catRes, subRes] = await Promise.all([
           fetch(`${API_URL}/products/categories/`),
           fetch(`${API_URL}/products/subcategories/`),
@@ -114,18 +109,40 @@ const ProductDetailPage = () => {
     loadCategories();
   }, [product, API_URL]);
 
+  // SỬA TẠI ĐÂY: Lọc sản phẩm cùng danh mục và loại bỏ sản phẩm hiện tại
   useEffect(() => {
     const loadRelated = async () => {
+      // 1. Kiểm tra nếu chưa có product hoặc product chưa có category thì dừng
+      const currentCategoryId = productApi.getCategoryIdFromProduct(product);
+      if (!product || !currentCategoryId) return;
+
       try {
-        const all = await productApi.getAllProducts();
-        const selected = all.slice(0, 6);
-        setRelatedProducts(selected);
+        // 2. Chỉ lấy sản phẩm trong cùng Category đó (nhanh hơn nhiều)
+        const categoryProducts =
+          await productApi.getProductsByCategory(currentCategoryId);
+
+        const filtered = categoryProducts.filter((item) => {
+          // 3. Loại bỏ chính sản phẩm đang xem
+          const isDifferentProduct = String(item.id) !== String(product.id);
+
+          // 4. Kiểm tra trạng thái (Backend của bạn thường dùng 'approved')
+          const isActive =
+            item.status === "approved" || item.status === "active";
+
+          return isDifferentProduct && isActive;
+        });
+
+        console.log(
+          `🔎 Tìm thấy ${filtered.length} sản phẩm liên quan cho Category ID: ${currentCategoryId}`
+        );
+        setRelatedProducts(filtered.slice(0, 6));
       } catch (err) {
         console.error("❌ Lỗi load sản phẩm liên quan:", err);
       }
     };
+
     loadRelated();
-  }, []);
+  }, [product, id]); // Thêm id vào dependency để chạy lại khi đổi sản phẩm // Chạy lại khi có dữ liệu product // Chạy lại khi product thay đổi
 
   const handleToggleFavorite = async () => {
     try {
@@ -144,7 +161,6 @@ const ProductDetailPage = () => {
         const item = {
           id: product.id,
           name: product.name,
-          // SỬ DỤNG BASE_URL Ở ĐÂY
           image:
             (product.image && product.image.startsWith("/")
               ? `${BASE_URL}${product.image}`
@@ -170,19 +186,13 @@ const ProductDetailPage = () => {
     }
   };
 
-  // ✅ Load dữ liệu với kiểm tra quyền truy cập và đếm view chuẩn
   useEffect(() => {
     const loadData = async () => {
       try {
         setLoading(true);
-        console.log("👉 Bắt đầu load data"); 
         setError(null);
-        
-        // 1. Gọi API lấy thông tin sản phẩm (GET)
-        const productData = await productApi.getProduct(id);
-        
-        console.log("✅ Product data loaded:", productData);
 
+        const productData = await productApi.getProduct(id);
         const isProductVisible = productData.status === "approved";
 
         if (!isProductVisible) {
@@ -192,20 +202,15 @@ const ProductDetailPage = () => {
 
         setProduct(productData);
 
-        // 2. Tăng view (POST) - CHỈ GỌI 1 LẦN DUY NHẤT bằng cách check useRef
         if (!viewIncremented.current) {
           try {
-            // SỬ DỤNG ENV Ở ĐÂY
             await fetch(`${API_URL}/products/${id}/increment-views/`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
             });
-            console.log("👉 Đang gọi API increment-views...");
-            viewIncremented.current = true; 
+            viewIncremented.current = true;
           } catch (viewError) {
-            console.warn('Could not increment product views:', viewError);
+            console.warn("Could not increment product views:", viewError);
           }
         }
 
@@ -224,10 +229,9 @@ const ProductDetailPage = () => {
         setLoading(false);
       }
     };
-    
+
     loadData();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, user]); // ✅ Đã bỏ viewIncremented và API_URL ra khỏi dependency để tránh re-run
+  }, [id, user, API_URL]);
 
   const handleAddToCart = async () => {
     if (!product) return;
@@ -246,7 +250,7 @@ const ProductDetailPage = () => {
       quantity,
       { ...product, preorder },
       () => setQuantity(1),
-      () => { }
+      () => {}
     );
   };
 
@@ -310,7 +314,6 @@ const ProductDetailPage = () => {
         id: product.id,
         name: product.name,
         price: Number(product.discounted_price ?? product.price) || 0,
-        // SỬ DỤNG BASE_URL Ở ĐÂY
         image:
           product.image && product.image.startsWith("/")
             ? `${BASE_URL}${product.image}`
@@ -339,7 +342,6 @@ const ProductDetailPage = () => {
     );
   }
 
-  // ✅ Hiển thị thông báo lỗi nếu không có quyền truy cập
   if (error || !product) {
     return (
       <div className="product-detail-container">
@@ -389,7 +391,13 @@ const ProductDetailPage = () => {
                 {item.title}
               </a>
             ) : (
-              <span className={index === breadcrumbItems.length - 1 ? "product-detail-breadcrumb-title" : ""}>
+              <span
+                className={
+                  index === breadcrumbItems.length - 1
+                    ? "product-detail-breadcrumb-title"
+                    : ""
+                }
+              >
                 {item.title}
               </span>
             ),
@@ -421,152 +429,149 @@ const ProductDetailPage = () => {
           </div>
           {(product.status === "coming_soon" ||
             product.status === "sắp có") && (
-              <div
-                style={{
-                  marginTop: 12,
-                  color: "#444",
-                  fontSize: 15,
-                  background: "#fffbe6",
-                  padding: "14px 16px",
-                  borderRadius: 8,
-                  border: "1px solid #ffe58f",
-                }}
-              >
-                <p style={{ marginBottom: 6 }}>
-                  <strong>Đã đặt trước:</strong>{" "}
-                  <b style={{ color: "#1890ff" }}>
-                    {product.ordered_quantity || 0}
-                  </b>{" "}
-                  sản phẩm
-                </p>
+            <div
+              style={{
+                marginTop: 12,
+                color: "#444",
+                fontSize: 15,
+                background: "#fffbe6",
+                padding: "14px 16px",
+                borderRadius: 8,
+                border: "1px solid #ffe58f",
+              }}
+            >
+              <p style={{ marginBottom: 6 }}>
+                <strong>Đã đặt trước:</strong>{" "}
+                <b style={{ color: "#1890ff" }}>
+                  {product.ordered_quantity || 0}
+                </b>{" "}
+                sản phẩm
+              </p>
 
-                <p style={{ marginBottom: 8 }}>
-                  <strong>Cần đặt:</strong>{" "}
-                  <b style={{ color: "#faad14" }}>
-                    {Math.max(
-                      (product.expected_quantity ||
+              <p style={{ marginBottom: 8 }}>
+                <strong>Cần đặt:</strong>{" "}
+                <b style={{ color: "#faad14" }}>
+                  {Math.max(
+                    (product.expected_quantity ||
+                      product.estimated_quantity ||
+                      0) - (product.ordered_quantity || 0),
+                    0
+                  ).toLocaleString("vi-VN")}
+                </b>{" "}
+                sản phẩm
+              </p>
+
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <Input
+                  type="number"
+                  min={1}
+                  value={quantity}
+                  onChange={(e) => setQuantity(Number(e.target.value))}
+                  style={{ width: 100 }}
+                />
+                <Button
+                  type="primary"
+                  onClick={async () => {
+                    try {
+                      const maxQty =
+                        product.expected_quantity ||
                         product.estimated_quantity ||
-                        0) - (product.ordered_quantity || 0),
-                      0
-                    ).toLocaleString("vi-VN")}
-                  </b>{" "}
-                  sản phẩm
-                </p>
+                        product.stock ||
+                        0;
 
-                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <Input
-                    type="number"
-                    min={1}
-                    value={quantity}
-                    onChange={(e) => setQuantity(Number(e.target.value))}
-                    style={{ width: 100 }}
-                  />
-                  <Button
-                    type="primary"
-                    onClick={async () => {
-                      try {
-                        const maxQty =
-                          product.expected_quantity ||
-                          product.estimated_quantity ||
-                          product.stock ||
-                          0;
+                      const ordered = product.ordered_quantity || 0;
+                      const remaining = Math.max(maxQty - ordered, 0);
 
-                        const ordered = product.ordered_quantity || 0;
-                        const remaining = Math.max(maxQty - ordered, 0);
-
-                        if (remaining <= 0) {
-                          toast.warning("⚠️ Sản phẩm đã hết lượt đặt trước!", {
-                            position: "bottom-right",
-                          });
-                          return;
-                        }
-
-                        if (quantity > remaining) {
-                          toast.error(
-                            `Bạn chỉ có thể đặt trước tối đa ${remaining} sản phẩm nữa!`,
-                            { position: "bottom-right" }
-                          );
-                          return;
-                        }
-
-                        if (user) {
-                          await productApi.preorderProduct(product.id, quantity);
-                          toast.success(
-                            `✅ Đặt trước ${quantity} sản phẩm thành công!`,
-                            {
-                              position: "bottom-right",
-                            }
-                          );
-
-                          setProduct((prev) => ({
-                            ...prev,
-                            ordered_quantity:
-                              (prev.ordered_quantity || 0) + Number(quantity),
-                          }));
-                          setQuantity(1);
-                          navigate("/preorders");
-                        } else {
-                          const stored = JSON.parse(
-                            localStorage.getItem("preorders") || "[]"
-                          );
-                          const exists = stored.find(
-                            (p) => String(p.id) === String(product.id)
-                          );
-
-                          if (exists) {
-                            const newQty = (exists.quantity || 0) + quantity;
-                            if (newQty > remaining) {
-                              toast.error(
-                                `Bạn chỉ có thể đặt thêm tối đa ${remaining - (exists.quantity || 0)
-                                } sản phẩm nữa!`,
-                                { position: "bottom-right" }
-                              );
-                              return;
-                            }
-                            exists.quantity = newQty;
-                            exists.date = new Date().toISOString();
-                          } else {
-                            stored.push({
-                              id: product.id,
-                              name: product.name,
-                              image:
-                                product.image && product.image.startsWith("/")
-                                  ? `${BASE_URL}${product.image}`
-                                  : product.image,
-                              price:
-                                Number(
-                                  product.discounted_price ?? product.price
-                                ) || 0,
-                              quantity: quantity,
-                              date: new Date().toISOString(),
-                            });
-                          }
-
-                          localStorage.setItem(
-                            "preorders",
-                            JSON.stringify(stored)
-                          );
-                          toast.success(
-                            `✅ Đã lưu ${quantity} sản phẩm vào danh sách đặt trước!`,
-                            {
-                              position: "bottom-right",
-                            }
-                          );
-                          setQuantity(1);
-                          navigate("/preorders");
-                        }
-                      } catch (err) {
-                        toast.error("Không thể đặt trước sản phẩm này!", {
+                      if (remaining <= 0) {
+                        toast.warning("⚠️ Sản phẩm đã hết lượt đặt trước!", {
                           position: "bottom-right",
                         });
+                        return;
                       }
-                    }}
-                  >
-                    Đặt trước
-                  </Button>
-                </div>
+
+                      if (quantity > remaining) {
+                        toast.error(
+                          `Bạn chỉ có thể đặt trước tối đa ${remaining} sản phẩm nữa!`,
+                          { position: "bottom-right" }
+                        );
+                        return;
+                      }
+
+                      if (user) {
+                        await productApi.preorderProduct(product.id, quantity);
+                        toast.success(
+                          `✅ Đặt trước ${quantity} sản phẩm thành công!`,
+                          { position: "bottom-right" }
+                        );
+
+                        setProduct((prev) => ({
+                          ...prev,
+                          ordered_quantity:
+                            (prev.ordered_quantity || 0) + Number(quantity),
+                        }));
+                        setQuantity(1);
+                        navigate("/preorders");
+                      } else {
+                        const stored = JSON.parse(
+                          localStorage.getItem("preorders") || "[]"
+                        );
+                        const exists = stored.find(
+                          (p) => String(p.id) === String(product.id)
+                        );
+
+                        if (exists) {
+                          const newQty = (exists.quantity || 0) + quantity;
+                          if (newQty > remaining) {
+                            toast.error(
+                              `Bạn chỉ có thể đặt thêm tối đa ${
+                                remaining - (exists.quantity || 0)
+                              } sản phẩm nữa!`,
+                              { position: "bottom-right" }
+                            );
+                            return;
+                          }
+                          exists.quantity = newQty;
+                          exists.date = new Date().toISOString();
+                        } else {
+                          stored.push({
+                            id: product.id,
+                            name: product.name,
+                            image:
+                              product.image && product.image.startsWith("/")
+                                ? `${BASE_URL}${product.image}`
+                                : product.image,
+                            price:
+                              Number(
+                                product.discounted_price ?? product.price
+                              ) || 0,
+                            quantity: quantity,
+                            date: new Date().toISOString(),
+                          });
+                        }
+
+                        localStorage.setItem(
+                          "preorders",
+                          JSON.stringify(stored)
+                        );
+                        toast.success(
+                          `✅ Đã lưu ${quantity} sản phẩm vào danh sách đặt trước!`,
+                          { position: "bottom-right" }
+                        );
+                        setQuantity(1);
+                        navigate("/preorders");
+                      }
+                    } catch (err) {
+                      toast.error("Không thể đặt trước sản phẩm này!", {
+                        position: "bottom-right",
+                      });
+                    }
+                  }}
+                >
+                  Đặt trước
+                </Button>
               </div>
-            )}
+            </div>
+          )}
         </div>
       </Card>
 
@@ -648,7 +653,6 @@ const ProductDetailPage = () => {
         onNewRatingChange={setNewRating}
         onSubmitReview={handleSubmitReview}
       />
-
 
       <RelatedProducts products={relatedProducts} />
     </div>

@@ -1,17 +1,15 @@
-import React, { useEffect, useState, useMemo } from "react";
-import { Input, Select, message, Space, Button, Tooltip, Badge } from "antd"; // Thêm Button, Tooltip, Badge
+import React, { useEffect, useState, useMemo, useRef } from "react";
+import { Input, Select, message, Space, Button, Tooltip, Badge } from "antd";
 import {
   SearchOutlined,
-  FilterOutlined,
   ClockCircleOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
   ShopOutlined,
-  WarningOutlined, // Icon cảnh báo cho Spam
-  SafetyCertificateOutlined, // Icon an toàn
+  WarningOutlined,
+  SafetyCertificateOutlined,
 } from "@ant-design/icons";
 import axios from "axios";
-import { useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 // Components
@@ -31,7 +29,7 @@ function getAuthHeaders() {
   return { Authorization: `Bearer ${token}` };
 }
 
-// --- LOGIC PHÁT HIỆN SPAM (Bạn có thể tùy chỉnh thêm keyword) ---
+// --- LOGIC PHÁT HIỆN SPAM ---
 const SPAM_KEYWORDS = [
   "test",
   "demo",
@@ -41,68 +39,132 @@ const SPAM_KEYWORDS = [
   "xyz",
   "spam",
   "fake",
-  "null",
-  "undefined",
 ];
 const checkIsSpam = (item) => {
   const name = item.store_name ? item.store_name.toLowerCase() : "";
   const email = item.user_email ? item.user_email.toLowerCase() : "";
-
-  // 1. Check tên cửa hàng quá ngắn
   if (name.length < 3) return true;
-
-  // 2. Check chứa từ khóa rác trong Tên hoặc Email
-  const hasSpamKeyword = SPAM_KEYWORDS.some(
-    (key) => name.includes(key) || email.includes(key)
-  );
-  if (hasSpamKeyword) return true;
-
-  // 3. Check email đuôi lạ (Ví dụ logic) - Tùy chọn
-  // if (email.endsWith("@tempmail.com")) return true;
-
-  // 4. Check số điện thoại (nếu có field phone)
-  // if (item.phone && (item.phone === "0000000000" || item.phone.length < 9)) return true;
-
-  return false;
+  return SPAM_KEYWORDS.some((key) => name.includes(key) || email.includes(key));
 };
 
 const ApprovalSellersPage = () => {
   const { t } = useTranslation();
-  const location = useLocation();
 
   // --- State ---
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
-
-  // State mới cho chế độ lọc Spam
   const [showSpamOnly, setShowSpamOnly] = useState(false);
-
   const [detailVisible, setDetailVisible] = useState(false);
   const [selectedSeller, setSelectedSeller] = useState(null);
 
-  // --- 1. Logic Stats ---
+  // --- 1. REF QUẢN LÝ WEBSOCKET (NGĂN CHẶN RE-CONNECT VÔ TỘI VẠ) ---
+  const socketRef = useRef(null);
+
+  // --- 2. FETCH DATA BAN ĐẦU (CHẠY 1 LẦN DUY NHẤT) ---
+  useEffect(() => {
+    const fetchSellers = async () => {
+      try {
+        setLoading(true);
+        const res = await api.get("/sellers/", { headers: getAuthHeaders() });
+        const filtered = res.data
+          .filter((item) =>
+            ["pending", "approved", "rejected"].includes(item.status)
+          )
+          .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        setData(filtered);
+      } catch (err) {
+        console.error("Fetch error:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSellers();
+  }, []); // Mảng rỗng đảm bảo chỉ chạy khi mount trang
+
+  // --- 3. LOGIC WEBSOCKET (CHẠY 1 LẦN DUY NHẤT) ---
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+    let wsHost = process.env.REACT_APP_WS_URL || "localhost:8000";
+    wsHost = wsHost.replace(/^https?:\/\//, "");
+
+    const wsUrl = `${protocol}://${wsHost}/ws/sellers/approval/?token=${token}`;
+
+    if (
+      !socketRef.current ||
+      socketRef.current.readyState === WebSocket.CLOSED
+    ) {
+      const socket = new WebSocket(wsUrl);
+
+      socket.onopen = () => console.log("✅ Approval WebSocket Connected");
+
+      socket.onmessage = (event) => {
+        const msg = JSON.parse(event.data);
+        const { action, data: sellerData } = msg;
+
+        setData((prevData) => {
+          switch (action) {
+            case "CREATED":
+              if (
+                ["pending", "approved", "rejected"].includes(sellerData.status)
+              ) {
+                const newItem = { ...sellerData, isNew: true };
+                setTimeout(() => {
+                  setData((current) =>
+                    current.map((item) =>
+                      item.id === sellerData.id
+                        ? { ...item, isNew: false }
+                        : item
+                    )
+                  );
+                }, 8000);
+                return [newItem, ...prevData];
+              }
+              return prevData;
+            case "UPDATED":
+              return prevData.map((item) =>
+                item.id === sellerData.id ? { ...item, ...sellerData } : item
+              );
+            case "DELETED":
+              return prevData.filter((item) => item.id !== sellerData.id);
+            default:
+              return prevData;
+          }
+        });
+      };
+
+      socket.onclose = () => console.log("ℹ️ WebSocket Disconnected");
+      socketRef.current = socket;
+    }
+
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.close();
+        socketRef.current = null;
+      }
+    };
+  }, []);
+
+  // --- 4. TỐI ƯU HÓA TÍNH TOÁN (DÙNG USEMEMO) ---
   const statsItems = useMemo(() => {
-    const total = data.length;
-    const pending = data.filter((item) => item.status === "pending").length;
-    const approved = data.filter((item) => item.status === "approved").length;
-    const rejected = data.filter((item) => item.status === "rejected").length;
+    const pending = data.filter((i) => i.status === "pending").length;
+    const approved = data.filter((i) => i.status === "approved").length;
+    const rejected = data.filter((i) => i.status === "rejected").length;
 
     return [
       {
         title: t("Tổng hồ sơ"),
-        value: total,
+        value: data.length,
         icon: <ShopOutlined />,
         color: "#1890ff",
         onClick: () => {
           setStatusFilter("");
           setShowSpamOnly(false);
-        }, // Reset spam filter khi click stats
-        style: {
-          cursor: "pointer",
-          border:
-            !showSpamOnly && statusFilter === "" ? "2px solid #1890ff" : "",
         },
       },
       {
@@ -114,13 +176,6 @@ const ApprovalSellersPage = () => {
           setStatusFilter("pending");
           setShowSpamOnly(false);
         },
-        style: {
-          cursor: "pointer",
-          border:
-            !showSpamOnly && statusFilter === "pending"
-              ? "2px solid #faad14"
-              : "",
-        },
       },
       {
         title: t("Đã phê duyệt"),
@@ -130,13 +185,6 @@ const ApprovalSellersPage = () => {
         onClick: () => {
           setStatusFilter("approved");
           setShowSpamOnly(false);
-        },
-        style: {
-          cursor: "pointer",
-          border:
-            !showSpamOnly && statusFilter === "approved"
-              ? "2px solid #52c41a"
-              : "",
         },
       },
       {
@@ -148,68 +196,27 @@ const ApprovalSellersPage = () => {
           setStatusFilter("rejected");
           setShowSpamOnly(false);
         },
-        style: {
-          cursor: "pointer",
-          border:
-            !showSpamOnly && statusFilter === "rejected"
-              ? "2px solid #ff4d4f"
-              : "",
-        },
       },
     ];
-  }, [data, t, statusFilter, showSpamOnly]);
+  }, [data, t]);
 
-  // --- 2. Fetch Data ---
-  const fetchSellers = async () => {
-    try {
-      setLoading(true);
-      const res = await api.get("/sellers/", { headers: getAuthHeaders() });
-      const filtered = res.data
-        .filter((item) =>
-          ["pending", "approved", "rejected"].includes(item.status)
-        )
-        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-      setData(filtered);
-    } catch (err) {
-      console.error(err);
-      message.error(t("approval_sellers.load_failed"));
-    } finally {
-      setLoading(false);
-    }
-  };
+  const filteredData = useMemo(() => {
+    return data.filter((item) => {
+      const matchesSearch = (item.store_name + item.user_email)
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase());
+      const matchesStatus = statusFilter ? item.status === statusFilter : true;
+      const matchesSpam = showSpamOnly ? checkIsSpam(item) : true;
+      return matchesSearch && matchesStatus && matchesSpam;
+    });
+  }, [data, searchTerm, statusFilter, showSpamOnly]);
 
-  useEffect(() => {
-    if (location.state?.newSeller) {
-      setData((prev) => [location.state.newSeller, ...prev]);
-    }
-    fetchSellers();
-  }, []);
+  const spamCount = useMemo(
+    () => data.filter((i) => checkIsSpam(i)).length,
+    [data]
+  );
 
-  // --- 3. FILTER LOGIC (QUAN TRỌNG NHẤT) ---
-  const filteredData = data.filter((item) => {
-    // A. Lọc theo search
-    const matchesSearch =
-      item.store_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.user_email?.toLowerCase().includes(searchTerm.toLowerCase());
-
-    // B. Lọc theo trạng thái (Dropdown / Stats Click)
-    const matchesStatus = statusFilter ? item.status === statusFilter : true;
-
-    // C. Lọc theo chế độ SPAM (Mới)
-    // Nếu đang bật showSpamOnly -> Chỉ lấy item thỏa mãn checkIsSpam
-    // Nếu tắt -> Lấy tất cả (true)
-    const matchesSpam = showSpamOnly ? checkIsSpam(item) : true;
-
-    return matchesSearch && matchesStatus && matchesSpam;
-  });
-
-  // Đếm số lượng spam để hiện lên badge
-  const spamCount = data.filter(
-    (item) =>
-      checkIsSpam(item) && (statusFilter ? item.status === statusFilter : true)
-  ).length;
-
-  // --- Handlers (Giữ nguyên) ---
+  // --- 5. ACTIONS ---
   const handleApprove = async (record) => {
     try {
       await api.post(
@@ -217,13 +224,9 @@ const ApprovalSellersPage = () => {
         {},
         { headers: getAuthHeaders() }
       );
-      message.success(
-        t("approval_sellers.approved", { name: record.store_name })
-      );
-      fetchSellers();
+      message.success(`Đã duyệt: ${record.store_name}`);
     } catch (err) {
-      console.error(err);
-      message.error(t("approval_sellers.approve_failed"));
+      message.error("Lỗi duyệt hồ sơ");
     }
   };
 
@@ -235,86 +238,43 @@ const ApprovalSellersPage = () => {
         { headers: getAuthHeaders() }
       );
       message.success(t("Đã từ chối cửa hàng"));
-      fetchSellers();
     } catch (err) {
-      console.error(err);
       message.error(t("Thao tác thất bại"));
     }
   };
 
-  const handleView = (record) => {
-    setSelectedSeller(record);
-    setDetailVisible(true);
-  };
-
-  const handleBulkApprove = async (ids) => {
-    /* ...code cũ... */
-  };
-  const handleBulkReject = async (ids) => {
-    // ...code cũ...
-    // Lưu ý: Nút này rất tiện để xóa 1 loạt Spam
-    try {
-      setLoading(true);
-      const promises = ids.map((id) =>
-        api.post(`/sellers/${id}/reject/`, {}, { headers: getAuthHeaders() })
-      );
-      await Promise.all(promises);
-      message.success(t(`Đã từ chối ${ids.length} cửa hàng`));
-      fetchSellers();
-    } catch (error) {
-      console.error(error);
-      message.error(t("Lỗi thao tác"));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // --- 5. UI Toolbar Cập nhật ---
+  // --- TOOLBAR UI ---
   const toolbar = (
     <Space>
-      {/* Nút lọc Spam/Vi phạm */}
       <Tooltip
-        title={
-          showSpamOnly
-            ? "Tắt bộ lọc spam"
-            : "Chỉ hiện các cửa hàng nghi ngờ (Tên lạ, Test, 123...)"
-        }
+        title={showSpamOnly ? "Tắt lọc rác" : "Hiện các cửa hàng nghi ngờ spam"}
       >
         <Badge count={showSpamOnly ? 0 : spamCount} offset={[-5, 5]}>
           <Button
             type={showSpamOnly ? "primary" : "default"}
-            danger={showSpamOnly} // Màu đỏ khi đang bật
+            danger={showSpamOnly}
             icon={
               showSpamOnly ? <WarningOutlined /> : <SafetyCertificateOutlined />
             }
             onClick={() => setShowSpamOnly(!showSpamOnly)}
-            style={{
-              backgroundColor: showSpamOnly ? "#ff4d4f" : "white",
-              borderColor: showSpamOnly ? "#ff4d4f" : "#d9d9d9",
-              color: showSpamOnly ? "white" : "rgba(0, 0, 0, 0.85)",
-            }}
           >
             {showSpamOnly ? "Đang lọc rác" : "Lọc rác/Spam"}
           </Button>
         </Badge>
       </Tooltip>
-
       <Input
         placeholder={t("Tìm kiếm...")}
-        prefix={<SearchOutlined style={{ color: "#bfbfbf" }} />}
+        prefix={<SearchOutlined />}
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
-        style={{ width: 250, borderRadius: 6 }}
+        style={{ width: 250 }}
         allowClear
       />
       <Select
-        placeholder={t("Lọc trạng thái")}
+        placeholder={t("Trạng thái")}
         value={statusFilter || undefined}
-        onChange={(value) => {
-          setStatusFilter(value || "");
-        }}
-        style={{ width: 160, borderRadius: 6 }}
-        suffixIcon={<FilterOutlined />}
+        onChange={(v) => setStatusFilter(v || "")}
+        style={{ width: 150 }}
         allowClear
       >
         <Option value="pending">{t("Chờ duyệt")}</Option>
@@ -328,64 +288,33 @@ const ApprovalSellersPage = () => {
     <AdminPageLayout title={t("DUYỆT CỬA HÀNG")} extra={toolbar}>
       <StatsSection items={statsItems} loading={loading} />
 
-      {/* Hiển thị banner cảnh báo khi đang lọc spam */}
       {showSpamOnly && (
         <div
           style={{
             marginTop: 16,
-            marginBottom: 8,
             padding: "8px 12px",
             background: "#fff1f0",
             border: "1px solid #ffa39e",
             borderRadius: 4,
             color: "#cf1322",
-            display: "flex",
-            alignItems: "center",
           }}
         >
           <WarningOutlined style={{ marginRight: 8 }} />
-          <span>
-            <b>Chế độ lọc rác:</b> Hệ thống đang hiển thị các cửa hàng có tên
-            chứa từ khóa: "test", "demo", "123", "admin"... hoặc tên quá ngắn.
-            Bạn có thể chọn tất cả và bấm <b>"Từ chối"</b> để dọn dẹp nhanh.
-          </span>
-          <Button
-            size="small"
-            type="link"
-            onClick={() => setShowSpamOnly(false)}
-          >
-            Tắt
-          </Button>
+          <b>Chế độ lọc rác:</b> Hệ thống đang hiển thị các cửa hàng nghi ngờ
+          dựa trên từ khóa.
         </div>
       )}
 
-      {/* Dòng trạng thái bình thường */}
-      {!showSpamOnly && (
-        <div
-          style={{
-            marginTop: 16,
-            marginBottom: 8,
-            fontStyle: "italic",
-            color: "#666",
-          }}
-        >
-          {statusFilter === ""}
-          {statusFilter === "pending"}
-          {statusFilter === "approved"}
-          {statusFilter === "rejected"}
-        </div>
-      )}
-
-      <div style={{ marginTop: 8 }}>
+      <div style={{ marginTop: 16 }}>
         <SellerTable
           data={filteredData}
           loading={loading}
           onApprove={handleApprove}
           onReject={handleReject}
-          onView={handleView}
-          onBulkApprove={handleBulkApprove}
-          onBulkReject={handleBulkReject}
-          onRow={(record) => ({ onClick: () => handleView(record) })}
+          onView={(record) => {
+            setSelectedSeller(record);
+            setDetailVisible(true);
+          }}
         />
       </div>
 
@@ -396,7 +325,6 @@ const ApprovalSellersPage = () => {
           seller={selectedSeller}
           onApprove={handleApprove}
           onReject={handleReject}
-          onActionSuccess={fetchSellers}
         />
       )}
     </AdminPageLayout>
