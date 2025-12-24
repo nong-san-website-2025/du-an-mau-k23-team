@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Table, Button, Space, Popconfirm } from "antd";
 import {
   EyeOutlined,
@@ -14,20 +14,33 @@ import "../../styles/AdminPageLayout.css";
 import ButtonAction from "../../../../components/ButtonAction";
 
 const SellerTable = ({
-  data,
+  data = [],
+  loading = false,
   onApprove,
   onReject,
   onView,
   onLock,
   onRow,
-  // Các props cho thao tác hàng loạt
+  // Thao tác hàng loạt
   onBulkApprove,
   onBulkReject,
   onBulkLock,
 }) => {
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
 
-  // Cấu hình chọn dòng
+  // --- 1. LOGIC REAL-TIME: Đồng bộ hóa Selection ---
+  // Khi dữ liệu thay đổi từ WebSocket (ví dụ: một Admin khác xóa hoặc thay đổi trạng thái khiến dòng biến mất),
+  // Effect này sẽ lọc bỏ các ID không còn tồn tại trong danh sách "Đã chọn".
+  useEffect(() => {
+    if (selectedRowKeys.length > 0) {
+      const currentIds = data.map((item) => item.id);
+      setSelectedRowKeys((prevKeys) =>
+        prevKeys.filter((key) => currentIds.includes(key))
+      );
+    }
+  }, [data]);
+
+  // --- XỬ LÝ CHỌN DÒNG ---
   const onSelectChange = (newSelectedRowKeys) => {
     setSelectedRowKeys(newSelectedRowKeys);
   };
@@ -39,37 +52,30 @@ const SellerTable = ({
 
   const hasSelected = selectedRowKeys.length > 0;
 
-  // --- CÁC HÀM XỬ LÝ WRAPPER ---
+  // --- WRAPPERS CHO BULK ACTIONS (Xóa selection sau khi thực hiện) ---
   const handleBulkApprove = () => {
-    if (onBulkApprove) {
-      onBulkApprove(selectedRowKeys);
-      setSelectedRowKeys([]); // Reset sau khi bấm
-    }
+    onBulkApprove?.(selectedRowKeys);
+    setSelectedRowKeys([]);
   };
 
   const handleBulkReject = () => {
-    if (onBulkReject) {
-      onBulkReject(selectedRowKeys);
-      setSelectedRowKeys([]);
-    }
+    onBulkReject?.(selectedRowKeys);
+    setSelectedRowKeys([]);
   };
 
   const handleBulkLock = () => {
-    if (onBulkLock) {
-      onBulkLock(selectedRowKeys);
-      setSelectedRowKeys([]);
-    }
+    onBulkLock?.(selectedRowKeys);
+    setSelectedRowKeys([]);
   };
 
-  // --- COLUMNS (Đã thêm thuộc tính sorter) ---
+  // --- ĐỊNH NGHĨA CỘT ---
   const columns = [
     {
       title: "ID",
       dataIndex: "id",
       key: "id",
-      width: 60,
+      width: 70,
       align: "center",
-      // Sắp xếp theo số ID
       sorter: (a, b) => a.id - b.id,
     },
     {
@@ -77,33 +83,22 @@ const SellerTable = ({
       dataIndex: "store_name",
       key: "store_name",
       width: 250,
-      // Sắp xếp theo tên (Tiếng Việt)
       sorter: (a, b) => (a.store_name || "").localeCompare(b.store_name || ""),
-    },
-    {
-      title: "Người đăng ký",
-      dataIndex: "owner_username",
-      key: "owner_username",
-      width: 150,
-      // Sắp xếp theo username
-      sorter: (a, b) =>
-        (a.owner_username || "").localeCompare(b.owner_username || ""),
+      render: (text) => <b>{text}</b>,
     },
     {
       title: "Email",
       dataIndex: "user_email",
       key: "user_email",
       width: 220,
-      // Sắp xếp theo email
       sorter: (a, b) => (a.user_email || "").localeCompare(b.user_email || ""),
     },
     {
       title: "Trạng thái",
       dataIndex: "status",
       key: "status",
-      width: 120,
+      width: 130,
       align: "center",
-      // Sắp xếp theo trạng thái
       sorter: (a, b) => (a.status || "").localeCompare(b.status || ""),
       render: (status) => <SellerStatusTag status={status} />,
     },
@@ -113,14 +108,13 @@ const SellerTable = ({
       key: "created_at",
       width: 160,
       align: "center",
-      // Sắp xếp theo thời gian
       sorter: (a, b) => dayjs(a.created_at).unix() - dayjs(b.created_at).unix(),
       render: (date) => (date ? dayjs(date).format("DD/MM/YYYY HH:mm") : "—"),
     },
     {
       title: "Thao tác",
       key: "action",
-      width: 100,
+      width: 110,
       align: "center",
       fixed: "right",
       render: (_, record) => {
@@ -130,39 +124,39 @@ const SellerTable = ({
             actionType: "view",
             tooltip: "Chi tiết",
             show: true,
-            onClick: onView,
+            onClick: () => onView?.(record),
           },
           {
             icon: <CheckOutlined />,
             actionType: "approve",
             tooltip: "Duyệt",
             show: record.status === "pending",
-            onClick: onApprove,
-            confirm: { title: "Duyệt?" },
+            onClick: () => onApprove?.(record),
+            confirm: { title: "Duyệt cửa hàng này?" },
           },
           {
             icon: <CloseOutlined />,
             actionType: "reject",
             tooltip: "Từ chối",
             show: record.status === "pending",
-            onClick: onReject,
-            confirm: { title: "Từ chối?" },
+            onClick: () => onReject?.(record),
+            confirm: { title: "Từ chối cửa hàng này?" },
           },
           {
             icon: <LockOutlined />,
             actionType: "lock",
             tooltip: "Khóa",
             show: record.status === "active",
-            onClick: onLock,
-            confirm: { title: "Khóa?" },
+            onClick: () => onLock?.(record),
+            confirm: { title: "Khóa cửa hàng này?" },
           },
           {
             icon: <UnlockOutlined />,
             actionType: "unlock",
             tooltip: "Mở khóa",
-            show: record.status === "locked" || record.status === "banned",
-            onClick: onLock,
-            confirm: { title: "Mở khóa?" },
+            show: ["locked", "banned"].includes(record.status),
+            onClick: () => onLock?.(record),
+            confirm: { title: "Mở khóa cửa hàng này?" },
           },
         ];
         return <ButtonAction actions={actions} record={record} />;
@@ -171,12 +165,12 @@ const SellerTable = ({
   ];
 
   return (
-    <div>
-      {/* THANH CÔNG CỤ BULK ACTION */}
+    <div className="seller-table-container">
+      {/* THANH CÔNG CỤ THAO TÁC HÀNG LOẠT */}
       <div
         style={{
           marginBottom: 16,
-          minHeight: 32,
+          minHeight: 40,
           display: "flex",
           alignItems: "center",
         }}
@@ -184,7 +178,7 @@ const SellerTable = ({
         {hasSelected ? (
           <Space>
             <span style={{ marginRight: 8 }}>
-              Đã chọn <b>{selectedRowKeys.length}</b> cửa hàng
+              Đã chọn <b>{selectedRowKeys.length}</b> mục
             </span>
 
             {onBulkApprove && (
@@ -194,10 +188,10 @@ const SellerTable = ({
               >
                 <Button
                   type="primary"
-                  style={{ backgroundColor: "#52c41a", borderColor: "#52c41a" }}
+                  style={{ backgroundColor: "#52c41a", border: "none" }}
                   icon={<CheckOutlined />}
                 >
-                  Duyệt ({selectedRowKeys.length})
+                  Duyệt
                 </Button>
               </Popconfirm>
             )}
@@ -208,18 +202,18 @@ const SellerTable = ({
                 onConfirm={handleBulkReject}
               >
                 <Button type="primary" danger icon={<CloseOutlined />}>
-                  Từ chối ({selectedRowKeys.length})
+                  Từ chối
                 </Button>
               </Popconfirm>
             )}
 
             {onBulkLock && (
               <Popconfirm
-                title="Thực hiện Khóa / Mở khóa các mục đã chọn?"
+                title="Thay đổi trạng thái Khóa/Mở khóa?"
                 onConfirm={handleBulkLock}
               >
-                <Button type="default" danger icon={<LockOutlined />}>
-                  Khóa / Mở khóa ({selectedRowKeys.length})
+                <Button icon={<LockOutlined />} danger>
+                  Khóa / Mở khóa
                 </Button>
               </Popconfirm>
             )}
@@ -232,8 +226,8 @@ const SellerTable = ({
             </Button>
           </Space>
         ) : (
-          <span style={{ color: "#999", fontStyle: "italic" }}>
-            
+          <span style={{ color: "#bfbfbf", fontSize: 13 }}>
+            * Chọn các cửa hàng để thực hiện thao tác hàng loạt
           </span>
         )}
       </div>
@@ -243,11 +237,18 @@ const SellerTable = ({
         columns={columns}
         dataSource={data}
         rowKey="id"
+        loading={loading}
         bordered
-        pagination={{ pageSize: 10 }}
+        pagination={{
+          pageSize: 10,
+          showSizeChanger: true,
+          showTotal: (total) => `Tổng cộng ${total} cửa hàng`,
+        }}
         scroll={{ x: 1200 }}
-        size="small"
+        size="middle"
         onRow={onRow}
+        // 2. LOGIC REAL-TIME: Highlight dòng mới (khi backend gửi flag isNew)
+        rowClassName={(record) => (record.isNew ? "realtime-new-row" : "")}
       />
     </div>
   );

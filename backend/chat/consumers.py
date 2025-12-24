@@ -7,6 +7,7 @@ from urllib.parse import parse_qs
 
 from .models import Conversation, Message
 from sellers.models import Seller
+from channels.generic.websocket import AsyncWebsocketConsumer, AsyncJsonWebsocketConsumer
 
 User = get_user_model()
 
@@ -211,3 +212,51 @@ class ConversationConsumer(AsyncJsonWebsocketConsumer):
             "event": "sidebar_refresh",
             "data": event["data"]
         })
+
+class SellerApprovalConsumer(AsyncWebsocketConsumer):
+    async def connect(self):
+        # Phải đặt group_name khớp với signal
+        self.group_name = "admin_seller_approval" 
+        
+        await self.channel_layer.group_add(self.group_name, self.channel_name)
+        await self.accept()
+
+    async def disconnect(self, close_code):
+        await self.channel_layer.group_discard(self.group_name, self.channel_name)
+
+    # Tên hàm này phải khớp với "type": "send_approval_update" trong Signal
+    async def send_approval_update(self, event):
+        await self.send(text_data=json.dumps(event["content"]))
+class SellerBusinessConsumer(AsyncWebsocketConsumer):
+    async def connect(self):
+        self.group_name = "seller_business"
+        # Tham gia vào nhóm nhận thông báo quản lý shop (Active/Lock)
+        await self.channel_layer.group_add(self.group_name, self.channel_name)
+        await self.accept()
+
+    async def disconnect(self, close_code):
+        await self.channel_layer.group_discard(self.group_name, self.channel_name)
+
+    async def seller_notification(self, event):
+        await self.send(text_data=json.dumps(event["content"]))
+
+# backend/chat/consumers.py
+
+class ProductApprovalConsumer(AsyncWebsocketConsumer):
+    async def connect(self):  # <--- SỬA TẠI ĐÂY: Phải là 'connect'
+        # Chấp nhận kết nối WebSocket
+        await self.accept()
+        
+        # Thêm user vào nhóm admin_products để nhận thông báo realtime
+        await self.channel_layer.group_add("admin_products", self.channel_name)
+        print("✅ Admin connected to Product Stream")
+
+    async def disconnect(self, close_code):
+        # Rời khỏi nhóm khi ngắt kết nối
+        await self.channel_layer.group_discard("admin_products", self.channel_name)
+        print(f"❌ Admin disconnected: {close_code}")
+
+    # Hàm xử lý khi có tin nhắn gửi tới nhóm "admin_products"
+    async def product_update(self, event):
+        # Gửi dữ liệu về cho Frontend (React)
+        await self.send(text_data=json.dumps(event))

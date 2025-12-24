@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Table,
   Tooltip,
@@ -15,9 +15,9 @@ import {
   Modal,
   Input,
   Radio,
-  Popover,
-  Timeline,
   Avatar,
+  notification,
+  Badge,
 } from "antd";
 import {
   EyeOutlined,
@@ -26,33 +26,23 @@ import {
   AppstoreOutlined,
   BarsOutlined,
   ThunderboltFilled,
-  WarningOutlined,
   ReloadOutlined,
   ShopOutlined,
-  CloseCircleOutlined,
   DiffOutlined,
-  PictureOutlined,
   LockOutlined,
-  UnlockOutlined, // Icon Mở khóa
+  UnlockOutlined,
 } from "@ant-design/icons";
-import dayjs from "dayjs";
-import ProductStatusTag from "./ProductStatusTag"; // Giả định component này
-import { intcomma } from "../../../../../utils/format"; // Giả định utils này
-import ButtonAction from "../../../../../components/ButtonAction"; // Component tái sử dụng vừa tạo
+import { intcomma } from "../../../../../utils/format";
+import ButtonAction from "../../../../../components/ButtonAction";
+import ProductStatusTag from "./ProductStatusTag";
 
 const { Text, Paragraph } = Typography;
 const { TextArea } = Input;
 
-// --- Helper Functions ---
-const checkIsPending = (status) =>
-  ["pending", "pending_update"].includes(status?.toLowerCase());
-const checkIsApproved = (status) =>
-  ["active", "approved"].includes(status?.toLowerCase());
-const checkIsBanned = (status) =>
-  ["banned", "locked"].includes(status?.toLowerCase());
+// --- CONFIG ---
+// Thay 192.168.1.35 bằng IP máy chạy Backend của bạn hoặc '127.0.0.1'
+const BASE_WS_URL = "ws://192.168.1.35:8000";
 
-// --- SUB-COMPONENT: Product Card (Grid View) ---
-// Giữ nguyên giao diện GridView như cũ để đảm bảo trải nghiệm người dùng
 const ProductGridItem = ({
   record,
   isSelected,
@@ -63,10 +53,10 @@ const ProductGridItem = ({
   onCompare,
   onOpenLock,
 }) => {
-  const isPending = checkIsPending(record.status);
-  const isApproved = checkIsApproved(record.status);
+  const isPending = ["pending", "pending_update"].includes(
+    record.status?.toLowerCase()
+  );
   const isUpdate = record.status === "pending_update";
-  const isReup = record.is_reup;
 
   return (
     <Card
@@ -76,9 +66,8 @@ const ProductGridItem = ({
         height: "100%",
         borderRadius: 12,
         boxShadow: isSelected
-          ? "0 0 0 2px #1890ff, 0 8px 16px rgba(24,144,255,0.2)"
+          ? "0 0 0 2px #1890ff"
           : "0 2px 8px rgba(0,0,0,0.06)",
-        transition: "all 0.3s ease",
         overflow: "hidden",
         position: "relative",
       }}
@@ -90,12 +79,10 @@ const ProductGridItem = ({
       }}
       onClick={() => onSelect(record.id)}
     >
-      {/* Checkbox Overlay */}
       <div style={{ position: "absolute", top: 12, left: 12, zIndex: 10 }}>
         <Checkbox checked={isSelected} style={{ transform: "scale(1.2)" }} />
       </div>
 
-      {/* Status & Risk Badges */}
       <div
         style={{
           position: "absolute",
@@ -105,7 +92,6 @@ const ProductGridItem = ({
           display: "flex",
           flexDirection: "column",
           gap: 6,
-          alignItems: "flex-end",
         }}
       >
         {record.ai_score > 80 && (
@@ -113,7 +99,7 @@ const ProductGridItem = ({
             {record.ai_score}% Risk
           </Tag>
         )}
-        {isReup && (
+        {record.is_reup && (
           <Tag color="#722ed1" icon={<ReloadOutlined />}>
             Re-up
           </Tag>
@@ -125,67 +111,33 @@ const ProductGridItem = ({
         )}
       </div>
 
-      {/* Image Area */}
-      <div
-        style={{
-          height: 180,
-          overflow: "hidden",
-          position: "relative",
-          background: "#f5f5f5",
-        }}
-      >
+      <div style={{ height: 180, background: "#f5f5f5" }}>
         <Image
           preview={false}
           src={record.main_image?.image || record.images?.[0]?.image}
           fallback="https://placehold.co/300x300/eee/999?text=No+Image"
-          style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            transition: "transform 0.5s",
-          }}
-          className="product-img-hover"
+          style={{ width: "100%", height: "100%", objectFit: "cover" }}
         />
       </div>
 
-      {/* Content Area */}
-      <div
-        style={{
-          padding: 16,
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-        }}
-      >
-        <div style={{ marginBottom: 4 }}>
-          <Text type="secondary" style={{ fontSize: 12 }}>
-            <ShopOutlined /> {record.seller?.store_name || "Unknown Shop"}
-          </Text>
-        </div>
+      <div style={{ padding: 16, flex: 1 }}>
+        <Text type="secondary" style={{ fontSize: 12 }}>
+          <ShopOutlined /> {record.seller?.store_name}
+        </Text>
         <Tooltip title={record.name}>
           <Paragraph
             ellipsis={{ rows: 2 }}
             strong
-            style={{ marginBottom: 8, flex: 1, minHeight: 44 }}
+            style={{ marginBottom: 8, height: 44 }}
           >
             {record.name}
           </Paragraph>
         </Tooltip>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginTop: "auto",
-          }}
-        >
-          <Text type="danger" style={{ fontSize: 16, fontWeight: 700 }}>
-            {intcomma(record.price)} ₫
-          </Text>
-        </div>
+        <Text type="danger" style={{ fontSize: 16, fontWeight: 700 }}>
+          {intcomma(record.price)} ₫
+        </Text>
       </div>
 
-      {/* Action Footer */}
       <div
         style={{
           borderTop: "1px solid #f0f0f0",
@@ -198,7 +150,8 @@ const ProductGridItem = ({
           <>
             <Button
               type="text"
-              style={{ flex: 1, color: "#ff4d4f", height: "100%" }}
+              danger
+              style={{ flex: 1 }}
               onClick={(e) => {
                 e.stopPropagation();
                 onOpenReject(record.id);
@@ -206,80 +159,40 @@ const ProductGridItem = ({
             >
               Từ chối
             </Button>
-            <div style={{ width: 1, background: "#f0f0f0" }} />
             {isUpdate ? (
               <Button
                 type="text"
-                style={{ flex: 1, color: "#1890ff", height: "100%" }}
+                style={{ flex: 1, color: "#1890ff" }}
                 onClick={(e) => {
                   e.stopPropagation();
                   onCompare(record);
                 }}
               >
-                <DiffOutlined /> So sánh
+                So sánh
               </Button>
             ) : (
               <Button
                 type="text"
-                style={{ flex: 1, color: "#52c41a", height: "100%" }}
+                style={{ flex: 1, color: "#52c41a" }}
                 onClick={(e) => {
                   e.stopPropagation();
                   onApprove(record.id);
                 }}
               >
-                <CheckOutlined /> Duyệt
+                Duyệt
               </Button>
             )}
-            <div style={{ width: 1, background: "#f0f0f0" }} />
-            <Tooltip title="Xem chi tiết">
-              <Button
-                type="text"
-                style={{ width: 40, height: "100%" }}
-                icon={<EyeOutlined />}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onView(record);
-                }}
-              />
-            </Tooltip>
-          </>
-        ) : isApproved ? (
-          // Footer cho sản phẩm ĐÃ DUYỆT (Lock + Detail)
-          <>
-            <Button
-              type="text"
-              style={{ flex: 1, color: "#faad14", height: "100%" }}
-              onClick={(e) => {
-                e.stopPropagation();
-                onOpenLock(record.id);
-              }}
-            >
-              <LockOutlined /> Khóa
-            </Button>
-            <div style={{ width: 1, background: "#f0f0f0" }} />
-            <Button
-              type="text"
-              style={{ flex: 1, height: "100%" }}
-              onClick={(e) => {
-                e.stopPropagation();
-                onView(record);
-              }}
-            >
-              <EyeOutlined /> Chi tiết
-            </Button>
           </>
         ) : (
-          // Footer cho sản phẩm ĐÃ TỪ CHỐI / KHÓA (Chỉ hiện View Detail)
           <Button
             type="text"
             block
-            style={{ height: "100%" }}
             onClick={(e) => {
               e.stopPropagation();
               onView(record);
             }}
           >
-            <EyeOutlined /> Xem chi tiết
+            Xem chi tiết
           </Button>
         )}
       </div>
@@ -287,13 +200,12 @@ const ProductGridItem = ({
   );
 };
 
-// --- MAIN COMPONENT ---
 const ProductManager = ({
-  data,
+  data: initialData,
   onApprove,
   onReject,
   onLock,
-  onUnban, // Prop mới để mở khóa
+  onUnban,
   onView,
   onViewShop,
   onCompare,
@@ -301,10 +213,11 @@ const ProductManager = ({
   setSelectedRowKeys,
   viewModeProp = "table",
 }) => {
+  const [productList, setProductList] = useState(initialData);
   const [viewMode, setViewMode] = useState(viewModeProp);
   const [isMobile, setIsMobile] = useState(false);
+  const socketRef = useRef(null);
 
-  // Modal states
   const [rejectModal, setRejectModal] = useState({
     open: false,
     ids: [],
@@ -317,364 +230,219 @@ const ProductManager = ({
     reason: "",
   });
 
-  React.useEffect(() => {
-    setViewMode(viewModeProp);
-  }, [viewModeProp]);
+  useEffect(() => {
+    setProductList(initialData);
+  }, [initialData]);
 
-  // Detect mobile viewport (iPhone 14 Pro Max ~430px width)
-  React.useEffect(() => {
-    const mql = window.matchMedia("(max-width: 480px)");
-    const handleChange = (e) => setIsMobile(e.matches);
-    handleChange(mql);
-    mql.addEventListener
-      ? mql.addEventListener("change", handleChange)
-      : mql.addListener(handleChange);
-    return () => {
-      mql.removeEventListener
-        ? mql.removeEventListener("change", handleChange)
-        : mql.removeListener(handleChange);
+  // --- REALTIME LOGIC (NATIVE WEBSOCKET) ---
+  useEffect(() => {
+    const connectWS = () => {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+
+      // URL KHỚP VỚI BACKEND ROUTING: /api/ws/admin/products/
+      const wsUrl = `${BASE_WS_URL}/api/ws/admin/products/?token=${token}`;
+
+      if (socketRef.current?.readyState === WebSocket.OPEN) return;
+
+      const socket = new WebSocket(wsUrl);
+
+      socket.onopen = () => console.log("✅ [ProductWS] Connected to Server");
+
+      socket.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        console.log("📩 [ProductWS] New Message:", data);
+
+        // Giả sử backend gửi: { type: 'product_update', action: 'new_product', product: {...} }
+        if (data.type === "product_update") {
+          notification.info({
+            message: "Cập nhật hệ thống",
+            description:
+              data.message || "Có thay đổi về danh sách sản phẩm chờ duyệt.",
+            placement: "topRight",
+            icon: <ThunderboltFilled style={{ color: "#faad14" }} />,
+          });
+
+          // Nếu backend gửi kèm object product mới, thêm vào list
+          if (data.product) {
+            setProductList((prev) => [data.product, ...prev]);
+          }
+        }
+      };
+
+      socket.onerror = (err) =>
+        console.error("❌ [ProductWS] Connection Error:", err);
+
+      socket.onclose = (e) => {
+        console.log(
+          "🔌 [ProductWS] Disconnected. Reconnecting in 5s...",
+          e.reason
+        );
+        setTimeout(connectWS, 5000); // Tự động kết nối lại sau 5s
+      };
+
+      socketRef.current = socket;
     };
+
+    connectWS();
+    return () => socketRef.current?.close();
   }, []);
 
-  // Handle Select
-  const handleGridSelect = (id) => {
-    setSelectedRowKeys((prev) =>
-      prev.includes(id) ? prev.filter((k) => k !== id) : [...prev, id]
-    );
+  // Responsive detect
+  useEffect(() => {
+    const mql = window.matchMedia("(max-width: 480px)");
+    const handler = (e) => setIsMobile(e.matches);
+    mql.addEventListener("change", handler);
+    return () => mql.removeEventListener("change", handler);
+  }, []);
+
+  // Actions logic
+  const handleApprove = async (ids) => {
+    const idArray = Array.isArray(ids) ? ids : [ids];
+    try {
+      await onApprove(idArray);
+      setProductList((prev) =>
+        prev.map((p) =>
+          idArray.includes(p.id) ? { ...p, status: "active" } : p
+        )
+      );
+      setSelectedRowKeys([]);
+      message.success("Đã duyệt sản phẩm");
+    } catch (err) {
+      message.error("Lỗi khi duyệt");
+    }
   };
 
-  const pendingSelectedItems = useMemo(
-    () =>
-      data.filter(
-        (item) =>
-          selectedRowKeys.includes(item.id) && checkIsPending(item.status)
-      ),
-    [data, selectedRowKeys]
-  );
-
-  // --- Reject Logic ---
-  const openReject = (ids) =>
-    setRejectModal({
-      open: true,
-      ids: Array.isArray(ids) ? ids : [ids],
-      reason: "",
-      quickReason: "",
-    });
-  const confirmReject = () => {
+  const confirmReject = async () => {
     const reason =
-      rejectModal.quickReason === "other" || !rejectModal.quickReason
+      rejectModal.quickReason === "other"
         ? rejectModal.reason
         : rejectModal.quickReason;
-    if (!reason.trim()) return message.error("Vui lòng nhập lý do từ chối!");
-    onReject(rejectModal.ids, reason);
+    if (!reason) return message.error("Vui lòng chọn lý do!");
+    await onReject(rejectModal.ids, reason);
+    setProductList((prev) =>
+      prev.map((p) =>
+        rejectModal.ids.includes(p.id) ? { ...p, status: "rejected" } : p
+      )
+    );
     setRejectModal({ ...rejectModal, open: false });
+    setSelectedRowKeys([]);
   };
-
-  // --- Lock Logic ---
-  const openLock = (ids) =>
-    setLockModal({
-      open: true,
-      ids: Array.isArray(ids) ? ids : [ids],
-      reason: "",
-    });
-  const confirmLock = () => {
-    if (!lockModal.reason.trim())
-      return message.error("Vui lòng nhập lý do khóa sản phẩm!");
-    onLock && onLock(lockModal.ids, lockModal.reason);
-    setLockModal({ ...lockModal, open: false });
-  };
-
-  // Re-up History Popover Content
-  const renderReupHistory = (history) => (
-    <div style={{ width: 320, maxHeight: 400, overflowY: "auto", padding: 8 }}>
-      <div
-        style={{
-          marginBottom: 16,
-          padding: "8px 12px",
-          background: "#fff2f0",
-          border: "1px solid #ffccc7",
-          borderRadius: 6,
-        }}
-      >
-        <Text type="danger" strong>
-          <WarningOutlined /> Cảnh báo:
-        </Text>{" "}
-        Sản phẩm này có tên trùng với {history.length} sản phẩm đã bị xóa/cấm
-        trước đó.
-      </div>
-      <Timeline>
-        {history.map((item, idx) => (
-          <Timeline.Item key={idx} color="red">
-            <Text type="secondary" style={{ fontSize: 12 }}>
-              {dayjs(item.updated_at).format("DD/MM/YYYY HH:mm")}
-            </Text>
-            <br />
-            <Text strong>{item.name}</Text>
-            <br />
-            <Tag color="error">{item.status.toUpperCase()}</Tag>
-            <Text delete>{intcomma(item.price)}đ</Text>
-          </Timeline.Item>
-        ))}
-        <Timeline.Item
-          dot={<ReloadOutlined style={{ fontSize: 16, color: "#1890ff" }} />}
-        >
-          <Text strong style={{ color: "#1890ff" }}>
-            Hiện tại (Đang chờ duyệt)
-          </Text>
-        </Timeline.Item>
-      </Timeline>
-    </div>
-  );
 
   const columns = [
     {
       title: "Sản phẩm",
       key: "name",
-      width: isMobile ? 300 : 350,
-      sorter: (a, b) => (a.name || "").localeCompare(b.name || ""),
-      render: (_, r) => {
-        const imageUrl = r.main_image?.image || r.images?.[0]?.image;
-        return (
-          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-            {/* Image Container */}
-            <div
-              style={{
-                position: "relative",
-                width: 64,
-                height: 64,
-                flexShrink: 0,
-              }}
-            >
-              {imageUrl ? (
-                <Image
-                  src={imageUrl}
-                  width={64}
-                  height={64}
-                  style={{
-                    borderRadius: 8,
-                    objectFit: "cover",
-                    border: "1px solid #f0f0f0",
-                  }}
-                  fallback="https://placehold.co/64x64/f5f5f5/bfbfbf?text=IMG"
-                />
-              ) : (
-                <div
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    background: "#fafafa",
-                    border: "1px solid #f0f0f0",
-                    borderRadius: 8,
-                    display: "flex",
-                    justifyContent: "center",
-                    alignItems: "center",
-                    color: "#d9d9d9",
-                  }}
-                >
-                  <PictureOutlined style={{ fontSize: 24 }} />
-                </div>
-              )}
-              {r.is_reup && (
-                <div
-                  style={{
-                    position: "absolute",
-                    bottom: -6,
-                    right: -6,
-                    zIndex: 10,
-                  }}
-                >
-                  <Popover
-                    title="Lịch sử vi phạm"
-                    content={renderReupHistory(r.reupHistory)}
-                  >
-                    <div
-                      style={{
-                        background: "#ff4d4f",
-                        color: "#fff",
-                        borderRadius: "50%",
-                        width: 20,
-                        height: 20,
-                        display: "flex",
-                        justifyContent: "center",
-                        alignItems: "center",
-                        fontSize: 12,
-                        cursor: "help",
-                        boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-                      }}
-                    >
-                      !
-                    </div>
-                  </Popover>
-                </div>
-              )}
-            </div>
-            {/* Info Text */}
-            <div style={{ flex: 1, overflow: "hidden" }}>
-              <Text
-                strong
-                style={{
-                  color: "#262626",
-                  fontSize: 14,
-                  cursor: "pointer",
-                  display: "block",
-                }}
-                onClick={() => onView(r)}
-                ellipsis={{ tooltip: r.name }}
-              >
-                {r.name}
-              </Text>
-              <div
-                style={{ marginTop: 4, display: "flex", alignItems: "center" }}
-              >
-                <Text type="danger" strong>
-                  {intcomma(r.price)}đ
-                </Text>
-                {r.status === "pending_update" && (
-                  <Tag
-                    color="processing"
-                    style={{ marginLeft: 8, fontSize: 10, border: "none" }}
-                  >
-                    Cập nhật
-                  </Tag>
-                )}
-              </div>
-            </div>
+      width: 350,
+      render: (_, r) => (
+        <Space size={12}>
+          <Badge dot={r.status === "pending_update"} offset={[-2, 60]}>
+            <Image
+              src={r.main_image?.image}
+              width={64}
+              height={64}
+              style={{ borderRadius: 8, objectFit: "cover" }}
+              fallback="https://placehold.co/64"
+            />
+          </Badge>
+          <div style={{ maxWidth: 240 }}>
+            <Text strong block ellipsis={{ tooltip: r.name }}>
+              {r.name}
+            </Text>
+            <Text type="danger" strong>
+              {intcomma(r.price)}₫
+            </Text>
           </div>
-        );
-      },
+        </Space>
+      ),
     },
     {
       title: "Người bán",
-      key: "seller",
-      width: isMobile ? 180 : 200,
-      sorter: (a, b) => a.price - b.price,
+      width: 200,
       render: (_, r) => (
-        <Space>
-          <Avatar size="small" icon={<ShopOutlined />} src={r.seller?.avatar} />
-          <div style={{ display: "flex", flexDirection: "column" }}>
-            <Text
-              style={{ fontSize: 13, cursor: "pointer" }}
-              onClick={() => onViewShop && onViewShop(r.seller)}
-            >
-              {r.seller?.store_name || "Shop ẩn danh"}
-            </Text>
-            {(() => {
-              const days = r.seller?.created_at
-                ? (new Date() - new Date(r.seller.created_at)) / 86400000
-                : 99;
-              return (
-                days <= 7 && (
-                  <Tag
-                    color="green"
-                    style={{
-                      fontSize: 10,
-                      lineHeight: "14px",
-                      width: "fit-content",
-                      marginTop: 2,
-                    }}
-                  >
-                    Mới tạo {Math.ceil(days)} ngày
-                  </Tag>
-                )
-              );
-            })()}
-          </div>
+        <Space
+          onClick={() => onViewShop?.(r.seller)}
+          style={{ cursor: "pointer" }}
+        >
+          <Avatar size="small" src={r.seller?.avatar} icon={<ShopOutlined />} />
+          <Text>{r.seller?.store_name || "N/A"}</Text>
         </Space>
       ),
     },
     {
       title: "Trạng thái",
       dataIndex: "status",
-      width: isMobile ? 130 : 150,
-      sorter: (a, b) => (a.name || "").localeCompare(b.name || ""),
+      width: 140,
       render: (st) => <ProductStatusTag status={st} />,
     },
     {
       title: "Thao tác",
       key: "action",
-      width: isMobile ? 150 : 140,
-
-      // Disable fixed column on mobile to avoid being covered
-      fixed: isMobile ? undefined : "right",
-      sorter: (a, b) => (a.name || "").localeCompare(b.name || ""),
+      width: 150,
+      fixed: isMobile ? false : "right",
       render: (_, r) => {
-        const isPending = checkIsPending(r.status);
-        const isApproved = checkIsApproved(r.status);
-        const isBanned = checkIsBanned(r.status);
-
-        // Cấu hình danh sách hành động sử dụng ButtonAction
         const actions = [
-          // 1. Xem chi tiết (Luôn hiện)
           {
             actionType: "view",
             icon: <EyeOutlined />,
-            tooltip: "Chi tiết",
+            tooltip: "Xem chi tiết",
             onClick: () => onView(r),
           },
-          // 2. So sánh (Chỉ hiện khi Pending Update)
-          {
-            actionType: "update",
-            icon: <DiffOutlined />,
-            tooltip: "So sánh thay đổi",
-            show: r.status === "pending_update",
-            onClick: () => onCompare(r),
-          },
-          // 3. Duyệt (Chỉ hiện khi Pending thường)
           {
             actionType: "approve",
             icon: <CheckOutlined />,
-            tooltip: "Duyệt sản phẩm",
+            tooltip: "Duyệt",
             show: r.status === "pending",
-            onClick: () => onApprove(r.id),
+            onClick: () => handleApprove(r.id),
           },
-          // 4. Từ chối (Hiện khi Pending hoặc Update)
+          {
+            actionType: "update",
+            icon: <DiffOutlined />,
+            tooltip: "So sánh",
+            show: r.status === "pending_update",
+            onClick: () => onCompare(r),
+          },
           {
             actionType: "reject",
             icon: <CloseOutlined />,
             tooltip: "Từ chối",
-            show: isPending,
-            onClick: () => openReject(r.id),
+            show: ["pending", "pending_update"].includes(r.status),
+            onClick: () =>
+              setRejectModal({
+                open: true,
+                ids: [r.id],
+                reason: "",
+                quickReason: "",
+              }),
           },
-          // 5. KHÓA (Hiện khi đang Approved/Active - Màu Vàng Cam)
           {
             actionType: "lock",
             icon: <LockOutlined />,
-            tooltip: "Khóa sản phẩm",
-            show: isApproved,
-            buttonProps: { style: { color: "#faad14" } }, // Override màu vàng
-            onClick: () => openLock(r.id),
-          },
-          // 6. MỞ KHÓA (Hiện khi đang Banned - Màu Xanh Lá)
-          {
-            actionType: "unlock",
-            icon: <UnlockOutlined />,
-            tooltip: "Mở khóa lại",
-            show: isBanned,
-            confirm: {
-              title: "Mở khóa sản phẩm này?",
-              description: "Sản phẩm sẽ được hiển thị lại trên sàn.",
-              okText: "Mở khóa",
-              cancelText: "Hủy",
-            },
-            onClick: () => onUnban && onUnban(r.id),
+            tooltip: "Khóa",
+            show: r.status === "active",
+            buttonProps: { style: { color: "#faad14" } },
+            onClick: () =>
+              setLockModal({ open: true, ids: [r.id], reason: "" }),
           },
         ];
-
         return <ButtonAction actions={actions} record={r} />;
       },
     },
   ];
 
   return (
-    <div style={{ position: "relative", minHeight: 400 }}>
-      {/* View Switcher */}
+    <div style={{ position: "relative" }}>
       <div
         style={{
           display: "flex",
-          justifyContent: "flex-end",
+          justifyContent: "space-between",
           marginBottom: 16,
+          alignItems: "center",
         }}
       >
+        <Text type="secondary">
+          Tổng số: <b>{productList.length}</b> sản phẩm
+        </Text>
         <Segmented
           options={[
             { label: "Danh sách", value: "table", icon: <BarsOutlined /> },
@@ -688,156 +456,109 @@ const ProductManager = ({
       {viewMode === "table" ? (
         <Table
           rowKey="id"
-          dataSource={data}
+          dataSource={productList}
           columns={columns}
           rowSelection={{ selectedRowKeys, onChange: setSelectedRowKeys }}
-          pagination={{ pageSize: 10, showSizeChanger: true }}
-          scroll={isMobile ? { x: 900 } : { x: 900 }}
+          pagination={{ pageSize: 10 }}
+          scroll={{ x: 1000 }}
           size={isMobile ? "small" : "middle"}
-          tableLayout="fixed"
-          style={isMobile ? { whiteSpace: "nowrap" } : undefined}
         />
       ) : (
         <List
-          grid={{ gutter: 24, xs: 1, sm: 2, md: 3, lg: 4, xl: 4, xxl: 5 }}
-          dataSource={data}
-          pagination={{ pageSize: 20 }}
+          grid={{ gutter: 16, xs: 1, sm: 2, md: 3, lg: 4, xl: 5 }}
+          dataSource={productList}
           renderItem={(item) => (
             <List.Item>
               <ProductGridItem
                 record={item}
                 isSelected={selectedRowKeys.includes(item.id)}
-                onSelect={handleGridSelect}
+                onSelect={(id) =>
+                  setSelectedRowKeys((prev) =>
+                    prev.includes(id)
+                      ? prev.filter((k) => k !== id)
+                      : [...prev, id]
+                  )
+                }
+                onApprove={handleApprove}
+                onOpenReject={(id) =>
+                  setRejectModal({
+                    open: true,
+                    ids: [id],
+                    reason: "",
+                    quickReason: "",
+                  })
+                }
+                onOpenLock={(id) =>
+                  setLockModal({ open: true, ids: [id], reason: "" })
+                }
                 onView={onView}
-                onApprove={onApprove}
                 onCompare={onCompare}
-                onOpenReject={openReject}
-                onOpenLock={openLock}
               />
             </List.Item>
           )}
         />
       )}
 
-      {/* --- STICKY ACTION BAR --- */}
       {selectedRowKeys.length > 0 && (
-        <div
-          style={{
-            position: "fixed",
-            bottom: 30,
-            left: "50%",
-            transform: "translateX(-50%)",
-            background: "rgba(38, 38, 38, 0.85)",
-            backdropFilter: "blur(12px)",
-            padding: "12px 24px",
-            borderRadius: 100,
-            boxShadow: "0 10px 30px rgba(0,0,0,0.15)",
-            display: "flex",
-            alignItems: "center",
-            gap: 16,
-            zIndex: 1000,
-            border: "1px solid rgba(255,255,255,0.1)",
-          }}
-        >
-          <Space size={16}>
-            <Text style={{ color: "#fff", fontWeight: 500 }}>
+        <div style={actionBarStyle}>
+          <Space size={20}>
+            <Text style={{ color: "#fff" }}>
               Đã chọn{" "}
-              <span style={{ color: "#40a9ff", fontSize: 16 }}>
-                {selectedRowKeys.length}
-              </span>
+              <b style={{ color: "#40a9ff" }}>{selectedRowKeys.length}</b>
             </Text>
-            <div
-              style={{
-                width: 1,
-                height: 24,
-                background: "rgba(255,255,255,0.2)",
-              }}
-            />
-            <Button ghost size="middle" onClick={() => setSelectedRowKeys([])}>
-              Hủy chọn
+            <Button ghost onClick={() => setSelectedRowKeys([])}>
+              Hủy
             </Button>
-
-            {pendingSelectedItems.length > 0 ? (
-              <>
-                <Button
-                  type="primary"
-                  shape="round"
-                  icon={<CheckOutlined />}
-                  onClick={() =>
-                    onApprove(pendingSelectedItems.map((i) => i.id))
-                  }
-                >
-                  Duyệt ({pendingSelectedItems.length})
-                </Button>
-                <Button
-                  type="primary"
-                  danger
-                  shape="round"
-                  icon={<CloseOutlined />}
-                  onClick={() =>
-                    openReject(pendingSelectedItems.map((i) => i.id))
-                  }
-                >
-                  Từ chối ({pendingSelectedItems.length})
-                </Button>
-              </>
-            ) : (
-              // Nếu chọn các item đã duyệt, hiển thị nút Khóa hàng loạt
-              <Button
-                type="default"
-                shape="round"
-                icon={<LockOutlined />}
-                style={{ color: "#faad14", borderColor: "#faad14" }}
-                onClick={() => openLock(selectedRowKeys)}
-              >
-                Khóa ({selectedRowKeys.length})
-              </Button>
-            )}
+            <Button
+              type="primary"
+              icon={<CheckOutlined />}
+              onClick={() => handleApprove(selectedRowKeys)}
+            >
+              Duyệt hàng loạt
+            </Button>
+            <Button
+              danger
+              icon={<CloseOutlined />}
+              onClick={() =>
+                setRejectModal({
+                  open: true,
+                  ids: selectedRowKeys,
+                  reason: "",
+                  quickReason: "",
+                })
+              }
+            >
+              Từ chối
+            </Button>
           </Space>
         </div>
       )}
 
-      {/* --- REJECT MODAL --- */}
+      {/* --- MODALS --- */}
       <Modal
-        title={
-          <Space>
-            <CloseCircleOutlined style={{ color: "#ff4d4f" }} /> Xác nhận từ
-            chối
-          </Space>
-        }
+        title="Lý do từ chối"
         open={rejectModal.open}
         onOk={confirmReject}
         onCancel={() => setRejectModal({ ...rejectModal, open: false })}
-        okText="Xác nhận"
         okButtonProps={{ danger: true }}
-        cancelText="Hủy"
       >
-        <div style={{ marginBottom: 12 }}>
-          Bạn đang từ chối <b>{rejectModal.ids.length}</b> sản phẩm. Vui lòng
-          chọn lý do:
-        </div>
         <Radio.Group
-          style={{ display: "flex", flexDirection: "column", gap: 10 }}
           value={rejectModal.quickReason}
           onChange={(e) =>
             setRejectModal({ ...rejectModal, quickReason: e.target.value })
           }
+          style={{ display: "flex", flexDirection: "column", gap: 12 }}
         >
-          <Radio value="Hàng giả/Nhái thương hiệu">
-            Hàng giả / Nhái thương hiệu
-          </Radio>
-          <Radio value="Hình ảnh/Nội dung không phù hợp">
-            Hình ảnh / Nội dung không phù hợp
-          </Radio>
-          <Radio value="Sai danh mục ngành hàng">Sai danh mục ngành hàng</Radio>
-          <Radio value="Spam/Đăng lặp lại">Spam / Đăng lặp lại (Re-up)</Radio>
+          <Radio value="Hàng giả/nhái">Hàng giả/nhái thương hiệu</Radio>
+          <Radio value="Nội dung nhạy cảm">Hình ảnh/Nội dung nhạy cảm</Radio>
+          <Radio value="Sai danh mục">Sai danh mục ngành hàng</Radio>
           <Radio value="other">Lý do khác...</Radio>
         </Radio.Group>
         {rejectModal.quickReason === "other" && (
           <TextArea
-            style={{ marginTop: 12 }}
             rows={3}
-            placeholder="Nhập lý do chi tiết gửi đến người bán..."
+            style={{ marginTop: 15 }}
+            placeholder="Nhập chi tiết..."
             value={rejectModal.reason}
             onChange={(e) =>
               setRejectModal({ ...rejectModal, reason: e.target.value })
@@ -846,33 +567,22 @@ const ProductManager = ({
         )}
       </Modal>
 
-      {/* --- LOCK MODAL --- */}
       <Modal
-        title={
-          <Space>
-            <LockOutlined style={{ color: "#faad14" }} /> Xác nhận khóa sản phẩm
-          </Space>
-        }
+        title="Khóa sản phẩm"
         open={lockModal.open}
-        onOk={confirmLock}
+        onOk={() => {
+          onLock(lockModal.ids, lockModal.reason);
+          setLockModal({ ...lockModal, open: false });
+        }}
         onCancel={() => setLockModal({ ...lockModal, open: false })}
-        okText="Khóa ngay"
-        okButtonProps={{
-          style: { background: "#faad14", borderColor: "#faad14" },
-        }} // Màu vàng warning
-        cancelText="Hủy"
       >
-        <div style={{ marginBottom: 12 }}>
-          Bạn đang khóa <b>{lockModal.ids.length}</b> sản phẩm đang hoạt động.{" "}
-          <br />
-          <Text type="secondary" style={{ fontSize: 12 }}>
-            Sản phẩm bị khóa sẽ không hiển thị trên sàn TMĐT.
-          </Text>
-        </div>
-        <div style={{ marginBottom: 8 }}>Lý do khóa:</div>
+        <Text type="secondary">
+          Sản phẩm bị khóa sẽ bị gỡ khỏi sàn ngay lập tức.
+        </Text>
         <TextArea
           rows={4}
-          placeholder="Ví dụ: Hết hàng, vi phạm chính sách sau kiểm duyệt, yêu cầu từ cơ quan chức năng..."
+          style={{ marginTop: 15 }}
+          placeholder="Nhập lý do khóa..."
           value={lockModal.reason}
           onChange={(e) =>
             setLockModal({ ...lockModal, reason: e.target.value })
@@ -881,6 +591,19 @@ const ProductManager = ({
       </Modal>
     </div>
   );
+};
+
+const actionBarStyle = {
+  position: "fixed",
+  bottom: 40,
+  left: "50%",
+  transform: "translateX(-50%)",
+  background: "rgba(0, 0, 0, 0.8)",
+  padding: "12px 30px",
+  borderRadius: "50px",
+  zIndex: 1000,
+  boxShadow: "0 8px 24px rgba(0,0,0,0.2)",
+  backdropFilter: "blur(4px)",
 };
 
 export default ProductManager;
