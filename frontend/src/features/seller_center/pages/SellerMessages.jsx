@@ -64,6 +64,30 @@ export default function SellerMessages() {
         finally { setLoadingMsgs(false); }
     };
 
+    const handleDeleteConversation = async (conv) => {
+        if (!conv?.id) return;
+        const ok = window.confirm("Bạn có chắc muốn xóa hội thoại này?");
+        if (!ok) return;
+        try {
+            const res = await fetch(`${API_BASE_URL}/chat/conversations/${conv.id}/`, {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (res.ok) {
+                setConversations(prev => prev.filter(c => c.id !== conv.id));
+                if (selectedConv?.id === conv.id) {
+                    setSelectedConv(null);
+                    setMessages([]);
+                }
+                antdMessage.success("Đã xóa hội thoại");
+            } else {
+                antdMessage.error("Không thể xóa hội thoại");
+            }
+        } catch (e) {
+            antdMessage.error("Lỗi xóa hội thoại");
+        }
+    };
+
     const handleSend = async () => {
         if (!input.trim() && !selectedFile) return;
         if (!selectedConv) return;
@@ -159,6 +183,7 @@ export default function SellerMessages() {
                         onSelectConv={handleSelectConv}
                         onRefresh={fetchConversations}
                         currentUserId={currentUserId}
+                        onDeleteConv={handleDeleteConversation}
                     />
                 </Sider>
             )}
@@ -237,6 +262,7 @@ export default function SellerMessages() {
                     onSelectConv={handleSelectConv}
                     onRefresh={fetchConversations}
                     currentUserId={currentUserId}
+                    onDeleteConv={handleDeleteConversation}
                 />
             </Drawer>
         </Layout>

@@ -1,7 +1,7 @@
 // components/ConversationList.jsx
 import React from "react";
 import { Typography, Tooltip, Button, Input, Spin, Empty, Badge, Avatar } from "antd";
-import { ReloadOutlined, SearchOutlined } from "@ant-design/icons";
+import { ReloadOutlined, SearchOutlined, DeleteOutlined } from "@ant-design/icons";
 import { THEME_COLOR, getBuyerAvatar, getBuyerName } from "../../utils/chatUtils";
 
 const { Text } = Typography;
@@ -12,7 +12,8 @@ const ConversationList = ({
     selectedConv, 
     onSelectConv, 
     onRefresh, 
-    currentUserId 
+    currentUserId,
+    onDeleteConv
 }) => {
     return (
         <div className="chat-sider-inner">
@@ -56,8 +57,17 @@ const ConversationList = ({
                                             {name?.charAt(0)?.toUpperCase()}
                                         </Avatar>
                                     </Badge>
-                                    <div style={{ overflow: 'hidden' }}>
-                                        <div className="conv-name">{name}</div>
+                                    <div style={{ overflow: 'hidden', width: '100%' }}>
+                                        <div className="conv-name" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                                          <span className="text-truncate" style={{ maxWidth: '75%' }}>{name}</span>
+                                          <Button
+                                            type="text"
+                                            size="small"
+                                            icon={<DeleteOutlined />}
+                                            onClick={(e) => { e.stopPropagation(); onDeleteConv?.(conv); }}
+                                            title="Xóa hội thoại"
+                                          />
+                                        </div>
                                         <div className="conv-desc" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                             Nhấn để xem tin nhắn...
                                         </div>

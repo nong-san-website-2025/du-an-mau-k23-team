@@ -49,6 +49,13 @@ const CheckoutPage = () => {
   const navigate = useNavigate();
   const { cartItems } = useCart();
 
+  // Set page title
+  useEffect(() => {
+    const prev = document.title;
+    document.title = "GreenFarm - Thanh Toán";
+    return () => { document.title = prev; };
+  }, []);
+
   // State chứa dữ liệu đã được làm giàu (có giá, có tên, có shop)
   const [enrichedItems, setEnrichedItems] = useState([]);
 

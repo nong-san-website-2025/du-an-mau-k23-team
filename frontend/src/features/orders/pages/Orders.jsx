@@ -11,6 +11,13 @@ const Orders = () => {
   const [activeTab, setActiveTab] = useState("pending");
   const hasProcessed = useRef(false);
 
+  // Set page title
+  useEffect(() => {
+    const prev = document.title;
+    document.title = "GreenFarm - Đơn Mua";
+    return () => { document.title = prev; };
+  }, []);
+
   // Danh sách các Tab
   const tabList = [
     { key: "pending", label: "Chờ xác nhận" },

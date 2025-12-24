@@ -14,7 +14,7 @@
 
 /* --- 1. LAYOUT CHÍNH --- */
 .chat-layout {
-  height: 80  vh;          /* Chiếm 75% chiều cao màn hình */
+  height: 80vh;          /* Chiếm 80% chiều cao màn hình */
   min-height: 500px;     /* Không quá bé */
   max-height: 800px;     /* Không quá to */
   background: var(--white);
@@ -245,6 +245,12 @@
   background: transparent;
 }
 .custom-scroll::-webkit-scrollbar-thumb {
-  background: #d9d9d9;
+  background: #389E0D; /* Màu thanh cuộn theo yêu cầu */
   border-radius: 3px;
+}
+
+/* Firefox */
+.custom-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #389E0D transparent;
 }
