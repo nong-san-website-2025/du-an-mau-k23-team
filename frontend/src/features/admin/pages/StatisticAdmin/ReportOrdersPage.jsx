@@ -13,7 +13,8 @@ import {
   message,
   Table,
   Tag,
-  Avatar
+  Avatar,
+  Dropdown
 } from "antd";
 import {
   ShoppingCartOutlined,
@@ -34,6 +35,7 @@ import {
 } from "recharts";
 
 import AdminPageLayout from "../../components/AdminPageLayout";
+import * as XLSX from "xlsx";
 import StatsSection from "../../components/common/StatsSection"; // Đảm bảo đường dẫn đúng tới file StatsSection của bạn
 import { userApi } from "../../services/userApi";
 import dayjs from "dayjs";
@@ -69,6 +71,104 @@ export default function ReportOrdersPage() {
   });
 
   const [recentOrders, setRecentOrders] = useState([]);
+
+  // --- EXPORT HELPERS ---
+  const buildExportData = () => ({
+    summary: [
+      { metric: "Tổng Doanh Thu", value: stats.totalRevenue },
+      { metric: "Tổng Đơn Hàng", value: stats.totalOrders },
+      { metric: "Đang Xử Lý", value: stats.pendingOrders },
+      { metric: "Tỷ Lệ Hủy (%)", value: stats.cancelRate },
+      { metric: "Giá trị đơn TB", value: stats.avgOrderValue },
+    ],
+    trend: chartData.trend,
+    status: chartData.status,
+    recentOrders,
+  });
+
+  const downloadCSV = (filename, sections) => {
+    const escape = (v) => {
+      if (v == null) return "";
+      const s = String(v);
+      if (s.includes(",") || s.includes("\n") || s.includes('"')) {
+        return '"' + s.replace(/"/g, '""') + '"';
+      }
+      return s;
+    };
+
+    const lines = [];
+    sections.forEach(({ title, rows, headers }) => {
+      lines.push(`# ${title}`);
+      if (headers && headers.length) lines.push(headers.join(","));
+      rows.forEach((row) => {
+        const vals = (headers || Object.keys(row)).map((h) => escape(row[h]));
+        lines.push(vals.join(","));
+      });
+      lines.push("");
+    });
+    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const downloadExcel = (filename, data) => {
+    const wb = XLSX.utils.book_new();
+    const summarySheet = XLSX.utils.json_to_sheet(data.summary);
+    const trendSheet = XLSX.utils.json_to_sheet(data.trend);
+    const statusSheet = XLSX.utils.json_to_sheet(data.status);
+    const recentSheet = XLSX.utils.json_to_sheet(data.recentOrders);
+    XLSX.utils.book_append_sheet(wb, summarySheet, "Tổng Quan");
+    XLSX.utils.book_append_sheet(wb, trendSheet, "Xu Hướng");
+    XLSX.utils.book_append_sheet(wb, statusSheet, "Trạng Thái");
+    XLSX.utils.book_append_sheet(wb, recentSheet, "Đơn Gần Đây");
+    XLSX.writeFile(wb, filename);
+  };
+
+  const handleExport = (format) => {
+    try {
+      const data = buildExportData();
+      const start = dateRange?.[0]?.format("YYYYMMDD") || "";
+      const end = dateRange?.[1]?.format("YYYYMMDD") || "";
+      const base = `BaoCao_DonHang_${start}_${end}`;
+      if (format === "csv") {
+        // Chỉ xuất CSV cho Đơn hàng gần đây với các cột yêu cầu
+        const recentRows = (data.recentOrders || []).map((row) => ({
+          "Mã đơn": row.id,
+          "Khách hàng": row.customer,
+          "Ngày đặt": row.date,
+          "Tổng tiền": row.total,
+          "Trạng thái": row.status,
+        }));
+        const sections = [
+          {
+            title: "Đơn Hàng Gần Đây",
+            headers: [
+              "Mã đơn",
+              "Khách hàng",
+              "Ngày đặt",
+              "Tổng tiền",
+              "Trạng thái",
+            ],
+            rows: recentRows,
+          },
+        ];
+        downloadCSV(`${base}.csv`, sections);
+        message.success("Đã xuất CSV (Đơn gần đây)");
+      } else if (format === "xlsx") {
+        // Excel: Sắp ra mắt, không cho nhấn
+        message.info("Xuất Excel đang sắp ra mắt");
+      }
+    } catch (e) {
+      console.error(e);
+      message.error("Xuất báo cáo thất bại");
+    }
+  };
 
   // --- FETCH DATA ---
   const fetchData = useCallback(async () => {
@@ -224,7 +324,19 @@ export default function ReportOrdersPage() {
             allowClear={false}
           />
           <Button icon={<ReloadOutlined />} onClick={fetchData} loading={loading} />
-          <Button icon={<DownloadOutlined />} type="primary">Xuất Báo Cáo</Button>
+          <Dropdown
+            menu={{
+              items: [
+                { key: 'csv', label: 'Xuất CSV' },
+                { key: 'xlsx', label: 'Xuất Excel (Sắp ra mắt)', disabled: true },
+              ],
+              onClick: ({ key }) => handleExport(key),
+            }}
+          >
+            <Button icon={<DownloadOutlined />} type="primary" style={{ background: '#389E0D', borderColor: '#389E0D' }}>
+              Xuất Báo Cáo
+            </Button>
+          </Dropdown>
         </Space>
       }
     >

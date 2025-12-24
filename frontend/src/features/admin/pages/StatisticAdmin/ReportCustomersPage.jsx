@@ -15,6 +15,7 @@ import {
   Progress,
   Empty,
   message,
+  Dropdown,
 } from "antd";
 
 import {
@@ -172,6 +173,66 @@ export default function ReportCustomersPage() {
     }
   };
 
+  // --- EXPORT HELPERS (CSV only, Excel sắp ra mắt) ---
+  const downloadCSV = (filename, sections) => {
+    const escape = (v) => {
+      if (v == null) return "";
+      const s = String(v);
+      if (s.includes(",") || s.includes("\n") || s.includes('"')) {
+        return '"' + s.replace(/"/g, '""') + '"';
+      }
+      return s;
+    };
+
+    const lines = [];
+    sections.forEach(({ title, rows, headers }) => {
+      lines.push(`# ${title}`);
+      if (headers && headers.length) lines.push(headers.join(","));
+      rows.forEach((row) => {
+        const vals = (headers || Object.keys(row)).map((h) => escape(row[h]));
+        lines.push(vals.join(","));
+      });
+      lines.push("");
+    });
+    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExport = (format) => {
+    try {
+      const base = `BaoCao_KhachHang_${new Date().toISOString().slice(0,10).replace(/-/g, '')}`;
+      if (format === 'csv') {
+        const rows = (topCustomers || []).map((c) => ({
+          'Khách hàng': c.name,
+          'Hạng thành viên': c.tier || 'Thành viên',
+          'Số đơn hàng': c.orders,
+          'Tổng chi tiêu': c.spent,
+        }));
+        const sections = [
+          {
+            title: 'Top Khách Hàng Tiêu Biểu',
+            headers: ['Khách hàng', 'Hạng thành viên', 'Số đơn hàng', 'Tổng chi tiêu'],
+            rows,
+          },
+        ];
+        downloadCSV(`${base}.csv`, sections);
+        message.success('Đã xuất CSV (Top khách hàng)');
+      } else if (format === 'xlsx') {
+        message.info('Xuất Excel đang sắp ra mắt');
+      }
+    } catch (e) {
+      console.error(e);
+      message.error('Xuất báo cáo thất bại');
+    }
+  };
+
   // Cấu hình cột cho bảng Top Customers chuyên nghiệp hơn
   const columns = [
     {
@@ -243,9 +304,19 @@ export default function ReportCustomersPage() {
               </Space>
             </Col>
             <Col xs={24} md={8} style={{ textAlign: "right" }}>
-              <Button type="primary" icon={<DownloadOutlined />}>
-                Xuất báo cáo
-              </Button>
+              <Dropdown
+                menu={{
+                  items: [
+                    { key: 'csv', label: 'Xuất CSV' },
+                    { key: 'xlsx', label: 'Xuất Excel (Sắp ra mắt)', disabled: true },
+                  ],
+                  onClick: ({ key }) => handleExport(key),
+                }}
+              >
+                <Button type="primary" icon={<DownloadOutlined />} style={{ background: '#389E0D', borderColor: '#389E0D' }}>
+                  Xuất báo cáo
+                </Button>
+              </Dropdown>
             </Col>
           </Row>
         </Card>

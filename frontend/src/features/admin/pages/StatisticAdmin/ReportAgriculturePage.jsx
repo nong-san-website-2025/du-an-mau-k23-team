@@ -48,6 +48,7 @@ import {
 } from "recharts";
 import { intcomma } from "../../../../utils/format";
 import { FireOutlined, ThunderboltOutlined } from "@ant-design/icons";
+import { Dropdown } from "antd";
 
 const { RangePicker } = DatePicker;
 const { Option } = Select;
@@ -159,6 +160,73 @@ export default function ReportAgriculturePage() {
     }
   };
 
+  // --- EXPORT HELPERS ---
+  const downloadCSV = (filename, sections) => {
+    const escape = (v) => {
+      if (v == null) return "";
+      const s = String(v);
+      if (s.includes(",") || s.includes("\n") || s.includes('"')) {
+        return '"' + s.replace(/"/g, '""') + '"';
+      }
+      return s;
+    };
+
+    const lines = [];
+    sections.forEach(({ title, rows, headers }) => {
+      lines.push(`# ${title}`);
+      if (headers && headers.length) lines.push(headers.join(","));
+      rows.forEach((row) => {
+        const vals = (headers || Object.keys(row)).map((h) => escape(row[h]));
+        lines.push(vals.join(","));
+      });
+      lines.push("");
+    });
+    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExport = (format) => {
+    try {
+      const base = `BaoCao_CuaHang_${new Date().toISOString().slice(0,10).replace(/-/g, '')}`;
+      if (format === 'csv') {
+        const rows = (suppliersData || []).map((s) => {
+          const opScore = Math.max(0, 100 - (s.cancelRate || 0) * 5 - (s.delayRate || 0) * 5).toFixed(0);
+          const supplierName = s.supplier || s.vendor || s.owner || s.name || '';
+          const storeName = s.store_name || s.shopName || s.name || '';
+          return {
+            'Nhà cung cấp': supplierName,
+            'Cửa hàng': storeName,
+            'Doanh thu': s.revenue ?? 0,
+            'Vận hành': opScore,
+            'Đánh giá': s.rating ?? '',
+            'Sản phẩm': s.products ?? '',
+          };
+        });
+        const sections = [
+          {
+            title: 'Chi tiết hiệu quả hoạt động Nhà cung cấp',
+            headers: ['Nhà cung cấp','Cửa hàng','Doanh thu','Vận hành','Đánh giá','Sản phẩm'],
+            rows,
+          },
+        ];
+        downloadCSV(`${base}.csv`, sections);
+        message.success('Đã xuất CSV (Hiệu quả cửa hàng)');
+      } else if (format === 'xlsx') {
+        message.info('Xuất Excel đang sắp ra mắt');
+      }
+    } catch (e) {
+      console.error(e);
+      message.error('Xuất báo cáo thất bại');
+    }
+  };
+
   // --- Cấu hình cột Table ---
   const columns = [
     {
@@ -261,9 +329,19 @@ export default function ReportAgriculturePage() {
               </Space>
             </Col>
             <Col xs={24} md={8} style={{ textAlign: "right" }}>
-              <Button type="primary" icon={<DownloadOutlined />} style={{ backgroundColor: '#237804', borderColor: '#237804' }}>
-                Xuất Excel
-              </Button>
+              <Dropdown
+                menu={{
+                  items: [
+                    { key: 'csv', label: 'Xuất CSV' },
+                    { key: 'xlsx', label: 'Xuất Excel (Sắp ra mắt)', disabled: true },
+                  ],
+                  onClick: ({ key }) => handleExport(key),
+                }}
+              >
+                <Button type="primary" icon={<DownloadOutlined />} style={{ background: '#389E0D', borderColor: '#389E0D' }}>
+                  Xuất báo cáo
+                </Button>
+              </Dropdown>
             </Col>
           </Row>
         </Card>
