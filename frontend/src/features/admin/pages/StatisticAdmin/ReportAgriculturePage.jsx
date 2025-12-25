@@ -261,8 +261,8 @@ export default function ReportAgriculturePage() {
               </Space>
             </Col>
             <Col xs={24} md={8} style={{ textAlign: "right" }}>
-              <Button type="primary" icon={<DownloadOutlined />} style={{ backgroundColor: '#237804', borderColor: '#237804' }}>
-                Xuất Excel
+              <Button type="primary" icon={<DownloadOutlined />} style={{ backgroundColor: '#fff', borderColor: '#28a645', color: '#28a645'  }}>
+                Xuất báo cáo
               </Button>
             </Col>
           </Row>

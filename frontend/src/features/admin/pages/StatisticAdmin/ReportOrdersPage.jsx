@@ -46,6 +46,7 @@ import StatsSection from "../../components/common/StatsSection"; // Đảm bảo
 import { userApi } from "../../services/userApi";
 import dayjs from "dayjs";
 import { intcomma } from "../../../../utils/format";
+import "../../styles/ReportOrdersPage.css";
 
 const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
@@ -307,7 +308,7 @@ export default function ReportOrdersPage() {
             onClick={fetchData}
             loading={loading}
           />
-          <Button icon={<DownloadOutlined />} type="primary">
+          <Button icon={<DownloadOutlined />} className="btn-export">
             Xuất Báo Cáo
           </Button>
         </Space>

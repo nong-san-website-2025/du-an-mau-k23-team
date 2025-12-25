@@ -12,6 +12,7 @@ import {
   Col,
   Tooltip,
   Avatar,
+  Tag,
 } from "antd";
 import {
   ReloadOutlined,
@@ -20,6 +21,7 @@ import {
   MessageOutlined,
   DeleteOutlined,
   EyeInvisibleOutlined,
+  PictureOutlined,
 } from "@ant-design/icons";
 import axios from "axios";
 import AdminPageLayout from "../components/AdminPageLayout";
@@ -65,7 +67,17 @@ const ReviewsPage = () => {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
-      setReviews(Array.isArray(res.data) ? res.data : res.data.results || []);
+      
+      let data = Array.isArray(res.data) ? res.data : res.data.results || [];
+      
+      // Sắp xếp: Đánh giá có ảnh lên đầu trang
+      data = [...data].sort((a, b) => {
+        const hasImgA = (a.images?.length > 0 || a.review_images?.length > 0) ? 1 : 0;
+        const hasImgB = (b.images?.length > 0 || b.review_images?.length > 0) ? 1 : 0;
+        return hasImgB - hasImgA; // 1 (có ảnh) lên trước 0 (không ảnh)
+      });
+
+      setReviews(data);
     } catch (err) {
       message.error("Không thể tải danh sách đánh giá");
     } finally {
@@ -133,6 +145,11 @@ const ReviewsPage = () => {
           <Space size={4}>
             <span style={{ color: "#faad14" }}>★</span>
             <Text strong>{record.rating}/5</Text>
+            {(record.images?.length > 0 || record.review_images?.length > 0) && (
+              <Tag icon={<PictureOutlined />} color="processing" style={{ marginLeft: 8 }}>
+                Có ảnh
+              </Tag>
+            )}
           </Space>
           <Text ellipsis type="secondary">
             <MessageOutlined /> {record.comment || "Không lời bình"}

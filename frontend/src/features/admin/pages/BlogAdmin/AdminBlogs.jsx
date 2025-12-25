@@ -101,62 +101,9 @@ const AdminBlogs = () => {
   return (
     <AdminPageLayout
       title="QUẢN LÝ BÀI VIẾT"
-      extra={
-        <Space>
-          {/* 1. Nút Quản lý danh mục */}
-          <Button onClick={() => setCategoryModalVisible(true)}>
-            Quản lý Danh mục
-          </Button>
-
-          {/* 2. Nút Xóa (Bulk Delete) */}
-          <Button 
-            danger 
-            icon={<DeleteOutlined />} 
-            onClick={handleBulkDelete}
-            disabled={selectedRows.length === 0}
-            size={isMobile ? "small" : "middle"}
-            style={{ whiteSpace: 'nowrap' }}
-          >
-            {`Xóa (${selectedRows.length})`}
-          </Button>
-
-          {/* 3. Nút Làm mới (Style: Outline Blue) */}
-          <Tooltip title="Tải lại dữ liệu">
-            <Button 
-              icon={<ReloadOutlined spin={loading} />} 
-              onClick={() => loadBlogs(pagination.current)}
-              style={{
-                backgroundColor: '#fff',
-                borderColor: '#d9d9d9',
-                color: '#000000ff',
-                display: 'flex',
-                alignItems: 'center'
-              }}
-            >
-              Làm mới
-            </Button>
-          </Tooltip>
-
-          {/* 4. Nút Viết bài mới (Style: Solid Green #28a645 - Đã chuyển xuống cuối) */}
-          <Button 
-            type="primary" 
-            icon={<PlusOutlined />} 
-            onClick={openCreate}
-            style={{
-              backgroundColor: '#28a645', // Màu xanh lá
-              borderColor: '#28a645',
-              display: 'flex',
-              alignItems: 'center'
-            }}
-          >
-            Viết bài mới
-          </Button>
-        </Space>
-      }
-    >
-      {/* Thanh công cụ tìm kiếm */}
-      <Row style={{ marginBottom: 16 }}>
-        <Col xs={24} sm={16} md={8}>
+      topContent={
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+          {/* Thanh công cụ tìm kiếm bên trái */}
           <Input 
             placeholder="Tìm kiếm bài viết..." 
             prefix={<SearchOutlined />} 
@@ -164,10 +111,59 @@ const AdminBlogs = () => {
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
             onPressEnter={handleSearch}
+            style={{ width: 300 }}
           />
-        </Col>
-      </Row>
 
+          {/* Nhóm các nút bên phải */}
+          <Space wrap>
+            <Button onClick={() => setCategoryModalVisible(true)}>
+              Quản lý Danh mục
+            </Button>
+
+            <Button 
+              danger 
+              icon={<DeleteOutlined />} 
+              onClick={handleBulkDelete}
+              disabled={selectedRows.length === 0}
+              size={isMobile ? "small" : "middle"}
+              style={{ whiteSpace: 'nowrap' }}
+            >
+              {`Xóa (${selectedRows.length})`}
+            </Button>
+
+            <Tooltip title="Tải lại dữ liệu">
+              <Button 
+                icon={<ReloadOutlined spin={loading} />} 
+                onClick={() => loadBlogs(pagination.current)}
+                style={{
+                  backgroundColor: '#fff',
+                  borderColor: '#d9d9d9',
+                  color: '#000000ff',
+                  display: 'flex',
+                  alignItems: 'center'
+                }}
+              >
+                Làm mới
+              </Button>
+            </Tooltip>
+
+            <Button 
+              type="primary" 
+              icon={<PlusOutlined />} 
+              onClick={openCreate}
+              style={{
+                backgroundColor: '#28a645',
+                borderColor: '#28a645',
+                display: 'flex',
+                alignItems: 'center'
+              }}
+            >
+              Viết bài mới
+            </Button>
+          </Space>
+        </div>
+      }
+    >
       <BlogTable
         blogs={blogs}
         loading={loading}

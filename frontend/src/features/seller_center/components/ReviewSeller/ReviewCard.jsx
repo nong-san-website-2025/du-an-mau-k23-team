@@ -1,8 +1,20 @@
 import React from "react";
-import { Card, Avatar, Rate, Space, Typography, Tag, Button, Tooltip, Divider, theme } from "antd";
+import { Card, Avatar, Rate, Space, Typography, Tag, Button, Tooltip, Divider, theme, Image } from "antd";
 import { UserOutlined, MessageOutlined, EyeOutlined, ClockCircleOutlined, ShopOutlined } from "@ant-design/icons";
 
 const { Text, Paragraph } = Typography;
+
+// Helper to get full image URL
+const getImageUrl = (imgData) => {
+  if (!imgData) return "";
+  let src = typeof imgData === 'string' ? imgData : (imgData.image || imgData.url);
+  if (!src || typeof src !== 'string') return "";
+  if (src.startsWith("http")) return src;
+  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000/api";
+  const BASE_URL = API_URL.replace(/\/api\/?$/, "");
+  const cleanSrc = src.startsWith("/") ? src : `/${src}`;
+  return `${BASE_URL}${cleanSrc}`;
+};
 
 const ReviewCard = ({ review, onReply, onViewDetail }) => {
   const { token } = theme.useToken();
@@ -32,7 +44,7 @@ const ReviewCard = ({ review, onReply, onViewDetail }) => {
         <Space align="start">
           <Avatar 
             size={48} 
-            src={review.user_avatar} 
+            src={getImageUrl(review.user_avatar)} 
             icon={<UserOutlined />} 
             style={{ backgroundColor: token.colorPrimaryBg, color: token.colorPrimary }} 
           />
@@ -71,6 +83,25 @@ const ReviewCard = ({ review, onReply, onViewDetail }) => {
         >
           {review.comment || <Text type="secondary" italic>Khách hàng không để lại bình luận văn bản.</Text>}
         </Paragraph>
+
+        {/* Review Images */}
+        {(review.images && review.images.length > 0) || (review.review_images && review.review_images.length > 0) ? (
+          <div style={{ marginBottom: 16 }}>
+            <Image.PreviewGroup>
+              <Space size={8} wrap>
+                {(review.images || review.review_images).map((img, idx) => (
+                  <Image
+                    key={idx}
+                    width={64}
+                    height={64}
+                    src={getImageUrl(img)}
+                    style={{ objectFit: "cover", borderRadius: 4, border: "1px solid #f0f0f0" }}
+                  />
+                ))}
+              </Space>
+            </Image.PreviewGroup>
+          </div>
+        ) : null}
 
         {/* Latest Reply Section - Threaded View Style */}
         {hasReplies && (

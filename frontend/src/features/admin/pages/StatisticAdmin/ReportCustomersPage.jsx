@@ -242,8 +242,8 @@ export default function ReportCustomersPage() {
                 </Select>
               </Space>
             </Col>
-            <Col xs={24} md={8} style={{ textAlign: "right" }}>
-              <Button type="primary" icon={<DownloadOutlined />}>
+            <Col xs={24} md={8} style={{ display: "flex", justifyContent: "flex-end" }}>
+              <Button className="btn-export" icon={<DownloadOutlined />}>
                 Xuất báo cáo
               </Button>
             </Col>

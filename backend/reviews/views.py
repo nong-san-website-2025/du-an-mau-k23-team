@@ -47,7 +47,7 @@ class SellerReviewsView(generics.ListAPIView):
     def get_queryset(self):
         # 1. Base Query: Lấy review của sản phẩm thuộc seller này
         user = self.request.user
-        qs = Review.objects.select_related("product", "product__seller", "user").all()
+        qs = Review.objects.select_related("product", "product__seller", "user").prefetch_related("images", "replies").all()
         
         seller = getattr(user, "seller", None)
         if seller:
@@ -226,7 +226,7 @@ class AdminReviewViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = Review.objects.select_related(
             'user', 'product', 'product__seller'
-        ).prefetch_related('replies').all()
+        ).prefetch_related('replies', 'images').all()
 
         # Filtering
         search = self.request.query_params.get('search', '')

@@ -1,0 +1,14 @@
+.btn-export {
+    border: 1px solid #28a645 !important;
+    color: #28a645 !important;
+    background-color: #fff !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-export:hover {
+    border: 1px solid black !important;
+    color: white !important;
+    background-color: #28a645 !important;
+}

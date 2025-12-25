@@ -1,13 +1,35 @@
 import React from "react";
-import { Modal, Avatar, Rate, Divider, Space, Tag, Typography, Button, Descriptions, Timeline, theme } from "antd";
+import { Modal, Avatar, Rate, Divider, Space, Tag, Typography, Button, Descriptions, Timeline, theme, Image } from "antd";
 import { UserOutlined, ShopOutlined, MessageOutlined, ClockCircleOutlined } from "@ant-design/icons";
 
 const { Text, Title, Paragraph } = Typography;
+
+// Helper to get full image URL
+const getImageUrl = (imgData) => {
+  if (!imgData) return "";
+  // Lấy đường dẫn từ object (.image, .url) hoặc trực tiếp là string
+  let src = typeof imgData === 'string' ? imgData : (imgData.image || imgData.url);
+  
+  if (!src || typeof src !== 'string') return "";
+  
+  // Nếu đã là URL tuyệt đối thì trả về luôn
+  if (src.startsWith("http")) return src;
+
+  // Xử lý URL tương đối
+  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000/api";
+  const BASE_URL = API_URL.replace(/\/api\/?$/, "");
+  const cleanSrc = src.startsWith("/") ? src : `/${src}`;
+  
+  return `${BASE_URL}${cleanSrc}`;
+};
 
 const ReviewDetailModal = ({ visible, review, onClose, onReply }) => {
   const { token } = theme.useToken();
 
   if (!review) return null;
+  
+  // Debug log để kiểm tra dữ liệu trong console (nếu cần)
+  console.log("Review Detail Data:", review);
 
   return (
     <Modal
@@ -50,7 +72,7 @@ const ReviewDetailModal = ({ visible, review, onClose, onReply }) => {
 
       {/* User Review Content */}
       <div style={{ display: 'flex', gap: 16, marginBottom: 24 }}>
-        <Avatar size={54} icon={<UserOutlined />} src={review.user_avatar} />
+        <Avatar size={54} icon={<UserOutlined />} src={getImageUrl(review.user_avatar)} />
         <div style={{ flex: 1 }}>
            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <Text strong style={{ fontSize: 16 }}>{review.user_name}</Text>
@@ -65,6 +87,27 @@ const ReviewDetailModal = ({ visible, review, onClose, onReply }) => {
            }}>
               <Paragraph style={{ margin: 0, fontSize: 15 }}>{review.comment || "Không có nội dung văn bản"}</Paragraph>
            </div>
+           
+           {/* Review Images - Hiển thị ảnh đánh giá */}
+           {(review.images && review.images.length > 0) || (review.review_images && review.review_images.length > 0) ? (
+             <div style={{ marginTop: 16 }}>
+               <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>Hình ảnh đính kèm:</Text>
+               <Image.PreviewGroup>
+                 <Space size={8} wrap>
+                   {(review.images || review.review_images).map((img, idx) => (
+                     <Image
+                       key={idx}
+                       width={100}
+                       height={100}
+                       src={getImageUrl(img)}
+                       style={{ objectFit: "cover", borderRadius: 8, border: "1px solid #d9d9d9", cursor: 'pointer' }}
+                       alt={`Review image ${idx + 1}`}
+                     />
+                   ))}
+                 </Space>
+               </Image.PreviewGroup>
+             </div>
+           ) : null}
         </div>
       </div>
 
