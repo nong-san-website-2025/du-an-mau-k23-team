@@ -1,9 +1,8 @@
-from django.urls import path, include
+from django.urls import path
 from rest_framework.routers import DefaultRouter
 
-# Import module views tổng (đã gom các file con trong __init__.py)
+# Import views
 from sellers import views 
-# Nếu views_analytics nằm riêng và chưa được gom vào views/__init__.py
 from sellers import views_analytics 
 from products.views import ProductViewSet
 
@@ -38,17 +37,25 @@ urlpatterns = [
     path('pending-count/', views.pending_sellers_count, name='pending-sellers-count'),
     path('<int:pk>/approve/', views.SellerApproveAPIView.as_view(), name='seller-approve'),
     path('<int:pk>/reject/', views.SellerRejectAPIView.as_view(), name='seller-reject'),
-    path("<int:pk>/lock/", views.SellerLockAPIView.as_view(), name="seller-lock"),
+    
+    # [QUAN TRỌNG] Các API Khóa / Mở Khóa / Set Pending
+    path("<int:pk>/toggle-lock/", views.SellerToggleLockAPIView.as_view(), name="seller-toggle-lock"),
+    path("bulk-lock/", views.SellerBulkLockAPIView.as_view(), name="seller-bulk-lock"),
+    path("bulk-unlock/", views.SellerBulkUnlockAPIView.as_view(), name="seller-bulk-unlock"),
+    
+    # --- [MỚI] Đường dẫn cho tính năng Chuyển về Chờ duyệt ---
+    path('<int:pk>/set-pending/', views.SellerSetPendingAPIView.as_view(), name='seller-set-pending'),
 
-    # --- ANALYTICS & REPORTS (ADMIN VIEW) ---
-    # Các API dùng views_analytics riêng
+    # --- ANALYTICS & REPORTS (ADMIN VIEW & SELLER CENTER) ---
     path('analytics/overview/', views_analytics.analytics_overview, name='analytics-overview'),
     path('analytics/sales/', views_analytics.analytics_sales, name='analytics-sales'),
     path('analytics/products/', views_analytics.analytics_products, name='analytics-products'),
     path('analytics/traffic/', views_analytics.analytics_traffic, name='analytics-traffic'),
     
-    # Các API nằm trong views/admin_views.py
-    path('analytics/<int:seller_id>/', views.seller_analytics_detail, name='seller-analytics-detail'),
+    # API cho Admin Detail Drawer
+    path('analytics/<int:seller_id>/', views_analytics.seller_analytics_detail, name='seller-analytics-detail'),
+    
+    # Reports khác
     path('report/agriculture/', views.agriculture_report, name='agriculture-report'),
     path('report/categories/', views.category_report_api, name='category_report'),
     
@@ -57,7 +64,7 @@ urlpatterns = [
     path('<int:seller_id>/products/', views.seller_products_list, name='seller-products-admin-list'),
     path('<int:seller_id>/orders/', views.seller_orders_list, name='seller-orders-admin-list'),
     
-    # Generic detail - ĐẶT CUỐI CÙNG để tránh conflict URL
+    # Generic detail - ĐẶT CUỐI CÙNG
     path('<int:pk>/', views.SellerDetailAPIView.as_view(), name='seller-detail'),
     
 ] + router.urls

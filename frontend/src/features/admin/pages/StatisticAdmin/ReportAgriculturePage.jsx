@@ -1,10 +1,11 @@
+// src/features/admin/pages/Report/ReportAgriculturePage.jsx
 import React, { useState, useEffect } from "react";
 import AdminPageLayout from "../../components/AdminPageLayout";
 import StatsSection from "../../components/common/StatsSection";
 import API from "../../../login_register/services/api";
 
 import {
-  DatePicker, Select, Card, Table, Tag, Row, Col, Space, Typography, Button, Avatar, Progress, message, Empty, Skeleton, Dropdown
+  Card, Table, Tag, Row, Col, Space, Typography, Button, Avatar, Progress, message, Empty, Skeleton, Dropdown
 } from "antd";
 
 import {
@@ -17,23 +18,21 @@ import {
 } from "recharts";
 import { intcomma } from "../../../../utils/format";
 
-const { RangePicker } = DatePicker;
-const { Option } = Select;
 const { Text } = Typography;
 
 const COLORS = ["#52c41a", "#faad14", "#1890ff", "#ff4d4f", "#722ed1"];
 
 export default function ReportAgriculturePage() {
-  const [filter, setFilter] = useState("month");
   const [loading, setLoading] = useState(false);
   const [suppliersData, setSuppliersData] = useState([]);
   const [statsData, setStatsData] = useState([]);
   const [categoryData, setCategoryData] = useState([]);
   const [isMobile, setIsMobile] = useState(false);
 
+  // Chỉ chạy 1 lần khi load trang
   useEffect(() => {
     fetchAgricultureReport();
-  }, [filter]);
+  }, []);
 
   useEffect(() => {
     const mql = window.matchMedia("(max-width: 480px)");
@@ -54,6 +53,7 @@ export default function ReportAgriculturePage() {
   const fetchAgricultureReport = async () => {
     try {
       setLoading(true);
+      // Gọi API không cần tham số lọc ngày
       const [sellersRes, categoriesRes] = await Promise.all([
         API.get('sellers/report/agriculture/'),
         API.get('sellers/report/categories/')
@@ -109,7 +109,6 @@ export default function ReportAgriculturePage() {
   };
 
   const downloadCSV = (filename, sections) => {
-      // (Giữ nguyên logic downloadCSV như cũ)
       const escape = (v) => {
         if (v == null) return "";
         const s = String(v);
@@ -232,45 +231,32 @@ export default function ReportAgriculturePage() {
     <AdminPageLayout title="THỐNG KÊ CỬA HÀNG">
       <Space direction="vertical" size={24} style={{ width: "100%" }}>
 
-        {/* --- STANDARDIZED TOOLBAR --- */}
-        <Card bordered={false} bodyStyle={{ padding: "16px 24px" }}>
-          <Row justify="space-between" align="middle" gutter={[16, 16]}>
-            <Col xs={24} md={14}>
-              <Space wrap>
-                <Text strong>Bộ lọc:</Text>
-                <RangePicker style={{ width: 250 }} />
-                <Select value={filter} onChange={setFilter} style={{ width: 140 }}>
-                  <Option value="month">Tháng này</Option>
-                  <Option value="quarter">Quý này</Option>
-                  <Option value="year">Năm nay</Option>
-                </Select>
-              </Space>
+        {/* --- THANH CÔNG CỤ (CHỈ CÒN NÚT ACTIONS) --- */}
+        <Row justify="end" align="middle" style={{ marginBottom: 8 }}>
+            <Col>
+                <Space>
+                    <Button 
+                        icon={<ReloadOutlined spin={loading} />} 
+                        onClick={fetchAgricultureReport}
+                    >
+                        Làm mới
+                    </Button>
+                    <Dropdown
+                        menu={{
+                        items: [
+                            { key: 'csv', label: 'Xuất CSV' },
+                            { key: 'xlsx', label: 'Xuất Excel (Sắp ra mắt)', disabled: true },
+                        ],
+                        onClick: ({ key }) => handleExport(key),
+                        }}
+                    >
+                        <Button type="primary" icon={<DownloadOutlined />} style={{ background: '#389E0D', borderColor: '#389E0D' }}>
+                        Xuất báo cáo
+                        </Button>
+                    </Dropdown>
+                </Space>
             </Col>
-            <Col xs={24} md={10} style={{ textAlign: "right" }}>
-              <Space>
-                <Button 
-                    icon={<ReloadOutlined spin={loading} />} 
-                    onClick={fetchAgricultureReport}
-                >
-                    Làm mới
-                </Button>
-                <Dropdown
-                  menu={{
-                    items: [
-                      { key: 'csv', label: 'Xuất CSV' },
-                      { key: 'xlsx', label: 'Xuất Excel (Sắp ra mắt)', disabled: true },
-                    ],
-                    onClick: ({ key }) => handleExport(key),
-                  }}
-                >
-                  <Button type="primary" icon={<DownloadOutlined />} style={{ background: '#389E0D', borderColor: '#389E0D' }}>
-                    Xuất báo cáo
-                  </Button>
-                </Dropdown>
-              </Space>
-            </Col>
-          </Row>
-        </Card>
+        </Row>
 
         {/* --- Stats Section --- */}
         <StatsSection items={statsData} loading={loading} />

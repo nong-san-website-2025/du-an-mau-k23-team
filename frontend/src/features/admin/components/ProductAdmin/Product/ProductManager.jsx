@@ -1,3 +1,4 @@
+// src/components/ProductAdmin/Product/ProductManager.jsx
 import React, { useState, useEffect, useRef } from "react";
 import {
   Table,
@@ -35,12 +36,13 @@ import {
 import { intcomma } from "../../../../../utils/format";
 import ButtonAction from "../../../../../components/ButtonAction";
 import ProductStatusTag from "./ProductStatusTag";
+import dayjs from "dayjs"; 
 
 const { Text, Paragraph } = Typography;
 const { TextArea } = Input;
 
-// --- CONFIG ---
-// Thay 192.168.1.35 bằng IP máy chạy Backend của bạn hoặc '127.0.0.1'
+// --- CẤU HÌNH ---
+// Thay đổi IP này thành IP máy backend của bạn hoặc '127.0.0.1'
 const BASE_WS_URL = "ws://192.168.1.35:8000";
 
 const ProductGridItem = ({
@@ -240,7 +242,6 @@ const ProductManager = ({
       const token = localStorage.getItem("token");
       if (!token) return;
 
-      // URL KHỚP VỚI BACKEND ROUTING: /api/ws/admin/products/
       const wsUrl = `${BASE_WS_URL}/api/ws/admin/products/?token=${token}`;
 
       if (socketRef.current?.readyState === WebSocket.OPEN) return;
@@ -253,7 +254,6 @@ const ProductManager = ({
         const data = JSON.parse(event.data);
         console.log("📩 [ProductWS] New Message:", data);
 
-        // Giả sử backend gửi: { type: 'product_update', action: 'new_product', product: {...} }
         if (data.type === "product_update") {
           notification.info({
             message: "Cập nhật hệ thống",
@@ -263,7 +263,6 @@ const ProductManager = ({
             icon: <ThunderboltFilled style={{ color: "#faad14" }} />,
           });
 
-          // Nếu backend gửi kèm object product mới, thêm vào list
           if (data.product) {
             setProductList((prev) => [data.product, ...prev]);
           }
@@ -278,7 +277,7 @@ const ProductManager = ({
           "🔌 [ProductWS] Disconnected. Reconnecting in 5s...",
           e.reason
         );
-        setTimeout(connectWS, 5000); // Tự động kết nối lại sau 5s
+        setTimeout(connectWS, 5000);
       };
 
       socketRef.current = socket;
@@ -329,11 +328,14 @@ const ProductManager = ({
     setSelectedRowKeys([]);
   };
 
+  // --- CẬP NHẬT COLUMNS: THÊM TÍNH NĂNG CLICK-TO-SORT ---
   const columns = [
     {
       title: "Sản phẩm",
       key: "name",
       width: 350,
+      // [THÊM] Sắp xếp theo tên sản phẩm
+      sorter: (a, b) => a.name.localeCompare(b.name),
       render: (_, r) => (
         <Space size={12}>
           <Badge dot={r.status === "pending_update"} offset={[-2, 60]}>
@@ -359,6 +361,8 @@ const ProductManager = ({
     {
       title: "Người bán",
       width: 200,
+      // [THÊM] Sắp xếp theo tên người bán (Shop)
+      sorter: (a, b) => (a.seller?.store_name || "").localeCompare(b.seller?.store_name || ""),
       render: (_, r) => (
         <Space
           onClick={() => onViewShop?.(r.seller)}
@@ -373,7 +377,26 @@ const ProductManager = ({
       title: "Trạng thái",
       dataIndex: "status",
       width: 140,
+      // [THÊM] Sắp xếp theo trạng thái
+      sorter: (a, b) => a.status.localeCompare(b.status),
       render: (st) => <ProductStatusTag status={st} />,
+    },
+    {
+      title: "Ngày đăng",
+      dataIndex: "created_at",
+      width: 160,
+      // [ĐÃ CÓ SẴN] Sắp xếp theo ngày (Code cũ đã tối ưu)
+      sorter: (a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0),
+      render: (date) => (
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+           <Text>
+              {date ? dayjs(date).format("DD/MM/YYYY") : '—'}
+           </Text>
+           <Text type="secondary" style={{ fontSize: 12 }}>
+              {date ? dayjs(date).format("HH:mm") : ''}
+           </Text>
+        </div>
+      ),
     },
     {
       title: "Thao tác",

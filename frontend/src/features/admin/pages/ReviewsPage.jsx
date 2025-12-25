@@ -1,72 +1,83 @@
-import React, { useState, useEffect } from "react";
+// src/features/admin/pages/Review/ReviewsPage.jsx
+import React, { useState, useEffect, useMemo } from "react";
 import {
-  Table,
-  message,
-  Button,
-  Input,
-  Select,
-  Space,
-  Card,
-  Typography,
-  Row,
-  Col,
-  Tooltip,
-  Avatar,
+  Table, message, Button, Input, Select, Space, Card, Typography, Row, Col, Tooltip, Avatar, DatePicker, Popconfirm
 } from "antd";
 import {
-  ReloadOutlined,
-  SearchOutlined,
-  EyeOutlined,
-  MessageOutlined,
-  DeleteOutlined,
-  EyeInvisibleOutlined,
+  ReloadOutlined, SearchOutlined, EyeOutlined, MessageOutlined, DeleteOutlined, EyeInvisibleOutlined, DownloadOutlined, FilterOutlined
 } from "@ant-design/icons";
 import axios from "axios";
+import dayjs from "dayjs";
+import isBetween from "dayjs/plugin/isBetween";
+import * as XLSX from "xlsx";
+
 import AdminPageLayout from "../components/AdminPageLayout";
 import ReviewDetailModal from "../components/ReviewAdmin/ReviewDetailModal";
 import ReviewReplyModal from "../components/ReviewAdmin/ReviewReplyModal";
 import ButtonAction from "../../../components/ButtonAction";
 import StatusTag from "../../../components/StatusTag";
 
+dayjs.extend(isBetween);
+const { RangePicker } = DatePicker;
 const { Option } = Select;
 const { Text } = Typography;
 const API_URL = process.env.REACT_APP_API_URL;
 
+// --- HÀM LOẠI BỎ DẤU TIẾNG VIỆT ---
+const removeAccents = (str) => {
+  if (!str) return "";
+  return str
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D")
+    .toLowerCase();
+};
+
 const ReviewsPage = () => {
-  const isMobile =
-    typeof window !== "undefined" &&
-    window.matchMedia("(max-width: 480px)").matches;
+  const isMobile = typeof window !== "undefined" && window.matchMedia("(max-width: 480px)").matches;
+  
+  // --- STATE ---
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [selectedRowKeys, setSelectedRowKeys] = useState([]);
-  const [filters, setFilters] = useState({
-    search: "",
-    rating: "all",
-    status: "all",
-  });
-  const [detailModal, setDetailModal] = useState({
-    visible: false,
-    data: null,
-  });
+
+  // Filter States
+  const [searchText, setSearchText] = useState("");
+  const [ratingFilter, setRatingFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [timeFilter, setTimeFilter] = useState("all");
+  const [dateRange, setDateRange] = useState(null);
+
+  // Modal States
+  const [detailModal, setDetailModal] = useState({ visible: false, data: null });
   const [replyModal, setReplyModal] = useState({ visible: false, data: null });
 
+  // --- FETCH DATA ---
   const fetchReviews = async () => {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const params = new URLSearchParams();
-      if (filters.search) params.append("search", filters.search);
-      if (filters.rating !== "all") params.append("rating", filters.rating);
-      if (filters.status !== "all") params.append("status", filters.status);
+      // Gọi API lấy toàn bộ danh sách (để lọc Client-side cho mượt)
+      const res = await axios.get(`${API_URL}/reviews/admin/reviews/`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      
+      const data = Array.isArray(res.data) ? res.data : res.data.results || [];
+      
+      // Map dữ liệu để đảm bảo an toàn
+      const mappedData = data.map(item => ({
+        ...item,
+        user_name: item.user_name || "Khách ẩn danh",
+        product_name: item.product_name || "Sản phẩm ẩn",
+        comment: item.comment || "",
+      }));
 
-      const res = await axios.get(
-        `${API_URL}/reviews/admin/reviews/?${params.toString()}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      setReviews(Array.isArray(res.data) ? res.data : res.data.results || []);
+      // Sắp xếp mới nhất
+      mappedData.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      
+      setReviews(mappedData);
     } catch (err) {
+      console.error(err);
       message.error("Không thể tải danh sách đánh giá");
     } finally {
       setLoading(false);
@@ -75,19 +86,97 @@ const ReviewsPage = () => {
 
   useEffect(() => {
     fetchReviews();
-  }, [filters]);
+  }, []);
 
+  // --- LOGIC LỌC THỜI GIAN ---
+  const handleTimeChange = (val) => {
+    setTimeFilter(val);
+    const today = dayjs();
+    switch (val) {
+      case "all": setDateRange(null); break;
+      case "today": setDateRange([today.startOf('day'), today.endOf('day')]); break;
+      case "7d": setDateRange([today.subtract(6, "day").startOf('day'), today.endOf('day')]); break;
+      case "30d": setDateRange([today.subtract(29, "day").startOf('day'), today.endOf('day')]); break;
+      default: break;
+    }
+  };
+
+  const handleRangePickerChange = (dates) => {
+    if (dates) {
+      setDateRange([dates[0].startOf('day'), dates[1].endOf('day')]);
+      setTimeFilter("custom");
+    } else {
+      setDateRange(null);
+      setTimeFilter("all");
+    }
+  };
+
+  // --- LOGIC LỌC TỔNG HỢP ---
+  const filteredReviews = useMemo(() => {
+    return reviews.filter((item) => {
+      // 1. Lọc Rating
+      if (ratingFilter !== 'all' && String(item.rating) !== ratingFilter) return false;
+
+      // 2. Lọc Trạng thái (Ẩn / Đã trả lời / Chưa trả lời)
+      if (statusFilter !== 'all') {
+        if (statusFilter === 'hidden' && !item.is_hidden) return false;
+        if (statusFilter === 'replied' && (!item.replies || item.replies.length === 0)) return false;
+        if (statusFilter === 'pending' && item.replies && item.replies.length > 0) return false;
+      }
+
+      // 3. Lọc Ngày
+      if (dateRange && dateRange[0] && dateRange[1]) {
+        const itemDate = dayjs(item.created_at);
+        if (!itemDate.isValid()) return false;
+        if (!itemDate.isBetween(dateRange[0], dateRange[1], null, '[]')) return false;
+      }
+
+      // 4. Tìm kiếm (Tên Khách, Tên SP, Nội dung)
+      if (searchText) {
+        const keyword = removeAccents(searchText.trim());
+        const nameMatch = removeAccents(item.user_name).includes(keyword);
+        const productMatch = removeAccents(item.product_name).includes(keyword);
+        const commentMatch = removeAccents(item.comment).includes(keyword);
+
+        if (!nameMatch && !productMatch && !commentMatch) return false;
+      }
+
+      return true;
+    });
+  }, [reviews, searchText, ratingFilter, statusFilter, dateRange]);
+
+  // --- EXPORT EXCEL ---
+  const handleExportExcel = () => {
+    if (filteredReviews.length === 0) {
+      message.warning("Không có dữ liệu để xuất");
+      return;
+    }
+    const exportData = filteredReviews.map(item => ({
+      "Khách hàng": item.user_name,
+      "Sản phẩm": item.product_name,
+      "Đánh giá": `${item.rating} sao`,
+      "Nội dung": item.comment,
+      "Trạng thái": item.is_hidden ? "Đã ẩn" : (item.replies?.length ? "Đã trả lời" : "Chưa trả lời"),
+      "Ngày tạo": dayjs(item.created_at).format("DD/MM/YYYY HH:mm"),
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "DanhGia");
+    XLSX.writeFile(wb, `DS_DanhGia_${dayjs().format("DDMMYYYY")}.xlsx`);
+    message.success("Xuất Excel thành công!");
+  };
+
+  // --- ACTIONS ---
   const handleToggleVisibility = async (record) => {
     try {
       const token = localStorage.getItem("token");
       await axios.patch(
         `${API_URL}/reviews/admin/reviews/${record.id}/toggle_visibility/`,
         {},
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
-      message.success("Đã cập nhật trạng thái hiển thị");
+      message.success("Đã cập nhật trạng thái");
       fetchReviews();
     } catch (err) {
       message.error("Lỗi thay đổi trạng thái");
@@ -113,9 +202,6 @@ const ReviewsPage = () => {
           <Avatar src={record.user_avatar}>{name?.charAt(0)}</Avatar>
           <div style={{ display: "flex", flexDirection: "column" }}>
             <Text strong>{name}</Text>
-            <Text type="secondary" style={{ fontSize: 12 }}>
-              {new Date(record.created_at).toLocaleDateString("vi-VN")}
-            </Text>
           </div>
         </Space>
       ),
@@ -124,17 +210,14 @@ const ReviewsPage = () => {
       title: "Sản phẩm & Đánh giá",
       key: "product_rating",
       width: isMobile ? 260 : 300,
-      sorter: (a, b) => a.rating - b.rating,
       render: (_, record) => (
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          <Text strong style={{ fontSize: 13 }}>
-            {record.product_name}
-          </Text>
+          <Text strong style={{ fontSize: 13 }}>{record.product_name}</Text>
           <Space size={4}>
             <span style={{ color: "#faad14" }}>★</span>
             <Text strong>{record.rating}/5</Text>
           </Space>
-          <Text ellipsis type="secondary">
+          <Text ellipsis type="secondary" style={{maxWidth: 250}}>
             <MessageOutlined /> {record.comment || "Không lời bình"}
           </Text>
         </div>
@@ -145,20 +228,25 @@ const ReviewsPage = () => {
       key: "status",
       width: 120,
       align: "center",
-      sorter: (a, b) => {
-        const statusA = a.is_hidden ? 2 : a.replies?.length ? 1 : 0;
-        const statusB = b.is_hidden ? 2 : b.replies?.length ? 1 : 0;
-        return statusA - statusB;
-      },
       render: (_, record) => {
         const { status, label } = getStatusForTag(record);
         return <StatusTag status={status} label={label} />;
       },
     },
+    // [MỚI] THÊM CỘT NGÀY ĐÁNH GIÁ
+    {
+      title: "Ngày đánh giá",
+      dataIndex: "created_at",
+      key: "created_at",
+      width: 140,
+      align: "center",
+      sorter: (a, b) => new Date(a.created_at) - new Date(b.created_at),
+      render: (date) => dayjs(date).format("DD/MM/YYYY HH:mm"),
+    },
     {
       title: "Hành động",
       key: "action",
-      width: 150,
+      width: 140,
       align: "right",
       render: (_, record) => (
         <ButtonAction
@@ -178,21 +266,10 @@ const ReviewsPage = () => {
             },
             {
               actionType: record.is_hidden ? "unlock" : "lock",
-              tooltip: "Ẩn/Hiện",
-              icon: record.is_hidden ? (
-                <ReloadOutlined />
-              ) : (
-                <EyeInvisibleOutlined />
-              ),
+              tooltip: record.is_hidden ? "Hiện lại" : "Ẩn đi",
+              icon: record.is_hidden ? <ReloadOutlined /> : <EyeInvisibleOutlined />,
               confirm: { title: "Thay đổi hiển thị?" },
               onClick: () => handleToggleVisibility(record),
-            },
-            {
-              actionType: "delete",
-              tooltip: "Xóa",
-              icon: <DeleteOutlined />,
-              confirm: { title: "Xóa vĩnh viễn?" },
-              onClick: () => {},
             },
           ]}
           record={record}
@@ -203,48 +280,117 @@ const ReviewsPage = () => {
 
   return (
     <AdminPageLayout title="QUẢN LÝ ĐÁNH GIÁ">
-      <Card bordered={false} className="mb-4">
-        <Row gutter={[12, 12]} justify="space-between">
-          <Col md={16} xs={24}>
-            <Space wrap>
+      {/* --- THANH CÔNG CỤ --- */}
+      <Card bordered={false} bodyStyle={{ padding: "16px 24px" }} style={{ marginBottom: 24, borderRadius: 8 }}>
+        <Row gutter={[16, 16]} justify="space-between" align="middle">
+          {/* Cụm Bộ Lọc Trái */}
+          <Col xs={24} xl={20}>
+            <Space wrap size={12}>
+              {/* 1. Tìm kiếm */}
               <Input
-                placeholder="Tìm kiếm..."
+                placeholder="Tìm Khách, SP, Nội dung..."
+                prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
                 style={{ width: 220 }}
-                onChange={(e) =>
-                  setFilters((prev) => ({ ...prev, search: e.target.value }))
-                }
                 allowClear
               />
+
+              {/* 2. Lọc Sao */}
               <Select
-                defaultValue="all"
-                style={{ width: 130 }}
-                onChange={(val) =>
-                  setFilters((prev) => ({ ...prev, rating: val }))
-                }
+                value={ratingFilter}
+                onChange={setRatingFilter}
+                style={{ width: 110 }}
               >
                 <Option value="all">⭐ Tất cả</Option>
                 {[5, 4, 3, 2, 1].map((s) => (
-                  <Option key={s} value={s.toString()}>
-                    {s} sao
-                  </Option>
+                  <Option key={s} value={s.toString()}>{s} sao</Option>
                 ))}
               </Select>
+
+              {/* 3. Lọc Trạng Thái */}
+              <Select
+                value={statusFilter}
+                onChange={setStatusFilter}
+                style={{ width: 140 }}
+                placeholder="Trạng thái"
+              >
+                <Option value="all">Tất cả TT</Option>
+                <Option value="replied">Đã trả lời</Option>
+                <Option value="pending">Chưa trả lời</Option>
+                <Option value="hidden">Đã ẩn</Option>
+              </Select>
+
+              {/* 4. Lọc Thời Gian */}
+              <Space.Compact>
+                <Select
+                  value={timeFilter}
+                  onChange={handleTimeChange}
+                  style={{ width: 120 }}
+                >
+                  <Option value="all">Toàn bộ</Option>
+                  <Option value="today">Hôm nay</Option>
+                  <Option value="7d">7 ngày qua</Option>
+                  <Option value="30d">30 ngày qua</Option>
+                  <Option value="custom">Tùy chọn</Option>
+                </Select>
+                <RangePicker
+                  value={dateRange}
+                  onChange={handleRangePickerChange}
+                  format="DD/MM/YYYY"
+                  placeholder={['Từ ngày', 'Đến ngày']}
+                  style={{ width: 240 }}
+                />
+              </Space.Compact>
             </Space>
           </Col>
-          <Col md={8} style={{ textAlign: "right" }}>
-            <Button icon={<ReloadOutlined />} onClick={fetchReviews}>
-              Làm mới
-            </Button>
+
+          {/* Cụm Nút Phải */}
+          <Col xs={24} xl={4} style={{ textAlign: "right" }}>
+            <Space>
+              <Tooltip title="Làm mới dữ liệu">
+                <Button 
+                    icon={<ReloadOutlined />} 
+                    onClick={() => {
+                        setSearchText("");
+                        setRatingFilter("all");
+                        setStatusFilter("all");
+                        handleTimeChange("all");
+                        fetchReviews();
+                        message.success("Đã làm mới");
+                    }} 
+                    loading={loading}
+                />
+              </Tooltip>
+              <Button 
+                icon={<DownloadOutlined />} 
+                onClick={handleExportExcel}
+              >
+                Xuất Excel
+              </Button>
+            </Space>
           </Col>
         </Row>
       </Card>
-      <Table
-        rowKey="id"
-        columns={columns}
-        dataSource={reviews}
-        loading={loading}
-        scroll={{ x: 900 }}
-      />
+
+      {/* --- BẢNG DỮ LIỆU --- */}
+      <Card bordered={false} bodyStyle={{ padding: 0 }}>
+        <Table
+          rowKey="id"
+          columns={columns}
+          dataSource={filteredReviews}
+          loading={loading}
+          pagination={{ 
+            total: filteredReviews.length,
+            pageSize: 10, 
+            showSizeChanger: true,
+            showTotal: (total) => `Tổng ${total} đánh giá` 
+          }}
+          scroll={{ x: 1100 }} // Đã tăng width scroll để chứa thêm cột
+        />
+      </Card>
+
+      {/* --- MODALS --- */}
       <ReviewDetailModal
         visible={detailModal.visible}
         review={detailModal.data}

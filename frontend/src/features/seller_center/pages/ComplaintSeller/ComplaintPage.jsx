@@ -1,10 +1,19 @@
-import React, { useState, useEffect } from "react";
-import { Button, message, Modal, Space, Tag, Typography } from "antd";
+// src/features/seller/pages/ComplaintPage.jsx
+import React, { useState, useEffect, useCallback } from "react";
+import { Button, message, Modal, Space, Tag, Typography, DatePicker, Select } from "antd";
 import ComplaintTable from "../../components/ComplaintSeller/ComplaintTable";
 import ApproveModal from "../../components/ComplaintSeller/ApproveModal";
 import DetailModal from "../../components/ComplaintSeller/DetailModal";
 import moment from "moment";
 import dayjs from "dayjs";
+import isBetween from "dayjs/plugin/isBetween";
+
+// Import components layout (đảm bảo đường dẫn đúng)
+import ComplaintBaseLayout from "../../components/ComplaintSeller/ComplaintBaseLayout";
+
+dayjs.extend(isBetween);
+const { RangePicker } = DatePicker;
+const { Option } = Select;
 
 export default function ComplaintPage() {
   const [complaints, setComplaints] = useState([]);
@@ -12,66 +21,98 @@ export default function ComplaintPage() {
   const [filtered, setFiltered] = useState([]);
   const [searchKeyword, setSearchKeyword] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [dateRange, setDateRange] = useState(null); // [dayjs, dayjs]
+  
+  // [MỚI] State quản lý thời gian
+  const [timeFilter, setTimeFilter] = useState("all");
+  const [dateRange, setDateRange] = useState(null);
 
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-
-  // Lấy API URL từ env
   const API_URL = process.env.REACT_APP_API_URL;
 
-  // Modal duyệt (Chỉ còn Đồng ý hoàn tiền)
+  // Modal duyệt
   const [approveModal, setApproveModal] = useState({
     open: false,
     record: null,
-    note: "", // Lời nhắn cho khách (tùy chọn)
-    isReturnRequired: true, // [MỚI] Mặc định là CẦN trả hàng
+    note: "", 
+    isReturnRequired: true, 
   });
 
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [detailComplaint, setDetailComplaint] = useState(null);
 
-  /* ===== fetch data ===== */
-  const fetchComplaints = async () => {
+  /* ===== FETCH DATA ===== */
+  const fetchComplaints = useCallback(async () => {
     setLoading(true);
     try {
-      // SỬ DỤNG ENV Ở ĐÂY
       const res = await fetch(`${API_URL}/complaints/`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setComplaints(data);
-      setFiltered(data);
+      // setFiltered sẽ được xử lý bởi useEffect filter bên dưới
     } catch (e) {
       message.error("Không thể tải danh sách khiếu nại");
     } finally {
       setLoading(false);
     }
-  };
+  }, [API_URL, token]);
 
   useEffect(() => {
     if (token) fetchComplaints();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
+  }, [token, fetchComplaints]);
 
-  /* ===== search and filter ===== */
+  /* ===== FILTER LOGIC ===== */
+  const handleTimeChange = (val) => {
+    setTimeFilter(val);
+    const today = dayjs();
+    
+    switch (val) {
+      case "all":
+        setDateRange(null);
+        break;
+      case "today": 
+        setDateRange([today.startOf('day'), today.endOf('day')]); 
+        break;
+      case "7d": 
+        setDateRange([today.subtract(6, "day").startOf('day'), today.endOf('day')]); 
+        break;
+      case "30d": 
+        setDateRange([today.subtract(29, "day").startOf('day'), today.endOf('day')]); 
+        break;
+      default: break;
+    }
+  };
+
+  const handleRangePickerChange = (dates) => {
+    if (dates) {
+      setDateRange([dates[0].startOf('day'), dates[1].endOf('day')]);
+      setTimeFilter("custom");
+    } else {
+      setDateRange(null);
+      setTimeFilter("all");
+    }
+  };
+
   useEffect(() => {
     const lower = searchKeyword.toLowerCase();
     const result = complaints.filter((c) => {
+      // 1. Text Search
       const matchText =
         (c.created_by_name?.toLowerCase().includes(lower) ||
           c.product_name?.toLowerCase().includes(lower) ||
           String(c.id).includes(lower));
 
+      // 2. Status Filter
       const matchStatus = statusFilter === 'all' || c.status === statusFilter;
 
-      // Date range filter (inclusive)
+      // 3. Date Range Filter [UPDATED]
       let matchDate = true;
       if (dateRange && dateRange[0] && dateRange[1]) {
-        const start = dateRange[0].startOf('day').toDate();
-        const end = dateRange[1].endOf('day').toDate();
-        const created = new Date(c.created_at);
-        matchDate = created >= start && created <= end;
+        const createdDate = dayjs(c.created_at);
+        if (!createdDate.isValid()) return false;
+        // So sánh bao gồm cả đầu và cuối
+        matchDate = createdDate.isBetween(dateRange[0], dateRange[1], null, '[]');
       }
 
       return matchText && matchStatus && matchDate;
@@ -80,9 +121,7 @@ export default function ComplaintPage() {
   }, [searchKeyword, statusFilter, dateRange, complaints]);
 
 
-  /* ===== ACTIONS (QUAN TRỌNG: GỌI ĐÚNG API BACKEND MỚI) ===== */
-
-  // 1. Shop Đồng ý hoàn tiền
+  /* ===== ACTIONS ===== */
   const handleSellerAccept = async (record, note, isReturnRequired) => {
     try {
       const res = await fetch(`${API_URL}/complaints/${record.id}/seller-respond/`, {
@@ -94,7 +133,7 @@ export default function ComplaintPage() {
         body: JSON.stringify({
           action: 'accept',
           reason: note,
-          return_required: isReturnRequired // [QUAN TRỌNG] Gửi tham số này lên
+          return_required: isReturnRequired
         }),
       });
 
@@ -103,10 +142,7 @@ export default function ComplaintPage() {
         throw new Error(err.error || "Lỗi xử lý");
       }
 
-      message.success(isReturnRequired
-        ? "Đã duyệt. Chờ khách gửi hàng về."
-        : "Đã hoàn tiền thành công cho khách!");
-
+      message.success(isReturnRequired ? "Đã duyệt. Chờ khách gửi hàng về." : "Đã hoàn tiền thành công cho khách!");
       setApproveModal({ open: false, record: null, note: "", isReturnRequired: true });
       fetchComplaints();
     } catch (e) {
@@ -114,7 +150,6 @@ export default function ComplaintPage() {
     }
   };
 
-  // 2. Shop Từ chối
   const handleSellerReject = (record) => {
     let rejectReason = "";
     Modal.confirm({
@@ -135,7 +170,6 @@ export default function ComplaintPage() {
           return Promise.reject();
         }
         try {
-          // SỬ DỤNG ENV Ở ĐÂY
           const res = await fetch(`${API_URL}/complaints/${record.id}/seller-respond/`, {
             method: "POST",
             headers: {
@@ -159,23 +193,21 @@ export default function ComplaintPage() {
     });
   };
 
-  /* ===== columns ===== */
+  /* ===== COLUMNS ===== */
   const columns = [
     {
       title: "Người mua",
-      dataIndex: "created_by_name", // Khớp serializer
+      dataIndex: "created_by_name",
       key: "created_by_name",
       width: 160,
-      sorter: (a, b) => (a.created_by_name || "").localeCompare(b.created_by_name || "", "vi", { sensitivity: "base" }),
-      sortDirections: ["ascend", "descend"],
+      sorter: (a, b) => (a.created_by_name || "").localeCompare(b.created_by_name || "", "vi"),
     },
     {
       title: "Sản phẩm",
       dataIndex: "product_name",
       key: "product_name",
       width: 220,
-      sorter: (a, b) => (a.product_name || "").localeCompare(b.product_name || "", "vi", { sensitivity: "base" }),
-      sortDirections: ["ascend", "descend"],
+      sorter: (a, b) => (a.product_name || "").localeCompare(b.product_name || "", "vi"),
       render: (text, record) => (
         <Space>
           <img src={record.product_image} alt="" style={{ width: 30, height: 30, objectFit: 'cover', borderRadius: 4 }} />
@@ -188,8 +220,6 @@ export default function ComplaintPage() {
       dataIndex: "reason",
       key: "reason",
       ellipsis: true,
-      sorter: (a, b) => (a.reason || "").localeCompare(b.reason || "", "vi", { sensitivity: "base" }),
-      sortDirections: ["ascend", "descend"],
     },
     {
       title: "Trạng thái",
@@ -197,22 +227,10 @@ export default function ComplaintPage() {
       key: "status",
       width: 150,
       align: "center",
-      sorter: (a, b) => {
-        const w = {
-          pending: 3,
-          negotiating: 2,
-          admin_review: 1,
-          resolved_refund: 4,
-          resolved_reject: 0,
-          cancelled: -1,
-        };
-        return (w[a.status] ?? 0) - (w[b.status] ?? 0);
-      },
-      sortDirections: ["ascend", "descend"],
       render: (s) => {
         const map = {
           pending: { text: "Chờ xử lý", color: "orange" },
-          negotiating: { text: "Đang thương lượng", color: "purple" }, // Shop đã từ chối
+          negotiating: { text: "Đang thương lượng", color: "purple" },
           admin_review: { text: "Chờ Sàn xử lý", color: "blue" },
           resolved_refund: { text: "Đã hoàn tiền", color: "green" },
           resolved_reject: { text: "Đã hủy/Từ chối", color: "red" },
@@ -228,7 +246,6 @@ export default function ComplaintPage() {
       key: "created_at",
       width: 150,
       sorter: (a, b) => new Date(a.created_at) - new Date(b.created_at),
-      sortDirections: ["ascend", "descend"],
       render: (t) => moment(t).format("DD/MM/YYYY"),
     },
     {
@@ -240,18 +257,10 @@ export default function ComplaintPage() {
         <div onClick={(e) => e.stopPropagation()}>
           {record.status === "pending" && (
             <Space>
-              <Button
-                type="primary"
-                size="small"
-                onClick={() => setApproveModal({ open: true, record, note: "" })}
-              >
+              <Button type="primary" size="small" onClick={() => setApproveModal({ open: true, record, note: "" })}>
                 Đồng ý
               </Button>
-              <Button
-                danger
-                size="small"
-                onClick={() => handleSellerReject(record)}
-              >
+              <Button danger size="small" onClick={() => handleSellerReject(record)}>
                 Từ chối
               </Button>
             </Space>
@@ -265,43 +274,59 @@ export default function ComplaintPage() {
 
   return (
     <>
-      <ComplaintTable
+      <ComplaintBaseLayout
+        title="QUẢN LÝ TRẢ HÀNG/ HOÀN TIỀN"
+        extra={
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+             {/* [MỚI] Bộ lọc tinh gọn */}
+             <Select 
+                value={timeFilter} 
+                onChange={handleTimeChange} 
+                style={{ width: 130 }}
+                placeholder="Thời gian"
+              >
+                <Option value="all">Toàn bộ</Option>
+                <Option value="today">Hôm nay</Option>
+                <Option value="7d">7 ngày qua</Option>
+                <Option value="30d">30 ngày qua</Option>
+                <Option value="custom">Tùy chọn</Option>
+              </Select>
+
+              <RangePicker 
+                value={dateRange} 
+                onChange={handleRangePickerChange} 
+                format="DD/MM/YYYY" 
+                placeholder={['Từ ngày', 'Đến ngày']} 
+                style={{ width: 240 }} 
+              />
+
+              <Button type="primary" onClick={fetchComplaints} loading={loading}>Làm mới</Button>
+          </div>
+        }
         loading={loading}
-        filtered={filtered}
+        data={filtered}
         columns={columns}
         onSearch={setSearchKeyword}
+        // Truyền rỗng để layout không render bộ lọc cũ nếu có
+        statusFilter={statusFilter} 
         onStatusFilterChange={setStatusFilter}
-        statusFilter={statusFilter}
-        onRefresh={fetchComplaints}
-        dateRange={dateRange}
-        onDateRangeChange={setDateRange}
-        onRowClick={(record) => {
-          setDetailComplaint(record);
-          setDetailModalVisible(true);
-        }}
+        onRow={(record) => ({
+          onClick: () => {
+            setDetailComplaint(record);
+            setDetailModalVisible(true);
+          }
+        })}
       />
 
-      {/* Modal Đồng ý hoàn tiền */}
       <ApproveModal
         open={approveModal.open}
-
-        // Truyền record trực tiếp để hiển thị thông tin tiền nong
         record={approveModal.record}
-
-        // Truyền note và hàm setNote
         note={approveModal.note}
         setNote={(val) => setApproveModal({ ...approveModal, note: val })}
         isReturnRequired={approveModal.isReturnRequired}
         setIsReturnRequired={(val) => setApproveModal({ ...approveModal, isReturnRequired: val })}
-
         onCancel={() => setApproveModal({ ...approveModal, open: false })}
-
-        // Khi bấm OK -> Gọi API handleSellerAccept
-        onOk={() => handleSellerAccept(
-          approveModal.record,
-          approveModal.note,
-          approveModal.isReturnRequired
-        )}
+        onOk={() => handleSellerAccept(approveModal.record, approveModal.note, approveModal.isReturnRequired)}
       />
 
       <DetailModal
