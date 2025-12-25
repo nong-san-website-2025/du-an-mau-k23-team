@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Table,
   Tooltip,
@@ -38,10 +38,6 @@ import ProductStatusTag from "./ProductStatusTag";
 
 const { Text, Paragraph } = Typography;
 const { TextArea } = Input;
-
-// --- CONFIG ---
-// Thay 192.168.1.35 bằng IP máy chạy Backend của bạn hoặc '127.0.0.1'
-const BASE_WS_URL = "ws://192.168.1.35:8000";
 
 const ProductGridItem = ({
   record,
@@ -133,6 +129,11 @@ const ProductGridItem = ({
             {record.name}
           </Paragraph>
         </Tooltip>
+        {record.is_new && (
+          <Tag color="green" style={{ marginBottom: 6 }}>
+            Mới
+          </Tag>
+        )}
         <Text type="danger" style={{ fontSize: 16, fontWeight: 700 }}>
           {intcomma(record.price)} ₫
         </Text>
@@ -216,7 +217,6 @@ const ProductManager = ({
   const [productList, setProductList] = useState(initialData);
   const [viewMode, setViewMode] = useState(viewModeProp);
   const [isMobile, setIsMobile] = useState(false);
-  const socketRef = useRef(null);
 
   const [rejectModal, setRejectModal] = useState({
     open: false,
@@ -235,59 +235,6 @@ const ProductManager = ({
   }, [initialData]);
 
   // --- REALTIME LOGIC (NATIVE WEBSOCKET) ---
-  useEffect(() => {
-    const connectWS = () => {
-      const token = localStorage.getItem("token");
-      if (!token) return;
-
-      // URL KHỚP VỚI BACKEND ROUTING: /api/ws/admin/products/
-      const wsUrl = `${BASE_WS_URL}/api/ws/admin/products/?token=${token}`;
-
-      if (socketRef.current?.readyState === WebSocket.OPEN) return;
-
-      const socket = new WebSocket(wsUrl);
-
-      socket.onopen = () => console.log("✅ [ProductWS] Connected to Server");
-
-      socket.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        console.log("📩 [ProductWS] New Message:", data);
-
-        // Giả sử backend gửi: { type: 'product_update', action: 'new_product', product: {...} }
-        if (data.type === "product_update") {
-          notification.info({
-            message: "Cập nhật hệ thống",
-            description:
-              data.message || "Có thay đổi về danh sách sản phẩm chờ duyệt.",
-            placement: "topRight",
-            icon: <ThunderboltFilled style={{ color: "#faad14" }} />,
-          });
-
-          // Nếu backend gửi kèm object product mới, thêm vào list
-          if (data.product) {
-            setProductList((prev) => [data.product, ...prev]);
-          }
-        }
-      };
-
-      socket.onerror = (err) =>
-        console.error("❌ [ProductWS] Connection Error:", err);
-
-      socket.onclose = (e) => {
-        console.log(
-          "🔌 [ProductWS] Disconnected. Reconnecting in 5s...",
-          e.reason
-        );
-        setTimeout(connectWS, 5000); // Tự động kết nối lại sau 5s
-      };
-
-      socketRef.current = socket;
-    };
-
-    connectWS();
-    return () => socketRef.current?.close();
-  }, []);
-
   // Responsive detect
   useEffect(() => {
     const mql = window.matchMedia("(max-width: 480px)");
@@ -349,6 +296,11 @@ const ProductManager = ({
             <Text strong block ellipsis={{ tooltip: r.name }}>
               {r.name}
             </Text>
+            {r.is_new && (
+              <Tag color="green" style={{ marginLeft: 6 }}>
+                Mới
+              </Tag>
+            )}
             <Text type="danger" strong>
               {intcomma(r.price)}₫
             </Text>

@@ -4,7 +4,8 @@ from chat.consumers import (
     ConversationConsumer, 
     SellerApprovalConsumer, 
     SellerBusinessConsumer, 
-    ProductApprovalConsumer
+    ProductApprovalConsumer,
+    AdminUserConsumer,
 )
 from notifications.consumers import NotificationConsumer
 
@@ -17,5 +18,7 @@ websocket_urlpatterns = [
     
     # Sửa dòng này: Bỏ dấu $ nếu dùng path, hoặc đổi sang re_path
     # Thêm 'api/' vào đầu nếu bạn muốn khớp với URL ở Frontend cũ
-    path('api/ws/admin/products/', ProductApprovalConsumer.as_asgi()),
+    path('ws/admin/products/', ProductApprovalConsumer.as_asgi()),
+    path('ws/admin/users/', AdminUserConsumer.as_asgi()),
+    
 ]

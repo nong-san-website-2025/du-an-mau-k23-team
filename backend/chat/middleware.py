@@ -1,49 +1,60 @@
-# chat/middleware.py
-
-import jwt
 from urllib.parse import parse_qs
-from django.conf import settings
-from django.contrib.auth import get_user_model
-from django.contrib.auth.models import AnonymousUser
 from channels.db import database_sync_to_async
+from django.contrib.auth.models import AnonymousUser
+from rest_framework_simplejwt.tokens import AccessToken
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+
+@database_sync_to_async
+def get_user_from_token(token):
+    try:
+        access = AccessToken(token)
+        user_id = access.get("user_id")
+        if not user_id:
+            print("[JWT WS ERROR] No user_id in token payload")
+            return AnonymousUser()
+        
+        user = User.objects.get(id=user_id)
+        return user
+    except Exception as e:
+        print(f"[JWT WS ERROR] Token resolution failed: {e}")
+        return AnonymousUser()
 
 class JWTAuthMiddleware:
-    def __init__(self, app):
-        self.app = app
+    def __init__(self, inner):
+        self.inner = inner
 
     async def __call__(self, scope, receive, send):
-        query_string = scope.get("query_string", b"").decode()
-        query_params = parse_qs(query_string)
-        token_list = query_params.get("token", [])
-        
+        # Default to AnonymousUser
         scope["user"] = AnonymousUser()
 
-        if token_list:
-            token = token_list[0]
+        query_string = scope.get("query_string", b"").decode()
+        query = parse_qs(query_string)
+
+        token = query.get("token")
+        if token:
+            t = token[0]
+            # Print first 10 chars of token for debug, but hide rest for security
+            print(f"[JWT WS] Token detected (prefix: {t[:10]}...), attempting resolution")
             try:
-                # Giải mã token
-                payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
-                user_id = payload.get("user_id") or payload.get("id")
-                
-                if user_id:
-                    user = await self.get_user(user_id)
-                    if user:
-                        scope["user"] = user
-                        # Dòng này để debug xem đã nhận user chưa
-                        print(f"WebSocket Auth: User {user_id} authenticated") 
+                user = await get_user_from_token(t)
+                if user and user.is_authenticated:
+                    print(f"[JWT WS] Successfully resolved user: {user.username} (ID: {user.id})")
+                    scope["user"] = user
+                else:
+                    print("[JWT WS] Token resolved to AnonymousUser or unauthenticated user")
             except Exception as e:
-                print(f"WebSocket JWT Error: {e}")
+                print(f"[JWT WS] Exception during middleware execution: {e}")
+        else:
+            print("[JWT WS] No token found in query string")
 
-        return await self.app(scope, receive, send)
+        return await self.inner(scope, receive, send)
 
-    @database_sync_to_async
-    def get_user(self, user_id):
-        UserModel = get_user_model()
-        try:
-            return UserModel.objects.get(pk=user_id)
-        except UserModel.DoesNotExist:
-            return None
-
-# --- QUAN TRỌNG: Đây là hàm mà asgi.py đang tìm kiếm ---
 def JWTAuthMiddlewareStack(inner):
-    return JWTAuthMiddleware(inner)
+    from channels.auth import AuthMiddlewareStack
+    # Ensure JWTAuthMiddleware runs after AuthMiddlewareStack so a provided
+    # token can override any user populated by session auth. This prevents
+    # the AuthMiddlewareStack from overwriting the user set from the token
+    # and avoids immediate socket close due to anonymous user.
+    return AuthMiddlewareStack(JWTAuthMiddleware(inner))

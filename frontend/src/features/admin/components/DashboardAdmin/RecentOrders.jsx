@@ -40,6 +40,7 @@ export default function RecentOrders() {
     success: { text: "Thành công", color: "green" },
     completed: { text: "Hoàn thành", color: "green" },
     cancelled: { text: "Đã hủy", color: "red" },
+    returned: { text: "Trả hàng", color: "purple" },
   };
 
   const columns = [
@@ -90,7 +91,9 @@ export default function RecentOrders() {
       key: "status",
       sorter: (a, b) => a.status.localeCompare(b.status),
       render: (status) => {
-        const config = statusConfig[status] || {
+        // Nên toLowerCase() để khớp chính xác với key trong statusConfig
+        const key = status?.toLowerCase();
+        const config = statusConfig[key] || {
           text: status,
           color: "default",
         };

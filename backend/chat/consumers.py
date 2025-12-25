@@ -1,4 +1,5 @@
 import json
+import traceback
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from channels.db import database_sync_to_async
 from django.contrib.auth import get_user_model
@@ -242,21 +243,102 @@ class SellerBusinessConsumer(AsyncWebsocketConsumer):
 
 # backend/chat/consumers.py
 
-class ProductApprovalConsumer(AsyncWebsocketConsumer):
-    async def connect(self):  # <--- SỬA TẠI ĐÂY: Phải là 'connect'
-        # Chấp nhận kết nối WebSocket
+class ProductApprovalConsumer(AsyncJsonWebsocketConsumer):
+    async def connect(self):
+        self.user = self.scope.get("user")
+
+        print(f"[ProductApprovalConsumer] Attempting connection for user: {self.user} (Authenticated: {getattr(self.user, 'is_authenticated', False)})")
+
+        if not self.user or not self.user.is_authenticated:
+            print(f"[ProductApprovalConsumer] Connection REJECTED - user not authenticated")
+            await self.close(code=4001)
+            return
+
+        # Accept connection first to avoid "closed before established" if group_add takes time
         await self.accept()
         
-        # Thêm user vào nhóm admin_products để nhận thông báo realtime
-        await self.channel_layer.group_add("admin_products", self.channel_name)
-        print("✅ Admin connected to Product Stream")
+        try:
+            await self.channel_layer.group_add("admin_products", self.channel_name)
+            print("✅ [ProductApprovalConsumer] Admin Product WS connected and added to group")
+        except Exception as e:
+            print(f"❌ [ProductApprovalConsumer] Error adding to group: {e}")
+            # If group_add fails (e.g. Redis down), we might want to close or keep open but warn
+            # For now, let's keep it open but log the error
+
+    async def product_update(self, event):
+        """
+        Handle product updates sent by signals. The `chat.signals` sends
+        payload with keys: `action` (CREATE/UPDATE) and `data` (serialized product).
+        Map that to the frontend-friendly `type` values and forward via JSON.
+        """
+        action = event.get("action")
+        data = event.get("data")
+
+        if action == "CREATE":
+            payload_type = "NEW_PRODUCT"
+        else:
+            payload_type = "UPDATE_PRODUCT"
+
+        # log for debugging to confirm consumer received the signal
+        print(f"[ProductApprovalConsumer] Received product_update action={action} id={data.get('id')}")
+
+        try:
+            await self.send_json({"type": payload_type, "data": data})
+        except Exception as e:
+            print("[ProductApprovalConsumer] ERROR sending json:")
+            traceback.print_exc()
+
+
+class AdminUserConsumer(AsyncJsonWebsocketConsumer):
+    """
+    Simple consumer for admin user events. Joins the `admin_users` group
+    and forwards `user_update` events to connected admin clients.
+    Signals (or other code) should use channel_layer.group_send(
+        "admin_users", {"type": "user_update", "action": "CREATE|UPDATE|DELETE", "data": {...}})
+    """
+    async def connect(self):
+        self.user = self.scope.get("user")
+
+        print(f"[AdminUserConsumer] Attempting connection for user: {self.user} (Authenticated: {getattr(self.user, 'is_authenticated', False)})")
+
+        if not self.user or not self.user.is_authenticated:
+            print("[AdminUserConsumer] Reject connection - anonymous user")
+            await self.close(code=4001)
+            return
+
+        # Accept first
+        await self.accept()
+
+        try:
+            await self.channel_layer.group_add("admin_users", self.channel_name)
+            print("✅ [AdminUserConsumer] Admin Users WS connected and added to group", "user=", getattr(self.user, 'id', None))
+        except Exception as e:
+            print(f"❌ [AdminUserConsumer] Error adding to group: {e}")
+            traceback.print_exc()
 
     async def disconnect(self, close_code):
-        # Rời khỏi nhóm khi ngắt kết nối
-        await self.channel_layer.group_discard("admin_products", self.channel_name)
-        print(f"❌ Admin disconnected: {close_code}")
+        print(f"[AdminUserConsumer] disconnect code={close_code} user={getattr(self.user, 'id', None)}")
+        try:
+            await self.channel_layer.group_discard("admin_users", self.channel_name)
+        except Exception as e:
+            print("[AdminUserConsumer] Error during group_discard:", e)
+            traceback.print_exc()
 
-    # Hàm xử lý khi có tin nhắn gửi tới nhóm "admin_products"
-    async def product_update(self, event):
-        # Gửi dữ liệu về cho Frontend (React)
-        await self.send(text_data=json.dumps(event))
+    async def user_update(self, event):
+        """Handle user updates sent via group_send from signals or views."""
+        action = event.get("action")
+        data = event.get("data")
+
+        # map to frontend-friendly types if desired
+        if action == "CREATE":
+            payload_type = "CREATED"
+        elif action == "DELETE":
+            payload_type = "DELETED"
+        else:
+            payload_type = "UPDATED"
+
+        try:
+            await self.send_json({"type": payload_type, "data": data})
+        except Exception:
+            print("[AdminUserConsumer] ERROR sending json:")
+            traceback.print_exc()

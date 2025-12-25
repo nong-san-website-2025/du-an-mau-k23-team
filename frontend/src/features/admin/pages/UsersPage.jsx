@@ -1,6 +1,6 @@
 // pages/UsersPage.jsx
-import React, { useEffect, useState, useMemo } from "react";
-import { Button, Input, Select, message, Row, Col, Space, Card, Divider } from "antd";
+import React, { useEffect, useState, useMemo, useRef } from "react";
+import { Button, Input, Select, message, Row, Col, Space, Card } from "antd";
 import {
   SearchOutlined,
   FilterOutlined,
@@ -11,17 +11,20 @@ import {
   ShoppingOutlined,
   ReloadOutlined,
   DownloadOutlined,
-  DeleteOutlined
+  DeleteOutlined,
+  ClearOutlined,
 } from '@ant-design/icons';
 import axios from "axios";
 import { useTranslation } from "react-i18next";
+import { getWSBaseUrl } from "../../../utils/ws";
 
 // Components
 import AdminPageLayout from "../components/AdminPageLayout";
 import UserTable from "../components/UserAdmin/UserTable";
-import UserDetailModal from "../components/UserAdmin/components/UserDetail/UserDetailRow"; // Nhớ dùng bản mới Drawer nhé
+import UserDetailModal from "../components/UserAdmin/components/UserDetail/UserDetailRow"; 
 import StatsSection from "../components/common/StatsSection";
 
+// Constants & Styles
 import { STATUS_LABELS } from '../../../constants/statusConstants';
 import '../styles/UsersPage.css';
 
@@ -43,10 +46,10 @@ export default function UsersPage() {
   // Selection & Modal
   const [checkedIds, setCheckedIds] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
-  const [showDetailModal, setShowDetailModal] = useState(false); // Dùng cho Modal nếu cần
+  const [showDetailModal, setShowDetailModal] = useState(false);
   const [triggerAddUser, setTriggerAddUser] = useState(false);
 
-  // --- FETCHING ---
+  // --- 1. FETCHING DATA ---
   const fetchUsers = async () => {
     setLoading(true);
     try {
@@ -65,7 +68,117 @@ export default function UsersPage() {
     fetchUsers();
   }, []);
 
-  // --- STATS ---
+  // --- 2. WEBSOCKET: Realtime admin updates (From MinhKhanh branch) ---
+  const socketRef = useRef(null);
+  const reconnectRef = useRef({ attempts: 0, timer: null });
+  const MAX_RECONNECT_ATTEMPTS = 6;
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    let wsUrl;
+    try {
+      const base = getWSBaseUrl();
+      wsUrl = `${base}/ws/admin/users/?token=${token}`;
+    } catch (e) {
+      const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+      const hostFallback = process.env.REACT_APP_WS_URL || window.location.host;
+      wsUrl = `${protocol}://${hostFallback.replace(/^https?:\/\//, "")}/ws/admin/users/?token=${token}`;
+    }
+
+    let socket;
+    let isStopped = false;
+
+    const connectWS = () => {
+      if (isStopped) return;
+      socket = new WebSocket(wsUrl);
+      socketRef.current = socket;
+
+      socket.onopen = () => {
+        if (isStopped) {
+          socket.close();
+          return;
+        }
+        console.log("✅ [ADMIN] Users WS connected");
+        reconnectRef.current.attempts = 0;
+        if (reconnectRef.current.timer) {
+          clearTimeout(reconnectRef.current.timer);
+          reconnectRef.current.timer = null;
+        }
+      };
+
+      socket.onmessage = (event) => {
+        if (isStopped) return;
+        try {
+          const raw = event.data;
+          const payload = JSON.parse(raw);
+          const action = payload.action || payload.type;
+          const incoming = payload.data;
+          
+          if (!incoming || !incoming.id) return;
+
+          setUsers((prev) => {
+            switch (action) {
+              case "CREATE":
+              case "CREATED": {
+                const userWithFlags = { ...incoming, is_new: true };
+                if (prev.some((u) => u.id === userWithFlags.id)) {
+                  return prev.map((u) =>
+                    u.id === userWithFlags.id ? { ...u, ...userWithFlags } : u
+                  );
+                }
+                return [userWithFlags, ...prev];
+              }
+              case "UPDATE":
+              case "UPDATED":
+                return prev.map((u) =>
+                  u.id === incoming.id ? { ...u, ...incoming } : u
+                );
+              case "DELETE":
+              case "DELETED":
+                return prev.filter((u) => u.id !== incoming.id);
+              default:
+                return prev;
+            }
+          });
+
+          if (action === "CREATE" || action === "CREATED") {
+            message.success(`Người dùng mới: ${incoming.email || incoming.username || incoming.name}`);
+            // Tự động tắt highlight sau 8s
+            setTimeout(() => {
+              setUsers((prev) =>
+                prev.map((u) => u.id === incoming.id ? { ...u, is_new: false } : u)
+              );
+            }, 8000);
+          }
+        } catch (err) {
+          console.error("[ADMIN WS - USERS] message error:", err);
+        }
+      };
+
+      socket.onclose = () => {
+        if (isStopped) return;
+        socketRef.current = null;
+        if (reconnectRef.current.attempts < MAX_RECONNECT_ATTEMPTS) {
+          const attempt = ++reconnectRef.current.attempts;
+          const delay = Math.min(30000, 1000 * 2 ** attempt);
+          reconnectRef.current.timer = setTimeout(connectWS, delay);
+        }
+      };
+    };
+
+    connectWS();
+
+    return () => {
+      isStopped = true;
+      if (reconnectRef.current.timer) clearTimeout(reconnectRef.current.timer);
+      if (socket) socket.close();
+      socketRef.current = null;
+    };
+  }, []);
+
+  // --- 3. STATS CALCULATION ---
   const statItems = useMemo(() => {
     const total = users.length;
     const active = users.filter(u => u.is_active).length;
@@ -74,8 +187,8 @@ export default function UsersPage() {
 
     return [
       { title: "Tổng User", value: total, icon: <TeamOutlined />, color: "#1890ff" },
-      { title: "Hoạt động", value: active, icon: <CheckCircleOutlined />, color: "#52c41a" },
-      { title: "Bị khóa", value: inactive, icon: <LockOutlined />, color: "#faad14" },
+      { title: STATUS_LABELS.active || "Hoạt động", value: active, icon: <CheckCircleOutlined />, color: "#52c41a" },
+      { title: "Bị khóa/Ẩn", value: inactive, icon: <LockOutlined />, color: "#faad14" },
       { title: "Seller", value: sellers, icon: <ShoppingOutlined />, color: "#722ed1" }
     ];
   }, [users]);
@@ -102,12 +215,12 @@ export default function UsersPage() {
   return (
     <AdminPageLayout title="QUẢN LÝ NGƯỜI DÙNG">
       
-      {/* 1. KHU VỰC THỐNG KÊ (Luôn ở trên cùng) */}
+      {/* 1. KHU VỰC THỐNG KÊ */}
       <div style={{ marginBottom: 24 }}>
         <StatsSection items={statItems} loading={loading} />
       </div>
 
-      {/* 2. THANH CÔNG CỤ (TOOLBAR) - Tách riêng thành một Card trắng */}
+      {/* 2. THANH CÔNG CỤ (TOOLBAR) - UI từ HEAD (Đẹp hơn) */}
       <Card bodyStyle={{ padding: "20px" }} style={{ marginBottom: 24, borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
         <Row gutter={[16, 16]} justify="space-between" align="middle">
           
@@ -144,8 +257,8 @@ export default function UsersPage() {
                 suffixIcon={<FilterOutlined style={{ color: '#bfbfbf' }} />}
                 options={[
                     { value: "all", label: "Tất cả trạng thái" },
-                    { value: "active", label: "Đang hoạt động" },
-                    { value: "locked", label: "Đã khóa" },
+                    { value: "active", label: STATUS_LABELS.active || "Đang hoạt động" },
+                    { value: "locked", label: STATUS_LABELS.locked || "Đã khóa" },
                 ]}
               />
 
@@ -203,11 +316,11 @@ export default function UsersPage() {
           setCheckedIds={setCheckedIds}
           triggerAddUser={triggerAddUser}
           setTriggerAddUser={setTriggerAddUser}
-          onRow={handleShowDetail} // Mở Drawer Detail khi click
+          onRow={handleShowDetail}
         />
       </div>
 
-      {/* Modal Detail (Nếu dùng Modal thay vì Drawer trong Table) */}
+      {/* Modal Detail */}
       {selectedUser && (
         <UserDetailModal
           user={selectedUser}
