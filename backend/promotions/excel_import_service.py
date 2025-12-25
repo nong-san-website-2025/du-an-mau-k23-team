@@ -64,6 +64,7 @@ class FlashSaleExcelImportService:
             product_id = int(row.get('product_id', ''))
         except (ValueError, TypeError):
             errors.append(f"Dòng {row_idx + 1}: product_id phải là số nguyên")
+            self.errors.extend(errors)
             return None
         
         # Kiểm tra sản phẩm có tồn tại không
@@ -71,6 +72,7 @@ class FlashSaleExcelImportService:
             product = Product.objects.get(id=product_id)
         except Product.DoesNotExist:
             errors.append(f"Dòng {row_idx + 1}: Sản phẩm ID {product_id} không tồn tại")
+            self.errors.extend(errors)
             return None
         
         # Kiểm tra flash_price
@@ -78,12 +80,15 @@ class FlashSaleExcelImportService:
             flash_price = float(row.get('flash_price', ''))
             if flash_price <= 0:
                 errors.append(f"Dòng {row_idx + 1}: Giá flash phải > 0")
+                self.errors.extend(errors)
                 return None
             if flash_price >= product.original_price:
                 errors.append(f"Dòng {row_idx + 1}: Giá flash ({flash_price}) phải thấp hơn giá gốc ({product.original_price})")
+                self.errors.extend(errors)
                 return None
         except (ValueError, TypeError):
             errors.append(f"Dòng {row_idx + 1}: flash_price phải là số")
+            self.errors.extend(errors)
             return None
         
         # Kiểm tra stock
@@ -91,12 +96,15 @@ class FlashSaleExcelImportService:
             stock = int(row.get('stock', ''))
             if stock < 1:
                 errors.append(f"Dòng {row_idx + 1}: Số lượng phải >= 1")
+                self.errors.extend(errors)
                 return None
             if stock > product.stock:
                 errors.append(f"Dòng {row_idx + 1}: Số lượng sale ({stock}) vượt quá tồn kho hiện tại ({product.stock})")
+                self.errors.extend(errors)
                 return None
         except (ValueError, TypeError):
             errors.append(f"Dòng {row_idx + 1}: stock phải là số nguyên")
+            self.errors.extend(errors)
             return None
         
         # Kiểm tra thời gian
@@ -112,13 +120,12 @@ class FlashSaleExcelImportService:
                 
         except (ValueError, TypeError) as e:
             errors.append(f"Dòng {row_idx + 1}: Định dạng thời gian không hợp lệ. Sử dụng định dạng: YYYY-MM-DD HH:MM:SS")
+            self.errors.extend(errors)
             return None
         
         if start_time >= end_time:
             errors.append(f"Dòng {row_idx + 1}: Thời gian bắt đầu phải trước thời gian kết thúc")
-            return None
-        
-        if self.errors:
+            self.errors.extend(errors)
             return None
         
         if errors:

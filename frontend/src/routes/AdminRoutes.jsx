@@ -23,6 +23,12 @@ import WalletPage from "../features/admin/pages/WalletPage";
 
 // Marketing & Promotions
 import NotificationsPage from "../pages/NotificationsPage.jsx";
+import MarketingAdminPage from '../features/admin/pages/MarketingAdmin/AdminMarketingPage';
+import AdminBlogs from "../features/admin/pages/BlogAdmin/AdminBlogs.jsx";
+import Promotions from "../features/admin/pages/Promotions/PromotionsPage.jsx";
+import FlashSale from "../features/admin/pages/Promotions/FlashSalePage.jsx";
+// 👇 IMPORT TRANG MỚI VÀO ĐÂY
+import PromotionUse from "../features/admin/pages/Promotions/PromotionUse.jsx"; 
 
 // Reports
 import ReportsPage from "../features/admin/pages/ReportsPage";
@@ -33,28 +39,21 @@ import ReportCustomersPage from "../features/admin/pages/StatisticAdmin/ReportCu
 import ReportAgriculturePage from "../features/admin/pages/StatisticAdmin/ReportAgriculturePage.jsx";
 import ReportOrdersPage from "../features/admin/pages/StatisticAdmin/ReportOrdersPage.jsx";
 
-
-
-
 import StatisticsPage from "../features/admin/pages/StatisticsPage";
 
 // Shop management
 import SellersPage from "../features/admin/pages/Sellers/SellersPage";
-import ActiveLockedSellersPage from "../features/admin/pages/SellerPage/ActiveLockedSellersPage.jsx"; // ✅ bỏ .jsx thừa
+import ActiveLockedSellersPage from "../features/admin/pages/SellerPage/ActiveLockedSellersPage.jsx"; 
 import ApprovalSellersPage from "../features/admin/pages/SellerPage/ApprovalSellersPage.jsx";
 import ApprovalProductsPage from "../features/admin/pages/ProductAdmin/ApprovalProductsPage.jsx";
 import CategoryManagementPage from "../features/admin/pages/ProductAdmin/CategoryManagement.jsx";
-import Promotions from "../features/admin/pages/Promotions/PromotionsPage.jsx";
-import FlashSale from "../features/admin/pages/Promotions/FlashSalePage.jsx";
 
-// ✅ Settings (5 chức năng mới)
+// Settings
 import ShippingSettingsPage from "../features/admin/pages/Setting/ShippingSettingsPage";
 import ReturnPolicyPage from "../features/admin/pages/Setting/ReturnPolicyPage";
 import MarketingAutomationPage from "../features/admin/pages/Setting/MarketingAutomationPage";
 import LoyaltySettingsPage from "../features/admin/pages/Setting/LoyaltySettingsPage";
 import ThemeSettingsPage from "../features/admin/pages/Setting/ThemeSettingsPage";
-import MarketingAdminPage from './../features/admin/pages/MarketingAdmin/AdminMarketingPage';
-import AdminBlogs from "../features/admin/pages/BlogAdmin/AdminBlogs.jsx";
 
 export const adminRoutes = [
   <Route element={<AdminPrivateRoute />} key="admin-protect">
@@ -70,6 +69,7 @@ export const adminRoutes = [
 
       {/* Orders & Complaints */}
       <Route path="orders" element={<OrdersPage />} />
+      <Route path="orders/:id" element={<OrdersPage />} /> {/* Route này hỗ trợ link từ bảng Usage sang */}
       <Route path="complaints" element={<ComplaintsPage />} />
       <Route path="complaints/user-reports" element={<UserReports />} />
       <Route path="reviews" element={<ReviewsPage />} />
@@ -78,10 +78,13 @@ export const adminRoutes = [
       <Route path="vouchers" element={<VouchersPage />} />
       <Route path="payments/wallets" element={<WalletPage />} />
 
-
       {/* Marketing & Promotions */}
       <Route path="notifications" element={<NotificationsPage />} />
       <Route path="promotions" element={<Promotions />} />
+      
+      {/* 👇 THÊM ROUTE MỚI Ở ĐÂY */}
+      <Route path="promotions/usage" element={<PromotionUse />} />
+      
       <Route path="promotions/flashsale" element={<FlashSale />} />
       <Route path="marketing/banners" element={<MarketingAdminPage />} />
       <Route path="marketing/blogs" element={<AdminBlogs />} />
@@ -96,8 +99,7 @@ export const adminRoutes = [
       <Route path="reports/cancel-rate" element={<ReportCancelRatePage />} />
       <Route path="reports/customers" element={<ReportCustomersPage />} />
       <Route path="reports/agriculture" element={<ReportAgriculturePage />} />
-      <Route path="reports/orders" element={<ReportOrdersPage />} />   {/* ✅ thêm */}
-
+      <Route path="reports/orders" element={<ReportOrdersPage />} />   
 
       {/* Support & Statistics */}
       <Route path="statistics" element={<StatisticsPage />} />
@@ -109,13 +111,12 @@ export const adminRoutes = [
       <Route path="products/approval" element={<ApprovalProductsPage />} />
       <Route path="products/categories" element={<CategoryManagementPage />} />
 
-      {/* ✅ Settings routes */}
+      {/* Settings routes */}
       <Route path="settings/shipping" element={<ShippingSettingsPage />} />
       <Route path="settings/return-policy" element={<ReturnPolicyPage />} />
       <Route path="settings/marketing" element={<MarketingAutomationPage />} />
       <Route path="settings/loyalty" element={<LoyaltySettingsPage />} />
       <Route path="settings/theme" element={<ThemeSettingsPage />} />
-
 
       <Route path="test-ui" element={<NotificationsPage />} />
     </Route>

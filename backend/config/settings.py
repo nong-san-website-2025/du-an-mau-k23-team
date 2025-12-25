@@ -152,6 +152,25 @@ CHANNEL_LAYERS = {
 #     }
 
 # --- Database: local PostgreSQL hoặc Render
+# if os.environ.get("DATABASE_URL"):
+#     DATABASES = {
+#         "default": dj_database_url.config(
+#             default=os.environ["DATABASE_URL"],
+#             conn_max_age=600,
+#             ssl_require=True
+#         )
+#     }
+# else:
+#     DATABASES = {
+#         'default': {
+#             'ENGINE': 'django.db.backends.sqlite3',
+#             'NAME': BASE_DIR / 'db.sqlite3',
+#         }
+#     }
+
+
+#CHUYEN DOI SQLITE3 - POSTGRELQL
+
 if os.environ.get("DATABASE_URL"):
     DATABASES = {
         "default": dj_database_url.config(
@@ -163,8 +182,12 @@ if os.environ.get("DATABASE_URL"):
 else:
     DATABASES = {
         'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': 'ecom_db',
+            'USER': 'postgres',
+            'PASSWORD': '12345',
+            'HOST': '127.0.0.1',
+            'PORT': '5432',
         }
     }
 

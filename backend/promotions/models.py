@@ -221,3 +221,45 @@ class UserVoucher(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.voucher.code} - {self.used_count}/{self.quantity}"
+    # ... (Giữ nguyên code cũ của file models.py bên trên) ...
+
+# === THÊM MỚI CLASS NÀY VÀO CUỐI FILE ===
+
+class VoucherUsage(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="voucher_usages",
+        verbose_name="Người dùng"
+    )
+    voucher = models.ForeignKey(
+        Voucher,
+        on_delete=models.CASCADE,
+        related_name="usage_history",
+        verbose_name="Voucher"
+    )
+    # Dùng chuỗi string 'orders.Order' để tránh lỗi Import vòng (Circular Import)
+    # Giả định app đơn hàng của bạn tên là 'orders' và Model là 'Order'
+    order = models.ForeignKey(
+        'orders.Order', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        related_name="voucher_usages",
+        verbose_name="Đơn hàng"
+    )
+    discount_amount = models.DecimalField(
+        max_digits=12, 
+        decimal_places=0, 
+        default=0,
+        verbose_name="Số tiền giảm"
+    )
+    used_at = models.DateTimeField(auto_now_add=True, verbose_name="Thời gian dùng")
+
+    class Meta:
+        ordering = ["-used_at"]
+        verbose_name = "Lịch sử dùng Voucher"
+        verbose_name_plural = "Lịch sử dùng Voucher"
+
+    def __str__(self):
+        return f"{self.user} - {self.voucher.code}"
