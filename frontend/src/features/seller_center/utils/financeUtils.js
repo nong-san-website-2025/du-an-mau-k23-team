@@ -224,6 +224,15 @@ export const applyQuickRange = (value) => {
   }
 };
 
+const RAW_API_URL = process.env.REACT_APP_API_URL || "";
+const API_BASE_URL = RAW_API_URL.replace(/\/$/, "").replace(/\/api$/, "");
+const resolveApiUrl = (url) => {
+  if (!url) return "";
+  if (/^https?:\/\//i.test(url)) return url;
+  const normalizedUrl = url.startsWith("/") ? url : `/${url}`;
+  return API_BASE_URL ? `${API_BASE_URL}${normalizedUrl}` : normalizedUrl;
+};
+
 // --- API HELPER ---
 export const fetchJson = async (url, options = {}) => {
   const token = localStorage.getItem("token");
@@ -233,7 +242,8 @@ export const fetchJson = async (url, options = {}) => {
     ...(options.headers || {}),
   };
 
-  const res = await fetch(url, {
+  const requestUrl = resolveApiUrl(url);
+  const res = await fetch(requestUrl, {
     credentials: "include",
     ...options,
     headers,

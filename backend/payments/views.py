@@ -136,11 +136,17 @@ def revenue_chart(request):
 
     # Doanh thu theo ngày (7 ngày gần nhất)
     daily = payments.annotate(day=TruncDay("created_at")).values("day").annotate(amount=Sum("amount")).order_by("day")
-    daily_data = [{"date": d["day"].strftime("%Y-%m-%d"), "amount": float(d["amount"] or 0), "type": "Ngày"} for d in daily]
+    daily_data = [
+        {"date": d["day"].strftime("%Y-%m-%d"), "value": float(d["amount"] or 0), "metric": "Doanh thu ngày"}
+        for d in daily
+    ]
 
     # Doanh thu theo tháng (6 tháng gần nhất)
     monthly = payments.annotate(month=TruncMonth("created_at")).values("month").annotate(amount=Sum("amount")).order_by("month")
-    monthly_data = [{"date": m["month"].strftime("%Y-%m"), "amount": float(m["amount"] or 0), "type": "Tháng"} for m in monthly]
+    monthly_data = [
+        {"date": m["month"].strftime("%Y-%m"), "value": float(m["amount"] or 0), "metric": "Doanh thu tháng"}
+        for m in monthly
+    ]
 
     return Response({"data": daily_data + monthly_data})
 from .models_withdraw import WithdrawRequest
