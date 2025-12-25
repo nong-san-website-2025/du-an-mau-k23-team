@@ -59,7 +59,7 @@ def update_seller_wallet_on_payment(sender, instance, created, **kwargs):
 
         # Add to pending_balance (chờ admin duyệt)
         wallet.pending_balance += amount
-        transaction_type = 'pending_add'
+        transaction_type = 'pending_income'
         note = f"Thanh toán thành công cho đơn hàng #{instance.order.id}"
 
         wallet.save()
@@ -67,6 +67,7 @@ def update_seller_wallet_on_payment(sender, instance, created, **kwargs):
         # Create transaction record
         WalletTransaction.objects.create(
             wallet=wallet,
+            order=instance.order, # Lưu FK order
             amount=amount,
             type=transaction_type,
             note=note

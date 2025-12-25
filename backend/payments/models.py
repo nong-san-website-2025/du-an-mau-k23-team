@@ -36,7 +36,8 @@ class WalletTransaction(models.Model):
     TYPE_CHOICES = [
         ('deposit', 'Nạp tiền'),
         ('withdraw', 'Rút tiền'),
-        ('sale_income', 'Doanh thu bán hàng'), # Cộng tiền
+        ('pending_income', 'Doanh thu chờ duyệt'), # Mới: Khi đơn thành công, tiền vào pending
+        ('sale_income', 'Doanh thu bán hàng'), # Khi admin duyệt, tiền vào balance
         ('refund_deduct', 'Trừ tiền hoàn hàng'), # Trừ tiền
         ('platform_fee', 'Phí sàn'), # Trừ tiền
     ]
