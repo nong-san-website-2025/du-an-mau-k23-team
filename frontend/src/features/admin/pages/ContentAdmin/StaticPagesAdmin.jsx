@@ -362,7 +362,7 @@ export default function StaticPagesAdmin() {
       <Row gutter={[24, 24]}>
         {/* Header Section */}
         <Col span={24}>
-          <Card bordered={false} bodyStyle={{ padding: '20px 24px' }}>
+          <Card variant="borderless" styles={{ body: { padding: '20px 24px' } }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <Space direction="vertical" size={2}>
                 <Title level={3} style={{ margin: 0 }}>Quản Lý Nội Dung Tĩnh</Title>
@@ -375,7 +375,7 @@ export default function StaticPagesAdmin() {
 
         {/* Sidebar / Navigation */}
         <Col xs={24} lg={6}>
-          <Card bordered={false} bodyStyle={{ padding: 0 }}>
+          <Card variant="borderless" styles={{ body: { padding: 0 } }}>
             <Tabs
               activeKey={activeKey}
               onChange={setActiveKey}
@@ -456,70 +456,76 @@ export default function StaticPagesAdmin() {
                       marginBottom: 20,
                       boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
                     }}
-                    actions={[
-                      <Button 
-                        type="text" 
-                        icon={<EditOutlined />} 
-                        onClick={() => setModalState({ visible: true, mode: 'edit', data: item })}
-                        style={{ color: '#1890ff' }}
-                      >
-                        Chỉnh sửa
-                      </Button>,
-                      <Popconfirm title="Bạn có chắc muốn xóa mục này?" onConfirm={() => handleDelete(item.id)} okText="Xóa" cancelText="Hủy">
-                        <Button type="text" danger icon={<DeleteOutlined />}>Xóa bỏ</Button>
-                      </Popconfirm>,
-                    ]}
-                    extra={
-                      item.image && (
-                        <div style={{ 
-                          width: 200, 
-                          height: 140, 
-                          overflow: 'hidden', 
-                          borderRadius: 8, 
-                          border: '1px solid #f0f0f0',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          background: '#fafafa'
-                        }}>
-                          <img
-                            alt="minh họa"
-                            src={item.image.startsWith('http') ? item.image : `${process.env.REACT_APP_API_URL?.replace('/api', '')}${item.image}`}
-                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                          />
-                        </div>
-                      )
-                    }
                   >
-                    <List.Item.Meta
-                      avatar={
-                        <div style={{ 
-                          width: 36, height: 36, background: '#f6ffed', color: '#52c41a', 
-                          borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: 16, border: '1px solid #b7eb8f'
-                        }}>
-                          {item.order}
-                        </div>
-                      }
-                      title={<Text strong style={{ fontSize: 18, color: '#262626' }}>{item.heading}</Text>}
-                      description={
-                        <Space>
-                          <Tag color="default">HTML Length: {item.body_html?.length || 0}</Tag>
-                        </Space>
-                      }
-                    />
-                    <div 
-                      className="ql-editor" // Class mặc định của Quill để hiển thị đúng style
-                      style={{ 
-                        marginTop: 16, 
-                        color: '#595959', 
-                        padding: 0,
-                        maxHeight: 100, 
-                        overflow: 'hidden',
-                        position: 'relative',
-                        maskImage: 'linear-gradient(180deg, #000 60%, transparent)' 
-                      }}
-                      dangerouslySetInnerHTML={{ __html: item.body_html }}
-                    />
+                    <Row gutter={24}>
+                      <Col flex="auto">
+                        <List.Item.Meta
+                          avatar={
+                            <div style={{ 
+                              width: 36, height: 36, background: '#f6ffed', color: '#52c41a', 
+                              borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: 16, border: '1px solid #b7eb8f'
+                            }}>
+                              {item.order}
+                            </div>
+                          }
+                          title={
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Text strong style={{ fontSize: 18, color: '#262626' }}>{item.heading}</Text>
+                              <Space>
+                                <Button 
+                                  type="text" 
+                                  icon={<EditOutlined />} 
+                                  onClick={() => setModalState({ visible: true, mode: 'edit', data: item })}
+                                  style={{ color: '#1890ff' }}
+                                >
+                                  Chỉnh sửa
+                                </Button>
+                                <Popconfirm title="Bạn có chắc muốn xóa mục này?" onConfirm={() => handleDelete(item.id)} okText="Xóa" cancelText="Hủy">
+                                  <Button type="text" danger icon={<DeleteOutlined />}>Xóa bỏ</Button>
+                                </Popconfirm>
+                              </Space>
+                            </div>
+                          }
+                          description={
+                            <Tag color="default" style={{ marginTop: 8 }}>HTML Length: {item.body_html?.length || 0}</Tag>
+                          }
+                        />
+                        <div 
+                          className="ql-editor"
+                          style={{ 
+                            marginTop: 16, 
+                            color: '#595959', 
+                            padding: 0,
+                            maxHeight: 100, 
+                            overflow: 'hidden',
+                            position: 'relative',
+                            maskImage: 'linear-gradient(180deg, #000 60%, transparent)' 
+                          }}
+                          dangerouslySetInnerHTML={{ __html: item.body_html }}
+                        />
+                      </Col>
+                      {item.image && (
+                        <Col flex="200px">
+                          <div style={{ 
+                            width: 200, 
+                            height: 140, 
+                            overflow: 'hidden', 
+                            borderRadius: 8, 
+                            border: '1px solid #f0f0f0',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            background: '#fafafa'
+                          }}>
+                            <img
+                              alt="minh họa"
+                              src={item.image.startsWith('http') ? item.image : `${process.env.REACT_APP_API_URL?.replace('/api', '')}${item.image}`}
+                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            />
+                          </div>
+                        </Col>
+                      )}
+                    </Row>
                   </List.Item>
                 )}
               />
@@ -550,9 +556,18 @@ export default function StaticPagesAdmin() {
           background: #389E0D !important;
         }
 
-        .static-pages-add-btn.ant-btn-primary,
-        .static-pages-add-btn.ant-btn-primary:focus,
+        .static-pages-add-btn.ant-btn-primary {
+          background-color: #52c41a;
+          border-color: #52c41a;
+        }
+
         .static-pages-add-btn.ant-btn-primary:hover {
+          background-color: #389E0D !important;
+          border-color: #389E0D !important;
+        }
+
+        .static-pages-add-btn.ant-btn-primary:focus,
+        .static-pages-add-btn.ant-btn-primary:active {
           background-color: #389E0D;
           border-color: #389E0D;
         }
