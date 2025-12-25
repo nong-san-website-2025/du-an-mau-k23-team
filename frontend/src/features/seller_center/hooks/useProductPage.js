@@ -1,7 +1,10 @@
 import { useState, useEffect, useMemo } from "react";
 import { message, Modal } from "antd";
-import { 
-  CheckCircleOutlined, ClockCircleOutlined, StopOutlined, ImportOutlined 
+import {
+  CheckCircleOutlined,
+  ClockCircleOutlined,
+  StopOutlined,
+  ImportOutlined,
 } from "@ant-design/icons";
 import { productApi } from "../services/api/productApi";
 import { EyeClosed } from "lucide-react";
@@ -19,7 +22,7 @@ export const useProductPage = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [importModalVisible, setImportModalVisible] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
-  
+
   // -- Detail & Gallery --
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [isDetailModalVisible, setIsDetailModalVisible] = useState(false);
@@ -41,7 +44,7 @@ export const useProductPage = () => {
       setSelectedRows(rows);
     },
     getCheckboxProps: (record) => ({
-      disabled: record.status === 'banned',
+      disabled: record.status === "banned",
     }),
   };
 
@@ -128,16 +131,22 @@ export const useProductPage = () => {
     if (activeTab !== "all") {
       switch (activeTab) {
         case "pending":
-          result = result.filter((p) => ["pending", "pending_update"].includes(p.status));
+          result = result.filter((p) =>
+            ["pending", "pending_update"].includes(p.status)
+          );
           break;
         case "approved":
-          result = result.filter((p) => p.status === "approved" && !p.is_hidden);
+          result = result.filter(
+            (p) => p.status === "approved" && !p.is_hidden
+          );
           break;
         case "hidden":
           result = result.filter((p) => p.status === "approved" && p.is_hidden);
           break;
         case "rejected":
-          result = result.filter((p) => ["rejected", "self_rejected"].includes(p.status));
+          result = result.filter((p) =>
+            ["rejected", "self_rejected"].includes(p.status)
+          );
           break;
         case "banned":
           result = result.filter((p) => p.status === "banned");
@@ -150,11 +159,14 @@ export const useProductPage = () => {
           if (searchTerm) {
             const lowerKey = searchTerm.toLowerCase();
             result = result.filter(
-              (p) => p.name.toLowerCase().includes(lowerKey) || String(p.id).includes(lowerKey)
+              (p) =>
+                p.name.toLowerCase().includes(lowerKey) ||
+                String(p.id).includes(lowerKey)
             );
           }
           break;
-        default: break;
+        default:
+          break;
       }
     }
     setFilteredProducts(result);
@@ -164,10 +176,14 @@ export const useProductPage = () => {
   const statsItems = useMemo(() => {
     const total = rawProducts.length;
     const approved = rawProducts.filter((p) => p.status === "approved").length;
-    const pending = rawProducts.filter((p) => ["pending", "pending_update"].includes(p.status)).length;
+    const pending = rawProducts.filter((p) =>
+      ["pending", "pending_update"].includes(p.status)
+    ).length;
     const outOfStock = rawProducts.filter((p) => p.stock <= 0).length;
     const importRequest = importRequestProducts.length;
-    const hidden = rawProducts.filter((p) => p.status === "approved" && p.is_hidden).length;
+    const hidden = rawProducts.filter(
+      (p) => p.status === "approved" && p.is_hidden
+    ).length;
     const banned = rawProducts.filter((p) => p.status === "banned").length;
 
     return [
@@ -177,30 +193,55 @@ export const useProductPage = () => {
       { value: outOfStock },
       { value: importRequest },
       { value: hidden },
-      { value: banned }
+      { value: banned },
     ];
   }, [rawProducts, importRequestProducts]);
 
   const tabItems = [
     { key: "all", label: `Tất cả (${statsItems[0].value})` },
-    { key: "approved", label: `Đang bán (${statsItems[1].value})`, icon: <CheckCircleOutlined /> },
-    { key: "pending", label: `Chờ duyệt (${statsItems[2].value})`, icon: <ClockCircleOutlined /> },
-    { key: "out_of_stock", label: `Hết hàng (${statsItems[3].value})`, icon: <StopOutlined /> },
-    { key: "import_request", label: `Yêu cầu nhập (${statsItems[4].value})`, icon: <ImportOutlined /> },
-    { key: "hidden", label: `Bị ẩn (${statsItems[5].value})`, icon: <EyeClosed /> },
-    { key: "banned", label: `Bị khóa (${statsItems[6].value})`, icon: <StopOutlined /> },
+    {
+      key: "approved",
+      label: `Đang bán (${statsItems[1].value})`,
+      icon: <CheckCircleOutlined />,
+    },
+    {
+      key: "pending",
+      label: `Chờ duyệt (${statsItems[2].value})`,
+      icon: <ClockCircleOutlined />,
+    },
+    {
+      key: "out_of_stock",
+      label: `Hết hàng (${statsItems[3].value})`,
+      icon: <StopOutlined />,
+    },
+    {
+      key: "import_request",
+      label: `Yêu cầu nhập (${statsItems[4].value})`,
+      icon: <ImportOutlined />,
+    },
+    {
+      key: "hidden",
+      label: `Bị ẩn (${statsItems[5].value})`,
+      icon: <EyeClosed />,
+    },
+    {
+      key: "banned",
+      label: `Bị khóa (${statsItems[6].value})`,
+      icon: <StopOutlined />,
+    },
     { key: "rejected", label: "Đã huỷ / Từ chối" },
   ];
 
   // ==================== HANDLERS ====================
-  
+
   // --- BULK ACTIONS ---
   const handleBulkDelete = () => {
     if (selectedRows.length === 0) return;
-    const deletableProducts = selectedRows.filter(item =>
-      (item.sold === 0 || !item.sold) &&
-      (item.ordered_quantity === 0 || !item.ordered_quantity) &&
-      item.status !== 'banned'
+    const deletableProducts = selectedRows.filter(
+      (item) =>
+        (item.sold === 0 || !item.sold) &&
+        (item.ordered_quantity === 0 || !item.ordered_quantity) &&
+        item.status !== "banned"
     );
 
     const validCount = deletableProducts.length;
@@ -209,7 +250,8 @@ export const useProductPage = () => {
     if (validCount === 0) {
       return Modal.warning({
         title: "Không thể xóa",
-        content: "Các sản phẩm đã chọn đều đã phát sinh đơn hàng hoặc đang bị khóa.",
+        content:
+          "Các sản phẩm đã chọn đều đã phát sinh đơn hàng hoặc đang bị khóa.",
       });
     }
 
@@ -219,17 +261,21 @@ export const useProductPage = () => {
         <div>
           <p>Hành động này không thể hoàn tác.</p>
           {validCount < totalCount && (
-            <p style={{ color: 'orange' }}>* Chú ý: Có {totalCount - validCount} sản phẩm không thể xóa.</p>
+            <p style={{ color: "orange" }}>
+              * Chú ý: Có {totalCount - validCount} sản phẩm không thể xóa.
+            </p>
           )}
         </div>
       ),
       okText: `Xóa ${validCount} mục`,
       okButtonProps: { danger: true },
-      cancelText: 'Hủy',
+      cancelText: "Hủy",
       onOk: async () => {
         setLoading(true);
         try {
-          await Promise.all(deletableProducts.map((p) => productApi.deleteProduct(p.id)));
+          await Promise.all(
+            deletableProducts.map((p) => productApi.deleteProduct(p.id))
+          );
           message.success(`Đã xóa thành công ${validCount} sản phẩm`);
           setSelectedRowKeys([]);
           setSelectedRows([]);
@@ -245,26 +291,30 @@ export const useProductPage = () => {
   };
 
   const handleBulkToggleHide = () => {
-    const approvedProducts = selectedRows.filter(item => item.status === 'approved');
-    
+    const approvedProducts = selectedRows.filter(
+      (item) => item.status === "approved"
+    );
+
     if (approvedProducts.length === 0) {
-      return message.info('Chỉ có thể ẩn/hiển thị sản phẩm đã duyệt.');
+      return message.info("Chỉ có thể ẩn/hiển thị sản phẩm đã duyệt.");
     }
 
-    const hiddenCount = approvedProducts.filter(p => p.is_hidden).length;
+    const hiddenCount = approvedProducts.filter((p) => p.is_hidden).length;
     const visibleCount = approvedProducts.length - hiddenCount;
-    
-    let actionText = '';
+
+    let actionText = "";
     let targetProducts = [];
-    
+
     if (hiddenCount > 0 && visibleCount === 0) {
-      actionText = 'Hiển thị';
+      actionText = "Hiển thị";
       targetProducts = approvedProducts;
     } else if (visibleCount > 0 && hiddenCount === 0) {
-      actionText = 'Ẩn';
+      actionText = "Ẩn";
       targetProducts = approvedProducts;
     } else {
-      message.info('Chọn các sản phẩm cùng trạng thái ẩn/hiển thị để thao tác.');
+      message.info(
+        "Chọn các sản phẩm cùng trạng thái ẩn/hiển thị để thao tác."
+      );
       return;
     }
 
@@ -272,28 +322,38 @@ export const useProductPage = () => {
       title: `Bạn muốn ${actionText} ${targetProducts.length} sản phẩm?`,
       onOk: async () => {
         try {
-          await Promise.all(targetProducts.map(p => productApi.toggleHide(p.id)));
-          message.success(`${actionText} thành công ${targetProducts.length} sản phẩm`);
+          await Promise.all(
+            targetProducts.map((p) => productApi.toggleHide(p.id))
+          );
+          message.success(
+            `${actionText} thành công ${targetProducts.length} sản phẩm`
+          );
           setSelectedRowKeys([]);
           setSelectedRows([]);
           fetchData();
         } catch (e) {
           message.error("Có lỗi xảy ra");
         }
-      }
+      },
     });
   };
 
   // --- CRUD ---
-  const handleAddNew = () => { setEditingProduct(null); setModalVisible(true); };
-  const handleEdit = (product) => { setEditingProduct(product); setModalVisible(true); };
+  const handleAddNew = () => {
+    setEditingProduct(null);
+    setModalVisible(true);
+  };
+  const handleEdit = (product) => {
+    setEditingProduct(product);
+    setModalVisible(true);
+  };
   const handleImportSuccess = () => fetchData();
-  
+
   const handleDelete = async (id) => {
     try {
       await productApi.deleteProduct(id);
       message.success("Đã xóa sản phẩm");
-      setRawProducts(prev => prev.filter(i => i.id !== id));
+      setRawProducts((prev) => prev.filter((i) => i.id !== id));
     } catch {
       message.error("Lỗi khi xóa sản phẩm");
     }
@@ -303,7 +363,9 @@ export const useProductPage = () => {
     try {
       await productApi.selfReject(p.id);
       message.success("Đã hủy đăng bán");
-      setRawProducts(prev => prev.map(i => i.id === p.id ? { ...i, status: 'self_rejected' } : i));
+      setRawProducts((prev) =>
+        prev.map((i) => (i.id === p.id ? { ...i, status: "self_rejected" } : i))
+      );
     } catch {
       message.error("Lỗi khi hủy đăng bán");
     }
@@ -327,43 +389,59 @@ export const useProductPage = () => {
         await productApi.createProduct(formData);
         message.success("Thêm mới thành công, chờ duyệt");
       } else {
-        const hasImages = Array.from(formData.entries()).some(([k]) => k === "images" || k === "image");
+        const hasImages = Array.from(formData.entries()).some(
+          ([k]) => k === "images" || k === "image"
+        );
         if (!hasImages) {
           const plain = {};
           for (let [k, v] of formData.entries()) {
-            if (k !== 'images' && k !== 'primary_image_index') plain[k] = v;
+            if (k !== "images" && k !== "primary_image_index") plain[k] = v;
           }
-          await productApi.updateProduct(editingProduct.id, plain, { headers: { "Content-Type": "application/json" } });
+          await productApi.updateProduct(editingProduct.id, plain, {
+            headers: { "Content-Type": "application/json" },
+          });
         } else {
           await productApi.updateProduct(editingProduct.id, formData);
         }
         message.success("Cập nhật thành công");
       }
-      setModalVisible(false);
+      // If we just created a new product (not editing), keep the modal open
+      // so the seller can add more without reopening the form. When editing,
+      // close the modal after successful update.
+      if (editingProduct) {
+        setModalVisible(false);
+      } else {
+        // reset editing state so the form is ready for a fresh product
+        setEditingProduct(null);
+      }
       fetchData();
-    } catch {
-      message.error("Lỗi khi lưu dữ liệu");
+    } catch (err) {
+      console.error("handleSubmitForm error:", err);
+      const serverMsg =
+        err?.response?.data?.detail || err?.response?.data || err.message;
+      message.error(serverMsg || "Lỗi khi lưu dữ liệu");
     }
   };
 
   // --- GALLERY ---
   const openGallery = (p) => {
     setGalleryProduct(p);
-    let existing = p.images?.map(i => ({
-      uid: String(i.id),
-      url: i.image,
-      status: 'done',
-      name: `Image-${i.id}`,
-      is_primary: i.is_primary
-    })) || [];
+    let existing =
+      p.images?.map((i) => ({
+        uid: String(i.id),
+        url: i.image,
+        status: "done",
+        name: `Image-${i.id}`,
+        is_primary: i.is_primary,
+      })) || [];
 
     if (existing.length === 0 && p.image) {
       existing.push({
-        uid: 'root-image-placeholder',
+        uid: "root-image-placeholder",
         url: p.image,
-        status: 'done',
-        name: 'Ảnh đại diện chính',
-        is_primary: true
+        status: "done",
+        name: "Ảnh đại diện chính",
+        is_primary: true,
       });
     }
     setGalleryFileList(existing);
@@ -371,7 +449,7 @@ export const useProductPage = () => {
   };
 
   const handleSetPrimaryImage = async (imgId) => {
-    if (!galleryProduct || imgId === 'root-image-placeholder') return;
+    if (!galleryProduct || imgId === "root-image-placeholder") return;
     try {
       await productApi.setPrimaryImage(galleryProduct.id, imgId);
       message.success("Đã thay đổi ảnh đại diện");
@@ -384,16 +462,22 @@ export const useProductPage = () => {
 
   const handleRemoveImage = async (file) => {
     if (file.originFileObj) {
-      setGalleryFileList(prev => prev.filter(item => item.uid !== file.uid));
+      setGalleryFileList((prev) =>
+        prev.filter((item) => item.uid !== file.uid)
+      );
       return;
     }
-    if (file.uid === 'root-image-placeholder') {
-      return message.warning("Hãy thêm ảnh khác và đặt làm đại diện trước khi xóa ảnh này.");
+    if (file.uid === "root-image-placeholder") {
+      return message.warning(
+        "Hãy thêm ảnh khác và đặt làm đại diện trước khi xóa ảnh này."
+      );
     }
     try {
       await productApi.deleteProductImage(file.uid);
       message.success("Đã xóa ảnh");
-      setGalleryFileList(prev => prev.filter(item => item.uid !== file.uid));
+      setGalleryFileList((prev) =>
+        prev.filter((item) => item.uid !== file.uid)
+      );
       fetchData();
     } catch {
       message.error("Không thể xóa ảnh này");
@@ -425,28 +509,56 @@ export const useProductPage = () => {
 
   // Return tất cả state và function cần thiết
   return {
-    rawProducts, filteredProducts, categories, loading,
-    selectedRowKeys, selectedRows, setSelectedRowKeys, setSelectedRows, rowSelection,
-    activeTab, setActiveTab, searchTerm, setSearchTerm, tabItems,
-    
-    modalVisible, setModalVisible,
-    importModalVisible, setImportModalVisible,
-    editingProduct, setEditingProduct,
-    
-    selectedProduct, setSelectedProduct,
-    isDetailModalVisible, setIsDetailModalVisible,
-    
-    galleryVisible, setGalleryVisible,
+    rawProducts,
+    filteredProducts,
+    categories,
+    loading,
+    selectedRowKeys,
+    selectedRows,
+    setSelectedRowKeys,
+    setSelectedRows,
+    rowSelection,
+    activeTab,
+    setActiveTab,
+    searchTerm,
+    setSearchTerm,
+    tabItems,
+
+    modalVisible,
+    setModalVisible,
+    importModalVisible,
+    setImportModalVisible,
+    editingProduct,
+    setEditingProduct,
+
+    selectedProduct,
+    setSelectedProduct,
+    isDetailModalVisible,
+    setIsDetailModalVisible,
+
+    galleryVisible,
+    setGalleryVisible,
     galleryProduct,
-    galleryFileList, setGalleryFileList,
+    galleryFileList,
+    setGalleryFileList,
     galleryLoading,
 
     fetchData,
-    handleBulkDelete, handleBulkToggleHide,
-    handleAddNew, handleEdit, handleImportSuccess, handleDelete,
-    handleSelfReject, handleToggleHide, handleSubmitForm,
-    openGallery, handleSetPrimaryImage, handleRemoveImage, handleGalleryUpload,
-    
-    getStatusConfig, getAvailabilityConfig
+    handleBulkDelete,
+    handleBulkToggleHide,
+    handleAddNew,
+    handleEdit,
+    handleImportSuccess,
+    handleDelete,
+    handleSelfReject,
+    handleToggleHide,
+    handleSubmitForm,
+    openGallery,
+    handleSetPrimaryImage,
+    handleRemoveImage,
+    handleGalleryUpload,
+
+    getStatusConfig,
+    getAvailabilityConfig,
   };
 };

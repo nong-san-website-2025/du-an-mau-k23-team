@@ -40,7 +40,7 @@ import AdminPageLayout from "../../components/AdminPageLayout";
 import ProductDetailDrawer from "../../components/ProductAdmin/Product/ProductDetailModal";
 import ProductComparisonModal from "../../components/ProductAdmin/Product/ProductComparisonModal";
 import ShopDetailDrawer from "../../components/ProductAdmin/Product/ShopDetailDrawer";
-
+import { getWSBaseUrl } from "../../../../utils/ws";
 const { Text } = Typography;
 
 // --- API CONFIG ---
@@ -124,86 +124,174 @@ const ApprovalProductsPage = () => {
 
   // --- 2. QUẢN LÝ WEBSOCKET VỚI CƠ CHẾ DỌN DẸP AN TOÀN ---
   useEffect(() => {
-    fetchProducts(); // Tải dữ liệu lần đầu
+    fetchProducts();
 
     const token = localStorage.getItem("token");
     if (!token) return;
 
-    // QUAN TRỌNG: Kiểm tra kĩ backend dùng /ws/ hay /api/ws/
-    // Dựa trên log của bạn, URL là: ws://192.168.1.35:8000/api/ws/admin/products/
-    const wsUrl = `ws://192.168.1.35:8000/api/ws/admin/products/?token=${token}`;
+    let wsUrl;
+    try {
+      const base = getWSBaseUrl();
+      wsUrl = `${base}/ws/admin/products/?token=${token}`;
+    } catch (e) {
+      const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+      const hostFallback = process.env.REACT_APP_WS_URL || window.location.host;
+      wsUrl = `${protocol}://${hostFallback.replace(/^https?:\/\//, "")}/ws/admin/products/?token=${token}`;
+    }
+
+    let socket;
+    let isStopped = false;
+    let reconnectTimeout;
 
     const connectWS = () => {
-      // Nếu socket hiện tại đang kết nối hoặc đã mở, không tạo mới
-      if (
-        socketRef.current &&
-        (socketRef.current.readyState === WebSocket.CONNECTING ||
-          socketRef.current.readyState === WebSocket.OPEN)
-      ) {
-        return;
-      }
+      if (isStopped) return;
+      console.debug("[ADMIN WS] connecting to", wsUrl);
 
-      console.log("🚀 Đang khởi tạo kết nối Realtime...");
-      const socket = new WebSocket(wsUrl);
+      socket = new WebSocket(wsUrl);
+      socketRef.current = socket;
 
       socket.onopen = () => {
-        console.log("✅ Đã kết nối Realtime Product Stream");
+        if (isStopped) {
+          socket.close();
+          return;
+        }
+        console.log("✅ [ADMIN] Product WS connected");
         setWsConnected(true);
       };
 
       socket.onmessage = (event) => {
+        if (isStopped) return;
         try {
-          const response = JSON.parse(event.data);
+          const raw = event.data;
+          console.debug("[ADMIN WS] raw message:", raw);
+          const payload = JSON.parse(raw);
+
+          const action = payload.action || payload.type;
+          const incoming = payload.data;
+          if (!incoming || !incoming.id) return;
+
+          setData((prev) => {
+            switch (action) {
+              case "CREATE":
+              case "NEW_PRODUCT":
+              case "CREATED": {
+                const productWithFlags = {
+                  ...incoming,
+                  is_new: true,
+                  isForcedVisible: true,
+                };
+                // avoid duplicate entries
+                if (prev.some((p) => p.id === productWithFlags.id)) {
+                  const next = detectReupAttempts(
+                    prev.map((p) =>
+                      p.id === productWithFlags.id
+                        ? { ...p, ...productWithFlags }
+                        : p
+                    )
+                  ).sort(
+                    (a, b) => new Date(b.updated_at) - new Date(a.updated_at)
+                  );
+                  console.debug(
+                    "[ADMIN WS] setData (dup-update) length:",
+                    next.length
+                  );
+                  return next;
+                }
+                const next = detectReupAttempts([
+                  productWithFlags,
+                  ...prev,
+                ]).sort(
+                  (a, b) => new Date(b.updated_at) - new Date(a.updated_at)
+                );
+                console.debug(
+                  "[ADMIN WS] setData (prepend) length:",
+                  next.length
+                );
+                return next;
+              }
+              case "UPDATE":
+              case "UPDATE_PRODUCT":
+              case "UPDATED": {
+                const next = detectReupAttempts(
+                  prev.map((p) => (p.id === incoming.id ? incoming : p))
+                ).sort(
+                  (a, b) => new Date(b.updated_at) - new Date(a.updated_at)
+                );
+                console.debug(
+                  "[ADMIN WS] setData (update) length:",
+                  next.length
+                );
+                return next;
+              }
+              case "DELETE":
+              case "DELETED":
+                const next = prev.filter((p) => p.id !== incoming.id);
+                console.debug(
+                  "[ADMIN WS] setData (delete) length:",
+                  next.length
+                );
+                return next;
+              default:
+                return prev;
+            }
+          });
+
           if (
-            response.type === "PRODUCT_CHANGED" ||
-            response.type === "NEW_PRODUCT"
+            action === "CREATE" ||
+            action === "NEW_PRODUCT" ||
+            action === "CREATED"
           ) {
-            const updatedProduct = response.data;
-            setData((prevData) => {
-              const index = prevData.findIndex(
-                (p) => p.id === updatedProduct.id
+            message.success(`🆕 Sản phẩm mới: ${incoming.name}`);
+
+            // Keep the new item visible regardless of active filters for a short time.
+            // Remove the highlight/forced visibility after 8 seconds.
+            setTimeout(() => {
+              setData((prev) =>
+                prev.map((p) =>
+                  p.id === incoming.id
+                    ? { ...p, is_new: false, isForcedVisible: false }
+                    : p
+                )
               );
-              let newData =
-                index !== -1
-                  ? prevData.map((p, i) => (i === index ? updatedProduct : p))
-                  : [updatedProduct, ...prevData];
-              return detectReupAttempts(newData);
-            });
-            if (response.type === "NEW_PRODUCT")
-              message.info(`Sản phẩm mới: ${updatedProduct.name}`);
+            }, 8000);
           }
-        } catch (e) {
-          console.error("Lỗi xử lý dữ liệu WS:", e);
+        } catch (err) {
+          console.error("[ADMIN WS] message parse/error:", err, event.data);
         }
       };
 
-      socket.onerror = (err) => console.error("❌ Lỗi WebSocket:", err);
-
-      socket.onclose = (e) => {
-        console.log("ℹ️ Đã ngắt kết nối Realtime:", e.code);
+      socket.onerror = (err) => {
+        if (isStopped) return;
+        console.error("[ADMIN WS] error", err);
         setWsConnected(false);
       };
 
-      socketRef.current = socket;
+      socket.onclose = (ev) => {
+        if (isStopped) return;
+        console.warn("[ADMIN WS] closed", ev);
+        setWsConnected(false);
+        socketRef.current = null;
+        
+        // Reconnect after 3 seconds
+        reconnectTimeout = setTimeout(connectWS, 3000);
+      };
     };
 
     connectWS();
 
     return () => {
-      // Dọn dẹp: Chỉ đóng nếu socket đang thực sự mở
-      if (socketRef.current) {
-        if (socketRef.current.readyState === WebSocket.OPEN) {
-          socketRef.current.close();
-        }
-        socketRef.current = null;
-      }
+      isStopped = true;
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
+      if (socket) socket.close();
+      socketRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Bỏ fetchProducts khỏi mảng phụ thuộc để tránh loop
 
   // --- 3. FILTER LOGIC ---
   const filteredData = useMemo(() => {
     return data.filter((item) => {
+      // If an item was force-inserted from WS, always show it regardless of filters
+      if (item.isForcedVisible) return true;
       let matchesTab =
         activeTab === "all" ||
         (activeTab === "action_required"

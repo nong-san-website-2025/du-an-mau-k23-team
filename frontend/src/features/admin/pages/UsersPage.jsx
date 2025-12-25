@@ -1,5 +1,5 @@
 // pages/UsersPage.jsx
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import { Button, Input, Select, message, Card, Row, Col, Space } from "antd";
 import {
   SearchOutlined,
@@ -9,10 +9,11 @@ import {
   LockOutlined,
   CheckCircleOutlined,
   ShoppingOutlined,
-  ClearOutlined
-} from '@ant-design/icons';
+  ClearOutlined,
+} from "@ant-design/icons";
 import axios from "axios";
 import { useTranslation } from "react-i18next";
+import { getWSBaseUrl } from "../../../utils/ws";
 
 // Components
 import AdminPageLayout from "../components/AdminPageLayout";
@@ -21,8 +22,8 @@ import UserDetailModal from "../components/UserAdmin/components/UserDetail/UserD
 import StatsSection from "../components/common/StatsSection";
 
 // Constants & Styles
-import { STATUS_LABELS, STATUS } from '../../../constants/statusConstants';
-import '../styles/UsersPage.css';
+import { STATUS_LABELS, STATUS } from "../../../constants/statusConstants";
+import "../styles/UsersPage.css";
 
 const { Option } = Select;
 
@@ -47,6 +48,9 @@ export default function UsersPage() {
 
   // Lấy API URL từ env
   const API_URL = process.env.REACT_APP_API_URL;
+  const getAuthHeaders = () => ({
+    Authorization: `Bearer ${localStorage.getItem("token")}`,
+  });
 
   // --- 2. Data Fetching ---
   const fetchUsers = async () => {
@@ -84,12 +88,167 @@ export default function UsersPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // --- 6. WEBSOCKET: realtime admin updates for user events ---
+  const socketRef = useRef(null);
+  const reconnectRef = useRef({ attempts: 0, timer: null });
+  const MAX_RECONNECT_ATTEMPTS = 6;
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    let wsUrl;
+    try {
+      const base = getWSBaseUrl();
+      wsUrl = `${base}/ws/admin/users/?token=${token}`;
+    } catch (e) {
+      const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+      const hostFallback = process.env.REACT_APP_WS_URL || window.location.host;
+      wsUrl = `${protocol}://${hostFallback.replace(/^https?:\/\//, "")}/ws/admin/users/?token=${token}`;
+    }
+
+    let socket;
+    let isStopped = false;
+
+    const connectWS = () => {
+      if (isStopped) return;
+      console.debug(
+        "[ADMIN WS - USERS] connectWS called, attempt:",
+        reconnectRef.current.attempts + 1
+      );
+      socket = new WebSocket(wsUrl);
+      socketRef.current = socket;
+
+      socket.onopen = () => {
+        if (isStopped) {
+          socket.close();
+          return;
+        }
+        console.log("✅ [ADMIN] Users WS connected");
+        reconnectRef.current.attempts = 0;
+        if (reconnectRef.current.timer) {
+          clearTimeout(reconnectRef.current.timer);
+          reconnectRef.current.timer = null;
+        }
+      };
+
+      socket.onmessage = (event) => {
+        if (isStopped) return;
+        try {
+          const raw = event.data;
+          console.debug("[ADMIN WS - USERS] raw message:", raw);
+          const payload = JSON.parse(raw);
+          const action = payload.action || payload.type;
+          const incoming = payload.data;
+          if (!incoming || !incoming.id) return;
+
+          setUsers((prev) => {
+            switch (action) {
+              case "CREATE":
+              case "CREATED": {
+                const userWithFlags = {
+                  ...incoming,
+                  is_new: true,
+                  isForcedVisible: true,
+                };
+                if (prev.some((u) => u.id === userWithFlags.id)) {
+                  return prev.map((u) =>
+                    u.id === userWithFlags.id ? { ...u, ...userWithFlags } : u
+                  );
+                }
+                return [userWithFlags, ...prev];
+              }
+              case "UPDATE":
+              case "UPDATED":
+                return prev.map((u) =>
+                  u.id === incoming.id ? { ...u, ...incoming } : u
+                );
+              case "DELETE":
+              case "DELETED":
+                return prev.filter((u) => u.id !== incoming.id);
+              default:
+                return prev;
+            }
+          });
+
+          if (action === "CREATE" || action === "CREATED") {
+            message.success(
+              `Người dùng mới: ${incoming.email || incoming.username || incoming.name}`
+            );
+            setTimeout(() => {
+              setUsers((prev) =>
+                prev.map((u) =>
+                  u.id === incoming.id
+                    ? { ...u, is_new: false, isForcedVisible: false }
+                    : u
+                )
+              );
+            }, 8000);
+          }
+        } catch (err) {
+          console.error(
+            "[ADMIN WS - USERS] message parse/error:",
+            err,
+            event.data
+          );
+        }
+      };
+
+      socket.onerror = (err) => {
+        if (isStopped) return;
+        console.error(
+          "[ADMIN WS - USERS] error",
+          err,
+          "readyState:",
+          socket.readyState
+        );
+      };
+
+      socket.onclose = (ev) => {
+        if (isStopped) return;
+        console.warn(
+          "[ADMIN WS - USERS] closed",
+          ev,
+          "readyState:",
+          socket.readyState
+        );
+        socketRef.current = null;
+
+        // schedule reconnect with exponential backoff
+        if (reconnectRef.current.attempts < MAX_RECONNECT_ATTEMPTS) {
+          const attempt = ++reconnectRef.current.attempts;
+          const delay = Math.min(30000, 1000 * 2 ** attempt);
+          console.debug(
+            `[ADMIN WS - USERS] scheduling reconnect #${attempt} in ${delay}ms`
+          );
+          reconnectRef.current.timer = setTimeout(() => {
+            connectWS();
+          }, delay);
+        } else {
+          console.error("[ADMIN WS - USERS] max reconnect attempts reached");
+        }
+      };
+    };
+
+    connectWS();
+
+    return () => {
+      isStopped = true;
+      if (reconnectRef.current.timer) clearTimeout(reconnectRef.current.timer);
+      if (socket) socket.close();
+      socketRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // --- 3. Computed Statistics (Logic tính toán) ---
   const statItems = useMemo(() => {
     const total = users.length;
-    const active = users.filter(user => user.is_active).length;
+    const active = users.filter((user) => user.is_active).length;
     const inactive = total - active;
-    const sellers = users.filter(user => user.role?.name?.toLowerCase() === 'seller').length;
+    const sellers = users.filter(
+      (user) => user.role?.name?.toLowerCase() === "seller"
+    ).length;
 
     // Cấu hình hiển thị cho StatsSection
     return [
@@ -116,7 +275,7 @@ export default function UsersPage() {
         value: sellers,
         icon: <ShoppingOutlined />,
         color: "#722ed1", // Purple
-      }
+      },
     ];
   }, [users]);
 
@@ -139,7 +298,7 @@ export default function UsersPage() {
     <Space wrap>
       <Input
         placeholder="Tìm kiếm tên, email, sđt..."
-        prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
+        prefix={<SearchOutlined style={{ color: "#bfbfbf" }} />}
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
         allowClear
@@ -174,7 +333,12 @@ export default function UsersPage() {
       <Button
         icon={<PlusOutlined />}
         onClick={() => setTriggerAddUser(true)}
-        style={{ borderRadius: 6, fontWeight: 500, backgroundColor: "#28a745", color: "#fff" }}
+        style={{
+          borderRadius: 6,
+          fontWeight: 500,
+          backgroundColor: "#28a745",
+          color: "#fff",
+        }}
       >
         {t("Thêm người dùng")}
       </Button>
@@ -182,10 +346,7 @@ export default function UsersPage() {
   );
 
   return (
-    <AdminPageLayout
-      title="QUẢN LÝ NGƯỜI DÙNG"
-      extra={toolbar}
-    >
+    <AdminPageLayout title="QUẢN LÝ NGƯỜI DÙNG" extra={toolbar}>
       {/* Phần thống kê chuyên nghiệp (Tái sử dụng) */}
       <StatsSection items={statItems} loading={loading} />
 
