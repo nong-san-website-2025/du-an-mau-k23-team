@@ -55,6 +55,7 @@ import LoyaltySettingsPage from "../features/admin/pages/Setting/LoyaltySettings
 import ThemeSettingsPage from "../features/admin/pages/Setting/ThemeSettingsPage";
 import MarketingAdminPage from './../features/admin/pages/MarketingAdmin/AdminMarketingPage';
 import AdminBlogs from "../features/admin/pages/BlogAdmin/AdminBlogs.jsx";
+import StaticPagesAdmin from "../features/admin/pages/ContentAdmin/StaticPagesAdmin.jsx";
 
 export const adminRoutes = [
   <Route element={<AdminPrivateRoute />} key="admin-protect">
@@ -86,6 +87,9 @@ export const adminRoutes = [
       <Route path="marketing/banners" element={<MarketingAdminPage />} />
       <Route path="marketing/blogs" element={<AdminBlogs />} />
       <Route path="promotions/coupons" element={<Coupons />} />
+
+      {/* Content: GreenFarm & Chính Sách */}
+      <Route path="content/pages" element={<StaticPagesAdmin />} />
 
       {/* Reports */}
       <Route path="reports" element={<ReportsPage />} />

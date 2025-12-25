@@ -21,7 +21,7 @@ export default function BlogCard({ post }) {
       <div className="relative h-52 w-full overflow-hidden bg-gray-100">
         {post.image ? (
           <img
-            src={post.image}
+            src={post.image?.startsWith('http') ? post.image : `${process.env.REACT_APP_API_URL?.replace('/api', '')}${post.image}`}
             alt={post.title}
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
           />

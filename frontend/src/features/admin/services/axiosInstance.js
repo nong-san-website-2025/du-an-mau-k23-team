@@ -1,10 +1,12 @@
 // frontend/src/features/admin/services/axiosInstance.js
 import axios from "axios";
 
-const axiosInstance = axios.create({
-  // Sử dụng URL từ .env (CRA cần prefix REACT_APP_)
-  baseURL: process.env.REACT_APP_API_URL || "http://localhost:8000/api",
-});
+// Chuẩn hoá baseURL: đảm bảo chỉ có một lần '/api'
+const rawBase = process.env.REACT_APP_API_URL || "http://localhost:8000";
+const trimmed = rawBase.replace(/\/+$/, "");
+const baseURL = trimmed.endsWith("/api") ? trimmed : `${trimmed}/api`;
+
+const axiosInstance = axios.create({ baseURL });
 
 // Thêm token vào header Authorization trước khi gửi request
 axiosInstance.interceptors.request.use(

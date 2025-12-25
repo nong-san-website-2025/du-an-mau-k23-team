@@ -117,6 +117,13 @@ const UserProfileDropdown = ({ isUserLoggedIn, userProfile, handleLogout, seller
               <Heart size={18} /> Yêu thích
             </Link>
 
+            {/* Admin: Quản lý GreenFarm & Chính Sách */}
+            { (localStorage.getItem('user_role') === 'admin') && (
+              <Link to="/admin/content/pages" className="menu-item" style={{ color: '#16a34a' }}>
+                <Settings size={18} /> GreenFarm & Chính Sách
+              </Link>
+            )}
+
             <div className="menu-divider"></div>
 
             {/* Mục dành cho Seller */}

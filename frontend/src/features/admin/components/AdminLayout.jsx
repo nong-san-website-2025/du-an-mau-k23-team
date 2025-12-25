@@ -98,14 +98,14 @@ function UserDropdown({ onLogout, navigate }) {
         const token = localStorage.getItem("token");
         const apiUrl = process.env.REACT_APP_API_URL; 
         
-        const res = await axios.get(`${apiUrl}/api/users/me/`, {
+        const res = await axios.get(`${apiUrl}/users/me/`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         
         if (res.data.avatar) {
           const fullUrl = res.data.avatar.startsWith("http")
             ? res.data.avatar
-            : `${apiUrl}${res.data.avatar}`;
+            : `${apiUrl.replace('/api', '')}${res.data.avatar}`;
           setAvatarUrl(fullUrl);
         }
       } catch (err) {
@@ -117,6 +117,7 @@ function UserDropdown({ onLogout, navigate }) {
 
   const menuItems = [
     { key: "profile", label: "Thông tin cá nhân", onClick: () => navigate("/admin/profile") },
+    { key: "content", label: "GreenFarm & Chính Sách", onClick: () => navigate("/admin/content/pages") },
     { type: "divider" },
     { key: "logout", label: "Đăng xuất", onClick: onLogout, danger: true },
   ];

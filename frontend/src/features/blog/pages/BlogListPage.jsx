@@ -1,7 +1,8 @@
 // src/pages/BlogListPage.jsx
 import React, { useEffect, useState, useMemo } from "react";
+import axiosInstance from "../../admin/services/axiosInstance";
 import { Link } from "react-router-dom";
-import { Row, Col, Card, Typography, Space, Tag, Spin, Tabs, Empty } from "antd"; // Đã thêm Tabs, Empty
+import { Row, Col, Card, Typography, Space, Tag, Spin, Empty } from "antd"; // Removed Tabs
 import {
   CalendarOutlined,
   FolderOpenOutlined,
@@ -15,11 +16,18 @@ const { Text, Title } = Typography;
 export default function BlogListPage() {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedCategory, setSelectedCategory] = useState("all"); // State lưu danh mục đang chọn
+  // Removed category tabs; show only admin-managed content
+  const [pageHeader, setPageHeader] = useState({ title: "", banner_image: null, content_html: "" });
 
   /* ---------- helpers ---------- */
   const limitChars = (str = "", max = 220) =>
     str.length > max ? str.slice(0, max) + "…" : str;
+  const stripHtml = (html) => {
+    if (!html) return "";
+    const tempDiv = document.createElement("div");
+    tempDiv.innerHTML = html;
+    return tempDiv.textContent || tempDiv.innerText || "";
+  };
 
   /* ---------- fetch data ---------- */
   useEffect(() => {
@@ -27,29 +35,20 @@ export default function BlogListPage() {
       .then((res) => setPosts(res.data))
       .catch((err) => console.error("❌ Lỗi khi load blog:", err))
       .finally(() => setLoading(false));
+    // Load CMS header for blog page (no hardcoded fallback)
+    axiosInstance
+      .get('/pages/blog/')
+      .then(res => {
+        setPageHeader({
+          title: res.data?.title || "",
+          banner_image: res.data?.banner_image || null,
+          content_html: res.data?.content_html || ""
+        });
+      })
+      .catch(() => {});
   }, []);
 
-  /* ---------- Logic Lọc Danh Mục (Mới) ---------- */
-  
-  // 1. Trích xuất danh sách các danh mục duy nhất từ bài viết (hoặc bạn có thể fetch từ API danh mục riêng)
-  const uniqueCategories = useMemo(() => {
-    const categories = posts
-      .map((post) => post.category_name)
-      .filter((cat) => cat); // Lọc bỏ null/undefined
-    return ["all", ...new Set(categories)]; // Thêm 'all' vào đầu và loại bỏ trùng lặp
-  }, [posts]);
-
-  // 2. Tạo danh sách bài viết hiển thị dựa trên bộ lọc
-  const filteredPosts = useMemo(() => {
-    if (selectedCategory === "all") return posts;
-    return posts.filter((post) => post.category_name === selectedCategory);
-  }, [posts, selectedCategory]);
-
-  // 3. Cấu hình items cho Tabs
-  const tabItems = uniqueCategories.map((cat) => ({
-    key: cat,
-    label: cat === "all" ? "Tất cả" : cat,
-  }));
+  /* ---------- No category tabs: render posts directly ---------- */
 
   /* ---------- render ---------- */
   if (loading)
@@ -64,43 +63,59 @@ export default function BlogListPage() {
       style={{
         minHeight: "100vh",
         background: "linear-gradient(to bottom, #ffffff, #f6ffed, #ffffff)",
-        padding: "24px 0px",
+        padding: 0,
       }}
     >
-      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 16px" }}>
-        {/* Header */}
-        <div style={{ textAlign: "center", marginBottom: 30 }}>
-          <Title level={2} style={{ marginBottom: 4, fontWeight: 600 }}>
-            Tin Tức & Sự Kiện
-          </Title>
-          <div
+      {/* HERO from CMS */}
+      <div
+        style={{
+          position: "relative",
+          minHeight: 260,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          textAlign: "center",
+          overflow: "hidden",
+        }}
+      >
+        {pageHeader.banner_image && (
+          <img
+            src={pageHeader.banner_image?.startsWith('http') ? pageHeader.banner_image : `${process.env.REACT_APP_API_URL?.replace('/api', '')}${pageHeader.banner_image}`}
+            alt={pageHeader.title || "Blog"}
             style={{
-              width: 80,
-              height: 4,
-              background: "linear-gradient(to right, #52c41a, #389e0d)",
-              margin: "0 auto",
-              borderRadius: 2,
+              position: "absolute",
+              inset: 0,
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              filter: "brightness(0.9)",
             }}
           />
+        )}
+        <div style={{ position: "relative", zIndex: 1, padding: "40px 16px" }}>
+          {pageHeader.title && (
+            <Title level={2} style={{ marginBottom: 8, fontWeight: 700, color: "#389E0D" }}>
+              {pageHeader.title}
+            </Title>
+          )}
+          {pageHeader.content_html && (
+            <div
+              className="lead"
+              style={{ maxWidth: 900, margin: "0 auto", color: "#4a4a4a" }}
+              dangerouslySetInnerHTML={{ __html: pageHeader.content_html }}
+            />
+          )}
         </div>
+      </div>
 
-        {/* Filter Tabs (Mới) */}
-        <div style={{ marginBottom: 30 }}>
-          <Tabs
-            activeKey={selectedCategory}
-            onChange={(key) => setSelectedCategory(key)}
-            centered
-            items={tabItems}
-            type="card" // Hoặc bỏ dòng này nếu muốn kiểu gạch chân mặc định
-            size="large"
-            tabBarStyle={{ marginBottom: 0 }}
-          />
-        </div>
+      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 16px" }}>
+
+        {/* Removed hardcoded tabs: show only admin-managed content */}
 
         {/* Grid Cards */}
-        {filteredPosts.length > 0 ? (
+        {posts.length > 0 ? (
           <Row gutter={[24, 24]}>
-            {filteredPosts.map((post) => (
+            {posts.map((post) => (
               <Col xs={24} sm={12} lg={8} key={post.slug}>
                 <Link
                   to={`/blog/${post.slug}`}
@@ -120,7 +135,7 @@ export default function BlogListPage() {
                         {post.image ? (
                           <img
                             alt={post.title}
-                            src={post.image}
+                            src={post.image?.startsWith('http') ? post.image : `${process.env.REACT_APP_API_URL?.replace('/api', '')}${post.image}`}
                             style={{
                               width: "100%",
                               height: "100%",
@@ -241,8 +256,7 @@ export default function BlogListPage() {
                         flex: 1, // Đẩy nút đọc thêm xuống dưới cùng
                       }}
                     >
-                      {limitChars(post.content, 120) ||
-                        "Khám phá thêm về sản phẩm và tin tức nông sản mới nhất."}
+                      {limitChars(stripHtml(post.content), 120)}
                     </Text>
 
                     {/* Read More */}
