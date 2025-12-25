@@ -233,6 +233,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://192.168.90.56:3000",
     "http://192.168.89.159:8100",
     "http://192.168.167.74:8100",
+    "http://172.16.150.205:8100",
     "http://localhost:8100",
 ]
 CORS_ALLOW_METHODS = [

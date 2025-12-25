@@ -94,10 +94,9 @@ const AdminSidebar = ({ collapsed }) => {
       ],
     },
     {
-      key: "orders",
+      key: "/admin/orders",
       icon: <ShoppingCartOutlined />,
-      label: "Đơn hàng",
-      children: [{ key: "/admin/orders", label: "Quản lý đơn hàng" }],
+      label: "Giám sát đơn hàng",
     },
     {
       key: "payments",

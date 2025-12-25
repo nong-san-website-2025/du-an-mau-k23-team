@@ -1,33 +1,44 @@
+// src/components/Product/ProductImage.tsx
 import React, { useState } from 'react';
 import { IonImg, IonIcon } from '@ionic/react';
-import { leafOutline } from 'ionicons/icons'; // Đổi icon cho hợp theme
+import { leafOutline } from 'ionicons/icons'; 
 import { resolveImageUrl } from '../../utils/formatPrice';
 
 interface ProductImageProps {
-  src?: string;
+  src?: string | null; // 👇 Cho phép nhận null để linh hoạt hơn (dù ProductCard đã chặn rồi)
   alt: string;
-  className?: string; // Thêm cái này để dễ chỉnh CSS từ cha
-  height?: string; // Chiều cao có thể tùy chỉnh nếu cần
+  className?: string;
+  height?: string;
+  style?: React.CSSProperties; // 👇 QUAN TRỌNG: Phải thêm dòng này để nhận style từ cha
 }
 
-const ProductImage: React.FC<ProductImageProps> = ({ src, alt, className }) => {
+const ProductImage: React.FC<ProductImageProps> = ({ 
+  src, 
+  alt, 
+  className, 
+  style // 👇 Nhận prop style
+}) => {
   const [error, setError] = useState(false);
-  const resolvedSrc = resolveImageUrl(src);
+  
+  // Xử lý src: Nếu là null/undefined hoặc chuỗi rỗng thì coi như lỗi luôn
+  const resolvedSrc = src ? resolveImageUrl(src) : null;
 
-  // Style chung cho cả ảnh và fallback để đảm bảo full khung cha
-  const commonStyle: React.CSSProperties = {
+  // Merge style mặc định với style được truyền vào
+  const finalStyle: React.CSSProperties = {
     width: "100%",
-    height: "100%", // Quan trọng: Luôn full chiều cao của khung chứa
+    height: "100%",
     objectFit: "cover",
-    display: "block" // Tránh khoảng trắng thừa dưới ảnh
+    display: "block",
+    ...style, // Ưu tiên style từ cha truyền xuống
   };
 
+  // Logic hiển thị fallback (khi không có ảnh hoặc load lỗi)
   if (!resolvedSrc || error) {
     return (
       <div 
         className={`fallback-container ${className || ''}`}
         style={{
-          ...commonStyle,
+          ...finalStyle, // Vẫn giữ kích thước quy định
           backgroundColor: "#f0f2f5",
           display: "flex",
           flexDirection: "column",
@@ -36,8 +47,8 @@ const ProductImage: React.FC<ProductImageProps> = ({ src, alt, className }) => {
           color: "#92949c",
         }}
       >
-        {/* Dùng icon lá cây cho GreenFarm */}
-        <IonIcon icon={leafOutline} style={{ fontSize: "40px", opacity: 0.6 }} />
+        {/* Fallback Icon */}
+        <IonIcon icon={leafOutline} style={{ fontSize: "32px", opacity: 0.5 }} />
       </div>
     );
   }
@@ -46,10 +57,9 @@ const ProductImage: React.FC<ProductImageProps> = ({ src, alt, className }) => {
     <IonImg
       src={resolvedSrc}
       alt={alt}
-      
       onIonError={() => setError(true)}
       className={className}
-      style={commonStyle}
+      style={finalStyle}
     />
   );
 };

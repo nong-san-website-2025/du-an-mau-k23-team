@@ -25,7 +25,7 @@ export default defineConfig({
       // (Lấy từ log bạn gửi lúc nãy: 192.168.89.159)
       host: '192.168.89.159', 
       port: 8100,
-    },
+    },  
   },
   build: {
     target: 'esnext',

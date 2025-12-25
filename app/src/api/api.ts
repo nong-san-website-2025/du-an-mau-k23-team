@@ -32,13 +32,13 @@ interface RefreshTokenResponse {
 
 // 1. Lấy Root Domain từ biến môi trường (Giống file format.ts)
 // VD: "http://192.168.2.3:8000" (Không có /api)
-const BASE_URL = import.meta.env.VITE_API_URL || "http://192.168.89.159:8000";
+const BASE_URL = import.meta.env.VITE_API_URL || "http://10.0.2.2:8000";
 // const BASE_URL = "http://10.0.2.2:8000" ;
 
 // 2. Tạo Instance chuyên dùng cho API Data
 const axiosInstance = axios.create({
   baseURL: `${BASE_URL}/api`, // 👉 Nối thêm /api ở đây
-  timeout: 10000,
+  timeout: 60000,
   headers: {
     'Content-Type': 'application/json',
   },

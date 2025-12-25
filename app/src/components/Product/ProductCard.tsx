@@ -2,18 +2,17 @@ import React from "react";
 import {
   IonCard,
   IonCardContent,
-  IonButton,
+  // Đã xóa IonButton ở đây để hết lỗi 1
   IonIcon,
   IonRippleEffect,
+  IonText,
 } from "@ionic/react";
 import { cartOutline, star } from "ionicons/icons";
 import { Product } from "../../types/models";
 import ProductImageComp from "./ProductImage";
 import { intcomma } from "../../utils/formatPrice";
 
-// --- CẤU HÌNH MÀU SẮC (Dùng cho các phần tử nhỏ bên trong) ---
 const PRIMARY_COLOR = "#2E7D32"; // Xanh GreenFarm
-const SUB_TEXT_COLOR = "#888888";
 
 interface ProductCardProps {
   product: Product;
@@ -26,57 +25,43 @@ const ProductCard: React.FC<ProductCardProps> = ({
   onClick,
   onAddToCart,
 }) => {
-  // --- 1. FORMAT TIỀN TỆ & CON SỐ ---
-
-  const formatSold = (num?: number) => {
-    if (!num) return "0";
-    if (num >= 1000) return (num / 1000).toFixed(1) + "k";
-    return num.toString();
-  };
-
-  // --- 2. LOGIC LẤY ẢNH AN TOÀN ---
-  const getProductImage = (p: Product) => {
+  // --- SỬA LỖI 2: Chỉ định rõ kiểu trả về là string hoặc undefined (không được null) ---
+  const getProductImage = (p: Product): string | undefined => {
     if (p.main_image?.image) return p.main_image.image;
-    if (p.images && Array.isArray(p.images) && p.images.length > 0) {
-      return p.images[0].image;
-    }
-    if (typeof p.image === "string" && p.image) return p.image;
-    return undefined;
+    if (p.images && p.images.length > 0) return p.images[0].image;
+
+    // Nếu p.image là null thì trả về undefined để thỏa mãn TypeScript
+    return p.image || undefined;
   };
 
-  const safeImageSrc = getProductImage(product);
+  // Tính phần trăm giảm giá
+  const discountPercent =
+    product.original_price && product.original_price > product.price
+      ? Math.round(
+          ((product.original_price - product.price) / product.original_price) *
+            100
+        )
+      : 0;
 
-  // --- 3. RENDER GIAO DIỆN ---
   return (
     <IonCard
       button={true}
       onClick={onClick}
-      // 👇 Class này quyết định giao diện đẹp (không còn border cứng)
-      className="product-card-modern"
+      className="product-card-hover"
       style={{
-        margin: 0,
+        margin: "0",
         width: "100%",
-        height: "100%",
+        borderRadius: "12px",
+        boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
+        background: "#fff",
         display: "flex",
         flexDirection: "column",
-        position: "relative",
-        overflow: "visible", // Để shadow không bị cắt
-        contain: "none",
-        border: 8,
+        height: "100%",
+        overflow: "hidden",
       }}
     >
-      {/* === PHẦN ẢNH (Tỷ lệ 1:1) === */}
-      <div
-        style={{
-          position: "relative",
-          width: "100%",
-          paddingTop: "100%", // Tạo khung vuông
-          background: "#f5f5f5",
-          borderTopLeftRadius: "12px",
-          borderTopRightRadius: "12px",
-          overflow: "hidden",
-        }}
-      >
+      {/* 1. ẢNH SẢN PHẨM */}
+      <div style={{ position: "relative", width: "100%", paddingTop: "100%" }}>
         <div
           style={{
             position: "absolute",
@@ -87,152 +72,146 @@ const ProductCard: React.FC<ProductCardProps> = ({
           }}
         >
           <ProductImageComp
-            src={safeImageSrc}
+            src={getProductImage(product)} // Giờ hàm này an toàn rồi
             alt={product.name}
-            className="product-image"
+            style={{ width: "100%", height: "100%", objectFit: "cover" }}
           />
         </div>
 
-        {/* Badge Giảm Giá */}
-        {product.original_price && product.original_price > product.price && (
+        {discountPercent > 0 && (
           <div
             style={{
               position: "absolute",
               top: 0,
               right: 0,
-              background: "rgba(255, 212, 0, 0.95)", // Vàng tươi
-              color: "#d32f2f", // Đỏ đậm
-              fontSize: "11px",
+              background: "#FFD600",
+              color: "#D50000",
               fontWeight: "800",
-              padding: "3px 8px",
-              borderBottomLeftRadius: "0px",
-              zIndex: 10,
-              boxShadow: "0 2px 4px rgba(0,0,0,0.15)",
+              fontSize: "11px",
+              padding: "2px 6px",
+              borderBottomLeftRadius: "8px",
             }}
           >
-            -
-            {Math.round(
-              ((product.original_price - product.price) /
-                product.original_price) *
-                100
-            )}
-            %
-          </div>
-        )}
-
-        {/* Badge Đặt Trước */}
-        {product.preorder && (
-          <div
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              background: "#FFA000",
-              color: "#fff",
-              fontSize: "10px",
-              fontWeight: "bold",
-              padding: "4px 8px",
-              borderBottomRightRadius: "8px",
-              zIndex: 10,
-            }}
-          >
-            ĐẶT TRƯỚC
+            -{discountPercent}%
           </div>
         )}
       </div>
 
-      {/* === PHẦN NỘI DUNG === */}
-      <IonCardContent className="product-card-content">
-        {/* Tên sản phẩm */}
-        <h3 className="product-title">{product.name}</h3>
+      {/* 2. NỘI DUNG */}
+      <IonCardContent
+        style={{
+          padding: "10px",
+          display: "flex",
+          flexDirection: "column",
+          flexGrow: 1,
+        }}
+      >
+        <div
+          style={{
+            fontSize: "13px",
+            fontWeight: "500",
+            color: "#333",
+            lineHeight: "1.4em",
+            height: "2.8em",
+            overflow: "hidden",
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical",
+            marginBottom: "4px",
+          }}
+        >
+          {product.name}
+        </div>
 
-        {/* Rating & Đã bán */}
         <div
           style={{
             display: "flex",
             alignItems: "center",
-            fontSize: "11px",
-            color: SUB_TEXT_COLOR,
+            fontSize: "10px",
+            color: "#888",
             marginBottom: "8px",
           }}
         >
-          <IonIcon
-            icon={star}
-            style={{ color: "#FBC02D", fontSize: "12px", marginRight: "3px" }}
-          />
-          <span>
-            {product.rating_average ? product.rating_average.toFixed(1) : "5.0"}
-          </span>
-          <span style={{ margin: "0 6px", opacity: 0.4 }}>|</span>
-          <span>Đã bán {formatSold(product.ordered_quantity)}</span>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              marginRight: "8px",
+            }}
+          >
+            <IonIcon
+              icon={star}
+              style={{ color: "#FFC107", fontSize: "10px", marginRight: "2px" }}
+            />
+            <span>
+              {/* Chuyển đổi chuỗi "0.0" thành số, nếu không có thì mặc định là 0 hoặc 5 tùy bạn */}
+              {product.rating
+                ? parseFloat(product.rating).toFixed(1)
+                : product.rating_average
+                ? product.rating_average.toFixed(1)
+                : "0.0"}
+            </span>
+          </div>
+          <span>Đã bán {product.sold || product.sold_count || 0}</span>
         </div>
 
-        {/* Spacer để đẩy giá xuống đáy */}
-        <div style={{ flexGrow: 1 }}></div>
+        <div style={{ marginTop: "auto" }}></div>
 
-        {/* Footer: Giá & Nút Mua */}
+        {/* 3. FOOTER */}
         <div
           style={{
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            marginTop: "8px", // Tăng khoảng cách một chút cho thoáng
             paddingTop: "4px",
-            borderTop: "1px solid #f0f0f0", // Thêm đường kẻ mờ ngăn cách cho đẹp
           }}
         >
-          {/* Giá tiền */}
           <div style={{ display: "flex", flexDirection: "column" }}>
-            <span
+            <IonText
               style={{
                 color: PRIMARY_COLOR,
                 fontWeight: "700",
-                fontSize: "16px",
-                lineHeight: "1.2",
+                fontSize: "15px",
               }}
             >
-              {intcomma(product.price)}
-              <span
+              {intcomma(product.price)}₫
+            </IonText>
+            {discountPercent > 0 && (
+              <IonText
                 style={{
-                  fontSize: "0.7em",
-                  verticalAlign: "top",
-                  marginLeft: "1px",
+                  textDecoration: "line-through",
+                  color: "#bbb",
+                  fontSize: "10px",
                 }}
               >
-                ₫
-              </span>
-            </span>
+                {intcomma(product.original_price)}₫
+              </IonText>
+            )}
           </div>
 
-          {/* 👇 NÚT THÊM VÀO GIỎ (ĐÃ SỬA) */}
-          <IonButton
-            fill="clear"
-            // Bỏ class btn-add-cart tạm thời nếu class đó đang gây lỗi display:none
-            // className="btn-add-cart"
-
-            // Style trực tiếp để đảm bảo hiển thị
-            style={{
-              margin: 0,
-              height: "32px",
-              width: "32px",
-              "--padding-start": "0",
-              "--padding-end": "0",
-              color: PRIMARY_COLOR, // Ép màu xanh chủ đạo
-              border: `1px solid ${PRIMARY_COLOR}`, // Thêm viền mỏng để nổi bật
-              borderRadius: "50%", // Bo tròn nút
-            }}
+          <div
             onClick={(e) => {
               e.stopPropagation();
-              e.preventDefault();
-              if (onAddToCart) onAddToCart(e);
+              // --- SỬA LỖI 3: Viết rõ ràng if thay vì && ---
+              if (onAddToCart) {
+                onAddToCart(e);
+              }
+            }}
+            style={{
+              background: PRIMARY_COLOR,
+              color: "#fff",
+              width: "28px",
+              height: "28px",
+              borderRadius: "50%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              boxShadow: "0 2px 5px rgba(46, 125, 50, 0.4)",
+              cursor: "pointer",
             }}
           >
-            <IonIcon
-              icon={cartOutline}
-              style={{ fontSize: "18px" }} // Kích thước icon chuẩn
-            />
-          </IonButton>
-          {/* 👆 KẾT THÚC SỬA */}
+            <IonIcon icon={cartOutline} style={{ fontSize: "16px" }} />
+          </div>
         </div>
       </IonCardContent>
 
@@ -241,12 +220,4 @@ const ProductCard: React.FC<ProductCardProps> = ({
   );
 };
 
-// Tối ưu render bằng React.memo
-export default React.memo(ProductCard, (prev, next) => {
-  return (
-    prev.product.id === next.product.id &&
-    prev.product.price === next.product.price &&
-    prev.product.ordered_quantity === next.product.ordered_quantity &&
-    prev.product.rating_average === next.product.rating_average
-  );
-});
+export default React.memo(ProductCard);

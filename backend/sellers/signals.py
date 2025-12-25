@@ -9,24 +9,32 @@ from .serializers import SellerListSerializer # Import serializer của bạn
 
 @receiver(post_save, sender=Seller)
 def notify_admin_new_seller(sender, instance, created, **kwargs):
-    channel_layer = get_channel_layer()
-    
-    # Nếu là tạo mới (created=True) hoặc cập nhật status
-    action = "CREATED" if created else "UPDATED"
-    
-    # Dùng serializer để format dữ liệu giống hệt lúc Admin fetch API
+    channel_layer = get_channel_layer()   
     serializer = SellerListSerializer(instance)
     
-    async_to_sync(channel_layer.group_send)(
-        "admin_seller_approval", # Phải khớp với group_name ở Bước 1
-        {
-            "type": "send_approval_update",
-            "content": {
-                "action": action,
-                "data": serializer.data
+    action = "CREATED" if created else "UPDATED"
+    payload = {
+        "action": action,
+        "data": serializer.data
+    }
+    
+    if created or instance.status in ["pending", "approved", "rejected"]:
+        async_to_sync(channel_layer.group_send)(
+            "admin_seller_approval",
+            {
+                "type": "send_approval_update",
+                "content": payload
             }
-        }
-    )
+        )
+    
+    if instance.status in ["active", "locked"]:
+        async_to_sync(channel_layer.group_send)(
+            "seller_business",
+            {
+                "type": "seller_notification",
+                "content": payload
+            }
+        )
 
 @receiver(post_save, sender=Product)
 def log_product_changes(sender, instance, created, **kwargs):
