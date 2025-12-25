@@ -8,6 +8,19 @@ const { Dragger } = Upload;
 const { Step } = Steps;
 const { Text } = Typography;
 
+// --- ÁNH XẠ TIÊU ĐỀ CỘT LINH HOẠT ---
+const HEADER_MAPPING = {
+    "code": "code", "mã": "code", "ma": "code", "mã voucher": "code",
+    "title": "title", "tiêu đề": "title", "tên": "title", "tên voucher": "title",
+    "discount_type": "discount_type", "loại": "discount_type", "loại giảm": "discount_type",
+    "value": "value", "giá trị": "value", "mức giảm": "value",
+    "start_date": "start_date", "ngày bắt đầu": "start_date", "ngày bd": "start_date",
+    "end_date": "end_date", "ngày kết thúc": "end_date", "ngày kt": "end_date",
+    "quantity": "quantity", "số lượng": "quantity", "sl": "quantity",
+    "per_user": "per_user_quantity", "lượt dùng/người": "per_user_quantity", "lượt/user": "per_user_quantity",
+    "min_order": "min_order", "đơn tối thiểu": "min_order", "tối thiểu": "min_order"
+};
+
 export default function ImportVoucherModal({ open, onCancel, onImportAPI }) {
   const [currentStep, setCurrentStep] = useState(0);
   const [tableData, setTableData] = useState([]);
@@ -63,17 +76,22 @@ export default function ImportVoucherModal({ open, onCancel, onImportAPI }) {
         const workbook = XLSX.read(data, { type: "array" });
         const sheetName = workbook.SheetNames[0];
 
-        const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], {
-            raw: false, 
-            dateNF: 'yyyy-mm-dd' 
-        });
+        const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
 
         if (jsonData.length === 0) {
           message.error("File rỗng!");
           return;
         }
 
-        const validatedData = jsonData.map((item, index) => {
+        const validatedData = jsonData.map((row, index) => {
+            // Chuyển đổi keys của row về lowercase và map sang key chuẩn
+            const item = {};
+            Object.keys(row).forEach(key => {
+                const normalizedKey = key.toString().toLowerCase().trim();
+                const mappedKey = HEADER_MAPPING[normalizedKey] || normalizedKey;
+                item[mappedKey] = row[key];
+            });
+
             const cleanNumber = (val) => {
                 if (typeof val === 'number') return val;
                 if (typeof val === 'string') {
@@ -85,23 +103,37 @@ export default function ImportVoucherModal({ open, onCancel, onImportAPI }) {
 
             const cleanDate = (val) => {
                 if (!val) return null;
+                // Nếu là số (Excel date serial)
+                if (typeof val === 'number') {
+                    const date = XLSX.utils.format_date(val); // Trả về dạng m/d/yy hoặc tương tự tùy version
+                    return dayjs(date).format('YYYY-MM-DD');
+                }
                 const d = dayjs(val); 
                 return d.isValid() ? d.format('YYYY-MM-DD') : val;
             };
 
             // Chuẩn hóa loại voucher
             let type = item.discount_type ? item.discount_type.toString().toLowerCase().trim() : 'amount';
+            if (type.includes('phần trăm') || type.includes('%') || type.includes('percent')) type = 'percent';
+            if (type.includes('tiền') || type.includes('amount') || type.includes('cố định')) type = 'amount';
+            if (type.includes('freeship') || type.includes('vận chuyển')) type = 'freeship';
 
-            return {
-                key: index,
-                ...item,
+            const processedItem = {
+                code: item.code?.toString().toUpperCase().trim(),
+                title: item.title?.toString().trim(),
                 discount_type: type,
                 value: cleanNumber(item.value),
-                quantity: cleanNumber(item.quantity),
+                quantity: cleanNumber(item.quantity) || 100, // Mặc định 100 nếu thiếu
+                per_user_quantity: cleanNumber(item.per_user_quantity) || 1, // Mặc định 1
                 min_order: cleanNumber(item.min_order),
                 start_date: cleanDate(item.start_date),
                 end_date: cleanDate(item.end_date),
-                isValid: item.code && item.title && item.value && item.start_date && item.end_date, 
+            };
+
+            return {
+                key: index,
+                ...processedItem,
+                isValid: !!(processedItem.code && processedItem.title && processedItem.value && processedItem.start_date && processedItem.end_date), 
             };
         });
 
@@ -119,27 +151,43 @@ export default function ImportVoucherModal({ open, onCancel, onImportAPI }) {
 
   // --- 3. GỬI DỮ LIỆU ---
   const handleSubmit = async () => {
+    // Chỉ lọc các dòng hợp lệ để gửi đi
+    const validData = tableData.filter(item => item.isValid);
+    
+    if (validData.length === 0) {
+        message.error("Không có dữ liệu hợp lệ để import!");
+        return;
+    }
+
     setLoading(true);
     setErrors([]);
     try {
-      const payload = tableData.map(({ key, isValid, ...rest }) => rest);
+      const payload = validData.map(({ key, isValid, ...rest }) => rest);
       await onImportAPI(payload); 
-      message.success("Import thành công!");
+      message.success(`Import thành công ${validData.length} voucher!`);
       handleReset(); 
       onCancel();    
     } catch (err) {
-      console.error(err);
+      console.error("Import Error:", err);
       const resData = err.response?.data;
+      
       if (resData?.errors && Array.isArray(resData.errors)) {
+          // Lỗi chi tiết từng dòng từ Serializer (many=True)
           const errorList = resData.errors.map((e, i) => {
-             const details = Object.entries(e).map(([k, v]) => `${k}: ${v}`).join(', ');
+             if (Object.keys(e).length === 0) return null;
+             const details = Object.entries(e).map(([k, v]) => {
+                const fieldName = HEADER_MAPPING[k] || k;
+                return `${fieldName}: ${v}`;
+             }).join(', ');
              return `Dòng ${i+1}: ${details}`;
-          });
+          }).filter(item => item !== null);
           setErrors(errorList);
+      } else if (resData?.error) {
+          setErrors([resData.error]);
       } else if (resData?.message) {
           setErrors([resData.message]);
       } else {
-          setErrors(["Lỗi hệ thống (500). Kiểm tra lại Server/Database."]);
+          setErrors(["Lỗi kết nối Server hoặc dữ liệu không đúng định dạng."]);
       }
       message.error("Import thất bại!");
     } finally {
@@ -197,7 +245,8 @@ export default function ImportVoucherModal({ open, onCancel, onImportAPI }) {
         return <Text type={isValid ? "" : "danger"}>{date}</Text>
       }
     },
-    { title: "SL", dataIndex: "quantity" },
+    { title: "SL", dataIndex: "quantity", width: 80 },
+    { title: "Lượt/User", dataIndex: "per_user_quantity", width: 100 },
     {
         title: "Trạng thái",
         key: "status",

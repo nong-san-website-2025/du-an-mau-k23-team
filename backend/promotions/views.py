@@ -162,7 +162,7 @@ class ImportVoucherAPIView(APIView):
                         end_at=end_at,
                         
                         total_quantity=item['quantity'],
-                        per_user_quantity=1,
+                        per_user_quantity=item.get('per_user_quantity', 1),
                         
                         # Mặc định là Claim để user nhận được
                         distribution_type='claim', 
@@ -173,9 +173,12 @@ class ImportVoucherAPIView(APIView):
                     )
                     vouchers_to_create.append(voucher)
                 
-                Voucher.objects.bulk_create(vouchers_to_create)
+                if vouchers_to_create:
+                    Voucher.objects.bulk_create(vouchers_to_create)
+                else:
+                    return Response({"error": "Không có voucher hợp lệ nào để tạo."}, status=400)
 
-            return Response({"success": True, "message": "Import thành công!"}, status=201)
+            return Response({"success": True, "message": f"Import thành công {len(vouchers_to_create)} voucher!"}, status=201)
 
         except Exception as e:
             # In lỗi ra terminal để debug

@@ -268,6 +268,7 @@ class VoucherImportSerializer(serializers.Serializer):
     start_date = serializers.DateField(format="%Y-%m-%d", input_formats=["%Y-%m-%d", "%d/%m/%Y"])
     end_date = serializers.DateField(format="%Y-%m-%d", input_formats=["%Y-%m-%d", "%d/%m/%Y"])
     quantity = serializers.IntegerField(min_value=1, default=100)
+    per_user_quantity = serializers.IntegerField(min_value=1, default=1, required=False)
     min_order = serializers.DecimalField(max_digits=12, decimal_places=0, required=False, default=0)
 
     def validate_code(self, value):
