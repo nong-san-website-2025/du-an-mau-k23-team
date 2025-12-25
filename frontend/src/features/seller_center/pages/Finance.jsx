@@ -64,7 +64,8 @@ const FinancePage = () => {
     monthlyRevenue: 0,
     monthlyWithdrawn: 0,
   });
-  const [rawTransactions, setRawTransactions] = useState([]); 
+  const [rawTransactions, setRawTransactions] = useState([]);
+  const [chartData, setChartData] = useState([]);
 
   // Filter States
   const [filters, setFilters] = useState({
@@ -91,6 +92,17 @@ const FinancePage = () => {
       // Xử lý dữ liệu
       const derivedSummary = deriveGrossProfitFromPayments(financeRes?.payments || []);
       const derivedTransactions = deriveTransactionRows(financeRes?.payments);
+
+      const fallbackChartData = buildChartData(derivedTransactions);
+      const apiChartData = Array.isArray(chartRes?.data) ? chartRes.data : [];
+      const normalizedChartData = apiChartData.length
+        ? apiChartData.map((point) => ({
+            date: point?.date,
+            metric: point?.metric,
+            value: toNumber(point?.value),
+          }))
+        : fallbackChartData;
+      setChartData(normalizedChartData);
 
       const monthlyRevenue = (financeRes?.payments || [])
         .filter((payment) => {
@@ -123,6 +135,7 @@ const FinancePage = () => {
 
     } catch (err) {
       console.error("Lỗi tải dữ liệu tài chính:", err);
+      setChartData([]);
       const errorMessage = err.message || "Không thể tải dữ liệu";
       if (errorMessage.includes("Seller not found")) setError("seller_not_found");
       else if (errorMessage.includes("Unauthorized") || errorMessage.includes("401")) setError("unauthorized");
@@ -163,8 +176,6 @@ const FinancePage = () => {
       return matchesType && matchesSearch && matchesDate;
     });
   }, [filters, rawTransactions]);
-
-  const chartData = useMemo(() => buildChartData(filteredTransactions), [filteredTransactions]);
 
   // --- 3. EVENT HANDLERS ---
   const handleQuickRangeChange = (value) => {

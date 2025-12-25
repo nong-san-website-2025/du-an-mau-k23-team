@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import { Table, Checkbox, Tag, Badge, Typography, Space } from "antd";
-import { EditOutlined, DeleteOutlined } from "@ant-design/icons";
+import { Table, Checkbox, Tag, Badge, Typography, Space, Image } from "antd"; // Thêm Image
+import { EditOutlined, DeleteOutlined, PictureOutlined } from "@ant-design/icons"; // Thêm PictureOutlined
 import moment from "moment";
 import { intcomma } from "../../../../utils/format";
 import ButtonAction from "../../../../components/ButtonAction";
@@ -190,6 +190,39 @@ export default function FlashSaleTable({
   // --- Nested Product Table ---
   const expandedRowRender = (record) => {
     const productColumns = [
+      // --- CỘT ẢNH MỚI THÊM ---
+      {
+        title: <PictureOutlined />, // Icon header
+        dataIndex: "image", // Lưu ý: Đảm bảo API trả về trường này là 'image' hoặc 'thumbnail'
+        key: "image",
+        width: 60,
+        align: "center",
+        render: (src) => (
+          <div
+            style={{
+              width: 42,
+              height: 42,
+              borderRadius: 4,
+              border: "1px solid #f0f0f0",
+              overflow: "hidden",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: "#fff",
+            }}
+          >
+            <Image
+              src={src || "https://placehold.co/40x40?text=NoImg"}
+              width={40}
+              height={40}
+              style={{ objectFit: "cover" }}
+              fallback="https://placehold.co/40x40?text=Error"
+              preview={true} // Cho phép click để xem ảnh lớn
+            />
+          </div>
+        ),
+      },
+      // -------------------------
       {
         title: "Sản phẩm",
         dataIndex: "product_name",

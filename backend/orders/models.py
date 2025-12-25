@@ -3,12 +3,8 @@ from django.utils import timezone
 from products.models import Product
 from users.models import CustomUser
 from django.conf import settings
-from promotions.models import Voucher # <--- [QUAN TRỌNG 1]: Nhớ Import dòng này
-# Nếu bạn dùng PostgreSQL thì dùng JSONField để lưu danh sách ảnh bằng chứng, 
-# nếu không thì dùng TextField rồi split chuỗi.
-# from django.contrib.postgres.fields import ArrayField 
+from promotions.models import Voucher 
 
-# --- CART SYSTEM (Giữ nguyên) ---
 class Cart(models.Model):
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name="orders_cart")
     created_at = models.DateTimeField(auto_now_add=True)

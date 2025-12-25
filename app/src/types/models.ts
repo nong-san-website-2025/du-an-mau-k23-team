@@ -79,6 +79,9 @@ export interface Product {
   store_name?: string; 
   brand?: string;
 
+  sold?: number;        // <--- Thêm dòng này
+  sold_count?: number;  // <--- Thêm dòng này (nếu cần)
+
   // --- KHO & TRẠNG THÁI ---
   // Bạn có nhiều field na ná nhau, nên gom gọn logic:
   inventory_qty?: number;     // Tổng kho
@@ -86,8 +89,10 @@ export interface Product {
   ordered_quantity?: number;  // Số lượng ĐÃ BÁN (dùng để hiển thị "Đã bán 1k")
   
   preorder?: boolean;         // Hàng đặt trước
+
+  rating?: string | number; // API trả về string "0.0" nhưng nên khai báo cả 2 cho chắc
+  rating_average?: number;  // Giữ lại nếu cần backward compatibility
   
-  rating_average?: number;
 }
 
 // ==========================================

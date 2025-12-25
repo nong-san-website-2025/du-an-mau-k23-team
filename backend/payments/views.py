@@ -71,21 +71,36 @@ def withdraw_request(request):
         seller = Seller.objects.get(user=user)
     except Seller.DoesNotExist:
         return Response({"error": "Seller not found"}, status=404)
+
     amount = request.data.get("amount")
     if not amount or float(amount) <= 0:
-        return Response({"error": "Số tiền không hợp lệ"}, status=400)
-    # Kiểm tra số dư
-    product_ids = Product.objects.filter(seller=seller).values_list("id", flat=True)
-    order_ids = OrderItem.objects.filter(product_id__in=product_ids).values_list("order_id", flat=True).distinct()
-    payments = Payment.objects.filter(order_id__in=order_ids, status="completed")
-    total_revenue = payments.aggregate(total=Sum("amount"))['total'] or 0
-    total_withdrawn = WithdrawRequest.objects.filter(seller=seller, status__in=["paid", "approved"]).aggregate(total=Sum("amount"))['total'] or 0
-    balance = float(total_revenue) - float(total_withdrawn)
-    if float(amount) > balance:
-        return Response({"error": "Số dư không đủ"}, status=400)
-    # Lưu yêu cầu rút tiền
-    withdraw = WithdrawRequest.objects.create(seller=seller, amount=amount, status="pending")
-    return Response({"message": "Yêu cầu rút tiền đã được gửi!", "id": withdraw.id})
+        return Response({"error": "Invalid amount"}, status=400)
+
+    # Kiểm tra số dư khả dụng
+    try:
+        wallet = SellerWallet.objects.get(seller=seller)
+    except SellerWallet.DoesNotExist:
+        return Response({"error": "Wallet not found"}, status=404)
+
+    if Decimal(amount) > wallet.balance:
+        return Response({"error": "Insufficient balance"}, status=400)
+
+    # Tạo yêu cầu rút tiền
+    try:
+        with transaction.atomic():
+            WithdrawRequest.objects.create(
+                seller=seller,
+                amount=Decimal(amount),
+                status="pending",
+                note=request.data.get("note", "")
+            )
+            wallet.balance -= Decimal(amount)
+            wallet.save()
+    except Exception as e:
+        logger.error(f"Error creating withdraw request: {e}")
+        return Response({"error": "Failed to create withdraw request"}, status=500)
+
+    return Response({"message": "Withdraw request created successfully"}, status=201)
 # API: Số dư khả dụng cho seller
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
@@ -121,11 +136,17 @@ def revenue_chart(request):
 
     # Doanh thu theo ngày (7 ngày gần nhất)
     daily = payments.annotate(day=TruncDay("created_at")).values("day").annotate(amount=Sum("amount")).order_by("day")
-    daily_data = [{"date": d["day"].strftime("%Y-%m-%d"), "amount": float(d["amount"] or 0), "type": "Ngày"} for d in daily]
+    daily_data = [
+        {"date": d["day"].strftime("%Y-%m-%d"), "value": float(d["amount"] or 0), "metric": "Doanh thu ngày"}
+        for d in daily
+    ]
 
     # Doanh thu theo tháng (6 tháng gần nhất)
     monthly = payments.annotate(month=TruncMonth("created_at")).values("month").annotate(amount=Sum("amount")).order_by("month")
-    monthly_data = [{"date": m["month"].strftime("%Y-%m"), "amount": float(m["amount"] or 0), "type": "Tháng"} for m in monthly]
+    monthly_data = [
+        {"date": m["month"].strftime("%Y-%m"), "value": float(m["amount"] or 0), "metric": "Doanh thu tháng"}
+        for m in monthly
+    ]
 
     return Response({"data": daily_data + monthly_data})
 from .models_withdraw import WithdrawRequest
@@ -473,14 +494,48 @@ def get_wallets(request):
     # ✅ Select related đến seller.user để tránh N+1 query
     wallets = SellerWallet.objects.select_related('seller__user').all()
     
+    from orders.models import Order, OrderItem
+    from products.models import Product
+    from .models import WalletTransaction
+    from decimal import Decimal
     data = []
     for wallet in wallets:
+        # Tính lại pending_balance giống modal
+        seller = wallet.seller
+        product_ids = Product.objects.filter(seller=seller).values_list('id', flat=True)
+        order_ids = OrderItem.objects.filter(product_id__in=product_ids).values_list('order_id', flat=True).distinct()
+        success_orders = Order.objects.filter(id__in=order_ids, status__in=["success", "completed"]).prefetch_related('items', 'items__product')
+        pending_balance = Decimal('0')
+        for order in success_orders:
+            is_approved = WalletTransaction.objects.filter(wallet=wallet, order=order, type='sale_income').exists()
+            if not is_approved:
+                # Tính net_income
+                order_total = Decimal(str(order.total_price or 0))
+                shipping_fee = Decimal(str(order.shipping_fee or 0))
+                seller_item_total = Decimal('0')
+                commission = Decimal('0')
+                for item in order.items.all():
+                    if item.product and item.product.seller_id == seller.id:
+                        item_total = Decimal(str(item.price or 0)) * item.quantity
+                        seller_item_total += item_total
+                        commission_rate = (
+                            Decimal(str(item.product.category.commission_rate))
+                            if item.product.category else Decimal('0')
+                        )
+                        commission += item_total * commission_rate
+                if order_total > 0 and seller_item_total > 0:
+                    shipping_fee_seller = (seller_item_total / order_total) * shipping_fee
+                else:
+                    shipping_fee_seller = Decimal('0')
+                net_income = seller_item_total - shipping_fee_seller - commission
+                if net_income > 0:
+                    pending_balance += net_income
         data.append({
             "seller_id": wallet.seller.user.id,
             "store_name": wallet.seller.store_name,
             "email": wallet.seller.user.email,
             "balance": float(wallet.balance),
-            "pending_balance": float(wallet.pending_balance),
+            "pending_balance": float(pending_balance),
             "updated_at": wallet.updated_at.isoformat() if wallet.updated_at else None,
         })
     return Response(data)
@@ -883,23 +938,32 @@ def get_pending_orders_for_wallet(request, seller_id):
         product_ids = Product.objects.filter(seller=seller).values_list('id', flat=True)
         order_ids = OrderItem.objects.filter(product_id__in=product_ids).values_list('order_id', flat=True).distinct()
         
+        # Sửa: Chấp nhận cả status 'success' (cũ) và 'completed' (mới)
         success_orders = Order.objects.filter(
             id__in=order_ids, 
-            status="success"
+            status__in=["success", "completed"]
         ).prefetch_related('items', 'items__product').order_by('-created_at')
 
         pending_orders_data = []
         
-        # 2. Lọc ra những đơn chưa có trong WalletTransaction
-        # Note: Cách này đơn giản, nếu system lớn nên thêm field is_paid vào Order
+        # 2. Lọc ra những đơn chưa được Duyệt (chưa có sale_income)
         for order in success_orders:
-            # Check xem đã có giao dịch nào ghi chú là đơn này chưa
-            is_processed = WalletTransaction.objects.filter(
+            is_approved = WalletTransaction.objects.filter(
                 wallet__seller=seller,
-                note__contains=f"Order #{order.id}"
+                order=order,
+                type='sale_income'
             ).exists()
-            
-            if not is_processed:
+            if not is_approved:
+                # Tính phí sàn (commission) dựa trên từng sản phẩm
+                commission = 0
+                for item in order.items.all():
+                    if item.product and item.product.seller_id == seller.id:
+                        item_total = float(item.price or 0) * item.quantity
+                        # Lấy commission_rate từ category, nếu không có thì mặc định 0.05
+                        commission_rate = 0.05
+                        if item.product.category and hasattr(item.product.category, 'commission_rate'):
+                            commission_rate = float(item.product.category.commission_rate)
+                        commission += item_total * commission_rate
                 net_income = calculate_order_net_income(order, seller.id)
                 if net_income > 0:
                     pending_orders_data.append({
@@ -907,6 +971,7 @@ def get_pending_orders_for_wallet(request, seller_id):
                         "created_at": order.created_at,
                         "customer_name": order.customer_name,
                         "total_order_value": float(order.total_price),
+                        "commission": round(commission, 2),
                         "net_income": float(net_income),
                     })
 
@@ -936,23 +1001,24 @@ def approve_order_revenue(request, order_id):
             seller = first_item.product.seller
             wallet = SellerWallet.objects.select_for_update().get(seller=seller)
 
-            # Check trùng lặp
-            if WalletTransaction.objects.filter(wallet=wallet, note__contains=f"Order #{order.id}").exists():
+            # Check trùng lặp (dùng type='sale_income' cho chính xác)
+            if WalletTransaction.objects.filter(wallet=wallet, order=order, type='sale_income').exists():
                 return Response({"error": "Đơn hàng này đã được cộng tiền rồi"}, status=400)
 
             # Tính tiền
             amount = calculate_order_net_income(order, seller.id)
             
-            # ✅ UPDATE LOGIC VÍ (FIX LỖI CỦA BẠN TẠI ĐÂY)
+            # ✅ UPDATE LOGIC VÍ
             wallet.balance += amount
             wallet.pending_balance = max(wallet.pending_balance - amount, Decimal('0')) # Trừ pending
             wallet.save()
 
-            # Tạo lịch sử
+            # Tạo lịch sử (dùng type='sale_income')
             WalletTransaction.objects.create(
                 wallet=wallet,
+                order=order,
                 amount=amount,
-                type="add", 
+                type="sale_income", 
                 note=f"Doanh thu từ đơn hàng Order #{order.id}"
             )
 

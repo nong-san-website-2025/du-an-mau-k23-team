@@ -94,10 +94,9 @@ const AdminSidebar = ({ collapsed }) => {
       ],
     },
     {
-      key: "orders",
+      key: "/admin/orders",
       icon: <ShoppingCartOutlined />,
-      label: "Đơn hàng",
-      children: [{ key: "/admin/orders", label: "Quản lý đơn hàng" }],
+      label: "Giám sát đơn hàng",
     },
     {
       key: "payments",
@@ -139,12 +138,18 @@ const AdminSidebar = ({ collapsed }) => {
       label: "Đánh giá",
       children: [{ key: "/admin/reviews", label: "Quản lý đánh giá" }],
     },
+    // === PHẦN ĐÃ CHỈNH SỬA ===
     {
       key: "promotions",
       icon: <TagOutlined />,
       label: "Khuyến mãi",
-      children: [{ key: "/admin/promotions", label: "Quản lý khuyến mãi" }],
+      children: [
+        { key: "/admin/promotions", label: "Quản lý khuyến mãi" },
+        // Thêm dòng này để tạo menu mới
+        { key: "/admin/promotions/usage", label: "Quản lý sử dụng voucher" } 
+      ],
     },
+    // ==========================
 
     {
       key: "test-ui-group", // Key của menu cha
@@ -155,7 +160,6 @@ const AdminSidebar = ({ collapsed }) => {
           key: "/admin/notifications", // Key này phải khớp chính xác với Route path trong AdminRoutes
           label: "Quản lý thông báo",
         },
-        // Bro có thể thêm các công cụ test khác ở đây sau này
       ],
     },
   ];
@@ -205,7 +209,7 @@ const AdminSidebar = ({ collapsed }) => {
         mode="inline"
         defaultSelectedKeys={[location.pathname]}
         selectedKeys={[location.pathname]}
-        defaultOpenKeys={['users', 'sellers', 'products', 'orders']} 
+        defaultOpenKeys={['users', 'sellers', 'products', 'orders', 'promotions']} // Thêm 'promotions' vào để mặc định mở menu này nếu cần
         items={items}
         onClick={({ key }) => navigate(key)}
         style={{ borderRight: 0, paddingTop: 10, paddingBottom: 60 }}

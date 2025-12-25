@@ -19,7 +19,7 @@ export const productApi = {
     return API.get<Product[]>("/products/top-products/");
   },
 
-  getProduct(id: number | string): Promise<Product> {
+    getProduct(id: number | string): Promise<Product> {
     return API.get<Product>(`/products/${id}/`);
   },
 

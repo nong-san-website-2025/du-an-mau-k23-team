@@ -136,6 +136,16 @@ export default function PromotionPage() {
       ),
     },
     {
+      title: "Lượt sử dụng",
+      dataIndex: "users_count",
+      key: "users_count",
+      render: (count) => (
+        <span style={{ fontWeight: 500, color: "#1890ff" }}>
+          {count || 0} người dùng
+        </span>
+      ),
+    },
+    {
       title: "Ngày bắt đầu",
       dataIndex: "start_at",
       key: "start_at",

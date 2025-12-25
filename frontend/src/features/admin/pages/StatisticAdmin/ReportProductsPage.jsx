@@ -3,8 +3,16 @@ import {
   Card, Table, Row, Col, Tag, message, Typography, Space, Button, Tooltip, Tabs, Empty, Dropdown
 } from "antd";
 import {
-  TrophyOutlined, AlertOutlined, ExclamationCircleOutlined, FrownOutlined, ReloadOutlined,
-  DollarOutlined, WarningOutlined, DownloadOutlined
+  TrophyOutlined,
+  AlertOutlined,
+  ExclamationCircleOutlined,
+  FrownOutlined,
+  ReloadOutlined,
+  EditOutlined,
+  DollarOutlined,
+  ShoppingCartOutlined,
+ WarningOutlined,
+ DownloadOutlined,
 } from "@ant-design/icons";
 import {
   BarChart,

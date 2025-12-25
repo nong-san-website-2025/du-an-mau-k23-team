@@ -14,6 +14,8 @@ export default function ImportVoucherModal({ open, onCancel, onImportAPI }) {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState([]);
 
+  const [selectedFile, setSelectedFile] = useState(null);
+
   // --- 1. TẠO FILE MẪU EXCEL ---
   const handleDownloadTemplate = () => {
     const templateData = [
@@ -56,7 +58,9 @@ export default function ImportVoucherModal({ open, onCancel, onImportAPI }) {
 
   // --- 2. ĐỌC FILE EXCEL ---
   const handleFileUpload = (file) => {
+    setSelectedFile(file);
     const reader = new FileReader();
+
     reader.onload = (e) => {
       try {
         const data = new Uint8Array(e.target.result);
@@ -64,8 +68,8 @@ export default function ImportVoucherModal({ open, onCancel, onImportAPI }) {
         const sheetName = workbook.SheetNames[0];
 
         const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], {
-            raw: false, 
-            dateNF: 'yyyy-mm-dd' 
+          raw: false,
+          dateNF: 'yyyy-mm-dd'
         });
 
         if (jsonData.length === 0) {
@@ -74,39 +78,39 @@ export default function ImportVoucherModal({ open, onCancel, onImportAPI }) {
         }
 
         const validatedData = jsonData.map((item, index) => {
-            const cleanNumber = (val) => {
-                if (typeof val === 'number') return val;
-                if (typeof val === 'string') {
-                    const cleanString = val.replace(/[^0-9]/g, ''); 
-                    return parseInt(cleanString, 10) || 0;
-                }
-                return 0;
-            };
+          const cleanNumber = (val) => {
+            if (typeof val === 'number') return val;
+            if (typeof val === 'string') {
+              const cleanString = val.replace(/[^0-9]/g, '');
+              return parseInt(cleanString, 10) || 0;
+            }
+            return 0;
+          };
 
-            const cleanDate = (val) => {
-                if (!val) return null;
-                const d = dayjs(val); 
-                return d.isValid() ? d.format('YYYY-MM-DD') : val;
-            };
+          const cleanDate = (val) => {
+            if (!val) return null;
+            const d = dayjs(val);
+            return d.isValid() ? d.format('YYYY-MM-DD') : val;
+          };
 
-            // Chuẩn hóa loại voucher
-            let type = item.discount_type ? item.discount_type.toString().toLowerCase().trim() : 'amount';
+          // Chuẩn hóa loại voucher
+          let type = item.discount_type ? item.discount_type.toString().toLowerCase().trim() : 'amount';
 
-            return {
-                key: index,
-                ...item,
-                discount_type: type,
-                value: cleanNumber(item.value),
-                quantity: cleanNumber(item.quantity),
-                min_order: cleanNumber(item.min_order),
-                start_date: cleanDate(item.start_date),
-                end_date: cleanDate(item.end_date),
-                isValid: item.code && item.title && item.value && item.start_date && item.end_date, 
-            };
+          return {
+            key: index,
+            ...item,
+            discount_type: type,
+            value: cleanNumber(item.value),
+            quantity: cleanNumber(item.quantity),
+            min_order: cleanNumber(item.min_order),
+            start_date: cleanDate(item.start_date),
+            end_date: cleanDate(item.end_date),
+            isValid: item.code && item.title && item.value && item.start_date && item.end_date,
+          };
         });
 
         setTableData(validatedData);
-        setCurrentStep(1); 
+        setCurrentStep(1);
         message.success(`Đã đọc được ${jsonData.length} dòng dữ liệu`);
       } catch (error) {
         console.error(error);
@@ -119,27 +123,39 @@ export default function ImportVoucherModal({ open, onCancel, onImportAPI }) {
 
   // --- 3. GỬI DỮ LIỆU ---
   const handleSubmit = async () => {
+    // Kiểm tra xem đã có file chưa
+    if (!selectedFile) {
+      message.error("Chưa có file để upload!");
+      return;
+    }
+
     setLoading(true);
     setErrors([]);
+
     try {
-      const payload = tableData.map(({ key, isValid, ...rest }) => rest);
-      await onImportAPI(payload); 
+      // [QUAN TRỌNG] Dùng FormData để đóng gói file vật lý
+      const formData = new FormData();
+      formData.append('file', selectedFile); // Key 'file' phải khớp với backend
+
+      // Gửi formData (không gửi tableData nữa)
+      await onImportAPI(formData);
+
       message.success("Import thành công!");
-      handleReset(); 
-      onCancel();    
+      handleReset();
+      onCancel();
     } catch (err) {
       console.error(err);
       const resData = err.response?.data;
+
+      // Logic hiển thị lỗi (giữ nguyên hoặc tùy chỉnh)
       if (resData?.errors && Array.isArray(resData.errors)) {
-          const errorList = resData.errors.map((e, i) => {
-             const details = Object.entries(e).map(([k, v]) => `${k}: ${v}`).join(', ');
-             return `Dòng ${i+1}: ${details}`;
-          });
-          setErrors(errorList);
+        // Xử lý mảng lỗi
+        const errorList = resData.errors.map(e => (typeof e === 'string' ? e : JSON.stringify(e)));
+        setErrors(errorList);
       } else if (resData?.message) {
-          setErrors([resData.message]);
+        setErrors([resData.message]);
       } else {
-          setErrors(["Lỗi hệ thống (500). Kiểm tra lại Server/Database."]);
+        setErrors(["Lỗi hệ thống hoặc lỗi file."]);
       }
       message.error("Import thất bại!");
     } finally {
@@ -149,48 +165,49 @@ export default function ImportVoucherModal({ open, onCancel, onImportAPI }) {
 
   const handleReset = () => {
     setTableData([]);
+    setSelectedFile(null); // [MỚI] Xóa file đã lưu
     setCurrentStep(0);
     setErrors([]);
   };
 
   // --- [QUAN TRỌNG] CẤU HÌNH CỘT BẢNG (ĐÃ VIỆT HÓA) ---
   const columns = [
-    { 
-      title: "Mã", 
+    {
+      title: "Mã",
       dataIndex: "code",
-      render: (text) => <Text strong>{text}</Text> 
+      render: (text) => <Text strong>{text}</Text>
     },
     { title: "Tên", dataIndex: "title", ellipsis: true },
-    { 
-      title: "Loại giảm", 
+    {
+      title: "Loại giảm",
       dataIndex: "discount_type",
       width: 180, // Thêm độ rộng để hiển thị chữ dài không bị xuống dòng xấu
       render: (text) => {
-          let color = 'default';
-          let label = text; // Mặc định hiển thị gốc
+        let color = 'default';
+        let label = text; // Mặc định hiển thị gốc
 
-          if (text === 'percent') {
-              color = 'blue';
-              label = 'Giảm %';
-          }
-          if (text === 'amount') {
-              color = 'green';
-              label = 'Giảm tiền';
-          }
-          if (text === 'freeship') {
-              color = 'purple';
-              label = 'Miễn phí vận chuyển'; // <--- ĐÃ SỬA CHỖ NÀY
-          }
-          return <Tag color={color}>{label}</Tag>
+        if (text === 'percent') {
+          color = 'blue';
+          label = 'Giảm %';
+        }
+        if (text === 'amount') {
+          color = 'green';
+          label = 'Giảm tiền';
+        }
+        if (text === 'freeship') {
+          color = 'purple';
+          label = 'Miễn phí vận chuyển'; // <--- ĐÃ SỬA CHỖ NÀY
+        }
+        return <Tag color={color}>{label}</Tag>
       }
     },
-    { 
-        title: "Giá trị", 
-        dataIndex: "value",
-        render: (val) => val?.toLocaleString() 
+    {
+      title: "Giá trị",
+      dataIndex: "value",
+      render: (val) => val?.toLocaleString()
     },
-    { 
-      title: "Ngày BĐ", 
+    {
+      title: "Ngày BĐ",
       dataIndex: "start_date",
       render: (date) => {
         const isValid = dayjs(date, 'YYYY-MM-DD', true).isValid();
@@ -199,13 +216,13 @@ export default function ImportVoucherModal({ open, onCancel, onImportAPI }) {
     },
     { title: "SL", dataIndex: "quantity" },
     {
-        title: "Trạng thái",
-        key: "status",
-        render: (_, record) => (
-            record.isValid 
-            ? <Tag color="success">Hợp lệ</Tag> 
-            : <Tag color="error">Thiếu</Tag>
-        )
+      title: "Trạng thái",
+      key: "status",
+      render: (_, record) => (
+        record.isValid
+          ? <Tag color="success">Hợp lệ</Tag>
+          : <Tag color="error">Thiếu</Tag>
+      )
     }
   ];
 
@@ -213,10 +230,10 @@ export default function ImportVoucherModal({ open, onCancel, onImportAPI }) {
     <Modal
       open={open}
       title={
-          <div className="flex items-center gap-2">
-              <FileExcelOutlined style={{ color: '#217346' }} /> 
-              Import Voucher từ Excel
-          </div>
+        <div className="flex items-center gap-2">
+          <FileExcelOutlined style={{ color: '#217346' }} />
+          Import Voucher từ Excel
+        </div>
       }
       onCancel={onCancel}
       width={950} // Tăng độ rộng modal một chút cho thoải mái
@@ -262,28 +279,28 @@ export default function ImportVoucherModal({ open, onCancel, onImportAPI }) {
 
       {currentStep === 1 && (
         <div>
-           {errors.length > 0 && (
-             <Alert
-               message="Lỗi từ Server"
-               description={<ul className="pl-4 list-disc max-h-32 overflow-y-auto">{errors.map((e, i) => <li key={i}>{e}</li>)}</ul>}
-               type="error"
-               showIcon
-               className="mb-4"
-             />
-           )}
-           <div className="mb-2 flex justify-between items-center">
-                <Text type="secondary">Đang xem trước {tableData.length} bản ghi.</Text>
-                <Tag color="warning">Chưa lưu vào hệ thống</Tag>
-           </div>
-           <Table 
-             dataSource={tableData} 
-             columns={columns} 
-             size="small" 
-             pagination={{ pageSize: 5 }}
-             scroll={{ y: 300 }}
-             rowClassName={(record) => !record.isValid ? 'bg-red-50' : ''}
-             bordered
-           />
+          {errors.length > 0 && (
+            <Alert
+              message="Lỗi từ Server"
+              description={<ul className="pl-4 list-disc max-h-32 overflow-y-auto">{errors.map((e, i) => <li key={i}>{e}</li>)}</ul>}
+              type="error"
+              showIcon
+              className="mb-4"
+            />
+          )}
+          <div className="mb-2 flex justify-between items-center">
+            <Text type="secondary">Đang xem trước {tableData.length} bản ghi.</Text>
+            <Tag color="warning">Chưa lưu vào hệ thống</Tag>
+          </div>
+          <Table
+            dataSource={tableData}
+            columns={columns}
+            size="small"
+            pagination={{ pageSize: 5 }}
+            scroll={{ y: 300 }}
+            rowClassName={(record) => !record.isValid ? 'bg-red-50' : ''}
+            bordered
+          />
         </div>
       )}
     </Modal>
