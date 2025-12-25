@@ -334,11 +334,16 @@ const UserReports = () => {
               </Button>
             </Popconfirm>
           )}
+          {/* Đã chỉnh sửa style cho nút Làm mới: Nền trắng, Chữ đen, Viền xám */}
           <Button
-            type="primary"
             icon={<ReloadOutlined />}
             onClick={refreshReports}
             loading={loading}
+            style={{
+              backgroundColor: "#fff",
+              borderColor: "#d9d9d9",
+              color: "#000",
+            }}
           >
             Làm mới
           </Button>

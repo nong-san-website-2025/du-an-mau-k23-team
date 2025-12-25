@@ -1,131 +1,133 @@
-import React, { useState } from "react";
-import { Button, Image } from "antd";
-import { 
-  HeartFilled, 
-  HeartOutlined, 
-  LeftOutlined, 
-  RightOutlined 
+import React, { useState, useEffect, useMemo } from "react";
+import { Button, Image, Space } from "antd";
+import {
+  HeartFilled,
+  HeartOutlined,
+  LeftOutlined,
+  RightOutlined,
 } from "@ant-design/icons";
 import NoImage from "../../../components/shared/NoImage";
 
-const isValidImageUrl = (url) => {
-  if (!url || typeof url !== "string") return false;
-  return /^(http|\/|data:image|blob:)/.test(url);
+// --- HÀM HELPER XỬ LÝ URL ---
+const getImageUrl = (url) => {
+  if (!url || typeof url !== "string") return "";
+  // Nếu là link tuyệt đối (http, data base64, blob) thì giữ nguyên
+  if (/^(http|data:image|blob:)/.test(url)) return url;
+
+  // Xử lý link tương đối
+  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000/api";
+  const BASE_URL = API_URL.replace(/\/api\/?$/, ""); // Bỏ đuôi /api
+  
+  // Đảm bảo đường dẫn bắt đầu bằng /
+  const path = url.startsWith("/") ? url : `/${url}`;
+  return `${BASE_URL}${path}`;
 };
 
 const ProductImage = ({ product, isFavorite, onToggleFavorite }) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [thumbnailStart, setThumbnailStart] = useState(0);
+  
+  // State cho Preview Modal
   const [previewVisible, setPreviewVisible] = useState(false);
-  const [previewImage, setPreviewImage] = useState("");
 
-  const THUMBNAIL_SIZE = 80; // ✅ Giảm từ 100px xuống 80px
+  const THUMBNAIL_SIZE = 80;
   const MAX_VISIBLE_THUMBNAILS = 4;
 
-  // Lấy API URL từ env
-  const API_URL = process.env.REACT_APP_API_URL;
-  // Tạo Base URL (loại bỏ /api) để dùng cho hình ảnh
-  const BASE_URL = API_URL ? API_URL.replace(/\/api\/?$/, "") : "http://localhost:8000";
+  // 1. TẠO DANH SÁCH ẢNH (Dùng useMemo để tối ưu)
+  const images = useMemo(() => {
+    const list = [];
+    if (!product) return list;
 
-  // Hàm helper để xử lý URL ảnh
-  const resolveImageUrl = (url) => {
-    if (!url) return "";
-    if (url.startsWith("/")) return `${BASE_URL}${url}`;
-    return url;
+    // Thêm ảnh đại diện
+    if (product.image) {
+      list.push({ url: getImageUrl(product.image), id: "main" });
+    }
+
+    // Thêm ảnh gallery
+    if (Array.isArray(product.images)) {
+      product.images.forEach((img) => {
+        const url = getImageUrl(img.image);
+        // Tránh trùng lặp với ảnh đại diện
+        if (url && url !== list[0]?.url) {
+          list.push({ url: url, id: img.id || `sub-${Math.random()}` });
+        }
+      });
+    }
+    return list;
+  }, [product]);
+
+  const totalImages = images.length;
+  const currentImage = images[selectedIndex]?.url;
+
+  // 2. RESET KHI SẢN PHẨM THAY ĐỔI
+  useEffect(() => {
+    setSelectedIndex(0);
+    setThumbnailStart(0);
+  }, [product?.id]);
+
+  // 3. LOGIC ĐIỀU HƯỚNG
+  const updateThumbnailPosition = (newIndex) => {
+    // Tự động cuộn thumbnail nếu index vượt quá vùng hiển thị
+    if (newIndex < thumbnailStart) {
+      setThumbnailStart(newIndex);
+    } else if (newIndex >= thumbnailStart + MAX_VISIBLE_THUMBNAILS) {
+      setThumbnailStart(newIndex - MAX_VISIBLE_THUMBNAILS + 1);
+    }
   };
 
-  // Tạo danh sách ảnh từ product.images hoặc fallback về ảnh chính
-  const images = [];
-  
-  // Thêm ảnh chính trước
-  if (isValidImageUrl(product.image)) {
-    // SỬ DỤNG HÀM HELPER
-    const mainImageUrl = resolveImageUrl(product.image);
-    images.push({ url: mainImageUrl, id: "main" });
-  }
-
-  // Thêm các ảnh phụ từ product.images
-  if (product.images && Array.isArray(product.images)) {
-    product.images.forEach((img) => {
-      if (isValidImageUrl(img.image)) {
-        // SỬ DỤNG HÀM HELPER
-        const imgUrl = resolveImageUrl(img.image);
-        
-        // Không thêm nếu trùng với ảnh chính
-        if (imgUrl !== images[0]?.url) {
-          images.push({ url: imgUrl, id: img.id });
-        }
-      }
-    });
-  }
-
-  const hasValidImage = images.length > 0;
-  const currentImage = images[selectedIndex]?.url;
-  const totalImages = images.length;
-
-  // Xử lý chuyển ảnh
-  const handlePrevImage = () => {
+  const handlePrevImage = (e) => {
+    e?.stopPropagation(); // Ngăn sự kiện click lan ra (để không mở preview)
     const newIndex = selectedIndex === 0 ? totalImages - 1 : selectedIndex - 1;
     setSelectedIndex(newIndex);
-    
-    // Điều chỉnh thumbnail carousel
-    if (newIndex < thumbnailStart) {
-      setThumbnailStart(Math.max(0, newIndex));
-    } else if (newIndex >= thumbnailStart + MAX_VISIBLE_THUMBNAILS) {
-      setThumbnailStart(Math.max(0, newIndex - MAX_VISIBLE_THUMBNAILS + 1));
-    }
+    updateThumbnailPosition(newIndex);
   };
 
-  const handleNextImage = () => {
+  const handleNextImage = (e) => {
+    e?.stopPropagation();
     const newIndex = selectedIndex === totalImages - 1 ? 0 : selectedIndex + 1;
     setSelectedIndex(newIndex);
-    
-    // Điều chỉnh thumbnail carousel
-    if (newIndex < thumbnailStart) {
-      setThumbnailStart(Math.max(0, newIndex));
-    } else if (newIndex >= thumbnailStart + MAX_VISIBLE_THUMBNAILS) {
-      setThumbnailStart(Math.max(0, newIndex - MAX_VISIBLE_THUMBNAILS + 1));
-    }
+    updateThumbnailPosition(newIndex);
   };
 
   const handleThumbnailClick = (index) => {
     setSelectedIndex(index);
-    
-    // Tự động điều chỉnh thumbnail carousel để ảnh được chọn luôn hiển thị
-    if (index < thumbnailStart) {
-      setThumbnailStart(index);
-    } else if (index >= thumbnailStart + MAX_VISIBLE_THUMBNAILS) {
-      setThumbnailStart(Math.max(0, index - MAX_VISIBLE_THUMBNAILS + 1));
+    updateThumbnailPosition(index);
+  };
+
+  const handleThumbnailNav = (direction) => {
+    if (direction === "prev") {
+      setThumbnailStart((prev) => Math.max(0, prev - 1));
+    } else {
+      setThumbnailStart((prev) => Math.min(totalImages - MAX_VISIBLE_THUMBNAILS, prev + 1));
     }
   };
 
-  const handleThumbnailPrev = () => {
-    setThumbnailStart(Math.max(0, thumbnailStart - 1));
-  };
-
-  const handleThumbnailNext = () => {
-    setThumbnailStart(
-      Math.min(totalImages - MAX_VISIBLE_THUMBNAILS, thumbnailStart + 1)
-    );
-  };
-
-  // Xử lý click để preview
-  const handleImageClick = (imageUrl) => {
-    setPreviewImage(imageUrl);
-    setPreviewVisible(true);
-  };
-
-  // Lấy danh sách thumbnails hiển thị
+  // Lấy danh sách thumbnail đang hiển thị
   const visibleThumbnails = images.slice(
     thumbnailStart,
     thumbnailStart + MAX_VISIBLE_THUMBNAILS
   );
 
-  const showThumbnailNav = totalImages > MAX_VISIBLE_THUMBNAILS;
+  if (totalImages === 0) {
+    return (
+      <div className="responsive-product-image-container" style={{ position: "relative" }}>
+        <div style={{ background: "#fafafa", borderRadius: 10, overflow: "hidden" }}>
+           <NoImage className="responsive-product-image" text="Không có hình ảnh" />
+        </div>
+        {/* Vẫn hiện nút tim kể cả khi không có ảnh */}
+        <Button
+          type="text" shape="circle" size="large"
+          icon={isFavorite ? <HeartFilled style={{ color: "#ff4d4f" }} /> : <HeartOutlined />}
+          onClick={onToggleFavorite}
+          style={{ position: "absolute", top: 15, right: 15, background: "rgba(255,255,255,0.9)", boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="responsive-product-image-container">
-      {/* Ảnh chính */}
+      {/* --- KHUNG ẢNH CHÍNH --- */}
       <div
         className="responsive-product-image"
         style={{
@@ -137,216 +139,139 @@ const ProductImage = ({ product, isFavorite, onToggleFavorite }) => {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
+          border: "1px solid #f0f0f0"
         }}
       >
-        {hasValidImage ? (
+        <img
+          src={currentImage}
+          alt={product?.name}
+          onClick={() => setPreviewVisible(true)}
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "contain",
+            cursor: "zoom-in",
+            transition: "transform 0.3s ease"
+          }}
+        />
+
+        {/* Nút điều hướng Trái/Phải trên ảnh chính */}
+        {totalImages > 1 && (
           <>
-            <img
-              src={currentImage}
-              alt={product.name}
-              onClick={() => handleImageClick(currentImage)} // ✅ Click để preview
+            <Button
+              type="text" shape="circle" icon={<LeftOutlined />}
+              onClick={handlePrevImage}
               style={{
-                width: "100%",
-                height: "100%",
-                objectFit: "contain",
-                cursor: "pointer", // ✅ Hiển thị con trỏ pointer
+                position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)",
+                background: "rgba(255,255,255,0.8)", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", zIndex: 10
               }}
             />
-
-            {/* Nút điều hướng ảnh chính */}
-            {totalImages > 1 && (
-              <>
-                <Button
-                  type="text"
-                  shape="circle"
-                  icon={<LeftOutlined />}
-                  onClick={handlePrevImage}
-                  style={{
-                    position: "absolute",
-                    left: 10,
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    background: "rgba(255,255,255,0.9)",
-                    boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-                  }}
-                />
-                <Button
-                  type="text"
-                  shape="circle"
-                  icon={<RightOutlined />}
-                  onClick={handleNextImage}
-                  style={{
-                    position: "absolute",
-                    right: 10,
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    background: "rgba(255,255,255,0.9)",
-                    boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-                  }}
-                />
-
-                {/* Chỉ số ảnh */}
-                <div
-                  style={{
-                    position: "absolute",
-                    bottom: 10,
-                    left: "50%",
-                    transform: "translateX(-50%)",
-                    background: "rgba(0,0,0,0.6)",
-                    color: "white",
-                    padding: "4px 12px",
-                    borderRadius: 12,
-                    fontSize: 12,
-                    fontWeight: 500,
-                  }}
-                >
-                  {selectedIndex + 1} / {totalImages}
-                </div>
-              </>
-            )}
+            <Button
+              type="text" shape="circle" icon={<RightOutlined />}
+              onClick={handleNextImage}
+              style={{
+                position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)",
+                background: "rgba(255,255,255,0.8)", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", zIndex: 10
+              }}
+            />
+            {/* Chỉ số ảnh (Badge) */}
+            <div style={{
+              position: "absolute", bottom: 10, left: "50%", transform: "translateX(-50%)",
+              background: "rgba(0,0,0,0.6)", color: "white", padding: "4px 12px",
+              borderRadius: 12, fontSize: 12, fontWeight: 500, pointerEvents: "none"
+            }}>
+              {selectedIndex + 1} / {totalImages}
+            </div>
           </>
-        ) : (
-          <NoImage className="responsive-product-image" text="Không có hình ảnh" />
         )}
 
-        {/* Nút yêu thích */}
+        {/* Nút Yêu thích */}
         <Button
-          type="text"
-          shape="circle"
-          size="large"
-          icon={
-            isFavorite ? (
-              <HeartFilled style={{ color: "#ff4d4f" }} />
-            ) : (
-              <HeartOutlined />
-            )
-          }
+          type="text" shape="circle" size="large"
+          icon={isFavorite ? <HeartFilled style={{ color: "#ff4d4f" }} /> : <HeartOutlined />}
           onClick={onToggleFavorite}
           style={{
-            position: "absolute",
-            top: 15,
-            right: 15,
-            background: "rgba(255,255,255,0.95)",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+            position: "absolute", top: 15, right: 15, zIndex: 10,
+            background: "rgba(255,255,255,0.9)", boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
           }}
-          title={isFavorite ? "Bỏ khỏi yêu thích" : "Thêm vào yêu thích"}
         />
       </div>
 
-      {/* Thumbnail carousel - chỉ hiển thị khi có nhiều hơn 1 ảnh */}
+      {/* --- THUMBNAIL SLIDER --- */}
       {totalImages > 1 && (
-        <div
-          style={{
-            marginTop: 12,
-            position: "relative",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          {/* Nút prev thumbnail */}
-          {showThumbnailNav && thumbnailStart > 0 && (
+        <div style={{ marginTop: 12, position: "relative", padding: "0 24px" }}>
+          {/* Nút Prev Thumbnail */}
+          {thumbnailStart > 0 && (
             <Button
-              type="text"
-              shape="circle"
-              size="small"
-              icon={<LeftOutlined />}
-              onClick={handleThumbnailPrev}
-              style={{
-                position: "absolute",
-                left: -20,
-                zIndex: 2,
-                background: "white",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-              }}
+              type="text" shape="circle" size="small" icon={<LeftOutlined />}
+              onClick={() => handleThumbnailNav("prev")}
+              style={{ position: "absolute", left: -5, top: "50%", transform: "translateY(-50%)", zIndex: 2 }}
             />
           )}
 
-          {/* Grid thumbnails */}
-          <div
-            className="responsive-thumbnail-grid"
-            style={{
-              display: "grid",
-              gridTemplateColumns: `repeat(${Math.min(totalImages, MAX_VISIBLE_THUMBNAILS)}, 1fr)`,
-              gap: 0, // ✅ Khoảng cách = 0
-              width: "100%",
-            }}
-          >
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: `repeat(${Math.min(visibleThumbnails.length, MAX_VISIBLE_THUMBNAILS)}, 1fr)`,
+            gap: 8, // Khoảng cách giữa các thumbnail
+          }}>
             {visibleThumbnails.map((img, idx) => {
               const actualIndex = thumbnailStart + idx;
               const isSelected = actualIndex === selectedIndex;
-              
               return (
                 <div
                   key={img.id}
-                  onMouseEnter={() => handleThumbnailClick(actualIndex)} // ✅ Hover để active
-                  onClick={() => handleImageClick(img.url)} // ✅ Click để preview
+                  onMouseEnter={() => handleThumbnailClick(actualIndex)}
+                  onClick={() => handleThumbnailClick(actualIndex)}
                   style={{
-                    width: THUMBNAIL_SIZE,
-                    height: THUMBNAIL_SIZE,
+                    width: "100%", // Responsive theo grid
+                    aspectRatio: "1/1",
                     cursor: "pointer",
-                    border: isSelected
-                      ? "3px solid #1890ff"
-                      : "2px solid #e8e8e8",
+                    border: isSelected ? "2px solid #1890ff" : "1px solid #e8e8e8",
                     borderRadius: 8,
                     overflow: "hidden",
-                    transition: "all 0.3s",
                     opacity: isSelected ? 1 : 0.6,
-                    transform: isSelected ? "scale(1.05)" : "scale(1)",
-                    boxShadow: isSelected
-                      ? "0 4px 12px rgba(24, 144, 255, 0.3)"
-                      : "none",
+                    transition: "all 0.2s",
                   }}
                 >
                   <img
                     src={img.url}
-                    alt={`${product.name} ${actualIndex + 1}`}
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                    }}
-                    onError={(e) => {
-                      e.target.style.display = "none";
-                    }}
+                    alt="thumbnail"
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
                   />
                 </div>
               );
             })}
           </div>
 
-          {/* Nút next thumbnail */}
-          {showThumbnailNav && 
-           thumbnailStart + MAX_VISIBLE_THUMBNAILS < totalImages && (
+          {/* Nút Next Thumbnail */}
+          {thumbnailStart + MAX_VISIBLE_THUMBNAILS < totalImages && (
             <Button
-              type="text"
-              shape="circle"
-              size="small"
-              icon={<RightOutlined />}
-              onClick={handleThumbnailNext}
-              style={{
-                position: "absolute",
-                right: -20,
-                zIndex: 2,
-                background: "white",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-              }}
+              type="text" shape="circle" size="small" icon={<RightOutlined />}
+              onClick={() => handleThumbnailNav("next")}
+              style={{ position: "absolute", right: -5, top: "50%", transform: "translateY(-50%)", zIndex: 2 }}
             />
           )}
         </div>
       )}
 
-      <Image
-        width={0}
-        height={0}
-        style={{ display: 'none' }}
-        src={previewImage}
-        preview={{
-          visible: previewVisible,
-          src: previewImage,
-          onVisibleChange: (visible) => setPreviewVisible(visible),
-        }}
-      />
+      {/* --- ẨN IMAGE GROUP ĐỂ DÙNG TÍNH NĂNG PREVIEW CỦA ANTD --- */}
+      <div style={{ display: 'none' }}>
+        <Image.PreviewGroup
+          preview={{
+            visible: previewVisible,
+            onVisibleChange: (vis) => setPreviewVisible(vis),
+            current: selectedIndex, // Mở đúng ảnh đang chọn
+            onChange: (current) => {
+                setSelectedIndex(current);
+                updateThumbnailPosition(current);
+            }
+          }}
+        >
+          {images.map((img) => (
+            <Image key={img.id} src={img.url} />
+          ))}
+        </Image.PreviewGroup>
+      </div>
     </div>
   );
 };

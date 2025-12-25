@@ -5,13 +5,12 @@ from django.db.models.signals import post_save, post_delete
 from django.db.models import Avg, Count
 from django.dispatch import receiver
 
-
 # -------------------- ĐÁNH GIÁ SẢN PHẨM --------------------
 class Review(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="reviews")
     rating = models.IntegerField()
-    comment = models.TextField()
+    comment = models.TextField(blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
     is_hidden = models.BooleanField(default=False)  # Admin can hide inappropriate reviews
 
@@ -22,6 +21,14 @@ class Review(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.product.name} ({self.rating}⭐)"
+
+# --- [MỚI] MODEL LƯU ẢNH ĐÁNH GIÁ ---
+class ReviewImage(models.Model):
+    review = models.ForeignKey(Review, on_delete=models.CASCADE, related_name="images")
+    image = models.ImageField(upload_to="reviews/images/")
+    
+    def __str__(self):
+        return f"Image for review {self.review.id}"
 
 
 # -------------------- TRẢ LỜI ĐÁNH GIÁ --------------------
