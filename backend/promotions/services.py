@@ -3,7 +3,7 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Sum
 from django.utils import timezone
-from .models import FlashSale
+from .models import FlashSale, Voucher, UserVoucher
 from orders.models import OrderItem  # Giả sử OrderItem nằm trong app 'orders'
 
 def validate_flash_sale_purchase(product_id, quantity):

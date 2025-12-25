@@ -199,6 +199,7 @@ class SellerVoucherSerializer(serializers.ModelSerializer):
         many=True,
         required=False
     )
+    users_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Voucher
@@ -208,9 +209,12 @@ class SellerVoucherSerializer(serializers.ModelSerializer):
             'min_order_value', 'max_discount_amount',
             'start_at', 'end_at', 'active',
             'distribution_type', 'total_quantity', 'per_user_quantity',
-            'product_scope', 'applicable_products',
+            'product_scope', 'applicable_products', 'users_count',
         ]
-        read_only_fields = ['id']
+        read_only_fields = ['id', 'users_count']
+
+    def get_users_count(self, obj):
+        return obj.usage_history.values('user').distinct().count()
 
     def validate(self, data):
         count = sum(1 for k in ('discount_percent', 'discount_amount', 'freeship_amount') if data.get(k) is not None)

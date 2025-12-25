@@ -1,7 +1,6 @@
 import axiosClient from "./axiosClient";
 const API_URL = "/promotions"; // axiosClient đã có baseURL
 
-
 // ===============================================
 // CÁC HÀM API CHUNG & CHO USER (Giữ nguyên)
 // ===============================================
@@ -46,12 +45,32 @@ export const consumeVoucher = async (code, orderTotal) => {
 };
 
 // ===============================================
-// API CHO ADMIN PANEL (Giữ nguyên & Thêm Import)
+// API CHO ADMIN PANEL
 // ===============================================
 
 // Lấy danh sách TẤT CẢ voucher (dùng cho Admin)
 export const getVouchers = async (params = {}) => {
   const res = await axiosClient.get(`${API_URL}/vouchers/`, { params });
+  return res.data;
+};
+
+// [MỚI] Lấy lịch sử sử dụng voucher (Dùng cho trang Quản lý sử dụng voucher)
+export const getVoucherUsageHistory = async (params = {}) => {
+  const queryParams = {};
+  
+  if (params.search && params.search.trim()) {
+    queryParams.search = params.search.trim();
+  }
+  
+  if (params.startDate) {
+    queryParams.startDate = params.startDate;
+  }
+  
+  if (params.endDate) {
+    queryParams.endDate = params.endDate;
+  }
+  
+  const res = await axiosClient.get(`${API_URL}/usage-history/`, { params: queryParams });
   return res.data;
 };
 
@@ -79,7 +98,7 @@ export const deleteVoucher = async (id) => {
   return res.data;
 };
 
-// [MỚI] API Import Voucher từ Excel (Đã thêm vào đây)
+// API Import Voucher từ Excel
 export const importVouchers = async (dataList) => {
   // dataList là mảng JSON các voucher đã parse từ Excel
   const res = await axiosClient.post(`${API_URL}/vouchers/import_excel/`, dataList);
@@ -87,7 +106,7 @@ export const importVouchers = async (dataList) => {
 };
 
 // ===============================================
-// FLASH SALE API CHO ADMIN (Giữ nguyên)
+// FLASH SALE API CHO ADMIN
 // ===============================================
 
 // Lấy danh sách flash sale
@@ -96,10 +115,8 @@ export const getFlashSales = async () => {
   return res.data;
 };
 
-// ... các hàm flash sale khác giữ nguyên ...
-
 // ===============================================
-// OVERVIEW API (Giữ nguyên)
+// OVERVIEW API
 // ===============================================
 
 // Tổng quan khuyến mãi (voucher + flash sale)
@@ -110,13 +127,11 @@ export const getPromotionsOverview = async (params = {}) => {
 
 
 // =========================================================
-// == API DÀNH RIÊNG CHO SELLER CENTER (PHẦN THÊM MỚI) ==
+// == API DÀNH RIÊNG CHO SELLER CENTER ==
 // =========================================================
 
 /**
  * Lấy danh sách voucher CỦA RIÊNG SELLER đang đăng nhập
- * @param {object} params - Các tham số filter (nếu có)
- * @returns {Promise<Array>} - Danh sách voucher của seller
  */
 export const getSellerVouchers = async (params = {}) => {
   const res = await axiosClient.get(`${API_URL}/seller/vouchers/`, { params });
@@ -125,8 +140,6 @@ export const getSellerVouchers = async (params = {}) => {
 
 /**
  * SELLER tạo voucher mới cho cửa hàng của mình
- * @param {object} voucherData - Dữ liệu của voucher cần tạo
- * @returns {Promise<object>} - Dữ liệu voucher vừa được tạo
  */
 export const createSellerVoucher = async (voucherData) => {
   const res = await axiosClient.post(`${API_URL}/seller/vouchers/`, voucherData);
@@ -135,9 +148,6 @@ export const createSellerVoucher = async (voucherData) => {
 
 /**
  * SELLER cập nhật voucher của mình
- * @param {number} id - ID của voucher cần cập nhật
- * @param {object} voucherData - Dữ liệu mới của voucher
- * @returns {Promise<object>} - Dữ liệu voucher sau khi cập nhật
  */
 export const updateSellerVoucher = async (id, voucherData) => {
   const res = await axiosClient.put(`${API_URL}/seller/vouchers/${id}/`, voucherData);
@@ -146,8 +156,6 @@ export const updateSellerVoucher = async (id, voucherData) => {
 
 /**
  * SELLER xóa voucher của mình
- * @param {number} id - ID của voucher cần xóa
- * @returns {Promise} - Thường trả về response rỗng với status 204
  */
 export const deleteSellerVoucher = async (id) => {
   const res = await axiosClient.delete(`${API_URL}/seller/vouchers/${id}/`);
@@ -155,38 +163,23 @@ export const deleteSellerVoucher = async (id) => {
 };
 
 /**
- * Lấy danh sách sản phẩm (rút gọn) của seller để hiển thị trong form tạo voucher
- * @returns {Promise<Array>} - Danh sách sản phẩm { id, name }
+ * Lấy danh sách sản phẩm (rút gọn) của seller
  */
 export const getMyProductsForVoucher = async () => {
-  // LƯU Ý: Không có /api/ ở đầu nữa vì axiosClient đã tự thêm vào
   const res = await axiosClient.get('/products/my-products/simple/');
   return res.data;
 }
 
 /**
- * GET PUBLIC voucher của 1 seller cụ thể (dùng trong trang cửa hàng) gì đó nè
- */
-
-/**
- * Lấy danh sách voucher CÔNG KHAI của một shop cụ thể để hiển thị cho khách
- * @param {number} sellerId - ID của shop/seller
- * @returns {Promise<Array>}
+ * Lấy danh sách voucher CÔNG KHAI của một shop cụ thể
  */
 export const getPublicVouchersForSeller = async (sellerId) => {
-  // Trỏ đến API public_seller_vouchers mà bạn đã tạo ở backend
   const res = await axiosClient.get(`/promotions/vouchers/public/${sellerId}/`);
   return res.data;
 };
 
-// ... các hàm API khác của bạn ...
-
-
 /**
- * Lấy danh sách TẤT CẢ voucher (system/shop) MÀ USER ĐÃ LƯU
- * và có thể sử dụng cho giỏ hàng hiện tại. (Dùng cho Modal)
- * @param {Array<{product_id: number, quantity: number}>} items 
- * @returns {Promise<object>} - { system_vouchers: [], shop_vouchers: {seller_id: []} }
+ * Lấy danh sách TẤT CẢ voucher (system/shop) MÀ USER ĐÃ LƯU và hợp lệ
  */
 export const getEligibleVouchers = async (items) => {
   const res = await axiosClient.post('/promotions/vouchers/eligible-for-cart/', { items });
@@ -194,12 +187,17 @@ export const getEligibleVouchers = async (items) => {
 };
 
 /**
- * GỌI API ĐỂ TÍNH TOÁN GIÁ CUỐI CÙNG
- * @param {object} payload - { items: [...], manual_system_voucher_code: 'CODE', manual_shop_vouchers: {sellerId: 'CODE'} }
- * @returns {Promise<object>} - Thông tin chi tiết về giảm giá và tổng tiền.
+ * Tính toán giá cuối cùng (Checkout)
  */
 export const calculateCheckout = async (payload) => {
-  // Trỏ đến API calculate-checkout trong app orders
   const res = await axiosClient.post('/orders/calculate-checkout/', payload); 
+  return res.data;
+};
+
+/**
+ * Lấy chi tiết lịch sử sử dụng của một voucher cụ thể (Admin)
+ */
+export const getVoucherUsageDetail = async (voucherId) => {
+  const res = await axiosClient.get(`${API_URL}/vouchers/${voucherId}/usage/`);
   return res.data;
 };

@@ -284,6 +284,26 @@ def update_wallet_on_success(sender, instance: Order, created, **kwargs):
             return mapping
 
         # === XỬ LÝ KHI ĐƠN HÀNG THÀNH CÔNG ===
+        # ✅ MỚI: Lưu lịch sử sử dụng voucher (Chạy khi order tạo lần đầu hoặc status thay đổi)
+        if (created or old_status != new_status) and instance.voucher and instance.discount_amount:
+            try:
+                from promotions.models import VoucherUsage
+                
+                # Chỉ lưu 1 lần duy nhất - kiểm tra xem đã tồn tại chưa
+                existing = VoucherUsage.objects.filter(order=instance).exists()
+                if not existing:
+                    VoucherUsage.objects.create(
+                        user=instance.user,
+                        voucher=instance.voucher,
+                        order=instance,
+                        discount_amount=instance.discount_amount
+                    )
+                    logger.info(f"✅ Lưu lịch sử sử dụng voucher cho Order #{instance.id} (Status: {old_status} → {new_status})")
+                else:
+                    logger.info(f"⚠️ VoucherUsage cho Order #{instance.id} đã tồn tại, bỏ qua")
+            except Exception as e:
+                logger.error(f"❌ Lỗi lưu VoucherUsage cho Order #{instance.id}: {e}")
+
         if new_status == 'success' and old_status != 'success':
 
             # ✅ SỬA LỖI: Thêm Idempotency
