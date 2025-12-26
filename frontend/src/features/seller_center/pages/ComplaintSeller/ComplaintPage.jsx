@@ -114,6 +114,32 @@ export default function ComplaintPage() {
     }
   };
 
+  // 3. Shop xác nhận đã nhận hàng
+  const handleConfirmReceived = async (record) => {
+    Modal.confirm({
+      title: "Xác nhận đã nhận hàng?",
+      content: "Bạn xác nhận đã nhận hàng trả về từ khách hàng? Yêu cầu hoàn tiền sẽ được chuyển cho Admin xử lý.",
+      onOk: async () => {
+        try {
+          const res = await fetch(`${API_URL}/complaints/${record.id}/confirm-received/`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          });
+
+          if (!res.ok) throw new Error("Lỗi khi xác nhận");
+
+          message.success("Đã xác nhận nhận hàng. Yêu cầu hoàn tiền đã chuyển cho Admin.");
+          fetchComplaints();
+        } catch (e) {
+          message.error("Có lỗi xảy ra");
+        }
+      },
+    });
+  };
+
   // 2. Shop Từ chối
   const handleSellerReject = (record) => {
     let rejectReason = "";
@@ -212,7 +238,9 @@ export default function ComplaintPage() {
       render: (s) => {
         const map = {
           pending: { text: "Chờ xử lý", color: "orange" },
-          negotiating: { text: "Đang thương lượng", color: "purple" }, // Shop đã từ chối
+          negotiating: { text: "Đang thương lượng", color: "purple" },
+          waiting_return: { text: "Chờ gửi hàng", color: "cyan" },
+          returning: { text: "Đang trả hàng", color: "blue" },
           admin_review: { text: "Chờ Sàn xử lý", color: "blue" },
           resolved_refund: { text: "Đã hoàn tiền", color: "green" },
           resolved_reject: { text: "Đã hủy/Từ chối", color: "red" },
@@ -257,6 +285,17 @@ export default function ComplaintPage() {
             </Space>
           )}
           {record.status === "negotiating" && <Tag>Đã từ chối</Tag>}
+          {record.status === "waiting_return" && <Tag color="cyan">Chờ khách gửi</Tag>}
+          {record.status === "returning" && (
+            <Button
+              type="primary"
+              size="small"
+              onClick={() => handleConfirmReceived(record)}
+            >
+              Đã nhận hàng
+            </Button>
+          )}
+          {record.status === "admin_review" && <Tag color="blue">Chờ Admin</Tag>}
           {record.status === "resolved_refund" && <Tag color="success">Hoàn tất</Tag>}
         </div>
       ),

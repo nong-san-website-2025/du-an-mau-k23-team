@@ -54,8 +54,6 @@ import ReturnPolicyPage from "../features/admin/pages/Setting/ReturnPolicyPage";
 import MarketingAutomationPage from "../features/admin/pages/Setting/MarketingAutomationPage";
 import LoyaltySettingsPage from "../features/admin/pages/Setting/LoyaltySettingsPage";
 import ThemeSettingsPage from "../features/admin/pages/Setting/ThemeSettingsPage";
-import MarketingAdminPage from './../features/admin/pages/MarketingAdmin/AdminMarketingPage';
-import AdminBlogs from "../features/admin/pages/BlogAdmin/AdminBlogs.jsx";
 import StaticPagesAdmin from "../features/admin/pages/ContentAdmin/StaticPagesAdmin.jsx";
 
 export const adminRoutes = [

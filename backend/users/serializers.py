@@ -69,7 +69,8 @@ class UserSerializer(serializers.ModelSerializer):
             "id", "username", "default_address",
             "full_name", "points", "role", "role_id", "created_at", "can_delete", "is_active",
             "wallet_balance", "addresses",
-            "email", "phone", "avatar", "orders_count", "total_spent", "tier", "tier_name", "tier_color"
+            "email", "phone", "avatar", "orders_count", "total_spent", "tier", "tier_name", "tier_color",
+            "bank_name", "account_number", "account_holder_name"
         ]
 
     def get_default_address(self, obj):

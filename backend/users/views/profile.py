@@ -266,3 +266,47 @@ class PublicUserRetrieveView(generics.RetrieveAPIView):
     queryset = CustomUser.objects.filter(is_active=True)
     serializer_class = PublicUserSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+
+class BankAccountView(APIView):
+    """
+    Get and update user bank account information for refunds
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """Get current user bank account info"""
+        user = request.user
+        return Response({
+            "bank_name": user.bank_name or "",
+            "account_number": user.account_number or "",
+            "account_holder_name": user.account_holder_name or "",
+        })
+
+    def put(self, request):
+        """Update user bank account info"""
+        user = request.user
+        
+        bank_name = request.data.get('bank_name', '').strip()
+        account_number = request.data.get('account_number', '').strip()
+        account_holder_name = request.data.get('account_holder_name', '').strip()
+        
+        # Validate inputs
+        if not bank_name or not account_number or not account_holder_name:
+            return Response(
+                {"error": "Vui lòng điền đầy đủ thông tin ngân hàng"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Update user bank info
+        user.bank_name = bank_name
+        user.account_number = account_number
+        user.account_holder_name = account_holder_name
+        user.save(update_fields=['bank_name', 'account_number', 'account_holder_name'])
+        
+        return Response({
+            "message": "Cập nhật thông tin ngân hàng thành công",
+            "bank_name": user.bank_name,
+            "account_number": user.account_number,
+            "account_holder_name": user.account_holder_name,
+        })

@@ -18,6 +18,7 @@ import ProfileInfo from "../components/ProfileInfo";
 import AddressList from "../components/AddressList";
 import ChangePassword from "../components/ChangePassword";
 import NotificationSettings from "../components/NotificationSettings";
+import PaymentSettings from "../components/PaymentSettings";
 import VoucherList from "../components/VoucherList";
 import MyVoucher from "../components/MyVoucher";
 import Rewards from "../../points/pages/Rewards";
@@ -176,6 +177,7 @@ function ProfilePage() {
               />
             )}
             {activeTab === "password" && <ChangePassword />}
+            {activeTab === "payment" && <PaymentSettings />}
             {activeTab === "notification" && <NotificationSettings />}
             {activeTab === "voucher" && (
               <div

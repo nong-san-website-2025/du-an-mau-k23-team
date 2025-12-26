@@ -170,33 +170,57 @@ class ComplaintViewSet(viewsets.ModelViewSet):
 
         return Response({'message': 'Đã phản hồi', 'status': complaint.status})
     
+    @action(detail=True, methods=['post'], url_path='confirm-received')
+    def confirm_received(self, request, pk=None):
+        """Shop xác nhận đã nhận hàng -> Chuyển cho Admin xử lý hoàn tiền"""
+        complaint = self.get_object()
+        
+        # Check quyền chủ shop
+        try:
+            is_seller = complaint.order_item.product.seller.user == request.user
+        except AttributeError:
+            is_seller = False
+            
+        if not is_seller:
+            return Response({'error': 'Bạn không phải người bán sản phẩm này'}, status=403)
+
+        if complaint.status != 'returning':
+            return Response({'error': 'Đơn chưa được gửi hoặc đã xử lý xong'}, status=400)
+
+        with transaction.atomic():
+            complaint.status = 'admin_review'
+            complaint.order_item.status = 'DISPUTE_TO_ADMIN'
+            complaint.save()
+            complaint.order_item.save()
+
+        return Response({'message': 'Đã xác nhận nhận hàng. Yêu cầu hoàn tiền chuyển cho Admin xử lý.'})
+    
     @action(detail=True, methods=['post'], url_path='seller-received')
     def seller_confirm_received(self, request, pk=None):
         """Shop nhận được hàng hoàn -> Bấm xác nhận -> Tiền về ví khách"""
         complaint = self.get_object()
         
-        # ... (Check quyền seller) ...
+        # Check quyền chủ shop
+        try:
+            is_seller = complaint.order_item.product.seller.user == request.user
+        except AttributeError:
+            is_seller = False
+            
+        if not is_seller:
+            return Response({'error': 'Bạn không phải người bán sản phẩm này'}, status=403)
 
         if complaint.status != 'returning':
              return Response({'error': 'Đơn chưa được gửi hoặc đã xử lý xong'}, status=400)
 
         with transaction.atomic():
-            # 1. Update trạng thái Complaint
             complaint.status = 'resolved_refund'
             complaint.save()
             
-            # 2. Update trạng thái Item
             complaint.order_item.status = 'REFUND_APPROVED'
             complaint.order_item.save()
 
-            # 3. Hoàn tiền + Mở khóa đơn + (Optional) Cộng lại tồn kho
             self._process_refund_wallet(complaint)
             self._check_and_unlock_order(complaint.order_item.order)
-            
-            # TODO: Nếu cần cộng lại tồn kho thì làm ở đây
-            # product = complaint.order_item.product
-            # product.stock += complaint.order_item.quantity
-            # product.save()
 
         return Response({'message': 'Đã nhận hàng và hoàn tiền cho khách'})
 

@@ -9,6 +9,7 @@ import {
   FaStar,
   FaSeedling,
   FaWallet,
+  FaUniversity,
 } from "react-icons/fa";
 
 // 🎨 Tông màu nông sản – hiện đại và nhất quán
@@ -24,6 +25,7 @@ const navItems = [
   { key: "profile", label: "Hồ Sơ", icon: <FaUser /> },
   { key: "address", label: "Địa Chỉ", icon: <FaMapMarkerAlt /> },
   { key: "password", label: "Đổi Mật Khẩu", icon: <FaLock /> },
+  { key: "payment", label: "Cài đặt thanh toán", icon: <FaUniversity /> },
   { key: "voucher", label: "Kho mã giảm giá", icon: <FaGift /> },
   { key: "myvoucher", label: "Mã giảm giá của tôi", icon: <FaGift /> },
 ];
