@@ -30,7 +30,6 @@ import SellingGuide from "../pages/CustomerService/SellingGuide";
 import NewProductsPage from "../pages/NewProductsPage";
 import ComingSoonProductsPage from "../pages/ComingSoonProductsPage";
 import PrimarySecurity from "../pages/CustomerService/PrimarySecurity";
-import Recruitment from "../pages/CustomerService/Recruitment";
 import Termsofservice from "../pages/CustomerService/Termsofservice";
 import RturnmoNey from "../pages/CustomerService/RturnmoNey";
 import GreenFarmwallet from "../pages/CustomerService/GreenFarmwallet";
@@ -56,7 +55,6 @@ export const userRoutes = [
     <Route path="returnpolicy" element={<ReturnPolicy />} />
     <Route path="contactsupport" element={<ContactSupport />} />
     <Route path="primarysecurity" element={<PrimarySecurity />} />
-    <Route path="recruitment" element={<Recruitment />} />
     <Route path="terms-of-service" element={<Termsofservice />} />
     <Route path="wishlist" element={<Wishlist />} />
     <Route path="abouts" element={<AboutPage />} />

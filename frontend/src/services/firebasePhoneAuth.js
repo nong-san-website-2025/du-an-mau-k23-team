@@ -6,30 +6,60 @@ import { auth } from "../config/firebase";
 
 let recaptchaVerifier = null;
 
+export const formatPhoneNumber = (phone) => {
+  if (!phone) return "";
+  
+  if (phone.startsWith("+84")) {
+    return phone;
+  }
+  
+  let cleaned = phone.replace(/\D/g, "");
+  
+  if (cleaned.startsWith("84")) {
+    return `+${cleaned}`;
+  }
+  
+  if (cleaned.startsWith("0")) {
+    cleaned = cleaned.substring(1);
+  }
+  
+  return `+84${cleaned}`;
+};
+
 export const initializeRecaptcha = () => {
   if (!recaptchaVerifier) {
-    // Correct order for Firebase v9 Modular SDK: auth, container, parameters
-    recaptchaVerifier = new RecaptchaVerifier(
-      auth,
-      "recaptcha-container",
-      {
-        size: "invisible",
-        callback: () => {
-          console.log("reCAPTCHA solved");
+    try {
+      recaptchaVerifier = new RecaptchaVerifier(
+        auth,
+        "recaptcha-container",
+        {
+          size: "invisible",
+          callback: () => {
+            console.log("reCAPTCHA solved");
+          }
         }
+      );
+    } catch (error) {
+      console.error("Error initializing recaptcha:", error);
+      if (recaptchaVerifier) {
+        recaptchaVerifier.clear();
+        recaptchaVerifier = null;
       }
-    );
+      throw error;
+    }
   }
+  return recaptchaVerifier;
 };
 
 export const sendPhoneOTP = async (phoneNumber) => {
   if (!recaptchaVerifier) {
-    throw new Error("reCAPTCHA chưa được khởi tạo");
+    initializeRecaptcha();
   }
 
+  const formattedPhone = formatPhoneNumber(phoneNumber);
   const confirmationResult = await signInWithPhoneNumber(
     auth,
-    phoneNumber,
+    formattedPhone,
     recaptchaVerifier
   );
 
@@ -58,8 +88,18 @@ export const verifyPhoneOTP = async (code) => {
 
 export const resetRecaptcha = () => {
     if (recaptchaVerifier) {
-        recaptchaVerifier.clear();
+        try {
+            recaptchaVerifier.clear();
+        } catch (err) {
+            console.log("Error clearing recaptcha:", err);
+        }
         recaptchaVerifier = null;
     }
+    
+    const container = document.getElementById("recaptcha-container");
+    if (container) {
+        container.innerHTML = "";
+    }
+    
     window.confirmationResult = null;
 };

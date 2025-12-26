@@ -127,6 +127,17 @@ export default function StaticPageView({ slug, defaultTitle }) {
     navigate(`/portal?tab=${key}`);
   };
 
+  const getDefaultTitle = (slug) => {
+    const items = getMenuItems();
+    for (const group of items) {
+      const found = group.children?.find(item => item.key === slug);
+      if (found) return found.label;
+    }
+    return slug;
+  };
+
+  const displayTitle = data?.title || getDefaultTitle(activeSlug);
+
   return (
     <div style={{ padding: "0", background: 'linear-gradient(180deg, #ffffff 0%, #fafafa 100%)', minHeight: '100vh' }}>
       <div style={{ maxWidth: 1320, margin: '0 auto', padding: '24px 16px' }}>
@@ -171,14 +182,6 @@ export default function StaticPageView({ slug, defaultTitle }) {
                 <div style={{ padding: "80px 40px", textAlign: 'center' }}>
                   <Spin size="large" />
                 </div>
-              ) : error ? (
-                <div style={{ padding: "40px 24px" }}>
-                  <Alert 
-                    type="warning" 
-                    message="Chưa có nội dung" 
-                    description="Trang này chưa được tạo trong CMS. Vui lòng thêm nội dung ở Admin > GreenFarm & Chính Sách." 
-                  />
-                </div>
               ) : (
                 <>
                   <div 
@@ -214,7 +217,7 @@ export default function StaticPageView({ slug, defaultTitle }) {
                         textShadow: '2px 2px 4px rgba(0,0,0,0.05)',
                         letterSpacing: '-0.02em'
                       }}>
-                        {title}
+                        {displayTitle}
                       </Title>
                       
                       <div style={{ 
@@ -259,8 +262,18 @@ export default function StaticPageView({ slug, defaultTitle }) {
                   </div>
 
                   <div style={{ padding: '40px 24px' }}>
+                {/* Error Alert */}
+                {error && (
+                  <Alert 
+                    type="warning" 
+                    message="Chưa có nội dung" 
+                    description="Trang này chưa được tạo trong CMS. Vui lòng thêm nội dung ở Admin > GreenFarm & Chính Sách." 
+                    style={{ marginBottom: 20 }}
+                  />
+                )}
+                
                 {/* Primary HTML content with enhanced styling */}
-                {html && (
+                {!error && html && (
                   <Card 
                     style={{ 
                       marginBottom: 100,
@@ -286,6 +299,7 @@ export default function StaticPageView({ slug, defaultTitle }) {
                 )}
 
                 {/* Structured Blocks with Professional Multi-Layout System */}
+                {!error && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 120 }}>
                   {blocks.map((blk, idx) => {
                     const isEven = idx % 2 === 0;
@@ -473,9 +487,10 @@ export default function StaticPageView({ slug, defaultTitle }) {
                     );
                   })}
                 </div>
+                )}
 
                     {/* Bottom CTA Section */}
-                    {blocks.length > 0 && (
+                    {!error && blocks.length > 0 && (
                       <Card 
                         style={{ 
                           marginTop: 120,

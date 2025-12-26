@@ -7,6 +7,7 @@ import {
   CloseCircleOutlined,
   ClockCircleOutlined,
   InboxOutlined,
+  ContainerOutlined,
 } from "@ant-design/icons";
 
 import API from "../../login_register/services/api";
@@ -14,6 +15,7 @@ import GenericOrderTable from "../components/OrderSeller/GenericOrderTable";
 import ButtonAction from "../../../components/ButtonAction";
 
 const ORDER_TABS = {
+  ALL: "all",
   PENDING: "pending",
   PROCESSING: "processing",
   DELIVERED: "delivered",
@@ -21,13 +23,14 @@ const ORDER_TABS = {
 };
 
 export default function SellerOrderPage() {
-  const [activeTab, setActiveTab] = useState(ORDER_TABS.PENDING);
+  const [activeTab, setActiveTab] = useState(ORDER_TABS.ALL);
   const [loading, setLoading] = useState(false);
   const [orders, setOrders] = useState([]);
   const [tick, setTick] = useState(0);
 
   // --- MỚI: State lưu số lượng badge cho từng tab ---
   const [orderCounts, setOrderCounts] = useState({
+    all: 0,
     pending: 0,
     processing: 0,
     delivered: 0,
@@ -44,16 +47,17 @@ export default function SellerOrderPage() {
   // Hàm này chạy độc lập để lấy số lượng hiển thị lên Tab
   const fetchOrderCounts = useCallback(async () => {
     try {
-      // Gọi song song 2 API quan trọng nhất để lấy số lượng
-      const [pendingRes, processingRes] = await Promise.all([
+      // Gọi song song các API để lấy số lượng
+      const [allRes, pendingRes, processingRes] = await Promise.all([
+        API.get("orders/seller/all/"),
         API.get("orders/seller/pending/"),
         API.get("orders/seller/processing/")
       ]);
 
       setOrderCounts({
+        all: allRes.data.length,
         pending: pendingRes.data.length,
         processing: processingRes.data.length,
-        // Nếu cần đếm cả đơn đã giao/hủy thì thêm vào đây, nhưng thường chỉ cần 2 cái đầu để notification
         delivered: 0, 
         cancelled: 0
       });
@@ -73,11 +77,12 @@ export default function SellerOrderPage() {
     setLoading(true);
     let endpoint = "";
     switch (statusKey) {
+      case ORDER_TABS.ALL: endpoint = "orders/seller/all/"; break;
       case ORDER_TABS.PENDING: endpoint = "orders/seller/pending/"; break;
       case ORDER_TABS.PROCESSING: endpoint = "orders/seller/processing/"; break;
       case ORDER_TABS.DELIVERED: endpoint = "orders/seller/complete/"; break;
       case ORDER_TABS.CANCELLED: endpoint = "orders/seller/cancelled/"; break;
-      default: endpoint = "orders/seller/pending/";
+      default: endpoint = "orders/seller/all/";
     }
 
     try {
@@ -150,6 +155,25 @@ export default function SellerOrderPage() {
   };
 
   const getExtraColumns = () => {
+    if (activeTab === ORDER_TABS.ALL) {
+      return [{
+        title: "Trạng thái",
+        dataIndex: "status",
+        width: 140,
+        align: "center",
+        render: (status) => {
+          const statusMap = {
+            'pending': { text: 'Chờ xác nhận', color: '#faad14' },
+            'shipping': { text: 'Đang xử lý', color: '#1890ff' },
+            'delivered': { text: 'Đã giao', color: '#52c41a' },
+            'completed': { text: 'Hoàn thành', color: '#52c41a' },
+            'cancelled': { text: 'Đã hủy', color: '#ff4d4f' }
+          };
+          const statusInfo = statusMap[status] || { text: status, color: '#999' };
+          return <Tag color={statusInfo.color}>{statusInfo.text}</Tag>;
+        }
+      }];
+    }
     if (activeTab === ORDER_TABS.PENDING) {
       return [{
         title: "Thời gian chờ",
@@ -181,6 +205,11 @@ export default function SellerOrderPage() {
   };
 
   const renderActions = (record) => {
+    // Tab "Tất cả" không hiển thị actions
+    if (activeTab === ORDER_TABS.ALL) {
+      return null;
+    }
+    
     if (activeTab === ORDER_TABS.PENDING) {
       return (
         <ButtonAction
@@ -233,6 +262,14 @@ export default function SellerOrderPage() {
 
   // --- 6. TAB ITEMS (Sử dụng orderCounts thay vì orders.length) ---
   const tabItems = [
+    {
+      key: ORDER_TABS.ALL,
+      label: (
+        <span>
+          <ContainerOutlined /> Tất cả
+        </span>
+      ),
+    },
     {
       key: ORDER_TABS.PENDING,
       label: (
@@ -292,6 +329,7 @@ export default function SellerOrderPage() {
 
       <GenericOrderTable
         title={
+            activeTab === ORDER_TABS.ALL ? "TẤT CẢ ĐƠN HÀNG" :
             activeTab === ORDER_TABS.PENDING ? "DANH SÁCH ĐƠN MỚI" :
             activeTab === ORDER_TABS.PROCESSING ? "ĐƠN HÀNG ĐANG XỬ LÝ" :
             activeTab === ORDER_TABS.DELIVERED ? "ĐƠN HOÀN THÀNH" : "ĐƠN ĐÃ HỦY"

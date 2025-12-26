@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Form, Button, Alert, Spinner, Card } from "react-bootstrap";
+import { Select } from "antd";
 import { FaUniversity, FaSave } from "react-icons/fa";
 import axiosInstance from "../../admin/services/axiosInstance";
 
@@ -149,22 +150,21 @@ function PaymentSettings() {
             <Form.Label style={{ fontWeight: 600, color: colors.text }}>
               Ngân hàng <span className="text-danger">*</span>
             </Form.Label>
-            <Form.Select
-              name="bank_name"
-              value={formData.bank_name}
-              onChange={handleChange}
-              style={{
-                borderColor: colors.border,
-                borderRadius: 8,
+            <Select
+              showSearch
+              placeholder="-- Chọn ngân hàng --"
+              value={formData.bank_name || undefined}
+              onChange={(value) => {
+                setFormData(prev => ({ ...prev, bank_name: value }));
+                setError("");
+                setSuccess("");
               }}
-            >
-              <option value="">-- Chọn ngân hàng --</option>
-              {BANKS.map((bank) => (
-                <option key={bank} value={bank}>
-                  {bank}
-                </option>
-              ))}
-            </Form.Select>
+              filterOption={(input, option) =>
+                (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+              }
+              options={BANKS.map(bank => ({ value: bank, label: bank }))}
+              style={{ width: '100%', height: 38 }}
+            />
           </Form.Group>
 
           <Form.Group className="mb-3">

@@ -36,18 +36,29 @@ export default function WalletTransactions({
         let text = type;
 
         switch (type) {
-          case "payment": // Chi tiền (vd: trả phí sàn)
-          case "withdraw": // Rút tiền
+          case "payment":
+          case "withdraw":
+          case "refund_deduct":
+          case "platform_fee":
             color = "error";
             icon = <ArrowDownOutlined />;
-            text = type === "withdraw" ? "Rút tiền" : "Thanh toán";
+            if (type === "withdraw") text = "Rút tiền";
+            else if (type === "refund_deduct") text = "Hoàn tiền đơn hàng";
+            else if (type === "platform_fee") text = "Phí sàn";
+            else text = "Thanh toán";
             break;
-          case "income": // Doanh thu
-          case "deposit": // Nạp tiền (nếu có)
-          case "refund": // Hoàn tiền
+          case "income":
+          case "deposit":
+          case "add":
+          case "refund":
+          case "sale_income":
+          case "pending_income":
             color = "success";
             icon = <ArrowUpOutlined />;
-            text = type === "income" ? "Doanh thu" : "Hoàn tiền";
+            if (type === "income" || type === "sale_income") text = "Doanh thu";
+            else if (type === "pending_income") text = "Doanh thu chờ";
+            else if (type === "deposit" || type === "add") text = "Cộng tiền";
+            else text = "Hoàn tiền";
             break;
           case "pending":
             color = "warning";
@@ -71,12 +82,12 @@ export default function WalletTransactions({
       key: "amount",
       align: "right",
       render: (amount, record) => {
-        const isNegative = ["payment", "withdraw"].includes(record.transaction_type);
+        const isNegative = ["payment", "withdraw", "refund_deduct", "platform_fee"].includes(record.transaction_type);
         const color = isNegative ? "#ff4d4f" : "#52c41a";
         const prefix = isNegative ? "-" : "+";
         return (
           <Text strong style={{ color, fontSize: 15 }}>
-            {prefix} {parseFloat(amount).toLocaleString("vi-VN")} ₫
+            {prefix} {parseFloat(Math.abs(amount)).toLocaleString("vi-VN")} ₫
           </Text>
         );
       },

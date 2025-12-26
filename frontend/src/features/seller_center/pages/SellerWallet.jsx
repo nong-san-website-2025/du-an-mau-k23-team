@@ -69,33 +69,24 @@ export default function SellerWallet() {
   const fetchWalletData = useCallback(async () => {
     setLoading(true);
     try {
-      const [balanceRes, financeRes] = await Promise.all([
+      const [balanceRes, financeRes, transactionsRes] = await Promise.all([
         api.get("/payments/wallet/balance/"),
         api.get("/payments/seller/finance/"),
+        api.get("/payments/wallet/transactions/"),
       ]);
 
       const payments = financeRes.data.payments || [];
       const withdraws = financeRes.data.withdraws || [];
+      const walletTransactions = transactionsRes.data.transactions || [];
 
-      // Chuẩn hóa dữ liệu giao dịch thành 1 mảng chung
-      const normalizedTransactions = [
-        ...payments.map((p) => ({
-          id: p.id,
-          amount: p.amount,
-          transaction_type: p.status === "success" ? "income" : "pending", // Đổi tên cho dễ hiểu
-          description: `Thanh toán đơn hàng #${p.order}`,
-          created_at: p.created_at,
-          status: p.status,
-        })),
-        ...withdraws.map((w) => ({
-          id: `RT${String(w.id).padStart(4, "0")}`,
-          amount: w.amount,
-          transaction_type: "withdraw",
-          description: `Yêu cầu rút tiền - ${w.status === 'pending' ? 'Đang chờ duyệt' : 'Đã duyệt'}`,
-          created_at: w.created_at,
-          status: w.status,
-        })),
-      ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      // Sử dụng wallet transactions thay vì tự build
+      const normalizedTransactions = walletTransactions.map((tx) => ({
+        id: tx.id,
+        amount: tx.amount,
+        transaction_type: tx.transaction_type,
+        description: tx.description || tx.note || "",
+        created_at: tx.created_at,
+      })).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
       // Tính toán tổng
       const withdrawn = withdraws.reduce((sum, w) => {

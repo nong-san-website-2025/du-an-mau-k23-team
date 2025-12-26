@@ -97,7 +97,7 @@ export default function Footer() {
                 <li><Link href="/abouts" className={styles.link}>Câu chuyện thương hiệu</Link></li>
                 <li><Link href="/portal?tab=recruitment" className={styles.link}>Tuyển dụng nhân tài</Link></li>
                 <li><Link href="/blog" className={styles.link}>Góc chia sẻ & Blog</Link></li>
-                <li><Link href="/store" className={styles.link}>Hệ thống cửa hàng</Link></li>
+                <li><Link href="/portal?tab=store" className={styles.link}>Hệ thống cửa hàng</Link></li>
               </ul>
 
               <div className={styles.socialGroup}>

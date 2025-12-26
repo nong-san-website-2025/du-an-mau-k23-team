@@ -43,8 +43,21 @@ const OrderTab = ({ status }) => {
   const [ratingComment, setRatingComment] = useState("");
   const [submittingRating, setSubmittingRating] = useState(false);
   const [ratedProducts, setRatedProducts] = useState(new Set());
+  
+  // --- STATE BANK ACCOUNT INFO ---
+  const [bankAccountInfo, setBankAccountInfo] = useState(null);
 
   // --- FETCH DATA ---
+  const fetchBankAccountInfo = useCallback(async () => {
+    try {
+      const response = await API.get("/users/bank-account/");
+      setBankAccountInfo(response.data);
+    } catch (error) {
+      console.error("Error fetching bank account info:", error);
+      setBankAccountInfo(null);
+    }
+  }, []);
+  
   const fetchOrders = useCallback(() => {
     setLoading(true);
     API.get(`orders/?status=${status}`)
@@ -62,12 +75,34 @@ const OrderTab = ({ status }) => {
 
   useEffect(() => {
     fetchOrders();
-  }, [fetchOrders]);
+    fetchBankAccountInfo();
+  }, [fetchOrders, fetchBankAccountInfo]);
 
   // --- LOGIC XỬ LÝ (GIỮ NGUYÊN) ---
 
   // 1. Logic Khiếu nại
   const toggleComplaint = (orderItemId) => {
+    // Kiểm tra bank account trước khi cho phép mở form
+    if (orderItemId) {
+      const hasBankInfo = bankAccountInfo?.bank_name && 
+                          bankAccountInfo?.account_number && 
+                          bankAccountInfo?.account_holder_name;
+      
+      if (!hasBankInfo) {
+        Modal.warning({
+          title: "Chưa cài đặt thông tin thanh toán",
+          content: "Bạn cần cài đặt thông tin ngân hàng để nhận tiền hoàn trả. Vui lòng vào trang Cài đặt thanh toán để cập nhật thông tin.",
+          okText: "Đi đến cài đặt",
+          cancelText: "Để sau",
+          okCancel: true,
+          onOk: () => {
+            navigate("/profile", { state: { tab: "payment" } });
+          }
+        });
+        return;
+      }
+    }
+    
     setActiveComplaintItem(orderItemId);
     if (orderItemId) {
       setComplaintText("");
@@ -197,9 +232,18 @@ const OrderTab = ({ status }) => {
 
     const activeDisputeStatuses = [
       'REFUND_REQUESTED', 'WAITING_RETURN', 'RETURNING',
-      'SELLER_REJECTED', 'DISPUTE_TO_ADMIN', 'negotiating', 'pending'
+      'SELLER_REJECTED', 'DISPUTE_TO_ADMIN', 'negotiating', 'pending', 'admin_review'
     ];
     const resolvedStatuses = ['resolved_refund', 'REFUND_APPROVED'];
+
+    // Check đã hoàn tiền thành công
+    const hasResolvedRefund = order.items.some(item => {
+      const cStatus = item.complaint?.status;
+      if (cStatus) return resolvedStatuses.includes(cStatus);
+      return resolvedStatuses.includes(item.status);
+    });
+
+    if (hasResolvedRefund) return <Tag color="success">Đã hoàn tiền thành công</Tag>;
 
     // Check đang khiếu nại
     const hasActiveDispute = order.items.some(item => {
@@ -209,15 +253,6 @@ const OrderTab = ({ status }) => {
     });
 
     if (hasActiveDispute) return <Tag color="error">Đang có khiếu nại</Tag>;
-
-    // Check đã hoàn tiền
-    const hasResolvedRefund = order.items.some(item => {
-      const cStatus = item.complaint?.status;
-      if (cStatus) return resolvedStatuses.includes(cStatus);
-      return resolvedStatuses.includes(item.status);
-    });
-
-    if (hasResolvedRefund) return <Tag color="success">Đã hoàn tiền</Tag>;
 
     // Check từ chối
     const hasRejected = order.items.some(item =>
@@ -233,7 +268,7 @@ const OrderTab = ({ status }) => {
     if (!order.items) return false;
     const activeDisputeStatuses = [
       'REFUND_REQUESTED', 'WAITING_RETURN', 'RETURNING',
-      'SELLER_REJECTED', 'DISPUTE_TO_ADMIN', 'negotiating', 'pending'
+      'SELLER_REJECTED', 'DISPUTE_TO_ADMIN', 'negotiating', 'pending', 'admin_review'
     ];
     return order.items.some(item => {
       const cStatus = item.complaint?.status;

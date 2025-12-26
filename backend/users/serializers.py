@@ -211,6 +211,13 @@ class UserSerializer(serializers.ModelSerializer):
         # ✅ Luôn trả về email/phone thật, không mask
         # Không cần logic kiểm tra quyền
         
+        # Build absolute URL for avatar
+        request = self.context.get('request')
+        if data.get('avatar') and request:
+            avatar_url = data['avatar']
+            if not avatar_url.startswith('http'):
+                data['avatar'] = request.build_absolute_uri(avatar_url)
+        
         return data
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -350,6 +357,15 @@ class CustomUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
         fields = ['id', 'username', 'email', 'role', 'role_id', "phone", "avatar", "full_name", "status", "pending_email", "pending_phone", "created_at"]
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        request = self.context.get('request')
+        if data.get('avatar') and request:
+            avatar_url = data['avatar']
+            if not avatar_url.startswith('http'):
+                data['avatar'] = request.build_absolute_uri(avatar_url)
+        return data
 
     def update(self, instance, validated_data):
         import random

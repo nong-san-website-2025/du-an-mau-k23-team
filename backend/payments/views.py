@@ -118,6 +118,31 @@ def wallet_balance(request):
         "balance": float(wallet.balance),
         "pending_balance": float(wallet.pending_balance)
     })
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def seller_wallet_transactions(request):
+    """Get wallet transactions for current seller"""
+    user = request.user
+    try:
+        seller = Seller.objects.get(user=user)
+        wallet = SellerWallet.objects.get(seller=seller)
+        
+        transactions = WalletTransaction.objects.filter(wallet=wallet).order_by('-created_at')
+        data = []
+        for tx in transactions:
+            data.append({
+                "id": tx.id,
+                "amount": float(tx.amount),
+                "transaction_type": tx.type,
+                "description": tx.note or "",
+                "created_at": tx.created_at.isoformat(),
+            })
+        return Response({"transactions": data})
+    except Seller.DoesNotExist:
+        return Response({"error": "Seller not found"}, status=404)
+    except SellerWallet.DoesNotExist:
+        return Response({"error": "Wallet not found"}, status=404)
 # API: Doanh thu theo ngày/tháng cho seller (dùng cho biểu đồ)
 from django.db.models.functions import TruncDay, TruncMonth
 from django.db.models import Sum

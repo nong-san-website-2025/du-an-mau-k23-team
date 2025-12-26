@@ -225,6 +225,7 @@ class Notification(models.Model):
         ('order_status_changed', 'Cập nhật đơn hàng'),
         ('review_reply', 'Phản hồi đánh giá'),
         ('complaint', 'Khiếu nại'),
+        ('refund', 'Hoàn tiền'),
         ('wallet', 'Ví tiền'),
         ('voucher', 'Voucher'),
         ('system', 'Hệ thống'),

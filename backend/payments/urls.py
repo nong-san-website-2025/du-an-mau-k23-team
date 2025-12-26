@@ -1,6 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import  seller_finance, withdraw_history, revenue_chart, wallet_balance, withdraw_request, seed_finance_demo_data, create_payment, vnpay_return, vnpay_callback, vnpay_return_api, get_wallets, approve_pending_balance, get_wallet_transactions, recalculate_pending_balance, get_withdraw_requests, approve_withdraw_request, reject_withdraw_request, wallet_balance_detail 
+from .views import  seller_finance, withdraw_history, revenue_chart, wallet_balance, seller_wallet_transactions, withdraw_request, seed_finance_demo_data, create_payment, vnpay_return, vnpay_callback, vnpay_return_api, get_wallets, approve_pending_balance, get_wallet_transactions, recalculate_pending_balance, get_withdraw_requests, approve_withdraw_request, reject_withdraw_request, wallet_balance_detail 
 from . import views
 router = DefaultRouter()
 
@@ -9,6 +9,7 @@ urlpatterns = [
     path('withdraw/history/', withdraw_history, name='withdraw_history'),
     path('seller/revenue_chart/', revenue_chart, name='revenue_chart'),
     path('wallet/balance/', wallet_balance, name='wallet_balance'),
+    path('wallet/transactions/', seller_wallet_transactions, name='seller_wallet_transactions'),
     path('withdraw/request/', withdraw_request, name='withdraw_request'),
     path('withdraw/requests/', get_withdraw_requests, name='get_withdraw_requests'),
     path('withdraw/<int:withdraw_id>/approve/', approve_withdraw_request, name='approve_withdraw_request'),

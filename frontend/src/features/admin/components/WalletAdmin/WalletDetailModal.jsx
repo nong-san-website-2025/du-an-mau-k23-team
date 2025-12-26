@@ -150,21 +150,38 @@ const WalletDetailModal = ({ visible, onClose, wallet, onSuccess }) => {
     {
       title: "Loại",
       dataIndex: "type",
-      render: (type) => (
-        <Tag color={type === 'add' ? "green" : "blue"} icon={type === 'add' ? <PlusCircle size={14}/> : <ArrowDownCircle size={14}/>}>
-          {type === 'add' ? 'Cộng tiền' : 'Rút tiền'}
-        </Tag>
-      )
+      render: (type) => {
+        const typeConfig = {
+          'sale_income': { color: 'green', icon: <PlusCircle size={14}/>, text: 'Doanh thu' },
+          'pending_income': { color: 'orange', icon: <Clock size={14}/>, text: 'Doanh thu chờ' },
+          'deposit': { color: 'green', icon: <PlusCircle size={14}/>, text: 'Cộng tiền' },
+          'add': { color: 'green', icon: <PlusCircle size={14}/>, text: 'Cộng tiền' },
+          'withdraw': { color: 'blue', icon: <ArrowDownCircle size={14}/>, text: 'Rút tiền' },
+          'refund_deduct': { color: 'red', icon: <ArrowDownCircle size={14}/>, text: 'Hoàn tiền' },
+          'platform_fee': { color: 'orange', icon: <ArrowDownCircle size={14}/>, text: 'Phí sàn' },
+        };
+        const config = typeConfig[type] || { color: 'default', icon: null, text: type };
+        return (
+          <Tag color={config.color} icon={config.icon}>
+            {config.text}
+          </Tag>
+        );
+      }
     },
     {
       title: "Số tiền",
       dataIndex: "amount",
       align: "right",
-      render: (val, r) => (
-        <Text style={{ color: r.type === 'withdraw' ? 'red' : 'green' }}>
-            {r.type === 'withdraw' ? '-' : '+'}{val?.toLocaleString()}
-        </Text>
-      )
+      render: (val, r) => {
+        const isNegative = ['withdraw', 'refund_deduct', 'platform_fee'].includes(r.type);
+        const color = isNegative ? 'red' : 'green';
+        const prefix = isNegative ? '-' : '+';
+        return (
+          <Text style={{ color, fontWeight: 500 }}>
+            {prefix}{Math.abs(val)?.toLocaleString()}đ
+          </Text>
+        );
+      }
     },
     { title: "Ghi chú", dataIndex: "note" }
   ];

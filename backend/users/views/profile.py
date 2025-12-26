@@ -38,7 +38,7 @@ class UserProfileView(APIView):
 
     def get(self, request):
         """Get current user profile"""
-        serializer = UserSerializer(request.user)
+        serializer = UserSerializer(request.user, context={'request': request})
         return Response(serializer.data)
 
     def put(self, request):
@@ -78,7 +78,7 @@ class UserProfileView(APIView):
                 messages.append("OTP đã được tạo cho số điện thoại mới.")
 
         # Return updated data with messages
-        data = UserSerializer(user).data
+        data = UserSerializer(user, context={'request': request}).data
         data["messages"] = messages
         return Response(data)
 
@@ -142,7 +142,7 @@ class CurrentUserView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        serializer = UserSerializer(request.user)
+        serializer = UserSerializer(request.user, context={'request': request})
         return Response(serializer.data)
 
 
@@ -167,12 +167,12 @@ class UserMeView(APIView):
 
     def get(self, request):
         """Get current user info"""
-        serializer = CustomUserSerializer(request.user)
+        serializer = CustomUserSerializer(request.user, context={'request': request})
         return Response(serializer.data)
 
     def put(self, request):
         """Full update of user info"""
-        serializer = CustomUserSerializer(request.user, data=request.data, partial=False)
+        serializer = CustomUserSerializer(request.user, data=request.data, partial=False, context={'request': request})
         if serializer.is_valid():
             user = serializer.save()
             messages = []
@@ -193,14 +193,14 @@ class UserMeView(APIView):
                 except Exception:
                     messages.append("OTP đã được tạo cho số điện thoại mới.")
 
-            data = CustomUserSerializer(user).data
+            data = CustomUserSerializer(user, context={'request': request}).data
             data["messages"] = messages
             return Response(data)
         return Response(serializer.errors, status=400)
 
     def patch(self, request):
         """Partial update of user info"""
-        serializer = CustomUserSerializer(request.user, data=request.data, partial=True)
+        serializer = CustomUserSerializer(request.user, data=request.data, partial=True, context={'request': request})
         if serializer.is_valid():
             user = serializer.save()
             messages = []
@@ -221,7 +221,7 @@ class UserMeView(APIView):
                 except Exception:
                     messages.append("OTP đã được tạo cho số điện thoại mới.")
 
-            data = CustomUserSerializer(user).data
+            data = CustomUserSerializer(user, context={'request': request}).data
             data["messages"] = messages
             return Response(data)
         return Response(serializer.errors, status=400)
@@ -232,6 +232,7 @@ class UploadAvatarView(APIView):
     Upload user avatar
     """
     permission_classes = [IsAuthenticated]
+    parser_classes = (MultiPartParser, FormParser)
 
     def post(self, request, *args, **kwargs):
         avatar = request.FILES.get("avatar")
@@ -240,7 +241,13 @@ class UploadAvatarView(APIView):
         
         request.user.avatar = avatar
         request.user.save()
-        return Response({"avatar": request.user.avatar.url})
+        
+        # Build absolute URL for avatar
+        avatar_url = request.user.avatar.url
+        if not avatar_url.startswith('http'):
+            avatar_url = request.build_absolute_uri(avatar_url)
+        
+        return Response({"avatar": avatar_url})
     
 
 class PublicUserSerializer(serializers.ModelSerializer):

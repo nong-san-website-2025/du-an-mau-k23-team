@@ -6,6 +6,7 @@ import axios from "axios";
 // Import các components con
 import WalletTable from "../components/WalletAdmin/WalletTable";
 import WithdrawRequestsTable from "../components/WalletAdmin/WithdrawRequestsTable";
+import RefundOrdersTab from "../components/WalletAdmin/RefundOrdersTab";
 import AdminPageLayout from "../components/AdminPageLayout";
 import WalletDetailModal from "../components/WalletAdmin/WalletDetailModal"; // Component Modal mới
 
@@ -215,6 +216,11 @@ const WalletPage = () => {
           loading={withdrawLoading}
         />
       ),
+    },
+    {
+      key: "refunds",
+      label: "Hoàn tiền đơn hàng",
+      children: <RefundOrdersTab />,
     },
   ];
 

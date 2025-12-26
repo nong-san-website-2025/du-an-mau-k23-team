@@ -329,15 +329,34 @@ def analytics_sales(request):
         })
     
     # Operational metrics
+    from complaints.models import Complaint
+    
     total_orders = orders.count()
-    success_orders = orders.filter(status__in=["completed", "delivered"]).count()
     cancelled_orders = orders.filter(status="cancelled").count()
-    returned_orders = orders.filter(status="returned").count()
+    
+    # Count orders with successful refund complaints (resolved_refund)
+    # Get order items that have refund complaints
+    refunded_order_item_ids = Complaint.objects.filter(
+        status="resolved_refund",
+        order_item__order_id__in=order_ids
+    ).values_list("order_item_id", flat=True).distinct()
+    
+    # Count unique orders that have at least one refunded item
+    refunded_order_ids = OrderItem.objects.filter(
+        id__in=refunded_order_item_ids
+    ).values_list("order_id", flat=True).distinct()
+    
+    returned_orders_count = len(set(refunded_order_ids))
+    
+    # Calculate rates
+    cancel_rate = round((cancelled_orders / total_orders * 100) if total_orders > 0 else 0, 2)
+    return_rate = round((returned_orders_count / total_orders * 100) if total_orders > 0 else 0, 2)
+    success_rate = round(100 - cancel_rate - return_rate, 2)
     
     operational_metrics = {
-        "success_rate": round((success_orders / total_orders * 100) if total_orders > 0 else 0, 2),
-        "cancel_rate": round((cancelled_orders / total_orders * 100) if total_orders > 0 else 0, 2),
-        "return_rate": round((returned_orders / total_orders * 100) if total_orders > 0 else 0, 2)
+        "success_rate": max(0, success_rate),  # Ensure non-negative
+        "cancel_rate": cancel_rate,
+        "return_rate": return_rate
     }
     
     return Response({
