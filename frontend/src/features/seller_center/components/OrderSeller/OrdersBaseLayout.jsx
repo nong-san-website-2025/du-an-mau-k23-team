@@ -16,6 +16,7 @@ export default function OrdersBaseLayout({
   onRow, // 👈 thêm dòng này
   searchPlaceholder = "Tìm theo mã đơn hoặc tên khách hàng",
   statusFilterOptions = [],
+  pagination,
 }) {
   const [search, setSearch] = useState("");
   const { useBreakpoint } = Grid;
@@ -102,8 +103,10 @@ export default function OrdersBaseLayout({
             dataSource={data}
             columns={columns}
             bordered
-            pagination={{ pageSize: 8, showSizeChanger: false }}
+            pagination={{ pageSize: 8, showSizeChanger: false, pagination }}
+            
             onRow={onRow} // 👈 truyền sự kiện click row từ component cha
+            
           />
         </div>
       </Card>

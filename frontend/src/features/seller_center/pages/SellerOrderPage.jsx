@@ -20,23 +20,29 @@ const ORDER_TABS = {
   CANCELLED: "cancelled",
 };
 
+// Hàm lấy cache an toàn
+const getCache = (key) => {
+  try {
+    const data = localStorage.getItem(key);
+    return data ? JSON.parse(data) : [];
+  } catch {
+    return [];
+  }
+};
+
 export default function SellerOrderPage() {
   const [activeTab, setActiveTab] = useState(ORDER_TABS.PENDING);
-
-  // --- SỬA 1: Khởi tạo state từ LocalStorage để hiện ngay ---
-  const [orders, setOrders] = useState(() => {
-    try {
-      const saved = localStorage.getItem(`ORDER_CACHE_${ORDER_TABS.PENDING}`);
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
-
   const [loading, setLoading] = useState(false);
   const [tick, setTick] = useState(0);
 
-  // --- SỬA 2: Khởi tạo badge từ LocalStorage ---
+  // --- 1. STATE CHỨA TOÀN BỘ DỮ LIỆU (CACHE) ---
+  const [allOrders, setAllOrders] = useState(() => ({
+    [ORDER_TABS.PENDING]: getCache(`ORDER_CACHE_${ORDER_TABS.PENDING}`),
+    [ORDER_TABS.PROCESSING]: getCache(`ORDER_CACHE_${ORDER_TABS.PROCESSING}`),
+    [ORDER_TABS.DELIVERED]: getCache(`ORDER_CACHE_${ORDER_TABS.DELIVERED}`),
+    [ORDER_TABS.CANCELLED]: getCache(`ORDER_CACHE_${ORDER_TABS.CANCELLED}`),
+  }));
+
   const [orderCounts, setOrderCounts] = useState(() => {
     try {
       const saved = localStorage.getItem("ORDER_COUNTS_CACHE");
@@ -48,145 +54,126 @@ export default function SellerOrderPage() {
     }
   });
 
-  // --- 1. LOGIC TIMER ---
+  // Timer tick (cập nhật hiển thị "vừa xong", "1 phút trước")
   useEffect(() => {
     const interval = setInterval(() => setTick((t) => t + 1), 60000);
     return () => clearInterval(interval);
   }, []);
 
-  // --- 2. HÀM LẤY SỐ LƯỢNG (BADGE) ---
+  // --- 2. FETCH DATA (CHẠY NGẦM) ---
+  const fetchOrders = useCallback(
+    async (statusKey) => {
+      // Chỉ hiện loading nếu chưa có dữ liệu trong cache
+      if (!allOrders[statusKey] || allOrders[statusKey].length === 0) {
+        setLoading(true);
+      }
+
+      let endpoint = "";
+      switch (statusKey) {
+        case ORDER_TABS.PENDING:
+          endpoint = "orders/seller/pending/";
+          break;
+        case ORDER_TABS.PROCESSING:
+          endpoint = "orders/seller/processing/";
+          break;
+        case ORDER_TABS.DELIVERED:
+          endpoint = "orders/seller/complete/";
+          break;
+        case ORDER_TABS.CANCELLED:
+          endpoint = "orders/seller/cancelled/";
+          break;
+        default:
+          endpoint = "orders/seller/pending/";
+      }
+
+      try {
+        const res = await API.get(endpoint);
+        // Backend trả về mảng thì sort, nếu trả về object phân trang (res.data.results) thì cần chỉnh lại
+        const rawData = Array.isArray(res.data)
+          ? res.data
+          : res.data.results || [];
+        const sortedData = rawData.sort((a, b) => b.id - a.id);
+
+        setAllOrders((prev) => ({
+          ...prev,
+          [statusKey]: sortedData,
+        }));
+
+        localStorage.setItem(
+          `ORDER_CACHE_${statusKey}`,
+          JSON.stringify(sortedData)
+        );
+      } catch (error) {
+        console.error("Lỗi fetch:", error);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [allOrders]
+  );
+
   const fetchOrderCounts = useCallback(async () => {
     try {
       const [pendingRes, processingRes] = await Promise.all([
         API.get("orders/seller/pending/"),
         API.get("orders/seller/processing/"),
       ]);
-
       const newCounts = {
-        pending: pendingRes.data.length,
-        processing: processingRes.data.length,
+        pending: Array.isArray(pendingRes.data)
+          ? pendingRes.data.length
+          : pendingRes.data.count || 0,
+        processing: Array.isArray(processingRes.data)
+          ? processingRes.data.length
+          : processingRes.data.count || 0,
         delivered: 0,
         cancelled: 0,
       };
-
       setOrderCounts(newCounts);
-      // --- SỬA 3: Lưu cache Counts ---
       localStorage.setItem("ORDER_COUNTS_CACHE", JSON.stringify(newCounts));
-    } catch (error) {
-      console.error("Lỗi lấy số lượng đơn:", error);
-    }
+    } catch (e) {}
   }, []);
 
   useEffect(() => {
-    fetchOrderCounts();
-  }, [fetchOrderCounts]);
-
-  // --- 3. HÀM LẤY DỮ LIỆU BẢNG (TABLE) ---
-  const fetchOrders = useCallback(async (statusKey) => {
-    // --- SỬA 4: Chỉ hiện loading nếu chưa có dữ liệu (tránh nháy màn hình) ---
-    // Kiểm tra cache hiện tại
-    const cached = localStorage.getItem(`ORDER_CACHE_${statusKey}`);
-    if (!cached) {
-      setLoading(true);
-    }
-
-    let endpoint = "";
-    switch (statusKey) {
-      case ORDER_TABS.PENDING:
-        endpoint = "orders/seller/pending/";
-        break;
-      case ORDER_TABS.PROCESSING:
-        endpoint = "orders/seller/processing/";
-        break;
-      case ORDER_TABS.DELIVERED:
-        endpoint = "orders/seller/complete/";
-        break;
-      case ORDER_TABS.CANCELLED:
-        endpoint = "orders/seller/cancelled/";
-        break;
-      default:
-        endpoint = "orders/seller/pending/";
-    }
-
-    try {
-      const res = await API.get(endpoint);
-      const sortedData = res.data.sort((a, b) => b.id - a.id);
-      setOrders(sortedData);
-
-      // --- SỬA 5: Lưu cache Data theo Tab ---
-      localStorage.setItem(
-        `ORDER_CACHE_${statusKey}`,
-        JSON.stringify(sortedData)
-      );
-    } catch (error) {
-      //   message.error("Không thể tải danh sách đơn hàng"); // Có thể ẩn để đỡ phiền
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  // Gọi API bảng mỗi khi chuyển Tab
-  useEffect(() => {
-    // --- SỬA 6: Khi đổi tab, lấy cache đắp vào ngay lập tức ---
-    try {
-      const cached = localStorage.getItem(`ORDER_CACHE_${activeTab}`);
-      if (cached) {
-        setOrders(JSON.parse(cached));
-      } else {
-        setOrders([]); // Nếu không có cache thì xóa trắng chờ load
-      }
-    } catch {}
-
     fetchOrders(activeTab);
-  }, [activeTab, fetchOrders]);
+    fetchOrderCounts();
+  }, [activeTab]);
 
-  // --- 4. XỬ LÝ HÀNH ĐỘNG ---
+  // --- ACTION HANDLER ---
   const handleOrderAction = async (id, actionType) => {
     try {
       let endpoint = "";
-      let successMsg = "";
-
       switch (actionType) {
         case "approve":
           endpoint = `orders/${id}/seller/approve/`;
-          successMsg = "Đã duyệt đơn hàng thành công!";
           break;
         case "reject":
           endpoint = `orders/${id}/cancel/`;
-          successMsg = "Đã từ chối đơn hàng!";
           break;
         case "complete":
           endpoint = `orders/${id}/seller/complete/`;
-          successMsg = "Xác nhận giao hàng thành công!";
           break;
         case "cancel_processing":
           endpoint = `orders/${id}/cancel/`;
-          successMsg = "Đã hủy đơn hàng!";
           break;
         default:
           return;
       }
-
       await API.post(endpoint);
-      message.success(successMsg);
-
+      message.success("Thao tác thành công");
       fetchOrders(activeTab);
       fetchOrderCounts();
     } catch (error) {
-      message.error("Thao tác thất bại, vui lòng thử lại!");
+      message.error("Thao tác thất bại");
     }
   };
 
-  // --- 5. CẤU HÌNH CỘT ---
+  // --- CONFIG COLUMNS ---
   const getTimeTag = (createdAt) => {
     if (!createdAt) return { text: "-", color: "#999" };
     const diffMs = new Date() - new Date(createdAt);
     const diffMins = Math.floor(diffMs / 60000);
-
-    let color = "#52c41a";
-    if (diffMins > 30) color = "#faad14";
-    if (diffMins > 60) color = "#ff4d4f";
-
+    let color =
+      diffMins > 60 ? "#ff4d4f" : diffMins > 30 ? "#faad14" : "#52c41a";
     let text =
       diffMins < 60
         ? `${diffMins} phút trước`
@@ -202,7 +189,7 @@ export default function SellerOrderPage() {
   };
 
   const getExtraColumns = () => {
-    if (activeTab === ORDER_TABS.PENDING) {
+    if (activeTab === ORDER_TABS.PENDING)
       return [
         {
           title: "Thời gian chờ",
@@ -212,8 +199,7 @@ export default function SellerOrderPage() {
           render: (t) => getTimeTag(t),
         },
       ];
-    }
-    if (activeTab === ORDER_TABS.DELIVERED) {
+    if (activeTab === ORDER_TABS.DELIVERED)
       return [
         {
           title: "Hoàn tất vào",
@@ -227,8 +213,7 @@ export default function SellerOrderPage() {
           ),
         },
       ];
-    }
-    if (activeTab === ORDER_TABS.CANCELLED) {
+    if (activeTab === ORDER_TABS.CANCELLED)
       return [
         {
           title: "Ngày hủy",
@@ -242,7 +227,6 @@ export default function SellerOrderPage() {
           ),
         },
       ];
-    }
     return [];
   };
 
@@ -254,20 +238,16 @@ export default function SellerOrderPage() {
           actions={[
             {
               actionType: "approve",
-              tooltip: "Duyệt đơn này",
+              tooltip: "Duyệt",
               icon: <CheckCircleOutlined />,
-              confirm: { title: "Duyệt đơn hàng ngay?", okText: "Duyệt" },
+              confirm: { title: "Duyệt đơn?", okText: "Duyệt" },
               onClick: (r) => handleOrderAction(r.id, "approve"),
             },
             {
               actionType: "reject",
-              tooltip: "Từ chối đơn",
+              tooltip: "Từ chối",
               icon: <CloseCircleOutlined />,
-              confirm: {
-                title: "Từ chối phục vụ đơn này?",
-                isDanger: true,
-                okText: "Từ chối",
-              },
+              confirm: { title: "Từ chối?", isDanger: true, okText: "Từ chối" },
               onClick: (r) => handleOrderAction(r.id, "reject"),
             },
           ]}
@@ -281,20 +261,17 @@ export default function SellerOrderPage() {
           actions={[
             {
               actionType: "approve",
-              tooltip: "Xác nhận đã giao",
+              tooltip: "Giao xong",
               icon: <CarOutlined />,
-              confirm: {
-                title: "Xác nhận khách đã nhận hàng?",
-                okText: "Hoàn thành",
-              },
+              confirm: { title: "Khách đã nhận?", okText: "Hoàn thành" },
               onClick: (r) => handleOrderAction(r.id, "complete"),
               show: record.status !== "shipping",
             },
             {
               actionType: "delete",
-              tooltip: "Hủy đơn hàng",
+              tooltip: "Hủy đơn",
               icon: <StopOutlined />,
-              confirm: { title: "Hủy đơn đang xử lý?", isDanger: true },
+              confirm: { title: "Hủy đơn?", isDanger: true },
               onClick: (r) => handleOrderAction(r.id, "cancel_processing"),
             },
           ]}
@@ -309,8 +286,7 @@ export default function SellerOrderPage() {
       key: ORDER_TABS.PENDING,
       label: (
         <span className="d-flex align-items-center gap-2">
-          <ClockCircleOutlined />
-          Chờ xác nhận
+          <ClockCircleOutlined /> Chờ xác nhận{" "}
           {orderCounts.pending > 0 && (
             <Badge
               count={orderCounts.pending}
@@ -324,7 +300,7 @@ export default function SellerOrderPage() {
       key: ORDER_TABS.PROCESSING,
       label: (
         <span>
-          <InboxOutlined /> Đang xử lý
+          <InboxOutlined /> Đang xử lý{" "}
           {orderCounts.processing > 0 && (
             <Badge
               count={orderCounts.processing}
@@ -352,6 +328,8 @@ export default function SellerOrderPage() {
     },
   ];
 
+  const currentTabOrders = allOrders[activeTab] || [];
+
   return (
     <div
       className="p-4 bg-white rounded-lg shadow-sm"
@@ -370,7 +348,7 @@ export default function SellerOrderPage() {
 
       <Tabs
         activeKey={activeTab}
-        onChange={(key) => setActiveTab(key)}
+        onChange={setActiveTab}
         type="card"
         size="large"
         items={tabItems}
@@ -387,15 +365,24 @@ export default function SellerOrderPage() {
                 ? "ĐƠN HOÀN THÀNH"
                 : "ĐƠN ĐÃ HỦY"
         }
-        // --- SỬA 7: Luôn để Loading = false nếu orders có dữ liệu (kể cả cũ) ---
-        isLoading={orders.length === 0 && loading}
-        data={orders}
+        isLoading={loading && currentTabOrders.length === 0}
+        data={currentTabOrders}
         refetch={() => {
           fetchOrders(activeTab);
           fetchOrderCounts();
         }}
         extraColumns={getExtraColumns()}
         actionsRenderer={renderActions}
+        // --- CẤU HÌNH PHÂN TRANG 10 DÒNG (QUAN TRỌNG) ---
+        // Ant Design Table sẽ tự động cắt data thành các trang
+        pagination={{
+          pageSize: 10, // Mỗi trang 10 dòng
+          showSizeChanger: true, // Cho phép đổi thành 20/50 dòng nếu muốn
+          pageSizeOptions: ["10", "20", "50"],
+          showTotal: (total, range) =>
+            `Hiển thị ${range[0]}-${range[1]} của ${total} đơn`,
+          position: ["bottomCenter"], // Đặt phân trang ở giữa dưới cùng
+        }}
       />
     </div>
   );

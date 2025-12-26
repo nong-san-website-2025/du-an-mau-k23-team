@@ -1,4 +1,5 @@
-import React from "react";
+// src/components/FinanceSeller/FinanceComponents.jsx
+import React, { memo } from "react";
 import {
   Card,
   Skeleton,
@@ -7,7 +8,6 @@ import {
   Col,
   Space,
   Button,
-  Tag,
   Alert,
   Empty,
 } from "antd";
@@ -23,22 +23,19 @@ import { THEME, formatCurrency } from "../../utils/financeUtils";
 
 const { Title, Text } = Typography;
 
-// --- 1. STAT CARD ---
-export const StatCard = ({ title, value, icon, color, subText, loading }) => {
-  // --- SỬA: Chỉ loading khi chưa có giá trị ---
-  const showLoading = loading && (value === undefined || value === null);
-
-  return (
+// --- 1. STAT CARD (Dùng memo để tránh render lại khi props không đổi) ---
+export const StatCard = memo(
+  ({ title, value, icon, color, subText, loading }) => (
     <Card
       bordered={false}
       style={{
         height: "100%",
         borderRadius: 12,
-        boxShadow: "0 2px 10px rgba(0,0,0,0.03)",
+        boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
       }}
-      bodyStyle={{ padding: 24 }}
+      bodyStyle={{ padding: 24, height: "100%" }}
     >
-      <Skeleton loading={showLoading} active paragraph={{ rows: 1 }}>
+      <Skeleton loading={loading} active avatar paragraph={{ rows: 1 }}>
         <div
           style={{
             display: "flex",
@@ -51,7 +48,10 @@ export const StatCard = ({ title, value, icon, color, subText, loading }) => {
               {title}
             </Text>
             <div style={{ marginTop: 8 }}>
-              <Title level={3} style={{ margin: 0, color: color }}>
+              <Title
+                level={3}
+                style={{ margin: 0, color: color, fontSize: 24 }}
+              >
                 {value}
               </Title>
             </div>
@@ -70,6 +70,8 @@ export const StatCard = ({ title, value, icon, color, subText, loading }) => {
               alignItems: "center",
               justifyContent: "center",
               color: color,
+              minWidth: 48, // Fix kích thước icon để không bị méo
+              minHeight: 48,
             }}
           >
             {icon}
@@ -77,29 +79,32 @@ export const StatCard = ({ title, value, icon, color, subText, loading }) => {
         </div>
       </Skeleton>
     </Card>
-  );
-};
+  )
+);
 
 // --- 2. HEADER SECTION ---
-export const FinanceHeader = ({ onRefresh, onExport, loading }) => (
+export const FinanceHeader = memo(({ onRefresh, onExport, loading }) => (
   <div
     style={{
       background: "#fff",
-      padding: "24px 32px",
+      padding: "20px 24px",
       borderBottom: "1px solid #f0f0f0",
     }}
   >
-    <Row justify="space-between" align="middle">
-      <Col>
-        <Title level={3} style={{ margin: 0, color: THEME.primary }}>
-          <DollarOutlined style={{ marginRight: 12 }} />
+    <Row justify="space-between" align="middle" gutter={[16, 16]}>
+      <Col xs={24} md={12}>
+        <Title
+          level={3}
+          style={{ margin: 0, color: THEME.primary, fontSize: 22 }}
+        >
+          <DollarOutlined style={{ marginRight: 10 }} />
           Tài chính & Doanh thu
         </Title>
-        <Text type="secondary">
-          Quản lý dòng tiền và hiệu quả kinh doanh của cửa hàng
+        <Text type="secondary" style={{ fontSize: 13 }}>
+          Quản lý dòng tiền và hiệu quả kinh doanh
         </Text>
       </Col>
-      <Col>
+      <Col xs={24} md={12} style={{ textAlign: "right" }}>
         <Space>
           <Button
             icon={<ReloadOutlined />}
@@ -113,6 +118,7 @@ export const FinanceHeader = ({ onRefresh, onExport, loading }) => (
             icon={<DownloadOutlined />}
             style={{ background: THEME.primary, borderColor: THEME.primary }}
             onClick={onExport}
+            disabled={loading}
           >
             Xuất báo cáo
           </Button>
@@ -120,27 +126,26 @@ export const FinanceHeader = ({ onRefresh, onExport, loading }) => (
       </Col>
     </Row>
   </div>
-);
+));
 
-// --- 3. REVENUE CHART ---
-export const RevenueChart = ({ data, loading }) => {
-  // --- SỬA: Chỉ loading khi mảng data rỗng ---
-  const showLoading = loading && (!data || data.length === 0);
-
+// --- 3. REVENUE CHART (Nặng nhất - Cần xử lý kỹ Skeleton) ---
+export const RevenueChart = memo(({ data, loading }) => {
   const chartConfig = {
-    data: data || [],
+    data: data,
     xField: "date",
     yField: "value",
     seriesField: "metric",
     color: [THEME.primary, THEME.secondary, THEME.warning],
     smooth: true,
-    animation: { appear: { animation: "path-in", duration: 1000 } },
+    // Tắt animation nặng khi load lần đầu để render nhanh hơn
+    animation: { appear: { animation: "fade-in", duration: 800 } },
     areaStyle: () => ({
       fill: `l(270) 0:#ffffff 0.5:${THEME.primary}10 1:${THEME.primary}30`,
     }),
     legend: { position: "top" },
     yAxis: {
       label: { formatter: (v) => `${Number(v) / 1000}k` },
+      grid: { line: { style: { stroke: "#f0f0f0" } } },
     },
     tooltip: {
       formatter: (datum) => ({
@@ -148,6 +153,9 @@ export const RevenueChart = ({ data, loading }) => {
         value: formatCurrency(datum.value),
       }),
     },
+    // Fix chiều cao cứng cho chart container
+    autoFit: true,
+    height: 300,
   };
 
   return (
@@ -160,27 +168,34 @@ export const RevenueChart = ({ data, loading }) => {
       }
       bordered={false}
       style={{ borderRadius: 12, height: "100%" }}
+      bodyStyle={{ padding: "0 24px 24px 24px" }}
     >
-      {showLoading ? (
-        <Skeleton active />
-      ) : (
-        <div style={{ height: 300 }}>
-          {data && data.length > 0 ? (
-            <Line {...chartConfig} />
-          ) : (
-            <Empty
-              image={Empty.PRESENTED_IMAGE_SIMPLE}
-              description="Chưa có dữ liệu biểu đồ"
-            />
-          )}
-        </div>
-      )}
+      {/* Container cố định chiều cao 320px để tránh giật layout khi Skeleton tắt */}
+      <div
+        style={{
+          height: 320,
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+        }}
+      >
+        {loading ? (
+          <Skeleton active paragraph={{ rows: 6 }} title={false} />
+        ) : data && data.length > 0 ? (
+          <Line {...chartConfig} />
+        ) : (
+          <Empty
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+            description="Chưa có dữ liệu biểu đồ"
+          />
+        )}
+      </div>
     </Card>
   );
-};
+});
 
 // --- 4. CASH FLOW FORECAST ---
-export const CashFlowForecast = ({ pendingBalance }) => (
+export const CashFlowForecast = memo(({ pendingBalance, loading }) => (
   <Card
     title={
       <Space>
@@ -194,32 +209,55 @@ export const CashFlowForecast = ({ pendingBalance }) => (
     <div style={{ padding: 24 }}>
       <Alert
         message="Lưu ý đối soát"
-        description="Các đơn hàng COD sẽ được đối soát tự động sau khi giao hàng thành công 3 ngày."
+        description="Đơn COD được đối soát sau 3 ngày giao thành công."
         type="info"
         showIcon
-        style={{ marginBottom: 16 }}
+        style={{ marginBottom: 20, fontSize: 13 }}
       />
 
       <Text strong>Dự kiến về ví:</Text>
+
       <div style={{ marginTop: 12 }}>
-        {[7, 14, 30].map((days) => (
-          <div
-            key={days}
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              padding: "12px 0",
-              borderBottom: "1px dashed #f0f0f0",
-            }}
-          >
-            <Text type="secondary">{days} ngày tới</Text>
-            {/* Component này hiện thẳng giá trị, nếu 0 thì hiện 0đ, không cần skeleton */}
-            <Text strong style={{ color: THEME.primary }}>
-              {formatCurrency(pendingBalance > 0 ? pendingBalance : 0)}
-            </Text>
-          </div>
-        ))}
+        {loading ? (
+          // Skeleton custom cho list items
+          <>
+            <Skeleton
+              active
+              paragraph={{ rows: 0 }}
+              style={{ marginBottom: 15 }}
+            />
+            <Skeleton
+              active
+              paragraph={{ rows: 0 }}
+              style={{ marginBottom: 15 }}
+            />
+            <Skeleton active paragraph={{ rows: 0 }} />
+          </>
+        ) : (
+          [3, 7, 30].map((days, index) => (
+            <div
+              key={days}
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                padding: "12px 0",
+                borderBottom: index !== 2 ? "1px dashed #f0f0f0" : "none",
+              }}
+            >
+              <Text type="secondary">{days} ngày tới</Text>
+              {/* Logic giả lập chia tỉ lệ tiền về */}
+              <Text strong style={{ color: THEME.primary, fontSize: 16 }}>
+                {formatCurrency(
+                  pendingBalance > 0
+                    ? pendingBalance * (days === 3 ? 0.3 : days === 7 ? 0.6 : 1)
+                    : 0
+                )}
+              </Text>
+            </div>
+          ))
+        )}
       </div>
     </div>
   </Card>
-);
+));
