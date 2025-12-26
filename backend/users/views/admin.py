@@ -25,6 +25,7 @@ from ..serializers import (
     RoleSerializer,
 )
 from ..permissions import IsAdmin
+from delivery.services.ghn import GHNClient
 
 # Import models through apps
 CustomUser = apps.get_model('users', 'CustomUser')
@@ -294,6 +295,56 @@ def customer_statistics_report(request):
     # Customer segmentation
     vip_count = customers.filter(total_spent__gte=10000000).count()
     
+    # Geographic distribution based on successful orders
+    successful_orders = Order.objects.filter(
+        status__in=['delivered', 'completed']
+    ).select_related('user')
+    
+    # Get province distribution from successful orders
+    province_count = {}
+    for order in successful_orders:
+        try:
+            # Lấy province_id từ order (ưu tiên) hoặc từ địa chỉ mặc định của user
+            province_id = order.province_id
+            
+            if not province_id:
+                # Fallback: lấy từ địa chỉ mặc định nếu order cũ chưa có province_id
+                default_address = Address.objects.filter(
+                    user=order.user, 
+                    is_default=True
+                ).first()
+                
+                if default_address and default_address.province_id:
+                    province_id = default_address.province_id
+            
+            if province_id:
+                province_count[province_id] = province_count.get(province_id, 0) + 1
+        except Exception:
+            continue
+    
+    # Get province names from GHN
+    geo_distribution = []
+    if province_count:
+        try:
+            provinces_res = GHNClient.get_provinces()
+            if provinces_res.get('success') and provinces_res.get('data'):
+                province_map = {
+                    p['ProvinceID']: p['ProvinceName'] 
+                    for p in provinces_res['data']
+                }
+                
+                for province_id, count in province_count.items():
+                    province_name = province_map.get(province_id, f'Province {province_id}')
+                    geo_distribution.append({
+                        'city': province_name,
+                        'count': count
+                    })
+                
+                # Sort by count descending
+                geo_distribution.sort(key=lambda x: x['count'], reverse=True)
+        except Exception:
+            pass
+    
     return Response({
         'summary': {
             'total': total_customers,
@@ -303,6 +354,7 @@ def customer_statistics_report(request):
             'avgRepeatDays': 28,
         },
         'topCustomers': top_customers_data,
+        'geoDistribution': geo_distribution,
         'segmentationData': [
             {'segment': 'Khách mới', 'value': new_customers},
             {'segment': 'Khách quay lại', 'value': returning_customers},
