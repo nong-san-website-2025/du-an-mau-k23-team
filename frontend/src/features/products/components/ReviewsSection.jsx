@@ -13,11 +13,13 @@ import {
   Space,
   Image
 } from "antd";
-import { UserOutlined, ShopOutlined, CheckCircleFilled, WarningFilled } from "@ant-design/icons";
+import { UserOutlined, ShopOutlined, CheckCircleFilled, WarningFilled, ClockCircleOutlined } from "@ant-design/icons";
 
 const { Title, Text, Paragraph } = Typography;
 
-// --- [MỚI] Hàm xử lý đường dẫn ảnh ---
+// ============================================================================
+// [HELPER] Xử lý đường dẫn ảnh (Từ HEAD)
+// ============================================================================
 const getImageUrl = (imgData) => {
   if (!imgData) return "";
 
@@ -31,20 +33,45 @@ const getImageUrl = (imgData) => {
   }
 
   // Nếu là link tương đối (/media...), ghép thêm domain server
-  // Lấy API_URL từ biến môi trường, hoặc dùng mặc định
   const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000/api";
-  // Loại bỏ đuôi '/api' để lấy domain gốc (VD: http://localhost:8000)
-  const BASE_URL = API_URL.replace(/\/api\/?$/, "");
-
-  // Đảm bảo không bị duplicate dấu /
+  const BASE_URL = API_URL.replace(/\/api\/?$/, ""); // Bỏ đuôi /api
   const cleanSrc = src.startsWith("/") ? src : `/${src}`;
 
   return `${BASE_URL}${cleanSrc}`;
 };
 
-// --- SUB-COMPONENT: Hiển thị 1 dòng review ---
+// ============================================================================
+// [HELPER] Xử lý Spam & Từ khóa cấm (Từ TriThuc2)
+// ============================================================================
+const BANNED_KEYWORDS = [
+  "lừa đảo", "vô học", "chết tiệt", "ngu", "rác", "tệ hại"
+];
+
+const checkIsSpam = (comment) => {
+  if (!comment) return true;
+  const content = comment.trim().toLowerCase();
+
+  // 1. Quá ngắn
+  if (content.length < 5) return true;
+
+  // 2. Chuỗi dài không khoảng trắng
+  if (!content.includes(" ") && content.length > 15) return true;
+
+  // 3. Ký tự lặp lại quá nhiều
+  const repeatPattern = /(.)\1{4,}/; 
+  if (repeatPattern.test(content)) return true;
+
+  // 4. Chứa từ khóa cấm
+  return BANNED_KEYWORDS.some(keyword => {
+      const regex = new RegExp(`(^|[\\s.,;!?()"'])` + keyword + `($|[\\s.,;!?()"'])`, 'i');
+      return regex.test(content);
+  });
+};
+
+// ============================================================================
+// [COMPONENT] ReviewItem: Hiển thị 1 dòng review
+// ============================================================================
 const ReviewItem = ({ review, isMyReview = false }) => {
-  // Lấy thêm trường images từ review
   const { user_name, rating, comment, created_at, replies, is_hidden, images } = review;
 
   return (
@@ -63,17 +90,18 @@ const ReviewItem = ({ review, isMyReview = false }) => {
 
         {/* Cột Nội dung */}
         <Col flex="auto">
-          {/* Header: Tên + Ngày + Tag (nếu là my review) */}
+          {/* Header: Tên + Ngày + Tag */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
             <Space>
               <Text strong style={{ fontSize: 16, color: "#262626" }}>
                 {isMyReview ? "Bạn (Đánh giá của tôi)" : user_name}
               </Text>
+              
               {isMyReview && is_hidden && (
-                <Tag icon={<WarningFilled />} color="error">Đã bị ẩn</Tag>
+                <Tag icon={<ClockCircleOutlined />} color="warning">Đang chờ duyệt</Tag>
               )}
               {isMyReview && !is_hidden && (
-                <Tag icon={<CheckCircleFilled />} color="success">Đã duyệt</Tag>
+                <Tag icon={<CheckCircleFilled />} color="success">Đã được duyệt</Tag>
               )}
             </Space>
             <Text type="secondary" style={{ fontSize: 12 }}>
@@ -87,19 +115,22 @@ const ReviewItem = ({ review, isMyReview = false }) => {
           </div>
 
           {/* Comment Content */}
-          <Paragraph
-            style={{
-              color: is_hidden ? "#999" : "#434343",
+          <Paragraph 
+            style={{ 
+              color: is_hidden ? "#8c8c8c" : "#434343", 
               fontStyle: is_hidden ? "italic" : "normal",
               marginBottom: 16,
               fontSize: 15,
               lineHeight: 1.6
             }}
           >
-            {is_hidden ? "Nội dung đánh giá này đã bị ẩn do vi phạm tiêu chuẩn cộng đồng." : comment}
+            {is_hidden 
+              ? "Đánh giá của bạn đang được Admin kiểm duyệt để đảm bảo tiêu chuẩn cộng đồng. Xin vui lòng chờ." 
+              : comment
+            }
           </Paragraph>
 
-          {/* [ĐÃ SỬA] Hiển thị danh sách ảnh đánh giá dùng hàm getImageUrl */}
+          {/* Danh sách ảnh đánh giá (Sử dụng getImageUrl từ HEAD) */}
           {!is_hidden && images && images.length > 0 && (
             <div style={{ marginBottom: 16 }}>
               <Image.PreviewGroup>
@@ -109,10 +140,10 @@ const ReviewItem = ({ review, isMyReview = false }) => {
                       key={idx}
                       width={80}
                       height={80}
-                      src={getImageUrl(img)} // Dùng hàm helper để fix link ảnh
+                      src={getImageUrl(img)}
                       style={{ objectFit: "cover", borderRadius: 8, border: "1px solid #f0f0f0", cursor: "pointer" }}
                       alt="Review image"
-                      fallback="https://via.placeholder.com/80?text=Error" // Ảnh thay thế nếu lỗi
+                      fallback="https://via.placeholder.com/80?text=Error"
                     />
                   ))}
                 </Space>
@@ -154,7 +185,9 @@ const ReviewItem = ({ review, isMyReview = false }) => {
   );
 };
 
-// --- SUB-COMPONENT: Tổng quan đánh giá (Header) ---
+// ============================================================================
+// [COMPONENT] RatingSummary: Tổng quan đánh giá (Header)
+// ============================================================================
 const RatingSummary = ({ reviews }) => {
   if (!reviews || reviews.length === 0) return null;
 
@@ -171,7 +204,7 @@ const RatingSummary = ({ reviews }) => {
   return (
     <div style={{ marginBottom: 32, padding: "24px", background: "#fafafa", borderRadius: 8, border: "1px solid #f0f0f0" }}>
       <Row gutter={[32, 16]} align="middle">
-        {/* Bên trái: Điểm trung bình to đùng */}
+        {/* Bên trái: Điểm trung bình */}
         <Col xs={24} sm={8} style={{ textAlign: "center", borderRight: "1px solid #f0f0f0" }}>
           <div style={{ fontSize: 48, fontWeight: "bold", color: "#fadb14", lineHeight: 1, marginBottom: 8 }}>
             {average} <span style={{ fontSize: 24, color: "#999" }}>/ 5</span>
@@ -180,7 +213,7 @@ const RatingSummary = ({ reviews }) => {
           <div style={{ marginTop: 8, color: "#666", fontSize: 16 }}>({total} đánh giá)</div>
         </Col>
 
-        {/* Bên phải: Progress bar từng dòng */}
+        {/* Bên phải: Progress bar */}
         <Col xs={24} sm={16} style={{ paddingLeft: 32 }}>
           {[5, 4, 3, 2, 1].map(star => (
             <Row key={star} gutter={16} align="middle" style={{ marginBottom: 8 }}>
@@ -208,44 +241,54 @@ const RatingSummary = ({ reviews }) => {
   );
 };
 
-// --- MAIN COMPONENT ---
+// ============================================================================
+// [MAIN COMPONENT] ReviewsSection
+// ============================================================================
 const ReviewsSection = ({ user, reviews, myReview }) => {
 
+  // 1. Lọc danh sách Review công khai (Không ẩn) - Logic từ TriThuc2
   const visibleReviews = useMemo(() => {
-    // 1. Kiểm tra an toàn đầu vào
     if (!reviews) return [];
-
-    // 2. Tự động phát hiện: Nếu là Array thì dùng luôn, nếu là Object phân trang thì lấy .results
+    // Tự động phát hiện: Array hoặc Object phân trang
     const reviewsList = Array.isArray(reviews) ? reviews : (reviews.results || []);
-
-    // 3. Kiểm tra lại lần cuối để chắc chắn là Array
+    
     if (!Array.isArray(reviewsList)) return [];
-
-    // 4. Filter
     return reviewsList.filter(r => !r.is_hidden);
   }, [reviews]);
 
+  // 2. Kiểm tra xem Review của tôi có bị Spam không? - Logic từ TriThuc2
+  const isMyReviewSpam = useMemo(() => {
+    if (!myReview) return false;
+    return checkIsSpam(myReview.comment);
+  }, [myReview]);
+
+  // 3. Điều kiện hiển thị My Review
+  // Hiển thị nếu: Admin đã duyệt HOẶC (chưa duyệt nhưng KHÔNG phải Spam)
+  const shouldShowMyReview = myReview && (!myReview.is_hidden || !isMyReviewSpam);
+
   return (
-    <Card
-      bordered={false}
+    <Card 
+      bordered={false} 
       style={{ marginTop: 24, boxShadow: "0 2px 8px rgba(0,0,0,0.06)", borderRadius: 8 }}
-      bodyStyle={{ padding: "32px" }}
+      bodyStyle={{ padding: "24px 32px" }} // Merge: Padding của TriThuc2 + BorderRadius của HEAD
     >
       <Title level={4} style={{ marginBottom: 24 }}>Đánh giá sản phẩm</Title>
 
       {/* 1. Phần tổng quan điểm số */}
       <RatingSummary reviews={visibleReviews} />
 
-      {/* 2. Review của tôi (Nổi bật) */}
-      {user && myReview && (
+      {/* 2. Review của tôi */}
+      {user && shouldShowMyReview && (
         <>
-          <div
-            style={{
-              border: `1px solid ${myReview.is_hidden ? '#ffccc7' : '#b7eb8f'}`,
-              backgroundColor: myReview.is_hidden ? '#fff2f0' : '#f6ffed',
-              borderRadius: 8,
-              padding: "0 24px",
-              marginBottom: 32
+          <div 
+            style={{ 
+              // Merge colors: Sử dụng tông màu Vàng (TriThuc2) cho trạng thái chờ duyệt
+              // vì nó hợp lý hơn màu Đỏ (HEAD) cho ngữ cảnh "Pending"
+              border: `1px solid ${myReview.is_hidden ? '#ffe58f' : '#b7eb8f'}`, 
+              backgroundColor: myReview.is_hidden ? '#fffbe6' : '#f6ffed',
+              borderRadius: 8, 
+              padding: "0 24px", // Merge: Padding rộng hơn của HEAD
+              marginBottom: 32 
             }}
           >
             <ReviewItem review={myReview} isMyReview={true} />
@@ -254,7 +297,7 @@ const ReviewsSection = ({ user, reviews, myReview }) => {
         </>
       )}
 
-      {/* 3. Danh sách Review */}
+      {/* 3. Danh sách Review công khai */}
       <List
         dataSource={visibleReviews}
         locale={{ emptyText: "Chưa có đánh giá nào cho sản phẩm này." }}
@@ -263,11 +306,11 @@ const ReviewsSection = ({ user, reviews, myReview }) => {
           pageSize: 5,
           hideOnSinglePage: true,
           onChange: () => {
-            // Scroll nhẹ lên đầu list khi chuyển trang nếu cần
+            // Scroll logic here if needed
           }
         }}
         renderItem={(item) => (
-          // Chỉ render nếu không phải là myReview (để tránh lặp lại nếu myReview nằm trong list trả về)
+          // Chỉ render nếu không phải là myReview (tránh lặp lại)
           (!myReview || item.id !== myReview.id) ? (
             <List.Item style={{ padding: 0 }}>
               <ReviewItem review={item} />

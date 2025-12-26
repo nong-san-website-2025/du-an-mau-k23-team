@@ -28,8 +28,11 @@ const AdminSidebar = ({ collapsed }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [pendingSellers, setPendingSellers] = useState(0);
+  
+  // State quản lý các menu đang mở
+  const [openKeys, setOpenKeys] = useState([]);
 
-  // Logic API giữ nguyên
+  // Logic API lấy số lượng seller chờ duyệt
   useEffect(() => {
     const fetchPendingSellers = async () => {
       try {
@@ -50,6 +53,44 @@ const AdminSidebar = ({ collapsed }) => {
     const interval = setInterval(fetchPendingSellers, 30000);
     return () => clearInterval(interval);
   }, []);
+
+  // --- LOGIC MỚI: GIỮ MENU MỞ KHI F5 ---
+  // Hàm xác định key của menu cha dựa trên URL hiện tại
+  const getParentKey = (pathname) => {
+    if (pathname.includes('/admin/users')) return 'users';
+    if (pathname.includes('/admin/sellers')) return 'sellers';
+    if (pathname.includes('/admin/products')) return 'products';
+    if (pathname.includes('/admin/payments')) return 'payments';
+    if (pathname.includes('/admin/reports')) return 'reports';
+    // Lưu ý: Flash sale nằm trong marketing dù url là promotions
+    if (pathname.includes('/admin/marketing') || pathname.includes('/admin/promotions/flashsale')) return 'marketing'; 
+    if (pathname.includes('/admin/complaints')) return 'complaints';
+    if (pathname.includes('/admin/reviews')) return 'reviews';
+    // Các phần khuyến mãi khác
+    if (pathname.includes('/admin/promotions') && !pathname.includes('flashsale')) return 'promotions';
+    if (pathname.includes('/admin/notifications')) return 'test-ui-group';
+    return '';
+  };
+
+  useEffect(() => {
+    const key = getParentKey(location.pathname);
+    if (key) {
+      setOpenKeys((prev) => {
+        // Nếu key đã có trong danh sách mở thì không cần set lại để tránh render lại không cần thiết
+        if (prev.includes(key)) return prev;
+        return [...prev, key];
+      });
+    }
+  }, [location.pathname]);
+
+  // Hàm xử lý khi người dùng tự đóng/mở menu
+  const onOpenChange = (keys) => {
+    // keys là mảng các key đang mở sau khi click
+    // Nếu bạn muốn chế độ Accordion (chỉ mở 1 menu tại 1 thời điểm), cần xử lý thêm logic ở đây.
+    // Hiện tại để mặc định cho phép mở nhiều menu cùng lúc.
+    setOpenKeys(keys);
+  };
+  // --------------------------------------
 
   const items = [
     { key: "/admin", icon: <HomeOutlined />, label: "Tổng quan" },
@@ -138,19 +179,15 @@ const AdminSidebar = ({ collapsed }) => {
       label: "Đánh giá",
       children: [{ key: "/admin/reviews", label: "Quản lý đánh giá" }],
     },
-    // === PHẦN ĐÃ CHỈNH SỬA ===
     {
       key: "promotions",
       icon: <TagOutlined />,
       label: "Khuyến mãi",
       children: [
         { key: "/admin/promotions", label: "Quản lý khuyến mãi" },
-        // Thêm dòng này để tạo menu mới
         { key: "/admin/promotions/usage", label: "Quản lý sử dụng voucher" } 
       ],
     },
-    // ==========================
-
     {
       key: "test-ui-group", // Key của menu cha
       icon: <BugOutlined />, // Icon màu đỏ nổi bật
@@ -209,7 +246,11 @@ const AdminSidebar = ({ collapsed }) => {
         mode="inline"
         defaultSelectedKeys={[location.pathname]}
         selectedKeys={[location.pathname]}
-        defaultOpenKeys={['users', 'sellers', 'products', 'orders', 'promotions']} // Thêm 'promotions' vào để mặc định mở menu này nếu cần
+        
+        // Sử dụng openKeys và onOpenChange thay vì defaultOpenKeys
+        openKeys={openKeys}
+        onOpenChange={onOpenChange}
+        
         items={items}
         onClick={({ key }) => navigate(key)}
         style={{ borderRight: 0, paddingTop: 10, paddingBottom: 60 }}
