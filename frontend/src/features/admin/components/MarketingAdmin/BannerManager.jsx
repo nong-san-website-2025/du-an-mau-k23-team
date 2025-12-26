@@ -43,7 +43,7 @@ const BannerManager = () => {
   const [isMobile, setIsMobile] = useState(false);
 
   // Filter states
-  const [slotFilter, setSlotFilter] = useState(null); // Lưu ID của slot
+  const [slotFilter, setSlotFilter] = useState(null); // Lưu mã `code` của slot (ví dụ homepage_top)
   const [searchText, setSearchText] = useState("");
 
   // Selection states (Chọn nhiều)
@@ -53,21 +53,37 @@ const BannerManager = () => {
   const [showForm, setShowForm] = useState(false);
   const [editingBanner, setEditingBanner] = useState(null);
 
-  const fetchData = async () => {
+  const fetchData = async (slotCode = null) => {
     setLoading(true);
     try {
+      console.debug("[BannerManager] fetchData called");
       const [resBanners, resSlots] = await Promise.all([
-        getAdminBanners(),
+        getAdminBanners(slotCode || ""),
         getAdSlots(),
       ]);
       // Reset selection khi reload data
       setSelectedRowKeys([]);
-      setBanners(resBanners.data || resBanners);
-      setSlots(resSlots.data || resSlots);
+
+      // Normalize banners response: axios returns { data: ... } and DRF may paginate -> { results: [...] }
+      const rawBanners = resBanners?.data ?? resBanners;
+      const bannersList = Array.isArray(rawBanners)
+        ? rawBanners
+        : rawBanners?.results ?? rawBanners?.items ?? rawBanners?.data ?? [];
+
+      // Normalize slots response similarly
+      const rawSlots = resSlots?.data ?? resSlots;
+      const slotsList = Array.isArray(rawSlots)
+        ? rawSlots
+        : rawSlots?.results ?? rawSlots?.items ?? rawSlots?.data ?? [];
+
+      setBanners(bannersList);
+      setSlots(slotsList);
     } catch (error) {
-      console.error(error);
-      message.error("Không thể tải dữ liệu marketing.");
+      console.error("[BannerManager] fetchData error:", error);
+      const errMsg = error?.message || (error?.response && (error.response.data || error.response.statusText)) || "Không thể tải dữ liệu marketing.";
+      message.error(`Lỗi tải dữ liệu marketing: ${errMsg}`);
     } finally {
+      console.debug("[BannerManager] fetchData finished");
       setLoading(false);
     }
   };
@@ -75,6 +91,12 @@ const BannerManager = () => {
   useEffect(() => {
     fetchData();
   }, []);
+
+  // Khi filter vị trí thay đổi, lấy dữ liệu từ server tương ứng (gọn và chính xác)
+  useEffect(() => {
+    // Nếu slotFilter === null -> không truyền tham số (lấy tất cả)
+    fetchData(slotFilter || "");
+  }, [slotFilter]);
 
   // Xóa 1 cái
   const handleDelete = async (id) => {
@@ -116,10 +138,13 @@ const BannerManager = () => {
 
     // 2. Lọc theo Vị trí
     if (slotFilter) {
-      const bannerSlotId =
-        typeof b.slot === "object" && b.slot !== null ? b.slot.id : b.slot;
+      // `slotFilter` là slot.code (string). Banner.slot có thể là object with `code`.
+      const bannerSlotCode =
+        typeof b.slot === "object" && b.slot !== null
+          ? b.slot.code
+          : b.slot;
 
-      if (String(bannerSlotId) !== String(slotFilter)) {
+      if (String(bannerSlotCode) !== String(slotFilter)) {
         return false;
       }
     }
@@ -282,7 +307,7 @@ const BannerManager = () => {
                 style={{ width: 200 }}
                 value={slotFilter}
                 onChange={setSlotFilter}
-                options={slots.map((s) => ({ label: s.name, value: s.id }))}
+                options={slots.map((s) => ({ label: s.name, value: s.code }))}
               />
             </Space>
           </Col>
@@ -307,7 +332,13 @@ const BannerManager = () => {
               <Tooltip title="Tải lại dữ liệu">
                 <Button
                   icon={<ReloadOutlined spin={loading} />}
-                  onClick={fetchData}
+                  onClick={() => {
+                    // Reset client-side filters and reload all data
+                    setSlotFilter(null);
+                    setSearchText("");
+                    setSelectedRowKeys([]);
+                    fetchData();
+                  }}
                   style={{
                     backgroundColor: "#fff",
                     borderColor: "#d9d9d9", // Viền xanh dương chuẩn Antd

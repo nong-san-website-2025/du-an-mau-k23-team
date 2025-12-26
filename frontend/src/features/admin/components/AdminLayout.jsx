@@ -90,30 +90,12 @@ export default function AdminLayout() {
 
 // UserDropdown Component giữ nguyên như cũ, rất tốt rồi
 function UserDropdown({ onLogout, navigate }) {
-  const [avatarUrl, setAvatarUrl] = useState(null);
-
-  useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        const token = localStorage.getItem("token");
-        const apiUrl = process.env.REACT_APP_API_URL; 
-        
-        const res = await axios.get(`${apiUrl}/api/users/me/`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        
-        if (res.data.avatar) {
-          const fullUrl = res.data.avatar.startsWith("http")
-            ? res.data.avatar
-            : `${apiUrl}${res.data.avatar}`;
-          setAvatarUrl(fullUrl);
-        }
-      } catch (err) {
-        // console.error(err);
-      }
-    };
-    fetchProfile();
-  }, []);
+  const { user } = useAuth();
+  const avatarUrl = user?.avatar?.startsWith("http")
+    ? user.avatar
+    : user?.avatar 
+      ? `${process.env.REACT_APP_API_URL}${user.avatar}`
+      : null;
 
   const menuItems = [
     { key: "profile", label: "Thông tin cá nhân", onClick: () => navigate("/admin/profile") },
@@ -124,7 +106,9 @@ function UserDropdown({ onLogout, navigate }) {
   return (
     <Dropdown menu={{ items: menuItems }} placement="bottomRight" arrow trigger={['click']}>
       <div className="d-flex align-items-center gap-2 p-1 px-2 rounded hover-bg-light" style={{ cursor: "pointer" }}>
-        <span className="fw-semibold d-none d-md-block text-secondary">Admin User</span>
+        <span className="fw-semibold d-none d-md-block text-secondary">
+          {user?.username || "Admin"}
+        </span>
         <Avatar size="large" icon={<UserOutlined />} src={avatarUrl} style={{ border: '1px solid #e5e7eb' }} /> 
       </div>
     </Dropdown>

@@ -35,17 +35,21 @@ const STATUS_LABELS = {
 };
 
 export default function OrderPieChart({ data = [] }) {
+  console.log("📊 OrderPieChart received data:", data);
+  
   const chartData = data.map((item) => {
     // Ưu tiên lấy 'status' sau đó mới đến 'sta' để tránh lỗi dữ liệu từ backend
-    const statusKey = item.status || item.sta;
+    const statusKey = item.status || item.sta || item.status_name;
 
     return {
       // Nếu không tìm thấy trong từ điển LABELS thì giữ nguyên tên gốc
-      name: STATUS_LABELS[statusKey] || statusKey,
+      name: STATUS_LABELS[statusKey] || statusKey || "Không xác định",
       originalKey: statusKey,
-      value: item.count,
+      value: item.count || 0,
     };
   });
+  
+  console.log("📊 OrderPieChart processed chartData:", chartData);
 
   return (
     <ResponsiveContainer width="100%" height={320}>

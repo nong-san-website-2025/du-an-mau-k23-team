@@ -17,13 +17,21 @@ export default function UserAddModal({ visible, onClose, onUserAdded }) {
   useEffect(() => {
     const token = getToken();
     axios
-      .get(`${API_BASE_URL}/users/roles/list/`, {
+      .get(`${API_BASE_URL}/users/roles/`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       .then((res) => {
-        setRoles(res.data || []);
+        const roleData = Array.isArray(res.data) ? res.data : res.data.results || [];
+        setRoles(roleData);
       })
-      .catch((err) => console.error("❌ Lỗi load roles:", err));
+      .catch((err) => {
+        console.error("❌ Lỗi load roles:", err);
+        setRoles([
+          { id: 1, name: "Admin" },
+          { id: 2, name: "Seller" },
+          { id: 3, name: "Customer" }
+        ]);
+      });
   }, []);
 
   const handleSubmit = async (values) => {

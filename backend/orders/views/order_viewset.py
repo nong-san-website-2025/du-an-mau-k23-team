@@ -323,8 +323,42 @@ class OrderViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'], url_path='admin-list')
     def admin_list(self, request):
-        if not getattr(request.user, 'is_admin', False): return Response({'error': 'Chỉ admin mới có quyền'}, status=403)
-        return Response(self.get_serializer(self.get_queryset(), many=True).data)
+        if not getattr(request.user, 'is_admin', False):
+            return Response({'error': 'Chỉ admin mới có quyền'}, status=403)
+        
+        queryset = self.get_queryset()
+        
+        # Hỗ trợ lọc theo trạng thái và tìm kiếm ngay tại Queryset
+        status_param = request.query_params.get('status')
+        if status_param:
+            queryset = queryset.filter(status=status_param)
+            
+        search_param = request.query_params.get('search')
+        if search_param:
+            from django.db.models import Q
+            queryset = queryset.filter(
+                Q(id__icontains=search_param) |
+                Q(customer_name__icontains=search_param) |
+                Q(customer_phone__icontains=search_param)
+            )
+            
+        # Hỗ trợ lọc theo khoảng ngày
+        start_date = request.query_params.get('start_date')
+        end_date = request.query_params.get('end_date')
+        if start_date and end_date:
+            queryset = queryset.filter(created_at__date__range=[start_date, end_date])
+        elif start_date:
+            queryset = queryset.filter(created_at__date__gte=start_date)
+        elif end_date:
+            queryset = queryset.filter(created_at__date__lte=end_date)
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
     @action(detail=True, methods=['get'], url_path='admin-detail')
     def admin_detail(self, request, pk=None):

@@ -10,7 +10,7 @@ import {
   CheckOutlined, CloseOutlined
 } from "@ant-design/icons";
 import axios from "axios";
-import { useTranslation } from "react-i18next";
+// Removed useTranslation to avoid NO_I18NEXT_INSTANCE warning in dev when i18n isn't initialized
 import * as XLSX from "xlsx";
 import dayjs from "dayjs";
 import isBetween from "dayjs/plugin/isBetween";
@@ -44,7 +44,9 @@ const checkIsSpam = (item) => {
 };
 
 const ApprovalSellersPage = () => {
-  const { t } = useTranslation();
+  // Using literal Vietnamese strings here to avoid i18next hook warning when i18n
+  // isn't initialized in some dev environments.
+  const t = (s) => s;
 
   // --- STATE ---
   const [data, setData] = useState([]);
@@ -71,7 +73,15 @@ const ApprovalSellersPage = () => {
     try {
       setLoading(true);
       const res = await api.get("/sellers/", { headers: getAuthHeaders() });
-      const filtered = res.data
+      // API may return array or paginated object { results: [...] } or { data: [...] }
+      let sellers = [];
+      if (Array.isArray(res.data)) sellers = res.data;
+      else if (res.data && Array.isArray(res.data.results)) sellers = res.data.results;
+      else if (res.data && Array.isArray(res.data.data)) sellers = res.data.data;
+      else if (res.data && Array.isArray(res.data.sellers)) sellers = res.data.sellers;
+      else sellers = [];
+
+      const filtered = sellers
         .filter((item) => ["pending", "approved", "rejected"].includes(item.status))
         .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
       setData(filtered);
@@ -91,31 +101,48 @@ const ApprovalSellersPage = () => {
     wsHost = wsHost.replace(/^https?:\/\//, "");
     const wsUrl = `${protocol}://${wsHost}/ws/sellers/approval/?token=${token}`;
 
-    if (!socketRef.current || socketRef.current.readyState === WebSocket.CLOSED) {
-      const socket = new WebSocket(wsUrl);
-      socket.onopen = () => console.log("✅ Approval WebSocket Connected");
-      socket.onmessage = (event) => {
-        const msg = JSON.parse(event.data);
-        const { action, data: sellerData } = msg;
-        setData((prevData) => {
-          switch (action) {
-            case "CREATED":
-              if (["pending", "approved", "rejected"].includes(sellerData.status)) {
-                const newItem = { ...sellerData, isNew: true };
-                setTimeout(() => { setData((curr) => curr.map((i) => i.id === sellerData.id ? { ...i, isNew: false } : i)); }, 8000);
-                return [newItem, ...prevData];
+    const createSocket = () => {
+      if (socketRef.current && socketRef.current.readyState !== WebSocket.CLOSED) return;
+      try {
+        const socket = new WebSocket(wsUrl);
+        socket.onopen = () => console.log("✅ Approval WebSocket Connected");
+        socket.onmessage = (event) => {
+          try {
+            const msg = JSON.parse(event.data);
+            const { action, data: sellerData } = msg;
+            setData((prevData) => {
+              switch (action) {
+                case "CREATED":
+                  if (["pending", "approved", "rejected"].includes(sellerData.status)) {
+                    const newItem = { ...sellerData, isNew: true };
+                    setTimeout(() => { setData((curr) => curr.map((i) => i.id === sellerData.id ? { ...i, isNew: false } : i)); }, 8000);
+                    return [newItem, ...prevData];
+                  }
+                  return prevData;
+                case "UPDATED":
+                  if (["active", "locked"].includes(sellerData.status)) return prevData.filter((i) => i.id !== sellerData.id);
+                  return prevData.map((i) => i.id === sellerData.id ? { ...i, ...sellerData } : i);
+                case "DELETED": return prevData.filter((i) => i.id !== sellerData.id);
+                default: return prevData;
               }
-              return prevData;
-            case "UPDATED":
-              if (["active", "locked"].includes(sellerData.status)) return prevData.filter((i) => i.id !== sellerData.id);
-              return prevData.map((i) => i.id === sellerData.id ? { ...i, ...sellerData } : i);
-            case "DELETED": return prevData.filter((i) => i.id !== sellerData.id);
-            default: return prevData;
-          }
-        });
-      };
-      socketRef.current = socket;
-    }
+            });
+          } catch (e) { console.error("WS message parse error", e); }
+        };
+        socket.onerror = (e) => { console.warn("Approval WS error", e); };
+        socket.onclose = (ev) => {
+          console.warn("Approval WS closed", ev);
+          // Try reconnect a couple times
+          setTimeout(() => {
+            try { createSocket(); } catch (e) { console.error(e); }
+          }, 3000);
+        };
+        socketRef.current = socket;
+      } catch (e) {
+        console.warn("Failed to create Approval WebSocket", e);
+      }
+    };
+
+    createSocket();
     return () => { if (socketRef.current) { socketRef.current.close(); socketRef.current = null; } };
   }, []);
 

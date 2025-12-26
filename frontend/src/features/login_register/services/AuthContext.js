@@ -7,8 +7,16 @@ const AuthContext = createContext();
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  // ✅ Khôi phục user từ localStorage để hiển thị ngay lập tức khi F5 (Fast path)
+  const [user, setUser] = useState(() => {
+    try {
+      const savedUser = localStorage.getItem("user_cache");
+      return savedUser ? JSON.parse(savedUser) : null;
+    } catch (e) {
+      return null;
+    }
+  });
+  const [loading, setLoading] = useState(!localStorage.getItem("token"));
 
   // Load user từ token
   useEffect(() => {
@@ -16,6 +24,7 @@ export const AuthProvider = ({ children }) => {
     if (!token) {
       setUser(null);
       setLoading(false);
+      localStorage.removeItem("user_cache");
       return;
     }
 
@@ -29,6 +38,9 @@ export const AuthProvider = ({ children }) => {
         };
         setUser(userData);
         
+        // Lưu cache để lần sau F5 nhanh hơn
+        localStorage.setItem("user_cache", JSON.stringify(userData));
+        
         // Đồng bộ role flag vào localStorage
         const roleValue = res.data?.role?.name || res.data?.role || "";
         if (String(roleValue).trim().toLowerCase() === "seller") {
@@ -38,8 +50,11 @@ export const AuthProvider = ({ children }) => {
         }
       } catch (err) {
         console.error("Cannot fetch current user:", err);
-        // Không cần thông báo lỗi ở đây vì người dùng chỉ vừa F5 lại trang
-        setUser(null);
+        if (err.response?.status === 401) {
+           setUser(null);
+           localStorage.removeItem("token");
+           localStorage.removeItem("user_cache");
+        }
       } finally {
         setLoading(false);
       }
@@ -63,6 +78,7 @@ export const AuthProvider = ({ children }) => {
         token: data.access,
       };
       setUser(userData);
+      localStorage.setItem("user_cache", JSON.stringify(userData));
 
       if (meRes.data?.username) {
         localStorage.setItem("username", meRes.data.username);
@@ -129,6 +145,7 @@ export const AuthProvider = ({ children }) => {
         token: accessToken,
       };
       setUser(userData);
+      localStorage.setItem("user_cache", JSON.stringify(userData));
 
       // Đồng bộ role flag vào localStorage
       const roleValue = meRes.data?.role?.name || meRes.data?.role || "";
@@ -189,7 +206,7 @@ export const AuthProvider = ({ children }) => {
     } catch (err) {
       console.error("Logout process error:", err);
     } finally {
-      const keysToRemove = ["token", "refresh", "username"]; // Xóa thêm username cho sạch
+      const keysToRemove = ["token", "refresh", "username", "user_cache"]; // Xóa thêm user_cache
       keysToRemove.forEach((k) => localStorage.removeItem(k));
       setUser(null);
 
@@ -265,6 +282,7 @@ export const AuthProvider = ({ children }) => {
           token: googleResponse.access,
         };
         setUser(userData);
+        localStorage.setItem("user_cache", JSON.stringify(userData));
 
         // Đồng bộ role flag vào localStorage
         const roleValue = meRes.data?.role?.name || meRes.data?.role || "";

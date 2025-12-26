@@ -91,9 +91,15 @@ const ActiveLockedSellersPage = () => {
     try {
       setLoading(true);
       const res = await api.get("/sellers/group/business", { headers: getAuthHeaders() });
-      const filtered = res.data.filter((item) => ["active", "locked"].includes(item.status));
+      const rawData = res.data;
+      const sellers = Array.isArray(rawData) ? rawData : (rawData?.results || rawData?.data || []);
+      const filtered = sellers.filter((item) => ["active", "locked"].includes(item.status));
       setData(filtered.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)));
-    } catch (err) { message.error(t("Không thể tải danh sách cửa hàng")); } 
+    } catch (err) { 
+      console.error("❌ Lỗi tải danh sách cửa hàng:", err);
+      message.error(t("Không thể tải danh sách cửa hàng") + `: ${err.response?.data?.message || err.message}`); 
+      setData([]);
+    } 
     finally { setLoading(false); }
   };
 

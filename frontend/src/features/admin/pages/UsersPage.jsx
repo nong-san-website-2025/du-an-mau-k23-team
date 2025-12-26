@@ -39,16 +39,21 @@ dayjs.extend(isBetween);
 const { RangePicker } = DatePicker;
 const { Option } = Select;
 
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import useDebounce from "../../../hooks/useDebounce";
+
 export default function UsersPage() {
   const { t } = useTranslation();
   const API_URL = process.env.REACT_APP_API_URL;
+  const queryClient = useQueryClient();
 
   // --- STATE ---
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   
   // Filter States
   const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearch = useDebounce(searchTerm, 500);
   const [selectedRole, setSelectedRole] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [dateRange, setDateRange] = useState(null);
@@ -60,24 +65,42 @@ export default function UsersPage() {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [triggerAddUser, setTriggerAddUser] = useState(false);
 
-  // --- 1. FETCHING DATA ---
-  const fetchUsers = async () => {
-    setLoading(true);
-    try {
-      const res = await axios.get(`${API_URL}/users/list/`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+  // --- 1. FETCHING DATA WITH REACT QUERY ---
+  const { data: usersData, isLoading: loading, isError } = useQuery({
+    queryKey: ["adminUsers", selectedRole, statusFilter, debouncedSearch, dateRange, currentPage, pageSize],
+    queryFn: async () => {
+      const token = localStorage.getItem("token");
+      const params = new URLSearchParams({
+        role: selectedRole,
+        status: statusFilter,
+        search: debouncedSearch,
+        page: currentPage,
+        page_size: pageSize,
       });
-      setUsers(Array.isArray(res.data) ? res.data : []);
-    } catch (err) {
-      message.error("Lỗi tải dữ liệu người dùng");
-    } finally {
-      setLoading(false);
-    }
+      if (dateRange?.[0] && dateRange?.[1]) {
+        params.append("start_date", dateRange[0].format("YYYY-MM-DD"));
+        params.append("end_date", dateRange[1].format("YYYY-MM-DD"));
+      }
+
+      const res = await axios.get(`${API_URL}/users/list/?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      return res.data;
+    },
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+
+  const users = usersData?.results || (Array.isArray(usersData) ? usersData : []);
+  const totalUsers = usersData?.count || users.length;
+
+  const handlePageChange = (page, pSize) => {
+    setCurrentPage(page);
+    setPageSize(pSize);
   };
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
+  const fetchUsers = () => {
+    queryClient.invalidateQueries(["adminUsers"]);
+  };
 
   // --- 2. WEBSOCKET: Realtime admin updates (Logic from HEAD merged with TruongAn requirements) ---
   const socketRef = useRef(null);
@@ -130,38 +153,11 @@ export default function UsersPage() {
           
           if (!incoming || !incoming.id) return;
 
-          setUsers((prev) => {
-            switch (action) {
-              case "CREATE":
-              case "CREATED": {
-                const userWithFlags = { ...incoming, is_new: true };
-                if (prev.some((u) => u.id === userWithFlags.id)) {
-                  return prev.map((u) =>
-                    u.id === userWithFlags.id ? { ...u, ...userWithFlags } : u
-                  );
-                }
-                return [userWithFlags, ...prev];
-              }
-              case "UPDATE":
-              case "UPDATED":
-                return prev.map((u) =>
-                  u.id === incoming.id ? { ...u, ...incoming } : u
-                );
-              case "DELETE":
-              case "DELETED":
-                return prev.filter((u) => u.id !== incoming.id);
-              default:
-                return prev;
-            }
-          });
+          // Làm mới dữ liệu từ server khi có thay đổi
+          queryClient.invalidateQueries(["adminUsers"]);
 
           if (action === "CREATE" || action === "CREATED") {
             message.success(`Người dùng mới: ${incoming.email || incoming.username || incoming.name}`);
-            setTimeout(() => {
-              setUsers((prev) =>
-                prev.map((u) => u.id === incoming.id ? { ...u, is_new: false } : u)
-              );
-            }, 8000);
           }
         } catch (err) {
           console.error("[ADMIN WS - USERS] message error:", err);
@@ -191,18 +187,17 @@ export default function UsersPage() {
 
   // --- 3. STATS CALCULATION ---
   const statItems = useMemo(() => {
-    const total = users.length;
-    const active = users.filter(u => u.is_active).length;
-    const inactive = total - active;
-    const sellers = users.filter(u => u.role?.name?.toLowerCase() === 'seller').length;
-
+    const activeUsers = users.filter(u => u.is_active).length;
+    const lockedUsers = users.filter(u => !u.is_active).length;
+    const sellers = users.filter(u => u.role?.name?.toLowerCase() === 'seller' || u.role_id === 2).length;
+    
     return [
-      { title: "Tổng User", value: total, icon: <TeamOutlined />, color: "#1890ff" },
-      { title: STATUS_LABELS.active || "Hoạt động", value: active, icon: <CheckCircleOutlined />, color: "#52c41a" },
-      { title: "Bị khóa/Ẩn", value: inactive, icon: <LockOutlined />, color: "#faad14" },
+      { title: "Tổng User", value: totalUsers, icon: <TeamOutlined />, color: "#1890ff" },
+      { title: STATUS_LABELS.active || "Đang hoạt động", value: activeUsers, icon: <CheckCircleOutlined />, color: "#52c41a" },
+      { title: "Bị khóa/Ẩn", value: lockedUsers, icon: <LockOutlined />, color: "#faad14" },
       { title: "Seller", value: sellers, icon: <ShoppingOutlined />, color: "#722ed1" }
     ];
-  }, [users]);
+  }, [totalUsers, users]);
 
   // --- FILTER LOGIC (From TruongAn) ---
   const handleTimeChange = (val) => {
@@ -272,14 +267,15 @@ export default function UsersPage() {
     setDateRange(null);
     setTimeFilter("all");
     setCheckedIds([]); 
-    fetchUsers().then(() => {
+    setCurrentPage(1);
+    queryClient.invalidateQueries(["adminUsers"]).then(() => {
         message.success("Đã làm mới và đặt lại bộ lọc");
     });
   };
 
   const handleExportExcel = () => {
-    if (filteredUsers.length === 0) { message.warning("Không có dữ liệu để xuất"); return; }
-    const formattedData = filteredUsers.map(user => ({
+    if (users.length === 0) { message.warning("Không có dữ liệu để xuất"); return; }
+    const formattedData = users.map(user => ({
       ID: user.id, "Tên đăng nhập": user.username, "Họ và tên": user.full_name, Email: user.email, "SĐT": user.phone,
       "Vai trò": user.role?.name, "Trạng thái": user.is_active ? "Hoạt động" : "Đã khóa",
       "Ngày tạo": dayjs(user.created_at).format("DD/MM/YYYY HH:mm")
@@ -351,14 +347,14 @@ export default function UsersPage() {
               placeholder="Tìm tên, email, sđt..." 
               prefix={<SearchOutlined />} 
               value={searchTerm} 
-              onChange={e => setSearchTerm(e.target.value)} 
+              onChange={e => { setSearchTerm(e.target.value); setCurrentPage(1); }} 
               style={{ width: 220 }} 
               allowClear 
             />
             
             <Select 
               value={selectedRole} 
-              onChange={setSelectedRole} 
+              onChange={val => { setSelectedRole(val); setCurrentPage(1); }} 
               style={{ width: 140 }} 
               options={[
                 {value:"all", label:"Mọi vai trò"}, 
@@ -370,7 +366,7 @@ export default function UsersPage() {
             
             <Select 
               value={statusFilter} 
-              onChange={setStatusFilter} 
+              onChange={val => { setStatusFilter(val); setCurrentPage(1); }} 
               style={{ width: 150 }} 
               options={[
                 {value:"all", label:"Mọi trạng thái"}, 
@@ -382,7 +378,7 @@ export default function UsersPage() {
             {/* Filter Thời gian */}
             <Select 
               value={timeFilter} 
-              onChange={handleTimeChange} 
+              onChange={val => { handleTimeChange(val); setCurrentPage(1); }} 
               style={{ width: 130 }}
             >
               <Option value="all">Toàn bộ</Option>
@@ -394,7 +390,7 @@ export default function UsersPage() {
 
             <RangePicker 
               value={dateRange} 
-              onChange={handleRangePickerChange} 
+              onChange={dates => { handleRangePickerChange(dates); setCurrentPage(1); }} 
               format="DD/MM/YYYY" 
               placeholder={['Từ ngày', 'Đến ngày']} 
               style={{ width: 240 }} 
@@ -426,11 +422,9 @@ export default function UsersPage() {
       {/* 3. BẢNG DỮ LIỆU */}
       <div className="users-page-content">
         <UserTable
-          // Chú ý: Truyền filteredUsers vào đây thay vì users gốc
-          users={filteredUsers} 
-          setUsers={setUsers} 
+          users={users} 
+          setUsers={(u) => queryClient.setQueryData(["adminUsers", selectedRole, statusFilter, debouncedSearch, dateRange, currentPage, pageSize], u)} 
           loading={loading}
-          // Reset search/role prop ở UserTable vì filter đã xử lý ở cha
           searchTerm="" 
           selectedRole="all" 
           statusFilter="all" 
@@ -439,6 +433,15 @@ export default function UsersPage() {
           triggerAddUser={triggerAddUser} 
           setTriggerAddUser={setTriggerAddUser}
           onRow={(user) => { setSelectedUser(user); setShowDetailModal(true); }}
+          pagination={{
+            current: currentPage,
+            pageSize: pageSize,
+            total: totalUsers,
+            onChange: handlePageChange,
+            showSizeChanger: true,
+            pageSizeOptions: ['10', '20', '50'],
+            showTotal: (t) => `Tổng ${t} users`
+          }}
         />
       </div>
 
@@ -447,7 +450,7 @@ export default function UsersPage() {
           user={selectedUser} 
           visible={showDetailModal}
           onClose={() => setShowDetailModal(false)}
-          onUserUpdated={(u) => setUsers(prev => prev.map(old => old.id === u.id ? {...old, ...u} : old))}
+          onUserUpdated={() => queryClient.invalidateQueries(["adminUsers"])}
         />
       )}
     </AdminPageLayout>

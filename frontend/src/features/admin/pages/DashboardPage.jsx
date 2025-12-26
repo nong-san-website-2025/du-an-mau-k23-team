@@ -1,5 +1,4 @@
 import React from "react";
-import axios from "axios";
 import { Row, Col, Card, Typography, Badge, Spin } from "antd";
 import {
   FireOutlined,
@@ -16,42 +15,30 @@ import TopSellingProducts from "../components/DashboardAdmin/TopSellingProducts"
 import RecentOrders from "../components/DashboardAdmin/RecentOrders";
 import RecentDisputes from "../components/DashboardAdmin/RecentDisputes";
 import { useTranslation } from "react-i18next";
+import adminApi from "../services/adminApi";
 
 const { Title } = Typography;
 
 export default function DashboardPage() {
   const { t } = useTranslation();
 
-  // ✅ 1. Logic Fetch dữ liệu từ API
-  const fetchData = async () => {
-    const token = localStorage.getItem("token");
-    const response = await axios.get("http://127.0.0.1:8000/api/dashboard/", {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    return response.data;
-  };
-
-  // ✅ 2. Cấu hình Real-time với React Query
-  const { data, isLoading, isError, dataUpdatedAt } = useQuery({
+  // ✅ Sử dụng React Query với cấu hình tối ưu caching
+  const { data, isLoading, isError, dataUpdatedAt, isPlaceholderData } = useQuery({
     queryKey: ["dashboardData"],
-    queryFn: fetchData,
-    // refetchInterval: 10000, // Tự động làm mới mỗi 10 giây
-    // keepPreviousData: true, // Giúp giao diện không bị giật khi đang tải lại
+    queryFn: adminApi.getDashboardStats,
+    staleTime: 1000 * 60 * 5, // Dữ liệu được coi là tươi trong 5 phút
+    gcTime: 1000 * 60 * 30,    // Giữ trong cache 30 phút
+    placeholderData: (previousData) => previousData, // Giữ dữ liệu cũ khi đang fetch mới (tránh giật lag)
   });
 
-  // ✅ 3. Trạng thái tải dữ liệu lần đầu (Loading)
-  if (isLoading) {
+  // ✅ Trạng thái tải dữ liệu lần đầu (Chỉ hiện Spin khi không có dữ liệu cache)
+  if (isLoading && !isPlaceholderData) {
     return (
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          height: "100vh",
-        }}
-      >
-        <Spin size="large" tip="Đang tải dữ liệu realtime..." />
-      </div>
+      <Spin
+        fullscreen
+        size="large"
+        tip="Đang tải dữ liệu tổng quan..."
+      />
     );
   }
 
@@ -106,6 +93,8 @@ export default function DashboardPage() {
   ];
 
   // ✅ 6. Chuẩn hóa dữ liệu cho biểu đồ tròn (OrderPieChart)
+  console.log("🔍 Raw orders_by_status from API:", data.orders_by_status);
+  
   let ordersPieData = [];
   if (Array.isArray(data.orders_by_status)) {
     ordersPieData = data.orders_by_status;
@@ -115,6 +104,8 @@ export default function DashboardPage() {
       count: value ?? 0,
     }));
   }
+  
+  console.log("🔍 Processed ordersPieData:", ordersPieData);
 
   // ✅ 7. Layout JSX (Giữ nguyên cấu trúc Row/Col của bạn)
   return (
@@ -167,7 +158,7 @@ export default function DashboardPage() {
       {/* Top Selling Products Section */}
       <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
         <Col xs={24}>
-          <TopSellingProducts />
+          <TopSellingProducts data={data.top_products || []} />
         </Col>
       </Row>
 

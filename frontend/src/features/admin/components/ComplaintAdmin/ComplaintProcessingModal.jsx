@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { Modal, Row, Col, Typography, Image, Card, Empty, Descriptions, Tag, Tabs, Avatar, Form, Select, InputNumber, Input, Alert, Button, Statistic, message } from "antd";
+import { Modal, Row, Col, Typography, Image, Card, Empty, Descriptions, Tag, Tabs, Avatar, Form, Select, InputNumber, Input, Alert, Button, Statistic, message, Divider, Space, Steps } from "antd";
 import {
     UserOutlined, ShopOutlined,
     FileImageOutlined, DollarOutlined,
@@ -128,8 +128,24 @@ const ComplaintProcessingModal = ({ visible, complaint, onClose, onRefresh }) =>
         }
     };
 
-    // Helper hiển thị
-    const getUserName = (data) => data?.created_by_name || data?.complainant_name || data?.user_name || "N/A";
+    // Helper hiển thị - robust: hỗ trợ nhiều cấu trúc payload từ API
+    const getUserName = (data) => {
+        if (!data) return "Khách hàng (Ẩn)";
+        return (
+            data.display_name ||
+            data.created_by_name ||
+            data.complainant_name ||
+            data.user_name ||
+            (data.user && (data.user.full_name || data.user.username)) ||
+            (data.created_by && (data.created_by.full_name || data.created_by.username)) ||
+            "Khách hàng (Ẩn)"
+        );
+    };
+
+    const getUserEmail = (data) => {
+        if (!data) return "";
+        return data.created_by_email || data.user?.email || data.created_by?.email || "";
+    };
 
     const { images, videos } = useMemo(() => {
         const rawMedia = complaint?.media || complaint?.media_urls || [];
@@ -142,6 +158,18 @@ const ComplaintProcessingModal = ({ visible, complaint, onClose, onRefresh }) =>
         }
         return { images: imgs, videos: vids };
     }, [complaint]);
+
+    // Steps flow for status visualization
+    const statusSteps = [
+        'pending',
+        'negotiating',
+        'waiting_return',
+        'returning',
+        'admin_review',
+        'resolved_refund',
+        'resolved_reject',
+    ];
+    const currentStep = complaint ? Math.max(0, statusSteps.indexOf(complaint.status)) : 0;
 
     const renderSummary = () => {
         if (resolutionType === 'refund_full') return <Tag color="success">Khách: {maxRefundAmount.toLocaleString()}đ | Shop: 0đ</Tag>;
@@ -175,177 +203,146 @@ const ComplaintProcessingModal = ({ visible, complaint, onClose, onRefresh }) =>
 
     return (
         <Modal
-            open={visible}
-            title={null}
-            onCancel={onClose}
-            footer={null}
-            width={1200}
-            centered
-            bodyStyle={{ padding: 0, height: '80vh', overflow: 'hidden' }}
-        >
-            <Row style={{ height: '100%' }}>
+                open={visible}
+                title={null}
+                onCancel={onClose}
+                footer={null}
+                width={1100}
+                centered
+                bodyStyle={{ padding: 0, height: '80vh', overflow: 'hidden' }}
+            >
+                <Row style={{ height: '100%' }}>
 
-                {/* CỘT TRÁI (Giữ nguyên) */}
-                <Col span={15} style={{ height: '100%', overflowY: 'auto', borderRight: '1px solid #f0f0f0', padding: 24 }}>
-                    <div style={{ display: 'flex', gap: 16, marginBottom: 20 }}>
-                        <Avatar
-                            shape="square"
-                            size={64}
-                            src={resolveProductImage(complaint.product_image)}
-                            icon={<FileImageOutlined />}
-                        />
-                        <div>
-                            <Title level={5} style={{ margin: 0, color: '#1890ff' }}>#{complaint.id} - {complaint.product_name}</Title>
-                            <div style={{ marginTop: 4 }}>
-                                <Tag color="geekblue">{complaint.order_code || "Mã đơn: " + complaint.order_id}</Tag>
-                                <Tag color={isResolved ? 'success' : 'processing'}>
-                                    {complaint.status_display || complaint.status}
-                                </Tag>
-                            </div>
-                        </div>
-                    </div>
+                    {/* LEFT COLUMN: DETAILS (Larger, clearer layout) */}
+                    <Col xs={24} md={16} style={{ height: '100%', overflowY: 'auto', borderRight: '1px solid #f0f0f0', padding: 28 }}>
+                        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+                            <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
+                                <Card bodyStyle={{ padding: 0, overflow: 'hidden' }} style={{ width: 160, borderRadius: 8, boxShadow: '0 4px 10px rgba(0,0,0,0.04)' }}>
+                                    <Image src={resolveProductImage(complaint.product_image)} width={160} height={160} style={{ objectFit: 'cover' }} preview={false} />
+                                </Card>
+                                <div style={{ flex: 1 }}>
+                                    <Title level={3} style={{ margin: 0, lineHeight: 1.1 }}>{complaint.product_name || `#${complaint.id}`}</Title>
+                                    <div style={{ marginTop: 10, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                                        <Tag color="geekblue" style={{ fontWeight: 700 }}>{complaint.order_code || `Mã đơn: ${complaint.order_id || 'N/A'}`}</Tag>
+                                        <Tag color={isResolved ? 'success' : 'processing'} style={{ fontWeight: 700 }}>{complaint.status_display || complaint.status}</Tag>
+                                        <div style={{ color: '#888', fontSize: 13 }}>{new Date(complaint.created_at).toLocaleString()}</div>
+                                    </div>
 
-                    <Tabs defaultActiveKey="1" items={[
-                        {
-                            key: '1', label: <span><InfoCircleOutlined /> Chi tiết vụ việc</span>,
-                            children: (
-                                <>
-                                    <Row gutter={16}>
-                                        <Col span={12}>
-                                            <Card size="small" title="Người mua (Khách)" bordered={false} style={{ background: '#f9f9f9' }}>
-                                                <Text strong>{getUserName(complaint)}</Text><br />
-                                                <Text type="secondary">{complaint.created_by_email}</Text>
-                                            </Card>
-                                        </Col>
-                                        <Col span={12}>
-                                            <Card size="small" title="Người bán (Shop)" bordered={false} style={{ background: '#f9f9f9' }}>
-                                                <Text strong>{complaint.seller_name}</Text><br />
-                                                <Text type="secondary">Thanh toán: {complaint.payment_method || "Tiền mặt / COD"}</Text>
-                                            </Card>
-                                        </Col>
-                                    </Row>
-                                    <div style={{ marginTop: 20 }}>
-                                        <Text strong>Lý do khiếu nại:</Text>
-                                        <div style={{ background: '#fff', border: '1px solid #eee', padding: 12, borderRadius: 6, fontStyle: 'italic', marginTop: 5 }}>
-                                            "{complaint.reason}"
-                                        </div>
+                                    <div style={{ marginTop: 16 }}>
+                                        <Steps size="small" current={currentStep} items={[
+                                            { title: 'Chờ xử lý' },
+                                            { title: 'Thương lượng' },
+                                            { title: 'Chờ gửi trả' },
+                                            { title: 'Đang trả hàng' },
+                                            { title: 'Sàn xem xét' },
+                                            { title: 'Hoàn tiền' },
+                                            { title: 'Từ chối' },
+                                        ]} />
                                     </div>
-                                    {complaint.seller_response && (
-                                        <div style={{ marginTop: 15 }}>
-                                            <Text strong style={{ color: '#cf1322' }}>Phản hồi của Shop:</Text>
-                                            <div style={{ background: '#fff1f0', border: '1px solid #ffa39e', padding: 12, borderRadius: 6, color: '#cf1322', marginTop: 5 }}>
-                                                "{complaint.seller_response}"
-                                            </div>
-                                        </div>
-                                    )}
-                                </>
-                            )
-                        },
-                        {
-                            key: '2', label: <span><FileImageOutlined /> Bằng chứng ({images.length + videos.length})</span>,
-                            children: (
-                                <div>
-                                    {images.length === 0 && videos.length === 0 && <Empty description="Không có bằng chứng" />}
-                                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(100px, 1fr))", gap: 10 }}>
-                                        <Image.PreviewGroup>
-                                            {images.map((url, idx) => (
-                                                <div key={idx} style={{ aspectRatio: "1/1", borderRadius: 8, overflow: 'hidden', border: '1px solid #d9d9d9' }}>
-                                                    <Image src={url} width="100%" height="100%" style={{ objectFit: "cover" }} />
-                                                </div>
-                                            ))}
-                                        </Image.PreviewGroup>
-                                    </div>
-                                    {videos.length > 0 && (
-                                        <Row gutter={[10, 10]} style={{ marginTop: 15 }}>
-                                            {videos.map((url, idx) => (
-                                                <Col span={12} key={idx}><video src={url} controls style={{ width: "100%", borderRadius: 8, maxHeight: 150, background: '#000' }} /></Col>
-                                            ))}
-                                        </Row>
-                                    )}
                                 </div>
-                            )
-                        }
-                    ]} />
-                </Col>
+                            </div>
 
-                {/* CỘT PHẢI: FORM XỬ LÝ (Có điều kiện Disabled) */}
-                <Col span={9} style={{ height: '100%', background: '#f5f7fa', display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ padding: '20px 24px', borderBottom: '1px solid #e8e8e8', background: '#fff' }}>
-                        <div style={{ fontSize: 12, textTransform: 'uppercase', color: '#888' }}>Tổng giá trị tranh chấp</div>
-                        <Statistic
-                            value={maxRefundAmount} suffix="VNĐ"
-                            valueStyle={{ color: '#cf1322', fontWeight: 'bold' }}
-                            prefix={<DollarOutlined />}
-                        />
-                    </div>
+                            <Divider style={{ margin: '12px 0' }} />
 
-                    <div style={{ flex: 1, padding: '24px', overflowY: 'auto' }}>
+                            <Tabs defaultActiveKey="1" size="large" items={[
+                                { key: '1', label: 'Thông tin', children: (
+                                    <Descriptions column={1} bordered size="middle">
+                                        <Descriptions.Item label={<span style={{ fontWeight: 700 }}>Người khiếu nại</span>}>
+                                            {getUserName(complaint)}
+                                            <div style={{ color: '#888', marginTop: 6 }}>{getUserEmail(complaint)}</div>
+                                        </Descriptions.Item>
+                                        <Descriptions.Item label={<span style={{ fontWeight: 700 }}>Shop</span>}>
+                                            {complaint.seller_name || <i>Không rõ</i>}
+                                            <div style={{ color: '#888', marginTop: 6 }}>Thanh toán: {complaint.payment_method || 'COD'}</div>
+                                        </Descriptions.Item>
+                                        <Descriptions.Item label={<span style={{ fontWeight: 700 }}>Lý do</span>}>
+                                            <div style={{ whiteSpace: 'pre-wrap' }}>{complaint.reason}</div>
+                                        </Descriptions.Item>
+                                        {complaint.seller_response && (
+                                            <Descriptions.Item label={<span style={{ fontWeight: 700 }}>Phản hồi Shop</span>}>
+                                                <div style={{ background: '#fff7e6', padding: 12, borderRadius: 6 }}>{complaint.seller_response}</div>
+                                            </Descriptions.Item>
+                                        )}
+                                        {complaint.admin_notes && (
+                                            <Descriptions.Item label={<span style={{ fontWeight: 700 }}>Phán quyết Sàn</span>}>
+                                                <div style={{ background: '#e6f7ff', padding: 12, borderRadius: 6 }}>{complaint.admin_notes}</div>
+                                            </Descriptions.Item>
+                                        )}
+                                    </Descriptions>
+                                ) },
+                                { key: '2', label: `Bằng chứng (${images.length + videos.length})`, children: (
+                                    <div>
+                                        {images.length === 0 && videos.length === 0 && <Empty description="Không có bằng chứng" />}
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 16 }}>
+                                            <Image.PreviewGroup>
+                                                {images.map((url, idx) => (
+                                                    <div key={idx} style={{ aspectRatio: '1/1', borderRadius: 8, overflow: 'hidden', border: '1px solid #d9d9d9' }}>
+                                                        <Image src={url} width="100%" height="100%" style={{ objectFit: 'cover' }} />
+                                                    </div>
+                                                ))}
+                                            </Image.PreviewGroup>
+                                        </div>
+                                        {videos.length > 0 && (
+                                            <Row gutter={[10, 10]} style={{ marginTop: 16 }}>
+                                                {videos.map((url, idx) => (
+                                                    <Col span={12} key={idx}><video src={url} controls style={{ width: '100%', borderRadius: 8, maxHeight: 300, background: '#000' }} /></Col>
+                                                ))}
+                                            </Row>
+                                        )}
+                                    </div>
+                                ) }
+                            ]} />
+                        </Space>
+                    </Col>
 
-                        {/* HIỂN THỊ ALERT THEO TRẠNG THÁI */}
-                        {renderStatusAlert()}
+                    {/* RIGHT COLUMN: Action Card */}
+                    <Col xs={24} md={9} style={{ height: '100%', background: '#f7f8fa', display: 'flex', flexDirection: 'column' }}>
+                        <div style={{ padding: 20 }}>
+                            <Card size="small" bordered={false} bodyStyle={{ padding: 12 }}>
+                                <div style={{ fontSize: 12, textTransform: 'uppercase', color: '#888' }}>Tổng giá trị tranh chấp</div>
+                                <Statistic value={maxRefundAmount} suffix="VNĐ" valueStyle={{ color: '#cf1322', fontWeight: '700' }} prefix={<DollarOutlined />} />
+                            </Card>
+                        </div>
 
-                        <Form form={form} layout="vertical">
-                            <Form.Item name="resolution_type" label="Phán quyết của Sàn" rules={[{ required: true }]}>
-                                <Select
-                                    onChange={handleTypeChange}
-                                    size="large"
-                                    disabled={!canAdminIntervene} // 3. CHỈ CHO CHỌN KHI ĐƯỢC PHÉP
-                                >
-                                    <Select.Option value="refund_full"><CheckCircleOutlined style={{ color: '#52c41a' }} /> Hoàn 100% (Khách)</Select.Option>
-                                    <Select.Option value="refund_partial"><WarningOutlined style={{ color: '#faad14' }} /> Hoàn 1 phần</Select.Option>
-                                    <Select.Option value="reject"><CloseCircleOutlined style={{ color: '#ff4d4f' }} /> Từ chối (Shop)</Select.Option>
-                                </Select>
-                            </Form.Item>
+                        <div style={{ flex: 1, padding: 20, overflowY: 'auto' }}>
+                            {renderStatusAlert()}
 
-                            {(resolutionType === "refund_partial" || resolutionType === "refund_full") && (
-                                <Form.Item
-                                    name="refund_amount" label="Số tiền hoàn lại"
-                                    rules={[{ required: true }, { type: 'number', max: maxRefundAmount, message: 'Vượt quá tối đa' }]}
-                                >
-                                    <InputNumber
-                                        style={{ width: "100%" }} size="large"
-                                        formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
-                                        parser={(value) => value?.replace(/\$\s?|(,*)/g, "")}
-                                        disabled={!canAdminIntervene || resolutionType === "refund_full"}
-                                        min={0} max={maxRefundAmount} addonAfter="đ"
-                                    />
-                                </Form.Item>
-                            )}
+                            <Card size="small" title="Phán quyết của Sàn" bordered={false} headStyle={{ fontWeight: 600 }}>
+                                <Form form={form} layout="vertical">
+                                    <Form.Item name="resolution_type" rules={[{ required: true, message: 'Chọn loại phán quyết' }] }>
+                                        <Select onChange={handleTypeChange} size="middle" disabled={!canAdminIntervene}>
+                                            <Select.Option value="refund_full">Hoàn 100% cho Khách</Select.Option>
+                                            <Select.Option value="refund_partial">Hoàn một phần</Select.Option>
+                                            <Select.Option value="reject">Từ chối (Trả về Shop)</Select.Option>
+                                        </Select>
+                                    </Form.Item>
 
-                            <div style={{ marginBottom: 20 }}>Kết quả: {renderSummary()}</div>
+                                    {(resolutionType === 'refund_partial' || resolutionType === 'refund_full') && (
+                                        <Form.Item name="refund_amount" label="Số tiền hoàn lại" rules={[{ required: true }, { type: 'number', max: maxRefundAmount }] }>
+                                            <InputNumber style={{ width: '100%' }} min={0} max={maxRefundAmount} disabled={!canAdminIntervene || resolutionType === 'refund_full'} addonAfter="đ" />
+                                        </Form.Item>
+                                    )}
 
-                            <Form.Item
-                                name="admin_note" label="Ghi chú"
-                                rules={[{ required: canAdminIntervene, message: 'Vui lòng nhập ghi chú' }]}
-                            >
-                                <TextArea
-                                    rows={6}
-                                    placeholder={canAdminIntervene ? "Nhập lý do phán quyết..." : ""}
-                                    showCount={canAdminIntervene}
-                                    maxLength={500}
-                                    disabled={!canAdminIntervene} // 3. KHÓA GHI CHÚ
-                                    style={{ color: !canAdminIntervene ? '#000' : undefined }}
-                                />
-                            </Form.Item>
-                        </Form>
-                    </div>
+                                    <Form.Item name="admin_note" rules={[{ required: canAdminIntervene, message: 'Nhập ghi chú' }] }>
+                                        <Input.TextArea rows={5} placeholder={canAdminIntervene ? 'Nhập lý do phán quyết...' : ''} disabled={!canAdminIntervene} />
+                                    </Form.Item>
 
-                    <div style={{ padding: '16px 24px', borderTop: '1px solid #e8e8e8', background: '#fff', textAlign: 'right' }}>
-                        <Button onClick={onClose} style={{ marginRight: 8 }}>Đóng</Button>
+                                    <div style={{ marginTop: 8 }}>{renderSummary()}</div>
+                                </Form>
+                            </Card>
+                        </div>
 
-                        {/* 4. CHỈ HIỆN NÚT XÁC NHẬN KHI ĐƯỢC QUYỀN */}
-                        {canAdminIntervene && (
-                            <Button
-                                type="primary" danger={resolutionType === 'reject'}
-                                onClick={handleSubmit} loading={loading} icon={<SendOutlined />}
-                            >
-                                Xác nhận Phán quyết
-                            </Button>
-                        )}
-                    </div>
-                </Col>
-            </Row>
-        </Modal>
+                        <div style={{ padding: 16, borderTop: '1px solid #e8e8e8', background: '#fff', textAlign: 'right' }}>
+                            <Space>
+                                <Button onClick={onClose}>Đóng</Button>
+                                {canAdminIntervene && (
+                                    <Button type="primary" danger={resolutionType === 'reject'} onClick={handleSubmit} loading={loading}>Xác nhận</Button>
+                                )}
+                            </Space>
+                        </div>
+                    </Col>
+                </Row>
+            </Modal>
     );
 };
 

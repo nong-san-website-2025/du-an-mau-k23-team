@@ -1,58 +1,69 @@
-import React from "react";
+import React, { lazy, Suspense } from "react";
 import { Route } from "react-router-dom";
+import { Spin } from "antd";
 import SellerLayout from "../features/seller_center/components/SellerLayout";
 import SellerPrivateRoute from "../components/PrivateRoutes/SellerPrivateRoute";
 
-// Import các component pages cần thiết
-import Dashboard from "../features/seller_center/pages/Dashboard";
-import ProductsPage from "../features/seller_center/pages/ProductsPage";
-import Finance from "../features/seller_center/pages/Finance";
-import Analytics from "../features/seller_center/pages/Analytics";
-import OrdersNew from "../features/seller_center/pages/OrderSeller/OrdersNew";
-import OrdersProcessing from "../features/seller_center/pages/OrderSeller/OrdersProcessing";
-import StoreInfo from "../features/seller_center/pages/StoreInfo";
-import ProductReviews from "../features/seller_center/pages/Reviews"; // Giả sử file chính là index.jsx hoặc Reviews.jsx
-import SellerComplaintsPage from "../features/seller_center/pages/ComplaintSeller/ComplaintPage";
-import SellerMessages from "../features/seller_center/pages/SellerMessages";
+// Loading component
+const LoadingScreen = () => (
+  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+    <Spin size="large" tip="Đang tải..." />
+  </div>
+);
 
-// CHỈ IMPORT DUY NHẤT COMPONENT NÀY CHO TRANG KHUYẾN MÃI
-import PromotionSeller from "../features/seller_center/pages/PromotionSeller/PromotionPage";
-import OrdersDelivered from "./../features/seller_center/pages/OrderSeller/OrdersDelivered";
-import OrdersCancelled from "./../features/seller_center/pages/OrderSeller/OrdersCancelled";
-import SellerWallet from "../features/seller_center/pages/SellerWallet";
-import SellerOrderPage from "../features/seller_center/pages/SellerOrderPage";
-import NotificationsPage from "../features/seller_center/pages/NotificationsPage";
+// Import các component pages cần thiết (Sử dụng lazy)
+const Dashboard = lazy(() => import("../features/seller_center/pages/Dashboard"));
+const ProductsPage = lazy(() => import("../features/seller_center/pages/ProductsPage"));
+const Finance = lazy(() => import("../features/seller_center/pages/Finance"));
+const Analytics = lazy(() => import("../features/seller_center/pages/Analytics"));
+const OrdersNew = lazy(() => import("../features/seller_center/pages/OrderSeller/OrdersNew"));
+const OrdersProcessing = lazy(() => import("../features/seller_center/pages/OrderSeller/OrdersProcessing"));
+const StoreInfo = lazy(() => import("../features/seller_center/pages/StoreInfo"));
+const ProductReviews = lazy(() => import("../features/seller_center/pages/Reviews"));
+const SellerComplaintsPage = lazy(() => import("../features/seller_center/pages/ComplaintSeller/ComplaintPage"));
+const SellerMessages = lazy(() => import("../features/seller_center/pages/SellerMessages"));
+const PromotionSeller = lazy(() => import("../features/seller_center/pages/PromotionSeller/PromotionPage"));
+const OrdersDelivered = lazy(() => import("./../features/seller_center/pages/OrderSeller/OrdersDelivered"));
+const OrdersCancelled = lazy(() => import("./../features/seller_center/pages/OrderSeller/OrdersCancelled"));
+const SellerWallet = lazy(() => import("../features/seller_center/pages/SellerWallet"));
+const SellerOrderPage = lazy(() => import("../features/seller_center/pages/SellerOrderPage"));
+const NotificationsPage = lazy(() => import("../features/seller_center/pages/NotificationsPage"));
+
+const wrapSuspense = (element) => (
+  <Suspense fallback={<LoadingScreen />}>
+    {element}
+  </Suspense>
+);
 
 export const sellerRoutes = [
   <Route element={<SellerPrivateRoute />} key="seller-protect">
     <Route path="/seller-center" element={<SellerLayout />}>
       {/* Route mặc định */}
-      <Route index element={<Dashboard />} />
+      <Route index element={wrapSuspense(<Dashboard />)} />
 
       {/* Các route khác */}
-      <Route path="dashboard" element={<Dashboard />} />
-      <Route path="messages" element={<SellerMessages />} />
-      <Route path="store/info" element={<StoreInfo />} />
-      <Route path="products" element={<ProductsPage />} />
-      <Route path="wallet" element={<SellerWallet />} />
+      <Route path="dashboard" element={wrapSuspense(<Dashboard />)} />
+      <Route path="messages" element={wrapSuspense(<SellerMessages />)} />
+      <Route path="store/info" element={wrapSuspense(<StoreInfo />)} />
+      <Route path="products" element={wrapSuspense(<ProductsPage />)} />
+      <Route path="wallet" element={wrapSuspense(<SellerWallet />)} />
 
-      <Route path="finance" element={<Finance />} />
-      <Route path="analytics" element={<Analytics />} />
-      <Route path="orders" element={<SellerOrderPage />} />
-      <Route path="orders/new" element={<OrdersNew />} />
-      <Route path="orders/processing" element={<OrdersProcessing />} />
-      <Route path="orders/delivered" element={<OrdersDelivered />} />
-      <Route path="orders/cancelled" element={<OrdersCancelled />} />
-      {/* <Route path="/flash-sales" element={<FlashSales />} /> */}
-      <Route path="reviews" element={<ProductReviews />} />
-      <Route path="complaints" element={<SellerComplaintsPage />} />
+      <Route path="finance" element={wrapSuspense(<Finance />)} />
+      <Route path="analytics" element={wrapSuspense(<Analytics />)} />
+      <Route path="orders" element={wrapSuspense(<SellerOrderPage />)} />
+      <Route path="orders/new" element={wrapSuspense(<OrdersNew />)} />
+      <Route path="orders/processing" element={wrapSuspense(<OrdersProcessing />)} />
+      <Route path="orders/delivered" element={wrapSuspense(<OrdersDelivered />)} />
+      <Route path="orders/cancelled" element={wrapSuspense(<OrdersCancelled />)} />
+      <Route path="reviews" element={wrapSuspense(<ProductReviews />)} />
+      <Route path="complaints" element={wrapSuspense(<SellerComplaintsPage />)} />
 
       {/* === ROUTE DUY NHẤT CHO TOÀN BỘ CHỨC NĂNG KHUYẾN MÃI === */}
-      <Route path="promotions" element={<PromotionSeller />} />
+      <Route path="promotions" element={wrapSuspense(<PromotionSeller />)} />
 
       <Route
         path="/seller-center/notifications"
-        element={<NotificationsPage />}
+        element={wrapSuspense(<NotificationsPage />)}
       />
     </Route>
   </Route>,

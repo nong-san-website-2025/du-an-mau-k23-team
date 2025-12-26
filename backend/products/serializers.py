@@ -367,9 +367,10 @@ class ProductSerializer(serializers.ModelSerializer):
 
 class ProductListSerializer(serializers.ModelSerializer):
     is_reup = serializers.SerializerMethodField()
-    category_name = serializers.CharField(source='subcategory.category.name', read_only=True)
-    subcategory_name = serializers.CharField(source='subcategory.name', read_only=True)
-    category_id = serializers.IntegerField(source='subcategory.category.id', read_only=True)
+    # Use SerializerMethodField to be defensive against missing relationships
+    category_name = serializers.SerializerMethodField()
+    subcategory_name = serializers.SerializerMethodField()
+    category_id = serializers.SerializerMethodField()
     subcategory = serializers.PrimaryKeyRelatedField(read_only=True)
     main_image = serializers.SerializerMethodField()
 
@@ -423,6 +424,24 @@ class ProductListSerializer(serializers.ModelSerializer):
         if obj.category and hasattr(obj.category, 'commission_rate'):
             return obj.category.commission_rate
         return None
+
+    def get_category_name(self, obj):
+        try:
+            return obj.subcategory.category.name if obj.subcategory and obj.subcategory.category else None
+        except Exception:
+            return None
+
+    def get_subcategory_name(self, obj):
+        try:
+            return obj.subcategory.name if obj.subcategory else None
+        except Exception:
+            return None
+
+    def get_category_id(self, obj):
+        try:
+            return obj.subcategory.category.id if obj.subcategory and obj.subcategory.category else None
+        except Exception:
+            return None
 
     def get_comparison_data(self, obj):
         """Trả về dữ liệu so sánh giữa current và pending"""
@@ -577,6 +596,70 @@ class ProductListSerializer(serializers.ModelSerializer):
             return False
             
         except:
+            return False
+
+
+class AdminProductOverviewSerializer(serializers.ModelSerializer):
+    seller_name = serializers.SerializerMethodField()
+    thumbnail = serializers.SerializerMethodField()
+    seller = serializers.SerializerMethodField()
+    is_reup = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Product
+        fields = ['id', 'name', 'status', 'seller', 'seller_name', 'thumbnail', 'original_price', 'discounted_price', 'created_at', 'is_reup']
+
+    def get_seller_name(self, obj):
+        try:
+            return obj.seller.store_name if obj.seller else None
+        except Exception:
+            return None
+
+    def get_seller(self, obj):
+        try:
+            if obj.seller:
+                return {"id": obj.seller.id, "store_name": obj.seller.store_name}
+        except Exception:
+            return None
+        return None
+
+    def get_thumbnail(self, obj):
+        try:
+            primary = obj.images.filter(is_primary=True).first()
+            if primary and primary.image:
+                request = self.context.get('request')
+                url = primary.image.url
+                return request.build_absolute_uri(url) if request else url
+            # fallback to product.image
+            if obj.image:
+                request = self.context.get('request')
+                url = obj.image.url
+                return request.build_absolute_uri(url) if request else url
+        except Exception:
+            return None
+        return None
+
+    def get_is_reup(self, obj):
+        try:
+            # Require seller and name
+            if not obj.seller or not obj.name:
+                return False
+
+            # Normalize name for comparison
+            name_norm = obj.name.strip()
+
+            # Look for other products by same seller with same name that were deleted/banned/rejected
+            similar = Product.objects.filter(seller=obj.seller).exclude(id=obj.id)
+            if similar.filter(name__iexact=name_norm, status__in=['deleted', 'banned', 'rejected']).exists():
+                return True
+
+            # Fallback: any older product with same name older than 7 days
+            threshold = obj.created_at - timedelta(days=7)
+            if similar.filter(name__iexact=name_norm, created_at__lt=threshold).exists():
+                return True
+
+            return False
+        except Exception:
             return False
 
 class ProductImageCreateSerializer(serializers.ModelSerializer):

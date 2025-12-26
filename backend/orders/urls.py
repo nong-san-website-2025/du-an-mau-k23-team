@@ -1,9 +1,11 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from . import views # Import từ package views
+from .views_admin import AdminOrderViewSet, admin_order_list
 
 router = DefaultRouter()
 router.register(r'', views.OrderViewSet, basename='orders')
+router.register(r'admin', AdminOrderViewSet, basename='admin-orders')
 
 urlpatterns = [
     # Preorder
@@ -16,6 +18,7 @@ urlpatterns = [
     # Admin Reports
     path('admin/revenue-report/', views.revenue_report, name='revenue-report'),
     path('admin/order-statistics/', views.order_statistics_report, name='order-statistics-report'),
+    path('admin-list/', admin_order_list, name='admin-order-list'),  # ✅ NEW
     path('dashboard-stats/', views.dashboard_stats, name='dashboard-stats'),
     
     # Realtime & Payment

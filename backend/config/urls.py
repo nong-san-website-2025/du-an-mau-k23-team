@@ -5,6 +5,7 @@ from django.conf.urls.static import static
 from django.http import HttpResponse
 from django.views.generic import TemplateView
 from dashboard.views import dashboard_data
+from dashboard.health import health_check, api_endpoints
 
 from promotions.urls import router as promotions_router
 # ✅ import views của SimpleJWT
@@ -18,6 +19,10 @@ def home(request):
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', home),
+
+    # ✅ Health Check & API Info
+    path('api/health/', health_check, name='health-check'),
+    path('api/endpoints/', api_endpoints, name='api-endpoints'),
 
     path('api/users/', include('users.urls')),
     path('api/sellers/', include('sellers.urls')),

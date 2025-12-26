@@ -38,12 +38,22 @@ export default function HomePage() {
           fetchCategories(),
           getBannersBySlot("homepage_popup"),
         ]);
+        // Chuẩn hóa nhiều dạng response: axios response hoặc body hoặc paginated {results: []}
+        const toArray = (res) => {
+          if (!res) return [];
+          const d = res.data !== undefined ? res.data : res;
+          if (Array.isArray(d)) return d;
+          if (d && Array.isArray(d.results)) return d.results;
+          if (d && Array.isArray(d.data)) return d.data;
+          return [];
+        };
 
-        setCategories(catRes.data || []);
-        
-        // Logic lọc popup ads
+        setCategories(toArray(catRes));
+
+        // Logic lọc popup ads (hỗ trợ nhiều kiểu response)
         const now = new Date();
-        const activeModals = (modalRes.data || []).filter((banner) => {
+        const modalList = toArray(modalRes);
+        const activeModals = modalList.filter((banner) => {
           const start = banner.start_at ? new Date(banner.start_at) : new Date(0);
           const end = banner.end_at ? new Date(banner.end_at) : new Date("2100-01-01");
           return banner.is_active && now >= start && now <= end;

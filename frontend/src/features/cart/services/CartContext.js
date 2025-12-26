@@ -68,7 +68,8 @@ export const CartProvider = ({ children }) => {
 
       if (isAuthenticated()) {
         const res = await API.get("cartitems/");
-        const items = res.data;
+        const rawData = res.data;
+        const items = Array.isArray(rawData) ? rawData : (rawData?.results || []);
 
         const itemsWithDetails = await Promise.all(
           items.map(async (item) => {

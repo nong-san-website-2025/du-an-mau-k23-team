@@ -16,7 +16,7 @@ class RevenueByMonthSerializer(serializers.Serializer):
     revenue = serializers.FloatField()
 
 class OrdersByStatusSerializer(serializers.Serializer):
-    status = serializers.CharField(source='sta')
+    status = serializers.CharField(source='status_name')
     count = serializers.IntegerField()
 
 class DashboardSerializer(serializers.Serializer):
