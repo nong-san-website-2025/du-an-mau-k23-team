@@ -1,6 +1,7 @@
 import React, {useRef} from "react";
 import { ShoppingCart, ShoppingBag, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { getFinalPrice } from "../../utils/priceUtils";
 
 const CartDropdown = ({ cartCount, cartItems, showDropdown, setShowDropdown }) => {
   const navigate = useNavigate();
@@ -29,7 +30,10 @@ const CartDropdown = ({ cartCount, cartItems, showDropdown, setShowDropdown }) =
     new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(price);
 
   const subTotal = cartItems?.reduce(
-    (acc, item) => acc + (Number(item.product?.price || 0) * item.quantity), 0
+    (acc, item) => {
+      const price = getFinalPrice(item);
+      return acc + (price * Number(item.quantity || 0));
+    }, 0
   );
 
   return (
@@ -56,28 +60,42 @@ const CartDropdown = ({ cartCount, cartItems, showDropdown, setShowDropdown }) =
                 <span>Chưa có sản phẩm nào</span>
               </div>
             ) : (
-              cartItems.slice(0, 5).map((item, idx) => (
-                <div key={idx} className="cart-item-row" onClick={handleToCart}>
-                  <img
-                    src={item.product?.image || "/media/default-product.png"}
-                    alt="product"
-                    className="cart-img-thumb"
-                    onError={(e) => (e.target.src = "https://placehold.co/50x50?text=No+Img")}
-                  />
-                  <div className="cart-info">
-                    <div className="cart-name" title={item.product?.name}>
-                        {item.product?.name}
-                    </div>
-                    {/* Giả sử có phân loại hàng */}
-                    {item.variant && <div className="cart-variant">{item.variant}</div>}
-                    
-                    <div className="cart-price-row">
-                      <span className="price-highlight">{formatPrice(item.product?.price)}</span>
-                      <span className="qty-text">x{item.quantity}</span>
+              cartItems.slice(0, 5).map((item, idx) => {
+                const productData = item.product_data || item.product || {};
+                const finalPrice = getFinalPrice(item);
+                const originalPrice = productData.original_price || productData.price || 0;
+                const isFlashSale = finalPrice < originalPrice && originalPrice > 0;
+                
+                return (
+                  <div key={idx} className="cart-item-row" onClick={handleToCart}>
+                    <img
+                      src={productData.image || item.image || "/media/default-product.png"}
+                      alt="product"
+                      className="cart-img-thumb"
+                      onError={(e) => (e.target.src = "https://placehold.co/50x50?text=No+Img")}
+                    />
+                    <div className="cart-info">
+                      <div className="cart-name" title={productData.name}>
+                          {productData.name}
+                      </div>
+                      {/* Giả sử có phân loại hàng */}
+                      {item.variant && <div className="cart-variant">{item.variant}</div>}
+                      
+                      <div className="cart-price-row">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span className="price-highlight">{formatPrice(finalPrice)}</span>
+                          {isFlashSale && (
+                            <span style={{ textDecoration: 'line-through', fontSize: '12px', color: '#999' }}>
+                              {formatPrice(originalPrice)}
+                            </span>
+                          )}
+                        </div>
+                        <span className="qty-text">x{item.quantity}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
 
