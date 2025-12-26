@@ -23,7 +23,7 @@ export default defineConfig({
       protocol: 'ws',
       // QUAN TRỌNG: Thay dòng này bằng IP Wifi hiện tại của bạn
       // (Lấy từ log bạn gửi lúc nãy: 192.168.89.159)
-      host: '192.168.89.159', 
+      host: '172.16.102.132', 
       port: 8100,
     },  
   },

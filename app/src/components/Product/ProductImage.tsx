@@ -1,4 +1,3 @@
-// src/components/Product/ProductImage.tsx
 import React, { useState } from 'react';
 import { IonIcon } from '@ionic/react';
 import { leafOutline } from 'ionicons/icons'; 
@@ -9,13 +8,18 @@ interface ProductImageProps {
   alt: string;
   className?: string;
   style?: React.CSSProperties;
+  // --- FIX LỖI: Thêm khai báo height và width ---
+  height?: string | number;
+  width?: string | number;
 }
 
 const ProductImage: React.FC<ProductImageProps> = ({ 
   src, 
   alt, 
   className, 
-  style 
+  style,
+  height, // Lấy height từ props
+  width   // Lấy width từ props
 }) => {
   const [error, setError] = useState(false);
   
@@ -24,14 +28,15 @@ const ProductImage: React.FC<ProductImageProps> = ({
 
   // Style chung
   const finalStyle: React.CSSProperties = {
-    width: "100%",
-    height: "100%",
-    objectFit: "cover", // Đảm bảo ảnh không bị méo trong khung vuông
+    // Ưu tiên dùng width/height từ props truyền vào, nếu không có thì mặc định 100%
+    width: width || "100%",
+    height: height || "100%",
+    objectFit: "cover", 
     display: "block",
     ...style, 
   };
 
-  // Nếu không có src hoặc load lỗi -> Hiện Fallback
+  // Fallback khi lỗi hoặc không có ảnh
   if (!resolvedSrc || error) {
     return (
       <div 
@@ -51,8 +56,6 @@ const ProductImage: React.FC<ProductImageProps> = ({
     );
   }
 
-  // 🔥 THAY ĐỔI QUAN TRỌNG: Dùng thẻ <img> thường thay vì IonImg
-  // Lý do: Thẻ img hoạt động tốt hơn với position: absolute và object-fit
   return (
     <img
       src={resolvedSrc}
@@ -60,7 +63,7 @@ const ProductImage: React.FC<ProductImageProps> = ({
       onError={() => setError(true)}
       className={className}
       style={finalStyle}
-      loading="lazy" // Vẫn giữ lazy load của trình duyệt
+      loading="lazy"
     />
   );
 };

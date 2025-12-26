@@ -1,6 +1,6 @@
 import React from "react";
-import { IonIcon, IonText, IonProgressBar } from "@ionic/react";
-import { star, warningOutline, flame, cubeOutline, checkmarkCircle } from "ionicons/icons";
+import { IonIcon, IonChip, IonProgressBar, IonText } from "@ionic/react";
+import { star, timeOutline, checkmarkCircle, alertCircleOutline, cubeOutline } from "ionicons/icons";
 import { intcomma } from "../../../utils/formatPrice";
 import { Product } from "../../../types/models"; 
 
@@ -8,80 +8,72 @@ interface ProductInfoProps {
   product: Product;
   reviewsCount: number;
   isPreorder: boolean;
+  // Đã xóa props quantity và onQuantityChange
 }
 
 const ProductInfo: React.FC<ProductInfoProps> = ({ product, reviewsCount, isPreorder }) => {
-  // Logic lấy stock: Ưu tiên inventory_qty chuẩn Model, fallback sang stock
   const stock = product.inventory_qty ?? product.stock ?? 0;
   
-  // Render Badge
-  const renderBadge = () => {
-    if (isPreorder) {
-      return (
-        <div className="status-badge preorder">
-          <IonIcon icon={warningOutline} style={{ marginRight: 4, verticalAlign: "text-bottom" }} />
-          Hàng sắp về
-        </div>
-      );
-    }
-    return <div className="status-badge stock">Đang bán</div>;
-  };
+  // Render Pre-order bar
+  const renderPreorderStatus = () => {
+    const total = product.expected_quantity || product.estimated_quantity || 100;
+    const ordered = product.ordered_quantity || 0;
+    const percent = total > 0 ? Math.min(ordered / total, 1) : 0;
 
-  // Render Stock Logic
-  const renderStockInfo = () => {
-    // Logic cho hàng đặt trước
-    if (isPreorder) {
-      // KHÔNG CẦN "as any" NỮA VÌ MODEL ĐÃ CÓ FIELD NÀY
-      const total = product.expected_quantity || product.estimated_quantity || 100;
-      const ordered = product.ordered_quantity || 0;
-      const percent = total > 0 ? Math.min(ordered / total, 1) : 0;
-
-      return (
-        <div className="preorder-box" style={{ marginTop: "16px", background: "#fff8e1", padding: "12px", borderRadius: "8px", border: "1px solid #ffe082" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px", fontSize: "14px", fontWeight: "bold", color: "#f57f17" }}>
-            <span>Đã đặt trước</span>
-            <span>{ordered} / {total}</span>
-          </div>
-          <IonProgressBar value={percent} color="warning" style={{ height: "8px", borderRadius: "4px" }} />
-          <div style={{ fontSize: "12px", color: "#666", marginTop: "4px" }}>Nhanh tay đặt ngay, số lượng có hạn!</div>
-        </div>
-      );
-    }
-
-    // Logic cho hàng có sẵn
-    const isLowStock = stock <= 10;
     return (
-      <div style={{ marginTop: "12px", padding: "8px 12px", background: isLowStock ? "#ffebee" : "#e8f5e9", borderRadius: "8px", display: "flex", alignItems: "center", gap: "10px" }}>
-        <IonIcon icon={isLowStock ? flame : cubeOutline} color={isLowStock ? "danger" : "success"} size="small" />
-        <div style={{ flex: 1 }}>
-          <IonText color="dark" style={{ fontSize: "13px", display: "block" }}>Tình trạng kho:</IonText>
-          <IonText color={isLowStock ? "danger" : "success"} style={{ fontWeight: "bold", fontSize: "15px" }}>
-            {isLowStock ? `Sắp hết! Chỉ còn ${stock}` : `Sẵn hàng (${stock})`}
-          </IonText>
+      <div className="preorder-container">
+        <div className="preorder-header">
+          <span className="text-orange"><IonIcon icon={timeOutline} /> Hàng đặt trước</span>
+          <span className="text-xs">{ordered}/{total} đã đặt</span>
         </div>
-        {!isLowStock && <IonIcon icon={checkmarkCircle} color="success" />}
+        <IonProgressBar value={percent} className="custom-progress" />
       </div>
     );
   };
 
   return (
-    <div className="section-card" style={{ marginTop: 0, paddingTop: "32px" }}>
-      {renderBadge()}
-      <h1 className="product-name-large">{product.name}</h1>
-      
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div className="product-price-large">
-          {intcomma(product.price)} đ
-          <span style={{ fontSize: "14px", color: "#888", fontWeight: "normal" }}> /{product.unit || "cái"}</span>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", color: "#fdd835" }}>
-          <IonIcon icon={star} />
-          <IonText color="dark" style={{ fontWeight: "bold", marginLeft: 4 }}>4.8</IonText>
-          <IonText color="medium" style={{ fontSize: "12px", marginLeft: 4 }}>({reviewsCount})</IonText>
-        </div>
+    <div className="section-card product-info-card">
+      {/* 1. Giá tiền */}
+      <div className="price-row">
+        <span className="main-price">{intcomma(product.price)}₫</span>
+        {isPreorder && <IonChip color="warning" className="mini-chip">Pre-order</IonChip>}
       </div>
 
-      {renderStockInfo()}
+      {/* 2. Tên sản phẩm */}
+      <h1 className="product-name">{product.name}</h1>
+      
+      {/* 3. Rating & Sold */}
+      <div className="meta-row">
+        <div className="rating-box">
+          <IonIcon icon={star} color="warning" />
+          <span className="rating-num">4.8</span>
+          <span className="divider">|</span>
+          <span className="review-count">{reviewsCount} đánh giá</span>
+        </div>
+        <span className="sold-count">Đã bán {product.sold_qty || 0}</span>
+      </div>
+
+      <div className="divider-line"></div>
+
+      {/* 4. CHỈ HIỂN THỊ SỐ LƯỢNG (TEXT) - KHÔNG CÓ NÚT BẤM */}
+      <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px" }}>
+          {isPreorder ? (
+             <div className="stock-status-text text-orange">
+                <IonIcon icon={timeOutline} /> Thời gian giao hàng dự kiến: 7-10 ngày
+             </div>
+          ) : (
+             <div className={`stock-status-text ${stock <= 10 ? 'text-red' : 'text-green'}`} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 500 }}>
+                <IonIcon icon={stock > 0 ? checkmarkCircle : alertCircleOutline} />
+                {stock > 0 ? (
+                    <span>Tình trạng: <span style={{ fontWeight: 'bold' }}>Còn {stock} sản phẩm</span></span>
+                ) : (
+                    <span>Tình trạng: <span style={{ fontWeight: 'bold' }}>Hết hàng</span></span>
+                )}
+             </div>
+          )}
+      </div>
+
+      {isPreorder && renderPreorderStatus()}
     </div>
   );
 };

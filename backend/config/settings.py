@@ -38,6 +38,7 @@ CSRF_TRUSTED_ORIGINS = [
     "http://192.168.89.159:8100",
     "http://192.168.167.74:8100",
     "http://192.168.89.159:3000",
+    "http://172.16.102.132:3000",
 ]
 DEBUG = True
 
@@ -151,25 +152,6 @@ CHANNEL_LAYERS = {
 #         }
 #     }
 
-# --- Database: local PostgreSQL hoặc Render
-# if os.environ.get("DATABASE_URL"):
-#     DATABASES = {
-#         "default": dj_database_url.config(
-#             default=os.environ["DATABASE_URL"],
-#             conn_max_age=600,
-#             ssl_require=True
-#         )
-#     }
-# else:
-#     DATABASES = {
-#         'default': {
-#             'ENGINE': 'django.db.backends.sqlite3',
-#             'NAME': BASE_DIR / 'db.sqlite3',
-#         }
-#     }
-
-
-#CHUYEN DOI SQLITE3 - POSTGRELQL
 
 if os.environ.get("DATABASE_URL"):
     DATABASES = {
@@ -182,14 +164,33 @@ if os.environ.get("DATABASE_URL"):
 else:
     DATABASES = {
         'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': 'ecom_db',
-            'USER': 'postgres',
-            'PASSWORD': '12345',
-            'HOST': '127.0.0.1',
-            'PORT': '5432',
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
         }
     }
+
+
+#CHUYEN DOI SQLITE3 - POSTGRELQL
+
+# if os.environ.get("DATABASE_URL"):
+#     DATABASES = {
+#         "default": dj_database_url.config(
+#             default=os.environ["DATABASE_URL"],
+#             conn_max_age=600,
+#             ssl_require=True
+#         )
+#     }
+# else:
+#     DATABASES = {
+#         'default': {
+#             'ENGINE': 'django.db.backends.postgresql',
+#             'NAME': 'ecom_db',
+#             'USER': 'postgres',
+#             'PASSWORD': '12345',
+#             'HOST': '127.0.0.1',
+#             'PORT': '5432',
+#         }
+#     }
 
 # --- Auth
 AUTH_USER_MODEL = "users.CustomUser"
@@ -258,6 +259,8 @@ CORS_ALLOWED_ORIGINS = [
     "http://192.168.167.74:8100",
     "http://172.16.150.205:8100",
     "http://localhost:8100",
+    "http://172.16.102.132:3000",
+    "http://172.16.102.132:8100",
 ]
 CORS_ALLOW_METHODS = [
     'DELETE',

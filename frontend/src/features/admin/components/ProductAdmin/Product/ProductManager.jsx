@@ -39,24 +39,6 @@ import dayjs from "dayjs";
 const { Text, Paragraph } = Typography;
 const { TextArea } = Input;
 
-// --- CẤU HÌNH URL ---
-// Tự động lấy từ biến môi trường REACT_APP_API_URL
-// Ví dụ: http://172.16.102.132:8000/api -> ws://172.16.102.132:8000
-const getWebSocketUrl = () => {
-  const apiUrl = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000/api";
-  try {
-    const urlObj = new URL(apiUrl);
-    const protocol = urlObj.protocol === "https:" ? "wss:" : "ws:";
-    // Lấy host (IP:PORT) và bỏ path /api để về root cho WebSocket
-    return `${protocol}//${urlObj.host}`;
-  } catch (error) {
-    console.error("Invalid API URL for WebSocket", error);
-    return "ws://127.0.0.1:8000";
-  }
-};
-
-const BASE_WS_URL = getWebSocketUrl();
-
 const ProductGridItem = ({
   record,
   isSelected,
@@ -235,7 +217,7 @@ const ProductManager = ({
   const [productList, setProductList] = useState(initialData);
   const [viewMode, setViewMode] = useState(viewModeProp);
   const [isMobile, setIsMobile] = useState(false);
-  
+
   // Ref cho WebSocket
   const socketRef = useRef(null);
 
@@ -256,56 +238,7 @@ const ProductManager = ({
   }, [initialData]);
 
   // --- REALTIME LOGIC (NATIVE WEBSOCKET) ---
-  useEffect(() => {
-    const connectWS = () => {
-      const token = localStorage.getItem("token");
-      if (!token) return;
 
-      // Sử dụng BASE_WS_URL đã tính toán từ env
-      const wsUrl = `${BASE_WS_URL}/api/ws/admin/products/?token=${token}`;
-
-      if (socketRef.current?.readyState === WebSocket.OPEN) return;
-
-      const socket = new WebSocket(wsUrl);
-
-      socket.onopen = () => console.log(`✅ [ProductWS] Connected to ${BASE_WS_URL}`);
-
-      socket.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        console.log("📩 [ProductWS] New Message:", data);
-
-        if (data.type === "product_update") {
-          notification.info({
-            message: "Cập nhật hệ thống",
-            description:
-              data.message || "Có thay đổi về danh sách sản phẩm chờ duyệt.",
-            placement: "topRight",
-            icon: <ThunderboltFilled style={{ color: "#faad14" }} />,
-          });
-
-          if (data.product) {
-            setProductList((prev) => [data.product, ...prev]);
-          }
-        }
-      };
-
-      socket.onerror = (err) =>
-        console.error("❌ [ProductWS] Connection Error:", err);
-
-      socket.onclose = (e) => {
-        console.log(
-          "🔌 [ProductWS] Disconnected. Reconnecting in 5s...",
-          e.reason
-        );
-        setTimeout(connectWS, 5000);
-      };
-
-      socketRef.current = socket;
-    };
-
-    connectWS();
-    return () => socketRef.current?.close();
-  }, []);
 
   // Responsive detect
   useEffect(() => {
@@ -410,12 +343,12 @@ const ProductManager = ({
       sorter: (a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0),
       render: (date) => (
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-           <Text>
-              {date ? dayjs(date).format("DD/MM/YYYY") : '—'}
-           </Text>
-           <Text type="secondary" style={{ fontSize: 12 }}>
-              {date ? dayjs(date).format("HH:mm") : ''}
-           </Text>
+          <Text>
+            {date ? dayjs(date).format("DD/MM/YYYY") : '—'}
+          </Text>
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            {date ? dayjs(date).format("HH:mm") : ''}
+          </Text>
         </div>
       ),
     },

@@ -1,0 +1,94 @@
+/* Màu chủ đạo */
+:root {
+  --ion-color-primary: #2E7D32;
+  --ion-color-primary-rgb: 46, 125, 50;
+  --ion-color-primary-shade: #286e2c;
+  --ion-color-primary-tint: #438a46;
+}
+
+/* Tùy chỉnh Segment (Tab bar) */
+.custom-segment {
+  --background: #f4f5f8;
+  padding: 4px;
+}
+
+.custom-segment ion-segment-button {
+  --color: #666;
+  --color-checked: #2E7D32;
+  --indicator-color: #2E7D32;
+  font-weight: 500;
+}
+
+/* Thumbnail icon bên trái */
+.noti-thumb {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%; /* Hình tròn */
+  width: 48px;
+  height: 48px;
+  margin-right: 16px;
+}
+
+.bg-primary { background: rgba(46, 125, 50, 0.1); color: #2E7D32; }
+.bg-warning { background: rgba(255, 193, 7, 0.1); color: #ffc107; }
+.bg-medium { background: rgba(146, 148, 156, 0.1); color: #92949c; }
+
+.noti-thumb ion-icon {
+  font-size: 24px;
+}
+
+/* Style cho nội dung Text */
+.noti-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.noti-title {
+  font-weight: 700;
+  font-size: 15px;
+  color: #333;
+  margin: 0;
+}
+
+.noti-time {
+  font-size: 12px;
+  color: #888;
+}
+
+.noti-desc {
+  font-size: 13px;
+  color: #555;
+  line-height: 1.4;
+}
+
+/* Trạng thái chưa đọc */
+.item-unread {
+  --background: rgba(46, 125, 50, 0.05); /* Màu nền xanh rất nhạt để highlight */
+}
+
+.unread-dot {
+  width: 8px;
+  height: 8px;
+  background-color: #ff3b30; /* Màu đỏ thông báo chuẩn iOS */
+  border-radius: 50%;
+  margin-left: 8px;
+}
+
+/* Empty State */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 60vh;
+  color: #999;
+}
+
+.empty-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+  color: #ddd;
+}

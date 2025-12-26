@@ -7,8 +7,8 @@ import {
   gridOutline,
   personSharp,
   personOutline,
-  heartSharp,
-  heartOutline,
+  // heartSharp, // Có thể xóa bỏ import này nếu không dùng nữa
+  // heartOutline,
   notificationsSharp,
   notificationsOutline,
 } from "ionicons/icons";
@@ -19,7 +19,7 @@ const TabNavigation: React.FC = () => {
   const currentPath = location.pathname;
 
   return (
-    <IonTabBar slot="bottom" >
+    <IonTabBar slot="bottom">
       <IonTabButton tab="tab1" href="/home">
         <IonIcon icon={currentPath === "/home" ? home : homeOutline} />
         <IonLabel>Trang chủ</IonLabel>
@@ -30,10 +30,7 @@ const TabNavigation: React.FC = () => {
         <IonLabel>Danh mục</IonLabel>
       </IonTabButton>
 
-      <IonTabButton tab="tab3" href="/favorite">
-        <IonIcon icon={currentPath === "/favorite" ? heartSharp : heartOutline} />
-        <IonLabel>Ưa thích</IonLabel>
-      </IonTabButton>
+      {/* Tab 3 đã được loại bỏ tại đây */}
 
       <IonTabButton tab="tab4" href="/notification">
         <IonIcon icon={currentPath === "/notification" ? notificationsSharp : notificationsOutline} />
