@@ -35,23 +35,19 @@ const removeAccents = (str) => {
     .toLowerCase();
 };
 
-// --- 2. HÀM LẤY TÊN NGƯỜI DÙNG AN TOÀN (FIX LỖI HIỂN THỊ SAI) ---
+// --- 2. HÀM LẤY TÊN NGƯỜI DÙNG AN TOÀN ---
 const getSafeUserName = (item) => {
-  // Ưu tiên 1: Trường phẳng trực tiếp
   if (item.created_by_name) return item.created_by_name;
   if (item.complainant_name) return item.complainant_name;
   
-  // Ưu tiên 2: Đối tượng lồng nhau (created_by object)
   if (item.created_by && typeof item.created_by === 'object') {
       return item.created_by.full_name || item.created_by.username || item.created_by.email;
   }
   
-  // Ưu tiên 3: Đối tượng lồng nhau (user object)
   if (item.user && typeof item.user === 'object') {
       return item.user.full_name || item.user.username;
   }
 
-  // Fallback
   return "Khách hàng (Ẩn)";
 };
 
@@ -94,7 +90,7 @@ const UserReports = () => {
   const [processingModalVisible, setProcessingModalVisible] = useState(false);
   const [selectedComplaint, setSelectedComplaint] = useState(null);
 
-  // --- 4. FETCH DATA & MAP DỮ LIỆU ---
+  // --- 4. FETCH DATA ---
   const refreshReports = async () => {
     setLoading(true);
     try {
@@ -108,22 +104,14 @@ const UserReports = () => {
       const data = await res.json();
       let listData = Array.isArray(data) ? data : data.results || [];
 
-      // [QUAN TRỌNG] Map dữ liệu qua hàm an toàn
       listData = listData.map((item) => ({
         ...item,
-        key: item.id, // Antd yêu cầu key duy nhất
-        
-        // Xử lý tên người dùng kỹ càng
+        key: item.id,
         display_name: getSafeUserName(item), 
-        
-        // Xử lý tên sản phẩm
         display_product: item.product_name || (item.product && item.product.name) || "Sản phẩm ẩn",
-        
-        // Xử lý tên Shop
         display_seller: item.seller_name || (item.seller && item.seller.store_name) || "Shop ẩn",
       }));
 
-      // Sắp xếp mới nhất
       listData.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
       
       setReports(listData);
@@ -163,39 +151,26 @@ const UserReports = () => {
     }
   };
 
-  // --- 6. LOGIC LỌC TỔNG HỢP (FIXED) ---
+  // --- 6. LOGIC LỌC TỔNG HỢP ---
   const filteredReports = useMemo(() => {
     return reports.filter((item) => {
-      // A. Lọc Trạng thái (Chính xác tuyệt đối)
-      if (statusFilter !== 'all' && item.status !== statusFilter) {
-        return false;
-      }
+      if (statusFilter !== 'all' && item.status !== statusFilter) return false;
 
-      // B. Lọc Ngày (Nếu có chọn)
       if (dateRange && dateRange[0] && dateRange[1]) {
         const itemDate = dayjs(item.created_at);
         if (!itemDate.isValid()) return false;
-        // So sánh bao gồm cả đầu và cuối ngày
-        if (!itemDate.isBetween(dateRange[0], dateRange[1], null, '[]')) {
-          return false;
-        }
+        if (!itemDate.isBetween(dateRange[0], dateRange[1], null, '[]')) return false;
       }
 
-      // C. Tìm kiếm (ID, Tên Khách, Tên SP) - Thông minh
       if (searchText) {
         const keyword = removeAccents(searchText.trim());
-        
         const idMatch = String(item.id).toLowerCase().includes(keyword);
         const nameMatch = removeAccents(item.display_name).includes(keyword);
         const productMatch = removeAccents(item.display_product).includes(keyword);
-
-        // Nếu không khớp trường nào -> Loại
-        if (!idMatch && !nameMatch && !productMatch) {
-          return false;
-        }
+        if (!idMatch && !nameMatch && !productMatch) return false;
       }
 
-      return true; // Giữ lại nếu qua hết các bộ lọc
+      return true;
     });
   }, [reports, searchText, statusFilter, dateRange]);
 
@@ -230,7 +205,6 @@ const UserReports = () => {
   };
 
   const handleDeleteBatch = async () => {
-    // ... (Giữ nguyên logic xóa)
     const safeDeleteKeys = selectedDeleteKeys.filter((id) => {
       const item = reports.find((r) => r.id === id);
       return item && item.status !== "pending";
@@ -250,7 +224,6 @@ const UserReports = () => {
   };
 
   const handleResolveBatch = async () => {
-    // ... (Giữ nguyên logic duyệt)
     if (!selectedResolveKeys.length) return;
     setLoading(true);
     const token = localStorage.getItem("token");
@@ -332,7 +305,7 @@ const UserReports = () => {
       <Card bordered={false} bodyStyle={{ padding: "16px 24px" }} style={{ marginBottom: 24, borderRadius: 8 }}>
         <Row gutter={[16, 16]} justify="space-between" align="middle">
           {/* Cụm Lọc */}
-          <Col xs={24} xl={20}>
+          <Col xs={24} xl={18}>
             <Space wrap size={12}>
               {/* 1. Tìm kiếm */}
               <Input 
@@ -385,9 +358,30 @@ const UserReports = () => {
             </Space>
           </Col>
 
-          {/* Cụm Hành Động */}
-          <Col xs={24} xl={4} style={{ textAlign: 'right' }}>
+          {/* Cụm Hành Động (Đã Merge Logic Xóa/Duyệt hàng loạt vào đây) */}
+          <Col xs={24} xl={6} style={{ textAlign: 'right' }}>
             <Space>
+                {/* Nút Xóa hàng loạt (Hiện khi chọn đơn đã đóng) */}
+                {selectedDeleteKeys.length > 0 && (
+                    <Popconfirm 
+                        title={`Xóa ${selectedDeleteKeys.length} đơn đã chọn?`} 
+                        onConfirm={handleDeleteBatch}
+                        okText="Xóa" cancelText="Hủy"
+                    >
+                        <Button danger icon={<DeleteOutlined />}>Xóa</Button>
+                    </Popconfirm>
+                )}
+
+                {/* Nút Duyệt hàng loạt (Hiện khi chọn đơn chờ) */}
+                {selectedResolveKeys.length > 0 && (
+                    <Popconfirm 
+                        title={`Duyệt nhanh ${selectedResolveKeys.length} đơn?`} 
+                        onConfirm={handleResolveBatch}
+                    >
+                         <Button type="primary" ghost icon={<ThunderboltOutlined />}>Duyệt</Button>
+                    </Popconfirm>
+                )}
+
               <Tooltip title="Làm mới dữ liệu">
                 <Button 
                     icon={<ReloadOutlined />} 
@@ -417,7 +411,7 @@ const UserReports = () => {
         <Table
           rowKey="id"
           columns={columns}
-          dataSource={filteredReports} // Sử dụng dữ liệu đã map và lọc
+          dataSource={filteredReports}
           loading={loading}
           rowSelection={rowSelection}
           pagination={{ 

@@ -8,10 +8,15 @@ from django.http import FileResponse, HttpResponse
 from django.utils import timezone
 from django.db.models import Q, Sum
 from django.core.exceptions import ValidationError as DjangoValidationError
-from django.shortcuts import get_object_or_404
+import traceback
+from django.db import transaction
+from django.db.models import F
+
+from django.utils import timezone
 import pandas as pd
 from io import BytesIO
 from datetime import datetime
+
 import logging
 
 logger = logging.getLogger(__name__)
@@ -36,8 +41,6 @@ class VoucherViewSet(viewsets.ModelViewSet):
     queryset = Voucher.objects.all()
     serializer_class = VoucherDetailSerializer
     permission_classes = [IsAdminUser]
-<<<<<<< HEAD
-=======
 
     def post(self, request):
         try:
@@ -133,6 +136,7 @@ def claim_voucher(request):
 
     try:
         with transaction.atomic():
+            now = timezone.now()  # Thêm dòng này vào
             voucher = Voucher.objects.select_for_update().filter(
                 code=code, active=True
             ).order_by('id').first()
@@ -199,7 +203,6 @@ def promotions_overview(request):
 
     if search:
         vouchers = vouchers.filter(Q(title__icontains=search) | Q(code__icontains=search))
->>>>>>> origin/TruongAn
     
     def get_serializer_class(self):
         if self.action == 'list':

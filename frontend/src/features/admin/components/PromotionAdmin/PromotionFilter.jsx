@@ -95,9 +95,6 @@ export default function PromotionFilter({ onFilterChange, onClear }) {
 
         {/* Cột 4: Nút bấm */}
         <Col xs={24} sm={24} md={6} lg={6} style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-          <Button type="primary" icon={<SearchOutlined />} onClick={triggerFilter} size={isMobile ? 'small' : 'middle'} style={{ whiteSpace: 'nowrap' }}>
-            Tìm
-          </Button>
           <Tooltip title="Xóa bộ lọc">
             <Button icon={<ReloadOutlined />} onClick={handleReset} size={isMobile ? 'small' : 'middle'} style={{ whiteSpace: 'nowrap' }}>
               Xóa lọc

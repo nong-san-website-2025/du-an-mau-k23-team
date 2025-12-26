@@ -157,7 +157,7 @@ export default function ReportCustomersPage() {
   };
 
   const handleExport = (format) => {
-      message.info("Chức năng xuất báo cáo đang xử lý");
+      message.info(`Đang xuất báo cáo định dạng ${format.toUpperCase()}... (Tính năng đang phát triển)`);
   };
 
   // Format trục X
@@ -218,11 +218,11 @@ export default function ReportCustomersPage() {
         {/* --- TOOLBAR --- */}
         <Card bordered={false} bodyStyle={{ padding: "16px 24px" }}>
           <Row justify="space-between" align="middle" gutter={[16, 16]}>
+            {/* --- Phần bên trái: Bộ lọc --- */}
             <Col xs={24} md={16}>
               <Space wrap size="middle" align="center">
                 <Text strong style={{ fontSize: 15 }}>Thời gian:</Text>
                 
-                {/* DROPDOWN CHỈ CÓ 3 LỰA CHỌN */}
                 <Select 
                   value={timeFilter} 
                   onChange={handleTimeChange} 
@@ -245,17 +245,28 @@ export default function ReportCustomersPage() {
               </Space>
             </Col>
 
-            <Col xs={24} md={8} style={{ textAlign: "right" }}>
+            {/* --- Phần bên phải: Nút hành động (Merged Logic) --- */}
+            <Col xs={24} md={8} style={{ display: "flex", justifyContent: "flex-end" }}>
               <Space>
-                <Button icon={<ReloadOutlined spin={loading} />} onClick={fetchCustomerStatistics}>Làm mới</Button>
-                <Dropdown menu={{ items: [{ key: 'csv', label: 'Xuất CSV' }, { key: 'xlsx', label: 'Xuất Excel', disabled: true }], onClick: ({ key }) => handleExport(key) }}>
-                  <Button type="primary" icon={<DownloadOutlined />} style={{ background: '#389E0D', borderColor: '#389E0D' }}>Xuất báo cáo</Button>
+                <Button icon={<ReloadOutlined spin={loading} />} onClick={fetchCustomerStatistics}>
+                    Làm mới
+                </Button>
+                <Dropdown 
+                    menu={{ 
+                        items: [{ key: 'csv', label: 'Xuất CSV' }, { key: 'xlsx', label: 'Xuất Excel', disabled: true }], 
+                        onClick: ({ key }) => handleExport(key) 
+                    }}
+                >
+                  <Button type="primary" icon={<DownloadOutlined />} style={{ background: '#389E0D', borderColor: '#389E0D' }}>
+                    Xuất báo cáo
+                  </Button>
                 </Dropdown>
               </Space>
             </Col>
           </Row>
         </Card>
 
+        {/* --- SECTION THỐNG KÊ --- */}
         <StatsSection items={statsData} loading={loading} />
 
         {/* --- BIỂU ĐỒ --- */}
@@ -299,6 +310,7 @@ export default function ReportCustomersPage() {
           </Col>
         </Row>
 
+        {/* --- TOP KHÁCH HÀNG & BẢN ĐỒ --- */}
         <Row gutter={[24, 24]}>
             <Col xs={24} xl={16}>
                 <Card title={<Space><TrophyOutlined style={{ color: '#faad14' }} /><span>Top Khách Hàng Tiêu Biểu</span></Space>} bordered={false} loading={loading}>

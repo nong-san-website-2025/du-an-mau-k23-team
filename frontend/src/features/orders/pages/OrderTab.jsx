@@ -31,16 +31,18 @@ const OrderTab = ({ status }) => {
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
 
-  // --- STATE KHIẾU NẠI & ĐÁNH GIÁ ---
+  // --- STATE KHIẾU NẠI ---
   const [activeComplaintItem, setActiveComplaintItem] = useState(null);
   const [complaintText, setComplaintText] = useState("");
   const [complaintFiles, setComplaintFiles] = useState([]);
   const [isSendingComplaint, setIsSendingComplaint] = useState(false);
 
+  // --- STATE ĐÁNH GIÁ ---
   const [ratingModalVisible, setRatingModalVisible] = useState(false);
   const [ratingProduct, setRatingProduct] = useState(null);
-  const [ratingValue, setRatingValue] = useState(0);
+  const [ratingValue, setRatingValue] = useState(5);
   const [ratingComment, setRatingComment] = useState("");
+  const [ratingImages, setRatingImages] = useState([]); // State lưu ảnh
   const [submittingRating, setSubmittingRating] = useState(false);
   const [ratedProducts, setRatedProducts] = useState(new Set());
 
@@ -49,7 +51,6 @@ const OrderTab = ({ status }) => {
     setLoading(true);
     API.get(`orders/?status=${status}`)
       .then((res) => {
-        // Sort đơn mới nhất lên đầu
         setOrders(res.data.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)));
       })
       .catch((err) => {
@@ -64,7 +65,7 @@ const OrderTab = ({ status }) => {
     fetchOrders();
   }, [fetchOrders]);
 
-  // --- LOGIC XỬ LÝ (GIỮ NGUYÊN) ---
+  // --- LOGIC XỬ LÝ ---
 
   // 1. Logic Khiếu nại
   const toggleComplaint = (orderItemId) => {
@@ -92,7 +93,6 @@ const OrderTab = ({ status }) => {
           // Cập nhật lại giao diện
           fetchOrders();
           if (selectedOrder) {
-            // Nếu đang mở modal thì đóng hoặc reload modal (ở đây mình chọn đóng để user thấy status mới bên ngoài)
             setDetailModalVisible(false);
           }
         } catch (error) {
@@ -163,21 +163,61 @@ const OrderTab = ({ status }) => {
 
   // 3. Logic Đánh giá & Chat
   const handleRating = (item) => {
-    setRatingProduct({ product: item.product, name: item.product_name, image: item.product_image });
-    setRatingValue(0); setRatingComment(""); setRatingModalVisible(true);
+    const productId = (typeof item.product === 'object' && item.product !== null) 
+                      ? item.product.id 
+                      : item.product;
+
+    setRatingProduct({ 
+        product: productId,
+        name: item.product_name, 
+        image: item.product_image 
+    });
+    setRatingValue(5); 
+    setRatingComment(""); 
+    setRatingImages([]); 
+    setRatingModalVisible(true);
   };
 
   const submitRating = async () => {
     if (!ratingProduct || ratingValue === 0) return message.warning("Vui lòng chọn số sao!");
     setSubmittingRating(true);
+    
     try {
-      await API.post("reviews/add/", { product: ratingProduct.product, rating: ratingValue, comment: ratingComment.trim() });
+      const formData = new FormData();
+      formData.append("product", ratingProduct.product);
+      formData.append("rating", ratingValue);
+      formData.append("comment", ratingComment.trim());
+
+      if (ratingImages && ratingImages.length > 0) {
+        ratingImages.forEach((file) => {
+          if (file.originFileObj) {
+            formData.append("images", file.originFileObj);
+          }
+        });
+      }
+
+      await API.post("reviews/add/", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
       message.success("Đánh giá thành công!");
       setRatedProducts((prev) => new Set([...prev, ratingProduct.product]));
       setRatingModalVisible(false);
+      setRatingImages([]); 
     } catch (error) {
-      if (error.response?.status === 401) message.error("Hết phiên đăng nhập!");
-      else message.error(error.response?.data?.detail || "Lỗi gửi đánh giá");
+      console.error("Review Error:", error.response);
+
+      if (error.response?.status === 401) {
+          message.error("Hết phiên đăng nhập! Vui lòng đăng nhập lại.");
+      } else if (error.response?.data) {
+          const data = error.response.data;
+          const msg = data.detail || 
+                      data.non_field_errors?.[0] || 
+                      (typeof data === 'string' ? data : "Lỗi gửi đánh giá");
+          message.error(msg);
+      } else {
+          message.error("Gửi đánh giá thất bại.");
+      }
     } finally {
       setSubmittingRating(false);
     }
@@ -191,7 +231,7 @@ const OrderTab = ({ status }) => {
     }));
   };
 
-  // 4. [RESTORED] Logic Render Tag Khiếu nại/Hoàn tiền
+  // 4. Logic Render Tag Khiếu nại/Hoàn tiền
   const renderDisputeTag = (order) => {
     if (!order.items || order.items.length === 0) return null;
 
@@ -201,7 +241,6 @@ const OrderTab = ({ status }) => {
     ];
     const resolvedStatuses = ['resolved_refund', 'REFUND_APPROVED'];
 
-    // Check đang khiếu nại
     const hasActiveDispute = order.items.some(item => {
       const cStatus = item.complaint?.status;
       if (cStatus) return activeDisputeStatuses.includes(cStatus);
@@ -210,7 +249,6 @@ const OrderTab = ({ status }) => {
 
     if (hasActiveDispute) return <Tag color="error">Đang có khiếu nại</Tag>;
 
-    // Check đã hoàn tiền
     const hasResolvedRefund = order.items.some(item => {
       const cStatus = item.complaint?.status;
       if (cStatus) return resolvedStatuses.includes(cStatus);
@@ -219,7 +257,6 @@ const OrderTab = ({ status }) => {
 
     if (hasResolvedRefund) return <Tag color="success">Đã hoàn tiền</Tag>;
 
-    // Check từ chối
     const hasRejected = order.items.some(item =>
       item.status === 'REFUND_REJECTED' || item.complaint?.status === 'resolved_reject'
     );
@@ -252,7 +289,6 @@ const OrderTab = ({ status }) => {
     }
   };
 
-  // Helper mở modal chi tiết
   const openDetailModal = (order) => {
     setSelectedOrder(order);
     setDetailModalVisible(true);
@@ -271,45 +307,24 @@ const OrderTab = ({ status }) => {
         const otherItemsCount = (order.items?.length || 0) - 1;
 
         return (
-          // Container Card (Dùng class card-order + style inline bổ trợ)
           <div key={order.id} className="card-order" style={{ padding: '20px', background: '#fff', borderRadius: 8, marginBottom: 20, border: '1px solid #e5e7eb' }}>
 
             {/* 1. Header: Shop Info & Status */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, borderBottom: '1px solid #f0f0f0', paddingBottom: 12, marginBottom: 12, flexWrap: 'wrap' }}>
               <div
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 12,
-                  cursor: 'pointer',
-                  flex: 1,
-                  minWidth: 0,
-                  transition: 'all 0.2s ease',
-                  padding: '8px 12px',
-                  borderRadius: '6px',
-                  marginLeft: '-12px'
+                  display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', flex: 1, minWidth: 0,
+                  transition: 'all 0.2s ease', padding: '8px 12px', borderRadius: '6px', marginLeft: '-12px'
                 }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#f5f5f5';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                }}
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#f5f5f5'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
                 onClick={() => {
-                  console.log("First item - All keys:", Object.keys(firstItem || {}));
-                  console.log("First item - Full data:", firstItem);
-                  console.log("Items[0]:", order.items?.[0]);
-
                   const storeId = firstItem?.seller_id || firstItem?.store_id || firstItem?.product_seller_id || order.items?.[0]?.seller_id || order.items?.[0]?.store_id;
-                  console.log("Store ID found:", storeId);
-
                   if (storeId) {
                     setDetailModalVisible(false);
-                    setTimeout(() => {
-                      navigate(`/store/${storeId}`);
-                    }, 100);
+                    setTimeout(() => navigate(`/store/${storeId}`), 100);
                   } else {
-                    message.warning("Không thể tìm được thông tin cửa hàng. Vui lòng thử lại!");
+                    message.warning("Không tìm thấy thông tin cửa hàng");
                   }
                 }}
               >
@@ -327,13 +342,8 @@ const OrderTab = ({ status }) => {
                   )}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 600, color: '#333', fontSize: 15, marginBottom: 2, textDecoration: 'none' }}>
-                    {order.shop_name || "Cửa hàng"}
-                  </div>
-                  <div style={{ fontSize: 12, color: '#8c8c8c', display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <span>{order.shop_phone || ""}</span>
-                    {order.shop_phone && <span style={{ color: '#d9d9d9' }}>→</span>}
-                  </div>
+                  <div style={{ fontWeight: 600, color: '#333', fontSize: 15, marginBottom: 2 }}>{order.shop_name || "Cửa hàng"}</div>
+                  <div style={{ fontSize: 12, color: '#8c8c8c' }}>{order.shop_phone || ""}</div>
                 </div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
@@ -344,13 +354,11 @@ const OrderTab = ({ status }) => {
                   Chat
                 </Button>
                 {renderDisputeTag(order)}
-                <Tag color={orderStatus.color} style={{ margin: 0, textTransform: 'uppercase', fontWeight: 600, border: 'none' }}>
-                  {orderStatus.label}
-                </Tag>
+                <Tag color={orderStatus.color} style={{ margin: 0, textTransform: 'uppercase', fontWeight: 600, border: 'none' }}>{orderStatus.label}</Tag>
               </div>
             </div>
 
-            {/* 2. Body: Preview Sản Phẩm (FIX LỖI ẢNH TO) */}
+            {/* 2. Body: Preview Sản Phẩm */}
             <div
               style={{ cursor: 'pointer', display: 'flex', gap: 16, alignItems: 'flex-start' }}
               onClick={() => openDetailModal(order)}
@@ -384,7 +392,6 @@ const OrderTab = ({ status }) => {
               </div>
             </div>
 
-            {/* Xem thêm sản phẩm nếu có */}
             {otherItemsCount > 0 && (
               <div style={{
                 marginTop: 12, textAlign: 'center', fontSize: 12, color: '#6b7280',
@@ -396,7 +403,7 @@ const OrderTab = ({ status }) => {
 
             <Divider style={{ margin: "16px 0" }} />
 
-            {/* 3. Footer: Tổng tiền & Nút bấm */}
+            {/* Footer */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ color: '#6b7280', fontSize: 14 }}>Thành tiền:</span>
@@ -468,9 +475,7 @@ const OrderTab = ({ status }) => {
                   complaintFiles={complaintFiles} onChangeFiles={setComplaintFiles}
                   isSendingComplaint={isSendingComplaint} sendComplaint={handleSendComplaint}
 
-                  // --- 2. TRUYỀN HÀM MỚI VÀO PRODUCT LIST ---
                   onEscalate={handleEscalate}
-
                   onProductClick={(productId) => navigate(`/products/${productId}`)}
                 />
               </div>
@@ -482,12 +487,19 @@ const OrderTab = ({ status }) => {
       {/* --- MODAL ĐÁNH GIÁ --- */}
       <RatingModal
         open={ratingModalVisible}
-        onCancel={() => setRatingModalVisible(false)}
+        onCancel={() => {
+            setRatingModalVisible(false);
+            setRatingImages([]);
+        }}
         product={ratingProduct}
         ratingValue={ratingValue}
         setRatingValue={setRatingValue}
         comment={ratingComment}
         setComment={setRatingComment}
+        
+        images={ratingImages}
+        setImages={setRatingImages}
+
         onSubmit={submitRating}
         loading={submittingRating}
         isMobile={window.innerWidth < 576}

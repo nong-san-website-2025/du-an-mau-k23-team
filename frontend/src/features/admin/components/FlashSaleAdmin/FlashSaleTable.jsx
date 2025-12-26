@@ -1,11 +1,14 @@
 import React, { useState } from "react";
-import { Table, Checkbox, Tag, Badge, Typography, Space, Image } from "antd"; // Thêm Image
-import { EditOutlined, DeleteOutlined, PictureOutlined } from "@ant-design/icons"; // Thêm PictureOutlined
+import { Table, Checkbox, Tag, Badge, Typography, Space, Image } from "antd";
+import { EditOutlined, DeleteOutlined, PictureOutlined } from "@ant-design/icons";
 import moment from "moment";
 import { intcomma } from "../../../../utils/format";
 import ButtonAction from "../../../../components/ButtonAction";
 
 const { Text } = Typography;
+
+// [CẤU HÌNH] Thay đổi URL này thành domain backend của bạn nếu ảnh bị lỗi
+const API_BASE_URL = "http://localhost:8000"; 
 
 export default function FlashSaleTable({
   data,
@@ -67,7 +70,7 @@ export default function FlashSaleTable({
     },
   ];
 
-  // --- Table Columns ---
+  // --- Table Columns (Main Table) ---
   const columns = [
     {
       title: (
@@ -93,7 +96,6 @@ export default function FlashSaleTable({
       title: "Khung giờ",
       key: "time",
       width: isMobile ? 220 : 250,
-      // Sắp xếp theo thời gian bắt đầu
       sorter: (a, b) =>
         moment(a.start_time).unix() - moment(b.start_time).unix(),
       render: (_, record) => {
@@ -119,7 +121,6 @@ export default function FlashSaleTable({
       key: "product_count",
       align: "center",
       width: isMobile ? 140 : undefined,
-      // Sắp xếp theo tổng số lượng sản phẩm trong mảng
       sorter: (a, b) =>
         (a.flashsale_products?.length || 0) -
         (b.flashsale_products?.length || 0),
@@ -137,7 +138,6 @@ export default function FlashSaleTable({
       dataIndex: "is_active",
       key: "status",
       width: isMobile ? 140 : 180,
-      // Sắp xếp theo trạng thái kích hoạt (true/false)
       sorter: (a, b) => Number(a.is_active) - Number(b.is_active),
       render: (isActive, record) => {
         const now = moment();
@@ -187,42 +187,49 @@ export default function FlashSaleTable({
     },
   ];
 
-  // --- Nested Product Table ---
+  // --- Nested Product Table (Expanded) ---
   const expandedRowRender = (record) => {
     const productColumns = [
-      // --- CỘT ẢNH MỚI THÊM ---
       {
-        title: <PictureOutlined />, // Icon header
-        dataIndex: "image", // Lưu ý: Đảm bảo API trả về trường này là 'image' hoặc 'thumbnail'
+        title: <PictureOutlined />, // Icon Cột Ảnh
+        dataIndex: "image", // API key khớp với Serializer
         key: "image",
         width: 60,
         align: "center",
-        render: (src) => (
-          <div
-            style={{
-              width: 42,
-              height: 42,
-              borderRadius: 4,
-              border: "1px solid #f0f0f0",
-              overflow: "hidden",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              backgroundColor: "#fff",
-            }}
-          >
-            <Image
-              src={src || "https://placehold.co/40x40?text=NoImg"}
-              width={40}
-              height={40}
-              style={{ objectFit: "cover" }}
-              fallback="https://placehold.co/40x40?text=Error"
-              preview={true} // Cho phép click để xem ảnh lớn
-            />
-          </div>
-        ),
+        render: (src) => {
+          // Xử lý URL: Nếu src bắt đầu bằng http thì giữ nguyên, nếu không thì nối thêm API_BASE_URL
+          const imageUrl = src
+            ? src.startsWith("http")
+              ? src
+              : `${API_BASE_URL}${src}`
+            : null;
+
+          return (
+            <div
+              style={{
+                width: 42,
+                height: 42,
+                borderRadius: 4,
+                border: "1px solid #f0f0f0",
+                overflow: "hidden",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: "#fff",
+              }}
+            >
+              <Image
+                src={imageUrl || "https://placehold.co/40x40?text=NoImg"}
+                width={40}
+                height={40}
+                style={{ objectFit: "cover" }}
+                fallback="https://placehold.co/40x40?text=Error"
+                preview={true}
+              />
+            </div>
+          );
+        },
       },
-      // -------------------------
       {
         title: "Sản phẩm",
         dataIndex: "product_name",
@@ -249,7 +256,10 @@ export default function FlashSaleTable({
               {intcomma(val)}đ
             </Text>
             <Tag color="red">
-              -{Math.round(((r.original_price - val) / r.original_price) * 100)}
+              -
+              {Math.round(
+                ((r.original_price - val) / r.original_price) * 100
+              )}
               %
             </Tag>
           </Space>
@@ -322,7 +332,6 @@ export default function FlashSaleTable({
         pageSize: 10,
         showSizeChanger: true,
       }}
-      // Reset selection khi chuyển trang hoặc lọc/sort
       onChange={() => {
         setSelectAll(false);
         onSelectionChange([]);

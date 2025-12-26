@@ -1,3 +1,4 @@
+// src/features/admin/pages/Report/ReportOrdersPage.jsx
 import React, { useState, useEffect, useCallback } from "react";
 import {
   Row, Col, Card, Space, Button, Typography, DatePicker, Select, message, Table, Tag, Avatar, Dropdown
@@ -11,11 +12,11 @@ import {
 } from "recharts";
 
 import AdminPageLayout from "../../components/AdminPageLayout";
-import * as XLSX from "xlsx";
 import StatsSection from "../../components/common/StatsSection";
 import { userApi } from "../../services/userApi";
 import dayjs from "dayjs";
 import { intcomma } from "../../../../utils/format";
+import "../../styles/ReportOrdersPage.css";
 
 const { Text } = Typography;
 const { RangePicker } = DatePicker;
@@ -102,8 +103,13 @@ export default function ReportOrdersPage() {
   };
 
   const handleExport = (format) => {
-      // (Giữ logic cũ nhưng đưa vào function)
-      message.info("Chức năng xuất đang được xử lý");
+      // Placeholder logic for export
+      if(format === 'csv') {
+          message.success("Đang xuất file CSV...");
+          // Add actual CSV export logic here similar to previous files if needed
+      } else {
+          message.info("Chức năng xuất Excel đang được xử lý");
+      }
   };
 
   const statsItems = [

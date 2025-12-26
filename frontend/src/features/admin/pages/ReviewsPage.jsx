@@ -1,10 +1,32 @@
 // src/features/admin/pages/Review/ReviewsPage.jsx
 import React, { useState, useEffect, useMemo } from "react";
 import {
-  Table, message, Button, Input, Select, Space, Card, Typography, Row, Col, Tooltip, Avatar, DatePicker, Popconfirm
+  Table,
+  message,
+  Button,
+  Input,
+  Select,
+  Space,
+  Card,
+  Typography,
+  Row,
+  Col,
+  Tooltip,
+  Avatar,
+  DatePicker,
+  Tag, // Từ TriThuc
+  Popconfirm // Từ HEAD
 } from "antd";
 import {
-  ReloadOutlined, SearchOutlined, EyeOutlined, MessageOutlined, DeleteOutlined, EyeInvisibleOutlined, DownloadOutlined, FilterOutlined
+  ReloadOutlined,
+  SearchOutlined,
+  EyeOutlined,
+  MessageOutlined,
+  DeleteOutlined,
+  EyeInvisibleOutlined,
+  DownloadOutlined, // Từ HEAD
+  PictureOutlined, // Từ TriThuc
+  FilterOutlined
 } from "@ant-design/icons";
 import axios from "axios";
 import dayjs from "dayjs";
@@ -57,7 +79,7 @@ const ReviewsPage = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      // Gọi API lấy toàn bộ danh sách (để lọc Client-side cho mượt)
+      // Gọi API lấy toàn bộ danh sách
       const res = await axios.get(`${API_URL}/reviews/admin/reviews/`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -70,9 +92,12 @@ const ReviewsPage = () => {
         user_name: item.user_name || "Khách ẩn danh",
         product_name: item.product_name || "Sản phẩm ẩn",
         comment: item.comment || "",
+        // Đảm bảo mảng ảnh tồn tại để check hiển thị Tag
+        images: item.images || [],
+        review_images: item.review_images || []
       }));
 
-      // Sắp xếp mới nhất
+      // Sắp xếp mới nhất (Logic từ HEAD - chuẩn Admin)
       mappedData.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
       
       setReviews(mappedData);
@@ -216,6 +241,12 @@ const ReviewsPage = () => {
           <Space size={4}>
             <span style={{ color: "#faad14" }}>★</span>
             <Text strong>{record.rating}/5</Text>
+            {/* Logic hiển thị Tag từ TriThuc */}
+            {(record.images?.length > 0 || record.review_images?.length > 0) && (
+              <Tag icon={<PictureOutlined />} color="processing" style={{ marginLeft: 8 }}>
+                Có ảnh
+              </Tag>
+            )}
           </Space>
           <Text ellipsis type="secondary" style={{maxWidth: 250}}>
             <MessageOutlined /> {record.comment || "Không lời bình"}
@@ -233,7 +264,7 @@ const ReviewsPage = () => {
         return <StatusTag status={status} label={label} />;
       },
     },
-    // [MỚI] THÊM CỘT NGÀY ĐÁNH GIÁ
+    // Cột Ngày đánh giá từ HEAD
     {
       title: "Ngày đánh giá",
       dataIndex: "created_at",
@@ -386,7 +417,7 @@ const ReviewsPage = () => {
             showSizeChanger: true,
             showTotal: (total) => `Tổng ${total} đánh giá` 
           }}
-          scroll={{ x: 1100 }} // Đã tăng width scroll để chứa thêm cột
+          scroll={{ x: 1100 }}
         />
       </Card>
 

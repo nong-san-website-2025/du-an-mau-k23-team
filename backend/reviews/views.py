@@ -6,6 +6,7 @@ from django.db.models import Avg, Count, Q
 from django.utils import timezone
 from .models import Review, ReviewReply, CustomerSupport
 from .serializers import ReviewSerializer, ReviewReplySerializer, CustomerSupportSerializer
+from rest_framework.parsers import MultiPartParser, FormParser
 
 
 # ----------------- REVIEW -----------------
@@ -46,7 +47,7 @@ class SellerReviewsView(generics.ListAPIView):
     def get_queryset(self):
         # 1. Base Query: Lấy review của sản phẩm thuộc seller này
         user = self.request.user
-        qs = Review.objects.select_related("product", "product__seller", "user").all()
+        qs = Review.objects.select_related("product", "product__seller", "user").prefetch_related("images", "replies").all()
         
         seller = getattr(user, "seller", None)
         if seller:
@@ -225,7 +226,7 @@ class AdminReviewViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = Review.objects.select_related(
             'user', 'product', 'product__seller'
-        ).prefetch_related('replies').all()
+        ).prefetch_related('replies', 'images').all()
 
         # Filtering
         search = self.request.query_params.get('search', '')
@@ -272,3 +273,17 @@ class AdminReviewViewSet(viewsets.ModelViewSet):
             serializer.save(review=review, user=request.user)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class ReviewListCreateView(generics.ListCreateAPIView):
+    serializer_class = ReviewSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+    # 👇 2. THÊM DÒNG NÀY VÀO (BẮT BUỘC)
+    parser_classes = [MultiPartParser, FormParser] 
+
+    def get_queryset(self):
+        product_id = self.kwargs["product_id"]
+        return Review.objects.filter(product_id=product_id, is_hidden=False)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user, product_id=self.kwargs["product_id"])

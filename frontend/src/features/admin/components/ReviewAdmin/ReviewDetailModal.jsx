@@ -1,10 +1,22 @@
 // src/components/ReviewAdmin/ReviewDetailModal.jsx
 import React from "react";
-import { Modal, Descriptions, Rate, Timeline, Typography, Avatar, Divider, Space, Alert } from "antd";
+import { Modal, Descriptions, Rate, Timeline, Typography, Avatar, Divider, Space, Alert, Image } from "antd";
 import { UserOutlined, ClockCircleOutlined, EyeInvisibleOutlined } from "@ant-design/icons";
 import StatusTag from "../../../../components/StatusTag";
 
 const { Text, Title } = Typography;
+
+// Helper to get full image URL
+const getImageUrl = (imgData) => {
+  if (!imgData) return "";
+  let src = typeof imgData === 'string' ? imgData : (imgData.image || imgData.url);
+  if (!src || typeof src !== 'string') return "";
+  if (src.startsWith("http")) return src;
+  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000/api";
+  const BASE_URL = API_URL.replace(/\/api\/?$/, "");
+  const cleanSrc = src.startsWith("/") ? src : `/${src}`;
+  return `${BASE_URL}${cleanSrc}`;
+};
 
 const ReviewDetailModal = ({ visible, review, onClose }) => {
   if (!review) return null;
@@ -73,6 +85,26 @@ const ReviewDetailModal = ({ visible, review, onClose }) => {
          <Text style={{ fontSize: 15, color: '#262626' }}>
             "{review.comment || "Khách hàng không để lại bình luận text."}"
          </Text>
+
+         {/* Review Images */}
+         {((review.images && review.images.length > 0) || (review.review_images && review.review_images.length > 0)) && (
+           <div style={{ marginTop: 16 }}>
+             <Image.PreviewGroup>
+               <Space size={8} wrap>
+                 {(review.images || review.review_images).map((img, idx) => (
+                   <Image
+                     key={idx}
+                     width={80}
+                     height={80}
+                     src={getImageUrl(img)}
+                     style={{ objectFit: "cover", borderRadius: 4, border: "1px solid #d9d9d9", cursor: 'pointer' }}
+                     alt={`Review image ${idx + 1}`}
+                   />
+                 ))}
+               </Space>
+             </Image.PreviewGroup>
+           </div>
+         )}
       </div>
 
       {review.replies && review.replies.length > 0 && (

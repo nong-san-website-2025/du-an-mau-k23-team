@@ -1,9 +1,21 @@
 import React, { useState, useEffect } from "react";
-import { Modal, Form, Input, message, Alert, Avatar, Rate, Space, Typography, Button } from "antd";
+import { Modal, Form, Input, message, Alert, Avatar, Rate, Space, Typography, Button, Image } from "antd";
 import { UserOutlined, BulbOutlined } from "@ant-design/icons";
 
 const { TextArea } = Input;
 const { Text, Paragraph } = Typography;
+
+// Helper to get full image URL
+const getImageUrl = (imgData) => {
+  if (!imgData) return "";
+  let src = typeof imgData === 'string' ? imgData : (imgData.image || imgData.url);
+  if (!src || typeof src !== 'string') return "";
+  if (src.startsWith("http")) return src;
+  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000/api";
+  const BASE_URL = API_URL.replace(/\/api\/?$/, "");
+  const cleanSrc = src.startsWith("/") ? src : `/${src}`;
+  return `${BASE_URL}${cleanSrc}`;
+};
 
 const ReviewReplyModal = ({ visible, review, onClose, onReply }) => {
   const [form] = Form.useForm();
@@ -49,7 +61,7 @@ const ReviewReplyModal = ({ visible, review, onClose, onReply }) => {
       {/* Context Review */}
       <div style={{ padding: '16px', background: '#fafafa', borderRadius: 8, marginBottom: 24 }}>
         <Space align="start">
-           <Avatar icon={<UserOutlined />} src={review.user_avatar} />
+           <Avatar icon={<UserOutlined />} src={getImageUrl(review.user_avatar)} />
            <div>
               <Text strong>{review.user_name}</Text>
               <div><Rate disabled value={review.rating} style={{ fontSize: 12 }} /></div>
@@ -61,6 +73,25 @@ const ReviewReplyModal = ({ visible, review, onClose, onReply }) => {
         >
           "{review.comment || 'Không có nội dung'}"
         </Paragraph>
+
+        {/* Review Images */}
+        {(review.images && review.images.length > 0) || (review.review_images && review.review_images.length > 0) ? (
+          <div style={{ marginTop: 12, paddingLeft: 40 }}>
+            <Image.PreviewGroup>
+              <Space size={8} wrap>
+                {(review.images || review.review_images).map((img, idx) => (
+                  <Image
+                    key={idx}
+                    width={60}
+                    height={60}
+                    src={getImageUrl(img)}
+                    style={{ objectFit: "cover", borderRadius: 4, border: "1px solid #d9d9d9" }}
+                  />
+                ))}
+              </Space>
+            </Image.PreviewGroup>
+          </div>
+        ) : null}
       </div>
 
       <Form form={form} layout="vertical">

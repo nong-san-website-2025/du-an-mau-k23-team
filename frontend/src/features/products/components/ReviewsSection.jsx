@@ -1,4 +1,3 @@
-// src/components/ProductDetail/ReviewsSection.jsx
 import React, { useMemo } from "react";
 import { 
   Card, 
@@ -11,25 +10,52 @@ import {
   Col, 
   Progress, 
   Divider,
-  Space
+  Space,
+  Image
 } from "antd";
 import { UserOutlined, ShopOutlined, CheckCircleFilled, WarningFilled } from "@ant-design/icons";
 
 const { Title, Text, Paragraph } = Typography;
 
+// --- [MỚI] Hàm xử lý đường dẫn ảnh ---
+const getImageUrl = (imgData) => {
+  if (!imgData) return "";
+  
+  // Lấy đường dẫn từ object hoặc string
+  const src = imgData.image || imgData.url || imgData;
+  if (!src) return "";
+  
+  // Nếu là link đầy đủ (http...) thì giữ nguyên
+  if (typeof src === 'string' && src.startsWith("http")) {
+    return src;
+  }
+
+  // Nếu là link tương đối (/media...), ghép thêm domain server
+  // Lấy API_URL từ biến môi trường, hoặc dùng mặc định
+  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000/api";
+  // Loại bỏ đuôi '/api' để lấy domain gốc (VD: http://localhost:8000)
+  const BASE_URL = API_URL.replace(/\/api\/?$/, "");
+  
+  // Đảm bảo không bị duplicate dấu /
+  const cleanSrc = src.startsWith("/") ? src : `/${src}`;
+  
+  return `${BASE_URL}${cleanSrc}`;
+};
+
 // --- SUB-COMPONENT: Hiển thị 1 dòng review ---
 const ReviewItem = ({ review, isMyReview = false }) => {
-  const { user_name, rating, comment, created_at, replies, is_hidden } = review;
+  // Lấy thêm trường images từ review
+  const { user_name, rating, comment, created_at, replies, is_hidden, images } = review;
 
   return (
-    <div style={{ padding: "16px 0" }}>
+    <div style={{ padding: "24px 0" }}>
       <Row gutter={[16, 16]} wrap={false}>
         {/* Cột Avatar */}
-        <Col flex="40px">
+        <Col flex="48px">
           <Avatar 
-            size="large" 
+            size={48}
             icon={<UserOutlined />} 
-            style={{ backgroundColor: isMyReview ? '#1890ff' : '#f56a00' }}
+            style={{ backgroundColor: isMyReview ? '#1890ff' : '#f56a00', fontSize: 20 }}
           >
             {user_name ? user_name.charAt(0).toUpperCase() : "U"}
           </Avatar>
@@ -38,9 +64,9 @@ const ReviewItem = ({ review, isMyReview = false }) => {
         {/* Cột Nội dung */}
         <Col flex="auto">
           {/* Header: Tên + Ngày + Tag (nếu là my review) */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
             <Space>
-              <Text strong style={{ fontSize: 16 }}>
+              <Text strong style={{ fontSize: 16, color: "#262626" }}>
                 {isMyReview ? "Bạn (Đánh giá của tôi)" : user_name}
               </Text>
               {isMyReview && is_hidden && (
@@ -56,37 +82,60 @@ const ReviewItem = ({ review, isMyReview = false }) => {
           </div>
 
           {/* Rating */}
-          <div style={{ marginBottom: 8 }}>
-            <Rate disabled value={rating} style={{ fontSize: 14 }} />
+          <div style={{ marginBottom: 12 }}>
+            <Rate disabled value={rating} style={{ fontSize: 14, color: "#fadb14" }} />
           </div>
 
           {/* Comment Content */}
           <Paragraph 
             style={{ 
-              color: is_hidden ? "#999" : "inherit",
+              color: is_hidden ? "#999" : "#434343",
               fontStyle: is_hidden ? "italic" : "normal",
-              marginBottom: 12
+              marginBottom: 16,
+              fontSize: 15,
+              lineHeight: 1.6
             }}
           >
             {is_hidden ? "Nội dung đánh giá này đã bị ẩn do vi phạm tiêu chuẩn cộng đồng." : comment}
           </Paragraph>
 
+          {/* [ĐÃ SỬA] Hiển thị danh sách ảnh đánh giá dùng hàm getImageUrl */}
+          {!is_hidden && images && images.length > 0 && (
+            <div style={{ marginBottom: 16 }}>
+              <Image.PreviewGroup>
+                <Space size={8} wrap>
+                  {images.map((img, idx) => (
+                    <Image
+                      key={idx}
+                      width={80}
+                      height={80}
+                      src={getImageUrl(img)} // Dùng hàm helper để fix link ảnh
+                      style={{ objectFit: "cover", borderRadius: 8, border: "1px solid #f0f0f0", cursor: "pointer" }}
+                      alt="Review image"
+                      fallback="https://via.placeholder.com/80?text=Error" // Ảnh thay thế nếu lỗi
+                    />
+                  ))}
+                </Space>
+              </Image.PreviewGroup>
+            </div>
+          )}
+
           {/* Seller Reply Section */}
           {Array.isArray(replies) && replies.length > 0 && (
             <div
               style={{
-                backgroundColor: "#f9f9f9",
-                borderLeft: "4px solid #00b96b", // Màu thương hiệu GreenFarm
-                padding: "12px 16px",
-                borderRadius: "0 8px 8px 0",
-                marginTop: 12,
+                backgroundColor: "#f6ffed",
+                border: "1px solid #b7eb8f",
+                padding: "16px",
+                borderRadius: 8,
+                marginTop: 16,
               }}
             >
               {replies.map((rp) => (
                 <div key={rp.id}>
-                  <div style={{ display: "flex", alignItems: "center", marginBottom: 6 }}>
-                    <ShopOutlined style={{ color: "#00b96b", marginRight: 8, fontSize: 16 }} />
-                    <Text strong style={{ color: "#00b96b" }}>Phản hồi từ Cửa hàng</Text>
+                  <div style={{ display: "flex", alignItems: "center", marginBottom: 8 }}>
+                    <ShopOutlined style={{ color: "#52c41a", marginRight: 8, fontSize: 18 }} />
+                    <Text strong style={{ color: "#389e0d" }}>Phản hồi từ Cửa hàng</Text>
                     <Divider type="vertical" />
                     <Text type="secondary" style={{ fontSize: 12 }}>
                       {rp.created_at ? new Date(rp.created_at).toLocaleDateString("vi-VN") : ""}
@@ -120,34 +169,35 @@ const RatingSummary = ({ reviews }) => {
   });
 
   return (
-    <div style={{ marginBottom: 32, padding: "20px", background: "#fafafa", borderRadius: 8 }}>
+    <div style={{ marginBottom: 32, padding: "24px", background: "#fafafa", borderRadius: 8, border: "1px solid #f0f0f0" }}>
       <Row gutter={[32, 16]} align="middle">
         {/* Bên trái: Điểm trung bình to đùng */}
-        <Col xs={24} sm={8} style={{ textAlign: "center" }}>
-           <div style={{ fontSize: 48, fontWeight: "bold", color: "#00b96b", lineHeight: 1 }}>
-             {average}
+        <Col xs={24} sm={8} style={{ textAlign: "center", borderRight: "1px solid #f0f0f0" }}>
+           <div style={{ fontSize: 48, fontWeight: "bold", color: "#fadb14", lineHeight: 1, marginBottom: 8 }}>
+             {average} <span style={{ fontSize: 24, color: "#999" }}>/ 5</span>
            </div>
-           <Rate disabled allowHalf value={parseFloat(average)} style={{ color: "#00b96b" }} />
-           <div style={{ marginTop: 8, color: "#666" }}>{total} đánh giá</div>
+           <Rate disabled allowHalf value={parseFloat(average)} style={{ color: "#fadb14", fontSize: 20 }} />
+           <div style={{ marginTop: 8, color: "#666", fontSize: 16 }}>({total} đánh giá)</div>
         </Col>
 
         {/* Bên phải: Progress bar từng dòng */}
-        <Col xs={24} sm={16}>
+        <Col xs={24} sm={16} style={{ paddingLeft: 32 }}>
           {[5, 4, 3, 2, 1].map(star => (
-            <Row key={star} gutter={8} align="middle" style={{ marginBottom: 4 }}>
-              <Col span={3} style={{ textAlign: "right", whiteSpace: 'nowrap' }}>
-                <Text type="secondary">{star} sao</Text>
+            <Row key={star} gutter={16} align="middle" style={{ marginBottom: 8 }}>
+              <Col style={{ minWidth: 60, textAlign: "right" }}>
+                <Text strong>{star} sao</Text>
               </Col>
               <Col flex="auto">
                 <Progress 
                   percent={(counts[star] / total) * 100} 
                   showInfo={false} 
-                  strokeColor="#00b96b" 
+                  strokeColor="#fadb14" 
                   trailColor="#e6e6e6"
                   size="small"
+                  style={{ marginBottom: 0 }}
                 />
               </Col>
-              <Col span={3} style={{ textAlign: "right" }}>
+              <Col style={{ minWidth: 40, textAlign: "right" }}>
                 <Text type="secondary">{counts[star]}</Text>
               </Col>
             </Row>
@@ -169,8 +219,8 @@ const ReviewsSection = ({ user, reviews, myReview }) => {
   return (
     <Card 
       bordered={false} 
-      style={{ marginTop: 24, boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }} // Thêm shadow nhẹ
-      bodyStyle={{ padding: "24px 32px" }}
+      style={{ marginTop: 24, boxShadow: "0 2px 8px rgba(0,0,0,0.06)", borderRadius: 8 }} 
+      bodyStyle={{ padding: "32px" }}
     >
       <Title level={4} style={{ marginBottom: 24 }}>Đánh giá sản phẩm</Title>
 
@@ -185,13 +235,13 @@ const ReviewsSection = ({ user, reviews, myReview }) => {
               border: `1px solid ${myReview.is_hidden ? '#ffccc7' : '#b7eb8f'}`, 
               backgroundColor: myReview.is_hidden ? '#fff2f0' : '#f6ffed',
               borderRadius: 8, 
-              padding: "0 16px",
+              padding: "0 24px",
               marginBottom: 32 
             }}
           >
             <ReviewItem review={myReview} isMyReview={true} />
           </div>
-          {visibleReviews.length > 0 && <Divider orientation="left">Đánh giá từ khách hàng khác</Divider>}
+          {visibleReviews.length > 0 && <Divider orientation="left" style={{ borderColor: "#d9d9d9" }}>Đánh giá từ khách hàng khác</Divider>}
         </>
       )}
 

@@ -1,11 +1,11 @@
 from rest_framework import serializers
 from django.db.models import Sum
-from .models import Promotion, Voucher, FlashSale, UserVoucher, FlashSaleProduct
+from .models import Promotion, Voucher, FlashSale, UserVoucher, FlashSaleProduct, VoucherUsage
 from products.models import Product
 from orders.models import OrderItem
 
 # =========================================================
-# 1. HELPER / NESTED SERIALIZERS
+# 1. HELPER / COMMON SERIALIZERS
 # =========================================================
 
 class PromotionListSerializer(serializers.ModelSerializer):
@@ -13,54 +13,17 @@ class PromotionListSerializer(serializers.ModelSerializer):
         model = Promotion
         fields = ['id', 'code', 'name', 'type', 'start', 'end', 'active']
 
-class FlashSaleItemDisplaySerializer(serializers.ModelSerializer):
-    """
-    Serializer này dùng để hiển thị từng MÓN HÀNG trong Flashsale (View Flat)
-    """
-    product_name = serializers.CharField(source='product.name', read_only=True)
-    product_image = serializers.SerializerMethodField()
-    remaining_time = serializers.SerializerMethodField()
-    remaining_stock = serializers.SerializerMethodField()
-
-    class Meta:
-        model = FlashSaleProduct 
-        fields = [
-            'id', 'product_id', 'product_name', 'product_image',
-            'original_price', 'flash_price', 'stock',
-            'remaining_time', 'remaining_stock' 
-        ]
-
-    def get_product_name(self, obj):
-        return obj.product.name if obj.product else ""
-
-    def get_product_image(self, obj):
-        product = obj.product
-        if product:
-            image_obj = product.images.filter(is_primary=True).first() or product.images.first()
-            if image_obj:
-                request = self.context.get('request')
-                if request:
-                    return request.build_absolute_uri(image_obj.image.url)
-                return image_obj.image.url
-        return None
-
-    def get_remaining_time(self, obj):
-        return obj.flashsale.remaining_time if obj.flashsale else 0
-
-    def get_remaining_stock(self, obj):
-        sold = OrderItem.objects.filter(
-            product=obj.product,
-            order__status__in=['shipping', 'delivered', 'completed'],
-            created_at__gte=obj.flashsale.start_time,
-            created_at__lt=obj.flashsale.end_time
-        ).aggregate(total=Sum('quantity'))['total'] or 0
-        return max(0, obj.stock - sold)
-
+# =========================================================
+# 2. FLASHSALE PRODUCT SERIALIZERS (CORE LOGIC)
+# =========================================================
 
 class FlashSaleProductSerializer(serializers.ModelSerializer):
-    product_id = serializers.IntegerField(source='product.id')
-    product_name = serializers.CharField(source='product.name')
-    original_price = serializers.DecimalField(source='product.original_price', max_digits=12, decimal_places=0)
+    """
+    Serializer hiển thị sản phẩm trong Flash Sale (Dành cho Client/Frontend Public)
+    """
+    product_id = serializers.IntegerField(source='product.id', read_only=True)
+    product_name = serializers.CharField(source='product.name', read_only=True)
+    original_price = serializers.DecimalField(source='product.original_price', max_digits=12, decimal_places=0, read_only=True)
     product_image = serializers.SerializerMethodField() 
     remaining_stock = serializers.SerializerMethodField()
 
@@ -89,15 +52,22 @@ class FlashSaleProductSerializer(serializers.ModelSerializer):
         return None
 
 class FlashSaleProductAdminSerializer(serializers.ModelSerializer):
+    """
+    [QUAN TRỌNG] Serializer cho trang quản trị (Admin/Seller tạo Flash Sale)
+    Đã thêm trường 'image' để fix lỗi không hiện ảnh trên bảng React
+    """
     product_name = serializers.CharField(source='product.name', read_only=True)
     original_price = serializers.DecimalField(
         source='product.original_price', max_digits=12, decimal_places=0, read_only=True
     )
     remaining_stock = serializers.SerializerMethodField()
+    
+    # Thêm trường image vào đây
+    image = serializers.SerializerMethodField()
 
     class Meta:
         model = FlashSaleProduct
-        fields = ['id', 'product', 'product_name', 'original_price', 'flash_price', 'stock', 'remaining_stock']
+        fields = ['id', 'product', 'product_name', 'image', 'original_price', 'flash_price', 'stock', 'remaining_stock']
     
     def get_remaining_stock(self, obj):
         sold = OrderItem.objects.filter(
@@ -108,9 +78,23 @@ class FlashSaleProductAdminSerializer(serializers.ModelSerializer):
         ).aggregate(total=Sum('quantity'))['total'] or 0
         return max(0, obj.stock - sold)
 
+    def get_image(self, obj):
+        """Lấy URL ảnh tuyệt đối (có http://...)"""
+        product = obj.product
+        if not product: return None
+        
+        # Ưu tiên ảnh chính, nếu không có thì lấy ảnh đầu tiên
+        image_obj = product.images.filter(is_primary=True).first() or product.images.first()
+        
+        if image_obj and image_obj.image:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(image_obj.image.url)
+            return image_obj.image.url
+        return None
 
 # =========================================================
-# 2. VOUCHER SERIALIZERS
+# 3. VOUCHER SERIALIZERS
 # =========================================================
 
 class VoucherDetailSerializer(serializers.ModelSerializer):
@@ -139,25 +123,20 @@ class VoucherDetailSerializer(serializers.ModelSerializer):
         return 'Không rõ'  
 
     def validate(self, data):
-        # 1. Validate Discount Logic
         count = sum(1 for k in ('discount_percent', 'discount_amount', 'freeship_amount') if data.get(k) is not None)
         if count == 0:
             raise serializers.ValidationError("Phải cung cấp 1 trong các loại giảm: discount_percent, discount_amount, freeship_amount")
         if count > 1:
             raise serializers.ValidationError("Chỉ được chọn 1 loại giảm giá.")
 
-        # 2. Validate Percent Range
         if data.get('discount_percent') is not None:
             val = data['discount_percent']
             if val < 0 or val > 100:
                 raise serializers.ValidationError("discount_percent phải trong khoảng 0 - 100.")
             
-            # Check max discount for percent (trừ freeship)
-            if not data.get('max_discount_amount') and data.get('voucher_type') != 'freeship':
-                 # Tạm thời pass để tránh lỗi migrate cũ
+            if not data.get('max_discount_amount') and data.get('discount_type') != 'freeship':
                  pass 
 
-        # 3. Fix per_user_quantity
         dist_type = data.get('distribution_type')
         if dist_type == Voucher.DistributionType.CLAIM:
             if data.get('per_user_quantity') is None:
@@ -188,10 +167,6 @@ class VoucherSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ['created_by', 'created_at', 'used_quantity', 'issued_count']
 
-
-# =========================================================
-# 3. SELLER VOUCHER SERIALIZER
-# =========================================================
 
 class SellerVoucherSerializer(serializers.ModelSerializer):
     applicable_products = serializers.PrimaryKeyRelatedField(
@@ -242,10 +217,6 @@ class SellerVoucherSerializer(serializers.ModelSerializer):
         return data
 
 
-# =========================================================
-# 4. USER VOUCHER SERIALIZER
-# =========================================================
-
 class UserVoucherSerializer(serializers.ModelSerializer):
     voucher = VoucherDetailSerializer(read_only=True)
 
@@ -254,20 +225,13 @@ class UserVoucherSerializer(serializers.ModelSerializer):
         fields = ["id", "voucher", "is_used", "used_at", "quantity", "used_count"] 
 
 
-# =========================================================
-# 5. IMPORT EXCEL SERIALIZER (CẬP NHẬT FREESHIP)
-# =========================================================
-
 class VoucherImportSerializer(serializers.Serializer):
     code = serializers.CharField(required=True)
     title = serializers.CharField(required=True)
-    
-    # [QUAN TRỌNG] Thêm 'freeship' vào choices để Backend không báo lỗi
     discount_type = serializers.ChoiceField(
         choices=['amount', 'percent', 'freeship'], 
         default='amount'
     )
-    
     value = serializers.DecimalField(max_digits=12, decimal_places=0, required=True)
     start_date = serializers.DateField(format="%Y-%m-%d", input_formats=["%Y-%m-%d", "%d/%m/%Y"])
     end_date = serializers.DateField(format="%Y-%m-%d", input_formats=["%Y-%m-%d", "%d/%m/%Y"])
@@ -287,10 +251,13 @@ class VoucherImportSerializer(serializers.Serializer):
 
 
 # =========================================================
-# 6. FLASHSALE SERIALIZERS
+# 4. FLASHSALE MAIN SERIALIZERS
 # =========================================================
 
 class FlashSaleSerializer(serializers.ModelSerializer):
+    """
+    Serializer cho danh sách Flash Sale (Public)
+    """
     flashsale_products = FlashSaleProductSerializer(many=True, read_only=True)
     remaining_time = serializers.ReadOnlyField() 
 
@@ -300,6 +267,10 @@ class FlashSaleSerializer(serializers.ModelSerializer):
 
 
 class FlashSaleAdminSerializer(serializers.ModelSerializer):
+    """
+    Serializer cho Admin quản lý (CRUD Flash Sale)
+    Sử dụng FlashSaleProductAdminSerializer để có trường ảnh (image)
+    """
     flashsale_products = FlashSaleProductAdminSerializer(many=True)
     
     class Meta:
