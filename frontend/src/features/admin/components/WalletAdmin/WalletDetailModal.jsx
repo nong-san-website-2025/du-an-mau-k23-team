@@ -115,20 +115,12 @@ const WalletDetailModal = ({ visible, onClose, wallet, onSuccess }) => {
   };
 
   const pendingColumns = [
-    { title: "Mã Đơn", dataIndex: "id", key: "id", render: (text) => <Text strong>#{text}</Text> },
-    { title: "Ngày tạo", dataIndex: "created_at", render: (date) => dayjs(date).format("DD/MM/YYYY") },
-    { title: "Tổng đơn", dataIndex: "total_order_value", align: "right", render: (val) => val?.toLocaleString() + " đ" },
-    {
-      title: "Phí sàn",
-      key: "commission",
-      align: "right",
-      render: (_, record) => {
-        // Phí sàn = Tổng đơn - Thực nhận (net_income)
-        const commission = (record.total_order_value || 0) - (record.net_income || 0);
-        return <Text>{intcomma(commission)} đ</Text>;
-      }
-    },
-    { title: "Thực nhận", dataIndex: "net_income", align: "right", render: (val) => <Text strong>{intcomma(val)} đ</Text> },
+    { title: "Mã Đơn", dataIndex: "id", key: "id", width: 90, render: (text) => <Text strong>#{text}</Text> },
+    { title: "Ngày tạo", dataIndex: "created_at", width: 110, render: (date) => dayjs(date).format("DD/MM/YYYY") },
+    { title: "Đơn sản phẩm", dataIndex: "product_price", align: "right", width: 130, render: (val) => <Text>{intcomma(val)} đ</Text> },
+    { title: "Tổng đơn", dataIndex: "total_order_value", align: "right", width: 130, render: (val) => val?.toLocaleString() + " đ" },
+    { title: "Phí sàn", dataIndex: "commission", align: "right", width: 110, render: (val) => <Text>{intcomma(val)} đ</Text> },
+    { title: "Thực nhận", dataIndex: "net_income", align: "right", width: 130, render: (val) => <Text strong style={{color: '#52c41a'}}>{intcomma(val)} đ</Text> },
     {
       title: "Hành động",
       key: "action",

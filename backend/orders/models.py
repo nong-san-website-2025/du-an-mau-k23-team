@@ -54,6 +54,11 @@ class Order(models.Model):
     address = models.CharField(max_length=255, null=True, blank=True, default="")
     note = models.TextField(blank=True, null=True, default="")
     
+    # Thông tin địa lý GHN (để thống kê khu vực)
+    province_id = models.IntegerField(null=True, blank=True, help_text='GHN ProvinceID')
+    district_id = models.IntegerField(null=True, blank=True, help_text='GHN DistrictID')
+    ward_code = models.CharField(max_length=20, null=True, blank=True, help_text='GHN WardCode')
+    
     # Tài chính & Thanh toán
     payment_method = models.CharField(max_length=50, default="Thanh toán khi nhận hàng (COD)", null=True, blank=True)
     payment_status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default='unpaid')

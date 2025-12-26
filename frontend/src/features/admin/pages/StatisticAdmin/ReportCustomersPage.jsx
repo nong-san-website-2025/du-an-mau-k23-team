@@ -2,11 +2,11 @@
 import React, { useState, useEffect } from "react";
 import {
   Card, Row, Col, Select, DatePicker, Table, Space, Button, Tag, Avatar, Typography,
-  Progress, Empty, message, Dropdown,
+  Progress, Empty, message, Dropdown, Modal,
 } from "antd";
 import {
   UserAddOutlined, UserSwitchOutlined, TeamOutlined, RiseOutlined, DownloadOutlined,
-  ReloadOutlined, TrophyOutlined, GlobalOutlined,
+  ReloadOutlined, TrophyOutlined, GlobalOutlined, EyeOutlined,
 } from "@ant-design/icons";
 import {
   LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -34,6 +34,7 @@ export default function ReportCustomersPage() {
   const [topCustomers, setTopCustomers] = useState([]);
   const [geoData, setGeoData] = useState([]);
   const [isMobile, setIsMobile] = useState(false);
+  const [showAllProvinces, setShowAllProvinces] = useState(false);
 
   // Fetch dữ liệu khi bộ lọc thay đổi
   useEffect(() => {
@@ -133,6 +134,7 @@ export default function ReportCustomersPage() {
         const totalGeo = data.geoDistribution.reduce((sum, item) => sum + item.count, 0);
         const formattedGeo = data.geoDistribution.map(item => ({
             city: item.city,
+            count: item.count,
             percent: totalGeo > 0 ? Math.round((item.count / totalGeo) * 100) : 0,
         })).sort((a, b) => b.percent - a.percent);
         setGeoData(formattedGeo);
@@ -191,14 +193,6 @@ export default function ReportCustomersPage() {
       key: "tier",
       width: 140,
       render: (_, record) => <Tag color={record.tierColor || "default"}>{record.tier || "Thành viên"}</Tag>
-    },
-    {
-      title: "Số đơn hàng",
-      dataIndex: "orders",
-      key: "orders",
-      width: 120,
-      sorter: (a, b) => a.orders - b.orders,
-      align: "center",
     },
     {
       title: "Tổng chi tiêu",
@@ -318,20 +312,189 @@ export default function ReportCustomersPage() {
                 </Card>
             </Col>
             <Col xs={24} xl={8}>
-                <Card title={<Space><GlobalOutlined /><span>Khu vực hoạt động</span></Space>} bordered={false} loading={loading}>
-                    <div style={{ padding: '0 10px' }}>
-                        {geoData.length > 0 ? geoData.map((item, index) => (
-                            <div key={index} style={{ marginBottom: 20 }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-                                    <Text>{item.city}</Text><Text strong>{item.percent}%</Text>
-                                </div>
-                                <Progress percent={item.percent} showInfo={false} size="small" strokeColor={index === 0 ? '#faad14' : '#1890ff'} />
-                            </div>
-                        )) : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Chưa có dữ liệu" />}
-                    </div>
+                <Card 
+                    title={
+                        <Space>
+                            <GlobalOutlined style={{ color: '#1890ff', fontSize: 18 }} />
+                            <span style={{ fontSize: 16, fontWeight: 600 }}>Khu vực hoạt động</span>
+                        </Space>
+                    } 
+                    bordered={false} 
+                    loading={loading}
+                    bodyStyle={{ padding: '20px 24px' }}
+                >
+                    {geoData.length > 0 ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            {geoData.slice(0, 5).map((item, index) => {
+                                return (
+                                    <div 
+                                        key={index} 
+                                        style={{
+                                            background: '#fff',
+                                            borderRadius: 8,
+                                            padding: '12px 14px',
+                                            transition: 'all 0.2s ease',
+                                            border: '1px solid #e8e8e8',
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.borderColor = '#d9d9d9';
+                                            e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.06)';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.borderColor = '#e8e8e8';
+                                            e.currentTarget.style.boxShadow = 'none';
+                                        }}
+                                    >
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                                            <Space size={8}>
+                                                <div style={{ 
+                                                    width: 6, 
+                                                    height: 6, 
+                                                    borderRadius: '50%', 
+                                                    background: index === 0 ? '#1890ff' : '#8c8c8c' 
+                                                }} />
+                                                <Text style={{ fontSize: 14, color: '#262626', fontWeight: index === 0 ? 600 : 400 }}>
+                                                    {item.city}
+                                                </Text>
+                                                {index === 0 && (
+                                                    <Tag 
+                                                        style={{ 
+                                                            fontSize: 11, 
+                                                            padding: '0 6px',
+                                                            borderRadius: 4,
+                                                            background: '#e6f7ff',
+                                                            border: '1px solid #91d5ff',
+                                                            color: '#1890ff',
+                                                            fontWeight: 500
+                                                        }}
+                                                    >
+                                                        TOP 1
+                                                    </Tag>
+                                                )}
+                                            </Space>
+                                            <Space size={12} align="center">
+                                                <Text type="secondary" style={{ fontSize: 13 }}>
+                                                    {item.count} đơn
+                                                </Text>
+                                                <Text 
+                                                    strong 
+                                                    style={{ 
+                                                        fontSize: 15, 
+                                                        color: '#262626',
+                                                        minWidth: 42,
+                                                        textAlign: 'right'
+                                                    }}
+                                                >
+                                                    {item.percent}%
+                                                </Text>
+                                            </Space>
+                                        </div>
+                                        <Progress 
+                                            percent={item.percent} 
+                                            showInfo={false} 
+                                            strokeWidth={6}
+                                            strokeColor="#1890ff"
+                                            trailColor="#f0f0f0"
+                                            style={{ marginBottom: 0 }}
+                                        />
+                                    </div>
+                                );
+                            })}
+                            
+                            {geoData.length > 5 && (
+                                <Button 
+                                    type="link" 
+                                    icon={<EyeOutlined />}
+                                    onClick={() => setShowAllProvinces(true)}
+                                    style={{ marginTop: 8, padding: 0 }}
+                                >
+                                    Xem chi tiết {geoData.length - 5} tỉnh/thành khác
+                                </Button>
+                            )}
+                        </div>
+                    ) : (
+                        <Empty 
+                            image={Empty.PRESENTED_IMAGE_SIMPLE} 
+                            description={
+                                <span style={{ color: '#8c8c8c' }}>
+                                    Chưa có dữ liệu khu vực
+                                </span>
+                            }
+                            style={{ padding: '40px 0' }}
+                        />
+                    )}
                 </Card>
             </Col>
         </Row>
+
+        <Modal
+            title={
+                <Space>
+                    <GlobalOutlined style={{ color: '#1890ff' }} />
+                    <span>Tất cả khu vực hoạt động ({geoData.length})</span>
+                </Space>
+            }
+            open={showAllProvinces}
+            onCancel={() => setShowAllProvinces(false)}
+            footer={null}
+            width={700}
+        >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '60vh', overflowY: 'auto', paddingRight: 8 }}>
+                {geoData.map((item, index) => {
+                    return (
+                        <div 
+                            key={index} 
+                            style={{
+                                background: '#fff',
+                                borderRadius: 8,
+                                padding: '10px 12px',
+                                border: '1px solid #e8e8e8',
+                            }}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                                <Space size={6}>
+                                    <Text style={{ 
+                                        fontSize: 12, 
+                                        color: '#8c8c8c',
+                                        minWidth: 20
+                                    }}>
+                                        #{index + 1}
+                                    </Text>
+                                    <div style={{ 
+                                        width: 5, 
+                                        height: 5, 
+                                        borderRadius: '50%', 
+                                        background: index < 3 ? '#1890ff' : '#d9d9d9' 
+                                    }} />
+                                    <Text style={{ fontSize: 13, color: '#262626', fontWeight: index < 3 ? 500 : 400 }}>
+                                        {item.city}
+                                    </Text>
+                                </Space>
+                                <Text 
+                                    strong 
+                                    style={{ 
+                                        fontSize: 14, 
+                                        color: '#262626',
+                                        minWidth: 38,
+                                        textAlign: 'right'
+                                    }}
+                                >
+                                    {item.percent}%
+                                </Text>
+                            </div>
+                            <Progress 
+                                percent={item.percent} 
+                                showInfo={false} 
+                                strokeWidth={5}
+                                strokeColor="#1890ff"
+                                trailColor="#f0f0f0"
+                                style={{ marginBottom: 0 }}
+                            />
+                        </div>
+                    );
+                })}
+            </div>
+        </Modal>
       </Space>
     </AdminPageLayout>
   );

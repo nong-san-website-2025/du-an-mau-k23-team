@@ -344,7 +344,12 @@ const useCheckoutLogic = () => {
       return null;
     }
 
-    // 4. Chuẩn bị Payload (Loại bỏ hoàn toàn undefined)
+    // 4. Lấy thông tin địa lý
+    const finalProvinceId = manualEntry ? geoManual.provinceId : selectedAddress?.province_id;
+    const finalDistrictId = manualEntry ? geoManual.districtId : selectedAddress?.district_id;
+    const finalWardCode = manualEntry ? geoManual.wardCode : selectedAddress?.ward_code;
+
+    // 5. Chuẩn bị Payload (Loại bỏ hoàn toàn undefined)
     const orderData = {
       total_price: parseFloat(totalAfterDiscount).toFixed(2),
       shipping_fee: parseFloat(shippingFee).toFixed(2),
@@ -360,6 +365,11 @@ const useCheckoutLogic = () => {
       ...(voucherCode ? { shop_voucher_code: voucherCode } : {}),
       // Loại bỏ ship_voucher_code nếu backend không hỗ trợ, hoặc chỉ gửi nếu có
       // ...(shipVoucherCode ? { ship_voucher_code: shipVoucherCode } : {}),
+
+      // Thêm thông tin địa lý cho thống kê
+      ...(finalProvinceId ? { province_id: finalProvinceId } : {}),
+      ...(finalDistrictId ? { district_id: finalDistrictId } : {}),
+      ...(finalWardCode ? { ward_code: finalWardCode } : {}),
 
       ...extraPayload,
     };

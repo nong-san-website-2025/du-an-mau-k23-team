@@ -174,17 +174,23 @@ export default function GenericOrderTable({
       render: (status) => <StatusTag status={status} type="order" />,
     },
     {
-      title: "Tổng tiền",
-      dataIndex: "total_price", // Đã fix ở serializer để luôn trả về string số
+      title: "Giá sản phẩm",
       width: isMobile ? 120 : 130,
       align: "right",
-      sorter: (a, b) => Number(a.total_price) - Number(b.total_price),
+      sorter: (a, b) => {
+        const priceA = Number(a.total_price) - Number(a.shipping_fee || 0);
+        const priceB = Number(b.total_price) - Number(b.shipping_fee || 0);
+        return priceA - priceB;
+      },
       sortDirections: ["ascend", "descend"],
-      render: (v) => (
-        <strong style={{ color: "#d4380d" }}>
-            {Number(v).toLocaleString('vi-VN')}đ
-        </strong>
-      ),
+      render: (_, record) => {
+        const productPrice = Number(record.total_price) - Number(record.shipping_fee || 0);
+        return (
+          <strong style={{ color: "#d4380d" }}>
+              {productPrice.toLocaleString('vi-VN')}đ
+          </strong>
+        );
+      },
     },
     ...extraColumns, 
     {

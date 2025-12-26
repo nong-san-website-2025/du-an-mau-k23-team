@@ -509,6 +509,9 @@ def get_wallets(request):
         order_ids = OrderItem.objects.filter(product_id__in=product_ids).values_list('order_id', flat=True).distinct()
         success_orders = Order.objects.filter(id__in=order_ids, status__in=["success", "completed"]).prefetch_related('items', 'items__product')
         pending_balance = Decimal('0')
+        total_product_price = Decimal('0')
+        total_platform_commission = Decimal('0')
+        total_shipping_fee_seller = Decimal('0')
         for order in success_orders:
             is_approved = WalletTransaction.objects.filter(wallet=wallet, order=order, type='sale_income').exists()
             if not is_approved:
@@ -533,12 +536,18 @@ def get_wallets(request):
                 net_income = seller_item_total - shipping_fee_seller - commission
                 if net_income > 0:
                     pending_balance += net_income
+                    total_product_price += seller_item_total
+                    total_platform_commission += commission
+                    total_shipping_fee_seller += shipping_fee_seller
         data.append({
             "seller_id": wallet.seller.user.id,
             "store_name": wallet.seller.store_name,
             "email": wallet.seller.user.email,
             "balance": float(wallet.balance),
             "pending_balance": float(pending_balance),
+            "product_price": float(total_product_price),
+            "platform_commission": float(total_platform_commission),
+            "shipping_fee": float(total_shipping_fee_seller),
             "updated_at": wallet.updated_at.isoformat() if wallet.updated_at else None,
         })
     return Response(data)
@@ -957,11 +966,13 @@ def get_pending_orders_for_wallet(request, seller_id):
                 type='sale_income'
             ).exists()
             if not is_approved:
-                # Tính phí sàn (commission) dựa trên từng sản phẩm
+                # Tính phí sàn (commission) và giá sản phẩm
                 commission = 0
+                product_price = 0
                 for item in order.items.all():
                     if item.product and item.product.seller_id == seller.id:
                         item_total = float(item.price or 0) * item.quantity
+                        product_price += item_total
                         # Lấy commission_rate từ category, nếu không có thì mặc định 0.05
                         commission_rate = 0.05
                         if item.product.category and hasattr(item.product.category, 'commission_rate'):
@@ -974,6 +985,7 @@ def get_pending_orders_for_wallet(request, seller_id):
                         "created_at": order.created_at,
                         "customer_name": order.customer_name,
                         "total_order_value": float(order.total_price),
+                        "product_price": round(product_price, 2),
                         "commission": round(commission, 2),
                         "net_income": float(net_income),
                     })
