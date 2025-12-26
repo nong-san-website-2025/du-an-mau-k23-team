@@ -188,17 +188,6 @@ const AdminSidebar = ({ collapsed }) => {
         { key: "/admin/promotions/usage", label: "Quản lý sử dụng voucher" } 
       ],
     },
-    {
-      key: "test-ui-group", // Key của menu cha
-      icon: <BugOutlined />, // Icon màu đỏ nổi bật
-      label: "Thông báo",
-      children: [
-        {
-          key: "/admin/notifications", // Key này phải khớp chính xác với Route path trong AdminRoutes
-          label: "Quản lý thông báo",
-        },
-      ],
-    },
   ];
 
   return (

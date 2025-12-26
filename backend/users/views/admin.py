@@ -303,17 +303,25 @@ def customer_statistics_report(request):
     
     # Top customers by spending
     top_customers = customers.annotate(
-        order_count=Count('orders')
-    ).filter(
-        order_count__gt=0
-    ).order_by('-total_spent')[:10]
+        # Chỉ tính tổng tiền của các đơn hàng có trạng thái thành công/đã giao
+        calculated_spent=Sum(
+            'orders__total_price', 
+            filter=Q(orders__status__in=['success', 'completed', 'delivered'])
+        ),
+        # Đếm số đơn hàng thành công
+        successful_order_count=Count(
+            'orders', 
+            filter=Q(orders__status__in=['success', 'completed', 'delivered'])
+        )
+    ).filter(successful_order_count__gt=0).order_by('-calculated_spent')[:10]
     
     top_customers_data = [
         {
             'name': customer.get_full_name() or customer.username,
             'email': customer.email,
-            'orders': customer.order_count,
-            'spent': float(customer.total_spent or 0),
+            'orders': customer.successful_order_count,
+            # Trả về giá trị đã tính toán, nếu Null thì là 0
+            'spent': float(customer.calculated_spent or 0),
         }
         for customer in top_customers
     ]

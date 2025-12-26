@@ -1,17 +1,17 @@
+// src/features/admin/pages/WalletPage.jsx - Cập nhật handlers
+
 import React, { useEffect, useState } from "react";
 import { Input, message, Spin, Space, Button, Card, Tabs } from "antd";
 import { ReloadOutlined, SyncOutlined } from "@ant-design/icons";
 import axios from "axios";
 
-// Import các components con
 import WalletTable from "../components/WalletAdmin/WalletTable";
 import WithdrawRequestsTable from "../components/WalletAdmin/WithdrawRequestsTable";
 import AdminPageLayout from "../components/AdminPageLayout";
-import WalletDetailModal from "../components/WalletAdmin/WalletDetailModal"; // Component Modal mới
+import WalletDetailModal from "../components/WalletAdmin/WalletDetailModal";
 
 const { Search } = Input;
 
-// Cấu hình API
 const api = axios.create({
   baseURL: process.env.REACT_APP_API_URL,
 });
@@ -22,22 +22,18 @@ function getAuthHeaders() {
 }
 
 const WalletPage = () => {
-  // --- States ---
-  const [data, setData] = useState([]); // Dữ liệu ví sellers
-  const [withdrawRequests, setWithdrawRequests] = useState([]); // Dữ liệu yêu cầu rút tiền
-
-  const [loading, setLoading] = useState(false); // Loading cho ví
-  const [withdrawLoading, setWithdrawLoading] = useState(false); // Loading cho rút tiền
-
+  const [data, setData] = useState([]);
+  const [withdrawRequests, setWithdrawRequests] = useState([]);
+  
+  const [loading, setLoading] = useState(false);
+  const [withdrawLoading, setWithdrawLoading] = useState(false);
+  
   const [searchTerm, setSearchTerm] = useState("");
-
-  // State quản lý Modal chi tiết
+  
   const [detailVisible, setDetailVisible] = useState(false);
   const [selectedWallet, setSelectedWallet] = useState(null);
 
-  // --- API Functions ---
-
-  // 1. Lấy danh sách ví seller
+  // Lấy danh sách ví
   const fetchWallets = async () => {
     try {
       setLoading(true);
@@ -53,7 +49,7 @@ const WalletPage = () => {
     }
   };
 
-  // 2. Lấy danh sách yêu cầu rút tiền
+  // Lấy danh sách yêu cầu rút tiền
   const fetchWithdrawRequests = async () => {
     try {
       const res = await api.get("payments/withdraw/requests/?status=pending", {
@@ -66,31 +62,7 @@ const WalletPage = () => {
     }
   };
 
-  // 3. Tính lại số dư (Phòng trường hợp lỗi dữ liệu)
-  const handleRecalculateAll = async () => {
-    try {
-      setLoading(true);
-      const wallets = data;
-      // Gọi API recalculate cho từng ví (hoặc viết 1 API bulk backend nếu có)
-      for (const wallet of wallets) {
-        await api.post(
-          `payments/wallets/${wallet.seller_id}/recalculate/`,
-          {},
-          { headers: getAuthHeaders() }
-        );
-      }
-      message.success("Đã đồng bộ lại dữ liệu tất cả ví");
-      fetchWallets(); // Load lại bảng sau khi tính xong
-    } catch (err) {
-      console.warn("Lỗi khi tính lại:", err);
-      message.error("Có lỗi xảy ra khi tính lại số liệu");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // --- Handlers cho Rút tiền ---
-
+  // Duyệt yêu cầu rút tiền
   const handleApproveWithdraw = async (record) => {
     setWithdrawLoading(true);
     try {
@@ -99,56 +71,64 @@ const WalletPage = () => {
         {},
         { headers: getAuthHeaders() }
       );
-      message.success(`Đã duyệt rút tiền cho ${record.store_name}`);
-      fetchWithdrawRequests(); // Reload bảng rút tiền
-      fetchWallets(); // Reload bảng ví (vì số dư bị trừ)
+      
+      message.success({
+        content: `Đã duyệt rút tiền ${record.amount?.toLocaleString('vi-VN')}₫ cho ${record.store_name}`,
+        duration: 5,
+      });
+      
+      // Reload cả 2 bảng
+      fetchWithdrawRequests();
+      fetchWallets();
     } catch (err) {
       console.error(err);
-      message.error(err.response?.data?.error || "Duyệt thất bại");
+      message.error(err.response?.data?.error || "Không thể duyệt yêu cầu");
     } finally {
       setWithdrawLoading(false);
     }
   };
 
-  const handleRejectWithdraw = async (record) => {
+  // ✨ CẬP NHẬT: Từ chối với lý do
+  const handleRejectWithdraw = async (record, rejectionReason) => {
     setWithdrawLoading(true);
     try {
       await api.post(
         `payments/withdraw/${record.id}/reject/`,
-        { note: "Từ chối bởi admin" },
+        { note: rejectionReason }, // ← Gửi lý do từ chối
         { headers: getAuthHeaders() }
       );
-      message.success(`Đã từ chối yêu cầu của ${record.store_name}`);
+      
+      message.success({
+        content: `Đã từ chối yêu cầu của ${record.store_name} và hoàn tiền`,
+        duration: 5,
+      });
+      
       fetchWithdrawRequests();
+      fetchWallets();
     } catch (err) {
       console.error(err);
-      message.error("Từ chối thất bại");
+      message.error(err.response?.data?.error || "Không thể từ chối yêu cầu");
     } finally {
       setWithdrawLoading(false);
     }
   };
 
-  // --- Handlers cho Modal Chi tiết ---
-
-  // Mở modal khi bấm vào dòng trong bảng
+  // Xem chi tiết ví
   const handleView = (record) => {
     setSelectedWallet(record);
     setDetailVisible(true);
   };
 
-  // Callback này được gọi khi Modal thực hiện xong hành động (VD: Duyệt đơn hàng)
-  // Giúp bảng bên ngoài cập nhật số dư Pending giảm xuống và Balance tăng lên ngay lập tức
   const handleModalSuccess = () => {
     fetchWallets();
   };
 
-  // --- Effects ---
   useEffect(() => {
     fetchWallets();
     fetchWithdrawRequests();
   }, []);
 
-  // --- Filters ---
+  // Filter
   const filteredData = data.filter((item) => {
     const term = searchTerm.toLowerCase();
     return (
@@ -157,8 +137,7 @@ const WalletPage = () => {
     );
   });
 
-  // --- UI Components ---
-
+  // Toolbar
   const toolbar = (
     <Space wrap>
       <Search
@@ -177,16 +156,10 @@ const WalletPage = () => {
       >
         Làm mới
       </Button>
-      <Button
-        icon={<SyncOutlined />}
-        onClick={handleRecalculateAll}
-        loading={loading}
-      >
-        Tính lại tất cả
-      </Button>
     </Space>
   );
 
+  // Tabs
   const tabs = [
     {
       key: "wallets",
@@ -199,23 +172,10 @@ const WalletPage = () => {
         <WalletTable
           data={filteredData}
           onView={handleView}
-          // Lưu ý: Không truyền onApprovePending nữa
-          // vì giờ chúng ta duyệt chi tiết trong Modal
         />
       ),
     },
-    {
-      key: "withdraws",
-      label: `Yêu cầu rút tiền (${withdrawRequests.length})`,
-      children: (
-        <WithdrawRequestsTable
-          data={withdrawRequests}
-          onApprove={handleApproveWithdraw}
-          onReject={handleRejectWithdraw}
-          loading={withdrawLoading}
-        />
-      ),
-    },
+
   ];
 
   return (
@@ -224,13 +184,12 @@ const WalletPage = () => {
         <Tabs items={tabs} defaultActiveKey="wallets" />
       </Card>
 
-      {/* Modal chi tiết ví */}
       {selectedWallet && (
         <WalletDetailModal
           visible={detailVisible}
           onClose={() => setDetailVisible(false)}
           wallet={selectedWallet}
-          onSuccess={handleModalSuccess} // 👈 QUAN TRỌNG: Truyền hàm update xuống modal
+          onSuccess={handleModalSuccess}
         />
       )}
     </AdminPageLayout>

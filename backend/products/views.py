@@ -435,6 +435,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         ordering = params.get('ordering', '-created_at')
         return queryset.order_by(ordering)
 
+    
     @action(detail=False, methods=['get'], permission_classes=[IsAdminUser], url_path='admin_overview')
     def admin_overview(self, request):
         """Lightweight admin endpoint returning minimal fields for admin listing (paginated)."""
@@ -497,6 +498,137 @@ class ProductViewSet(viewsets.ModelViewSet):
         return Response({'results': serializer.data, 'count': total})
 
     # ✅ ĐÃ SỬA: Logic Retrieve (Chi tiết sản phẩm)
+
+
+    @action(detail=False, methods=['post'], permission_classes=[IsAdminUser], url_path='approve')
+    def bulk_approve(self, request):
+        """Duyệt hàng loạt sản phẩm"""
+        product_ids = request.data.get("product_ids", [])
+        
+        if not product_ids:
+            return Response(
+                {"detail": "Vui lòng cung cấp danh sách product_ids"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Lấy các sản phẩm pending
+        products = Product.objects.filter(
+            id__in=product_ids, 
+            status__in=['pending', 'pending_update']
+        )
+        
+        updated_count = 0
+        for product in products:
+            if product.status == 'pending_update':
+                # Duyệt cập nhật
+                if hasattr(product, 'pending_update'):
+                    product.pending_update.apply_changes()
+                    updated_count += 1
+            else:
+                # Duyệt sản phẩm mới
+                product.status = 'approved'
+                product.is_hidden = False
+                product.save(update_fields=['status', 'is_hidden'])
+                updated_count += 1
+        
+        return Response({
+            "message": f"Đã duyệt {updated_count} sản phẩm",
+            "approved_count": updated_count
+        }, status=status.HTTP_200_OK)
+
+
+    @action(detail=False, methods=['post'], permission_classes=[IsAdminUser], url_path='reject')
+    def bulk_reject(self, request):
+        """Từ chối hàng loạt sản phẩm"""
+        product_ids = request.data.get("product_ids", [])
+        reason = request.data.get("reason", "").strip()
+        
+        if not product_ids:
+            return Response(
+                {"detail": "Vui lòng cung cấp danh sách product_ids"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if not reason:
+            return Response(
+                {"detail": "Vui lòng nhập lý do từ chối"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        products = Product.objects.filter(
+            id__in=product_ids,
+            status__in=['pending', 'pending_update']
+        )
+        
+        rejected_count = products.update(
+            status='rejected',
+            reject_reason=reason
+        )
+        
+        return Response({
+            "message": f"Đã từ chối {rejected_count} sản phẩm",
+            "rejected_count": rejected_count
+        }, status=status.HTTP_200_OK)
+
+
+    @action(detail=False, methods=['post'], permission_classes=[IsAdminUser], url_path='lock')
+    def bulk_lock(self, request):
+        """Khóa hàng loạt sản phẩm"""
+        product_ids = request.data.get("product_ids", [])
+        reason = request.data.get("reason", "").strip()
+        
+        if not product_ids:
+            return Response(
+                {"detail": "Vui lòng cung cấp danh sách product_ids"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if not reason:
+            return Response(
+                {"detail": "Vui lòng nhập lý do khóa"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        products = Product.objects.filter(id__in=product_ids)
+        
+        locked_count = products.update(
+            status='banned',
+            reject_reason=reason,
+            is_hidden=True
+        )
+        
+        return Response({
+            "message": f"Đã khóa {locked_count} sản phẩm",
+            "locked_count": locked_count
+        }, status=status.HTTP_200_OK)
+
+
+    @action(detail=False, methods=['post'], permission_classes=[IsAdminUser], url_path='unban')
+    def bulk_unban(self, request):
+        """Mở khóa hàng loạt sản phẩm"""
+        product_ids = request.data.get("product_ids", [])
+        
+        if not product_ids:
+            return Response(
+                {"detail": "Vui lòng cung cấp danh sách product_ids"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        products = Product.objects.filter(
+            id__in=product_ids,
+            status='banned'
+        )
+        
+        unbanned_count = products.update(
+            status='approved',
+            is_hidden=False
+        )
+        
+        return Response({
+            "message": f"Đã mở khóa {unbanned_count} sản phẩm",
+            "unbanned_count": unbanned_count
+        }, status=status.HTTP_200_OK)
+
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
         user = request.user

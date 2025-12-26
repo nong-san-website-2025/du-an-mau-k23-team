@@ -135,22 +135,30 @@ TEMPLATES = [
 ]
 
 # --- Channels (auto fallback to InMemory when REDIS_URL not set)
-# if os.environ.get("REDIS_URL"):
-# CHANNEL_LAYERS = {
-#     "default": {
-#         "BACKEND": "channels_redis.core.RedisChannelLayer",
-#         "CONFIG": {
-#             "hosts": [("127.0.0.1", 6379)], # Dùng port 6379 mặc định của Redis
-#         },
-#     },
-# }
+# settings.py - THAY THẾ PHẦN CHANNEL_LAYERS
 
-CHANNEL_LAYERS = {
-    "default": {
-        "BACKEND": "channels.layers.InMemoryChannelLayer",
+# --- Channels Configuration ---
+# Ưu tiên Redis nếu có, fallback về InMemory cho development
+if os.environ.get("REDIS_URL"):
+    # Production: Dùng Redis
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {
+                "hosts": [os.environ.get("REDIS_URL", "redis://127.0.0.1:6379")],
+            },
+        },
     }
-}
+else:
+    # Development: Dùng InMemory (không cần Redis)
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels.layers.InMemoryChannelLayer",
+        }
+    }
+    
 
+print(f"✅ [Channels] Using backend: {CHANNEL_LAYERS['default']['BACKEND']}")
 
 if os.environ.get("DATABASE_URL"):
     DATABASES = {

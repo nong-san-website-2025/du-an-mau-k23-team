@@ -24,7 +24,7 @@ class Review(models.Model):
 
 # --- [MỚI] MODEL LƯU ẢNH ĐÁNH GIÁ ---
 class ReviewImage(models.Model):
-    review = models.ForeignKey(Review, on_delete=models.CASCADE, related_name="images")
+    review = models.ForeignKey(Review, on_delete=models.CASCADE, related_name="images", null=True, blank=True)
     image = models.ImageField(upload_to="reviews/images/")
     
     def __str__(self):
@@ -33,7 +33,7 @@ class ReviewImage(models.Model):
 
 # -------------------- TRẢ LỜI ĐÁNH GIÁ --------------------
 class ReviewReply(models.Model):
-    review = models.ForeignKey(Review, on_delete=models.CASCADE, related_name="replies")
+    review = models.ForeignKey(Review, on_delete=models.CASCADE, related_name="replies", null=True, blank=True)
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)  # admin/shop/user đều có thể reply
     reply_text = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)

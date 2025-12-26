@@ -3,7 +3,7 @@ import React, {
   useState,
   useMemo,
   useRef,
-  useCallback, // Added missing import
+  useCallback,
 } from "react";
 import {
   message,
@@ -19,7 +19,7 @@ import {
   DatePicker,
   Select,
   Tooltip,
-  Empty, // Added missing import
+  Empty,
 } from "antd";
 import {
   CloudSyncOutlined,
@@ -118,7 +118,52 @@ const ApprovalProductsPage = () => {
     } finally {
       setLoading(false);
     }
-  }, []); // Added missing dependency array
+  }, []);
+
+  // --- PRODUCT ACTION HANDLERS ---
+  const handleApprove = useCallback(async (productIds) => {
+    try {
+      const response = await api.post("/products/bulk_approve/", {
+        product_ids: Array.isArray(productIds) ? productIds : [productIds]
+      });
+      message.success(`Đã duyệt ${response.data.approved_count || 0} sản phẩm thành công`);
+      fetchProducts();
+      setSelectedRowKeys([]);
+    } catch (error) {
+      message.error("Lỗi khi duyệt sản phẩm");
+      console.error("Approve error:", error.response || error);
+    }
+  }, [fetchProducts]);
+
+  const handleReject = useCallback(async (productIds, reason) => {
+    try {
+      const response = await api.post("/products/reject/", {
+        product_ids: Array.isArray(productIds) ? productIds : [productIds],
+        reason: reason
+      });
+      message.success(`Đã từ chối ${response.data.rejected_count || 0} sản phẩm`);
+      fetchProducts();
+      setSelectedRowKeys([]);
+    } catch (error) {
+      message.error("Lỗi khi từ chối sản phẩm");
+      console.error("Reject error:", error.response || error);
+    }
+  }, [fetchProducts]);
+
+  const handleBan = useCallback(async (productIds, reason) => {
+    try {
+      const response = await api.post("/products/bulk_lock/", {
+        product_ids: Array.isArray(productIds) ? productIds : [productIds],
+        reason: reason
+      });
+      message.success(`Đã khóa ${response.data.locked_count || 0} sản phẩm`);
+      fetchProducts();
+      setSelectedRowKeys([]);
+    } catch (error) {
+      message.error("Lỗi khi khóa sản phẩm");
+      console.error("Ban error:", error.response || error);
+    }
+  }, [fetchProducts]);
 
   useEffect(() => {
     fetchProducts();
@@ -321,6 +366,9 @@ const ApprovalProductsPage = () => {
               setSelectedRowKeys={setSelectedRowKeys}
               onView={(r) => { setSelectedProduct(r); setDrawerVisible(true); }}
               onViewShop={(s) => { setSelectedShopProfile(s); setShopDrawerVisible(true); }}
+              onApprove={handleApprove}
+              onReject={handleReject}
+              onBan={handleBan}
             />
           ) : (
             <Empty style={{ padding: 60 }} description="Không tìm thấy sản phẩm nào khớp với bộ lọc" />
