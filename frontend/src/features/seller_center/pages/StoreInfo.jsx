@@ -50,11 +50,11 @@ const beforeUpload = (file) => {
 export default function StoreManagement() {
   const { token } = useToken(); // Sử dụng token để UI đồng bộ với theme hệ thống
   const [form] = Form.useForm();
-  
+
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [sellerId, setSellerId] = useState(null);
-  
+
   // State quản lý ảnh preview
   const [previewImage, setPreviewImage] = useState(null);
   const [fileList, setFileList] = useState([]);
@@ -68,7 +68,7 @@ export default function StoreManagement() {
         if (!mounted) return;
 
         setSellerId(me.id);
-        
+
         // Fill data vào form instance
         form.setFieldsValue({
           store_name: me.store_name,
@@ -104,7 +104,7 @@ export default function StoreManagement() {
   const handleImageChange = ({ fileList: newFileList, file }) => {
     // Chỉ lấy file mới nhất
     const latestFile = newFileList[newFileList.length - 1];
-    
+
     if (latestFile && latestFile.originFileObj) {
       const objectUrl = URL.createObjectURL(latestFile.originFileObj);
       setPreviewImage(objectUrl);
@@ -115,7 +115,7 @@ export default function StoreManagement() {
   // Submit Form
   const onFinish = async (values) => {
     if (!sellerId) return;
-    
+
     setSubmitting(true);
     try {
       // Sử dụng FormData để handle multipart/form-data
@@ -130,15 +130,20 @@ export default function StoreManagement() {
       }
 
       const updatedData = await sellerService.update(sellerId, payload);
-      
-      message.success({ content: "Cập nhật cửa hàng thành công!", key: "update_store" });
-      
+
+      message.success({
+        content: "Cập nhật cửa hàng thành công!",
+        key: "update_store",
+      });
+
       // Update lại form state với dữ liệu mới nhất từ server trả về
       form.setFieldsValue(updatedData);
-      
     } catch (error) {
       console.error(error);
-      message.error({ content: "Lỗi cập nhật. Vui lòng thử lại!", key: "update_store" });
+      message.error({
+        content: "Lỗi cập nhật. Vui lòng thử lại!",
+        key: "update_store",
+      });
     } finally {
       setSubmitting(false);
     }
@@ -152,19 +157,35 @@ export default function StoreManagement() {
       <div style={{ padding: 24, maxWidth: 1200, margin: "0 auto" }}>
         <Skeleton active avatar paragraph={{ rows: 1 }} />
         <Row gutter={24} style={{ marginTop: 24 }}>
-          <Col span={8}><Skeleton.Node active style={{ width: '100%', height: 300 }} /></Col>
-          <Col span={16}><Skeleton active paragraph={{ rows: 6 }} /></Col>
+          <Col span={8}>
+            <Skeleton.Node active style={{ width: "100%", height: 300 }} />
+          </Col>
+          <Col span={16}>
+            <Skeleton active paragraph={{ rows: 6 }} />
+          </Col>
         </Row>
       </div>
     );
   }
 
   return (
-    <div style={{ padding: "24px", maxWidth: 1200, margin: "0 auto", minHeight: "100vh" }}>
+    <div
+      style={{
+        padding: "24px",
+        maxWidth: 1200,
+        margin: "0 auto",
+        minHeight: "100vh",
+      }}
+    >
       {/* Page Header */}
       <div style={{ marginBottom: 32 }}>
-        <Title level={2} style={{ marginBottom: 0 }}>Hồ sơ Cửa hàng</Title>
-        <Text type="secondary">Quản lý thông tin hiển thị và thương hiệu của bạn trên sàn thương mại điện tử.</Text>
+        <Title level={2} style={{ marginBottom: 0 }}>
+          Hồ sơ Cửa hàng
+        </Title>
+        <Text type="secondary">
+          Quản lý thông tin hiển thị và thương hiệu của bạn trên sàn thương mại
+          điện tử.
+        </Text>
       </div>
 
       <Form
@@ -185,7 +206,13 @@ export default function StoreManagement() {
                 height: "100%",
               }}
             >
-              <div style={{ position: "relative", display: "inline-block", marginBottom: 24 }}>
+              <div
+                style={{
+                  position: "relative",
+                  display: "inline-block",
+                  marginBottom: 24,
+                }}
+              >
                 <Avatar
                   size={140}
                   src={previewImage}
@@ -196,7 +223,7 @@ export default function StoreManagement() {
                     cursor: "pointer",
                   }}
                 />
-                
+
                 {/* Upload Overlay Button */}
                 <Upload
                   name="avatar"
@@ -222,7 +249,9 @@ export default function StoreManagement() {
               <Title level={4} style={{ marginBottom: 4 }}>
                 {form.getFieldValue("store_name") || "Tên Cửa Hàng"}
               </Title>
-              <Tag color="green" style={{ marginBottom: 16 }}>Đã xác thực</Tag>
+              <Tag color="green" style={{ marginBottom: 16 }}>
+                Đã xác thực
+              </Tag>
 
               <Paragraph type="secondary" ellipsis={{ rows: 2 }}>
                 {form.getFieldValue("bio") || "Chưa có mô tả giới thiệu."}
@@ -230,13 +259,23 @@ export default function StoreManagement() {
 
               <Divider dashed />
 
-              <div style={{ textAlign: 'left', padding: '0 12px' }}>
-                <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-                   <div style={{ display: 'flex', alignItems: 'center', color: token.colorTextSecondary }}>
-                      <ShopOutlined style={{ marginRight: 12, fontSize: 16 }} />
-                      <Text>ID: #{sellerId?.toString().padStart(6, '0')}</Text>
-                   </div>
-                   {/* Có thể thêm các thống kê nhanh ở đây */}
+              <div style={{ textAlign: "left", padding: "0 12px" }}>
+                <Space
+                  direction="vertical"
+                  size="middle"
+                  style={{ width: "100%" }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      color: token.colorTextSecondary,
+                    }}
+                  >
+                    <ShopOutlined style={{ marginRight: 12, fontSize: 16 }} />
+                    <Text>ID: #{sellerId?.toString().padStart(6, "0")}</Text>
+                  </div>
+                  {/* Có thể thêm các thống kê nhanh ở đây */}
                 </Space>
               </div>
             </Card>
@@ -252,10 +291,10 @@ export default function StoreManagement() {
                 boxShadow: "0 4px 12px rgba(0, 0, 0, 0.05)",
               }}
               extra={
-                <Button 
-                  type="primary" 
-                  htmlType="submit" 
-                  icon={<SaveOutlined />} 
+                <Button
+                  type="primary"
+                  htmlType="submit"
+                  icon={<SaveOutlined />}
                   loading={submitting}
                   size="large"
                   className="store-save-btn"
@@ -270,11 +309,18 @@ export default function StoreManagement() {
                     name="store_name"
                     label="Tên cửa hàng"
                     rules={[
-                      { required: true, message: "Vui lòng nhập tên cửa hàng!" },
-                      { min: 5, message: "Tên cửa hàng tối thiểu 5 ký tự" }
+                      {
+                        required: true,
+                        message: "Vui lòng nhập tên cửa hàng!",
+                      },
+                      { min: 5, message: "Tên cửa hàng tối thiểu 5 ký tự" },
                     ]}
                   >
-                    <Input prefix={<ShopOutlined className="site-form-item-icon" />} placeholder="Nhập tên cửa hàng của bạn" size="large" />
+                    <Input
+                      prefix={<ShopOutlined className="site-form-item-icon" />}
+                      placeholder="Nhập tên cửa hàng của bạn"
+                      size="large"
+                    />
                   </Form.Item>
                 </Col>
 
@@ -294,7 +340,9 @@ export default function StoreManagement() {
                 </Col>
               </Row>
 
-              <Divider orientation="left" plain>Thông tin liên hệ</Divider>
+              <Divider orientation="left" plain>
+                Thông tin liên hệ
+              </Divider>
 
               <Row gutter={16}>
                 <Col xs={24} md={12}>
@@ -302,27 +350,48 @@ export default function StoreManagement() {
                     name="phone"
                     label="Số điện thoại"
                     rules={[
-                      { required: true, message: "Vui lòng nhập số điện thoại!" },
-                      { pattern: /^[0-9]{10,11}$/, message: "Số điện thoại không hợp lệ!" }
+                      {
+                        required: true,
+                        message: "Vui lòng nhập số điện thoại!",
+                      },
+                      {
+                        pattern: /^[0-9]{10,11}$/,
+                        message: "Số điện thoại không hợp lệ!",
+                      },
                     ]}
                   >
-                    <Input prefix={<PhoneOutlined />} placeholder="0909xxxxxx" size="large" />
+                    <Input
+                      prefix={<PhoneOutlined />}
+                      placeholder="0909xxxxxx"
+                      size="large"
+                    />
                   </Form.Item>
                 </Col>
                 <Col xs={24} md={12}>
-                   {/* Ví dụ thêm field Email nếu cần - Senior dev luôn nghĩ về khả năng mở rộng */}
-                   <Form.Item label="Email liên hệ (Tự động)" >
-                      <Input prefix={<MailOutlined />} disabled placeholder="store@example.com" size="large" />
-                   </Form.Item>
+                  {/* Ví dụ thêm field Email nếu cần - Senior dev luôn nghĩ về khả năng mở rộng */}
+                  <Form.Item label="Email liên hệ (Tự động)">
+                    <Input
+                      prefix={<MailOutlined />}
+                      disabled
+                      placeholder="store@example.com"
+                      size="large"
+                    />
+                  </Form.Item>
                 </Col>
 
                 <Col span={24}>
                   <Form.Item
                     name="address"
                     label="Địa chỉ kho hàng"
-                    rules={[{ required: true, message: "Vui lòng nhập địa chỉ!" }]}
+                    rules={[
+                      { required: true, message: "Vui lòng nhập địa chỉ!" },
+                    ]}
                   >
-                    <Input prefix={<EnvironmentOutlined />} placeholder="Nhập địa chỉ cụ thể" size="large" />
+                    <Input
+                      prefix={<EnvironmentOutlined />}
+                      placeholder="Nhập địa chỉ cụ thể"
+                      size="large"
+                    />
                   </Form.Item>
                 </Col>
               </Row>

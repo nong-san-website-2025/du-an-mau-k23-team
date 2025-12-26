@@ -49,6 +49,7 @@ export default function GenericOrderTable({
   actionsRenderer,
   extraColumns = [],
   refetch,
+  pagination,
 }) {
   const [filtered, setFiltered] = useState([]);
   const [selectedOrder, setSelectedOrder] = useState(null);
@@ -213,7 +214,8 @@ export default function GenericOrderTable({
         onSearch={handleSearch}
         onRefresh={refetch}
         searchPlaceholder="Tìm tên, SĐT, mã đơn..."
-        scroll={{ x: isMobile ? 850 : 900 }} // Tăng nhẹ scroll x để bảng thoáng hơn
+        scroll={{ x: isMobile ? 850 : 900 }} 
+        pagination={pagination}// Tăng nhẹ scroll x để bảng thoáng hơn
         onRow={(record) => ({
           className: "order-item-row-hover",
           onClick: () => fetchOrderDetail(record.id),

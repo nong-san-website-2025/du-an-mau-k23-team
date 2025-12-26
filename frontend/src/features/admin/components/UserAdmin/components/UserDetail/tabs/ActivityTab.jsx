@@ -1,6 +1,15 @@
-// Tab 3: Hoạt động gần đây
-import React, { useEffect } from "react";
-import { Timeline, Empty, Skeleton, Card, Space } from "antd";
+import React, { useEffect, useState } from "react";
+import {
+  Timeline,
+  Empty,
+  Skeleton,
+  Card,
+  Space,
+  DatePicker,
+  Button,
+  Typography,
+  Tag,
+} from "antd";
 import {
   ShoppingCart,
   MessageCircle,
@@ -11,34 +20,31 @@ import {
   Eye,
   Heart,
   LogIn,
+  LogOut, // Thêm icon LogOut
   CheckCircle,
+  Calendar,
+  Clock,
+  Filter,
 } from "lucide-react";
+import dayjs from "dayjs";
+
+const { RangePicker } = DatePicker;
+const { Text } = Typography;
 
 export default function ActivityTab({ userId, onLoad, loading, data }) {
+  const [dateRange, setDateRange] = useState(null);
+
   useEffect(() => {
     if (onLoad && userId) {
-      onLoad();
+      onLoad(dateRange); // Truyền params lọc vào hàm onLoad
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
+  }, [userId, dateRange]);
 
-  if (!data && loading) return <Skeleton active style={{ padding: "20px" }} />;
-
-  if (loading) return <Skeleton active style={{ padding: "20px" }} />;
-
-  if (!Array.isArray(data) || data.length === 0) {
-    return (
-      <div style={{ padding: "24px", background: "#f5f5f5", minHeight: "100vh" }}>
-        <Card>
-          <Empty
-            description="Không có hoạt động"
-            image={Empty.PRESENTED_IMAGE_SIMPLE}
-            style={{ marginTop: "40px", marginBottom: "40px" }}
-          />
-        </Card>
-      </div>
-    );
-  }
+  // Hàm xử lý khi thay đổi ngày
+  const onDateChange = (dates) => {
+    setDateRange(dates);
+  };
 
   const getActivityIcon = (type) => {
     const iconMap = {
@@ -49,6 +55,7 @@ export default function ActivityTab({ userId, onLoad, loading, data }) {
       payment: <CreditCard size={16} />,
       review: <MessageCircle size={16} />,
       login: <LogIn size={16} />,
+      logout: <LogOut size={16} />, // Thêm Logout
       view: <Eye size={16} />,
       favorite: <Heart size={16} />,
       profile_update: <User size={16} />,
@@ -66,6 +73,7 @@ export default function ActivityTab({ userId, onLoad, loading, data }) {
       payment: "gold",
       review: "purple",
       login: "blue",
+      logout: "orange",
       view: "default",
       favorite: "red",
       profile_update: "orange",
@@ -82,7 +90,8 @@ export default function ActivityTab({ userId, onLoad, loading, data }) {
       order_delivered: "Giao hàng thành công",
       payment: "Thanh toán",
       review: "Đánh giá",
-      login: "Đăng nhập",
+      login: "Đăng nhập hệ thống",
+      logout: "Đăng xuất hệ thống",
       view: "Xem sản phẩm",
       favorite: "Thêm yêu thích",
       profile_update: "Cập nhật hồ sơ",
@@ -92,34 +101,129 @@ export default function ActivityTab({ userId, onLoad, loading, data }) {
   };
 
   return (
-    <div style={{ padding: "24px", background: "#f5f5f5", minHeight: "100vh" }}>
-      <Card 
+    <div style={{ padding: "16px 8px" }}>
+      {/* THANH LỌC THỜI GIAN */}
+      <Card
+        size="small"
+        style={{
+          marginBottom: 16,
+          borderRadius: 8,
+          border: "1px solid #f0f0f0",
+        }}
+        bodyStyle={{ padding: "12px 16px" }}
+      >
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: 12,
+          }}
+        >
+          <Space>
+            <Filter size={16} style={{ color: "#8c8c8c" }} />
+            <Text
+              strong
+              style={{ fontSize: "14px", textTransform: "uppercase" }}
+            >
+              Bộ lọc thời gian
+            </Text>
+          </Space>
+
+          <RangePicker
+            style={{ width: 320, borderRadius: 6 }}
+            onChange={onDateChange}
+            placeholder={["Từ ngày", "Đến ngày"]}
+            format="DD/MM/YYYY"
+          />
+        </div>
+      </Card>
+
+      {/* NỘI DUNG NHẬT KÝ */}
+      <Card
         title={
           <Space>
             <Activity size={18} style={{ color: "#1890ff" }} />
-            <span style={{ fontSize: "16px", fontWeight: 600 }}>Nhật ký hoạt động</span>
+            <span
+              style={{
+                fontSize: "16px",
+                fontWeight: 700,
+                textTransform: "uppercase",
+              }}
+            >
+              Nhật ký hoạt động
+            </span>
           </Space>
         }
-        bodyStyle={{ padding: "20px" }}
+        bodyStyle={{ padding: "24px" }}
       >
-        <Timeline
-          items={data.map((item, idx) => ({
-            dot: getActivityIcon(item.activity_type),
-            color: getActivityColor(item.activity_type),
-            children: (
-              <div key={idx} style={{ marginBottom: idx !== data.length - 1 ? "16px" : 0 }}>
-                <p style={{ marginBottom: "4px" }}>
-                  <strong style={{ color: "#262626", fontSize: "14px" }}>
-                    {item.description || item.title || getActivityLabel(item.activity_type)}
-                  </strong>
-                </p>
-                <p style={{ fontSize: "12px", color: "#8c8c8c", marginBottom: 0 }}>
-                  {new Date(item.created_at).toLocaleString("vi-VN")}
-                </p>
-              </div>
-            ),
-          }))}
-        />
+        {loading ? (
+          <Skeleton active paragraph={{ rows: 6 }} />
+        ) : !Array.isArray(data) || data.length === 0 ? (
+          <Empty description="Không tìm thấy hoạt động trong khoảng thời gian này" />
+        ) : (
+          <Timeline
+            mode="left"
+            items={data.map((item, idx) => ({
+              dot: (
+                <div
+                  style={{
+                    padding: 6,
+                    background: "#f0f2f5",
+                    borderRadius: "50%",
+                    color:
+                      getActivityColor(item.activity_type) === "default"
+                        ? "#8c8c8c"
+                        : getActivityColor(item.activity_type),
+                  }}
+                >
+                  {getActivityIcon(item.activity_type)}
+                </div>
+              ),
+              children: (
+                <div style={{ marginBottom: 20, marginLeft: 8 }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "flex-start",
+                    }}
+                  >
+                    <Text strong style={{ fontSize: "15px", color: "#262626" }}>
+                      {item.description || getActivityLabel(item.activity_type)}
+                    </Text>
+                    <Tag color={getActivityColor(item.activity_type)}>
+                      {item.activity_type?.replace("_", " ").toUpperCase()}
+                    </Tag>
+                  </div>
+
+                  <Space size="large" style={{ marginTop: 6 }}>
+                    <Text type="secondary" style={{ fontSize: "12px" }}>
+                      <Calendar
+                        size={12}
+                        style={{ marginRight: 4, verticalAlign: "middle" }}
+                      />
+                      {dayjs(item.created_at).format("DD/MM/YYYY")}
+                    </Text>
+                    <Text type="secondary" style={{ fontSize: "12px" }}>
+                      <Clock
+                        size={12}
+                        style={{ marginRight: 4, verticalAlign: "middle" }}
+                      />
+                      {dayjs(item.created_at).format("HH:mm:ss")}
+                    </Text>
+                    {item.ip && (
+                      <Text type="secondary" style={{ fontSize: "12px" }}>
+                        IP: {item.ip}
+                      </Text>
+                    )}
+                  </Space>
+                </div>
+              ),
+            }))}
+          />
+        )}
       </Card>
     </div>
   );

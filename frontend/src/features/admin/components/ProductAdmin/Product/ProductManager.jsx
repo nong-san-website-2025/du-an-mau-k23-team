@@ -38,7 +38,7 @@ import dayjs from "dayjs";
 const { Text, Paragraph } = Typography;
 const { TextArea } = Input;
 
-// Grid Item Component (Giữ nguyên)
+
 const ProductGridItem = ({
   record,
   isSelected,
@@ -129,9 +129,23 @@ const ProductManager = ({
 }) => {
   const [viewMode, setViewMode] = useState(viewModeProp);
   const [isMobile, setIsMobile] = useState(false);
-  const [rejectModal, setRejectModal] = useState({ open: false, ids: [], quickReason: "", reason: "" });
-  const [lockModal, setLockModal] = useState({ open: false, ids: [], reason: "" });
 
+
+  const [rejectModal, setRejectModal] = useState({
+    open: false,
+    ids: [],
+    reason: "",
+    quickReason: "",
+  });
+  const [lockModal, setLockModal] = useState({
+    open: false,
+    ids: [],
+    reason: "",
+  });
+
+
+
+  // Responsive detect
   useEffect(() => {
     const mql = window.matchMedia("(max-width: 480px)");
     const handler = (e) => setIsMobile(e.matches);
@@ -189,7 +203,8 @@ const ProductManager = ({
     {
       title: "Người bán",
       width: 200,
-      sorter: (a, b) => (a.seller?.store_name || "").localeCompare(b.seller?.store_name || ""),
+      sorter: (a, b) =>
+        (a.seller?.store_name || "").localeCompare(b.seller?.store_name || ""),
       render: (_, r) => (
         <Space onClick={() => onViewShop?.(r.seller)} style={{ cursor: "pointer" }}>
           <Avatar size="small" src={r.seller?.avatar} icon={<ShopOutlined />} />
@@ -208,11 +223,14 @@ const ProductManager = ({
       title: "Ngày đăng",
       dataIndex: "created_at",
       width: 160,
-      sorter: (a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0),
+      sorter: (a, b) =>
+        new Date(a.created_at || 0) - new Date(b.created_at || 0),
       render: (date) => (
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
-           <Text>{date ? dayjs(date).format("DD/MM/YYYY") : '—'}</Text>
-           <Text type="secondary" style={{ fontSize: 12 }}>{date ? dayjs(date).format("HH:mm") : ''}</Text>
+        <div style={{ display: "flex", flexDirection: "column" }}>
+          <Text>{date ? dayjs(date).format("DD/MM/YYYY") : "—"}</Text>
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            {date ? dayjs(date).format("HH:mm") : ""}
+          </Text>
         </div>
       ),
     },

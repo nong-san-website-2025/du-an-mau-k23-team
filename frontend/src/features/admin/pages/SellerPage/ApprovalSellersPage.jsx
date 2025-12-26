@@ -1,394 +1,337 @@
-// src/features/admin/pages/Seller/ApprovalSellersPage.jsx
-import React, { useEffect, useState, useMemo, useRef } from "react";
-import { 
-  Input, Select, message, Space, Button, Tooltip, Badge, Card, Row, Col, DatePicker, Modal 
+import React, {
+  useEffect,
+  useState,
+  useMemo,
+  useRef,
+  useCallback, // Added missing import
+} from "react";
+import {
+  message,
+  Card,
+  Row,
+  Col,
+  Typography,
+  Space,
+  Input,
+  Spin,
+  Badge,
+  Button,
+  DatePicker,
+  Select,
+  Tooltip,
+  Empty, // Added missing import
 } from "antd";
 import {
-  SearchOutlined, ClockCircleOutlined, CheckCircleOutlined, CloseCircleOutlined,
-  ShopOutlined, WarningOutlined, SafetyCertificateOutlined,
-  ReloadOutlined, DownloadOutlined,
-  CheckOutlined, CloseOutlined
+  CloudSyncOutlined,
+  WarningOutlined,
+  FileTextOutlined,
+  RocketOutlined,
+  SearchOutlined,
+  ReloadOutlined,
+  DownloadOutlined,
+  CheckCircleOutlined,
+  CloseCircleOutlined,
+  StopOutlined,
 } from "@ant-design/icons";
-import axios from "axios";
-// Removed useTranslation to avoid NO_I18NEXT_INSTANCE warning in dev when i18n isn't initialized
-import * as XLSX from "xlsx";
+import axiosClient from "../../services/axiosClient";
 import dayjs from "dayjs";
 import isBetween from "dayjs/plugin/isBetween";
 
-// Components
+// Import Components
+import ProductManager from "../../components/ProductAdmin/Product/ProductManager";
+import SellerSelect from "../../components/ProductAdmin/Product/SellerSelect";
+import CategorySelect from "../../components/ProductAdmin/Product/CategorySelect";
 import AdminPageLayout from "../../components/AdminPageLayout";
-import SellerTable from "../../components/SellerAdmin/SellerTable";
-import SellerDetailModal from "../../components/SellerAdmin/SellerDetailModal";
-import StatsSection from "../../components/common/StatsSection";
+import ProductDetailDrawer from "../../components/ProductAdmin/Product/ProductDetailModal";
+import ShopDetailDrawer from "../../components/ProductAdmin/Product/ShopDetailDrawer";
+import { getWSBaseUrl } from "../../../../utils/ws";
 
 dayjs.extend(isBetween);
-const { Option } = Select;
+const { Text, Title } = Typography;
 const { RangePicker } = DatePicker;
+const { Option } = Select;
 
-const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL,
-});
+const api = axiosClient;
 
-function getAuthHeaders() {
-  const token = localStorage.getItem("token");
-  return { Authorization: `Bearer ${token}` };
-}
-
-// --- LOGIC PHÁT HIỆN SPAM ---
-const SPAM_KEYWORDS = ["test", "demo", "admin", "123", "abc", "xyz", "spam", "fake"];
-const checkIsSpam = (item) => {
-  const name = item.store_name ? item.store_name.toLowerCase() : "";
-  const email = item.user_email ? item.user_email.toLowerCase() : "";
-  if (name.length < 3) return true;
-  return SPAM_KEYWORDS.some((key) => name.includes(key) || email.includes(key));
+// --- HELPER: DETECT RE-UP ---
+const detectReupAttempts = (products) => {
+  if (!Array.isArray(products)) return [];
+  const blacklistHistory = products.filter((p) =>
+    ["deleted", "banned", "rejected"].includes(p.status)
+  );
+  return products.map((currentProduct) => {
+    if (["pending", "pending_update"].includes(currentProduct.status)) {
+      const historyMatches = blacklistHistory.filter((oldProduct) => {
+        const isSameSeller = oldProduct.seller?.id === currentProduct.seller?.id;
+        const isNotSelf = oldProduct.id !== currentProduct.id;
+        const cleanNameCurrent = currentProduct.name?.trim().toLowerCase();
+        const cleanNameOld = oldProduct.name?.trim().toLowerCase();
+        return isSameSeller && isNotSelf && cleanNameCurrent === cleanNameOld;
+      });
+      if (historyMatches.length > 0)
+        return {
+          ...currentProduct,
+          is_reup: true,
+          reupHistory: historyMatches,
+        };
+    }
+    return { ...currentProduct, is_reup: false, reupHistory: [] };
+  });
 };
 
-const ApprovalSellersPage = () => {
-  // Using literal Vietnamese strings here to avoid i18next hook warning when i18n
-  // isn't initialized in some dev environments.
-  const t = (s) => s;
-
-  // --- STATE ---
+const ApprovalProductsPage = () => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
-  
-  // Filter
+  const [selectedRowKeys, setSelectedRowKeys] = useState([]);
+  const [wsConnected, setWsConnected] = useState(false);
+
+  // Filters
+  const [statusFilter, setStatusFilter] = useState("action_required");
+  const [riskFilter, setRiskFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all"); 
+  const [sellerFilter, setSellerFilter] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
   const [dateRange, setDateRange] = useState(null);
-  // [UPDATED] Using 'timeFilter' state for the dropdown instead of 'quickFilter' radio
   const [timeFilter, setTimeFilter] = useState("all");
-  const [showSpamOnly, setShowSpamOnly] = useState(false);
 
-  // Selection & Modal
-  const [detailVisible, setDetailVisible] = useState(false);
-  const [selectedSeller, setSelectedSeller] = useState(null);
-  const [selectedRowKeys, setSelectedRowKeys] = useState([]); 
+  // Modals
+  const [drawerVisible, setDrawerVisible] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [shopDrawerVisible, setShopDrawerVisible] = useState(false);
+  const [selectedShopProfile, setSelectedShopProfile] = useState(null);
 
-  // --- 1. REF WEBSOCKET ---
   const socketRef = useRef(null);
 
-  // --- 2. FETCH DATA ---
-  const fetchSellers = async () => {
+  // --- ACTIONS ---
+  const fetchProducts = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await api.get("/sellers/", { headers: getAuthHeaders() });
-      // API may return array or paginated object { results: [...] } or { data: [...] }
-      let sellers = [];
-      if (Array.isArray(res.data)) sellers = res.data;
-      else if (res.data && Array.isArray(res.data.results)) sellers = res.data.results;
-      else if (res.data && Array.isArray(res.data.data)) sellers = res.data.data;
-      else if (res.data && Array.isArray(res.data.sellers)) sellers = res.data.sellers;
-      else sellers = [];
+      const res = await api.get("/products/");
+      const rawData = Array.isArray(res.data) ? res.data : res.data.results || [];
+      
+      const processed = detectReupAttempts(rawData).sort(
+        (a, b) => new Date(b.updated_at) - new Date(a.updated_at)
+      );
+      setData(processed);
+    } catch (err) {
+      message.error("Không tải được dữ liệu sản phẩm.");
+    } finally {
+      setLoading(false);
+    }
+  }, []); // Added missing dependency array
 
-      const filtered = sellers
-        .filter((item) => ["pending", "approved", "rejected"].includes(item.status))
-        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-      setData(filtered);
-      setSelectedRowKeys([]); 
-    } catch (err) { console.error("Fetch error:", err); } 
-    finally { setLoading(false); }
-  };
-
-  useEffect(() => { fetchSellers(); }, []);
-
-  // --- 3. LOGIC WEBSOCKET ---
   useEffect(() => {
+    fetchProducts();
     const token = localStorage.getItem("token");
     if (!token) return;
-    const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-    let wsHost = process.env.REACT_APP_WS_URL || "localhost:8000";
-    wsHost = wsHost.replace(/^https?:\/\//, "");
-    const wsUrl = `${protocol}://${wsHost}/ws/sellers/approval/?token=${token}`;
 
-    const createSocket = () => {
-      if (socketRef.current && socketRef.current.readyState !== WebSocket.CLOSED) return;
-      try {
-        const socket = new WebSocket(wsUrl);
-        socket.onopen = () => console.log("✅ Approval WebSocket Connected");
-        socket.onmessage = (event) => {
-          try {
-            const msg = JSON.parse(event.data);
-            const { action, data: sellerData } = msg;
-            setData((prevData) => {
-              switch (action) {
-                case "CREATED":
-                  if (["pending", "approved", "rejected"].includes(sellerData.status)) {
-                    const newItem = { ...sellerData, isNew: true };
-                    setTimeout(() => { setData((curr) => curr.map((i) => i.id === sellerData.id ? { ...i, isNew: false } : i)); }, 8000);
-                    return [newItem, ...prevData];
-                  }
-                  return prevData;
-                case "UPDATED":
-                  if (["active", "locked"].includes(sellerData.status)) return prevData.filter((i) => i.id !== sellerData.id);
-                  return prevData.map((i) => i.id === sellerData.id ? { ...i, ...sellerData } : i);
-                case "DELETED": return prevData.filter((i) => i.id !== sellerData.id);
-                default: return prevData;
-              }
-            });
-          } catch (e) { console.error("WS message parse error", e); }
-        };
-        socket.onerror = (e) => { console.warn("Approval WS error", e); };
-        socket.onclose = (ev) => {
-          console.warn("Approval WS closed", ev);
-          // Try reconnect a couple times
-          setTimeout(() => {
-            try { createSocket(); } catch (e) { console.error(e); }
-          }, 3000);
-        };
-        socketRef.current = socket;
-      } catch (e) {
-        console.warn("Failed to create Approval WebSocket", e);
-      }
+    const base = getWSBaseUrl();
+    const wsUrl = `${base}/ws/admin/products/?token=${token}`;
+    let socket;
+    let isStopped = false;
+
+    const connectWS = () => {
+      if (isStopped) return;
+      socket = new WebSocket(wsUrl);
+      socketRef.current = socket;
+      socket.onopen = () => setWsConnected(true);
+      socket.onmessage = (event) => {
+        const payload = JSON.parse(event.data);
+        const action = payload.action || payload.type;
+        const incoming = payload.data;
+        if (!incoming?.id) return;
+
+        setData((prev) => {
+          let newData;
+          if (["CREATE", "NEW_PRODUCT", "CREATED"].includes(action)) {
+            message.info(`Sản phẩm mới: ${incoming.name}`);
+            newData = [{ ...incoming, is_new: true, isForcedVisible: true }, ...prev];
+          } else if (["UPDATE", "UPDATED", "PRODUCT_CHANGED"].includes(action)) {
+            newData = prev.map((p) => (p.id === incoming.id ? incoming : p));
+          } else if (action === "DELETE") {
+            newData = prev.filter((p) => p.id !== incoming.id);
+          } else {
+            return prev;
+          }
+          return detectReupAttempts(newData);
+        });
+      };
+      socket.onclose = () => {
+        setWsConnected(false);
+        if (!isStopped) setTimeout(connectWS, 3000);
+      };
     };
 
-    createSocket();
-    return () => { if (socketRef.current) { socketRef.current.close(); socketRef.current = null; } };
-  }, []);
+    connectWS();
+    return () => {
+      isStopped = true;
+      socket?.close();
+    };
+  }, [fetchProducts]);
 
-  // --- 4. FILTERS ---
-  // [UPDATED] Unified handler for time dropdown change
+  // --- FILTER LOGIC ---
   const handleTimeChange = (val) => {
     setTimeFilter(val);
-    const today = dayjs();
-    
-    switch (val) {
-      case "all":
-        setDateRange(null);
-        break;
-      case "today": 
-        setDateRange([today.startOf('day'), today.endOf('day')]); 
-        break;
-      case "week": 
-        // 7 days ago
-        setDateRange([today.subtract(6, "day").startOf('day'), today.endOf('day')]); 
-        break;
-      case "month": 
-        // 30 days ago
-        setDateRange([today.subtract(29, "day").startOf('day'), today.endOf('day')]); 
-        break;
-      default: 
-        // 'custom': do not automatically set dateRange
-        break;
-    }
-  };
-
-  // [UPDATED] Unified handler for RangePicker change
-  const handleRangePickerChange = (dates) => {
-    if (dates) {
-      setDateRange([dates[0].startOf('day'), dates[1].endOf('day')]);
-      setTimeFilter("custom");
-    } else {
-      setDateRange(null);
-      setTimeFilter("all");
-    }
-  };
-
-  // [UPDATED] Clear filters handler
-  const handleClearFilters = () => { 
-    setSearchTerm(""); 
-    setStatusFilter("all"); 
-    setDateRange(null); 
-    setTimeFilter("all"); 
-    setShowSpamOnly(false); 
+    const now = dayjs();
+    if (val === "all") setDateRange(null);
+    else if (val === "today") setDateRange([now.startOf("day"), now.endOf("day")]);
+    else if (val === "7d") setDateRange([now.subtract(6, "day").startOf("day"), now.endOf("day")]);
+    else if (val === "30d") setDateRange([now.subtract(29, "day").startOf("day"), now.endOf("day")]);
   };
 
   const filteredData = useMemo(() => {
-    const s = searchTerm.normalize("NFC").toLowerCase().trim();
     return data.filter((item) => {
-      if (statusFilter !== "all" && item.status !== statusFilter) return false;
-      
-      const searchStr = (item.store_name || "") + (item.user_email || "");
-      if (!searchStr.toLowerCase().includes(s)) return false;
+      if (item.isForcedVisible) return true;
 
-      // [UPDATED] Date filtering logic
-      if (dateRange && dateRange[0] && dateRange[1]) {
-        const createdDate = dayjs(item.created_at);
-        if (!createdDate.isValid()) return false;
-        // Compare inclusive of start and end
-        if (!createdDate.isBetween(dateRange[0], dateRange[1], null, '[]')) return false;
+      // Status & Risk Filter
+      let matchesStatus = false;
+      if (statusFilter === "all") {
+        matchesStatus = true;
+      } else if (statusFilter === "action_required") {
+        const isPending = ["pending", "pending_update"].includes(item.status);
+        matchesStatus = riskFilter === "reup" ? (isPending && item.is_reup) : isPending;
+      } else if (statusFilter === "banned") {
+        matchesStatus = ["banned", "locked"].includes(item.status);
+      } else {
+        matchesStatus = item.status === statusFilter;
       }
 
-      if (showSpamOnly && !checkIsSpam(item)) return false;
+      if (!matchesStatus) return false;
+
+      // Search
+      const s = searchTerm.toLowerCase();
+      if (searchTerm && !((item.name || "").toLowerCase().includes(s) || (item.seller?.store_name || "").toLowerCase().includes(s))) {
+        return false;
+      }
+
+      // Selects
+      if (sellerFilter && String(item.seller?.id) !== String(sellerFilter)) return false;
+      if (categoryFilter && String(item.category_id) !== String(categoryFilter)) return false;
+
+      // Date
+      if (dateRange?.[0] && dateRange?.[1]) {
+        if (!dayjs(item.created_at).isBetween(dateRange[0], dateRange[1], null, "[]")) return false;
+      }
+
       return true;
     });
-  }, [data, searchTerm, statusFilter, dateRange, showSpamOnly]);
+  }, [data, statusFilter, riskFilter, searchTerm, sellerFilter, categoryFilter, dateRange]);
 
-  const statsItems = useMemo(() => {
-    const total = data.length;
-    const pending = data.filter((i) => i.status === "pending").length;
-    const approved = data.filter((i) => i.status === "approved").length;
-    const rejected = data.filter((i) => i.status === "rejected").length;
-    return [
-      { title: t("Tổng hồ sơ"), value: total, icon: <ShopOutlined />, color: "#1890ff", onClick: handleClearFilters, style: { cursor: "pointer", border: statusFilter === "all" ? "2px solid #1890ff" : "2px solid transparent" } },
-      { title: t("Đang chờ duyệt"), value: pending, icon: <ClockCircleOutlined />, color: "#faad14", onClick: () => setStatusFilter("pending"), style: { cursor: "pointer", border: statusFilter === "pending" ? "2px solid #faad14" : "2px solid transparent" } },
-      { title: t("Đã phê duyệt"), value: approved, icon: <CheckCircleOutlined />, color: "#52c41a", onClick: () => setStatusFilter("approved"), style: { cursor: "pointer", border: statusFilter === "approved" ? "2px solid #52c41a" : "2px solid transparent" } },
-      { title: t("Đã từ chối"), value: rejected, icon: <CloseCircleOutlined />, color: "#ff4d4f", onClick: () => setStatusFilter("rejected"), style: { cursor: "pointer", border: statusFilter === "rejected" ? "2px solid #faad14" : "2px solid transparent" } },
-    ];
-  }, [data, t, statusFilter]);
+  const stats = useMemo(() => ({
+    total: data.length,
+    pending: data.filter((i) => ["pending", "pending_update"].includes(i.status)).length,
+    approved: data.filter((i) => i.status === "approved").length,
+    rejected: data.filter((i) => i.status === "rejected").length,
+    banned: data.filter((i) => ["banned", "locked"].includes(i.status)).length,
+    reup: data.filter((i) => i.is_reup && ["pending", "pending_update"].includes(i.status)).length,
+  }), [data]);
 
-  const spamCount = useMemo(() => data.filter((i) => checkIsSpam(i)).length, [data]);
-
-  const handleExportExcel = () => {
-    if (filteredData.length === 0) { message.warning("Không có dữ liệu"); return; }
-    const formattedData = filteredData.map(s => ({
-      ID: s.id, "Tên cửa hàng": s.store_name, "Email": s.user_email, "SĐT": s.phone,
-      "Trạng thái": s.status, "Ngày đăng ký": dayjs(s.created_at).format("DD/MM/YYYY HH:mm")
-    }));
-    const worksheet = XLSX.utils.json_to_sheet(formattedData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "DuyetCuaHang");
-    XLSX.writeFile(workbook, `DuyetCuaHang_${dayjs().format("DDMMYYYY")}.xlsx`);
-    message.success("Xuất Excel thành công!");
-  };
-
-  // --- 6. ACTIONS ---
-  // [UPDATED] Reload handler
-  const handleReload = () => {
-    // 1. Reset Filters
-    handleClearFilters();
-    setSelectedRowKeys([]); // Uncheck items
-
-    // 2. Fetch Data
-    setLoading(true);
-    fetchSellers().then(() => {
-        message.success("Đã làm mới và đặt lại bộ lọc");
-    });
-  };
-
-  const handleApprove = async (record) => {
-    try {
-      await api.post(`/sellers/${record.id}/approve/`, {}, { headers: getAuthHeaders() });
-      message.success(`Đã duyệt: ${record.store_name}`);
-      fetchSellers();
-    } catch (err) { message.error("Lỗi duyệt hồ sơ"); }
-  };
-
-  const handleReject = async (record) => {
-    try {
-        await api.post(`/sellers/${record.id}/reject/`, {reason: "Từ chối bởi admin"}, { headers: getAuthHeaders() });
-        message.success("Đã từ chối hồ sơ.");
-        fetchSellers();
-    } catch(err) { message.error("Lỗi thao tác"); }
-  };
-
-  // --- BULK ACTIONS ---
-  const pendingSellersSelected = useMemo(() => data.filter(s => selectedRowKeys.includes(s.id) && s.status === 'pending'), [data, selectedRowKeys]);
-
-  const handleBulkApprove = () => {
-    if (pendingSellersSelected.length === 0) return;
-    Modal.confirm({
-      title: `Duyệt ${pendingSellersSelected.length} hồ sơ đã chọn?`,
-      content: "Các cửa hàng này sẽ được kích hoạt.",
-      okText: "Duyệt tất cả", okType: "primary", cancelText: "Hủy",
-      onOk: async () => {
-        setLoading(true);
-        try {
-          await Promise.all(pendingSellersSelected.map(s => api.post(`/sellers/${s.id}/approve/`, {}, { headers: getAuthHeaders() })));
-          message.success("Đã duyệt thành công.");
-          fetchSellers();
-        } catch (err) { message.error("Lỗi khi duyệt hàng loạt."); } finally { setLoading(false); }
-      }
-    });
-  };
-
-  const handleBulkReject = () => {
-    if (pendingSellersSelected.length === 0) return;
-    Modal.confirm({
-      title: `Từ chối ${pendingSellersSelected.length} hồ sơ đã chọn?`,
-      content: "Hành động này sẽ từ chối tất cả hồ sơ đang chọn.",
-      okText: "Từ chối tất cả", okType: "danger", cancelText: "Hủy",
-      onOk: async () => {
-        setLoading(true);
-        try {
-          await Promise.all(pendingSellersSelected.map(s => api.post(`/sellers/${s.id}/reject/`, { reason: "Từ chối hàng loạt" }, { headers: getAuthHeaders() })));
-          message.success("Đã từ chối thành công.");
-          fetchSellers();
-        } catch (err) { message.error("Lỗi khi từ chối hàng loạt."); } finally { setLoading(false); }
-      }
-    });
-  };
+  const StatCard = ({ title, value, icon, color, active, onClick }) => (
+    <Card
+      hoverable
+      onClick={onClick}
+      style={{
+        borderRadius: 12,
+        border: active ? `2px solid ${color}` : "1px solid #f0f0f0",
+        background: active ? `${color}05` : "#fff",
+        cursor: "pointer",
+        height: '100%'
+      }}
+    >
+      <Space size={16}>
+        <div style={{ background: `${color}15`, color, padding: 12, borderRadius: 10, fontSize: 20, display: 'flex' }}>
+          {icon}
+        </div>
+        <div>
+          <Text type="secondary" strong>{title}</Text>
+          <Title level={4} style={{ margin: 0, color }}>{value}</Title>
+        </div>
+      </Space>
+    </Card>
+  );
 
   return (
-    <AdminPageLayout title={t("DUYỆT CỬA HÀNG")}>
-      <div style={{ marginBottom: 24 }}><StatsSection items={statsItems} loading={loading} /></div>
-      <Card bodyStyle={{ padding: "20px" }} style={{ marginBottom: 24, borderRadius: 8 }}>
-        <Row gutter={[16, 16]} justify="space-between" align="middle">
-          {/* FILTER COLUMN [UPDATED] */}
-          <Col xs={24} xl={16}>
-            <Space direction="vertical" size={12} style={{ width: '100%' }}>
-              <Space wrap size={12} align="center">
-                <Input 
-                  placeholder={t("Tìm kiếm tên, email...")} 
-                  prefix={<SearchOutlined style={{color: '#bfbfbf'}}/>} 
-                  value={searchTerm} 
-                  onChange={e => setSearchTerm(e.target.value)} 
-                  style={{width: 220}} 
-                  allowClear 
-                />
-                
-                <Select 
-                  value={statusFilter} 
-                  onChange={setStatusFilter} 
-                  style={{minWidth: 140}} 
-                  options={[{value:"all", label:"Tất cả trạng thái"}, {value:"pending", label:"Chờ duyệt"}, {value:"approved", label:"Đã duyệt"}, {value:"rejected", label:"Từ chối"}]} 
-                />
-                
-                <Tooltip title={showSpamOnly ? "Tắt lọc rác" : "Hiện spam"}>
-                  <Badge count={showSpamOnly ? 0 : spamCount} offset={[-5, 5]}>
-                    <Button type={showSpamOnly ? "primary" : "default"} danger={showSpamOnly} icon={showSpamOnly ? <WarningOutlined /> : <SafetyCertificateOutlined />} onClick={() => setShowSpamOnly(!showSpamOnly)}>{showSpamOnly ? "Đang lọc rác" : "Check Spam"}</Button>
-                  </Badge>
-                </Tooltip>
-
-                {/* [NEW] Time Filter Dropdown */}
-                <Select 
-                  value={timeFilter} 
-                  onChange={handleTimeChange} 
-                  style={{ width: 130 }}
-                >
-                  <Option value="all">Toàn bộ</Option>
-                  <Option value="today">Hôm nay</Option>
-                  <Option value="week">7 ngày qua</Option>
-                  <Option value="month">30 ngày qua</Option>
-                  <Option value="custom">Tùy chọn</Option>
-                </Select>
-
-                <RangePicker 
-                  value={dateRange} 
-                  onChange={handleRangePickerChange} 
-                  format="DD/MM/YYYY" 
-                  placeholder={['Từ ngày', 'Đến ngày']} 
-                  style={{ width: 240 }} 
-                />
-              </Space>
-            </Space>
+    <AdminPageLayout
+      title={
+        <Space align="center" size="middle">
+          <Title level={3} style={{ margin: 0, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+            Kiểm duyệt sản phẩm
+          </Title>
+          <Space size={8}>
+            <Badge status={wsConnected ? "processing" : "default"} />
+            <CloudSyncOutlined style={{ color: wsConnected ? "#52c41a" : "#d9d9d9", fontSize: "20px" }} />
+          </Space>
+        </Space>
+      }
+    >
+      <div style={{ padding: "0 24px 24px" }}>
+        <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+          <Col xs={12} sm={8} md={4}>
+            <StatCard title="Chờ duyệt" value={stats.pending} icon={<WarningOutlined />} color="#faad14" active={statusFilter === "action_required" && riskFilter === "all"} onClick={() => { setStatusFilter("action_required"); setRiskFilter("all"); }} />
           </Col>
-
-          {/* ACTION COLUMN */}
-          <Col xs={24} xl={8} style={{ textAlign: 'right' }}>
-            <Space>
-              {pendingSellersSelected.length > 0 && (<><Button type="primary" style={{backgroundColor: '#52c41a', borderColor: '#52c41a'}} icon={<CheckOutlined />} onClick={handleBulkApprove}>Duyệt ({pendingSellersSelected.length})</Button><Button type="primary" danger icon={<CloseOutlined />} onClick={handleBulkReject}>Từ chối ({pendingSellersSelected.length})</Button></>)}
-              <Button icon={<ReloadOutlined />} onClick={handleReload} loading={loading} title="Làm mới và xóa bộ lọc">Làm mới</Button>
-              <Button icon={<DownloadOutlined />} onClick={handleExportExcel}>Xuất Excel</Button>
-            </Space>
+          <Col xs={12} sm={8} md={4}>
+            <StatCard title="Đã duyệt" value={stats.approved} icon={<CheckCircleOutlined />} color="#52c41a" active={statusFilter === "approved"} onClick={() => { setStatusFilter("approved"); setRiskFilter("all"); }} />
+          </Col>
+          <Col xs={12} sm={8} md={4}>
+            <StatCard title="Từ chối" value={stats.rejected} icon={<CloseCircleOutlined />} color="#ff4d4f" active={statusFilter === "rejected"} onClick={() => { setStatusFilter("rejected"); setRiskFilter("all"); }} />
+          </Col>
+          <Col xs={12} sm={8} md={4}>
+            <StatCard title="Vi phạm/Khóa" value={stats.banned} icon={<StopOutlined />} color="#000" active={statusFilter === "banned"} onClick={() => { setStatusFilter("banned"); setRiskFilter("all"); }} />
+          </Col>
+          <Col xs={12} sm={8} md={4}>
+            <StatCard title="Nghi vấn Reup" value={stats.reup} icon={<ReloadOutlined />} color="#722ed1" active={statusFilter === "action_required" && riskFilter === "reup"} onClick={() => { setStatusFilter("action_required"); setRiskFilter("reup"); }} />
+          </Col>
+          <Col xs={12} sm={8} md={4}>
+            <StatCard title="Tất cả" value={stats.total} icon={<FileTextOutlined />} color="#1890ff" active={statusFilter === "all"} onClick={() => { setStatusFilter("all"); setRiskFilter("all"); }} />
           </Col>
         </Row>
-      </Card>
-      
-      {showSpamOnly && <div style={{ marginBottom: 16, padding: "8px 12px", background: "#fff1f0", border: "1px solid #ffa39e", borderRadius: 4, color: "#cf1322" }}><WarningOutlined style={{ marginRight: 8 }} /> <b>Chế độ lọc rác:</b> Hệ thống đang hiển thị các cửa hàng nghi ngờ dựa trên từ khóa.</div>}
-      
-      <div style={{ marginTop: 16 }}>
-        <SellerTable
-          data={filteredData} loading={loading} selectedRowKeys={selectedRowKeys} setSelectedRowKeys={setSelectedRowKeys}
-          onApprove={handleApprove} onReject={handleReject} 
-          // Not passing onSetPending or onLock to hide undo and lock buttons
-          onView={(record) => { setSelectedSeller(record); setDetailVisible(true); }}
-          onRow={(record) => ({ onClick: () => { setSelectedSeller(record); setDetailVisible(true); } })}
-        />
+
+        <Card bodyStyle={{ padding: 16 }} style={{ marginBottom: 16, borderRadius: 12 }}>
+          <Row gutter={[12, 12]} align="middle">
+            <Col flex="auto">
+              <Space wrap size={12}>
+                <Input prefix={<SearchOutlined style={{ color: "#bfbfbf" }} />} placeholder="Tìm tên sản phẩm, shop..." style={{ width: 250 }} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} allowClear />
+                <Select value={timeFilter} onChange={handleTimeChange} style={{ width: 130 }}>
+                  <Option value="all">Mọi lúc</Option>
+                  <Option value="today">Hôm nay</Option>
+                  <Option value="7d">7 ngày qua</Option>
+                  <Option value="30d">30 ngày qua</Option>
+                </Select>
+                <RangePicker value={dateRange} onChange={(d) => { setDateRange(d); setTimeFilter("custom"); }} style={{ width: 260 }} />
+                <CategorySelect value={categoryFilter} onChange={setCategoryFilter} style={{ width: 160 }} />
+                <SellerSelect value={sellerFilter} onChange={setSellerFilter} style={{ width: 160 }} />
+              </Space>
+            </Col>
+            <Col>
+              <Space>
+                <Tooltip title="Làm mới"><Button icon={<ReloadOutlined />} onClick={fetchProducts} /></Tooltip>
+                <Button icon={<DownloadOutlined />}>Xuất Excel</Button>
+              </Space>
+            </Col>
+          </Row>
+        </Card>
+
+        <Card bodyStyle={{ padding: 0 }} style={{ borderRadius: 12, overflow: "hidden" }}>
+          {loading ? (
+            <div style={{ padding: 100, textAlign: "center" }}><Spin size="large" tip="Đang tải dữ liệu..." /></div>
+          ) : filteredData.length > 0 ? (
+            <ProductManager
+              data={filteredData}
+              selectedRowKeys={selectedRowKeys}
+              setSelectedRowKeys={setSelectedRowKeys}
+              onView={(r) => { setSelectedProduct(r); setDrawerVisible(true); }}
+              onViewShop={(s) => { setSelectedShopProfile(s); setShopDrawerVisible(true); }}
+            />
+          ) : (
+            <Empty style={{ padding: 60 }} description="Không tìm thấy sản phẩm nào khớp với bộ lọc" />
+          )}
+        </Card>
       </div>
-      {selectedSeller && <SellerDetailModal visible={detailVisible} onClose={() => setDetailVisible(false)} seller={selectedSeller} onApprove={handleApprove} onReject={handleReject} />}
+
+      <ProductDetailDrawer visible={drawerVisible} product={selectedProduct} onClose={() => setDrawerVisible(false)} />
+      <ShopDetailDrawer visible={shopDrawerVisible} shopData={selectedShopProfile} onClose={() => setShopDrawerVisible(false)} />
     </AdminPageLayout>
   );
 };
 
-export default ApprovalSellersPage;
+export default ApprovalProductsPage;
