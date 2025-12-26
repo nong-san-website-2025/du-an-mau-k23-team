@@ -14,7 +14,7 @@ function getAuthHeaders() {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-const CategorySelect = ({ onChange }) => {
+const CategorySelect = ({ onChange, value, style }) => {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -40,7 +40,8 @@ const CategorySelect = ({ onChange }) => {
     <Select
       showSearch
       placeholder="Chọn danh mục..."
-      style={{ width: 180 }}
+      style={style || { width: 180 }}
+      value={value ?? undefined}
       filterOption={(input, option) =>
         (option?.children ?? "").toLowerCase().includes(input.toLowerCase())
       }
@@ -48,8 +49,11 @@ const CategorySelect = ({ onChange }) => {
       allowClear
       loading={loading}
     >
+      <Option key="__all__" value="">
+        Tất cả danh mục
+      </Option>
       {categories.map((c) => (
-        <Option key={c.id} value={c.id}>
+        <Option key={c.id} value={`${c.id}`}>
           {c.name}
         </Option>
       ))}

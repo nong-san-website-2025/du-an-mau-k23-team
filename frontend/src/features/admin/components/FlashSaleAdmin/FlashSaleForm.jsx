@@ -307,7 +307,19 @@ const FlashSaleForm = ({ form, isEdit = false, existingSales = [], currentId = n
           <Form.Item
             name={['flash_items', record.id, 'flash_price']}
             style={{ marginBottom: 0 }}
-            rules={[{ required: true, message: "Nhập giá" }]}
+                  rules={[
+                    { required: true, message: "Nhập giá" },
+                    { validator: (_, value) => {
+                        if (value == null || value === '') return Promise.resolve();
+                        const num = Number(value);
+                        if (isNaN(num) || num <= 0) return Promise.reject('Giá phải là số lớn hơn 0');
+                        if (latestProduct && latestProduct.original_price && num >= Number(latestProduct.original_price)) {
+                          return Promise.reject('Giá Flash phải nhỏ hơn giá gốc');
+                        }
+                        return Promise.resolve();
+                      }
+                    }
+                  ]}
           >
             <InputNumber
               style={{ width: "100%" }}

@@ -1,19 +1,18 @@
+// src/features/admin/components/OrderAdmin/OrderTableAntd.jsx
 import React, { useEffect, useState } from "react";
 import { Table } from "antd";
 import dayjs from "dayjs";
-import { Eye, XCircle, Printer } from "lucide-react"; // Dùng Lucide icons cho đẹp và đồng bộ
-import ButtonAction from "../../../../components/ButtonAction"; // Giả sử cùng thư mục
-import StatusTag from "../../../../components/StatusTag";       // Giả sử cùng thư mục
+import { Eye } from "lucide-react"; 
+import ButtonAction from "../../../../components/ButtonAction"; 
+import StatusTag from "../../../../components/StatusTag"; 
 import { intcomma } from './../../../../utils/format';
 
 export default function OrderTableAntd({
   orders,
   loading,
   getStatusLabel,
-  formatCurrency,
-  formatDate, // Tuy nhiên ở dưới bạn dùng dayjs trực tiếp, nên mình sẽ giữ logic cũ
   onViewDetail,
-  onCancel,
+  pagination,
   onRow,
 }) {
   const [isMobile, setIsMobile] = useState(false);
@@ -33,49 +32,30 @@ export default function OrderTableAntd({
       title: "Mã đơn",
       dataIndex: "id",
       key: "id",
-      width: isMobile ? 70 : 70,
+      width: 80,
       align: "center",
-      sorter: (a, b) => a.id - b.id,
-      render: (id) => (
-        <span style={{ fontWeight: 700, color: '#374151' }}>#{id}</span>
-      ),
+      render: (id) => <span style={{ fontWeight: 700, color: '#374151' }}>#{id}</span>,
     },
     {
       title: "Khách hàng",
       dataIndex: "customer_name",
       key: "customer_name",
-      width: isMobile ? 160 : 160,
+      width: 180,
       render: (name, record) => (
         <div>
-          <div style={{ fontWeight: 500, color: '#111827' }}>
-            {name || "Khách vãng lai"}
-          </div>
+          <div style={{ fontWeight: 500, color: '#111827' }}>{name || "Khách vãng lai"}</div>
           {record.customer_phone && (
-            <div style={{ fontSize: '12px', color: '#9ca3af' }}>
-              {record.customer_phone}
-            </div>
+            <div style={{ fontSize: '12px', color: '#9ca3af' }}>{record.customer_phone}</div>
           )}
         </div>
-      ),
-    },
-    {
-      title: "Sản phẩm",
-      key: "items_count",
-      width: isMobile ? 100 : 100,
-      align: "center",
-      render: (_, record) => (
-        <span style={{ color: '#6b7280', fontSize: '13px' }}>
-          {record.items?.length || 0} món
-        </span>
       ),
     },
     {
       title: "Tổng tiền",
       dataIndex: "total_price",
       key: "total_price",
-      width: isMobile ? 110 : 100,
+      width: 120,
       align: "right",
-      sorter: (a, b) => (a.total_price || 0) - (b.total_price || 0),
       render: (value) => (
         <div style={{ fontWeight: 700, color: '#111827' }}>
           {value != null ? intcomma(value) : "—"}
@@ -83,37 +63,12 @@ export default function OrderTableAntd({
       ),
     },
     {
-      title: "Lợi nhuận sàn", // Đổi tên cột Phí sàn cho chuyên nghiệp hơn
-      key: "platform_commission",
-      width: isMobile ? 110 : 100,
-      align: "right",
-      render: (_, record) => {
-        const total = (record.items || []).reduce((sum, item) => {
-          const itemAmount = (item.price || 0) * (item.quantity || 0);
-          return sum + itemAmount * (item.commission_rate || 0);
-        }, 0);
-
-        return (
-          <div style={{ color: "#d97706", fontWeight: 500, fontSize: '13px' }}>
-            +{intcomma(total)}
-          </div>
-        );
-      },
-    },
-    {
       title: "Trạng thái",
       dataIndex: "status",
       key: "status",
-      width: isMobile ? 130 : 140,
+      width: 150,
       align: "center",
-      filters: [
-        { text: 'Chờ xử lý', value: 'pending' },
-        { text: 'Đang giao', value: 'shipping' },
-        { text: 'Hoàn thành', value: 'success' },
-        { text: 'Đã hủy', value: 'cancelled' },
-      ],
-      onFilter: (value, record) => record.status === value,
-      // SỬ DỤNG COMPONENT STATUS TAG
+      // [QUAN TRỌNG] Đã xóa filters và onFilter để tránh xung đột với API
       render: (status) => (
         <StatusTag
           status={status}
@@ -125,7 +80,7 @@ export default function OrderTableAntd({
       title: "Ngày tạo",
       dataIndex: "created_at",
       key: "created_at",
-      width: isMobile ? 130 : 140,
+      width: 140,
       align: "center",
       sorter: (a, b) => new Date(a.created_at) - new Date(b.created_at),
       render: (date) => (
@@ -138,23 +93,20 @@ export default function OrderTableAntd({
       ),
     },
     {
-      title: "Thao tác", // Cột mới sử dụng ButtonAction
+      title: "Thao tác",
       key: "action",
-      width: isMobile ? 120 : 100,
-      // Disable fixed on mobile so it doesn't cover other columns
-      fixed: isMobile ? undefined : "right",
+      width: 100,
       align: "center",
+      fixed: isMobile ? undefined : "right",
       render: (_, record) => {
-        // Định nghĩa các hành động cho từng dòng
         const actions = [
           {
             actionType: "view",
             tooltip: "Xem chi tiết",
-            icon: <Eye />, // Lucide Icon
+            icon: <Eye />,
             onClick: () => onViewDetail(record.id),
           },
         ];
-
         return <ButtonAction actions={actions} record={record} />;
       },
     },
@@ -165,23 +117,14 @@ export default function OrderTableAntd({
       columns={columns}
       dataSource={orders}
       rowKey="id"
-      bordered={true} // Bỏ border dọc nhìn sẽ hiện đại hơn
+      bordered
       loading={loading}
-      pagination={{
-        pageSize: 10,
-        showSizeChanger: true,
-        showTotal: (total) => `Tổng ${total} đơn hàng`,
-        pageSizeOptions: ['10', '20', '50']
-      }}
-      size={isMobile ? "small" : "small"}
+      pagination={pagination}
       onRow={onRow}
-      tableLayout="fixed"
-      scroll={isMobile ? { x: 1000 } : { x: 1300 }}
-      style={isMobile ? { background: '#fff', whiteSpace: 'nowrap', borderRadius: '8px', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)' } : { background: '#fff', borderRadius: '8px', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)' }}
-      rowClassName={(record) => {
-        // Highlight nhẹ các đơn hàng mới
-        return record.status === 'pending' ? 'bg-orange-50' : '';
-      }}
+      size="small"
+      scroll={{ x: 1000 }}
+      // Bỏ rowClassName pending màu cam nếu muốn giao diện sạch hơn, hoặc giữ lại tùy bạn
+      rowClassName={(record) => record.status === 'pending' ? 'bg-orange-50' : ''}
     />
   );
 }

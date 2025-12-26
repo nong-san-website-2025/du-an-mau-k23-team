@@ -1,7 +1,7 @@
 // src/features/blog/api/blogApi.js
 import axios from "axios";
 
-const API_BASE = process.env.REACT_APP_API_URL || "";  // Fallback to empty string for proxy
+const API_BASE = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000/api";  // Default API base
 const authHeader = () => ({
   Authorization: `Bearer ${localStorage.getItem("token")}`,
 });
@@ -24,7 +24,14 @@ function getCsrfToken() {
 }
 
 // 📰 Bài viết (Public) 
-export const fetchPosts = () => axios.get(`${API_BASE}/blogs/`);
+export const fetchPosts = async () => {
+  const res = await axios.get(`${API_BASE}/blogs/`);
+  const data = res.data !== undefined ? res.data : res;
+  if (Array.isArray(data)) return { data };
+  if (data && Array.isArray(data.results)) return { data: data.results };
+  if (data && Array.isArray(data.data)) return { data: data.data };
+  return { data: [] };
+};
 export const fetchPostDetail = (slug) => axios.get(`${API_BASE}/blogs/${slug}/`);
 export const increaseView = (slug) => axios.post(`${API_BASE}/blogs/${slug}/increase-view/`, {}, {
   headers: {

@@ -6,7 +6,7 @@ import axios from "axios";
 
 const { Option } = Select;
 
-export default function TopSellingProducts() {
+export default function TopSellingProducts({ data: propData }) {
   const [data, setData] = useState([]);
   const [filter, setFilter] = useState("today");
   const [loading, setLoading] = useState(false);
@@ -18,6 +18,26 @@ export default function TopSellingProducts() {
   const BASE_DOMAIN = new URL(API_URL).origin;
 
   useEffect(() => {
+    console.log("🛒 TopSellingProducts received propData:", propData);
+    
+    // Nếu có data từ prop (từ dashboard API), dùng luôn
+    if (propData && Array.isArray(propData) && propData.length > 0) {
+      const normalized = propData.map((item) => ({
+        product_id: item.prod_id || item.product_id,
+        product_name: item.prod_name || item.name || item.product_name,
+        shop_name: item.shop_name || "N/A",
+        quantity_sold: item.quantity_sold || item.sales || 0,
+        revenue: item.revenue || 0,
+        thumbnail: item.thumbnail || "",
+      }));
+      console.log("🛒 TopSellingProducts normalized data from prop:", normalized);
+      setData(normalized);
+      return;
+    }
+    
+    console.log("🛒 No prop data, fetching from API...");
+
+    // Fallback: Gọi API riêng nếu không có prop data
     const fetchTopProducts = async () => {
       try {
         setLoading(true);
@@ -26,6 +46,8 @@ export default function TopSellingProducts() {
           headers: { Authorization: `Bearer ${token}` },
         });
 
+        console.log("🛒 API Response:", res.data);
+        
         const normalized = res.data.map((item) => {
           // --- BƯỚC SỬA LỖI URL ẢNH QUAN TRỌNG ---
           let finalImg = "";
@@ -55,6 +77,7 @@ export default function TopSellingProducts() {
           };
         });
 
+        console.log("🛒 Normalized data from API:", normalized);
         setData(normalized);
       } catch (err) {
         console.error("Lỗi fetch:", err);
@@ -64,7 +87,7 @@ export default function TopSellingProducts() {
     };
 
     fetchTopProducts();
-  }, [filter, API_URL, BASE_DOMAIN]);
+  }, [filter, API_URL, BASE_DOMAIN, propData]);
 
   // Cấu hình cột với tính năng SORT đầy đủ
   const columns = [

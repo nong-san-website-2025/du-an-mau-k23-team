@@ -20,10 +20,10 @@ export default function UserEditForm({ editUser, onCancel, onSave }) {
 
     const tryLoadRoles = async () => {
       const endpoints = [
-        `${API_BASE_URL}/users/roles/list/`,
         `${API_BASE_URL}/users/roles/`,
-        `${API_BASE_URL}/roles/list/`,
         `${API_BASE_URL}/roles/`,
+        `${API_BASE_URL}/users/roles/list/`,
+        `${API_BASE_URL}/roles/list/`,
       ];
 
       for (const url of endpoints) {

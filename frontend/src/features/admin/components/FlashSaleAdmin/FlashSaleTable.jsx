@@ -15,6 +15,7 @@ export default function FlashSaleTable({
   selectedRows,
   onSelectionChange,
 }) {
+  console.debug('[FlashSaleTable] received data length:', Array.isArray(data) ? data.length : 0, data);
   const isMobile =
     typeof window !== "undefined" &&
     window.matchMedia("(max-width: 480px)").matches;

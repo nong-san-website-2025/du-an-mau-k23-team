@@ -41,17 +41,43 @@ User = get_user_model()
 
 # -------------------- USER MANAGEMENT --------------------
 
-class UserListView(APIView):
+class UserListView(ListAPIView):
     """
-    List all users for admin
+    List all users for admin with pagination and filtering
     GET /api/users/list/
     """
     permission_classes = [IsAuthenticated, IsAdmin]
-    
-    def get(self, request):
-        users = CustomUser.objects.all()
-        serializer = UserSerializer(users, many=True)
-        return Response(serializer.data)
+    serializer_class = UserSerializer
+
+    def get_queryset(self):
+        queryset = CustomUser.objects.all().order_by('-date_joined')
+        
+        # Filtering
+        role_param = self.request.query_params.get('role')
+        if role_param and role_param != 'all':
+            queryset = queryset.filter(role__name__iexact=role_param)
+            
+        status_param = self.request.query_params.get('status')
+        if status_param and status_param != 'all':
+            is_active = status_param == 'active'
+            queryset = queryset.filter(is_active=is_active)
+            
+        search_param = self.request.query_params.get('search')
+        if search_param:
+            queryset = queryset.filter(
+                Q(username__icontains=search_param) |
+                Q(full_name__icontains=search_param) |
+                Q(email__icontains=search_param) |
+                Q(phone__icontains=search_param)
+            )
+            
+        # Date range filtering
+        start_date = self.request.query_params.get('start_date')
+        end_date = self.request.query_params.get('end_date')
+        if start_date and end_date:
+            queryset = queryset.filter(date_joined__date__range=[start_date, end_date])
+        
+        return queryset
 
 
 @method_decorator(csrf_exempt, name="dispatch")

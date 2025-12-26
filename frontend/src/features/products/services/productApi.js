@@ -1,4 +1,4 @@
-const API_URL = process.env.REACT_APP_API_URL;
+const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000/api";
 
 // ===== Helper: Lấy Token =====
 const getToken = () => localStorage.getItem("token");
@@ -77,12 +77,23 @@ async function request(endpoint, options = {}, { auth = false } = {}) {
   return response.json();
 }
 
+// ===== Helper: đảm bảo trả về mảng từ nhiều kiểu response =====
+function toArray(resp) {
+  if (!resp) return [];
+  // Nếu gọi trực tiếp request() trả về body (json)
+  const data = resp.data !== undefined ? resp.data : resp;
+  if (Array.isArray(data)) return data;
+  if (data && Array.isArray(data.results)) return data.results;
+  if (data && Array.isArray(data.data)) return data.data;
+  return [];
+}
+
 // ===== productApi =====
 export const productApi = {
   // ===== Public APIs =====
   getAllProducts() {
     return request("/products/").then((data) =>
-      data.map((p) => ({
+      toArray(data).map((p) => ({
         ...p,
         availability_status: normalizeStatus(p),
       }))
@@ -125,31 +136,29 @@ export const productApi = {
   },
 
   async getCategoriesWithProducts() {
-    const categories = await this.getCategories();
+    const categoriesRaw = await this.getCategories();
+    const categories = toArray(categoriesRaw);
 
     // 1. Lọc Categories: Chỉ lấy những cái Active
-    const activeCategories = categories.filter(
-      (cat) => cat.status === "active"
-    );
+    const activeCategories = categories.filter((cat) => cat.status === "active");
 
     return Promise.all(
       activeCategories.map(async (category) => {
         try {
-          const [subcategories, allProducts] = await Promise.all([
+          const [subcategoriesRaw, allProductsRaw] = await Promise.all([
             this.getSubcategories(category.id),
             this.getProductsByCategory(category.id),
           ]);
 
+          const subcategories = toArray(subcategoriesRaw);
+          const allProducts = toArray(allProductsRaw);
+
           // 2. Lọc Subcategories: Chỉ lấy những cái Active
-          const activeSubcategories = subcategories.filter(
-            (sub) => sub.status === "active"
-          );
+          const activeSubcategories = subcategories.filter((sub) => sub.status === "active");
 
           const subcategoriesWithProducts = activeSubcategories.map((sub) => ({
             name: sub.name,
-            products: allProducts.filter(
-              (p) => p.subcategory_name === sub.name
-            ),
+            products: allProducts.filter((p) => p.subcategory_name === sub.name),
           }));
 
           return {

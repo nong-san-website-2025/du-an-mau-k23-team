@@ -3,7 +3,7 @@ import { Table, Card, Tag, Modal, Button, Spin, Alert, Image } from "antd";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 
-export default function RecentDisputes() {
+export default function RecentDisputes({ data: propData = [] }) {
   const [disputes, setDisputes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -18,12 +18,19 @@ export default function RecentDisputes() {
   const BASE_DOMAIN = new URL(API_URL).origin;
 
   useEffect(() => {
+    // ✅ Nếu có data từ prop (dashboard), dùng luôn
+    if (propData && Array.isArray(propData) && propData.length > 0) {
+      console.log("📋 RecentDisputes received propData:", propData);
+      setDisputes(propData);
+      return;
+    }
+
     const fetchDisputes = async () => {
       setLoading(true);
       setError(null);
       try {
         const token = localStorage.getItem("token");
-        // Gọi API sử dụng biến môi trường (Lưu ý: Kiểm tra endpoint /complaints/recent/ có đúng không)
+        // Fallback: Gọi API riêng nếu không có prop data
         const res = await axios.get(`${API_URL}/complaints/recent/`, {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -50,15 +57,26 @@ export default function RecentDisputes() {
     return () => mql.removeEventListener("change", handleChange);
   }, [API_URL]);
 
+  // Hỗ trợ đầy đủ các trạng thái backend để hiển thị label và màu đúng
   const statusColors = {
-    pending: "red",
-    in_progress: "gold",
-    resolved: "green",
+    pending: "orange",
+    negotiating: "purple",
+    waiting_return: "gold",
+    returning: "gold",
+    admin_review: "blue",
+    resolved_refund: "green",
+    resolved_reject: "red",
+    cancelled: "default",
   };
   const statusLabels = {
     pending: "Chờ xử lý",
-    in_progress: "Đang giải quyết",
-    resolved: "Đã xử lý",
+    negotiating: "Đang thương lượng",
+    waiting_return: "Chờ shop xác nhận - Chờ gửi trả",
+    returning: "Đang trả hàng",
+    admin_review: "Sàn đang xem xét",
+    resolved_refund: "Đã hoàn tiền",
+    resolved_reject: "Đã từ chối / Hủy",
+    cancelled: "Đã hủy",
   };
 
   const columns = [
@@ -80,18 +98,19 @@ export default function RecentDisputes() {
     },
     {
       title: "Người khiếu nại",
-      dataIndex: "complainant_name",
-      key: "complainant_name",
+      dataIndex: "user_name",
+      key: "user_name",
       responsive: ["md", "lg"],
+      render: (val) => val || <i>Không rõ</i>,
     },
     {
       title: "Trạng thái",
       dataIndex: "status",
       key: "status",
-      sorter: (a, b) => a.status.localeCompare(b.status), // ✅ Thêm Sort
+      sorter: (a, b) => (a.status || "").localeCompare(b.status || ""), // ✅ Thêm Sort
       render: (status) => (
         <Tag color={statusColors[status] || "default"}>
-          {statusLabels[status] || status}
+          {statusLabels[status] || status || "Chờ xử lý"}
         </Tag>
       ),
     },
@@ -156,6 +175,14 @@ export default function RecentDisputes() {
             <p>
               <b>Mã đơn hàng:</b> {selectedDispute.order_id || "N/A"}
             </p>
+            <p>
+              <b>Người khiếu nại:</b> {selectedDispute.user_name || selectedDispute.user?.full_name || selectedDispute.complainant_name || 'N/A'}
+            </p>
+            { (selectedDispute.created_by_email || selectedDispute.user?.email) && (
+              <p>
+                <b>Email:</b> {selectedDispute.created_by_email || selectedDispute.user?.email}
+              </p>
+            ) }
             <p>
               <b>Sản phẩm:</b> {selectedDispute.product_name}
             </p>

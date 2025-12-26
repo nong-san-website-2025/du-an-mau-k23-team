@@ -184,16 +184,16 @@
 #     def get_serializer_context(self):
 #         return {"request": self.request}
 
-# class SellerByStatusAPIView(generics.ListAPIView):
-#     serializer_class = SellerListSerializer
+class SellerByStatusAPIView(generics.ListAPIView):
+    serializer_class = SellerListSerializer
 
-#     def get_queryset(self):
-#         status_group = self.kwargs["group"]
-#         if status_group == "business":  # active & locked
-#             return Seller.objects.filter(status__in=["active", "locked"])
-#         elif status_group == "approval":  # pending, approved, rejected
-#             return Seller.objects.filter(status__in=["pending", "approved", "rejected"])
-#         return Seller.objects.none()
+    def get_queryset(self):
+        status_group = self.kwargs["group"]
+        if status_group == "business":
+            return Seller.objects.filter(status__in=["active", "locked"])
+        elif status_group == "approval":
+            return Seller.objects.filter(status__in=["pending", "approved", "rejected"])
+        return Seller.objects.none()
 
 # @api_view(['GET'])
 # def available_users(request):

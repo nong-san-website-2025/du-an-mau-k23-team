@@ -1,6 +1,6 @@
 import unicodedata
 from django.db import transaction
-from django.db.models import Q, Sum, Count
+from django.db.models import Q, Sum, Count, Exists, OuterRef, F
 from django.utils.timezone import now, timedelta
 from django.core.cache import cache
 from django.contrib.auth import get_user_model
@@ -329,6 +329,21 @@ class ProductViewSet(viewsets.ModelViewSet):
             return ProductListSerializer
         return ProductSerializer
 
+    @action(detail=False, methods=['get'], permission_classes=[IsAdminUser])
+    def counts(self, request):
+        """Trả về số lượng sản phẩm theo từng trạng thái để hiển thị trên các tab Admin"""
+        seven_days_ago = now() - timedelta(days=7)
+        counts = Product.objects.aggregate(
+            all=Count('id'),
+            action_required=Count('id', filter=Q(status__in=['pending', 'pending_update'])),
+            approved=Count('id', filter=Q(status='approved')),
+            banned=Count('id', filter=Q(status__in=['banned', 'locked'])),
+            rejected=Count('id', filter=Q(status='rejected')),
+            # Risk counts cho tab action_required
+            new_shop=Count('id', filter=Q(status__in=['pending', 'pending_update'], seller__created_at__gte=seven_days_ago)),
+        )
+        return Response(counts)
+
     # ✅ ĐÃ SỬA: Logic Get Queryset
     def get_queryset(self):
         # 1. Base Queryset: Luôn eager loading để tránh N+1 query
@@ -364,19 +379,50 @@ class ProductViewSet(viewsets.ModelViewSet):
             ).exclude(status='banned')
 
         # 4. Filter cơ bản (Chỉ giữ lại các filter logic DB cần thiết)
-        if 'category' in params:
-            cat_key = params['category']
+        # Filter by category (only when provided and non-empty)
+        cat_key = params.get('category')
+        if cat_key:
             # Hỗ trợ filter cả theo ID hoặc theo Slug
-            if cat_key.isdigit():
-                queryset = queryset.filter(subcategory__category__id=cat_key)
+            if str(cat_key).isdigit():
+                queryset = queryset.filter(
+                    Q(subcategory__category__id=cat_key) | Q(category__id=cat_key)
+                )
             else:
-                queryset = queryset.filter(subcategory__category__key=cat_key)
+                queryset = queryset.filter(
+                    Q(subcategory__category__key=cat_key) | Q(category__key=cat_key)
+                )
+
+        # Filter by subcategory id when provided and non-empty
+        subcat = params.get('subcategory')
+        if subcat:
+            queryset = queryset.filter(subcategory__id=subcat)
+
+        # Filter by seller when provided and non-empty (guard against empty string)
+        seller_val = params.get('seller')
+        if seller_val:
+            queryset = queryset.filter(seller_id=seller_val)
+
+        if 'status' in params:
+            status_param = params['status']
+            if status_param == 'action_required':
+                queryset = queryset.filter(status__in=['pending', 'pending_update'])
                 
-        if 'subcategory' in params:
-            queryset = queryset.filter(subcategory__id=params['subcategory']) # Nên filter theo ID chuẩn hơn Name
-            
-        if 'seller' in params:
-            queryset = queryset.filter(seller_id=params['seller'])
+                # Bổ sung Risk Filter
+                risk_filter = params.get('risk_filter')
+                if risk_filter == 'new_shop':
+                    seven_days_ago = now() - timedelta(days=7)
+                    queryset = queryset.filter(seller__created_at__gte=seven_days_ago)
+                # Tạm thời chưa có reup filter vì chưa có field
+            elif status_param == 'banned':
+                queryset = queryset.filter(status__in=['banned', 'locked'])
+            elif status_param != 'all':
+                queryset = queryset.filter(status=status_param)
+
+        # Lọc theo khoảng ngày
+        start_date = params.get('start_date')
+        end_date = params.get('end_date')
+        if start_date and end_date:
+            queryset = queryset.filter(created_at__date__range=[start_date, end_date])
 
         # LƯU Ý: Nếu đã có API Search riêng, hạn chế dùng filter 'search' ở đây (vì nó chậm)
         # Chỉ giữ lại nếu cần thiết cho trang Admin quản lý
@@ -388,6 +434,67 @@ class ProductViewSet(viewsets.ModelViewSet):
 
         ordering = params.get('ordering', '-created_at')
         return queryset.order_by(ordering)
+
+    @action(detail=False, methods=['get'], permission_classes=[IsAdminUser], url_path='admin_overview')
+    def admin_overview(self, request):
+        """Lightweight admin endpoint returning minimal fields for admin listing (paginated)."""
+        params = request.query_params
+        qs = self.get_queryset()
+
+        # filters similar to list
+        status_param = params.get('status')
+        if status_param:
+            if status_param == 'action_required':
+                qs = qs.filter(status__in=['pending', 'pending_update'])
+            elif status_param != 'all':
+                qs = qs.filter(status=status_param)
+
+        if 'seller' in params and params.get('seller'):
+            qs = qs.filter(seller_id=params.get('seller'))
+
+        if 'category' in params and params.get('category'):
+            cat_key = params.get('category')
+            if str(cat_key).isdigit():
+                qs = qs.filter(
+                    Q(subcategory__category__id=cat_key) | Q(category__id=cat_key)
+                )
+            else:
+                qs = qs.filter(
+                    Q(subcategory__category__key=cat_key) | Q(category__key=cat_key)
+                )
+
+        # risk filter
+        risk_filter = params.get('risk_filter')
+        if risk_filter == 'new_shop':
+            seven_days_ago = now() - timedelta(days=7)
+            qs = qs.filter(seller__created_at__gte=seven_days_ago)
+        if risk_filter == 'reup':
+            # Annotate products that have similar previous records (deleted/banned/rejected)
+            seven_days_ago = now() - timedelta(days=7)
+            similar_qs = Product.objects.filter(
+                seller=OuterRef('seller'),
+                name__iexact=OuterRef('name')
+            ).exclude(id=OuterRef('id')).filter(
+                Q(status__in=['deleted', 'banned', 'rejected']) | Q(created_at__lt=seven_days_ago)
+            )
+            qs = qs.annotate(__is_reup=Exists(similar_qs)).filter(__is_reup=True)
+
+        # pagination
+        try:
+            page = int(params.get('page', 1))
+            page_size = int(params.get('page_size', 10))
+        except Exception:
+            page = 1
+            page_size = 10
+
+        total = qs.count()
+        start = (page - 1) * page_size
+        end = start + page_size
+        items = qs.order_by('-created_at')[start:end]
+
+        from .serializers import AdminProductOverviewSerializer
+        serializer = AdminProductOverviewSerializer(items, many=True, context={'request': request})
+        return Response({'results': serializer.data, 'count': total})
 
     # ✅ ĐÃ SỬA: Logic Retrieve (Chi tiết sản phẩm)
     def retrieve(self, request, *args, **kwargs):

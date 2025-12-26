@@ -68,6 +68,7 @@ export default function UserTable({
   triggerAddUser,
   setTriggerAddUser,
   onRow,
+  pagination, // Thêm prop pagination
 }) {
   const { t } = useTranslation();
   const [isMobile, setIsMobile] = useState(false);
@@ -430,15 +431,11 @@ export default function UserTable({
       <div className="user-table-container" style={{ background: '#fff', borderRadius: 8, overflow: 'hidden' }}>
         <Table
           columns={columns}
-          dataSource={filteredUsers}
+          dataSource={users}
           rowKey="id"
           loading={loading}
           rowSelection={rowSelection}
-          pagination={{
-            pageSize: 10,
-            showTotal: (t) => `Tổng ${t} users`,
-            showSizeChanger: true
-          }}
+          pagination={pagination}
           scroll={{ x: 1100 }}
           bordered={false} // Bỏ border dọc để nhìn thoáng hơn (Modern UI)
           onRow={(record) => ({

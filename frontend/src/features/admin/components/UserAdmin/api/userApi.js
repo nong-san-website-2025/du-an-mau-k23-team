@@ -6,10 +6,10 @@ import { API_BASE_URL, getHeaders } from "./config";
 export const fetchRoles = async () => {
   // Try multiple possible endpoints to be tolerant to routing differences
   const candidates = [
-    `${API_BASE_URL}/users/roles/list/`,
     `${API_BASE_URL}/users/roles/`,
-    `${API_BASE_URL}/roles/list/`,
     `${API_BASE_URL}/roles/`,
+    `${API_BASE_URL}/users/roles/list/`,
+    `${API_BASE_URL}/roles/list/`,
   ];
   for (const url of candidates) {
     try {
