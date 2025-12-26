@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { message, Modal } from "antd";
 import {
   CheckCircleOutlined,
@@ -8,15 +8,16 @@ import {
 } from "@ant-design/icons";
 import { productApi } from "../services/api/productApi";
 import { EyeClosed } from "lucide-react";
+// 1. Import React Query
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 export const useProductPage = () => {
-  // ==================== STATE MANAGEMENT ====================
-  const [rawProducts, setRawProducts] = useState([]);
-  const [filteredProducts, setFilteredProducts] = useState([]);
-  const [categories, setCategories] = useState([]);
+  const queryClient = useQueryClient();
+
+  // ==================== UI STATE ====================
+  // Chỉ giữ lại state phục vụ UI (Modal, Tab, Search), bỏ state dữ liệu
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
   const [selectedRows, setSelectedRows] = useState([]);
-  const [loading, setLoading] = useState(false);
 
   // -- Modals --
   const [modalVisible, setModalVisible] = useState(false);
@@ -34,57 +35,55 @@ export const useProductPage = () => {
   // -- Filters --
   const [activeTab, setActiveTab] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
-  const [importRequestProducts, setImportRequestProducts] = useState([]);
 
-  // ==================== CONFIGS ====================
-  const rowSelection = {
-    selectedRowKeys,
-    onChange: (keys, rows) => {
-      setSelectedRowKeys(keys);
-      setSelectedRows(rows);
+  // ==================== 2. DATA FETCHING (QUERIES) ====================
+
+  // 2.1. Fetch Categories (Dữ liệu ít thay đổi -> Cache lâu)
+  const { data: categories = [] } = useQuery({
+    queryKey: ["categories"],
+    queryFn: async () => {
+      const res = await productApi.getCategories();
+      return res.data.results || res.data || [];
     },
-    getCheckboxProps: (record) => ({
-      disabled: record.status === "banned",
-    }),
-  };
+    staleTime: Infinity, // Cache vĩnh viễn trong phiên làm việc
+  });
 
-  const getStatusConfig = (status) =>
-    ({
-      pending: { text: "Chờ duyệt", color: "gold" },
-      approved: { text: "Đã duyệt", color: "green" },
-      rejected: { text: "Bị từ chối", color: "red" },
-      self_rejected: { text: "Đã hủy", color: "default" },
-      banned: { text: "Đã khóa", color: "volcano" },
-      pending_update: { text: "Chờ duyệt cập nhật", color: "orange" },
-    })[status] || { text: status, color: "default" };
+  // 2.2. Fetch Products (Dữ liệu chính -> Cache 5 phút)
+  const {
+    data: rawProductsData = [],
+    isLoading: loadingProduct,
+    refetch: refetchProducts,
+  } = useQuery({
+    queryKey: ["seller-products"],
+    queryFn: async () => {
+      const res = await productApi.getSellerProducts();
+      return res.data.results || res.data || [];
+    },
+    staleTime: 1000 * 60 * 5, // 5 phút không cần gọi lại API
+    gcTime: 1000 * 60 * 30, // Giữ trong bộ nhớ 30 phút
+  });
 
-  const getAvailabilityConfig = (availability) =>
-    ({
-      available: { text: "Có sẵn", color: "blue" },
-      coming_soon: { text: "Sắp có", color: "purple" },
-      out_of_stock: { text: "Hết hàng", color: "red" },
-    })[availability] || { text: availability, color: "default" };
+  // 2.3. Fetch Import Requests
+  const { data: importRequests = [] } = useQuery({
+    queryKey: ["import-requests"],
+    queryFn: async () => {
+      const res = await productApi.getImportRequestProducts();
+      return res.data || [];
+    },
+    staleTime: 1000 * 60 * 5,
+  });
 
-  // ==================== API FETCHING ====================
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const [catRes, prodRes, importRes] = await Promise.all([
-        productApi.getCategories(),
-        productApi.getSellerProducts(),
-        productApi.getImportRequestProducts().catch(() => ({ data: [] })),
-      ]);
+  // ==================== 3. DATA PROCESSING (MEMO) ====================
 
-      const categoriesData = catRes.data.results || catRes.data || [];
-      const productsData = prodRes.data.results || prodRes.data || [];
-      const importData = importRes.data || [];
-
-      // Map Category Logic
-      const mapped = productsData.map((p) => {
+  // Kết hợp Products với Category Name
+  // Logic này chạy cực nhanh ở Client, không cần useEffect
+  const processedProducts = useMemo(() => {
+    return rawProductsData
+      .map((p) => {
         let catName = "Khác";
         let subName = "Khác";
         if (p.subcategory) {
-          const cat = categoriesData.find((c) =>
+          const cat = categories.find((c) =>
             c.subcategories?.some((s) => s.id === p.subcategory)
           );
           if (cat) {
@@ -94,29 +93,18 @@ export const useProductPage = () => {
           }
         }
         return { ...p, category_name: catName, subcategory_name: subName };
-      });
+      })
+      .sort((a, b) => b.id - a.id);
+  }, [rawProductsData, categories]);
 
-      const sorted = mapped.sort((a, b) => b.id - a.id);
-      setCategories(categoriesData);
-      setRawProducts(sorted);
-      setImportRequestProducts(importData);
-    } catch (err) {
-      message.error("Không thể tải dữ liệu sản phẩm");
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Logic lọc dữ liệu (Filter Engine)
+  const filteredProducts = useMemo(() => {
+    let result =
+      activeTab === "import_request"
+        ? [...importRequests]
+        : [...processedProducts];
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  // ==================== FILTER ENGINE ====================
-  useEffect(() => {
-    let result = [...rawProducts];
-
-    // Search
+    // 1. Search Filter
     if (searchTerm) {
       const lowerKey = searchTerm.toLowerCase();
       result = result.filter(
@@ -127,8 +115,8 @@ export const useProductPage = () => {
       );
     }
 
-    // Tab Filter
-    if (activeTab !== "all") {
+    // 2. Tab Filter
+    if (activeTab !== "all" && activeTab !== "import_request") {
       switch (activeTab) {
         case "pending":
           result = result.filter((p) =>
@@ -152,50 +140,114 @@ export const useProductPage = () => {
           result = result.filter((p) => p.status === "banned");
           break;
         case "out_of_stock":
-          result = result.filter((p) => p.stock <= 0);
-          break;
-        case "import_request":
-          result = importRequestProducts;
-          if (searchTerm) {
-            const lowerKey = searchTerm.toLowerCase();
-            result = result.filter(
-              (p) =>
-                p.name.toLowerCase().includes(lowerKey) ||
-                String(p.id).includes(lowerKey)
-            );
-          }
+          result = result.filter((p) => p.stock <= 0); // Lưu ý: API trả về field là 'stock' hay 'stock_quantity' cần check kỹ
           break;
         default:
           break;
       }
     }
-    setFilteredProducts(result);
-  }, [rawProducts, searchTerm, activeTab, importRequestProducts]);
+    return result;
+  }, [processedProducts, importRequests, searchTerm, activeTab]);
 
-  // ==================== STATS ====================
+  // ==================== 4. MUTATIONS (Cập nhật dữ liệu) ====================
+  // Helper để refresh dữ liệu sau khi sửa đổi
+  const refreshData = () => {
+    queryClient.invalidateQueries(["seller-products"]);
+    queryClient.invalidateQueries(["import-requests"]);
+  };
+
+  // 4.1. Delete Mutation
+  const deleteMutation = useMutation({
+    mutationFn: (id) => productApi.deleteProduct(id),
+    onSuccess: () => {
+      message.success("Đã xóa sản phẩm");
+      refreshData();
+    },
+    onError: () => message.error("Lỗi khi xóa sản phẩm"),
+  });
+
+  // 4.2. Submit Form Mutation (Create & Update)
+  const submitMutation = useMutation({
+    mutationFn: async ({ id, formData }) => {
+      if (!id) return productApi.createProduct(formData);
+
+      // Logic check formData images (như code cũ)
+      const hasImages = Array.from(formData.entries()).some(
+        ([k]) => k === "images" || k === "image"
+      );
+      if (!hasImages) {
+        const plain = {};
+        for (let [k, v] of formData.entries()) {
+          if (k !== "images" && k !== "primary_image_index") plain[k] = v;
+        }
+        return productApi.updateProduct(id, plain, {
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      return productApi.updateProduct(id, formData);
+    },
+    onSuccess: (data, variables) => {
+      if (!variables.id) {
+        message.success("Thêm mới thành công, chờ duyệt");
+        setEditingProduct(null); // Reset form nếu là thêm mới
+      } else {
+        message.success("Cập nhật thành công");
+        setModalVisible(false); // Đóng modal nếu là sửa
+      }
+      refreshData();
+    },
+    onError: (err) => {
+      const serverMsg =
+        err?.response?.data?.detail || err?.response?.data || err.message;
+      message.error(serverMsg || "Lỗi khi lưu dữ liệu");
+    },
+  });
+
+  // 4.3. Toggle Hide Mutation
+  const toggleHideMutation = useMutation({
+    mutationFn: (id) => productApi.toggleHide(id),
+    onSuccess: () => {
+      message.success("Cập nhật trạng thái hiển thị thành công");
+      refreshData();
+    },
+  });
+
+  // 4.4. Self Reject
+  const selfRejectMutation = useMutation({
+    mutationFn: (id) => productApi.selfReject(id),
+    onSuccess: () => {
+      message.success("Đã hủy đăng bán");
+      refreshData();
+    },
+  });
+
+  // ==================== CONFIGS & STATS ====================
   const statsItems = useMemo(() => {
-    const total = rawProducts.length;
-    const approved = rawProducts.filter((p) => p.status === "approved").length;
-    const pending = rawProducts.filter((p) =>
+    const total = processedProducts.length;
+    const approved = processedProducts.filter(
+      (p) => p.status === "approved"
+    ).length;
+    const pending = processedProducts.filter((p) =>
       ["pending", "pending_update"].includes(p.status)
     ).length;
-    const outOfStock = rawProducts.filter((p) => p.stock <= 0).length;
-    const importRequest = importRequestProducts.length;
-    const hidden = rawProducts.filter(
+    const outOfStock = processedProducts.filter((p) => p.stock <= 0).length;
+    const hidden = processedProducts.filter(
       (p) => p.status === "approved" && p.is_hidden
     ).length;
-    const banned = rawProducts.filter((p) => p.status === "banned").length;
+    const banned = processedProducts.filter(
+      (p) => p.status === "banned"
+    ).length;
 
     return [
       { value: total },
       { value: approved },
       { value: pending },
       { value: outOfStock },
-      { value: importRequest },
+      { value: importRequests.length },
       { value: hidden },
       { value: banned },
     ];
-  }, [rawProducts, importRequestProducts]);
+  }, [processedProducts, importRequests]);
 
   const tabItems = [
     { key: "all", label: `Tất cả (${statsItems[0].value})` },
@@ -232,9 +284,50 @@ export const useProductPage = () => {
     { key: "rejected", label: "Đã huỷ / Từ chối" },
   ];
 
-  // ==================== HANDLERS ====================
+  const rowSelection = {
+    selectedRowKeys,
+    onChange: (keys, rows) => {
+      setSelectedRowKeys(keys);
+      setSelectedRows(rows);
+    },
+    getCheckboxProps: (record) => ({ disabled: record.status === "banned" }),
+  };
 
-  // --- BULK ACTIONS ---
+  const getStatusConfig = (status) =>
+    ({
+      pending: { text: "Chờ duyệt", color: "gold" },
+      approved: { text: "Đã duyệt", color: "green" },
+      rejected: { text: "Bị từ chối", color: "red" },
+      self_rejected: { text: "Đã hủy", color: "default" },
+      banned: { text: "Đã khóa", color: "volcano" },
+      pending_update: { text: "Chờ duyệt cập nhật", color: "orange" },
+    })[status] || { text: status, color: "default" };
+
+  const getAvailabilityConfig = (availability) =>
+    ({
+      available: { text: "Có sẵn", color: "blue" },
+      coming_soon: { text: "Sắp có", color: "purple" },
+      out_of_stock: { text: "Hết hàng", color: "red" },
+    })[availability] || { text: availability, color: "default" };
+
+  // ==================== HANDLER WRAPPERS ====================
+  // (Giữ nguyên tên hàm để tương thích với View)
+
+  const handleAddNew = () => {
+    setEditingProduct(null);
+    setModalVisible(true);
+  };
+  const handleEdit = (product) => {
+    setEditingProduct(product);
+    setModalVisible(true);
+  };
+  const handleDelete = (id) => deleteMutation.mutate(id);
+  const handleSelfReject = (p) => selfRejectMutation.mutate(p.id);
+  const handleToggleHide = (p) => toggleHideMutation.mutate(p.id);
+  const handleSubmitForm = (formData) =>
+    submitMutation.mutate({ id: editingProduct?.id, formData });
+
+  // Bulk Delete (Logic phức tạp nên giữ lại xử lý logic, chỉ thay đoạn gọi API)
   const handleBulkDelete = () => {
     if (selectedRows.length === 0) return;
     const deletableProducts = selectedRows.filter(
@@ -244,10 +337,7 @@ export const useProductPage = () => {
         item.status !== "banned"
     );
 
-    const validCount = deletableProducts.length;
-    const totalCount = selectedRows.length;
-
-    if (validCount === 0) {
+    if (deletableProducts.length === 0) {
       return Modal.warning({
         title: "Không thể xóa",
         content:
@@ -256,67 +346,43 @@ export const useProductPage = () => {
     }
 
     Modal.confirm({
-      title: `Xác nhận xóa ${validCount} sản phẩm?`,
-      content: (
-        <div>
-          <p>Hành động này không thể hoàn tác.</p>
-          {validCount < totalCount && (
-            <p style={{ color: "orange" }}>
-              * Chú ý: Có {totalCount - validCount} sản phẩm không thể xóa.
-            </p>
-          )}
-        </div>
-      ),
-      okText: `Xóa ${validCount} mục`,
+      title: `Xác nhận xóa ${deletableProducts.length} sản phẩm?`,
+      okText: "Xóa",
       okButtonProps: { danger: true },
       cancelText: "Hủy",
       onOk: async () => {
-        setLoading(true);
         try {
           await Promise.all(
             deletableProducts.map((p) => productApi.deleteProduct(p.id))
           );
-          message.success(`Đã xóa thành công ${validCount} sản phẩm`);
+          message.success(`Đã xóa thành công`);
           setSelectedRowKeys([]);
           setSelectedRows([]);
-          fetchData();
+          refreshData(); // Refresh React Query
         } catch (error) {
           message.error("Lỗi khi xóa một số sản phẩm");
-          fetchData();
-        } finally {
-          setLoading(false);
         }
       },
     });
   };
 
   const handleBulkToggleHide = () => {
+    // (Giữ logic cũ, thay đoạn cuối bằng refreshData)
     const approvedProducts = selectedRows.filter(
       (item) => item.status === "approved"
     );
-
-    if (approvedProducts.length === 0) {
+    if (approvedProducts.length === 0)
       return message.info("Chỉ có thể ẩn/hiển thị sản phẩm đã duyệt.");
-    }
 
     const hiddenCount = approvedProducts.filter((p) => p.is_hidden).length;
     const visibleCount = approvedProducts.length - hiddenCount;
+    let targetProducts = approvedProducts;
+    let actionText = hiddenCount > 0 && visibleCount === 0 ? "Hiển thị" : "Ẩn";
 
-    let actionText = "";
-    let targetProducts = [];
-
-    if (hiddenCount > 0 && visibleCount === 0) {
-      actionText = "Hiển thị";
-      targetProducts = approvedProducts;
-    } else if (visibleCount > 0 && hiddenCount === 0) {
-      actionText = "Ẩn";
-      targetProducts = approvedProducts;
-    } else {
-      message.info(
+    if (visibleCount > 0 && hiddenCount > 0)
+      return message.info(
         "Chọn các sản phẩm cùng trạng thái ẩn/hiển thị để thao tác."
       );
-      return;
-    }
 
     Modal.confirm({
       title: `Bạn muốn ${actionText} ${targetProducts.length} sản phẩm?`,
@@ -325,12 +391,10 @@ export const useProductPage = () => {
           await Promise.all(
             targetProducts.map((p) => productApi.toggleHide(p.id))
           );
-          message.success(
-            `${actionText} thành công ${targetProducts.length} sản phẩm`
-          );
+          message.success(`${actionText} thành công`);
           setSelectedRowKeys([]);
           setSelectedRows([]);
-          fetchData();
+          refreshData();
         } catch (e) {
           message.error("Có lỗi xảy ra");
         }
@@ -338,92 +402,7 @@ export const useProductPage = () => {
     });
   };
 
-  // --- CRUD ---
-  const handleAddNew = () => {
-    setEditingProduct(null);
-    setModalVisible(true);
-  };
-  const handleEdit = (product) => {
-    setEditingProduct(product);
-    setModalVisible(true);
-  };
-  const handleImportSuccess = () => fetchData();
-
-  const handleDelete = async (id) => {
-    try {
-      await productApi.deleteProduct(id);
-      message.success("Đã xóa sản phẩm");
-      setRawProducts((prev) => prev.filter((i) => i.id !== id));
-    } catch {
-      message.error("Lỗi khi xóa sản phẩm");
-    }
-  };
-
-  const handleSelfReject = async (p) => {
-    try {
-      await productApi.selfReject(p.id);
-      message.success("Đã hủy đăng bán");
-      setRawProducts((prev) =>
-        prev.map((i) => (i.id === p.id ? { ...i, status: "self_rejected" } : i))
-      );
-    } catch {
-      message.error("Lỗi khi hủy đăng bán");
-    }
-  };
-
-  const handleToggleHide = async (record) => {
-    try {
-      await productApi.toggleHide(record.id);
-      const actionText = record.is_hidden ? "Đã hiển thị lại" : "Đã ẩn";
-      message.success(`${actionText} sản phẩm: ${record.name}`);
-      fetchData();
-    } catch {
-      message.error("Lỗi khi thay đổi trạng thái");
-    }
-  };
-
-  const handleSubmitForm = async (formData) => {
-    try {
-      if (!editingProduct) {
-        formData.append("status", "pending");
-        await productApi.createProduct(formData);
-        message.success("Thêm mới thành công, chờ duyệt");
-      } else {
-        const hasImages = Array.from(formData.entries()).some(
-          ([k]) => k === "images" || k === "image"
-        );
-        if (!hasImages) {
-          const plain = {};
-          for (let [k, v] of formData.entries()) {
-            if (k !== "images" && k !== "primary_image_index") plain[k] = v;
-          }
-          await productApi.updateProduct(editingProduct.id, plain, {
-            headers: { "Content-Type": "application/json" },
-          });
-        } else {
-          await productApi.updateProduct(editingProduct.id, formData);
-        }
-        message.success("Cập nhật thành công");
-      }
-      // If we just created a new product (not editing), keep the modal open
-      // so the seller can add more without reopening the form. When editing,
-      // close the modal after successful update.
-      if (editingProduct) {
-        setModalVisible(false);
-      } else {
-        // reset editing state so the form is ready for a fresh product
-        setEditingProduct(null);
-      }
-      fetchData();
-    } catch (err) {
-      console.error("handleSubmitForm error:", err);
-      const serverMsg =
-        err?.response?.data?.detail || err?.response?.data || err.message;
-      message.error(serverMsg || "Lỗi khi lưu dữ liệu");
-    }
-  };
-
-  // --- GALLERY ---
+  // Gallery Handlers (Giữ nguyên logic cũ nhưng cập nhật UI tốt hơn)
   const openGallery = (p) => {
     setGalleryProduct(p);
     let existing =
@@ -434,7 +413,6 @@ export const useProductPage = () => {
         name: `Image-${i.id}`,
         is_primary: i.is_primary,
       })) || [];
-
     if (existing.length === 0 && p.image) {
       existing.push({
         uid: "root-image-placeholder",
@@ -453,8 +431,8 @@ export const useProductPage = () => {
     try {
       await productApi.setPrimaryImage(galleryProduct.id, imgId);
       message.success("Đã thay đổi ảnh đại diện");
-      fetchData();
       setGalleryVisible(false);
+      refreshData();
     } catch {
       message.error("Lỗi khi đặt ảnh đại diện");
     }
@@ -467,18 +445,18 @@ export const useProductPage = () => {
       );
       return;
     }
-    if (file.uid === "root-image-placeholder") {
+    if (file.uid === "root-image-placeholder")
       return message.warning(
         "Hãy thêm ảnh khác và đặt làm đại diện trước khi xóa ảnh này."
       );
-    }
+
     try {
       await productApi.deleteProductImage(file.uid);
       message.success("Đã xóa ảnh");
       setGalleryFileList((prev) =>
         prev.filter((item) => item.uid !== file.uid)
       );
-      fetchData();
+      refreshData();
     } catch {
       message.error("Không thể xóa ảnh này");
     }
@@ -490,16 +468,14 @@ export const useProductPage = () => {
 
     const formData = new FormData();
     newFiles.forEach((file) => formData.append("images", file.originFileObj));
-
     setGalleryLoading(true);
     try {
       await productApi.uploadProductImages(galleryProduct.id, formData);
       message.success("Tải ảnh thành công");
       setGalleryVisible(false);
-      fetchData();
-      if (selectedProduct && selectedProduct.id === galleryProduct.id) {
+      refreshData();
+      if (selectedProduct?.id === galleryProduct.id)
         setIsDetailModalVisible(false);
-      }
     } catch {
       message.error("Tải ảnh thất bại");
     } finally {
@@ -507,15 +483,17 @@ export const useProductPage = () => {
     }
   };
 
-  // Return tất cả state và function cần thiết
   return {
-    rawProducts,
+    // Data
+    rawProducts: processedProducts, // Map sang tên mới để khớp với UI cũ
     filteredProducts,
     categories,
-    loading,
+    loading: loadingProduct,
+
+    // UI State
     selectedRowKeys,
-    selectedRows,
     setSelectedRowKeys,
+    selectedRows,
     setSelectedRows,
     rowSelection,
     activeTab,
@@ -524,6 +502,7 @@ export const useProductPage = () => {
     setSearchTerm,
     tabItems,
 
+    // Modals
     modalVisible,
     setModalVisible,
     importModalVisible,
@@ -531,33 +510,36 @@ export const useProductPage = () => {
     editingProduct,
     setEditingProduct,
 
+    // Detail & Gallery
     selectedProduct,
     setSelectedProduct,
     isDetailModalVisible,
     setIsDetailModalVisible,
-
     galleryVisible,
     setGalleryVisible,
-    galleryProduct,
     galleryFileList,
     setGalleryFileList,
     galleryLoading,
 
-    fetchData,
-    handleBulkDelete,
-    handleBulkToggleHide,
+    // Actions
+    fetchData: refreshData, // Map refreshData vào fetchData để tương thích nút "Làm mới"
     handleAddNew,
     handleEdit,
-    handleImportSuccess,
+    handleImportSuccess: refreshData,
     handleDelete,
     handleSelfReject,
     handleToggleHide,
     handleSubmitForm,
+    handleBulkDelete,
+    handleBulkToggleHide,
+
+    // Gallery Actions
     openGallery,
     handleSetPrimaryImage,
     handleRemoveImage,
     handleGalleryUpload,
 
+    // Configs
     getStatusConfig,
     getAvailabilityConfig,
   };

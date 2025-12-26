@@ -22,16 +22,30 @@ const ORDER_TABS = {
 
 export default function SellerOrderPage() {
   const [activeTab, setActiveTab] = useState(ORDER_TABS.PENDING);
+
+  // --- SỬA 1: Khởi tạo state từ LocalStorage để hiện ngay ---
+  const [orders, setOrders] = useState(() => {
+    try {
+      const saved = localStorage.getItem(`ORDER_CACHE_${ORDER_TABS.PENDING}`);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
   const [loading, setLoading] = useState(false);
-  const [orders, setOrders] = useState([]);
   const [tick, setTick] = useState(0);
 
-  // --- MỚI: State lưu số lượng badge cho từng tab ---
-  const [orderCounts, setOrderCounts] = useState({
-    pending: 0,
-    processing: 0,
-    delivered: 0,
-    cancelled: 0
+  // --- SỬA 2: Khởi tạo badge từ LocalStorage ---
+  const [orderCounts, setOrderCounts] = useState(() => {
+    try {
+      const saved = localStorage.getItem("ORDER_COUNTS_CACHE");
+      return saved
+        ? JSON.parse(saved)
+        : { pending: 0, processing: 0, delivered: 0, cancelled: 0 };
+    } catch {
+      return { pending: 0, processing: 0, delivered: 0, cancelled: 0 };
+    }
   });
 
   // --- 1. LOGIC TIMER ---
@@ -41,51 +55,71 @@ export default function SellerOrderPage() {
   }, []);
 
   // --- 2. HÀM LẤY SỐ LƯỢNG (BADGE) ---
-  // Hàm này chạy độc lập để lấy số lượng hiển thị lên Tab
   const fetchOrderCounts = useCallback(async () => {
     try {
-      // Gọi song song 2 API quan trọng nhất để lấy số lượng
       const [pendingRes, processingRes] = await Promise.all([
         API.get("orders/seller/pending/"),
-        API.get("orders/seller/processing/")
+        API.get("orders/seller/processing/"),
       ]);
 
-      setOrderCounts({
+      const newCounts = {
         pending: pendingRes.data.length,
         processing: processingRes.data.length,
-        // Nếu cần đếm cả đơn đã giao/hủy thì thêm vào đây, nhưng thường chỉ cần 2 cái đầu để notification
-        delivered: 0, 
-        cancelled: 0
-      });
+        delivered: 0,
+        cancelled: 0,
+      };
+
+      setOrderCounts(newCounts);
+      // --- SỬA 3: Lưu cache Counts ---
+      localStorage.setItem("ORDER_COUNTS_CACHE", JSON.stringify(newCounts));
     } catch (error) {
       console.error("Lỗi lấy số lượng đơn:", error);
     }
   }, []);
 
-  // Gọi hàm đếm số lượng ngay khi trang vừa load
   useEffect(() => {
     fetchOrderCounts();
   }, [fetchOrderCounts]);
 
-
   // --- 3. HÀM LẤY DỮ LIỆU BẢNG (TABLE) ---
   const fetchOrders = useCallback(async (statusKey) => {
-    setLoading(true);
+    // --- SỬA 4: Chỉ hiện loading nếu chưa có dữ liệu (tránh nháy màn hình) ---
+    // Kiểm tra cache hiện tại
+    const cached = localStorage.getItem(`ORDER_CACHE_${statusKey}`);
+    if (!cached) {
+      setLoading(true);
+    }
+
     let endpoint = "";
     switch (statusKey) {
-      case ORDER_TABS.PENDING: endpoint = "orders/seller/pending/"; break;
-      case ORDER_TABS.PROCESSING: endpoint = "orders/seller/processing/"; break;
-      case ORDER_TABS.DELIVERED: endpoint = "orders/seller/complete/"; break;
-      case ORDER_TABS.CANCELLED: endpoint = "orders/seller/cancelled/"; break;
-      default: endpoint = "orders/seller/pending/";
+      case ORDER_TABS.PENDING:
+        endpoint = "orders/seller/pending/";
+        break;
+      case ORDER_TABS.PROCESSING:
+        endpoint = "orders/seller/processing/";
+        break;
+      case ORDER_TABS.DELIVERED:
+        endpoint = "orders/seller/complete/";
+        break;
+      case ORDER_TABS.CANCELLED:
+        endpoint = "orders/seller/cancelled/";
+        break;
+      default:
+        endpoint = "orders/seller/pending/";
     }
 
     try {
       const res = await API.get(endpoint);
       const sortedData = res.data.sort((a, b) => b.id - a.id);
       setOrders(sortedData);
+
+      // --- SỬA 5: Lưu cache Data theo Tab ---
+      localStorage.setItem(
+        `ORDER_CACHE_${statusKey}`,
+        JSON.stringify(sortedData)
+      );
     } catch (error) {
-      message.error("Không thể tải danh sách đơn hàng");
+      //   message.error("Không thể tải danh sách đơn hàng"); // Có thể ẩn để đỡ phiền
     } finally {
       setLoading(false);
     }
@@ -93,9 +127,18 @@ export default function SellerOrderPage() {
 
   // Gọi API bảng mỗi khi chuyển Tab
   useEffect(() => {
+    // --- SỬA 6: Khi đổi tab, lấy cache đắp vào ngay lập tức ---
+    try {
+      const cached = localStorage.getItem(`ORDER_CACHE_${activeTab}`);
+      if (cached) {
+        setOrders(JSON.parse(cached));
+      } else {
+        setOrders([]); // Nếu không có cache thì xóa trắng chờ load
+      }
+    } catch {}
+
     fetchOrders(activeTab);
   }, [activeTab, fetchOrders]);
-
 
   // --- 4. XỬ LÝ HÀNH ĐỘNG ---
   const handleOrderAction = async (id, actionType) => {
@@ -120,16 +163,15 @@ export default function SellerOrderPage() {
           endpoint = `orders/${id}/cancel/`;
           successMsg = "Đã hủy đơn hàng!";
           break;
-        default: return;
+        default:
+          return;
       }
 
       await API.post(endpoint);
       message.success(successMsg);
-      
-      // QUAN TRỌNG: Reload cả bảng và cả số lượng Badge
-      fetchOrders(activeTab); 
-      fetchOrderCounts(); 
 
+      fetchOrders(activeTab);
+      fetchOrderCounts();
     } catch (error) {
       message.error("Thao tác thất bại, vui lòng thử lại!");
     }
@@ -140,42 +182,66 @@ export default function SellerOrderPage() {
     if (!createdAt) return { text: "-", color: "#999" };
     const diffMs = new Date() - new Date(createdAt);
     const diffMins = Math.floor(diffMs / 60000);
-    
-    let color = "#52c41a"; 
-    if (diffMins > 30) color = "#faad14"; 
-    if (diffMins > 60) color = "#ff4d4f"; 
 
-    let text = diffMins < 60 ? `${diffMins} phút trước` : `${Math.floor(diffMins/60)} giờ trước`;
-    return <Tag color="default" style={{ color, borderColor: color, fontWeight: 600 }}>{text}</Tag>;
+    let color = "#52c41a";
+    if (diffMins > 30) color = "#faad14";
+    if (diffMins > 60) color = "#ff4d4f";
+
+    let text =
+      diffMins < 60
+        ? `${diffMins} phút trước`
+        : `${Math.floor(diffMins / 60)} giờ trước`;
+    return (
+      <Tag
+        color="default"
+        style={{ color, borderColor: color, fontWeight: 600 }}
+      >
+        {text}
+      </Tag>
+    );
   };
 
   const getExtraColumns = () => {
     if (activeTab === ORDER_TABS.PENDING) {
-      return [{
-        title: "Thời gian chờ",
-        dataIndex: "created_at",
-        width: 140,
-        align: "center",
-        render: (t) => getTimeTag(t),
-      }];
+      return [
+        {
+          title: "Thời gian chờ",
+          dataIndex: "created_at",
+          width: 140,
+          align: "center",
+          render: (t) => getTimeTag(t),
+        },
+      ];
     }
     if (activeTab === ORDER_TABS.DELIVERED) {
-      return [{
-        title: "Hoàn tất vào",
-        dataIndex: "updated_at",
-        width: 140,
-        align: "center",
-        render: (t) => <span style={{color: '#666', fontSize: 12}}>{t ? new Date(t).toLocaleDateString("vi-VN") : "-"}</span>
-      }];
+      return [
+        {
+          title: "Hoàn tất vào",
+          dataIndex: "updated_at",
+          width: 140,
+          align: "center",
+          render: (t) => (
+            <span style={{ color: "#666", fontSize: 12 }}>
+              {t ? new Date(t).toLocaleDateString("vi-VN") : "-"}
+            </span>
+          ),
+        },
+      ];
     }
     if (activeTab === ORDER_TABS.CANCELLED) {
-      return [{
-        title: "Ngày hủy",
-        dataIndex: "updated_at",
-        width: 140,
-        align: "center",
-        render: (t) => <span style={{color: '#999', fontSize: 12}}>{t ? new Date(t).toLocaleDateString("vi-VN") : "-"}</span>
-      }];
+      return [
+        {
+          title: "Ngày hủy",
+          dataIndex: "updated_at",
+          width: 140,
+          align: "center",
+          render: (t) => (
+            <span style={{ color: "#999", fontSize: 12 }}>
+              {t ? new Date(t).toLocaleDateString("vi-VN") : "-"}
+            </span>
+          ),
+        },
+      ];
     }
     return [];
   };
@@ -197,7 +263,11 @@ export default function SellerOrderPage() {
               actionType: "reject",
               tooltip: "Từ chối đơn",
               icon: <CloseCircleOutlined />,
-              confirm: { title: "Từ chối phục vụ đơn này?", isDanger: true, okText: "Từ chối" },
+              confirm: {
+                title: "Từ chối phục vụ đơn này?",
+                isDanger: true,
+                okText: "Từ chối",
+              },
               onClick: (r) => handleOrderAction(r.id, "reject"),
             },
           ]}
@@ -213,9 +283,12 @@ export default function SellerOrderPage() {
               actionType: "approve",
               tooltip: "Xác nhận đã giao",
               icon: <CarOutlined />,
-              confirm: { title: "Xác nhận khách đã nhận hàng?", okText: "Hoàn thành" },
+              confirm: {
+                title: "Xác nhận khách đã nhận hàng?",
+                okText: "Hoàn thành",
+              },
               onClick: (r) => handleOrderAction(r.id, "complete"),
-              show: record.status !== 'shipping'
+              show: record.status !== "shipping",
             },
             {
               actionType: "delete",
@@ -231,17 +304,18 @@ export default function SellerOrderPage() {
     return null;
   };
 
-  // --- 6. TAB ITEMS (Sử dụng orderCounts thay vì orders.length) ---
   const tabItems = [
     {
       key: ORDER_TABS.PENDING,
       label: (
         <span className="d-flex align-items-center gap-2">
-          <ClockCircleOutlined /> 
+          <ClockCircleOutlined />
           Chờ xác nhận
-          {/* Luôn hiển thị Badge dựa trên orderCounts */}
           {orderCounts.pending > 0 && (
-            <Badge count={orderCounts.pending} style={{ backgroundColor: '#52c41a', marginLeft: 5 }} />
+            <Badge
+              count={orderCounts.pending}
+              style={{ backgroundColor: "#52c41a", marginLeft: 5 }}
+            />
           )}
         </span>
       ),
@@ -252,7 +326,10 @@ export default function SellerOrderPage() {
         <span>
           <InboxOutlined /> Đang xử lý
           {orderCounts.processing > 0 && (
-             <Badge count={orderCounts.processing} style={{ backgroundColor: '#1890ff', marginLeft: 5 }} />
+            <Badge
+              count={orderCounts.processing}
+              style={{ backgroundColor: "#1890ff", marginLeft: 5 }}
+            />
           )}
         </span>
       ),
@@ -276,8 +353,18 @@ export default function SellerOrderPage() {
   ];
 
   return (
-    <div className="p-4 bg-white rounded-lg shadow-sm" style={{ minHeight: '80vh' }}>
-      <h2 style={{ marginBottom: 20, fontSize: 24, fontWeight: 700, color: '#001529' }}>
+    <div
+      className="p-4 bg-white rounded-lg shadow-sm"
+      style={{ minHeight: "80vh" }}
+    >
+      <h2
+        style={{
+          marginBottom: 20,
+          fontSize: 24,
+          fontWeight: 700,
+          color: "#001529",
+        }}
+      >
         QUẢN LÝ ĐƠN HÀNG
       </h2>
 
@@ -292,15 +379,20 @@ export default function SellerOrderPage() {
 
       <GenericOrderTable
         title={
-            activeTab === ORDER_TABS.PENDING ? "DANH SÁCH ĐƠN MỚI" :
-            activeTab === ORDER_TABS.PROCESSING ? "ĐƠN HÀNG ĐANG XỬ LÝ" :
-            activeTab === ORDER_TABS.DELIVERED ? "ĐƠN HOÀN THÀNH" : "ĐƠN ĐÃ HỦY"
+          activeTab === ORDER_TABS.PENDING
+            ? "DANH SÁCH ĐƠN MỚI"
+            : activeTab === ORDER_TABS.PROCESSING
+              ? "ĐƠN HÀNG ĐANG XỬ LÝ"
+              : activeTab === ORDER_TABS.DELIVERED
+                ? "ĐƠN HOÀN THÀNH"
+                : "ĐƠN ĐÃ HỦY"
         }
-        isLoading={loading}
+        // --- SỬA 7: Luôn để Loading = false nếu orders có dữ liệu (kể cả cũ) ---
+        isLoading={orders.length === 0 && loading}
         data={orders}
         refetch={() => {
-            fetchOrders(activeTab);
-            fetchOrderCounts(); // Refresh count khi user reload bảng thủ công
+          fetchOrders(activeTab);
+          fetchOrderCounts();
         }}
         extraColumns={getExtraColumns()}
         actionsRenderer={renderActions}

@@ -36,8 +36,7 @@ class VoucherViewSet(viewsets.ModelViewSet):
     queryset = Voucher.objects.all()
     serializer_class = VoucherDetailSerializer
     permission_classes = [IsAdminUser]
-<<<<<<< HEAD
-=======
+
 
     def post(self, request):
         try:
@@ -199,7 +198,6 @@ def promotions_overview(request):
 
     if search:
         vouchers = vouchers.filter(Q(title__icontains=search) | Q(code__icontains=search))
->>>>>>> origin/TruongAn
     
     def get_serializer_class(self):
         if self.action == 'list':

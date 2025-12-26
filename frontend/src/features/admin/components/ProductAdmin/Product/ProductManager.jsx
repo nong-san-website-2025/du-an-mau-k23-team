@@ -42,20 +42,22 @@ const { TextArea } = Input;
 // --- CẤU HÌNH URL ---
 // Tự động lấy từ biến môi trường REACT_APP_API_URL
 // Ví dụ: http://172.16.102.132:8000/api -> ws://172.16.102.132:8000
-const getWebSocketUrl = () => {
-  const apiUrl = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000/api";
-  try {
-    const urlObj = new URL(apiUrl);
-    const protocol = urlObj.protocol === "https:" ? "wss:" : "ws:";
-    // Lấy host (IP:PORT) và bỏ path /api để về root cho WebSocket
-    return `${protocol}//${urlObj.host}`;
-  } catch (error) {
-    console.error("Invalid API URL for WebSocket", error);
-    return "ws://127.0.0.1:8000";
-  }
-};
+// const getWebSocketUrl = () => {
+//   // Ưu tiên dùng biến môi trường, nếu không có mới dùng fallback
+//   const apiUrl = process.env.REACT_APP_API_URL || "http://172.16.102.114:8000";
 
-const BASE_WS_URL = getWebSocketUrl();
+//   try {
+//     const urlObj = new URL(apiUrl);
+//     const protocol = urlObj.protocol === "https:" ? "wss:" : "ws:";
+//     // Trả về protocol + host (IP:PORT). Ví dụ: ws://172.16.102.114:8000
+//     return `${protocol}//${urlObj.host}`;
+//   } catch (error) {
+//     console.error("❌ [ProductWS] Invalid API URL:", error);
+//     return "ws://172.16.102.114:8000";
+//   }
+// };
+
+// const BASE_WS_URL = getWebSocketUrl();
 
 const ProductGridItem = ({
   record,
@@ -235,7 +237,7 @@ const ProductManager = ({
   const [productList, setProductList] = useState(initialData);
   const [viewMode, setViewMode] = useState(viewModeProp);
   const [isMobile, setIsMobile] = useState(false);
-  
+
   // Ref cho WebSocket
   const socketRef = useRef(null);
 
@@ -256,56 +258,57 @@ const ProductManager = ({
   }, [initialData]);
 
   // --- REALTIME LOGIC (NATIVE WEBSOCKET) ---
-  useEffect(() => {
-    const connectWS = () => {
-      const token = localStorage.getItem("token");
-      if (!token) return;
+  // useEffect(() => {
+  //   const connectWS = () => {
+  //     const token = localStorage.getItem("token");
+  //     if (!token) return;
 
-      // Sử dụng BASE_WS_URL đã tính toán từ env
-      const wsUrl = `${BASE_WS_URL}/api/ws/admin/products/?token=${token}`;
+  //     // Sử dụng BASE_WS_URL đã tính toán từ env
+  //     const wsUrl = `${BASE_WS_URL}/api/ws/admin/products/?token=${token}`;
 
-      if (socketRef.current?.readyState === WebSocket.OPEN) return;
+  //     if (socketRef.current?.readyState === WebSocket.OPEN) return;
 
-      const socket = new WebSocket(wsUrl);
+  //     const socket = new WebSocket(wsUrl);
 
-      socket.onopen = () => console.log(`✅ [ProductWS] Connected to ${BASE_WS_URL}`);
+  //     socket.onopen = () =>
+  //       console.log(`✅ [ProductWS] Connected to ${BASE_WS_URL}`);
 
-      socket.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        console.log("📩 [ProductWS] New Message:", data);
+  //     socket.onmessage = (event) => {
+  //       const data = JSON.parse(event.data);
+  //       console.log("📩 [ProductWS] New Message:", data);
 
-        if (data.type === "product_update") {
-          notification.info({
-            message: "Cập nhật hệ thống",
-            description:
-              data.message || "Có thay đổi về danh sách sản phẩm chờ duyệt.",
-            placement: "topRight",
-            icon: <ThunderboltFilled style={{ color: "#faad14" }} />,
-          });
+  //       if (data.type === "product_update") {
+  //         notification.info({
+  //           message: "Cập nhật hệ thống",
+  //           description:
+  //             data.message || "Có thay đổi về danh sách sản phẩm chờ duyệt.",
+  //           placement: "topRight",
+  //           icon: <ThunderboltFilled style={{ color: "#faad14" }} />,
+  //         });
 
-          if (data.product) {
-            setProductList((prev) => [data.product, ...prev]);
-          }
-        }
-      };
+  //         if (data.product) {
+  //           setProductList((prev) => [data.product, ...prev]);
+  //         }
+  //       }
+  //     };
 
-      socket.onerror = (err) =>
-        console.error("❌ [ProductWS] Connection Error:", err);
+  //     socket.onerror = (err) =>
+  //       console.error("❌ [ProductWS] Connection Error:", err);
 
-      socket.onclose = (e) => {
-        console.log(
-          "🔌 [ProductWS] Disconnected. Reconnecting in 5s...",
-          e.reason
-        );
-        setTimeout(connectWS, 5000);
-      };
+  //     socket.onclose = (e) => {
+  //       console.log(
+  //         "🔌 [ProductWS] Disconnected. Reconnecting in 5s...",
+  //         e.reason
+  //       );
+  //       setTimeout(connectWS, 5000);
+  //     };
 
-      socketRef.current = socket;
-    };
+  //     socketRef.current = socket;
+  //   };
 
-    connectWS();
-    return () => socketRef.current?.close();
-  }, []);
+  //   connectWS();
+  //   return () => socketRef.current?.close();
+  // }, []);
 
   // Responsive detect
   useEffect(() => {
@@ -385,7 +388,8 @@ const ProductManager = ({
     {
       title: "Người bán",
       width: 200,
-      sorter: (a, b) => (a.seller?.store_name || "").localeCompare(b.seller?.store_name || ""),
+      sorter: (a, b) =>
+        (a.seller?.store_name || "").localeCompare(b.seller?.store_name || ""),
       render: (_, r) => (
         <Space
           onClick={() => onViewShop?.(r.seller)}
@@ -407,15 +411,14 @@ const ProductManager = ({
       title: "Ngày đăng",
       dataIndex: "created_at",
       width: 160,
-      sorter: (a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0),
+      sorter: (a, b) =>
+        new Date(a.created_at || 0) - new Date(b.created_at || 0),
       render: (date) => (
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
-           <Text>
-              {date ? dayjs(date).format("DD/MM/YYYY") : '—'}
-           </Text>
-           <Text type="secondary" style={{ fontSize: 12 }}>
-              {date ? dayjs(date).format("HH:mm") : ''}
-           </Text>
+        <div style={{ display: "flex", flexDirection: "column" }}>
+          <Text>{date ? dayjs(date).format("DD/MM/YYYY") : "—"}</Text>
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            {date ? dayjs(date).format("HH:mm") : ""}
+          </Text>
         </div>
       ),
     },

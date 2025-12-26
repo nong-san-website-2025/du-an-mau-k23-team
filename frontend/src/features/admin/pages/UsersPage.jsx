@@ -1,7 +1,16 @@
 // src/features/admin/pages/User/UsersPage.jsx
 import React, { useEffect, useState, useMemo, useRef } from "react";
-import { 
-  Button, Input, Select, message, Row, Col, Space, Card, DatePicker, Modal 
+import {
+  Button,
+  Input,
+  Select,
+  message,
+  Row,
+  Col,
+  Space,
+  Card,
+  DatePicker,
+  Modal,
 } from "antd";
 import {
   SearchOutlined,
@@ -15,8 +24,8 @@ import {
   StopOutlined,
   UnlockOutlined,
   DeleteOutlined, // Giữ lại icon này nếu cần dùng trong tương lai
-  FilterOutlined
-} from '@ant-design/icons';
+  FilterOutlined,
+} from "@ant-design/icons";
 import axios from "axios";
 import { useTranslation } from "react-i18next";
 import * as XLSX from "xlsx";
@@ -25,7 +34,7 @@ import isBetween from "dayjs/plugin/isBetween";
 
 // Utils & Constants
 import { getWSBaseUrl } from "../../../utils/ws"; // Từ HEAD
-import { STATUS_LABELS } from '../../../constants/statusConstants'; // Từ HEAD
+import { STATUS_LABELS } from "../../../constants/statusConstants"; // Từ HEAD
 
 // Components
 import AdminPageLayout from "../components/AdminPageLayout";
@@ -33,7 +42,7 @@ import UserTable from "../components/UserAdmin/UserTable";
 import UserDetailModal from "../components/UserAdmin/components/UserDetail/UserDetailRow";
 import StatsSection from "../components/common/StatsSection";
 
-import '../styles/UsersPage.css';
+import "../styles/UsersPage.css";
 
 dayjs.extend(isBetween);
 const { RangePicker } = DatePicker;
@@ -46,13 +55,13 @@ export default function UsersPage() {
   // --- STATE ---
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
-  
+
   // Filter States
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedRole, setSelectedRole] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [dateRange, setDateRange] = useState(null);
-  const [timeFilter, setTimeFilter] = useState("all"); 
+  const [timeFilter, setTimeFilter] = useState("all");
 
   // Selection & Modal States
   const [checkedIds, setCheckedIds] = useState([]);
@@ -127,7 +136,7 @@ export default function UsersPage() {
           const payload = JSON.parse(raw);
           const action = payload.action || payload.type;
           const incoming = payload.data;
-          
+
           if (!incoming || !incoming.id) return;
 
           setUsers((prev) => {
@@ -156,10 +165,14 @@ export default function UsersPage() {
           });
 
           if (action === "CREATE" || action === "CREATED") {
-            message.success(`Người dùng mới: ${incoming.email || incoming.username || incoming.name}`);
+            message.success(
+              `Người dùng mới: ${incoming.email || incoming.username || incoming.name}`
+            );
             setTimeout(() => {
               setUsers((prev) =>
-                prev.map((u) => u.id === incoming.id ? { ...u, is_new: false } : u)
+                prev.map((u) =>
+                  u.id === incoming.id ? { ...u, is_new: false } : u
+                )
               );
             }, 8000);
           }
@@ -192,43 +205,99 @@ export default function UsersPage() {
   // --- 3. STATS CALCULATION ---
   const statItems = useMemo(() => {
     const total = users.length;
-    const active = users.filter(u => u.is_active).length;
+    const active = users.filter((u) => u.is_active).length;
     const inactive = total - active;
-    const sellers = users.filter(u => u.role?.name?.toLowerCase() === 'seller').length;
+    const sellers = users.filter(
+      (u) => u.role?.name?.toLowerCase() === "seller"
+    ).length;
+
+    // Helper kiểm tra state hiện tại để highlight thẻ
+    const isTotal = statusFilter === "all" && selectedRole === "all";
+    const isActive = statusFilter === "active" && selectedRole === "all";
+    const isInactive = statusFilter === "locked" && selectedRole === "all";
+    const isSeller = selectedRole === "seller";
 
     return [
-      { title: "Tổng User", value: total, icon: <TeamOutlined />, color: "#1890ff" },
-      { title: STATUS_LABELS.active || "Hoạt động", value: active, icon: <CheckCircleOutlined />, color: "#52c41a" },
-      { title: "Bị khóa/Ẩn", value: inactive, icon: <LockOutlined />, color: "#faad14" },
-      { title: "Seller", value: sellers, icon: <ShoppingOutlined />, color: "#722ed1" }
+      {
+        title: "Tổng User",
+        value: total,
+        icon: <TeamOutlined />,
+        color: "#1890ff",
+        active: isTotal, // Thẻ đang được chọn
+        onClick: () => {
+          // Hành động khi click
+          setStatusFilter("all");
+          setSelectedRole("all");
+        },
+      },
+      {
+        title: STATUS_LABELS.active || "Hoạt động",
+        value: active,
+        icon: <CheckCircleOutlined />,
+        color: "#52c41a",
+        active: isActive,
+        onClick: () => {
+          setStatusFilter("active");
+          setSelectedRole("all"); // Reset role để chỉ xem user hoạt động
+        },
+      },
+      {
+        title: "Bị khóa/Ẩn",
+        value: inactive,
+        icon: <LockOutlined />,
+        color: "#faad14",
+        active: isInactive,
+        onClick: () => {
+          setStatusFilter("locked");
+          setSelectedRole("all");
+        },
+      },
+      {
+        title: "Seller",
+        value: sellers,
+        icon: <ShoppingOutlined />,
+        color: "#722ed1",
+        active: isSeller,
+        onClick: () => {
+          setSelectedRole("seller");
+          setStatusFilter("all"); // Reset status để xem tất cả seller
+        },
+      },
     ];
-  }, [users]);
+  }, [users, statusFilter, selectedRole]);
 
   // --- FILTER LOGIC (From TruongAn) ---
   const handleTimeChange = (val) => {
     setTimeFilter(val);
     const today = dayjs();
-    
+
     switch (val) {
       case "all":
         setDateRange(null);
         break;
-      case "today": 
-        setDateRange([today.startOf('day'), today.endOf('day')]); 
+      case "today":
+        setDateRange([today.startOf("day"), today.endOf("day")]);
         break;
-      case "week": 
-        setDateRange([today.subtract(6, "day").startOf('day'), today.endOf('day')]); 
+      case "week":
+        setDateRange([
+          today.subtract(6, "day").startOf("day"),
+          today.endOf("day"),
+        ]);
         break;
-      case "month": 
-        setDateRange([today.subtract(29, "day").startOf('day'), today.endOf('day')]); 
+      case "month":
+        setDateRange([
+          today.subtract(29, "day").startOf("day"),
+          today.endOf("day"),
+        ]);
         break;
-      default: break;
+      default:
+        break;
     }
   };
 
   const handleRangePickerChange = (dates) => {
     if (dates) {
-      setDateRange([dates[0].startOf('day'), dates[1].endOf('day')]);
+      setDateRange([dates[0].startOf("day"), dates[1].endOf("day")]);
       setTimeFilter("custom");
     } else {
       setDateRange(null);
@@ -240,49 +309,67 @@ export default function UsersPage() {
     const s = searchTerm.normalize("NFC").toLowerCase().trim();
     return users.filter((u) => {
       // 1. Role Filter
-      if (selectedRole !== "all" && u?.role?.name?.toLowerCase() !== selectedRole) return false;
-      
+      if (
+        selectedRole !== "all" &&
+        u?.role?.name?.toLowerCase() !== selectedRole
+      )
+        return false;
+
       // 2. Status Filter
       if (statusFilter !== "all") {
-        const statusMatch = statusFilter === "active" ? u.is_active : !u.is_active;
+        const statusMatch =
+          statusFilter === "active" ? u.is_active : !u.is_active;
         if (!statusMatch) return false;
       }
-      
+
       // 3. Search Filter
-      const matchesSearch = s === "" || [u.username, u.full_name, u.email, u.phone].some((field) => (field ?? "").toString().toLowerCase().includes(s));
+      const matchesSearch =
+        s === "" ||
+        [u.username, u.full_name, u.email, u.phone].some((field) =>
+          (field ?? "").toString().toLowerCase().includes(s)
+        );
       if (!matchesSearch) return false;
-      
+
       // 4. Date Filter
       if (dateRange && dateRange[0] && dateRange[1]) {
         const createdDate = dayjs(u.created_at);
         if (!createdDate.isValid()) return false;
-        if (!createdDate.isBetween(dateRange[0], dateRange[1], null, '[]')) return false;
+        if (!createdDate.isBetween(dateRange[0], dateRange[1], null, "[]"))
+          return false;
       }
-      
+
       return true;
     });
   }, [users, searchTerm, selectedRole, statusFilter, dateRange]);
 
   // --- ACTIONS ---
-  
+
   const handleReload = () => {
     setSearchTerm("");
     setSelectedRole("all");
     setStatusFilter("all");
     setDateRange(null);
     setTimeFilter("all");
-    setCheckedIds([]); 
+    setCheckedIds([]);
     fetchUsers().then(() => {
-        message.success("Đã làm mới và đặt lại bộ lọc");
+      message.success("Đã làm mới và đặt lại bộ lọc");
     });
   };
 
   const handleExportExcel = () => {
-    if (filteredUsers.length === 0) { message.warning("Không có dữ liệu để xuất"); return; }
-    const formattedData = filteredUsers.map(user => ({
-      ID: user.id, "Tên đăng nhập": user.username, "Họ và tên": user.full_name, Email: user.email, "SĐT": user.phone,
-      "Vai trò": user.role?.name, "Trạng thái": user.is_active ? "Hoạt động" : "Đã khóa",
-      "Ngày tạo": dayjs(user.created_at).format("DD/MM/YYYY HH:mm")
+    if (filteredUsers.length === 0) {
+      message.warning("Không có dữ liệu để xuất");
+      return;
+    }
+    const formattedData = filteredUsers.map((user) => ({
+      ID: user.id,
+      "Tên đăng nhập": user.username,
+      "Họ và tên": user.full_name,
+      Email: user.email,
+      SĐT: user.phone,
+      "Vai trò": user.role?.name,
+      "Trạng thái": user.is_active ? "Hoạt động" : "Đã khóa",
+      "Ngày tạo": dayjs(user.created_at).format("DD/MM/YYYY HH:mm"),
     }));
     const worksheet = XLSX.utils.json_to_sheet(formattedData);
     const workbook = XLSX.utils.book_new();
@@ -292,25 +379,48 @@ export default function UsersPage() {
   };
 
   // Bulk Actions
-  const activeUsersSelected = useMemo(() => users.filter(u => checkedIds.includes(u.id) && u.is_active), [users, checkedIds]);
-  const lockedUsersSelected = useMemo(() => users.filter(u => checkedIds.includes(u.id) && !u.is_active), [users, checkedIds]);
+  const activeUsersSelected = useMemo(
+    () => users.filter((u) => checkedIds.includes(u.id) && u.is_active),
+    [users, checkedIds]
+  );
+  const lockedUsersSelected = useMemo(
+    () => users.filter((u) => checkedIds.includes(u.id) && !u.is_active),
+    [users, checkedIds]
+  );
 
   const handleBulkLock = () => {
     if (activeUsersSelected.length === 0) return;
     Modal.confirm({
       title: `Khóa ${activeUsersSelected.length} tài khoản?`,
       content: "Các tài khoản này sẽ bị vô hiệu hóa.",
-      okText: "Khóa ngay", okType: "danger", cancelText: "Hủy",
-      icon: <StopOutlined style={{color: 'red'}} />,
+      okText: "Khóa ngay",
+      okType: "danger",
+      cancelText: "Hủy",
+      icon: <StopOutlined style={{ color: "red" }} />,
       onOk: async () => {
         setLoading(true);
         try {
-          await Promise.all(activeUsersSelected.map(u => axios.patch(`${API_URL}/users/toggle-active/${u.id}/`, {}, { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } })));
+          await Promise.all(
+            activeUsersSelected.map((u) =>
+              axios.patch(
+                `${API_URL}/users/toggle-active/${u.id}/`,
+                {},
+                {
+                  headers: {
+                    Authorization: `Bearer ${localStorage.getItem("token")}`,
+                  },
+                }
+              )
+            )
+          );
           message.success("Đã khóa tài khoản thành công.");
           fetchUsers();
           setCheckedIds([]);
-        } catch (err) { message.error("Lỗi khi khóa."); setLoading(false); }
-      }
+        } catch (err) {
+          message.error("Lỗi khi khóa.");
+          setLoading(false);
+        }
+      },
     });
   };
 
@@ -319,70 +429,100 @@ export default function UsersPage() {
     Modal.confirm({
       title: `Mở khóa ${lockedUsersSelected.length} tài khoản?`,
       content: "Các tài khoản này sẽ hoạt động trở lại.",
-      okText: "Mở khóa", okType: "primary", cancelText: "Hủy",
-      icon: <UnlockOutlined style={{color: '#52c41a'}} />,
+      okText: "Mở khóa",
+      okType: "primary",
+      cancelText: "Hủy",
+      icon: <UnlockOutlined style={{ color: "#52c41a" }} />,
       onOk: async () => {
         setLoading(true);
         try {
-          await Promise.all(lockedUsersSelected.map(u => axios.patch(`${API_URL}/users/toggle-active/${u.id}/`, {}, { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } })));
+          await Promise.all(
+            lockedUsersSelected.map((u) =>
+              axios.patch(
+                `${API_URL}/users/toggle-active/${u.id}/`,
+                {},
+                {
+                  headers: {
+                    Authorization: `Bearer ${localStorage.getItem("token")}`,
+                  },
+                }
+              )
+            )
+          );
           message.success("Đã mở khóa tài khoản thành công.");
           fetchUsers();
           setCheckedIds([]);
-        } catch (err) { message.error("Lỗi khi mở khóa."); setLoading(false); }
-      }
+        } catch (err) {
+          message.error("Lỗi khi mở khóa.");
+          setLoading(false);
+        }
+      },
     });
   };
 
   return (
     <AdminPageLayout title="QUẢN LÝ NGƯỜI DÙNG">
-      
       {/* 1. KHU VỰC THỐNG KÊ */}
       <div style={{ marginBottom: 24 }}>
         <StatsSection items={statItems} loading={loading} />
       </div>
 
       {/* 2. THANH CÔNG CỤ (TOOLBAR) */}
-      <Card bodyStyle={{ padding: "24px" }} style={{ marginBottom: 24, borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'space-between', alignItems: 'center' }}>
-          
+      <Card
+        bodyStyle={{ padding: "24px" }}
+        style={{
+          marginBottom: 24,
+          borderRadius: 12,
+          boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 12,
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
           {/* Nhóm Filter bên trái */}
           <Space wrap align="center" size={12}>
-            <Input 
-              placeholder="Tìm tên, email, sđt..." 
-              prefix={<SearchOutlined />} 
-              value={searchTerm} 
-              onChange={e => setSearchTerm(e.target.value)} 
-              style={{ width: 220 }} 
-              allowClear 
+            <Input
+              placeholder="Tìm tên, email, sđt..."
+              prefix={<SearchOutlined />}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={{ width: 220 }}
+              allowClear
             />
-            
-            <Select 
-              value={selectedRole} 
-              onChange={setSelectedRole} 
-              style={{ width: 140 }} 
+
+            <Select
+              value={selectedRole}
+              onChange={setSelectedRole}
+              style={{ width: 140 }}
               options={[
-                {value:"all", label:"Mọi vai trò"}, 
-                {value:"customer", label:"Khách hàng"}, 
-                {value:"seller", label:"Người bán"}, 
-                {value:"admin", label:"Admin"}
-              ]} 
+                { value: "all", label: "Mọi vai trò" },
+                { value: "customer", label: "Khách hàng" },
+                { value: "seller", label: "Người bán" },
+                { value: "admin", label: "Admin" },
+              ]}
             />
-            
-            <Select 
-              value={statusFilter} 
-              onChange={setStatusFilter} 
-              style={{ width: 150 }} 
+
+            <Select
+              value={statusFilter}
+              onChange={setStatusFilter}
+              style={{ width: 150 }}
               options={[
-                {value:"all", label:"Mọi trạng thái"}, 
-                {value:"active", label: STATUS_LABELS.active || "Hoạt động"}, 
-                {value:"locked", label: STATUS_LABELS.locked || "Đã khóa"}
-              ]} 
+                { value: "all", label: "Mọi trạng thái" },
+                { value: "active", label: STATUS_LABELS.active || "Hoạt động" },
+                { value: "locked", label: STATUS_LABELS.locked || "Đã khóa" },
+              ]}
             />
 
             {/* Filter Thời gian */}
-            <Select 
-              value={timeFilter} 
-              onChange={handleTimeChange} 
+            <Select
+              value={timeFilter}
+              onChange={handleTimeChange}
               style={{ width: 130 }}
             >
               <Option value="all">Toàn bộ</Option>
@@ -392,31 +532,54 @@ export default function UsersPage() {
               <Option value="custom">Tùy chọn</Option>
             </Select>
 
-            <RangePicker 
-              value={dateRange} 
-              onChange={handleRangePickerChange} 
-              format="DD/MM/YYYY" 
-              placeholder={['Từ ngày', 'Đến ngày']} 
-              style={{ width: 240 }} 
+            <RangePicker
+              value={dateRange}
+              onChange={handleRangePickerChange}
+              format="DD/MM/YYYY"
+              placeholder={["Từ ngày", "Đến ngày"]}
+              style={{ width: 240 }}
             />
           </Space>
 
           {/* Nhóm Hành động bên phải */}
           <Space>
             {activeUsersSelected.length > 0 && (
-              <Button type="primary" danger icon={<StopOutlined />} onClick={handleBulkLock}>
+              <Button
+                type="primary"
+                danger
+                icon={<StopOutlined />}
+                onClick={handleBulkLock}
+              >
                 Khóa ({activeUsersSelected.length})
               </Button>
             )}
             {lockedUsersSelected.length > 0 && (
-              <Button type="primary" icon={<UnlockOutlined />} onClick={handleBulkUnlock} style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }}>
+              <Button
+                type="primary"
+                icon={<UnlockOutlined />}
+                onClick={handleBulkUnlock}
+                style={{ backgroundColor: "#52c41a", borderColor: "#52c41a" }}
+              >
                 Mở ({lockedUsersSelected.length})
               </Button>
             )}
-            
-            <Button icon={<ReloadOutlined />} onClick={handleReload} title="Làm mới và xóa bộ lọc">Làm mới</Button>
-            <Button icon={<DownloadOutlined />} onClick={handleExportExcel}>Xuất Excel</Button>
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => setTriggerAddUser(true)} style={{ backgroundColor: "#389e0d", borderColor: "#389e0d" }}>
+
+            <Button
+              icon={<ReloadOutlined />}
+              onClick={handleReload}
+              title="Làm mới và xóa bộ lọc"
+            >
+              Làm mới
+            </Button>
+            <Button icon={<DownloadOutlined />} onClick={handleExportExcel}>
+              Xuất Excel
+            </Button>
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={() => setTriggerAddUser(true)}
+              style={{ backgroundColor: "#389e0d", borderColor: "#389e0d" }}
+            >
               Thêm mới
             </Button>
           </Space>
@@ -427,27 +590,34 @@ export default function UsersPage() {
       <div className="users-page-content">
         <UserTable
           // Chú ý: Truyền filteredUsers vào đây thay vì users gốc
-          users={filteredUsers} 
-          setUsers={setUsers} 
+          users={filteredUsers}
+          setUsers={setUsers}
           loading={loading}
           // Reset search/role prop ở UserTable vì filter đã xử lý ở cha
-          searchTerm="" 
-          selectedRole="all" 
-          statusFilter="all" 
-          checkedIds={checkedIds} 
+          searchTerm=""
+          selectedRole="all"
+          statusFilter="all"
+          checkedIds={checkedIds}
           setCheckedIds={setCheckedIds}
-          triggerAddUser={triggerAddUser} 
+          triggerAddUser={triggerAddUser}
           setTriggerAddUser={setTriggerAddUser}
-          onRow={(user) => { setSelectedUser(user); setShowDetailModal(true); }}
+          onRow={(user) => {
+            setSelectedUser(user);
+            setShowDetailModal(true);
+          }}
         />
       </div>
 
       {selectedUser && (
         <UserDetailModal
-          user={selectedUser} 
+          user={selectedUser}
           visible={showDetailModal}
           onClose={() => setShowDetailModal(false)}
-          onUserUpdated={(u) => setUsers(prev => prev.map(old => old.id === u.id ? {...old, ...u} : old))}
+          onUserUpdated={(u) =>
+            setUsers((prev) =>
+              prev.map((old) => (old.id === u.id ? { ...old, ...u } : old))
+            )
+          }
         />
       )}
     </AdminPageLayout>
