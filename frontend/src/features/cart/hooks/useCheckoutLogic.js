@@ -263,7 +263,7 @@ const useCheckoutLogic = () => {
 
     const timer = setTimeout(() => {
       calculateShipping();
-    }, 500);
+    }, 1000);
 
     return () => clearTimeout(timer);
   }, [manualEntry, geoManual, selectedAddress, selectedItems, isGuest]);
