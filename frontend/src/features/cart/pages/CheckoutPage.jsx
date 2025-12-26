@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { useCart } from "../services/CartContext";
+import { useCart, getItemProductId } from "../services/CartContext";
 import {
   Row,
   Col,
@@ -48,6 +48,15 @@ const { TextArea } = Input;
 const CheckoutPage = () => {
   const navigate = useNavigate();
   const { cartItems } = useCart();
+
+  // Helper: tạo stable key dựa trên selected items only
+  const selectedItemsKey = useMemo(() => {
+    return cartItems
+      .filter(item => item.selected)
+      .map(item => getItemProductId(item))
+      .sort()
+      .join(',');
+  }, [cartItems]);
 
   // Set page title
   useEffect(() => {
@@ -105,7 +114,7 @@ const CheckoutPage = () => {
         const pData = item.product_data || {};
         
         // Lấy dữ liệu sơ bộ từ LocalStorage/CartContext
-        let finalPrice = getFinalPrice(item); // [SỬA] Dùng hàm chuẩn
+        let finalPrice = getFinalPrice(item);
         let finalName = pData.name || item.product_name;
         let finalImage = pData.image || pData.main_image?.image;
         let finalStore = pData.store; 
@@ -119,7 +128,6 @@ const CheckoutPage = () => {
                 if (productId) {
                     const freshData = await productApi.getProduct(productId);
                     if (freshData) {
-                        // [SỬA] Dùng hàm chuẩn để lấy giá từ data mới
                         finalPrice = getFinalPrice(freshData); 
                         finalName = freshData.name;
                         finalImage = freshData.image || freshData.main_image?.image;
@@ -147,7 +155,7 @@ const CheckoutPage = () => {
     };
 
     enrichData();
-  }, [cartItems]);
+  }, [selectedItemsKey]);
 
   // 3. Tính lại TỔNG TIỀN
   const calculateSubtotal = useMemo(() => {

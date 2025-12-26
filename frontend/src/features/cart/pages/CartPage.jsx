@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useCart, getItemProductId } from "../services/CartContext";
 import { useAuth } from "../../login_register/services/AuthContext";
 import {
@@ -38,6 +38,14 @@ function CartPage() {
   const navigate = useNavigate();
 
   const { isAuthenticated } = useAuth();
+
+  // Helper: tạo stable key dựa trên product IDs, không dựa trên quantity
+  const getCartStructureKey = useMemo(() => {
+    return cartItems
+      .map(item => getItemProductId(item))
+      .sort()
+      .join(',');
+  }, [cartItems]);
 
   // Set page title
   useEffect(() => {
@@ -83,7 +91,6 @@ function CartPage() {
       cartItems.forEach((item) => {
         const pData = item.product_data || {};
         const pSource = typeof item.product === 'object' ? item.product : {};
-        // Lấy store ID an toàn hơn
         const storeId = pData.store?.id || pData.store || pSource.store?.id || pSource.store;
         
         if (storeId && (typeof storeId === 'number' || typeof storeId === 'string')) {
@@ -106,8 +113,7 @@ function CartPage() {
       setSellerInfos(newInfos);
     };
     loadSellerInfos();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cartItems]);
+  }, [getCartStructureKey, sellerInfos]);
 
   // Load Related Products
   useEffect(() => {
@@ -116,7 +122,6 @@ function CartPage() {
         if (!cartItems || cartItems.length === 0) return;
         const lastItem = cartItems[cartItems.length - 1];
         const lastProd = lastItem?.product_data || lastItem?.product;
-        // Kiểm tra lastProd hợp lệ
         if (!lastProd || (typeof lastProd !== 'object')) return;
 
         const categoryId = await productApi.getCategoryIdFromProduct(lastProd);
@@ -130,7 +135,7 @@ function CartPage() {
       } catch (err) { console.error(err); }
     };
     loadRelated();
-  }, [cartItems]);
+  }, [getCartStructureKey]);
 
   // --- 2. CALCULATIONS ---
 

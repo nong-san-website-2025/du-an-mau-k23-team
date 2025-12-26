@@ -1,5 +1,5 @@
 // src/features/cart/pages/QuantityInput.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useCart } from "../services/CartContext";
 import { Modal, Tooltip, message } from "antd";
 import {
@@ -8,7 +8,6 @@ import {
   PlusOutlined,
   DeleteOutlined,
 } from "@ant-design/icons";
-// Không cần import CSS riêng vì đã gộp vào file chính, hoặc giữ import nếu muốn tách biệt
 
 function QuantityInput({ item, itemId }) {
   const { updateQuantity, removeFromCart } = useCart();
@@ -16,6 +15,8 @@ function QuantityInput({ item, itemId }) {
   const [maxStock, setMaxStock] = useState(
     item?.product_data?.stock || item?.product?.stock || null
   );
+  const debounceTimerRef = useRef(null);
+  const lastApiCallRef = useRef(null);
 
   // Logic fetch stock (Giữ nguyên)
   useEffect(() => {
@@ -31,7 +32,10 @@ function QuantityInput({ item, itemId }) {
   }, [item, maxStock]);
 
   useEffect(() => {
-    setLocalQuantity(item.quantity);
+    if (lastApiCallRef.current !== item.quantity) {
+      setLocalQuantity(item.quantity);
+      lastApiCallRef.current = item.quantity;
+    }
   }, [item.quantity]);
 
   const handleChange = (val) => {
@@ -50,14 +54,32 @@ function QuantityInput({ item, itemId }) {
 
     if (maxStock != null && val > maxStock) {
       setLocalQuantity(maxStock);
+      lastApiCallRef.current = maxStock;
       updateQuantity(itemId, maxStock);
       message.warning(`Số lượng tối đa của sản phẩm này là ${maxStock}`);
       return;
     }
 
     setLocalQuantity(val);
-    updateQuantity(itemId, val);
+    
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    debounceTimerRef.current = setTimeout(() => {
+      lastApiCallRef.current = val;
+      updateQuantity(itemId, val);
+      debounceTimerRef.current = null;
+    }, 500);
   };
+
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, []);
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

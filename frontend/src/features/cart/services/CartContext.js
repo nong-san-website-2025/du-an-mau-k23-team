@@ -31,6 +31,7 @@ export const CartProvider = ({ children }) => {
   const [cartItems, setCartItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const lastFlashSaleFetchRef = useRef(0);
 
   const isAuthenticated = useCallback(
     () => !!localStorage.getItem("token"),
@@ -163,7 +164,13 @@ export const CartProvider = ({ children }) => {
   // Update Flash Sale prices for cart items
   useEffect(() => {
     const updateFlashSalePrices = async () => {
-      if (cartItems.length === 0) return;
+      const now = Date.now();
+      
+      if (now - lastFlashSaleFetchRef.current < 3000) {
+        return;
+      }
+      
+      lastFlashSaleFetchRef.current = now;
       
       try {
         const response = await axios.get(`${process.env.REACT_APP_API_URL}/promotions/flash-sales/`);
@@ -174,40 +181,38 @@ export const CartProvider = ({ children }) => {
         const activeFlashSale = flashSales[0];
         const flashSaleProducts = activeFlashSale.flashsale_products || [];
         
-        const updatedItems = cartItems.map(item => {
-          const productId = getItemProductId(item);
-          const productInFlashSale = flashSaleProducts.find(
-            p => String(p.product_id || p.product) === String(productId)
-          );
-          
-          if (productInFlashSale) {
-            const productData = item.product_data || {};
-            return {
-              ...item,
-              product_data: {
-                ...productData,
-                price: productInFlashSale.flash_price,
-                original_price: productInFlashSale.original_price,
-                flash_sale_price: productInFlashSale.flash_price,
-                discount_percent: Math.round(((productInFlashSale.original_price - productInFlashSale.flash_price) / productInFlashSale.original_price) * 100)
-              }
-            };
-          }
-          return item;
-        });
-        
-        setCartItems(updatedItems);
+        setCartItems((prevItems) => 
+          prevItems.map(item => {
+            const productId = getItemProductId(item);
+            const productInFlashSale = flashSaleProducts.find(
+              p => String(p.product_id || p.product) === String(productId)
+            );
+            
+            if (productInFlashSale) {
+              const productData = item.product_data || {};
+              return {
+                ...item,
+                product_data: {
+                  ...productData,
+                  price: productInFlashSale.flash_price,
+                  original_price: productInFlashSale.original_price,
+                  flash_sale_price: productInFlashSale.flash_price,
+                  discount_percent: Math.round(((productInFlashSale.original_price - productInFlashSale.flash_price) / productInFlashSale.original_price) * 100)
+                }
+              };
+            }
+            return item;
+          })
+        );
       } catch (err) {
         console.error("Lỗi cập nhật giá flash sale:", err);
       }
     };
     
-    if (cartItems.length > 0) {
-      updateFlashSalePrices();
-      const interval = setInterval(updateFlashSalePrices, 30000);
-      return () => clearInterval(interval);
-    }
-  }, [cartItems]);
+    updateFlashSalePrices();
+    const interval = setInterval(updateFlashSalePrices, 3000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Sync guest cart on login
   useEffect(() => {
@@ -362,13 +367,16 @@ export const CartProvider = ({ children }) => {
         const item = cartItems.find((i) => getItemProductId(i) == productId);
         if (!item) return;
 
+        const itemId = item.id;
+
         setCartItems((prev) =>
             prev.map((i) =>
-              String(i.id) === String(item.id) ? { ...i, quantity: newQty } : i
+              String(i.id) === String(itemId) ? { ...i, quantity: newQty } : i
             )
         );
+
         try {
-          await API.patch(`cartitems/${item.id}/`, { quantity: newQty });
+          await API.patch(`cartitems/${itemId}/`, { quantity: newQty });
         } catch (err) {
           await fetchCart(); 
         }
