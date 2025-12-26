@@ -2,7 +2,7 @@
 
 /**
  * Hàm lấy giá bán chuẩn nhất của sản phẩm.
- * Ưu tiên: Giá khuyến mãi (nếu > 0) -> Giá gốc -> Giá thường -> 0
+ * Ưu tiên: Flash Sale (nếu có) -> Giá khuyến mãi (nếu > 0) -> Giá gốc -> Giá thường -> 0
  */
 export const getFinalPrice = (item) => {
   if (!item) return 0;
@@ -12,11 +12,17 @@ export const getFinalPrice = (item) => {
   const p = item.product_data || item.product || item;
 
   // 2. Lấy các giá trị thô và ép kiểu về số (Float)
+  const flashSalePrice = parseFloat(p.flash_sale_price);
   const discount = parseFloat(p.discounted_price);
   const original = parseFloat(p.original_price);
   const standard = parseFloat(p.price);
 
   // 3. LOGIC QUAN TRỌNG:
+  // Ưu tiên Flash Sale trước
+  if (!isNaN(flashSalePrice) && flashSalePrice > 0) {
+    return flashSalePrice;
+  }
+
   // Chỉ lấy giá khuyến mãi nếu nó là số hợp lệ VÀ lớn hơn 0
   if (!isNaN(discount) && discount > 0) {
     return discount;

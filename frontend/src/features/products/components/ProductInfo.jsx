@@ -16,7 +16,8 @@ import {
   ClockCircleOutlined,
   SafetyCertificateOutlined,
   GiftOutlined,
-  InfoCircleOutlined
+  InfoCircleOutlined,
+  FireOutlined
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -44,6 +45,7 @@ const ProductInfo = ({
 
   const [backendPreorderQty, setBackendPreorderQty] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [flashSaleInfo, setFlashSaleInfo] = useState(null);
 
   // --- Logic API giữ nguyên ---
   const fetchBackendPreorderQty = async () => {
@@ -67,7 +69,47 @@ const ProductInfo = ({
   useEffect(() => {
     if (token && product?.id) fetchBackendPreorderQty();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [product.id, token]); 
+  }, [product.id, token]);
+
+  // --- Logic Fetch Flash Sale Data ---
+  const fetchFlashSaleData = async () => {
+    if (!product?.id) return;
+    try {
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/promotions/flash-sales/`);
+      const flashSales = Array.isArray(response.data) ? response.data : (response.data.results || []);
+      
+      if (flashSales && flashSales.length > 0) {
+        const activeFlashSale = flashSales[0];
+        const productInFlashSale = activeFlashSale.flashsale_products?.find(
+          p => {
+            const productId = p.product_id || p.product;
+            return String(productId) === String(product.id);
+          }
+        );
+        
+        if (productInFlashSale) {
+          setFlashSaleInfo({
+            flashSaleId: activeFlashSale.id,
+            flashPrice: productInFlashSale.flash_price,
+            originalPrice: productInFlashSale.original_price,
+            discountPercent: Math.round(((productInFlashSale.original_price - productInFlashSale.flash_price) / productInFlashSale.original_price) * 100)
+          });
+        } else {
+          setFlashSaleInfo(null);
+        }
+      } else {
+        setFlashSaleInfo(null);
+      }
+    } catch (err) {
+      console.error("Lỗi fetch flash sale:", err);
+      setFlashSaleInfo(null);
+    }
+  };
+
+  useEffect(() => {
+    if (product?.id) fetchFlashSaleData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product.id]);
 
   // --- Logic Trạng thái ---
   const rawStatus = (product.availability_status || "").toLowerCase().trim();
@@ -88,8 +130,17 @@ const ProductInfo = ({
   let finalPrice = 0;
   let originalPriceDisplay = 0;
   let hasDiscount = false;
+  let isFlashSale = false;
+  let discountPercent = 0;
 
-  if (!isNaN(rawDiscount) && rawDiscount > 0) {
+  // Kiểm tra Flash Sale trước
+  if (flashSaleInfo) {
+      finalPrice = flashSaleInfo.flashPrice;
+      originalPriceDisplay = flashSaleInfo.originalPrice;
+      hasDiscount = true;
+      isFlashSale = true;
+      discountPercent = flashSaleInfo.discountPercent;
+  } else if (!isNaN(rawDiscount) && rawDiscount > 0) {
       // Có giá giảm -> Giá bán là giá giảm
       finalPrice = rawDiscount;
       hasDiscount = true;
@@ -164,7 +215,11 @@ const ProductInfo = ({
             {finalPrice > 0 ? formatVND(finalPrice) : "Liên hệ"}
           </Text>
 
-          {hasDiscount && product.discount_percent > 0 && (
+          {isFlashSale ? (
+            <Tag color="red" icon={<FireOutlined />} style={{ fontWeight: 600 }}>
+              FLASH SALE -{discountPercent}%
+            </Tag>
+          ) : hasDiscount && product.discount_percent > 0 && (
             <Tag color="red" style={{ fontWeight: 600 }}>
               GIẢM {product.discount_percent}%
             </Tag>
@@ -175,8 +230,32 @@ const ProductInfo = ({
         <div style={{ marginTop: 8 }}>
             <Tag color="geekblue" icon={<SafetyCertificateOutlined />}>Cam kết chính hãng</Tag>
             <Tag color="green" icon={<GiftOutlined />}>Tích điểm GreenPoint</Tag>
+            {isFlashSale && <Tag color="orange" icon={<FireOutlined />}>Đang có Flash Sale</Tag>}
         </div>
       </div>
+
+      {/* Flash Sale Info */}
+      {isFlashSale && flashSaleInfo && (
+        <div style={{ background: "#fff1f0", border: "2px solid #ff4d4f", padding: 16, borderRadius: 8, marginBottom: 24 }}>
+          <Space align="start" style={{ width: "100%" }} direction="vertical" size={8}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <FireOutlined style={{ color: "#ff4d4f", fontSize: 18 }} />
+              <Text strong style={{ color: "#ff4d4f", fontSize: 16 }}>FLASH SALE ĐANG DIỄN RA</Text>
+            </div>
+            <div style={{ fontSize: 13, color: "#666", paddingLeft: 26 }}>
+              <div style={{ marginBottom: 8 }}>
+                <Text>Giá gốc: <Text delete type="secondary" strong>{formatVND(flashSaleInfo.originalPrice)}</Text></Text>
+              </div>
+              <div style={{ marginBottom: 8 }}>
+                <Text>Giá Flash Sale: <Text strong style={{ fontSize: 16, color: "#ff4d4f" }}>{formatVND(flashSaleInfo.flashPrice)}</Text></Text>
+              </div>
+              <div>
+                <Text>Tiết kiệm: <Text strong style={{ color: "#52c41a" }}>{formatVND(flashSaleInfo.originalPrice - flashSaleInfo.flashPrice)} ({flashSaleInfo.discountPercent}%)</Text></Text>
+              </div>
+            </div>
+          </Space>
+        </div>
+      )}
 
       {/* 3. Các thông tin chi tiết */}
       <div style={{ marginBottom: 24 }}>

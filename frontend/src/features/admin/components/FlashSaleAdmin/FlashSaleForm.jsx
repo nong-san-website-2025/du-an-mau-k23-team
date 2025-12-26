@@ -101,8 +101,11 @@ const FlashSaleForm = ({ form, isEdit = false, existingSales = [], currentId = n
     list.forEach((p) => {
       const latestProduct = allProducts.find(prod => prod.id === p.id) || p;
       if (!currentFlashItems[p.id]) {
+        const defaultFlashPrice = p.original_price * 0.9;
+        const defaultDiscount = Math.round(((p.original_price - defaultFlashPrice) / p.original_price) * 100);
         currentFlashItems[p.id] = {
-          flash_price: p.original_price * 0.9,
+          flash_price: defaultFlashPrice,
+          discount_percent: defaultDiscount,
           stock: latestProduct.stock
         };
       } else {
@@ -299,28 +302,88 @@ const FlashSaleForm = ({ form, isEdit = false, existingSales = [], currentId = n
       ),
     },
     {
+      title: "Giá gốc (đ)",
+      width: 120,
+      render: (_, record) => {
+        const latestProduct = allProducts.find(p => p.id === record.id) || record;
+        return <Text type="secondary">{intcomma(latestProduct.original_price)}đ</Text>;
+      },
+    },
+    {
       title: "Giá Flash Sale (đ)",
-      width: 180,
+      width: 160,
       render: (_, record) => {
         const latestProduct = allProducts.find(p => p.id === record.id) || record;
         return (
           <Form.Item
             name={['flash_items', record.id, 'flash_price']}
             style={{ marginBottom: 0 }}
-            rules={[{ required: true, message: "Nhập giá" }]}
+            rules={[
+              { required: true, message: "Nhập giá" },
+              {
+                validator: (_, value) => {
+                  if (!value || value >= latestProduct.original_price) {
+                    return Promise.reject("Giá Flash Sale phải nhỏ hơn giá gốc");
+                  }
+                  return Promise.resolve();
+                }
+              }
+            ]}
           >
             <InputNumber
               style={{ width: "100%" }}
               formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
               parser={value => value.replace(/\$\s?|(,*)/g, '')}
-              addonAfter={<span  style={{ fontSize: 10, color: "red" }}>-{Math.round(((latestProduct.original_price - (form.getFieldValue(['flash_items', record.id, 'flash_price']) || latestProduct.original_price)) / latestProduct.original_price) * 100)}%</span>}
+              onChange={(value) => {
+                const discount = value ? Math.round(((latestProduct.original_price - value) / latestProduct.original_price) * 100) : 0;
+                form.setFieldValue(['flash_items', record.id, 'discount_percent'], Math.min(discount, 100));
+              }}
+              min={0}
             />
           </Form.Item>
         )
       }
     },
     {
-      title: "Số lượng Sale", // Đã sửa lỗi "Ensure this value..." ở đây
+      title: "Chiết khấu (%)",
+      width: 120,
+      render: (_, record) => {
+        const latestProduct = allProducts.find(p => p.id === record.id) || record;
+        return (
+          <Form.Item
+            name={['flash_items', record.id, 'discount_percent']}
+            style={{ marginBottom: 0 }}
+            rules={[
+              { required: true, message: "Nhập %" },
+              {
+                validator: (_, value) => {
+                  if (value === undefined || value === null) return Promise.resolve();
+                  if (value < 0 || value > 100) {
+                    return Promise.reject("Chiết khấu từ 0-100%");
+                  }
+                  return Promise.resolve();
+                }
+              }
+            ]}
+          >
+            <InputNumber
+              style={{ width: "100%" }}
+              min={0}
+              max={100}
+              addonAfter="%"
+              onChange={(value) => {
+                if (value !== undefined && value !== null) {
+                  const flashPrice = latestProduct.original_price * (1 - value / 100);
+                  form.setFieldValue(['flash_items', record.id, 'flash_price'], Math.round(flashPrice));
+                }
+              }}
+            />
+          </Form.Item>
+        );
+      },
+    },
+    {
+      title: "Số lượng Sale",
       width: 140,
       render: (_, record) => {
         const latestProduct = allProducts.find(p => p.id === record.id) || record;

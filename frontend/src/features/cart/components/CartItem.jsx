@@ -15,13 +15,28 @@ const CartItem = ({ item, showPrice = true, buttonStyleOverrides = {} }) => {
   const dividerStyle = buttonStyleOverrides.divider || {};
   const deleteStyle = buttonStyleOverrides.delete || {};
 
+  // Get product info and price
+  const productData = item.product_data || item.product || {};
+  const productName = productData?.name || '';
+  const currentPrice = productData?.price || item.price || 0;
+  const originalPrice = productData?.original_price || 0;
+  const hasFlashSale = productData?.flash_sale_price && productData?.flash_sale_price < (originalPrice || currentPrice);
+  const discountPercent = productData?.discount_percent || 0;
+
   return (
     <div className="cart-item" style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '8px 0' }}>
-      <img src={item.image} alt={item.product?.name || ''} width={64} style={{ borderRadius: 8, boxShadow: '0 1px 4px #0001' }} />
+      <img src={item.image} alt={productName} width={64} style={{ borderRadius: 8, boxShadow: '0 1px 4px #0001' }} />
       <div className="cart-item-info" style={{ flex: 1 }}>
-        <h4 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#222' }}>{item.product?.name || ''}</h4>
-        {showPrice && item.product && (
-          <p style={{ margin: '2px 0 8px 0', color: '#888', fontSize: 14 }}>Giá: <span style={{ color: '#16A34A', fontWeight: 600 }}>{formatVND(item.product.price)}</span></p>
+        <h4 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#222' }}>{productName}</h4>
+        {showPrice && (
+          <p style={{ margin: '2px 0 8px 0', color: '#888', fontSize: 14 }}>
+            Giá: 
+            {hasFlashSale && originalPrice > 0 && (
+              <span style={{ textDecoration: 'line-through', marginLeft: 6, color: '#ccc', fontWeight: 400 }}>{formatVND(originalPrice)}</span>
+            )}
+            <span style={{ color: hasFlashSale ? '#ef4444' : '#16A34A', fontWeight: 600, marginLeft: 8 }}>{formatVND(currentPrice)}</span>
+            {hasFlashSale && <span style={{ color: '#ef4444', fontWeight: 600, marginLeft: 8 }}>-{discountPercent}%</span>}
+          </p>
         )}
         <div className="cart-item-actions" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <button

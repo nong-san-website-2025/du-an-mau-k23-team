@@ -5,7 +5,11 @@ import { intcomma } from '../../../utils/format';
 
 const CartSummary = () => {
   const { cartItems, loading } = useCart();
-  const total = cartItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+  const total = cartItems.reduce((sum, item) => {
+    const productData = item.product_data || item.product || {};
+    const price = productData?.price || item.price || 0;
+    return sum + (price * item.quantity);
+  }, 0);
   const totalQuantity = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
   return (

@@ -16,8 +16,12 @@ const FlashSaleModal = ({ visible, onCancel, onSuccess, record, existingSales })
         const productIds = record.flashsale_products.map((p) => p.product);
         const flashItems = {};
         record.flashsale_products.forEach((p) => {
+          const product = record.flashsale_products.find(fp => fp.product === p.product);
+          const originalPrice = product?.original_price || 0;
+          const discountPercent = originalPrice > 0 ? Math.round(((originalPrice - p.flash_price) / originalPrice) * 100) : 0;
           flashItems[p.product] = {
             flash_price: p.flash_price,
+            discount_percent: discountPercent,
             stock: p.stock,
           };
         });

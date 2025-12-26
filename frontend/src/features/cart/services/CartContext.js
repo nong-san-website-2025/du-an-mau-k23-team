@@ -9,6 +9,7 @@ import React, {
 import API from "../../login_register/services/api";
 import { productApi } from "../../products/services/productApi";
 import { notification } from "antd";
+import axios from "axios";
 
 const CartContext = createContext();
 export const useCart = () => useContext(CartContext);
@@ -158,6 +159,55 @@ export const CartProvider = ({ children }) => {
   useEffect(() => {
     fetchCart();
   }, [fetchCart]);
+
+  // Update Flash Sale prices for cart items
+  useEffect(() => {
+    const updateFlashSalePrices = async () => {
+      if (cartItems.length === 0) return;
+      
+      try {
+        const response = await axios.get(`${process.env.REACT_APP_API_URL}/promotions/flash-sales/`);
+        const flashSales = Array.isArray(response.data) ? response.data : (response.data.results || []);
+        
+        if (!flashSales || flashSales.length === 0) return;
+        
+        const activeFlashSale = flashSales[0];
+        const flashSaleProducts = activeFlashSale.flashsale_products || [];
+        
+        const updatedItems = cartItems.map(item => {
+          const productId = getItemProductId(item);
+          const productInFlashSale = flashSaleProducts.find(
+            p => String(p.product_id || p.product) === String(productId)
+          );
+          
+          if (productInFlashSale) {
+            const productData = item.product_data || {};
+            return {
+              ...item,
+              product_data: {
+                ...productData,
+                price: productInFlashSale.flash_price,
+                original_price: productInFlashSale.original_price,
+                flash_sale_price: productInFlashSale.flash_price,
+                discount_percent: Math.round(((productInFlashSale.original_price - productInFlashSale.flash_price) / productInFlashSale.original_price) * 100)
+              }
+            };
+          }
+          return item;
+        });
+        
+        setCartItems(updatedItems);
+      } catch (err) {
+        console.error("Lỗi cập nhật giá flash sale:", err);
+      }
+    };
+    
+    if (cartItems.length > 0) {
+      updateFlashSalePrices();
+      const interval = setInterval(updateFlashSalePrices, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [cartItems]);
 
   // Sync guest cart on login
   useEffect(() => {
