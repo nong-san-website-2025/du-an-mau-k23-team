@@ -56,7 +56,7 @@ const ProductForm = ({
   const [fileList, setFileList] = useState([]);
   const [primaryImage, setPrimaryImage] = useState(null);
   const [currentTaxRate, setCurrentTaxRate] = useState(0);
-  const [commissionRate, setCommissionRate] = useState(0); 
+  const [commissionRate, setCommissionRate] = useState(0);
 
   // State lưu trữ giá để tính toán real-time
   const [priceData, setPriceData] = useState({
@@ -74,9 +74,9 @@ const ProductForm = ({
     form.setFieldsValue({ subcategory: undefined });
 
     if (selected && selected.commission_rate !== undefined) {
-      setCommissionRate(selected.commission_rate);  
+      setCommissionRate(selected.commission_rate);
     } else {
-      setCommissionRate(0.05); 
+      setCommissionRate(0.05);
     }
   };
 
@@ -205,10 +205,10 @@ const ProductForm = ({
 
   const handleOk = () => {
     form.validateFields().then((values) => {
+      // Validate Logic cơ bản
       if (!values.original_price || values.original_price <= 0) {
         return message.error("Giá gốc phải lớn hơn 0!");
       }
-      // Check logic: Nếu CÓ nhập giá KM thì phải nhỏ hơn giá gốc
       if (values.discounted_price && values.discounted_price > 0 && values.discounted_price >= values.original_price) {
         return message.error("Giá khuyến mãi phải nhỏ hơn giá gốc!");
       }
@@ -216,41 +216,49 @@ const ProductForm = ({
       const formData = new FormData();
 
       Object.entries(values).forEach(([key, value]) => {
+        // --- 1. XỬ LÝ ĐẶC BIỆT CHO GIÁ KHUYẾN MÃI (Đưa lên đầu) ---
+        // Lý do: Cần xử lý ngay cả khi value là null/undefined để gán mặc định bằng giá gốc
+        if (key === 'discounted_price') {
+          if (!value || value <= 0) {
+            // Nếu không nhập hoặc nhập 0 -> Gán bằng giá gốc (Backend hiểu là không giảm)
+            formData.append(key, values.original_price);
+          } else {
+            formData.append(key, value);
+          }
+          return; // Xử lý xong key này thì return
+        }
+
+        // --- 2. KIỂM TRA NULL/UNDEFINED CHO CÁC TRƯỜNG CÒN LẠI ---
+        // Nếu các trường khác bị null thì bỏ qua, không gửi
         if (value === undefined || value === null) return;
 
-        // --- SỬA LỖI TẠI ĐÂY ---
-        // Nếu trường là 'discounted_price':
-        // - Nếu để trống hoặc = 0 -> Gán bằng 'original_price' (Để Backend hiểu là không giảm giá)
-        // - Nếu có giá trị -> Gửi bình thường
-        if (key === 'discounted_price') {
-            if (!value || value <= 0) {
-                formData.append(key, values.original_price); 
-            } else {
-                formData.append(key, value);
-            }
-            return; // Đã xử lý xong key này, return để không chạy xuống dưới
-        }
-        // -----------------------
-
+        // --- 3. XỬ LÝ DATE (Ngày tháng) ---
         if (key === 'season_start' || key === 'season_end') {
           formData.append(key, dayjs(value).format('YYYY-MM-DD'));
-        } else {
+        }
+        // --- 4. CÁC TRƯỜNG THÔNG THƯỜNG ---
+        else {
           formData.append(key, value);
         }
       });
 
+      // --- XỬ LÝ ẢNH (Giữ nguyên logic của bạn) ---
       if (fileList.length === 0) return message.error("Vui lòng tải lên ít nhất 1 ảnh!");
 
       const primaryFile = fileList.find((file) => file.uid === primaryImage) || fileList[0];
 
+      // Trường hợp 1: Ảnh bìa là ảnh mới upload (có originFileObj)
       if (primaryFile?.originFileObj) {
         formData.append("image", primaryFile.originFileObj);
-      } else if (primaryFile && initialValues) {
+      }
+      // Trường hợp 2: Ảnh bìa là ảnh cũ (chỉ gửi ID)
+      else if (primaryFile && initialValues) {
+        // Lưu ý: Đảm bảo Backend nhận được ID (dạng số hoặc chuỗi đều được nhưng phải đúng format)
         formData.append("primary_image_id", primaryFile.uid);
       }
 
+      // Các ảnh phụ (Gallery)
       const newGalleryImages = fileList.filter((f) => f.originFileObj && f.uid !== primaryFile.uid);
-
       newGalleryImages.forEach((file) => {
         formData.append("images", file.originFileObj);
       });
@@ -259,10 +267,16 @@ const ProductForm = ({
         formData.set("status", "pending");
       }
 
+      // --- DEBUG: Kiểm tra dữ liệu trước khi gửi (F12 để xem) ---
+      console.log("Submitting FormData:");
+      for (let pair of formData.entries()) {
+        console.log(pair[0] + ': ' + pair[1]);
+      }
+
       onSubmit(formData);
     }).catch((err) => {
-      console.error(err);
-      message.error("Vui lòng điền đầy đủ các mục bắt buộc (có dấu *).");
+      console.error("Validate Failed:", err);
+      message.error("Vui lòng kiểm tra lại các trường thông tin!");
     });
   };
 

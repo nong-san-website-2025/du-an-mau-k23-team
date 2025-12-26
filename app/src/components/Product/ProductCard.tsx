@@ -27,13 +27,32 @@ const ProductCard: React.FC<ProductCardProps> = ({
 }) => {
   // --- SỬA LỖI 2: Chỉ định rõ kiểu trả về là string hoặc undefined (không được null) ---
   const getProductImage = (p: Product): string | undefined => {
-    if (p.main_image?.image) return p.main_image.image;
-    if (p.images && p.images.length > 0) return p.images[0].image;
+    // Ưu tiên 1: main_image là Object (như Detail)
+    if (
+      p.main_image &&
+      typeof p.main_image === "object" &&
+      p.main_image.image
+    ) {
+      return p.main_image.image;
+    }
 
-    // Nếu p.image là null thì trả về undefined để thỏa mãn TypeScript
-    return p.image || undefined;
+    // Ưu tiên 2: main_image là String (URL trực tiếp - thường gặp ở List)
+    if (p.main_image && typeof p.main_image === "string") {
+      return p.main_image;
+    }
+
+    // Ưu tiên 3: Mảng images
+    if (p.images && Array.isArray(p.images) && p.images.length > 0) {
+      return p.images[0].image;
+    }
+
+    // Ưu tiên 4: Trường image gốc (nếu có)
+    if (p.image && typeof p.image === "string") {
+      return p.image;
+    }
+
+    return undefined;
   };
-
   // Tính phần trăm giảm giá
   const discountPercent =
     product.original_price && product.original_price > product.price

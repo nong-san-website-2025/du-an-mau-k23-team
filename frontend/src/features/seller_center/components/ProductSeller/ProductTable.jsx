@@ -15,6 +15,10 @@ import StatusTag from "../../../../components/StatusTag";
 const { Text } = Typography;
 const { useBreakpoint } = Grid;
 
+
+const API_URL = process.env.REACT_APP_API_URL;
+const SERVER_URL = API_URL ? API_URL.replace('/api', '') : '';
+
 const ProductTable = ({
   data,
   loading,
@@ -55,13 +59,23 @@ const ProductTable = ({
       },
       sortDirections: ["ascend", "descend"],
       render: (_, record) => {
-        // Logic lấy ảnh: Ưu tiên ảnh chính -> ảnh đầu tiên -> ảnh fallback
         let imageUrl = null;
+        // Logic lấy ảnh (đã sửa lỗi chính tả imagage)
         if (Array.isArray(record.images) && record.images.length > 0) {
           imageUrl = record.images.find((img) => img.is_primary)?.image || record.images[0]?.image;
         }
-        if (!imageUrl && record.image) imageUrl = record.image;
 
+        // Fallback
+        if (!imageUrl) {
+          if (record.image) imageUrl = record.image;
+          else if (record.main_image?.image) imageUrl = record.main_image.image;
+        }
+
+        // Nối Domain: Dùng SERVER_URL thay vì API_URL
+        if (imageUrl && !imageUrl.startsWith("http")) {
+          // Kết quả sẽ là: http://192.168.89.159:8000 + /media/...
+          imageUrl = `${SERVER_URL}${imageUrl}`;
+        }
         const isPendingUpdate = record.status === "pending_update";
 
         return (

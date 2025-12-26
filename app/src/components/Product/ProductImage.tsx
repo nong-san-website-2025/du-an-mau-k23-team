@@ -1,44 +1,43 @@
 // src/components/Product/ProductImage.tsx
 import React, { useState } from 'react';
-import { IonImg, IonIcon } from '@ionic/react';
+import { IonIcon } from '@ionic/react';
 import { leafOutline } from 'ionicons/icons'; 
 import { resolveImageUrl } from '../../utils/formatPrice';
 
 interface ProductImageProps {
-  src?: string | null; // 👇 Cho phép nhận null để linh hoạt hơn (dù ProductCard đã chặn rồi)
+  src?: string | null;
   alt: string;
   className?: string;
-  height?: string;
-  style?: React.CSSProperties; // 👇 QUAN TRỌNG: Phải thêm dòng này để nhận style từ cha
+  style?: React.CSSProperties;
 }
 
 const ProductImage: React.FC<ProductImageProps> = ({ 
   src, 
   alt, 
   className, 
-  style // 👇 Nhận prop style
+  style 
 }) => {
   const [error, setError] = useState(false);
   
-  // Xử lý src: Nếu là null/undefined hoặc chuỗi rỗng thì coi như lỗi luôn
+  // Xử lý src
   const resolvedSrc = src ? resolveImageUrl(src) : null;
 
-  // Merge style mặc định với style được truyền vào
+  // Style chung
   const finalStyle: React.CSSProperties = {
     width: "100%",
     height: "100%",
-    objectFit: "cover",
+    objectFit: "cover", // Đảm bảo ảnh không bị méo trong khung vuông
     display: "block",
-    ...style, // Ưu tiên style từ cha truyền xuống
+    ...style, 
   };
 
-  // Logic hiển thị fallback (khi không có ảnh hoặc load lỗi)
+  // Nếu không có src hoặc load lỗi -> Hiện Fallback
   if (!resolvedSrc || error) {
     return (
       <div 
         className={`fallback-container ${className || ''}`}
         style={{
-          ...finalStyle, // Vẫn giữ kích thước quy định
+          ...finalStyle,
           backgroundColor: "#f0f2f5",
           display: "flex",
           flexDirection: "column",
@@ -47,19 +46,21 @@ const ProductImage: React.FC<ProductImageProps> = ({
           color: "#92949c",
         }}
       >
-        {/* Fallback Icon */}
         <IonIcon icon={leafOutline} style={{ fontSize: "32px", opacity: 0.5 }} />
       </div>
     );
   }
 
+  // 🔥 THAY ĐỔI QUAN TRỌNG: Dùng thẻ <img> thường thay vì IonImg
+  // Lý do: Thẻ img hoạt động tốt hơn với position: absolute và object-fit
   return (
-    <IonImg
+    <img
       src={resolvedSrc}
       alt={alt}
-      onIonError={() => setError(true)}
+      onError={() => setError(true)}
       className={className}
       style={finalStyle}
+      loading="lazy" // Vẫn giữ lazy load của trình duyệt
     />
   );
 };

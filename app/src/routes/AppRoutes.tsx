@@ -12,9 +12,13 @@ import Subcategory from "../components/Product/SubCategory";
 import ProductList from "../components/Product/ProductList";
 import ProductDetail from "../components/Product/ProductDetail";
 import LoginPage from "../pages/Auth/AuthPage";
-import CheckoutPage from "../pages/CheckoutPage"; // <--- Import trang mới
+import CheckoutPage from "../pages/CheckoutPage";
 import AuthPage from "../pages/Auth/AuthPage";
 import AddressBookPage from "../pages/User/AddressBookPage";
+
+// 👇 1. Import trang OrderHistoryPage mới tạo
+import OrderHistoryPage from "../pages/Orders/OrderHistoryPage";
+import OrderDetail from "../components/Orders/OrderDetail";
 
 const AppRoutes: React.FC = () => {
   return (
@@ -23,15 +27,23 @@ const AppRoutes: React.FC = () => {
       <Route exact path="/category" component={Tab2} />
       <Route exact path="/category/:categoryId" component={Subcategory} />
 
-      {/* 👇 Thêm route này */}
       <Route
         exact
         path="/subcategory/:subcategoryId/products"
         component={ProductList}
       />
+
       <Route exact path="/checkout">
         <CheckoutPage />
       </Route>
+
+      {/* 👇 2. THÊM ROUTE CHO LỊCH SỬ ĐƠN HÀNG Ở ĐÂY */}
+      <Route exact path="/orders" component={OrderHistoryPage} />
+
+      <Route path="/orders/:id">
+        <OrderDetail />
+      </Route>
+
 
       <Route exact path="/product/:id" component={ProductDetail} />
       <Route exact path="/login" component={LoginPage} />
@@ -39,7 +51,7 @@ const AppRoutes: React.FC = () => {
         <AuthPage />
       </Route>
       <Route path="/address-book" exact={true}>
-        <AddressBookPage/>
+        <AddressBookPage />
       </Route>
       <Route path="/favorite" component={Tab3} />
       <Route path="/notification" component={Tab4} />
