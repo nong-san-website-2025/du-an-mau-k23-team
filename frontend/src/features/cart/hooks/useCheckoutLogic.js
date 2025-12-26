@@ -3,6 +3,7 @@ import { useCart } from "../services/CartContext";
 import { toast } from "react-toastify";
 import API from "../../login_register/services/api";
 import { message, notification } from "antd";
+import { getFinalPrice } from "../../../utils/priceUtils";
 import { useNavigate } from "react-router-dom";
 
 const useCheckoutLogic = () => {
@@ -316,14 +317,13 @@ const useCheckoutLogic = () => {
     // 3. Làm sạch danh sách sản phẩm (Cực quan trọng)
     const cleanItems = selectedItems
       .map((item) => {
-        // Lấy ID an toàn
-        const pid = item.product?.id || item.product_data?.id || item.product;
-        const prc = item.product?.price || item.product_data?.price || 0;
+        const pid = item.product?.id || item.product_data?.id || item.product; // Lấy ID an toàn
+        const finalPrice = getFinalPrice(item); // [FIX] Lấy giá cuối cùng (đã áp dụng flash sale)
 
         return {
           product: parseInt(pid),
           quantity: parseInt(item.quantity) || 1,
-          price: parseFloat(prc),
+          price: finalPrice, // Gửi giá chính xác lên backend
         };
       })
       .filter((i) => !isNaN(i.product) && i.product > 0); // Lọc bỏ ID lỗi (NaN)

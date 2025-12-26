@@ -68,6 +68,15 @@ export const CartProvider = ({ children }) => {
           savedSelectedIds = JSON.parse(localStorage.getItem(CART_SELECTED_KEY)) || [];
       } catch {}
 
+      // [FIX] Lấy dữ liệu flash sale một lần khi tải giỏ hàng để đảm bảo giá chính xác và ổn định.
+      let flashSaleProducts = [];
+      try {
+        const flashSaleRes = await axios.get(`${process.env.REACT_APP_API_URL}/promotions/flash-sales/`);
+        const activeFlashSale = (Array.isArray(flashSaleRes.data) ? flashSaleRes.data[0] : flashSaleRes.data.results?.[0]);
+        if (activeFlashSale) flashSaleProducts = activeFlashSale.flashsale_products || [];
+      } catch (e) { console.warn("Không thể tải dữ liệu flash sale.", e); }
+
+
       if (isAuthenticated()) {
         const res = await API.get("cartitems/");
         const items = res.data;
@@ -102,7 +111,15 @@ export const CartProvider = ({ children }) => {
               }
             }
 
-            // [FIX 3] Chỉ chọn nếu ID có trong LocalStorage
+            // [FIX] Kiểm tra và áp dụng giá flash sale ngay sau khi có thông tin sản phẩm.
+            const productInFlashSale = flashSaleProducts.find(
+              p => String(p.product_id || p.product) === String(productInfo.id)
+            );
+            if (productInFlashSale) {
+              productInfo.original_price = productInFlashSale.original_price;
+              productInfo.flash_sale_price = productInFlashSale.flash_price;
+            }
+
             const currentId = getItemProductId({ ...item, product_data: productInfo });
             const isSelected = savedSelectedIds.includes(currentId);
 
@@ -160,59 +177,6 @@ export const CartProvider = ({ children }) => {
   useEffect(() => {
     fetchCart();
   }, [fetchCart]);
-
-  // Update Flash Sale prices for cart items
-  useEffect(() => {
-    const updateFlashSalePrices = async () => {
-      const now = Date.now();
-      
-      if (now - lastFlashSaleFetchRef.current < 3000) {
-        return;
-      }
-      
-      lastFlashSaleFetchRef.current = now;
-      
-      try {
-        const response = await axios.get(`${process.env.REACT_APP_API_URL}/promotions/flash-sales/`);
-        const flashSales = Array.isArray(response.data) ? response.data : (response.data.results || []);
-        
-        if (!flashSales || flashSales.length === 0) return;
-        
-        const activeFlashSale = flashSales[0];
-        const flashSaleProducts = activeFlashSale.flashsale_products || [];
-        
-        setCartItems((prevItems) => 
-          prevItems.map(item => {
-            const productId = getItemProductId(item);
-            const productInFlashSale = flashSaleProducts.find(
-              p => String(p.product_id || p.product) === String(productId)
-            );
-            
-            if (productInFlashSale) {
-              const productData = item.product_data || {};
-              return {
-                ...item,
-                product_data: {
-                  ...productData,
-                  price: productInFlashSale.flash_price,
-                  original_price: productInFlashSale.original_price,
-                  flash_sale_price: productInFlashSale.flash_price,
-                  discount_percent: Math.round(((productInFlashSale.original_price - productInFlashSale.flash_price) / productInFlashSale.original_price) * 100)
-                }
-              };
-            }
-            return item;
-          })
-        );
-      } catch (err) {
-        console.error("Lỗi cập nhật giá flash sale:", err);
-      }
-    };
-    
-    updateFlashSalePrices();
-    const interval = setInterval(updateFlashSalePrices, 3000);
-    return () => clearInterval(interval);
-  }, []);
 
   // Sync guest cart on login
   useEffect(() => {

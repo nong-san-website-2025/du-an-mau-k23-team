@@ -240,7 +240,7 @@ const CheckoutPage = () => {
 
   const onPlaceOrder = async () => {
     try {
-      const orderPayload = {
+       const orderPayload = {
         shop_voucher_code: voucherData.selectedShopVoucher?.voucher?.code,
         ship_voucher_code: voucherData.selectedShipVoucher?.voucher?.code,
       };
