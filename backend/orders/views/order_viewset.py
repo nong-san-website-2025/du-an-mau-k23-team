@@ -25,6 +25,8 @@ from users.utils_views import get_client_ip
 
 from vnpay_python.vnpay import vnpay 
 
+vnp_config = settings.VNPAY_CONFIG
+
 from ..models import Order, OrderItem
 from ..serializers import OrderSerializer, OrderCreateSerializer
 from ..services import complete_order, reduce_stock_for_order, OrderProcessingError
@@ -172,21 +174,21 @@ class OrderViewSet(viewsets.ModelViewSet):
         vnp = vnpay() 
         vnp.requestData['vnp_Version'] = '2.1.0'
         vnp.requestData['vnp_Command'] = 'pay'
-        vnp.requestData['vnp_TmnCode'] = settings.VNPAY_TMN_CODE
+        vnp.requestData['vnp_TmnCode'] = vnp_config['TMN_CODE']
         vnp.requestData['vnp_Amount'] = amount
         vnp.requestData['vnp_CurrCode'] = 'VND'
-        vnp.requestData['vnp_TxnRef'] = str(order.id)
+        import time
+        vnp.requestData['vnp_TxnRef'] = f"{order.id}_{int(time.time())}"
         vnp.requestData['vnp_OrderInfo'] = order_desc
         vnp.requestData['vnp_OrderType'] = "billpayment"
         vnp.requestData['vnp_Locale'] = 'vn'
         vnp.requestData['vnp_CreateDate'] = datetime.now().strftime('%Y%m%d%H%M%S')
         vnp.requestData['vnp_IpAddr'] = ip_addr
-        vnp.requestData['vnp_ReturnUrl'] = settings.VNPAY_RETURN_URL
-
+        vnp.requestData['vnp_ReturnUrl'] = vnp_config['RETURN_URL']
         if bank_code:
             vnp.requestData['vnp_BankCode'] = bank_code
 
-        vnpay_payment_url = vnp.get_payment_url(settings.VNPAY_URL, settings.VNPAY_HASH_SECRET)
+        vnpay_payment_url = vnp.get_payment_url(vnp_config['VNPAY_URL'], vnp_config['HASH_SECRET_KEY'])
         return Response({'payment_url': vnpay_payment_url})
 
     @action(detail=True, methods=['post'], url_path='cancel')

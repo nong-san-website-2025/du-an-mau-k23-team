@@ -4,7 +4,7 @@ import urllib.parse
 
 class vnpay:
     def __init__(self):
-        # Chuyển vào hàm init để mỗi lần gọi là một biến mới riêng biệt
+        # Khởi tạo dict để chứa dữ liệu request và response
         self.requestData = {}
         self.responseData = {}
 
@@ -18,6 +18,7 @@ class vnpay:
         seq = 0
         for key, val in inputData:
             if seq == 1:
+                # Dùng quote_plus để biến khoảng trắng thành dấu + (theo chuẩn VNPay)
                 queryString = queryString + "&" + key + '=' + urllib.parse.quote_plus(str(val))
             else:
                 seq = 1
@@ -36,18 +37,22 @@ class vnpay:
         vnp_SecureHash = self.responseData.get('vnp_SecureHash')
         
         # Loại bỏ các tham số hash để tính toán lại
-        if 'vnp_SecureHash' in self.responseData:
-            self.responseData.pop('vnp_SecureHash')
+        # Copy dictionary để không ảnh hưởng dữ liệu gốc
+        res_data = self.responseData.copy()
+        
+        if 'vnp_SecureHash' in res_data:
+            res_data.pop('vnp_SecureHash')
 
-        if 'vnp_SecureHashType' in self.responseData:
-            self.responseData.pop('vnp_SecureHashType')
+        if 'vnp_SecureHashType' in res_data:
+            res_data.pop('vnp_SecureHashType')
 
-        inputData = sorted(self.responseData.items())
+        inputData = sorted(res_data.items())
         hasData = ''
         seq = 0
         
         # Logic tạo chuỗi để hash lại
         for key, val in inputData:
+            # Chỉ lấy các tham số bắt đầu bằng vnp_
             if str(key).startswith('vnp_'):
                 if seq == 1:
                     hasData = hasData + "&" + str(key) + '=' + urllib.parse.quote_plus(str(val))
@@ -57,6 +62,7 @@ class vnpay:
 
         hashValue = self.__hmacsha512(secret_key, hasData)
 
+        # In ra log để debug nếu cần thiết
         print(f'Validate debug:\nHasData: {hasData}\nServerHash: {hashValue}\nVNPAYHash: {vnp_SecureHash}')
 
         return vnp_SecureHash == hashValue

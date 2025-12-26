@@ -6,7 +6,9 @@ from .models import Preorder
 from products.models import Product
 from promotions.models import UserVoucher, Voucher  # <--- THÊM DÒNG NÀY
 from decimal import Decimal
+from collections import defaultdict
 from django.db.models import F
+import traceback
 
 from django.db import transaction
 
@@ -145,73 +147,68 @@ class OrderItemSerializer(serializers.ModelSerializer):
 # ORDER CREATE SERIALIZER (ĐÃ SỬA LOGIC VOUCHER)
 # =========================================
 class OrderCreateSerializer(serializers.ModelSerializer):
-    items = OrderItemSerializer(many=True, required=False, write_only=True)
-    # [NEW] Thêm field voucher_code
+    items = OrderItemSerializer(many=True, required=True, write_only=True)
     shop_voucher_code = serializers.CharField(write_only=True, required=False, allow_blank=True, allow_null=True)
+
     class Meta:
         model = Order
         fields = "__all__"
-        read_only_fields = ["user", "created_at"]
+        read_only_fields = ["user", "created_at", "total_price", "discount_amount"]
 
     def validate(self, attrs):
+        """
+        Validate dữ liệu đầu vào:
+        1. Kiểm tra danh sách items có rỗng không.
+        2. Kiểm tra tồn kho của từng sản phẩm.
+        """
         items_data = self.initial_data.get('items')
-        if not items_data or not isinstance(items_data, list) or len(items_data) == 0:
-            raise serializers.ValidationError({'items': 'Danh sách sản phẩm không hợp lệ hoặc rỗng.'})
         
-        # Danh sách chứa các sản phẩm bị lỗi tồn kho
+        # 1. Kiểm tra danh sách rỗng
+        if not items_data or not isinstance(items_data, list) or len(items_data) == 0:
+            raise serializers.ValidationError({'items': 'Giỏ hàng không được để trống.'})
+        
+        # 2. Kiểm tra tồn kho
         unavailable_items = []
-
+        
         for item in items_data:
             product_id = item.get('product')
-            # Lấy quantity, đảm bảo là số nguyên
             try:
                 quantity = int(item.get('quantity', 0))
             except (ValueError, TypeError):
                 continue
 
-            if not product_id:
+            if not product_id or quantity <= 0: 
                 continue
             
             try:
                 product = Product.objects.get(id=product_id)
                 
-                # Kiểm tra tồn kho (Giả sử field là stock_quantity hoặc stock)
-                current_stock = product.stock  # Hãy thay bằng tên field thực tế trong model Product của bạn
-                
-                if current_stock < quantity:
-                    # Lấy URL ảnh để hiển thị đẹp trên Modal
+                # Kiểm tra số lượng tồn kho
+                if product.stock < quantity:
+                    # Lấy URL ảnh để hiển thị lỗi frontend
                     image_url = ""
                     if product.images.exists():
-                        # Lưu ý: request context cần thiết để build full URL
                         request = self.context.get('request')
                         img_path = product.images.first().image.url
-                        if request:
-                            image_url = request.build_absolute_uri(img_path)
-                        else:
-                            image_url = img_path
+                        image_url = request.build_absolute_uri(img_path) if request else img_path
 
-                    # Thêm vào danh sách lỗi
                     unavailable_items.append({
                         "id": product.id,
                         "name": product.name,
                         "image": image_url,
-                        "available_quantity": current_stock,
+                        "available_quantity": product.stock,
                         "requested_quantity": quantity
                     })
-
             except Product.DoesNotExist:
-                # Nếu sản phẩm không tồn tại (đã bị xóa), cũng coi là lỗi
-                unavailable_items.append({
-                    "id": product_id,
-                    "name": f"Sản phẩm ID {product_id}",
-                    "image": "",
-                    "available_quantity": 0,
-                    "requested_quantity": quantity
+                 unavailable_items.append({
+                     "id": product_id, 
+                     "name": "Sản phẩm không tồn tại", 
+                     "available_quantity": 0, 
+                     "requested_quantity": quantity
                 })
 
-        # Nếu có bất kỳ sản phẩm nào lỗi, chặn luôn việc tạo đơn
+        # Nếu có sản phẩm lỗi, chặn tạo đơn ngay lập tức
         if unavailable_items:
-            # Trả về đúng key 'unavailable_items' mà React đang chờ
             raise serializers.ValidationError({
                 "unavailable_items": unavailable_items,
                 "detail": "Một số sản phẩm trong giỏ hàng không đủ số lượng."
@@ -220,106 +217,104 @@ class OrderCreateSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
-        items_data = validated_data.pop('items', [])
-        voucher_code = validated_data.pop('shop_voucher_code', None) 
+        """
+        Logic tạo đơn hàng:
+        1. Lấy giá chuẩn từ Database (Tránh lỗi 0đ).
+        2. Tách đơn theo Seller.
+        3. Tính toán tổng tiền.
+        4. Áp dụng Voucher (nếu có).
+        """
+        items_data_raw = validated_data.pop('items', [])
+        voucher_code = validated_data.pop('shop_voucher_code', None)
         
         request = self.context.get('request')
-        user = getattr(request, 'user', None)
-        if user is None or user.is_anonymous:
-            raise serializers.ValidationError({'user': 'Bạn phải đăng nhập để đặt hàng.'})
+        validated_data.pop('user', None)
 
+        user = request.user
+
+        # Set mặc định status là pending
         if 'status' not in validated_data:
             validated_data['status'] = 'pending'
 
         try:
-            # Import models cần thiết
-            from products.models import Product
-            from collections import defaultdict
-            from promotions.models import UserVoucher
+            seller_items_map = defaultdict(list)
             
-            seller_items = defaultdict(list)
-            request_items = self.initial_data.get('items', [])
+            # --- GIAI ĐOẠN 1: CHUẨN BỊ DỮ LIỆU & LẤY GIÁ TỪ DB ---
+            for item_input in items_data_raw:
+                # item_input là OrderedDict từ validated_data
+                product = item_input.get('product') 
+                quantity = item_input.get('quantity', 1)
+                
+                if not product: continue 
 
-            # --- Giai đoạn 1: Chuẩn bị dữ liệu items ---
-            for i, item_data in enumerate(request_items):
-                item_data_copy = item_data.copy()
-                item_data_copy.pop('order', None)
-                product_id = item_data_copy.get('product')
-                if not product_id: continue
+                # [QUAN TRỌNG] Lấy giá từ Database, không dùng giá từ frontend gửi lên
+                original_price = product.original_price or Decimal('0')
+                discounted_price = product.discounted_price # Có thể là None
+                
+                # Logic chọn giá: Ưu tiên giá giảm
+                final_price = discounted_price if discounted_price is not None else original_price
+                final_price = Decimal(str(final_price)) # Đảm bảo là Decimal
 
-                try:
-                    product = Product.objects.get(id=product_id)
-                    first_image = product.images.first()
-                    item_data_copy['product_image'] = first_image.image.name if first_image else ""
-                    item_data_copy['unit'] = product.unit
-                    
-                    # [FIX] Sử dụng giá hợp lệ từ Product (không có field "price")
-                    # Ưu tiên giá giảm, nếu không có thì dùng giá gốc
-                    if 'price' not in item_data_copy or not item_data_copy['price']:
-                        item_data_copy['price'] = product.discounted_price or product.original_price
-                    
-                    item_data_copy['_product'] = product
-                except Product.DoesNotExist:
-                    continue
+                # Lấy ảnh và unit
+                first_image = product.images.first()
+                image_url = first_image.image.name if first_image else ""
+                unit = product.unit
 
-                if not item_data_copy.get('quantity') or not item_data_copy.get('price'):
-                    continue
+                item_payload = {
+                    'product': product,
+                    'quantity': quantity,
+                    'price': final_price, # Giá chuẩn từ DB
+                    'product_image': image_url,
+                    'unit': unit
+                }
 
-                seller_id = product.seller.id
-                seller_items[seller_id].append(item_data_copy)
+                # Gom nhóm theo Seller ID
+                seller_items_map[product.seller.id].append(item_payload)
 
             created_orders = []
-            
-            # --- Giai đoạn 2: Transaction Atomic (Tạo đơn & Tính tiền) ---
-            with transaction.atomic():
-                for seller_id, items in seller_items.items():
-                    # [SỬA LẠI] Tính tổng tiền dùng Decimal tuyệt đối
-                    # Lưu ý: price lấy từ item_data có thể là float/str, cần ép về Decimal
-                    total_price = sum(
-                        Decimal(str(item.get('price', 0))) * int(item.get('quantity', 0))
-                        for item in items
-                    )
 
-                    order_data = validated_data.copy()
-                    order_data.pop('user', None)
+            # --- GIAI ĐOẠN 2: TẠO ORDER (Transaction Atomic) ---
+            with transaction.atomic():
+                # Duyệt qua từng seller để tách đơn
+                for seller_id, items_list in seller_items_map.items():
                     
-                    # Xử lý shipping fee (Chuyển sang Decimal)
-                    raw_shipping = self.initial_data.get('shipping_fee', 0)
-                    if 'shipping_fee' in order_data and order_data['shipping_fee'] is not None:
-                         raw_shipping = order_data['shipping_fee']
+                    # 1. Tính tổng tiền hàng (Items Total)
+                    total_goods_price = sum(item['price'] * item['quantity'] for item in items_list)
                     
+                    # 2. Xử lý Shipping Fee
+                    raw_shipping = validated_data.get('shipping_fee', 0)
                     shipping_fee = Decimal(str(raw_shipping))
+                    
+                    # 3. Tính Initial Total (Chưa trừ voucher)
+                    initial_total = total_goods_price + shipping_fee
+                    
+                    order_data = validated_data.copy()
+                    order_data['total_price'] = initial_total
                     order_data['shipping_fee'] = shipping_fee
                     
-                    # Tổng tiền = Tiền hàng + Ship
-                    order_data['total_price'] = total_price + shipping_fee
-
-                    # Tạo đơn hàng
+                    # Tạo Order
                     order = Order.objects.create(user=user, **order_data)
 
-                    # Tạo order items
-                    for item_data_copy in items:
-                        product = item_data_copy['_product']
-                        # Ép kiểu giá về Decimal trước khi lưu
-                        price_decimal = Decimal(str(item_data_copy.get('price', 0)))
-                        
+                    # 4. Tạo Order Items
+                    for item_info in items_list:
                         OrderItem.objects.create(
                             order=order,
-                            product=product,
-                            quantity=item_data_copy.get('quantity', 1),
-                            price=price_decimal,
-                            product_image=item_data_copy.get('product_image', ''),
-                            unit=item_data_copy.get('unit', '')
+                            product=item_info['product'],
+                            quantity=item_info['quantity'],
+                            price=item_info['price'],
+                            product_image=item_info['product_image'],
+                            unit=item_info['unit']
                         )
-
+                    
                     created_orders.append(order)
 
-            # ==========================================================
-            # [SỬA LẠI] LOGIC VOUCHER (Move ra ngoài atomic block để tránh broken transaction)
-            # ==========================================================
+            # --- GIAI ĐOẠN 3: XỬ LÝ VOUCHER ---
+            # Logic voucher được thực hiện sau khi tạo đơn để tránh lock DB quá lâu
             if voucher_code and created_orders:
                 print(f">>> XỬ LÝ VOUCHER CODE: {voucher_code}")
-                uv = UserVoucher.objects.select_for_update().filter(
+                
+                # Tìm Voucher
+                uv = UserVoucher.objects.filter(
                     user=user, 
                     voucher__code=voucher_code,
                     is_used=False 
@@ -330,7 +325,7 @@ class OrderCreateSerializer(serializers.ModelSerializer):
                     voucher_applied = False
 
                     for order in created_orders:
-                        # 1. Check Shop Scope
+                        # 1. Check Shop Scope (Voucher của shop nào chỉ áp dụng cho đơn shop đó)
                         first_item = order.items.first()
                         if not first_item: continue
                         order_seller_id = first_item.product.seller.id
@@ -340,7 +335,7 @@ class OrderCreateSerializer(serializers.ModelSerializer):
                                 continue
                         
                         # 2. Check giá trị tối thiểu
-                        current_total = order.total_price # Đã là Decimal
+                        current_total = order.total_price # Decimal
                         min_val = Decimal(str(voucher.min_order_value or 0))
                         
                         if voucher.min_order_value and current_total < min_val:
@@ -363,9 +358,9 @@ class OrderCreateSerializer(serializers.ModelSerializer):
                             free_amt = Decimal(str(voucher.freeship_amount or 0))
                             discount = min(free_amt, ship_fee)
 
-                        # 4. Áp dụng
+                        # 4. Áp dụng vào đơn hàng
                         if discount > 0:
-                            # Đảm bảo không âm
+                            # Đảm bảo discount không lớn hơn tổng tiền
                             if discount > current_total:
                                 discount = current_total
                             
@@ -377,8 +372,12 @@ class OrderCreateSerializer(serializers.ModelSerializer):
                             
                             print(f">>> Voucher OK! Giảm: {discount}. Tổng mới: {order.total_price}")
                             voucher_applied = True
-                            break # Mỗi mã chỉ áp dụng 1 đơn trong chùm đơn (tùy logic)
+                            
+                            # Break vòng lặp nếu muốn mã chỉ áp dụng cho 1 đơn trong giỏ
+                            # Nếu muốn áp dụng cho tất cả đơn thỏa mãn thì bỏ break
+                            break 
                     
+                    # Đánh dấu voucher đã sử dụng
                     if voucher_applied:
                         uv.mark_used_once()
                         if hasattr(voucher, 'used_quantity'):
@@ -387,15 +386,20 @@ class OrderCreateSerializer(serializers.ModelSerializer):
                 else:
                     print(">>> Voucher không hợp lệ hoặc đã hết lượt")
 
+            # Lưu cache danh sách đơn đã tạo (Optional)
             self._created_orders = created_orders
-            return created_orders[0] if created_orders else None
+            
+            if not created_orders:
+                raise serializers.ValidationError("Không tạo được đơn hàng nào (Lỗi xử lý items).")
+            
+            # Trả về đơn đầu tiên (để Frontend redirect hoặc hiển thị)
+            return created_orders[0]
 
         except Exception as e:
-            # In lỗi chi tiết ra console server để debug
+            # In lỗi chi tiết ra terminal server để debug
             print(f"Error creating order: {e}")
-            import traceback
             traceback.print_exc()
-            raise serializers.ValidationError({'error': f'Lỗi khi tạo đơn hàng: {str(e)}'})
+            raise serializers.ValidationError({'error': f'Lỗi tạo đơn: {str(e)}'})
 
 # =========================================
 # OTHER SERIALIZERS

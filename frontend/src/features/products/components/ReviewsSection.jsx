@@ -1,14 +1,14 @@
 import React, { useMemo } from "react";
-import { 
-  Card, 
-  Rate, 
-  List, 
-  Typography, 
-  Tag, 
-  Avatar, 
-  Row, 
-  Col, 
-  Progress, 
+import {
+  Card,
+  Rate,
+  List,
+  Typography,
+  Tag,
+  Avatar,
+  Row,
+  Col,
+  Progress,
   Divider,
   Space,
   Image
@@ -20,11 +20,11 @@ const { Title, Text, Paragraph } = Typography;
 // --- [MỚI] Hàm xử lý đường dẫn ảnh ---
 const getImageUrl = (imgData) => {
   if (!imgData) return "";
-  
+
   // Lấy đường dẫn từ object hoặc string
   const src = imgData.image || imgData.url || imgData;
   if (!src) return "";
-  
+
   // Nếu là link đầy đủ (http...) thì giữ nguyên
   if (typeof src === 'string' && src.startsWith("http")) {
     return src;
@@ -35,10 +35,10 @@ const getImageUrl = (imgData) => {
   const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000/api";
   // Loại bỏ đuôi '/api' để lấy domain gốc (VD: http://localhost:8000)
   const BASE_URL = API_URL.replace(/\/api\/?$/, "");
-  
+
   // Đảm bảo không bị duplicate dấu /
   const cleanSrc = src.startsWith("/") ? src : `/${src}`;
-  
+
   return `${BASE_URL}${cleanSrc}`;
 };
 
@@ -52,9 +52,9 @@ const ReviewItem = ({ review, isMyReview = false }) => {
       <Row gutter={[16, 16]} wrap={false}>
         {/* Cột Avatar */}
         <Col flex="48px">
-          <Avatar 
+          <Avatar
             size={48}
-            icon={<UserOutlined />} 
+            icon={<UserOutlined />}
             style={{ backgroundColor: isMyReview ? '#1890ff' : '#f56a00', fontSize: 20 }}
           >
             {user_name ? user_name.charAt(0).toUpperCase() : "U"}
@@ -87,8 +87,8 @@ const ReviewItem = ({ review, isMyReview = false }) => {
           </div>
 
           {/* Comment Content */}
-          <Paragraph 
-            style={{ 
+          <Paragraph
+            style={{
               color: is_hidden ? "#999" : "#434343",
               fontStyle: is_hidden ? "italic" : "normal",
               marginBottom: 16,
@@ -160,7 +160,7 @@ const RatingSummary = ({ reviews }) => {
 
   const total = reviews.length;
   const average = (reviews.reduce((acc, cur) => acc + cur.rating, 0) / total).toFixed(1);
-  
+
   // Đếm số lượng từng sao
   const counts = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
   reviews.forEach(r => {
@@ -173,11 +173,11 @@ const RatingSummary = ({ reviews }) => {
       <Row gutter={[32, 16]} align="middle">
         {/* Bên trái: Điểm trung bình to đùng */}
         <Col xs={24} sm={8} style={{ textAlign: "center", borderRight: "1px solid #f0f0f0" }}>
-           <div style={{ fontSize: 48, fontWeight: "bold", color: "#fadb14", lineHeight: 1, marginBottom: 8 }}>
-             {average} <span style={{ fontSize: 24, color: "#999" }}>/ 5</span>
-           </div>
-           <Rate disabled allowHalf value={parseFloat(average)} style={{ color: "#fadb14", fontSize: 20 }} />
-           <div style={{ marginTop: 8, color: "#666", fontSize: 16 }}>({total} đánh giá)</div>
+          <div style={{ fontSize: 48, fontWeight: "bold", color: "#fadb14", lineHeight: 1, marginBottom: 8 }}>
+            {average} <span style={{ fontSize: 24, color: "#999" }}>/ 5</span>
+          </div>
+          <Rate disabled allowHalf value={parseFloat(average)} style={{ color: "#fadb14", fontSize: 20 }} />
+          <div style={{ marginTop: 8, color: "#666", fontSize: 16 }}>({total} đánh giá)</div>
         </Col>
 
         {/* Bên phải: Progress bar từng dòng */}
@@ -188,10 +188,10 @@ const RatingSummary = ({ reviews }) => {
                 <Text strong>{star} sao</Text>
               </Col>
               <Col flex="auto">
-                <Progress 
-                  percent={(counts[star] / total) * 100} 
-                  showInfo={false} 
-                  strokeColor="#fadb14" 
+                <Progress
+                  percent={(counts[star] / total) * 100}
+                  showInfo={false}
+                  strokeColor="#fadb14"
                   trailColor="#e6e6e6"
                   size="small"
                   style={{ marginBottom: 0 }}
@@ -210,16 +210,25 @@ const RatingSummary = ({ reviews }) => {
 
 // --- MAIN COMPONENT ---
 const ReviewsSection = ({ user, reviews, myReview }) => {
-  
+
   const visibleReviews = useMemo(() => {
+    // 1. Kiểm tra an toàn đầu vào
     if (!reviews) return [];
-    return reviews.filter(r => !r.is_hidden);
+
+    // 2. Tự động phát hiện: Nếu là Array thì dùng luôn, nếu là Object phân trang thì lấy .results
+    const reviewsList = Array.isArray(reviews) ? reviews : (reviews.results || []);
+
+    // 3. Kiểm tra lại lần cuối để chắc chắn là Array
+    if (!Array.isArray(reviewsList)) return [];
+
+    // 4. Filter
+    return reviewsList.filter(r => !r.is_hidden);
   }, [reviews]);
 
   return (
-    <Card 
-      bordered={false} 
-      style={{ marginTop: 24, boxShadow: "0 2px 8px rgba(0,0,0,0.06)", borderRadius: 8 }} 
+    <Card
+      bordered={false}
+      style={{ marginTop: 24, boxShadow: "0 2px 8px rgba(0,0,0,0.06)", borderRadius: 8 }}
       bodyStyle={{ padding: "32px" }}
     >
       <Title level={4} style={{ marginBottom: 24 }}>Đánh giá sản phẩm</Title>
@@ -230,13 +239,13 @@ const ReviewsSection = ({ user, reviews, myReview }) => {
       {/* 2. Review của tôi (Nổi bật) */}
       {user && myReview && (
         <>
-          <div 
-            style={{ 
-              border: `1px solid ${myReview.is_hidden ? '#ffccc7' : '#b7eb8f'}`, 
+          <div
+            style={{
+              border: `1px solid ${myReview.is_hidden ? '#ffccc7' : '#b7eb8f'}`,
               backgroundColor: myReview.is_hidden ? '#fff2f0' : '#f6ffed',
-              borderRadius: 8, 
+              borderRadius: 8,
               padding: "0 24px",
-              marginBottom: 32 
+              marginBottom: 32
             }}
           >
             <ReviewItem review={myReview} isMyReview={true} />
@@ -254,15 +263,15 @@ const ReviewsSection = ({ user, reviews, myReview }) => {
           pageSize: 5,
           hideOnSinglePage: true,
           onChange: () => {
-             // Scroll nhẹ lên đầu list khi chuyển trang nếu cần
+            // Scroll nhẹ lên đầu list khi chuyển trang nếu cần
           }
         }}
         renderItem={(item) => (
           // Chỉ render nếu không phải là myReview (để tránh lặp lại nếu myReview nằm trong list trả về)
           (!myReview || item.id !== myReview.id) ? (
             <List.Item style={{ padding: 0 }}>
-               <ReviewItem review={item} />
-               <Divider style={{ margin: "0" }} />
+              <ReviewItem review={item} />
+              <Divider style={{ margin: "0" }} />
             </List.Item>
           ) : null
         )}

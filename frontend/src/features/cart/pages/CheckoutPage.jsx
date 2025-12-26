@@ -219,6 +219,49 @@ const CheckoutPage = () => {
       }, {});
   }, [enrichedItems]);
 
+  // [ADD] PREPARE FULL ORDER DATA FOR VNPAY (VÍ ĐIỆN TỬ)
+  const finalOrderData = useMemo(() => {
+    const finalName = manualEntry ? customerName : selectedAddress?.recipient_name;
+    const finalPhone = manualEntry ? customerPhone : selectedAddress?.phone;
+    const finalLocation = manualEntry ? addressText : selectedAddress?.location;
+
+    const cleanItems = enrichedItems.map((item) => {
+      const pid = item.product?.id || item.product_data?.id || item.product;
+      return {
+        product: parseInt(pid),
+        quantity: parseInt(item.quantity) || 1,
+        price: parseFloat(item._final_price),
+        product_image: item._final_image, // [ADD]
+        unit: item.product_data?.unit || item.product?.unit || "", // [ADD]
+      };
+    });
+
+    return {
+      items: cleanItems,
+      customer_name: finalName,
+      customer_phone: finalPhone,
+      address: finalLocation,
+      note: note,
+      total_price: finalTotal,
+      shipping_fee: shippingFee,
+      vouchers: [
+        voucherData.selectedShopVoucher,
+        voucherData.selectedShipVoucher,
+      ].filter(Boolean),
+    };
+  }, [
+    enrichedItems,
+    manualEntry,
+    customerName,
+    customerPhone,
+    addressText,
+    selectedAddress,
+    note,
+    finalTotal,
+    shippingFee,
+    voucherData,
+  ]);
+
   // --- HANDLERS ---
   const onApplyVoucher = (data) => {
     if (!data) return;
@@ -299,12 +342,7 @@ const CheckoutPage = () => {
       return (
         <PaymentButton
           amount={finalTotal}
-          orderData={{
-            vouchers: [
-              voucherData.selectedShopVoucher,
-              voucherData.selectedShipVoucher,
-            ].filter(Boolean),
-          }}
+          orderData={finalOrderData}
           disabled={!isReadyToOrder || isLoading}
         />
       );

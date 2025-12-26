@@ -279,16 +279,14 @@ def vnpay_return(request):
     
 
 def verify_vnpay_signature(request_data):
-    """Hàm verify chữ ký VNPAY"""
+    """Hàm verify chữ ký VNPAY dùng HMAC-SHA512"""
     vnp_secure_hash = request_data.get("vnp_SecureHash")
     if not vnp_secure_hash:
         return False
 
-    input_data = {k: v for k, v in request_data.items() if k.startswith("vnp_") and k != "vnp_SecureHash"}
-    sorted_data = sorted(input_data.items())
-    query = "&".join(f"{k}={v}" for k, v in sorted_data)
-    hash_value = hashlib.sha256((settings.VNP_HASH_SECRET + query).encode("utf-8")).hexdigest().upper()
-    return hash_value == vnp_secure_hash
+    vnp = vnpay()
+    vnp.responseData = request_data.copy()
+    return vnp.validate_response(settings.VNPAY_CONFIG["HASH_SECRET_KEY"])
 
 
 @api_view(["POST"])
@@ -347,7 +345,10 @@ def vnpay_return_api(request):
                     order = Order.objects.create(
                         user=user_instance or (request.user if getattr(request, "user", None) and request.user.is_authenticated else None),
                         total_price=order_data.get("total_price") or (sum((float(i.get('price', 0)) * int(i.get('quantity', 0))) for i in items)),
+                        shipping_fee=order_data.get("shipping_fee", 0), # [ADD]
                         status="pending",
+                        payment_status="paid", # [ADD] Vì đã thanh toán thành công
+                        paid_at=timezone.now(), # [ADD]
                         customer_name=order_data.get("customer_name", ""),
                         customer_phone=order_data.get("customer_phone", ""),
                         address=order_data.get("address", ""),
@@ -363,6 +364,8 @@ def vnpay_return_api(request):
                                 product_id=it.get("product"),
                                 quantity=int(it.get("quantity", 1)),
                                 price=float(it.get("price", 0)),
+                                product_image=it.get("product_image", ""), # [ADD]
+                                unit=it.get("unit", ""), # [ADD]
                             )
                         except Exception:
                             # Nếu có item lỗi, bỏ qua item đó

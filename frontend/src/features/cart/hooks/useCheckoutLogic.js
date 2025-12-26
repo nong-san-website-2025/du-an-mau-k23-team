@@ -47,8 +47,9 @@ const useCheckoutLogic = () => {
     }
   }, [isGuest]);
 
-  // --- MEMOIZED VALUES ---
   const selectedAddress = useMemo(() => {
+    // [FIX] Kiểm tra chắc chắn addresses là mảng trước khi find
+    if (!Array.isArray(addresses)) return null;
     return addresses.find((a) => a.id === selectedAddressId) || null;
   }, [addresses, selectedAddressId]);
 
@@ -76,19 +77,27 @@ const useCheckoutLogic = () => {
     }
     try {
       const res = await API.get("users/addresses/");
-      const list = res.data || [];
+
+      // [FIX] Xử lý linh hoạt cả trường hợp phân trang (results) hoặc list phẳng
+      let list = [];
+      if (Array.isArray(res.data)) {
+        list = res.data;
+      } else if (res.data && Array.isArray(res.data.results)) {
+        list = res.data.results; // Trường hợp Django có phân trang
+      }
+
       setAddresses(list);
 
-      if (!selectedAddressId) {
+      // Logic chọn mặc định (giữ nguyên nhưng thêm check length an toàn)
+      if (!selectedAddressId && list.length > 0) {
         const def = list.find((a) => a.is_default);
         if (def) {
           setSelectedAddressId(def.id);
-        } else if (list.length > 0) {
+        } else {
           setSelectedAddressId(list[0].id);
         }
       }
     } catch (err) {
-      console.error("Fetch address error", err);
       setAddresses([]);
     }
   }, [token, selectedAddressId]);

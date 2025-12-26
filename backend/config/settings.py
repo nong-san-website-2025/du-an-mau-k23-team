@@ -136,21 +136,20 @@ TEMPLATES = [
 
 # --- Channels (auto fallback to InMemory when REDIS_URL not set)
 # if os.environ.get("REDIS_URL"):
+# CHANNEL_LAYERS = {
+#     "default": {
+#         "BACKEND": "channels_redis.core.RedisChannelLayer",
+#         "CONFIG": {
+#             "hosts": [("127.0.0.1", 6379)], # Dùng port 6379 mặc định của Redis
+#         },
+#     },
+# }
+
 CHANNEL_LAYERS = {
     "default": {
-        "BACKEND": "channels_redis.core.RedisChannelLayer",
-        "CONFIG": {
-            "hosts": [("127.0.0.1", 6379)], # Dùng port 6379 mặc định của Redis
-        },
-    },
+        "BACKEND": "channels.layers.InMemoryChannelLayer",
+    }
 }
-
-# else:
-#     CHANNEL_LAYERS = {
-#         "default": {
-#             "BACKEND": "channels.layers.InMemoryChannelLayer",
-#         }
-#     }
 
 
 if os.environ.get("DATABASE_URL"):
@@ -211,8 +210,8 @@ REST_FRAMEWORK = {
         "rest_framework.filters.OrderingFilter",
         "rest_framework.filters.SearchFilter",
     ),
-    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
-    "PAGE_SIZE": 20,
+    # "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination", 
+    # "PAGE_SIZE": 20,
 }
 
 
@@ -305,20 +304,27 @@ SIMPLE_JWT = {
 }
 
 VNPAY_CONFIG = {
-    "TMN_CODE": "6EW69YA0",
-    "HASH_SECRET_KEY": "ZF17PDTYTRE7VE2M3TEZWH1YHDGBSTD8",
+    "TMN_CODE": "EN2DGM0A",
+    "HASH_SECRET_KEY": "8OD5JCAGR0HDEVIIWX9DTSYGELG5LJFZ",
     "VNPAY_URL": "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html",
     "RETURN_URL": "http://localhost:3000/vnpay-return",
 }
 
 
+# CACHES = {
+#     "default": {
+#         "BACKEND": "django_redis.cache.RedisCache",
+#         "LOCATION": "redis://127.0.0.1:6379/1", # /1 là database số 1 của Redis
+#         "OPTIONS": {
+#             "CLIENT_CLASS": "django_redis.client.DefaultClient",
+#         }
+#     }
+# }
+
 CACHES = {
     "default": {
-        "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": "redis://127.0.0.1:6379/1", # /1 là database số 1 của Redis
-        "OPTIONS": {
-            "CLIENT_CLASS": "django_redis.client.DefaultClient",
-        }
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "unique-snowflake",
     }
 }
 
