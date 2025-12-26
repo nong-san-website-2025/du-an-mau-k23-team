@@ -68,6 +68,8 @@ export default function NotificationPage() {
         return { icon: <GiftOutlined />, color: "#eb2f96", label: "Ưu đãi" };
       case "wallet":
         return { icon: <WalletOutlined />, color: "#52c41a", label: "Ví tiền" };
+      case "refund":
+        return { icon: <WalletOutlined />, color: "#52c41a", label: "Hoàn tiền" };
       default:
         return { icon: <BellOutlined />, color: "#faad14", label: "Hệ thống" };
     }
@@ -296,7 +298,9 @@ export default function NotificationPage() {
 
             {selectedNoti.metadata &&
               (selectedNoti.metadata.order_code ||
-                selectedNoti.metadata.order_total) && (
+                selectedNoti.metadata.order_total ||
+                selectedNoti.metadata.transaction_code ||
+                selectedNoti.metadata.bank_name) && (
                 <>
                   <Divider orientation="left" plain>
                     <Text type="secondary">Thông tin liên quan</Text>
@@ -323,6 +327,41 @@ export default function NotificationPage() {
                       <Descriptions.Item label="Giá trị đơn">
                         <Text type="danger" strong>
                           {formatVND(selectedNoti.metadata.order_total)}
+                        </Text>
+                      </Descriptions.Item>
+                    )}
+                    {selectedNoti.metadata.refund_amount && (
+                      <Descriptions.Item label="Số tiền hoàn">
+                        <Text type="success" strong>
+                          {formatVND(selectedNoti.metadata.refund_amount)}
+                        </Text>
+                      </Descriptions.Item>
+                    )}
+                    {selectedNoti.metadata.bank_name && (
+                      <Descriptions.Item label="Ngân hàng">
+                        <Text strong>
+                          {selectedNoti.metadata.bank_name}
+                        </Text>
+                      </Descriptions.Item>
+                    )}
+                    {selectedNoti.metadata.masked_account_number && (
+                      <Descriptions.Item label="Số tài khoản">
+                        <Text code strong>
+                          {selectedNoti.metadata.masked_account_number}
+                        </Text>
+                      </Descriptions.Item>
+                    )}
+                    {selectedNoti.metadata.account_holder_name && (
+                      <Descriptions.Item label="Chủ tài khoản">
+                        <Text strong>
+                          {selectedNoti.metadata.account_holder_name}
+                        </Text>
+                      </Descriptions.Item>
+                    )}
+                    {selectedNoti.metadata.transaction_code && (
+                      <Descriptions.Item label="Mã giao dịch">
+                        <Text copyable code strong style={{ color: "#52c41a" }}>
+                          {selectedNoti.metadata.transaction_code}
                         </Text>
                       </Descriptions.Item>
                     )}

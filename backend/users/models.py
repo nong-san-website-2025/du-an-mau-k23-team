@@ -78,6 +78,26 @@ class CustomUser(AbstractUser):
         default=0,
         help_text="Tổng chi tiêu của người dùng"
     )
+    
+    # Bank account information for refunds
+    bank_name = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text="Tên ngân hàng"
+    )
+    account_number = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True,
+        help_text="Số tài khoản ngân hàng"
+    )
+    account_holder_name = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text="Tên chủ tài khoản"
+    )
 
     def save(self, *args, **kwargs):
         # Nếu superuser thì auto gán role=admin
@@ -205,6 +225,7 @@ class Notification(models.Model):
         ('order_status_changed', 'Cập nhật đơn hàng'),
         ('review_reply', 'Phản hồi đánh giá'),
         ('complaint', 'Khiếu nại'),
+        ('refund', 'Hoàn tiền'),
         ('wallet', 'Ví tiền'),
         ('voucher', 'Voucher'),
         ('system', 'Hệ thống'),

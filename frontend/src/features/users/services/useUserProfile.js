@@ -37,5 +37,22 @@ export default function useUserProfile(shouldFetch = true) {
     fetchProfile();
   }, [shouldFetch]);
 
+  // Listen for profile updates (avatar changes, etc.)
+  useEffect(() => {
+    const handleProfileUpdate = (event) => {
+      const updatedData = event.detail;
+      if (updatedData) {
+        setProfile((prev) => {
+          return prev ? { ...prev, ...updatedData } : updatedData;
+        });
+      }
+    };
+
+    window.addEventListener("userProfileUpdated", handleProfileUpdate);
+    return () => {
+      window.removeEventListener("userProfileUpdated", handleProfileUpdate);
+    };
+  }, []);
+
   return profile;
 }

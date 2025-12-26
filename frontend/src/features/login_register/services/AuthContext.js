@@ -63,6 +63,29 @@ export const AuthProvider = ({ children }) => {
     fetchUser();
   }, []);
 
+  // Listen for profile updates (avatar, name, etc.)
+  useEffect(() => {
+    const handleProfileUpdate = (event) => {
+      const updatedData = event.detail;
+      if (updatedData) {
+        setUser((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            ...updatedData,
+            isAuthenticated: true,
+            token: prev.token,
+          };
+        });
+      }
+    };
+
+    window.addEventListener("userProfileUpdated", handleProfileUpdate);
+    return () => {
+      window.removeEventListener("userProfileUpdated", handleProfileUpdate);
+    };
+  }, []);
+
   // --- HÀM LOGIN ---
   const login = async (username, password) => {
     try {

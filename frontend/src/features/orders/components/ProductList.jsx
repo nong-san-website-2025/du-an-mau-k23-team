@@ -63,7 +63,7 @@ const ProductList = ({
             'returning': { icon: <CarOutlined />, text: "Đang trả hàng", color: "#722ed1", bg: "#f9f0ff" },
             'negotiating': { icon: <WarningOutlined />, text: "Shop từ chối - Đang thương lượng", color: "#ff4d4f", bg: "#fff1f0" },
             'admin_review': { icon: <WarningOutlined />, text: "Sàn đang xử lý", color: "#f5222d", bg: "#fff1f0" },
-            'resolved_refund': { icon: <CheckCircleOutlined />, text: "Đã hoàn tiền", color: "#52c41a", bg: "#f6ffed" },
+            'resolved_refund': { icon: <CheckCircleOutlined />, text: "Đã hoàn tiền thành công", color: "#52c41a", bg: "#f6ffed" },
             'resolved_reject': { icon: <CloseCircleOutlined />, text: "Từ chối hoàn tiền", color: "#8c8c8c", bg: "#f5f5f5" },
             'cancelled': { icon: <CloseCircleOutlined />, text: "Đã hủy yêu cầu", color: "#8c8c8c", bg: "#f5f5f5" },
         };
@@ -77,7 +77,7 @@ const ProductList = ({
             'WAITING_RETURN': { icon: <SyncOutlined />, text: "Chờ gửi hàng", color: "#1890ff", bg: "#e6f7ff" },
             'SELLER_REJECTED': { icon: <CloseCircleOutlined />, text: "Shop từ chối", color: "#ff4d4f", bg: "#fff1f0" },
             'DISPUTE_TO_ADMIN': { icon: <WarningOutlined />, text: "Đang khiếu nại lên Sàn", color: "#faad14", bg: "#fffbe6" },
-            'REFUND_APPROVED': { icon: <CheckCircleOutlined />, text: "Đã hoàn tiền", color: "#52c41a", bg: "#f6ffed" },
+            'REFUND_APPROVED': { icon: <CheckCircleOutlined />, text: "Đã hoàn tiền thành công", color: "#52c41a", bg: "#f6ffed" },
             'REFUND_REJECTED': { icon: <CloseCircleOutlined />, text: "Từ chối hoàn tiền", color: "#8c8c8c", bg: "#f5f5f5" },
         };
         config = itemStatusConfig[item.status];

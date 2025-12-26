@@ -13,10 +13,16 @@ class ComplaintSerializer(serializers.ModelSerializer):
     created_by_name = serializers.CharField(source='user.full_name', read_only=True)
     created_by_email = serializers.CharField(source='user.email', read_only=True)
     created_by_avatar = serializers.SerializerMethodField()
+    buyer_address = serializers.SerializerMethodField()
+    buyer_bank_name = serializers.CharField(source='user.bank_name', read_only=True)
+    buyer_account_number = serializers.CharField(source='user.account_number', read_only=True)
+    buyer_account_holder_name = serializers.CharField(source='user.account_holder_name', read_only=True)
 
     # --- PHẦN NGƯỜI BÁN (SELLER) ---
     seller_name = serializers.CharField(source='order_item.product.seller.store_name', read_only=True)
     seller_avatar = serializers.SerializerMethodField()
+    shop_name = serializers.CharField(source='order_item.product.seller.store_name', read_only=True)
+    shop_address = serializers.SerializerMethodField()
 
     # --- THÔNG TIN ĐƠN HÀNG (QUAN TRỌNG: Cần thêm payment_method và ngày đặt) ---
     order_id = serializers.IntegerField(source='order_item.order.id', read_only=True)
@@ -37,6 +43,8 @@ class ComplaintSerializer(serializers.ModelSerializer):
     
     purchase_price = serializers.DecimalField(source='order_item.price', max_digits=12, decimal_places=2, read_only=True)
     purchase_quantity = serializers.IntegerField(source='order_item.quantity', read_only=True)
+    refund_amount = serializers.SerializerMethodField()
+    quantity = serializers.IntegerField(source='order_item.quantity', read_only=True)
 
     media = ComplaintMediaSerializer(many=True, read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
@@ -55,14 +63,22 @@ class ComplaintSerializer(serializers.ModelSerializer):
             'created_by_name',   
             'created_by_email',
             'created_by_avatar',
+            'buyer_address',
+            'buyer_bank_name',
+            'buyer_account_number',
+            'buyer_account_holder_name',
             'seller_name',
             'seller_avatar',
+            'shop_name',
+            'shop_address',
 
             'product_id',
             'product_name',
             'product_image',
             'purchase_price',    
-            'purchase_quantity', 
+            'purchase_quantity',
+            'refund_amount',
+            'quantity',
             
             'reason',
             'status',
@@ -103,3 +119,27 @@ class ComplaintSerializer(serializers.ModelSerializer):
             return str(obj.order_item.order.id) # Fallback về ID
         except AttributeError:
             return "N/A"
+    
+    def get_buyer_address(self, obj):
+        try:
+            address = obj.order_item.order.shipping_address
+            if address:
+                return f"{address.location}"
+            return "N/A"
+        except AttributeError:
+            return "N/A"
+    
+    def get_shop_address(self, obj):
+        try:
+            seller = obj.order_item.product.seller
+            if seller.address:
+                return seller.address
+            return "N/A"
+        except AttributeError:
+            return "N/A"
+    
+    def get_refund_amount(self, obj):
+        try:
+            return float(obj.order_item.price * obj.order_item.quantity)
+        except:
+            return 0

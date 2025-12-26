@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Notification
+from users.models import Notification
 
 class NotificationSerializer(serializers.ModelSerializer):
     # Format thời gian đẹp để hiển thị

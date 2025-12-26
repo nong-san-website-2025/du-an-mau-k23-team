@@ -68,6 +68,9 @@ urlpatterns = [
     path('confirm-phone-change/', 
          profile.ConfirmPhoneChangeView.as_view(), name='confirm-phone-change'),
     
+    # Bank Account Management
+    path('bank-account/', profile.BankAccountView.as_view(), name='bank-account'),
+    
     # ==================== POINTS & WALLET ====================
     path('points/', points.UserPointsView.as_view(), name='user-points'),
     path('wallet/balance/', wallet.WalletBalanceView.as_view(), name='wallet-balance'),

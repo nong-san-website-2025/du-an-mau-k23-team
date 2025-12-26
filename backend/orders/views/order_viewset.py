@@ -37,9 +37,9 @@ class OrderViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action in [
             'list', 'retrieve', 'create', 
-            'seller_pending', 'seller_processing', 
+            'seller_all', 'seller_pending', 'seller_processing', 
             'seller_completed_orders', 'seller_approve', 'seller_complete',
-            'seller_cancelled', 'cancel', 'confirm_received'  # <--- PHẢI THÊM ACTION NÀY VÀO ĐÂY
+            'seller_cancelled', 'cancel', 'confirm_received'
         ]:
             return [IsAuthenticated()]
         elif self.action in ['admin_list', 'admin_detail', 'admin_soft_delete', 'admin_restore']:
@@ -243,6 +243,17 @@ class OrderViewSet(viewsets.ModelViewSet):
                     order.voucher.save(update_fields=['used_quantity'])
 
     # --- SELLER ACTIONS ---
+
+    @action(detail=False, methods=['get'], url_path='seller/all')
+    def seller_all(self, request):
+        """Lấy tất cả đơn hàng của seller"""
+        seller = getattr(request.user, 'seller', None)
+        if not seller:
+            return Response({'error': 'Chỉ seller mới có quyền truy cập'}, status=403)
+        
+        seller_product_ids = Product.objects.filter(seller=seller).values_list('id', flat=True)
+        qs = Order.objects.filter(items__product_id__in=seller_product_ids).distinct().order_by('-created_at')
+        return Response(self.get_serializer(qs, many=True).data)
 
     @action(detail=False, methods=['get'], url_path='seller/pending')
     def seller_pending(self, request):

@@ -3,14 +3,14 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import PropTypes from "prop-types";
 import {
   Row, Col, Form, Input, Button, Avatar, Card, Typography, Upload,
-  message, Alert, Statistic, Tag, Space, Divider
+  message, Alert, Statistic, Tag, Space, Divider, InputNumber
 } from "antd";
 import {
   UserOutlined, EditOutlined, SaveOutlined, CloseOutlined,
   UploadOutlined, CheckCircleOutlined, ClockCircleOutlined,
   MailOutlined, PhoneOutlined
 } from "@ant-design/icons";
-import { initializeRecaptcha, sendPhoneOTP, verifyPhoneOTP, resetRecaptcha } from "../../../services/firebasePhoneAuth";
+import { sendPhoneOTP, verifyPhoneOTP, resetRecaptcha, formatPhoneNumber } from "../../../services/firebasePhoneAuth";
 
 const { Title, Text } = Typography;
 
@@ -55,9 +55,12 @@ const ProfileInfo = ({
   // Cleanup Avatar Object URL để tránh memory leak
   useEffect(() => {
     return () => {
-      if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
+      if (objectUrlRef.current) {
+        URL.revokeObjectURL(objectUrlRef.current);
+        objectUrlRef.current = null;
+      }
     };
-  }, [tempForm?.avatar]);
+  }, []);
 
   // Cleanup Recaptcha khi unmount
   useEffect(() => {
@@ -110,14 +113,9 @@ const ProfileInfo = ({
   const handleRequestPhoneOtp = async () => {
     if (!form?.pending_phone) return;
     
-    // Nếu đang đếm ngược thì không gửi lại
     if (otpCountdown > 0) return;
 
     try {
-      // Reset trước khi init để đảm bảo sạch sẽ
-      resetRecaptcha();
-      initializeRecaptcha(); 
-      
       const result = await sendPhoneOTP(form.pending_phone);
       window.confirmationResult = result;
       
@@ -130,6 +128,7 @@ const ProfileInfo = ({
       else if (err.code === "auth/too-many-requests") errorMessage = "Quá nhiều yêu cầu, vui lòng thử lại sau";
       
       message.error(errorMessage);
+      resetRecaptcha();
     }
   };
 
@@ -142,17 +141,18 @@ const ProfileInfo = ({
       
       if (verifyResult.success) {
         const token = localStorage.getItem("token");
+        const formattedPhone = formatPhoneNumber(form.pending_phone);
+        
+        const formData = new FormData();
+        formData.append("phone", formattedPhone);
+        formData.append("firebase_id_token", verifyResult.idToken);
+        
         const res = await fetch(`${getApiBaseUrl()}/users/me/`, {
           method: "PATCH",
           headers: {
             "Authorization": `Bearer ${token}`,
-            "Content-Type": "application/json",
           },
-          body: JSON.stringify({ 
-            phone: form.pending_phone,
-            pending_phone: null,
-            firebase_id_token: verifyResult.idToken
-          }),
+          body: formData,
         });
 
         if (res.ok) {
@@ -162,19 +162,20 @@ const ProfileInfo = ({
           setOtpCountdown(0);
           if (window.otpTimer) clearInterval(window.otpTimer);
           
-          // Update Form State ngay lập tức để UI phản hồi
-          setForm(prev => ({ ...prev, phone: form.pending_phone, pending_phone: null }));
+          setForm(prev => ({ ...prev, phone: formattedPhone, pending_phone: null }));
+          resetRecaptcha();
         } else {
-          message.error("Không thể cập nhật số điện thoại vào hệ thống");
+          const errorData = await res.json();
+          message.error(errorData.detail || "Không thể cập nhật số điện thoại vào hệ thống");
         }
       } else {
         message.error(verifyResult.error || "Mã OTP không đúng");
       }
     } catch (err) {
+      console.error("Verify error:", err);
       message.error("Xác thực thất bại. Vui lòng thử lại!");
     } finally {
       setVerifyingPhoneOtp(false);
-      resetRecaptcha(); // Reset sau khi verify xong
     }
   };
 
@@ -193,8 +194,14 @@ const ProfileInfo = ({
 
   const saveField = async (fieldName) => {
     try {
-        // Truyền event giả để tương thích với hàm handleSave cũ của bạn
-      await handleSave({ preventDefault: () => {} });
+      // Special handling for avatar - ensure a file is selected
+      if (fieldName === "avatar" && !(form.avatar instanceof File)) {
+        message.warning("Vui lòng chọn ảnh mới trước khi lưu!");
+        return;
+      }
+      
+      // Truyền event giả và fieldName để hàm handleSave biết đang update field nào
+      await handleSave({ preventDefault: () => {} }, fieldName);
       setEditingFields((prev) => ({ ...prev, [fieldName]: false }));
     } catch (err) {
       console.error("Save failed:", err);
@@ -210,12 +217,24 @@ const ProfileInfo = ({
   // --- Render Helpers ---
 
   const avatarSrc = useMemo(() => {
+    // Revoke old URL before creating new one
+    if (objectUrlRef.current) {
+      URL.revokeObjectURL(objectUrlRef.current);
+      objectUrlRef.current = null;
+    }
+    
     if (tempForm?.avatar instanceof File) {
       const url = URL.createObjectURL(tempForm.avatar);
       objectUrlRef.current = url;
       return url;
     }
-    return tempForm?.avatar || null;
+    
+    // If avatar is a string URL, use it directly
+    if (typeof tempForm?.avatar === 'string') {
+      return tempForm.avatar;
+    }
+    
+    return null;
   }, [tempForm?.avatar]);
 
   const renderEditableField = (fieldName, label, value, placeholder = "") => (
@@ -228,7 +247,6 @@ const ProfileInfo = ({
         placeholder={placeholder}
         size="large"
         style={{ flex: 1, borderRadius: 6 }}
-        // Cho phép ấn Enter để save luôn cho tiện
         onPressEnter={() => isFieldEditing(fieldName) && saveField(fieldName)}
       />
       {!isFieldEditing(fieldName) ? (
@@ -260,6 +278,64 @@ const ProfileInfo = ({
       )}
     </div>
   );
+
+  const renderPhoneField = (fieldName, label, value, placeholder = "") => {
+    const phoneValue = value ? value.replace(/^\+84/, "") : "";
+    
+    return (
+      <div style={{ display: "flex", gap: 8, alignItems: "center", width: "100%" }}>
+        <Space.Compact style={{ flex: 1 }}>
+          <Input
+            value="+84"
+            disabled
+            size="large"
+            style={{ width: 60, textAlign: "center", backgroundColor: "#f0f0f0" }}
+          />
+          <Input
+            value={phoneValue}
+            name={fieldName}
+            onChange={(e) => {
+              const numericValue = e.target.value.replace(/\D/g, "");
+              handleFieldChange({ target: { name: fieldName, value: numericValue } });
+            }}
+            disabled={!isFieldEditing(fieldName)}
+            placeholder={placeholder}
+            size="large"
+            style={{ flex: 1 }}
+            onPressEnter={() => isFieldEditing(fieldName) && saveField(fieldName)}
+            maxLength={10}
+          />
+        </Space.Compact>
+        {!isFieldEditing(fieldName) ? (
+          <Button
+            type="primary"
+            size="large"
+            icon={<EditOutlined />}
+            onClick={() => startEditing(fieldName)}
+            style={{ width: 40 }}
+          />
+        ) : (
+          <>
+            <Button
+              type="primary"
+              size="large"
+              icon={<SaveOutlined />}
+              onClick={() => saveField(fieldName)}
+              loading={saving}
+              style={{ width: 40 }}
+            />
+            <Button
+              danger
+              size="large"
+              icon={<CloseOutlined />}
+              onClick={() => cancelEditing(fieldName)}
+              style={{ width: 40 }}
+            />
+          </>
+        )}
+      </div>
+    );
+  };
 
   const defaultAddress = useMemo(
     () => addresses.find((addr) => addr.is_default)?.location || "---",
@@ -398,7 +474,7 @@ const ProfileInfo = ({
               {verifyingPhone && form?.pending_phone ? (
                 // --- OTP Verification Block ---
                 <Card size="small" style={{ background: '#f9f9f9' }}>
-                  <Alert message={`OTP đã gửi tới ${form.pending_phone}`} type="info" showIcon style={{marginBottom: 12}} />
+                  <Alert message={`OTP đã gửi tới ${formatPhoneNumber(form.pending_phone)}`} type="info" showIcon style={{marginBottom: 12}} />
                   <Input 
                     placeholder="Nhập mã OTP (6 số)" 
                     value={phoneOtp} 
@@ -411,6 +487,8 @@ const ProfileInfo = ({
                     <Button onClick={() => {
                         setVerifyingPhone(false);
                         setPhoneOtp("");
+                        setOtpCountdown(0);
+                        if (window.otpTimer) clearInterval(window.otpTimer);
                         resetRecaptcha();
                     }}>Hủy</Button>
                     <Button disabled={otpCountdown > 0} onClick={handleRequestPhoneOtp} loading={otpCountdown > 0}>
@@ -420,10 +498,23 @@ const ProfileInfo = ({
                   </div>
                 </Card>
               ) : isFieldEditing("phone") ? (
-                renderEditableField("phone", "Số điện thoại", tempForm?.phone, "Nhập SĐT mới")
+                renderPhoneField("phone", "Số điện thoại", tempForm?.phone, "912345678")
               ) : (
                 <div style={{ display: "flex", gap: 8 }}>
-                  <Input value={form?.pending_phone || form?.phone || "---"} disabled size="large" style={{ flex: 1 }} />
+                  <Space.Compact style={{ flex: 1 }}>
+                    <Input
+                      value="+84"
+                      disabled
+                      size="large"
+                      style={{ width: 60, textAlign: "center", backgroundColor: "#f0f0f0" }}
+                    />
+                    <Input 
+                      value={(form?.pending_phone || form?.phone || "").replace(/^\+84/, "") || "---"} 
+                      disabled 
+                      size="large" 
+                      style={{ flex: 1 }} 
+                    />
+                  </Space.Compact>
                   {form?.pending_phone && (
                      <Button type="primary" size="large" onClick={() => {
                          setVerifyingPhone(true);
