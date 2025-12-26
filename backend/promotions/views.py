@@ -36,6 +36,170 @@ class VoucherViewSet(viewsets.ModelViewSet):
     queryset = Voucher.objects.all()
     serializer_class = VoucherDetailSerializer
     permission_classes = [IsAdminUser]
+<<<<<<< HEAD
+=======
+
+    def post(self, request):
+        try:
+            data = request.data
+            if not isinstance(data, list):
+                return Response({"error": "Dữ liệu gửi lên phải là danh sách (Array)."}, status=400)
+
+            serializer = VoucherImportSerializer(data=data, many=True)
+            if not serializer.is_valid():
+                return Response({"errors": serializer.errors, "message": "Dữ liệu không hợp lệ."}, status=400)
+
+            validated_data = serializer.validated_data
+            vouchers_to_create = []
+            current_user = request.user if request.user.is_authenticated else None
+
+            with transaction.atomic():
+                for item in validated_data:
+                    start_at = datetime.datetime.combine(item['start_date'], datetime.time.min)
+                    end_at = datetime.datetime.combine(item['end_date'], datetime.time.max)
+                    if timezone.is_naive(start_at): start_at = timezone.make_aware(start_at)
+                    if timezone.is_naive(end_at): end_at = timezone.make_aware(end_at)
+
+                    # --- Logic Phân loại giá trị ---
+                    d_percent = 0
+                    d_amount = 0
+                    d_freeship = 0
+                    max_disc = None # Để None thay vì 0 nếu DB cho phép null
+
+                    # Chuẩn hóa input
+                    raw_type = str(item['discount_type']).lower().strip()
+
+                    if raw_type == 'percent':
+                        d_percent = item['value']
+                        max_disc = 500000 
+                    elif raw_type == 'freeship':
+                        d_freeship = item['value']
+                    else: 
+                        d_amount = item['value']
+
+                    # --- [FIX QUAN TRỌNG] Bỏ trường voucher_type vì DB không có ---
+                    voucher = Voucher(
+                        code=item['code'],
+                        title=item['title'],
+                        
+                        # Chỉ lưu các giá trị tiền/%, không lưu voucher_type text
+                        discount_percent=d_percent,
+                        discount_amount=d_amount,
+                        freeship_amount=d_freeship,
+                        max_discount_amount=max_disc,
+                        
+                        min_order_value=item.get('min_order', 0),
+                        start_at=start_at,
+                        end_at=end_at,
+                        
+                        total_quantity=item['quantity'],
+                        per_user_quantity=item.get('per_user_quantity', 1),
+                        
+                        # Mặc định là Claim để user nhận được
+                        distribution_type='claim', 
+                        
+                        scope='system', 
+                        active=True,
+                        created_by=current_user
+                    )
+                    vouchers_to_create.append(voucher)
+                
+                if vouchers_to_create:
+                    Voucher.objects.bulk_create(vouchers_to_create)
+                else:
+                    return Response({"error": "Không có voucher hợp lệ nào để tạo."}, status=400)
+
+            return Response({"success": True, "message": f"Import thành công {len(vouchers_to_create)} voucher!"}, status=201)
+
+        except Exception as e:
+            # In lỗi ra terminal để debug
+            print("❌ LỖI IMPORT 500:", str(e))
+            print(traceback.format_exc())
+            return Response({"error": f"Lỗi hệ thống: {str(e)}"}, status=500)
+
+
+# ============================================================
+# 4. API CLAIM VOUCHER
+# ============================================================
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def claim_voucher(request):
+    code = request.data.get("code")
+    user = request.user
+
+    if not code:
+        return Response({"error": "Thiếu mã voucher"}, status=400)
+
+    try:
+        with transaction.atomic():
+            voucher = Voucher.objects.select_for_update().filter(
+                code=code, active=True
+            ).order_by('id').first()
+
+            if not voucher:
+                return Response({"error": "Voucher không tồn tại"}, status=404)
+
+            if voucher.start_at and now() < voucher.start_at:
+                return Response({"error": "Voucher chưa bắt đầu"}, status=400)
+            if voucher.end_at and now() > voucher.end_at:
+                return Response({"error": "Voucher đã hết hạn"}, status=400)
+
+            if UserVoucher.objects.filter(user=user, voucher=voucher).exists():
+                return Response({"error": "Bạn đã sở hữu voucher này rồi"}, status=400)
+
+            # Check số lượng (Hỗ trợ vô cực)
+            total_qty = voucher.total_quantity
+            used_qty = voucher.used_quantity if hasattr(voucher, 'used_quantity') else 0
+            if used_qty == 0 and hasattr(voucher, 'issued_count'):
+                 used_qty = voucher.issued_count()
+
+            if total_qty is not None:
+                if used_qty >= total_qty:
+                    return Response({"error": "Voucher đã hết lượt sử dụng"}, 400)
+
+            uv = UserVoucher.objects.create(
+                user=user, 
+                voucher=voucher, 
+                quantity=voucher.per_user_quantity or 1
+            )
+            
+            if hasattr(voucher, 'used_quantity'):
+                Voucher.objects.filter(pk=voucher.pk).update(used_quantity=F('used_quantity') + 1)
+
+    except Exception as e:
+        return Response({"error": str(e)}, status=400)
+
+    serializer = UserVoucherSerializer(uv)
+    return Response({"success": True, "message": "Nhận voucher thành công!", "user_voucher": serializer.data})
+
+
+# ============================================================
+# 5. API OVERVIEW (FILTER)
+# ============================================================
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def promotions_overview(request):
+    user = request.user
+    search = request.query_params.get("search")
+    scope = request.query_params.get("scope")
+    distribution_type = request.query_params.get("distribution_type")
+    active = request.query_params.get("active")
+    voucher_type_filter = request.query_params.get("voucherType")
+
+    if user.is_staff:
+        vouchers = Voucher.objects.all().order_by('-created_at')
+    else:
+        seller = getattr(user, 'seller', None) or getattr(user, 'store', None)
+        if seller:
+            vouchers = Voucher.objects.filter(Q(scope='system') | Q(seller=seller)).order_by('-created_at')
+        else:
+            vouchers = Voucher.objects.filter(scope='system').order_by('-created_at')
+
+    if search:
+        vouchers = vouchers.filter(Q(title__icontains=search) | Q(code__icontains=search))
+>>>>>>> origin/TruongAn
     
     def get_serializer_class(self):
         if self.action == 'list':

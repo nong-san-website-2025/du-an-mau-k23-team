@@ -8,6 +8,19 @@ const { Dragger } = Upload;
 const { Step } = Steps;
 const { Text } = Typography;
 
+// --- ÁNH XẠ TIÊU ĐỀ CỘT LINH HOẠT ---
+const HEADER_MAPPING = {
+    "code": "code", "mã": "code", "ma": "code", "mã voucher": "code",
+    "title": "title", "tiêu đề": "title", "tên": "title", "tên voucher": "title",
+    "discount_type": "discount_type", "loại": "discount_type", "loại giảm": "discount_type",
+    "value": "value", "giá trị": "value", "mức giảm": "value",
+    "start_date": "start_date", "ngày bắt đầu": "start_date", "ngày bd": "start_date",
+    "end_date": "end_date", "ngày kết thúc": "end_date", "ngày kt": "end_date",
+    "quantity": "quantity", "số lượng": "quantity", "sl": "quantity",
+    "per_user": "per_user_quantity", "lượt dùng/người": "per_user_quantity", "lượt/user": "per_user_quantity",
+    "min_order": "min_order", "đơn tối thiểu": "min_order", "tối thiểu": "min_order"
+};
+
 export default function ImportVoucherModal({ open, onCancel, onImportAPI }) {
   const [currentStep, setCurrentStep] = useState(0);
   const [tableData, setTableData] = useState([]);
@@ -144,7 +157,7 @@ export default function ImportVoucherModal({ open, onCancel, onImportAPI }) {
       handleReset();
       onCancel();
     } catch (err) {
-      console.error(err);
+      console.error("Import Error:", err);
       const resData = err.response?.data;
 
       // Logic hiển thị lỗi (giữ nguyên hoặc tùy chỉnh)
@@ -214,7 +227,8 @@ export default function ImportVoucherModal({ open, onCancel, onImportAPI }) {
         return <Text type={isValid ? "" : "danger"}>{date}</Text>
       }
     },
-    { title: "SL", dataIndex: "quantity" },
+    { title: "SL", dataIndex: "quantity", width: 80 },
+    { title: "Lượt/User", dataIndex: "per_user_quantity", width: 100 },
     {
       title: "Trạng thái",
       key: "status",

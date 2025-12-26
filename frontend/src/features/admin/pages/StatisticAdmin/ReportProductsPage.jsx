@@ -1,64 +1,125 @@
+// src/features/admin/pages/Report/ReportProductsPage.jsx
 import React, { useState, useEffect, useCallback } from "react";
 import {
-  Card, Table, Row, Col, Tag, message, Typography, Space, Button, Tooltip, Tabs, Empty, Dropdown
+  Card, Table, Row, Col, Tag, message, Typography, Space, Button, Tooltip, Tabs, Empty, Dropdown, Select, DatePicker
 } from "antd";
 import {
-  TrophyOutlined,
-  AlertOutlined,
-  ExclamationCircleOutlined,
-  FrownOutlined,
-  ReloadOutlined,
-  EditOutlined,
-  DollarOutlined,
-  ShoppingCartOutlined,
- WarningOutlined,
- DownloadOutlined,
+  TrophyOutlined, AlertOutlined, ExclamationCircleOutlined, FrownOutlined, ReloadOutlined,
+  DollarOutlined, WarningOutlined, DownloadOutlined, ShopOutlined, DollarCircleOutlined, StarOutlined, FireOutlined, UserOutlined
 } from "@ant-design/icons";
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  ResponsiveContainer,
-  Cell,
-  Tooltip as RechartsTooltip,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend
 } from "recharts";
+import dayjs from "dayjs";
 
 import api from "../../../login_register/services/api";
 import { productApi } from "../../services/productApi";
 import AdminPageLayout from "../../components/AdminPageLayout";
 import StatsSection from "../../components/common/StatsSection";
+import { intcomma } from "../../../../utils/format";
 
-const { Title, Text } = Typography;
+const { RangePicker } = DatePicker;
+const { Option } = Select;
+const { Text } = Typography;
+
+const COLORS = ["#52c41a", "#faad14", "#1890ff", "#ff4d4f", "#722ed1"];
+const barColors = ["#1677ff", "#4096ff", "#69b1ff", "#91caff", "#bae0ff"];
 
 export default function ReportProductsPage() {
+  // [MỚI] State quản lý thời gian đồng bộ
+  const [timeFilter, setTimeFilter] = useState("week"); // Mặc định 7 ngày
+  const [dateRange, setDateRange] = useState([dayjs().subtract(6, 'day'), dayjs()]);
+
+  const [loading, setLoading] = useState(false);
+  
+  // Data States
   const [topProducts, setTopProducts] = useState([]);
   const [lowStock, setLowStock] = useState([]);
   const [outOfStock, setOutOfStock] = useState([]);
+  
+  // Stats for Cards
   const [stats, setStats] = useState({
     topCount: 0,
     lowStockCount: 0,
     outOfStockCount: 0,
     complaintRate: 0,
   });
-  const [loading, setLoading] = useState(false);
+  
   const [requestingProductId, setRequestingProductId] = useState(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Fetch data khi dateRange thay đổi
+  useEffect(() => {
+    loadData();
+  }, [dateRange]);
+
+  useEffect(() => {
+    const mql = window.matchMedia("(max-width: 480px)");
+    const handleChange = (e) => setIsMobile(e.matches);
+    handleChange(mql);
+    mql.addEventListener ? mql.addEventListener("change", handleChange) : mql.addListener(handleChange);
+    return () => {
+      mql.removeEventListener ? mql.removeEventListener("change", handleChange) : mql.removeListener(handleChange);
+    };
+  }, []);
+
+  // --- FILTER LOGIC (TINH GỌN) ---
+  const handleTimeChange = (val) => {
+    setTimeFilter(val);
+    const today = dayjs();
+    
+    switch (val) {
+      case "week": 
+        // 7 ngày qua
+        setDateRange([today.subtract(6, "day").startOf('day'), today.endOf('day')]); 
+        break;
+      case "month": 
+        // Tháng này
+        setDateRange([today.startOf("month"), today.endOf('day')]); 
+        break;
+      case "year":
+        // Năm nay
+        setDateRange([today.startOf("year"), today.endOf('day')]);
+        break;
+      default: break;
+    }
+  };
+
+  const handleRangePickerChange = (dates) => {
+    if (dates) {
+      setDateRange([dates[0].startOf('day'), dates[1].endOf('day')]);
+      setTimeFilter("custom"); // Chuyển dropdown sang Custom (hoặc null để ẩn text)
+    }
+  };
 
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await api.get("/products/");
-      const data = Array.isArray(res.data) ? res.data : [];
+      // Xây dựng params query string để lọc theo ngày
+      let params = {};
+      if (dateRange && dateRange[0] && dateRange[1]) {
+        params = {
+          start_date: dateRange[0].format("YYYY-MM-DD"),
+          end_date: dateRange[1].format("YYYY-MM-DD"),
+        };
+      }
 
+      // Giả sử API /products/ hỗ trợ filter theo ngày (để tính 'sold' trong khoảng thời gian đó)
+      const res = await api.get("/products/", { params });
+      
+      // Nếu API trả về dạng phân trang (results) hoặc mảng trực tiếp
+      const data = Array.isArray(res.data) ? res.data : (res.data?.results || []);
+
+      // Xử lý dữ liệu (Client-side processing nếu cần)
+      // Lưu ý: Nếu API đã lọc 'sold' theo ngày thì tốt. Nếu chưa, ở đây chỉ hiển thị snapshot hiện tại.
+      
       const top5 = [...data].sort((a, b) => (b.sold || 0) - (a.sold || 0)).slice(0, 5);
       const low = data.filter((p) => (p.stock || 0) > 0 && (p.stock || 0) <= 10);
       const out = data.filter((p) => (p.stock || 0) === 0);
 
       const sold = data.reduce((sum, p) => sum + (p.sold || 0), 0);
       const complaints = data.reduce((sum, p) => sum + (p.complaints || 0), 0);
-      const complaintRate =
-        sold > 0 ? ((complaints / sold) * 100).toFixed(2) : 0;
+      const complaintRate = sold > 0 ? ((complaints / sold) * 100).toFixed(2) : 0;
 
       setTopProducts(top5);
       setLowStock(low);
@@ -75,11 +136,7 @@ export default function ReportProductsPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  }, [dateRange]);
 
   const handleRequestImport = async (productId, productName) => {
     setRequestingProductId(productId);
@@ -102,42 +159,17 @@ export default function ReportProductsPage() {
     { title: "Top Sản Phẩm", value: stats.topCount, icon: <TrophyOutlined />, color: "#faad14" },
     { title: "Sắp Hết Hàng", value: stats.lowStockCount, icon: <AlertOutlined />, color: "#fa8c16" },
     { title: "Đã Hết Hàng", value: stats.outOfStockCount, icon: <ExclamationCircleOutlined />, color: "#ff4d4f" },
-    { title: "Tỷ lệ Khiếu Nại", value: `${stats.complaintRate}%`, icon: <FrownOutlined />, color: stats.complaintRate > 5 ? "#ff4d4f" : "#52c41a" },
+    { title: "Tỷ lệ Khiếu Nại", value: `${stats.complaintRate}%`, icon: <FrownOutlined />, color: parseFloat(stats.complaintRate) > 5 ? "#ff4d4f" : "#52c41a" },
   ];
-
-  const barColors = ["#1677ff", "#4096ff", "#69b1ff", "#91caff", "#bae0ff"];
 
   const CustomBarTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (
-        <div
-          style={{
-            backgroundColor: "#fff",
-            padding: "12px",
-            border: "1px solid #f0f0f0",
-            borderRadius: "8px",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-          }}
-        >
-          <p
-            style={{
-              margin: "0 0 4px 0",
-              fontWeight: "bold",
-              color: "#1677ff",
-            }}
-          >
-            {label}
-          </p>
-          <p style={{ margin: 0 }}>
-            Đã bán: <strong>{data.sold}</strong>
-          </p>
-          <p style={{ margin: 0 }}>
-            Tồn kho:{" "}
-            <strong style={{ color: data.stock <= 10 ? "#faad14" : "#52c41a" }}>
-              {data.stock}
-            </strong>
-          </p>
+        <div style={{ backgroundColor: "#fff", padding: "12px", border: "1px solid #f0f0f0", borderRadius: "8px", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+          <p style={{ margin: "0 0 4px 0", fontWeight: "bold", color: "#1677ff" }}>{label}</p>
+          <p style={{ margin: 0 }}>Đã bán: <strong>{data.sold}</strong></p>
+          <p style={{ margin: 0 }}>Tồn kho: <strong style={{ color: data.stock <= 10 ? "#faad14" : "#52c41a" }}>{data.stock}</strong></p>
         </div>
       );
     }
@@ -159,16 +191,40 @@ export default function ReportProductsPage() {
     <AdminPageLayout title="THỐNG KÊ SẢN PHẨM">
       <Space direction="vertical" size={24} style={{ width: "100%" }}>
         
-        {/* --- STANDARDIZED TOOLBAR --- */}
+        {/* --- THANH CÔNG CỤ LỌC TINH GỌN --- */}
         <Card bordered={false} bodyStyle={{ padding: "16px 24px" }}>
           <Row justify="space-between" align="middle" gutter={[16, 16]}>
-            <Col xs={24} md={14}>
-               {/* Product Page often just shows Current Status, so no date picker needed usually, 
-                   but we keep the space for alignment or add category filter later */}
-               <Text strong>Trạng thái: </Text>
-               <Tag color="blue">Hiện tại</Tag>
+            {/* Cột Trái: Bộ lọc */}
+            <Col xs={24} md={16}>
+              <Space wrap size="middle" align="center">
+                <Text strong style={{ fontSize: 15 }}>Thời gian:</Text>
+                
+                {/* Dropdown 3 Lựa chọn */}
+                <Select 
+                  value={timeFilter} 
+                  onChange={handleTimeChange} 
+                  style={{ width: 140 }}
+                  size="middle"
+                  placeholder="Tùy chọn"
+                >
+                  <Option value="week">7 ngày qua</Option>
+                  <Option value="month">Tháng này</Option>
+                  <Option value="year">Năm nay</Option>
+                </Select>
+
+                {/* Range Picker */}
+                <RangePicker 
+                  value={dateRange} 
+                  onChange={handleRangePickerChange} 
+                  format="DD/MM/YYYY" 
+                  allowClear={false}
+                  style={{ width: 250 }}
+                />
+              </Space>
             </Col>
-            <Col xs={24} md={10} style={{ textAlign: "right" }}>
+
+            {/* Cột Phải: Hành động */}
+            <Col xs={24} md={8} style={{ textAlign: "right" }}>
               <Space>
                 <Button 
                     icon={<ReloadOutlined spin={loading} />} 
@@ -200,7 +256,7 @@ export default function ReportProductsPage() {
         {/* --- Content --- */}
         <Row gutter={[24, 24]}>
           <Col xs={24} lg={12}>
-            <Card title={<Space><TrophyOutlined style={{ color: "#faad14" }} /><span>Top Sản Phẩm Bán Chạy</span></Space>} bordered={false} style={{ height: '100%' }}>
+            <Card title={<Space><TrophyOutlined style={{ color: "#faad14" }} /><span>Top Sản Phẩm Bán Chạy</span></Space>} bordered={false} style={{ height: '100%' }} loading={loading}>
               <div style={{ height: 320, width: '100%' }}>
                 <ResponsiveContainer>
                   {topProducts.length > 0 ? (
@@ -220,7 +276,7 @@ export default function ReportProductsPage() {
           </Col>
 
           <Col xs={24} lg={12}>
-            <Card title={<Space><WarningOutlined style={{ color: "#fa8c16" }} /><span>Cảnh Báo Tồn Kho</span></Space>} bordered={false} style={{ height: '100%' }}>
+            <Card title={<Space><WarningOutlined style={{ color: "#fa8c16" }} /><span>Cảnh Báo Tồn Kho</span></Space>} bordered={false} style={{ height: '100%' }} loading={loading}>
               <Tabs defaultActiveKey="low" items={[
                   { key: 'low', label: <Space>Sắp hết <Tag color="warning" style={{ margin: 0 }}>{stats.lowStockCount}</Tag></Space>, children: <Table columns={lowStockColumns} dataSource={lowStock} rowKey="id" pagination={{ pageSize: 5 }} size="small" /> },
                   { key: 'out', label: <Space>Hết hàng <Tag color="error" style={{ margin: 0 }}>{stats.outOfStockCount}</Tag></Space>, children: <Table columns={lowStockColumns} dataSource={outOfStock} rowKey="id" pagination={{ pageSize: 5 }} size="small" /> },
